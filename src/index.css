@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply text-neutral-800 bg-neutral-50;
+  }
+  
+  /* Dark mode styles */
+  .dark body {
+    @apply text-neutral-100 bg-neutral-900;
+  }
+  
+  .dark .bg-white {
+    @apply bg-neutral-800;
+  }
+  
+  .dark .bg-neutral-50 {
+    @apply bg-neutral-900;
+  }
+  
+  .dark .bg-neutral-100 {
+    @apply bg-neutral-800;
+  }
+  
+  .dark .border-neutral-200 {
+    @apply border-neutral-700;
+  }
+  
+  .dark .text-neutral-800 {
+    @apply text-neutral-100;
+  }
+  
+  .dark .text-neutral-700 {
+    @apply text-neutral-200;
+  }
+  
+  .dark .text-neutral-600 {
+    @apply text-neutral-300;
+  }
+  
+  .dark .text-neutral-500 {
+    @apply text-neutral-400;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-neutral-100;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-neutral-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300 rounded-full;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-neutral-600;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-400;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-500;
+}
+
+/* Smooth transitions for theme changes */
+.bg-white, .bg-neutral-50, .bg-neutral-100, .bg-neutral-800, .bg-neutral-900,
+.text-neutral-100, .text-neutral-200, .text-neutral-300, .text-neutral-400, 
+.text-neutral-500, .text-neutral-600, .text-neutral-700, .text-neutral-800,
+.border-neutral-200, .border-neutral-700 {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
