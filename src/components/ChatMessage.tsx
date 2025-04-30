@@ -12,7 +12,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   return (
     <div 
       className={`flex gap-3 p-4 animate-fade-in ${
-        isUser ? 'bg-neutral-100' : 'bg-white'
+        isUser ? 'bg-neutral-800' : 'bg-neutral-800'
       }`}
     >
       <div className="flex-shrink-0">

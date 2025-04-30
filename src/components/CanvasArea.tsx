@@ -36,16 +36,16 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ content }) => {
   }
 
   return (
-    <div className="flex-grow bg-neutral-100 p-6 overflow-y-auto">
+    <div className="flex-grow bg-neutral-800 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <div className="text-center text-neutral-500 uppercase text-xs tracking-wider mb-6">Canvas</div>
-        <div className="bg-white rounded-lg shadow-md p-6 animate-fade-in">
+        <div className="bg-neutral-800 rounded-lg shadow-md p-6 animate-fade-in">
           {renderedContent}
         </div>
         
         {content.type === 'code' && (
-          <div className="mt-4 p-4 border border-neutral-300 rounded-lg bg-white">
-            <p className="text-sm text-neutral-600 italic">please rewrite this code using css variables from our design systems</p>
+          <div className="mt-4 p-4 border border-neutral-300 rounded-lg bg-neutral-800">
+            <p className="text-sm text-neutral-300 italic">please rewrite this code using css variables from our design systems</p>
           </div>
         )}
       </div>

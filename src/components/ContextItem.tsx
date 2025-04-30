@@ -14,7 +14,7 @@ const ContextItem: React.FC<ContextItemProps> = ({ item }) => {
   };
 
   return (
-    <div className="mb-3 bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+    <div className="mb-3 bg-neutral-800 rounded-lg shadow-sm border border-neutral-700 overflow-hidden">
       <div 
         className="px-4 py-3 flex items-center justify-between cursor-pointer"
         onClick={toggleExpand}
@@ -26,7 +26,7 @@ const ContextItem: React.FC<ContextItemProps> = ({ item }) => {
       </div>
       
       {isExpanded && (
-        <div className="p-4 border-t border-neutral-200 animate-slide-down">
+        <div className="p-4 border-t border-neutral-700 animate-slide-down">
           {item.type === 'code' ? (
             <div className="relative">
               <pre className="bg-neutral-900 text-white p-3 rounded text-xs font-mono overflow-x-auto">
@@ -40,7 +40,7 @@ const ContextItem: React.FC<ContextItemProps> = ({ item }) => {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-neutral-700">{item.content}</p>
+            <p className="text-sm text-neutral-200">{item.content}</p>
           )}
         </div>
       )}

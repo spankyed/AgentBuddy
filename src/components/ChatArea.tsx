@@ -16,7 +16,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, onSendMessage }) => {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-80 min-h-[20rem] bg-white border-t border-neutral-200">
+    <div className="flex flex-col h-80 min-h-[20rem] bg-neutral-800 border-t border-neutral-700">
       <div className="flex-grow overflow-y-auto">
         <div className="divide-y divide-neutral-100">
           {messages.map((message) => (

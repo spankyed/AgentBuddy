@@ -31,7 +31,7 @@ const ActionQueueItem: React.FC<ActionQueueItemProps> = ({ action }) => {
         return 'bg-error-50 border-error-200';
       case 'pending':
       default:
-        return 'bg-neutral-100 border-neutral-200';
+        return 'bg-neutral-800 border-neutral-700';
     }
   };
 
@@ -41,7 +41,7 @@ const ActionQueueItem: React.FC<ActionQueueItemProps> = ({ action }) => {
         <span className="mr-2">
           {getStatusIcon()}
         </span>
-        <span className="text-sm font-medium text-neutral-800">
+        <span className="text-sm font-medium text-neutral-100">
           {action.description}
         </span>
         <span className="ml-auto text-xs text-neutral-500">
