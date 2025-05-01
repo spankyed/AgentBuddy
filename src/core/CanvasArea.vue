@@ -3,9 +3,11 @@
     <div class="max-w-4xl mx-auto">
         <button 
           @click="isPlugin = !isPlugin"
-          class="absolute top-4 right-2 px-3 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+          class="absolute flex items-center gap-1 px-3 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg top-4 left-3 hover:bg-neutral-700 text-neutral-500 hover:text-white"
         >
+          <ChevronLeft :size="14" />
           {{ isPlugin ? 'Plugin' : 'Canvas' }}
+          <ChevronRight :size="14" />
         </button>
       <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
         <template v-if="content.type === 'code'">
@@ -43,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { Copy } from 'lucide-vue-next'
+import { Copy, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import type { CanvasContent } from './types'
 import { ref } from 'vue'
 
