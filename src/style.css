@@ -18,20 +18,25 @@
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 1rem;
+  height: 1rem;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-neutral-800;
+  @apply bg-transparent;
+  border: 0.25rem solid transparent;
+  /* @apply bg-neutral-800; */
 }
 
 .dark ::-webkit-scrollbar-track {
   @apply bg-neutral-800;
+  border: 0.25rem solid transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   @apply bg-neutral-600 rounded-full;
+  border: 0.25rem solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
