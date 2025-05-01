@@ -3,14 +3,13 @@
     class="flex flex-col border-t bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
-    <div class="flex-grow px-4 pt-4 overflow-y-auto">
+    <div class="flex-grow px-4 pt-4 overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
       <div class="space-y-2">
         <ChatMessage 
           v-for="message in messages" 
           :key="message.id" 
           :message="message" 
         />
-        <div ref="messagesEndRef" />
       </div>
     </div>
     <ChatInput @send-message="$emit('send-message', $event)" />
@@ -18,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
 import type { Message } from './types'
@@ -30,16 +29,28 @@ interface ChatAreaProps {
 const props = defineProps<ChatAreaProps>()
 defineEmits<(e: 'send-message', message: string) => void>()
 
-const messagesEndRef = ref<HTMLDivElement | null>(null)
+const messagesContainer = ref<HTMLElement | null>(null)
 
-watch(() => props.messages, () => {
-  messagesEndRef.value?.scrollIntoView({ behavior: 'smooth' })
-}, { deep: true })
+watch(() => props.messages.length, async () => {
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+})
 </script>
 
 <style lang="scss" module>
 .component {
   height: 38rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.messagesContainer {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 /* Add any component-specific styles here */
 </style> 
