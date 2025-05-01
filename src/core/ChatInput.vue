@@ -2,9 +2,9 @@
   <div>
     <form 
       @submit.prevent="handleSubmit"
-      class="px-14 py-4"
+      class="py-4 max-w-[80%] mx-auto"
     >
-      <div class="flex flex-col rounded-lg border border-neutral-800 bg-neutral-800">
+      <div class="flex flex-col border rounded-lg border-neutral-800 bg-neutral-800">
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
           <!-- Contenteditable div -->
@@ -12,7 +12,7 @@
             ref="editorRef"
             contenteditable="true"
             translate="no"
-            class="w-full px-4 py-3 min-h-12 max-h-80 overflow-y-auto focus:outline-none rounded-lg"
+            class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-80 focus:outline-none"
             @input="handleInput"
             @keydown="handleKeydown"
             data-placeholder="Message Agent"
@@ -189,6 +189,7 @@ const handleSelectThread = (id: string) => {
   content: attr(data-placeholder);
   color: #666;
   cursor: text;
+  pointer-events: none;
 }
 
 /* Hide the placeholder when focused and empty */
