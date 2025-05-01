@@ -24,14 +24,14 @@
 
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
-  border: 0.25rem solid transparent;
+  border: 0.3rem solid transparent;
 
   /* @apply bg-neutral-800; */
 }
 
 ::-webkit-scrollbar-thumb {
   @apply bg-neutral-600 rounded-full;
-  border: 0.25rem solid transparent;
+  border: 0.3rem solid transparent;
   background-clip: padding-box;
 }
 
