@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full border-l w-96 bg-neutral-900 border-neutral-800">
     <div class="flex items-center justify-between p-4 border-b border-neutral-800">
-      <h2 class="font-medium text-primary-800">Context Inspection</h2>
+      <h2 class="font-medium text-neutral-400">Context Inspection</h2>
       <button 
         v-if="onClose"
         @click="onClose"
