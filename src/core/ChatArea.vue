@@ -3,7 +3,7 @@
     class="flex flex-col border-t bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
-    <div class="flex-grow px-4 overflow-y-auto">
+    <div class="flex-grow px-4 pt-4 overflow-y-auto">
       <div class="space-y-2">
         <ChatMessage 
           v-for="message in messages" 
