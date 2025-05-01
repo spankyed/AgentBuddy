@@ -45,7 +45,7 @@
                 'px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2',
                 messageContent
                   ? 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600' 
-                  : 'bg-neutral-700 text-neutral-400'
+                  : 'bg-primary-700 text-neutral-400'
               ]"
             >
               Send
