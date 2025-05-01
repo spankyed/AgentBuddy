@@ -6,7 +6,7 @@
       @click="isOpen = !isOpen"
     >
       <History :size="16" class="mr-2" />
-      Past chats
+      Threads
       <ChevronDown :size="16" class="ml-2" :class="{ 'rotate-180': isOpen }" />
     </button>
 
@@ -15,14 +15,14 @@
       class="px-2 pt-1 border-t border-neutral-800 bg-neutral-900 animate-slide-down"
     >
         <button
-          v-for="chat in chats"
-          :key="chat.id"
-          class="w-full px-4 p-3 text-left transition-colors rounded-lg hover:bg-neutral-800 group"
-          @click="handleSelectChat(chat.id)"
+          v-for="thread in threads"
+          :key="thread.id"
+          class="w-full p-3 px-4 text-left transition-colors rounded-lg hover:bg-neutral-800 group"
+          @click="handleSelectThread(thread.id)"
         >
           <div class="flex items-center justify-between">
-            <span class="text-sm text-neutral-200">{{ chat.title }}</span>
-            <span class="text-xs text-neutral-500">{{ formatTime(chat.timestamp) }}</span>
+            <span class="text-sm text-neutral-200">{{ thread.title }}</span>
+            <span class="text-xs text-neutral-500">{{ formatTime(thread.timestamp) }}</span>
           </div>
         </button>
       </div>
@@ -33,23 +33,23 @@
 import { ref } from 'vue'
 import { History, ChevronDown } from 'lucide-vue-next'
 
-export interface Chat {
+export interface Thread {
   id: string
   title: string
   timestamp: Date
 }
 
-export interface PastChatsProps {
-  chats: Chat[]
+export interface ThreadsProps {
+  threads: Thread[]
 }
 
-const props = defineProps<PastChatsProps>()
+const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 
-const emit = defineEmits<(e: 'select-chat', id: string) => void>()
+const emit = defineEmits<(e: 'select-thread', id: string) => void>()
 
-const handleSelectChat = (id: string) => {
-  emit('select-chat', id)
+const handleSelectThread = (id: string) => {
+  emit('select-thread', id)
   isOpen.value = false
 }
 

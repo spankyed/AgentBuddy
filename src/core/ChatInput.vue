@@ -44,9 +44,9 @@
       </div>
     </form>
 
-    <PastChats
-      :chats="mockChats"
-      @select-chat="handleSelectChat"
+    <Threads
+      :threads="mockThreads"
+      @select-thread="handleSelectThread"
     />
   </div>
 </template>
@@ -54,13 +54,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Send, Mic, PaperclipIcon } from 'lucide-vue-next'
-import PastChats from './PastChats.vue'
-import type { Chat } from './PastChats.vue'
+import Threads from './Threads.vue'
+import type { Thread } from './Threads.vue'
 
 const message = ref('')
 
 // Mock data - replace with real data from your app
-const mockChats: Chat[] = [
+const mockThreads: Thread[] = [
   {
     id: '1',
     title: 'UI Layout Reorganization Instructions',
@@ -80,7 +80,7 @@ const mockChats: Chat[] = [
 
 const emit = defineEmits<{
   (e: 'send-message', message: string): void
-  (e: 'select-chat', id: string): void
+  (e: 'select-thread', id: string): void
 }>()
 
 const handleSubmit = () => {
@@ -90,8 +90,8 @@ const handleSubmit = () => {
   }
 }
 
-const handleSelectChat = (id: string) => {
-  emit('select-chat', id)
+const handleSelectThread = (id: string) => {
+  emit('select-thread', id)
 }
 </script>
 

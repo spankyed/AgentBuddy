@@ -12,7 +12,7 @@
         <CanvasArea :content="mockCanvasContent" />
 
         <!-- Header with Action Buttons -->
-        <div class="flex items-center justify-between p-3 border-b border-t shadow-sm bg-neutral-900 border-neutral-800">
+        <!-- <div class="flex items-center justify-between p-3 border-b border-t shadow-sm bg-neutral-900 border-neutral-800">
           <div class="flex items-center space-x-3">
             <button 
               v-for="action in mockActions.slice(0, 6)"
@@ -22,7 +22,7 @@
               {{ action.description }}
             </button>
           </div>
-        </div>
+        </div> -->
 
         <!-- Chat Area -->
         <ChatArea 
