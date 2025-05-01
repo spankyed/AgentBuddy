@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-grow p-6 overflow-y-auto bg-neutral-800 border-r border-l border-b border-neutral-600">
+  <div class="flex-grow p-6 overflow-y-auto bg-neutral-800">
     <div class="max-w-4xl mx-auto">
       <div class="mb-6 text-xs tracking-wider text-center uppercase text-neutral-500">Canvas</div>
       <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
