@@ -72,6 +72,7 @@ const pluginItems = [
   { id: 'files', icon: Folder, label: 'Files' },
   { id: 'code', icon: Code, label: 'Code' },
   { id: 'components', icon: Box, label: 'Components' },
+  { id: 'prompt', icon: Sparkle, label: 'Prompt Builder' },
 ]
 
 const pinnedItems = [
