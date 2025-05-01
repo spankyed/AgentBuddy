@@ -41,13 +41,14 @@
               type="submit"
               :disabled="!messageContent"
               :class="[
-                'px-4 py-2 rounded text-sm font-medium transition-colors',
+                'px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2',
                 messageContent
-                  ? 'bg-primary-500 text-white hover:bg-primary-600' 
+                  ? 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600' 
                   : 'bg-neutral-700 text-neutral-400'
               ]"
             >
               Send
+              <CornerDownLeft class="-rotate-45" :size="16" />
             </button>
           </div>
         </div>
@@ -63,7 +64,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Mic, PaperclipIcon, Sparkle, AtSign } from 'lucide-vue-next'
+import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Threads from './Threads.vue'
 import type { Thread } from './Threads.vue'
 import type { Component } from 'vue'
