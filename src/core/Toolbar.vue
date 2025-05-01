@@ -28,7 +28,11 @@ import {
   ChevronRight, 
   Star, 
   BarChart2, 
-  Settings
+  Settings,
+  Brain,
+  History,
+  Sparkle,
+  Workflow
 } from 'lucide-vue-next'
 
 interface ToolbarProps {
@@ -39,13 +43,17 @@ defineProps<ToolbarProps>()
 defineEmits<(e: 'select-item', item: string) => void>()
 
 const toolbarItems = [
-  { id: 'dashboard', icon: LayoutGrid, label: 'Dashboard' },
-  { id: 'code', icon: Code, label: 'Code' },
-  { id: 'components', icon: Box, label: 'Components' },
+  { id: 'history', icon: History, label: 'History' },
+  { id: 'dialog', icon: Workflow, label: 'Dialog' },
+  { id: 'brain', icon: Brain, label: 'Brain' },
   { id: 'files', icon: Folder, label: 'Files' },
-  { id: 'terminal', icon: ChevronRight, label: 'Terminal' },
-  { id: 'favorites', icon: Star, label: 'Favorites' },
-  { id: 'analytics', icon: BarChart2, label: 'Analytics' },
+  { id: 'code', icon: Code, label: 'Code' },
+  // { id: 'terminal', icon: ChevronRight, label: 'Terminal' },
+  { id: 'components', icon: Box, label: 'Components' },
+  // { id: 'favorites', icon: Star, label: 'Favorites' },
+  // { id: 'analytics', icon: BarChart2, label: 'Analytics' },
+  { id: 'prompt', icon: Sparkle, label: 'Prompt Builder' },
+  { id: 'plugins', icon: LayoutGrid, label: 'Plugins' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ]
 </script>
