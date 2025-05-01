@@ -25,12 +25,8 @@
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
   border: 0.25rem solid transparent;
-  /* @apply bg-neutral-800; */
-}
 
-.dark ::-webkit-scrollbar-track {
-  @apply bg-neutral-800;
-  border: 0.25rem solid transparent;
+  /* @apply bg-neutral-800; */
 }
 
 ::-webkit-scrollbar-thumb {

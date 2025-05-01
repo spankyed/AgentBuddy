@@ -53,7 +53,7 @@ const getStatusClass = () => {
       return 'bg-error-50 border-error-200'
     case 'pending':
     default:
-      return 'bg-neutral-800 border-neutral-700'
+      return 'bg-neutral-800 border-neutral-800'
   }
 }
 

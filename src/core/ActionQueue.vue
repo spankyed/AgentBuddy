@@ -1,6 +1,6 @@
 <template>
-  <div class="border-t border-neutral-700 bg-neutral-800">
-    <div class="flex items-center justify-between p-3 border-b border-neutral-700">
+  <div class="border-t border-neutral-800 bg-neutral-800">
+    <div class="flex items-center justify-between p-3 border-b border-neutral-800">
       <div class="flex items-center">
         <List :size="16" class="mr-2 text-neutral-300" />
         <h3 class="text-sm font-medium text-neutral-100">Action Queue</h3>

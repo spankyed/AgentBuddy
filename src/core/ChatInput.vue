@@ -1,7 +1,7 @@
 <template>
   <form 
     @submit.prevent="handleSubmit"
-    class="p-4 border-t border-neutral-700 bg-neutral-800"
+    class="p-4"
   >
     <div class="relative flex items-center">
       <button
@@ -15,8 +15,8 @@
       <input
         type="text"
         v-model="message"
-        placeholder="Message AI Assistant..."
-        class="w-full px-10 py-3 transition-all border rounded-lg bg-neutral-800 border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+        placeholder="Message Agent"
+        class="w-full px-10 py-3 transition-all border rounded-lg bg-neutral-800 border-neutral-800 focus:outline-none focus:ring-2 focus:ring-primary-400"
       />
       
       <button

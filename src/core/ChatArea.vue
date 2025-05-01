@@ -1,10 +1,10 @@
 <template>
   <div
-    class="flex flex-col bg-neutral-900 border-t border-neutral-700"
+    class="flex flex-col border-t bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
-    <div class="flex-grow overflow-y-auto">
-      <div class="divide-y divide-neutral-100">
+    <div class="flex-grow px-4 overflow-y-auto">
+      <div class="space-y-2">
         <ChatMessage 
           v-for="message in messages" 
           :key="message.id" 
@@ -39,7 +39,7 @@ watch(() => props.messages, () => {
 
 <style lang="scss" module>
 .component {
-  height: 28rem;
+  height: 38rem;
 }
 /* Add any component-specific styles here */
 </style> 

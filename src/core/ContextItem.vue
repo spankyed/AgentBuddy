@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-3 overflow-hidden border rounded-lg shadow-sm bg-neutral-800 border-neutral-700">
+  <div class="mb-3 overflow-hidden border rounded-lg shadow-sm bg-neutral-800 border-neutral-800">
     <div 
       class="flex items-center justify-between px-4 py-3 cursor-pointer"
       @click="isExpanded = !isExpanded"
@@ -10,7 +10,7 @@
       </button>
     </div>
     
-    <div v-if="isExpanded" class="p-4 border-t border-neutral-700 animate-slide-down">
+    <div v-if="isExpanded" class="p-4 border-t border-neutral-800 animate-slide-down">
       <template v-if="item.type === 'code'">
         <div class="relative">
           <pre class="p-3 overflow-x-auto font-mono text-xs text-white rounded bg-neutral-900">

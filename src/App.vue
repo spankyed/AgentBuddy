@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-col h-screen">
     <!-- Header with Action Buttons -->
-    <div class="flex items-center justify-between p-3 border-b shadow-sm bg-neutral-800 border-neutral-700">
+    <div class="flex items-center justify-between p-3 border-b shadow-sm bg-neutral-900 border-neutral-800">
       <div class="flex items-center space-x-3">
         <button 
           v-for="action in mockActions.slice(0, 6)"
           :key="action.id"
-          class="py-1.5 px-3 text-sm font-medium bg-neutral-800 border border-neutral-300 rounded-full hover:bg-neutral-900 transition-colors"
+          class="py-1.5 px-3 text-sm font-medium bg-neutral-800 rounded-full hover:bg-neutral-900 transition-colors"
         >
           {{ action.description }}
         </button>
