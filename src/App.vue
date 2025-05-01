@@ -1,44 +1,34 @@
 <template>
   <div class="flex flex-col h-screen">
-    <!-- Header with Action Buttons -->
-    <div class="flex items-center justify-between p-3 border-b shadow-sm bg-neutral-900 border-neutral-800">
-      <div class="flex items-center space-x-3">
-        <button 
-          v-for="action in mockActions.slice(0, 6)"
-          :key="action.id"
-          class="py-1.5 px-3 text-sm font-medium bg-neutral-800 rounded-full hover:bg-neutral-900 transition-colors"
-        >
-          {{ action.description }}
-        </button>
-      </div>
-    </div>
-    
     <div class="flex flex-grow overflow-hidden">
       <!-- Left Toolbar -->
       <Toolbar 
         :active-item="activeToolbarItem"
       />
-      <!-- <Toolbar 
-        :active-item="activeToolbarItem"
-        @select-item="setActiveToolbarItem"
-      /> -->
       
       <!-- Main Content Area -->
       <div class="flex flex-col flex-grow overflow-hidden">
         <!-- Canvas Area -->
         <CanvasArea :content="mockCanvasContent" />
-        
+
+        <!-- Header with Action Buttons -->
+        <div class="flex items-center justify-between p-3 border-b border-t shadow-sm bg-neutral-900 border-neutral-800">
+          <div class="flex items-center space-x-3">
+            <button 
+              v-for="action in mockActions.slice(0, 6)"
+              :key="action.id"
+              class="py-1.5 px-3 text-sm font-medium bg-neutral-800 rounded-full hover:bg-neutral-900 transition-colors"
+            >
+              {{ action.description }}
+            </button>
+          </div>
+        </div>
+
         <!-- Chat Area -->
         <ChatArea 
           :messages="messages"
           @send-message="handleSendMessage"
         />
-        
-        <!-- Action Queue -->
-        <!-- <ActionQueue 
-          :actions="actions"
-          @clear="handleClearCompletedActions"
-        /> -->
       </div>
       
       <!-- Context Panel -->
