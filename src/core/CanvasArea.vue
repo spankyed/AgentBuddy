@@ -1,7 +1,12 @@
 <template>
-  <div class="flex-grow p-6 overflow-y-auto bg-neutral-800">
+  <div class="relative flex-grow p-6 overflow-y-auto bg-neutral-800">
     <div class="max-w-4xl mx-auto">
-      <div class="mb-6 text-xs tracking-wider text-center uppercase text-neutral-500">Canvas</div>
+        <button 
+          @click="isPlugin = !isPlugin"
+          class="absolute top-4 right-2 px-3 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+        >
+          {{ isPlugin ? 'Plugin' : 'Canvas' }}
+        </button>
       <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
         <template v-if="content.type === 'code'">
           <div class="relative">
@@ -40,12 +45,14 @@
 <script setup lang="ts">
 import { Copy } from 'lucide-vue-next'
 import type { CanvasContent } from './types'
+import { ref } from 'vue'
 
 interface CanvasAreaProps {
   content: CanvasContent
 }
 
 defineProps<CanvasAreaProps>()
+const isPlugin = ref(false)
 </script>
 
 <style scoped>
