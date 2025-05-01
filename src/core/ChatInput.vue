@@ -2,45 +2,55 @@
   <div>
     <form 
       @submit.prevent="handleSubmit"
-      class="px-12 py-4"
+      class="px-14 py-4"
     >
-      <div class="relative flex items-center">
-        <button
-          type="button"
-          class="absolute transition-colors left-3 text-neutral-500 hover:text-neutral-200"
-          aria-label="Attach file"
-        >
-          <PaperclipIcon :size="20" />
-        </button>
-        
-        <input
-          type="text"
-          v-model="message"
-          placeholder="Message Agent"
-          class="w-full px-10 py-3 transition-all border rounded-lg bg-neutral-800 border-neutral-800 focus:outline-none focus:ring-2 focus:ring-primary-400"
-        />
-        
-        <button
-          type="button"
-          class="absolute transition-colors right-14 text-neutral-500 hover:text-neutral-200"
-          aria-label="Voice input"
-        >
-          <Mic :size="20" />
-        </button>
-        
-        <button
-          type="submit"
-          :disabled="!message.trim()"
-          :class="[
-            'absolute right-3 transition-colors',
-            message.trim() 
-              ? 'text-primary-500 hover:text-primary-600' 
-              : 'text-neutral-400'
-          ]"
-          aria-label="Send message"
-        >
-          <Send :size="20" />
-        </button>
+      <div class="flex flex-col rounded-lg border border-neutral-800 bg-neutral-800">
+        <!-- Editor container -->
+        <div class="relative w-full min-h-12">
+          <!-- Contenteditable div -->
+          <div
+            ref="editorRef"
+            contenteditable="true"
+            translate="no"
+            class="w-full px-4 py-3 min-h-12 max-h-80 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-primary-400 rounded-lg"
+            @input="handleInput"
+            data-placeholder="Message Agent"
+          ></div>
+        </div>
+
+        <!-- Buttons row -->
+        <div class="flex items-center justify-between px-3 py-3">
+          <!-- Left side buttons -->
+          <div class="flex items-center">
+            <button
+              v-for="btn in leftButtons"
+              :key="btn.action"
+              type="button"
+              class="p-2 transition-colors text-neutral-500 hover:text-neutral-200"
+              :aria-label="btn.label"
+              @click="handleButtonClick(btn.action)"
+            >
+              <component :is="btn.icon" :size="20" />
+            </button>
+          </div>
+
+          <!-- Right side buttons -->
+          <div class="flex items-center">
+            <!-- Send button -->
+            <button
+              type="submit"
+              :disabled="!messageContent"
+              :class="[
+                'px-4 py-2 rounded text-sm font-medium transition-colors',
+                messageContent
+                  ? 'bg-primary-500 text-white hover:bg-primary-600' 
+                  : 'bg-neutral-700 text-neutral-400'
+              ]"
+            >
+              Send
+            </button>
+          </div>
+        </div>
       </div>
     </form>
 
@@ -52,12 +62,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Send, Mic, PaperclipIcon } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+import { Mic, PaperclipIcon, Sparkle, AtSign } from 'lucide-vue-next'
 import Threads from './Threads.vue'
 import type { Thread } from './Threads.vue'
+import type { Component } from 'vue'
 
-const message = ref('')
+interface ActionButton {
+  icon: Component
+  label: string
+  action: string
+  class?: string
+}
+
+const leftButtons: ActionButton[] = [
+  {
+    icon: AtSign,
+    label: 'Add context',
+    action: 'add-context'
+  },
+  {
+    icon: PaperclipIcon,
+    label: 'Attach file',
+    action: 'attach-file'
+  },
+  {
+    icon: Sparkle,
+    label: 'Quick message',
+    action: 'quick-message'
+  },
+  {
+    icon: Mic,
+    label: 'Voice input',
+    action: 'voice-input'
+  },
+]
+
+const editorRef = ref<HTMLDivElement | null>(null)
+const messageContent = ref('')
+
+onMounted(() => {
+  // Set up placeholder behavior
+  const editor = editorRef.value
+  if (editor) {
+    editor.addEventListener('focus', () => {
+      if (editor.textContent === '') {
+        editor.classList.remove('empty')
+      }
+    })
+    
+    editor.addEventListener('blur', () => {
+      if (editor.textContent === '') {
+        editor.classList.add('empty')
+      }
+    })
+    
+    // Initialize as empty
+    editor.classList.add('empty')
+  }
+})
+
+const handleInput = (e: Event) => {
+  const target = e.target as HTMLDivElement
+  messageContent.value = target.textContent || ''
+}
 
 // Mock data - replace with real data from your app
 const mockThreads: Thread[] = [
@@ -78,15 +146,27 @@ const mockThreads: Thread[] = [
   }
 ]
 
+// Define emits including new button actions
 const emit = defineEmits<{
   (e: 'send-message', message: string): void
   (e: 'select-thread', id: string): void
+  (e: 'quick-message'): void
+  (e: 'attach-file'): void
+  (e: 'voice-input'): void
 }>()
 
+const handleButtonClick = (action: string) => {
+  emit(action)
+}
+
 const handleSubmit = () => {
-  if (message.value.trim()) {
-    emit('send-message', message.value)
-    message.value = ''
+  if (messageContent.value.trim()) {
+    emit('send-message', messageContent.value)
+    if (editorRef.value) {
+      editorRef.value.textContent = ''
+      editorRef.value.classList.add('empty')
+    }
+    messageContent.value = ''
   }
 }
 
@@ -96,5 +176,14 @@ const handleSelectThread = (id: string) => {
 </script>
 
 <style scoped>
-/* Add any component-specific styles here */
+[contenteditable].empty:before {
+  content: attr(data-placeholder);
+  color: #666;
+  cursor: text;
+}
+
+/* Hide the placeholder when focused and empty */
+[contenteditable]:focus.empty:before {
+  content: '';
+}
 </style> 
