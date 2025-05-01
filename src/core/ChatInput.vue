@@ -12,7 +12,7 @@
             ref="editorRef"
             contenteditable="true"
             translate="no"
-            class="w-full px-4 py-3 min-h-12 max-h-80 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-primary-400 rounded-lg"
+            class="w-full px-4 py-3 min-h-12 max-h-80 overflow-y-auto focus:outline-none rounded-lg"
             @input="handleInput"
             @keydown="handleKeydown"
             data-placeholder="Message Agent"
