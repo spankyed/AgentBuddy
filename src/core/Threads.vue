@@ -1,5 +1,5 @@
 <template>
-  <div class="relative px-12 pb-2">
+  <div class="relative max-w-[80%] mx-auto pb-2">
     <button
       type="button"
       class="flex items-center w-full px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
