@@ -1,5 +1,8 @@
 <template>
-  <div class="flex flex-col h-80 min-h-[20rem] bg-neutral-800 border-t border-neutral-700">
+  <div
+    class="flex flex-col bg-neutral-900 border-t border-neutral-700"
+    :class="$style.component"
+  >
     <div class="flex-grow overflow-y-auto">
       <div class="divide-y divide-neutral-100">
         <ChatMessage 
@@ -34,6 +37,9 @@ watch(() => props.messages, () => {
 }, { deep: true })
 </script>
 
-<style scoped>
+<style lang="scss" module>
+.component {
+  height: 28rem;
+}
 /* Add any component-specific styles here */
 </style> 
