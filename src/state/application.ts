@@ -199,4 +199,18 @@ export const applicationMachine = setup({
 
 export const applicationActor = createActor(applicationMachine, {
   systemId: 'application',
+  // inspect: (inspEvent) => {
+  //   console.log(inspEvent); // the event that caused the transition
+  // }
 }).start();
+
+applicationActor.subscribe({
+  // Subscribe to events
+  // next: (state) => {
+  //   console.log('---', {state});
+  // },
+  // Subscribe to errors
+  error: (error) => {
+    console.error('Application State Error:', error);
+  }
+});
