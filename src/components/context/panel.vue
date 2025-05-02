@@ -43,6 +43,6 @@ defineProps<ContextPanelProps>()
 const isPlugin = ref(false)
 </script>
 
-<style scoped>
+<style lang="scss" module>
 /* Add any component-specific styles here */
 </style> 

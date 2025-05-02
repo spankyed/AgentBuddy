@@ -83,7 +83,7 @@ const pinnedItems = [
 ]
 </script>
 
-<style scoped>
+<style lang="scss" module>
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */

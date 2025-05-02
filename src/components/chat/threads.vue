@@ -82,3 +82,6 @@ const formatTime = (timestamp: Date) => {
   })
 }
 </script>
+
+<style lang="scss" module>
+</style>
