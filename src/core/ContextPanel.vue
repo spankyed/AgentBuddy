@@ -1,7 +1,14 @@
 <template>
   <div class="flex flex-col h-full border-l w-96 bg-neutral-900 border-neutral-800">
     <div class="flex items-center justify-between p-4 border-b border-neutral-800">
-      <h2 class="font-medium text-neutral-400">Context Inspection</h2>
+      <button 
+        @click="isPlugin = !isPlugin"
+        class="flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+      >
+        <ChevronLeft :size="14" />
+        {{ isPlugin ? 'Plugin' : 'Context Inspection' }}
+        <ChevronRight :size="14" />
+      </button>
       <button 
         v-if="onClose"
         @click="onClose"
@@ -22,9 +29,10 @@
 </template>
 
 <script setup lang="ts">
-import { X } from 'lucide-vue-next'
+import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import ContextItem from './ContextItem.vue'
 import type { ContextItem as ContextItemType } from './types'
+import { ref } from 'vue'
 
 interface ContextPanelProps {
   items: ContextItemType[]
@@ -32,6 +40,7 @@ interface ContextPanelProps {
 }
 
 defineProps<ContextPanelProps>()
+const isPlugin = ref(false)
 </script>
 
 <style scoped>

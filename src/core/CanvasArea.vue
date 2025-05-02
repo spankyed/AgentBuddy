@@ -3,7 +3,7 @@
     <div class="max-w-4xl mx-auto">
         <button 
           @click="isPlugin = !isPlugin"
-          class="absolute flex items-center gap-1 px-3 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg top-4 left-3 hover:bg-neutral-700 text-neutral-500 hover:text-white"
+          class="absolute flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg top-4 left-3 hover:bg-neutral-700 text-neutral-500 hover:text-white"
         >
           <ChevronLeft :size="14" />
           {{ isPlugin ? 'Plugin' : 'Canvas' }}
