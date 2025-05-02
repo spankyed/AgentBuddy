@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import type { CanvasContent } from '../types'
+import type { CanvasContent } from '../helpers/types'
 import { ref } from 'vue'
 
 interface CanvasAreaProps {

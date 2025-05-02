@@ -44,7 +44,7 @@ import CanvasArea from './components/canvas.vue'
 import ChatArea from './components/chat/chat.vue'
 import ContextPanel from './components/context/panel.vue'
 // import ActionQueue from './components/ActionQueue.vue'
-import type { Message, ActionItem } from './types/index'
+import type { Message, ActionItem } from './helpers/types/index'
 import { mockMessages, mockActions, mockContextItems, mockCanvasContent } from './state/mockData.ts'
 // import { Sun, Moon } from 'lucide-vue-next'
 
