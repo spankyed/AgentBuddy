@@ -67,8 +67,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
-import Threads from './Threads.vue'
-import type { Thread } from './Threads.vue'
+import Threads from './threads.vue'
+import type { Thread } from './threads.vue'
 import type { Component } from 'vue'
 
 // Define emits including new button actions

@@ -18,9 +18,9 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import ChatMessage from './ChatMessage.vue'
-import ChatInput from './ChatInput.vue'
-import type { Message } from './types'
+import ChatMessage from './message.vue'
+import ChatInput from './input.vue'
+import type { Message } from '../types'
 
 interface ChatAreaProps {
   messages: Message[]

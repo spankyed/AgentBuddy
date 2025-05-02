@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { CheckCircle, Clock, Loader, XCircle } from 'lucide-vue-next'
-import type { ActionItem } from './types'
+import type { ActionItem } from '../types'
 
 interface ActionQueueItemProps {
   action: ActionItem

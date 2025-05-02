@@ -39,13 +39,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Toolbar from './core/Toolbar.vue'
-import CanvasArea from './core/CanvasArea.vue'
-import ChatArea from './core/ChatArea.vue'
-import ContextPanel from './core/ContextPanel.vue'
-// import ActionQueue from './core/ActionQueue.vue'
-import type { Message, ActionItem } from './core/types/index'
-import { mockMessages, mockActions, mockContextItems, mockCanvasContent } from './core/data/mockData.ts'
+import Toolbar from './components/toolbar.vue'
+import CanvasArea from './components/canvas.vue'
+import ChatArea from './components/chat/chat.vue'
+import ContextPanel from './components/context/panel.vue'
+// import ActionQueue from './components/ActionQueue.vue'
+import type { Message, ActionItem } from './types/index'
+import { mockMessages, mockActions, mockContextItems, mockCanvasContent } from './state/mockData.ts'
 // import { Sun, Moon } from 'lucide-vue-next'
 
 const messages = ref<Message[]>(mockMessages)

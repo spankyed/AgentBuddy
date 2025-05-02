@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown, ChevronUp, Copy } from 'lucide-vue-next'
-import type { ContextItem as ContextItemType } from './types'
+import type { ContextItem as ContextItemType } from '../types'
 
 interface ContextItemProps {
   item: ContextItemType

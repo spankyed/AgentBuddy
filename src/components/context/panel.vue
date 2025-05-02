@@ -30,8 +30,8 @@
 
 <script setup lang="ts">
 import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import ContextItem from './ContextItem.vue'
-import type { ContextItem as ContextItemType } from './types'
+import ContextItem from './item.vue'
+import type { ContextItem as ContextItemType } from '../types'
 import { ref } from 'vue'
 
 interface ContextPanelProps {

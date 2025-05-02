@@ -36,7 +36,7 @@
 import { computed } from 'vue'
 import { List, MinusCircle } from 'lucide-vue-next'
 import ActionQueueItem from './ActionQueueItem.vue'
-import type { ActionItem } from './types'
+import type { ActionItem } from '../types'
 
 interface ActionQueueProps {
   actions: ActionItem[]
