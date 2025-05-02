@@ -1,6 +1,7 @@
 import { assign, createActor, log, setup, fromPromise, spawnChild } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
 import mockData from './mockData';
+import eventOf from '../helpers/types/typed-ev';
 
 // Define the context
 interface ApplicationContext {
@@ -16,7 +17,7 @@ interface ApplicationContext {
 }
 
 // Define the events
-type ApplicationEvent =
+export type ApplicationEvent =
   | { type: 'SELECT_TOOLBAR_ITEM'; itemId: string }
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'ADD_ACTION'; action: ActionItem }
@@ -30,6 +31,7 @@ type ApplicationEvent =
   | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
+
 
 // Define the state machine
 export const applicationMachine = setup({
@@ -47,94 +49,68 @@ export const applicationMachine = setup({
     })
   },
   actions: {
-    setActiveToolbarItem: assign({
-      activeToolbarItem: ({ event }) => (event.type === 'SELECT_TOOLBAR_ITEM' ? event.itemId : '')
-    }),
-    addMessage: assign({
-      messages: ({ context, event }) => 
-        event.type === 'SEND_MESSAGE' 
-          ? [...context.messages, { 
-              id: Date.now().toString(),
-              content: event.content,
-              role: 'user' as const,
-              timestamp: new Date()
-            }]
-          : context.messages
-    }),
-    addAssistantMessage: assign({
-      messages: ({ context, event }) => 
-        event.type === 'ADD_ASSISTANT_MESSAGE'
-          ? [...context.messages, {
-              id: Date.now().toString(),
-              content: event.content,
-              role: 'assistant' as const,
-              timestamp: new Date()
-            }]
-          : context.messages
-    }),
-    addAction: assign({
-      actions: ({ context, event }) => 
-        event.type === 'ADD_ACTION' 
-          ? [...context.actions, event.action]
-          : context.actions
-    }),
-    updateAction: assign({
-      actions: ({ context, event }) => 
-        event.type === 'UPDATE_ACTION'
-          ? context.actions.map(action => 
-              action.id === event.actionId 
-                ? { ...action, status: event.status }
-                : action
-            )
-          : context.actions
-    }),
-    addContextItem: assign({
-      contextItems: ({ context, event }) => 
-        event.type === 'ADD_CONTEXT_ITEM'
-          ? [...context.contextItems, event.item]
-          : context.contextItems
-    }),
-    removeContextItem: assign({
-      contextItems: ({ context, event }) =>
-        event.type === 'REMOVE_CONTEXT_ITEM'
-          ? context.contextItems.filter(item => item.id !== event.itemId)
-          : context.contextItems
-    }),
-    updateCanvasContent: assign({
-      canvasContent: ({ event }) => 
-        event.type === 'SET_CANVAS_CONTENT'
-          ? event.content
-          : { id: '1', type: 'text' as const, content: '' }
-    }),
-    togglePluginMode: assign({
-      isPluginMode: ({ context }) => !context.isPluginMode
-    }),
-    setCurrentThread: assign({
-      currentThreadId: ({ event }) => 
-        event.type === 'SELECT_THREAD'
-          ? event.threadId
-          : null
-    }),
-    updateMessageInput: assign({
-      messageInput: ({ event }) => 
-        event.type === 'UPDATE_MESSAGE_INPUT'
-          ? event.content
-          : ''
-    }),
-    setPendingActionId: assign({
-      pendingActionId: (context) => {
-        const newAction: ActionItem = {
-          id: Date.now().toString(),
-          description: 'Processing your request...',
-          status: 'in-progress',
-          timestamp: new Date()
-        }
-        return newAction.id
+    setActiveToolbarItem: assign(({ event }) => ({
+      activeToolbarItem: eventOf('SELECT_TOOLBAR_ITEM', event).itemId
+    })),
+    addMessage: assign(({ context, event }) => ({
+      messages: [...context.messages, { 
+        id: Date.now().toString(),
+        content: eventOf('SEND_MESSAGE', event).content,
+        role: 'user' as const,
+        timestamp: new Date()
+      }]
+    })),
+    addAssistantMessage: assign(({ context, event }) => ({
+      messages: [...context.messages, {
+        id: Date.now().toString(),
+        content: eventOf('ADD_ASSISTANT_MESSAGE', event).content,
+        role: 'assistant' as const,
+        timestamp: new Date()
+      }]
+    })),
+    addAction: assign(({ context, event }) => ({
+      actions: [...context.actions, eventOf('ADD_ACTION', event).action]
+    })),
+    updateAction: assign(({ context, event }) => {
+      const typedEvent = eventOf('UPDATE_ACTION', event);
+      return {
+        actions: context.actions.map(action => 
+          action.id === typedEvent.actionId 
+            ? { ...action, status: typedEvent.status }
+            : action
+        )
       }
     }),
-    clearMessages: assign({
+    addContextItem: assign(({ context, event }) => ({
+      contextItems: [...context.contextItems, eventOf('ADD_CONTEXT_ITEM', event).item]
+    })),
+    removeContextItem: assign(({ context, event }) => ({
+      contextItems: context.contextItems.filter(item => item.id !== eventOf('REMOVE_CONTEXT_ITEM', event).itemId)
+    })),
+    updateCanvasContent: assign(({ event }) => ({
+      canvasContent: eventOf('SET_CANVAS_CONTENT', event).content
+    })),
+    togglePluginMode: assign(({ context }) => ({
+      isPluginMode: !context.isPluginMode
+    })),
+    setCurrentThread: assign(({ event }) => ({
+      currentThreadId: eventOf('SELECT_THREAD', event).threadId
+    })),
+    updateMessageInput: assign(({ event }) => ({
+      messageInput: eventOf('UPDATE_MESSAGE_INPUT', event).content
+    })),
+    setPendingActionId: assign(() => {
+      const newAction: ActionItem = {
+        id: Date.now().toString(),
+        description: 'Processing your request...',
+        status: 'in-progress',
+        timestamp: new Date()
+      }
+      return { pendingActionId: newAction.id }
+    }),
+    clearMessages: assign(() => ({
       messages: []
-    })
+    }))
   }
 }).createMachine({
   id: 'application',
@@ -181,7 +157,6 @@ export const applicationMachine = setup({
     SET_CANVAS_CONTENT: {
       actions: 'updateCanvasContent'
     },
-
     TOGGLE_PLUGIN_MODE: {
       actions: 'togglePluginMode'
     },
