@@ -1,13 +1,13 @@
 <template>
   <div 
     :class="[
-      'flex py-6 animate-fade-in',
+      'flex pb-6 pt-2 animate-fade-in',
       isUser ? 'justify-end' : 'justify-start'
     ]"
   >
     <div 
       :class="[
-        'max-w-[80%] rounded-lg  px-4 py-2',
+        'max-w-[80%] rounded-xl  px-4 py-3',
         isUser ? 'bg-neutral-700 text-white' : 'bg-neutral-800 text-white'
       ]"
     >

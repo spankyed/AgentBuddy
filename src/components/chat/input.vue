@@ -2,7 +2,7 @@
   <div>
     <form 
       @submit.prevent="handleSubmit"
-      class="py-4 max-w-[80%] mx-auto"
+      class="pb-4 max-w-[80%] mx-auto"
     >
       <div class="flex flex-col border rounded-lg border-neutral-800 bg-neutral-800">
         <!-- Editor container -->

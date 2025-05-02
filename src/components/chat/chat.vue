@@ -4,7 +4,7 @@
     :class="$style.component"
   >
     <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-      <div class="max-w-[80%] mx-auto space-y-2">
+      <div class="max-w-[80%] mx-auto space-y-2 pt-2">
         <ChatMessage 
           v-for="message in messages" 
           :key="message.id" 
