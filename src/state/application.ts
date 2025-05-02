@@ -1,10 +1,10 @@
 import { assign, createActor, log, setup, fromPromise, spawnChild } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
 import mockData from './mockData';
-import eventOf from '../helpers/types/typed-ev';
+import { typeOf } from '../helpers/types/typed-ev';
 
 // Define the context
-interface ApplicationContext {
+export interface ApplicationContext {
   activeToolbarItem: string;
   messages: Message[];
   actions: ActionItem[];
@@ -14,6 +14,11 @@ interface ApplicationContext {
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
+}
+
+// Params
+export interface ApplicationParams {
+  activeToolbarItem: string;
 }
 
 // Define the events
@@ -37,7 +42,8 @@ export type ApplicationEvent =
 export const applicationMachine = setup({
   types: {
     context: {} as ApplicationContext,
-    events: {} as ApplicationEvent
+    events: {} as ApplicationEvent,
+    input: {} as ApplicationParams,
   },
   actors: {
     delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
@@ -50,12 +56,12 @@ export const applicationMachine = setup({
   },
   actions: {
     setActiveToolbarItem: assign(({ event }) => ({
-      activeToolbarItem: eventOf('SELECT_TOOLBAR_ITEM', event).itemId
+      activeToolbarItem: typeOf('SELECT_TOOLBAR_ITEM', event).itemId
     })),
     addMessage: assign(({ context, event }) => ({
       messages: [...context.messages, { 
         id: Date.now().toString(),
-        content: eventOf('SEND_MESSAGE', event).content,
+        content: typeOf('SEND_MESSAGE', event).content,
         role: 'user' as const,
         timestamp: new Date()
       }]
@@ -63,16 +69,16 @@ export const applicationMachine = setup({
     addAssistantMessage: assign(({ context, event }) => ({
       messages: [...context.messages, {
         id: Date.now().toString(),
-        content: eventOf('ADD_ASSISTANT_MESSAGE', event).content,
+        content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
         role: 'assistant' as const,
         timestamp: new Date()
       }]
     })),
     addAction: assign(({ context, event }) => ({
-      actions: [...context.actions, eventOf('ADD_ACTION', event).action]
+      actions: [...context.actions, typeOf('ADD_ACTION', event).action]
     })),
     updateAction: assign(({ context, event }) => {
-      const typedEvent = eventOf('UPDATE_ACTION', event);
+      const typedEvent = typeOf('UPDATE_ACTION', event);
       return {
         actions: context.actions.map(action => 
           action.id === typedEvent.actionId 
@@ -82,22 +88,22 @@ export const applicationMachine = setup({
       }
     }),
     addContextItem: assign(({ context, event }) => ({
-      contextItems: [...context.contextItems, eventOf('ADD_CONTEXT_ITEM', event).item]
+      contextItems: [...context.contextItems, typeOf('ADD_CONTEXT_ITEM', event).item]
     })),
     removeContextItem: assign(({ context, event }) => ({
-      contextItems: context.contextItems.filter(item => item.id !== eventOf('REMOVE_CONTEXT_ITEM', event).itemId)
+      contextItems: context.contextItems.filter(item => item.id !== typeOf('REMOVE_CONTEXT_ITEM', event).itemId)
     })),
     updateCanvasContent: assign(({ event }) => ({
-      canvasContent: eventOf('SET_CANVAS_CONTENT', event).content
+      canvasContent: typeOf('SET_CANVAS_CONTENT', event).content
     })),
     togglePluginMode: assign(({ context }) => ({
       isPluginMode: !context.isPluginMode
     })),
     setCurrentThread: assign(({ event }) => ({
-      currentThreadId: eventOf('SELECT_THREAD', event).threadId
+      currentThreadId: typeOf('SELECT_THREAD', event).threadId
     })),
     updateMessageInput: assign(({ event }) => ({
-      messageInput: eventOf('UPDATE_MESSAGE_INPUT', event).content
+      messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
     })),
     setPendingActionId: assign(() => {
       const newAction: ActionItem = {
@@ -174,6 +180,9 @@ export const applicationMachine = setup({
 
 export const applicationActor = createActor(applicationMachine, {
   systemId: 'application',
+  input: {
+    activeToolbarItem: 'code'
+  }
   // inspect: (inspEvent) => {
   //   console.log(inspEvent); // the event that caused the transition
   // }
