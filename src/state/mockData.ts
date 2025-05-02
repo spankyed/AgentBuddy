@@ -1,6 +1,6 @@
 import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
 
-export const mockMessages: Message[] = [
+const messages: Message[] = [
   {
     id: '1',
     content: 'Can you help me understand how to use CSS variables in my design system?',
@@ -45,7 +45,7 @@ export const mockMessages: Message[] = [
   }
 ];
 
-export const mockActions: ActionItem[] = [
+const actions: ActionItem[] = [
   {
     id: '1',
     description: 'Remove code comments',
@@ -84,7 +84,7 @@ export const mockActions: ActionItem[] = [
   }
 ];
 
-export const mockContextItems: ContextItem[] = [
+const contextItems: ContextItem[] = [
   {
     id: '1',
     title: 'Project Overview',
@@ -123,7 +123,7 @@ export const mockContextItems: ContextItem[] = [
   }
 ];
 
-export const mockCanvasContent: CanvasContent = {
+const canvasContent: CanvasContent = {
   id: '1',
   type: 'code',
   content: `/* Before: Using hardcoded colors */
@@ -148,3 +148,10 @@ export const mockCanvasContent: CanvasContent = {
 
 /* Please rewrite this code using css variables from our design systems */`
 };
+
+export default {
+  messages,
+  actions,
+  contextItems,
+  canvasContent
+}

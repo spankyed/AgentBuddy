@@ -4,25 +4,13 @@
       <!-- Left Toolbar -->
       <Toolbar 
         :active-item="activeToolbarItem"
+        @select-item="handleSelectToolbarItem"
       />
       
       <!-- Main Content Area -->
       <div class="flex flex-col flex-grow overflow-hidden">
         <!-- Canvas Area -->
-        <CanvasArea :content="mockCanvasContent" />
-
-        <!-- Header with Action Buttons -->
-        <!-- <div class="flex items-center justify-between p-3 border-b border-t shadow-sm bg-neutral-900 border-neutral-800">
-          <div class="flex items-center space-x-3">
-            <button 
-              v-for="action in mockActions.slice(0, 6)"
-              :key="action.id"
-              class="py-1.5 px-3 text-sm font-medium bg-neutral-800 rounded-full hover:bg-neutral-900 transition-colors"
-            >
-              {{ action.description }}
-            </button>
-          </div>
-        </div> -->
+        <CanvasArea :content="canvasContent" />
 
         <!-- Chat Area -->
         <ChatArea 
@@ -32,35 +20,35 @@
       </div>
       
       <!-- Context Panel -->
-      <ContextPanel :items="mockContextItems" />
+      <ContextPanel :items="contextItems" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import Toolbar from './components/toolbar.vue'
-import CanvasArea from './components/canvas.vue'
-import ChatArea from './components/chat/chat.vue'
-import ContextPanel from './components/context/panel.vue'
-// import ActionQueue from './components/ActionQueue.vue'
-import type { Message, ActionItem } from './helpers/types/index'
-import { mockMessages, mockActions, mockContextItems, mockCanvasContent } from './state/mockData.ts'
-// import { Sun, Moon } from 'lucide-vue-next'
+import { useSelector } from '@xstate/vue'
+import Toolbar from './components/Toolbar.vue'
+import CanvasArea from './components/Canvas.vue'
+import ChatArea from './components/chat/Chat.vue'
+import ContextPanel from './components/context/Panel.vue'
+import { applicationActor } from './state/application'
+import type { ActionItem } from './helpers/types'
 
-const messages = ref<Message[]>(mockMessages)
-const actions = ref<ActionItem[]>(mockActions)
-const activeToolbarItem = ref('code')
+// Get state from the machine
+const activeToolbarItem = useSelector(applicationActor, (state) => state.context.activeToolbarItem)
+const messages = useSelector(applicationActor, (state) => state.context.messages)
+const canvasContent = useSelector(applicationActor, (state) => state.context.canvasContent)
+const contextItems = useSelector(applicationActor, (state) => state.context.contextItems)
+
+// Get the send function from the actor
+const send = applicationActor.send
+
+const handleSelectToolbarItem = (itemId: string) => {
+  send({ type: 'SELECT_TOOLBAR_ITEM', itemId } as const)
+}
 
 const handleSendMessage = (content: string) => {
-  const newMessage: Message = {
-    id: Date.now().toString(),
-    content,
-    role: 'user',
-    timestamp: new Date()
-  }
-  
-  messages.value.push(newMessage)
+  send({ type: 'SEND_MESSAGE', content } as const)
   
   // Simulate a new action
   const newAction: ActionItem = {
@@ -70,32 +58,11 @@ const handleSendMessage = (content: string) => {
     timestamp: new Date()
   }
   
-  actions.value.push(newAction)
-  
-  // Simulate assistant response after a short delay
-  setTimeout(() => {
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      content: "I'm analyzing your request to rewrite the code with CSS variables. Give me a moment to prepare a response.",
-      role: 'assistant',
-      timestamp: new Date()
-    }
-    
-    messages.value.push(assistantMessage)
-    
-    // Update the action status
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    // actions.value = actions.value.map((action: { id: any }) => 
-    //   action.id === newAction.id 
-    //     ? { ...action, status: 'completed', description: 'Analyzed code structure' } 
-    //     : action
-    // )
-  }, 1000)
+  send({ 
+    type: 'ADD_ACTION', 
+    action: newAction
+  } as const)
 }
-
-// const handleClearCompletedActions = () => {
-//   actions.value = actions.value.filter(a => a.status !== 'completed')
-// }
 </script>
 
 <style scoped>
