@@ -1,4 +1,4 @@
-import { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
+import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
 
 export const mockMessages: Message[] = [
   {
