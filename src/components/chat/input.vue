@@ -192,7 +192,7 @@ const handleSelectThread = (id: string) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" module>
 [contenteditable].empty:before {
   content: attr(data-placeholder);
   color: #666;

@@ -70,6 +70,6 @@ const handleNewThread = () => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" module>
 /* Add any component-specific styles here */
 </style> 
