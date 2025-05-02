@@ -7,9 +7,10 @@
           class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
           @click="isOpen = !isOpen"
         >
-          <History :size="16" class="mr-2" />
-          Threads
-          <ChevronDown :size="16" class="ml-2" :class="{ 'rotate-180': isOpen }" />
+          Recent Threads
+
+          <History v-if="!isOpen" :size="16" class="ml-2" />
+          <ChevronUp v-else :size="16" class="ml-2" />
         </button>
       </div>
 
@@ -44,7 +45,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { History, ChevronDown, Plus } from 'lucide-vue-next'
+import { History, ChevronUp, Plus } from 'lucide-vue-next'
 
 export interface Thread {
   id: string
