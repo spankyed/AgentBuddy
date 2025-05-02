@@ -1,10 +1,10 @@
 <template>
   <div
-    class="flex flex-col border-t bg-neutral-900 border-neutral-800"
+    class="pt-3 flex flex-col border-t bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
-    <div class="flex-grow px-4 pt-4 overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-      <div class="space-y-2">
+    <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
+      <div class="max-w-[80%] mx-auto space-y-2">
         <ChatMessage 
           v-for="message in messages" 
           :key="message.id" 

@@ -1,7 +1,7 @@
 <template>
   <div 
     :class="[
-      'flex p-4 animate-fade-in',
+      'flex py-6 animate-fade-in',
       isUser ? 'justify-end' : 'justify-start'
     ]"
   >
