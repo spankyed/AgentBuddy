@@ -29,6 +29,7 @@ type ApplicationEvent =
   | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
+  | { type: 'CLEAR_MESSAGES' }
 
 // Define the state machine
 export const applicationMachine = setup({
@@ -130,6 +131,9 @@ export const applicationMachine = setup({
         }
         return newAction.id
       }
+    }),
+    clearMessages: assign({
+      messages: []
     })
   }
 }).createMachine({
@@ -148,6 +152,9 @@ export const applicationMachine = setup({
   on: {
     SELECT_TOOLBAR_ITEM: {
       actions: 'setActiveToolbarItem'
+    },
+    CLEAR_MESSAGES: {
+      actions: 'clearMessages'
     },
     SEND_MESSAGE: {
       actions: [

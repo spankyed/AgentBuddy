@@ -183,8 +183,8 @@ const handleSubmit = () => {
   }
 }
 
-const handleNewThread = (id: string) => {
-  emit('new-thread', id)
+const handleNewThread = () => {
+  emit('new-thread')
 }
 
 const handleSelectThread = (id: string) => {

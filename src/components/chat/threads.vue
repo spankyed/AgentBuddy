@@ -70,10 +70,15 @@ const handleSelectThread = (id: string) => {
   isOpen.value = false
 }
 
+const handleNewThread = () => {
+  emit('new-thread')
+  isOpen.value = false
+}
+
 const formatTime = (timestamp: Date) => {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit'
   })
 }
-</script> 
+</script>

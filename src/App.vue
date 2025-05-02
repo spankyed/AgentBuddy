@@ -16,6 +16,7 @@
         <ChatArea 
           :messages="messages"
           @send-message="handleSendMessage"
+          @new-thread="handleNewThread"
         />
       </div>
       
@@ -62,6 +63,10 @@ const handleSendMessage = (content: string) => {
     type: 'ADD_ACTION', 
     action: newAction
   } as const)
+}
+
+const handleNewThread = () => {
+  send({ type: 'CLEAR_MESSAGES' } as const)
 }
 </script>
 

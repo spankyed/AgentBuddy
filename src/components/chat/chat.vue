@@ -12,7 +12,11 @@
         />
       </div>
     </div>
-    <ChatInput @send-message="$emit('send-message', $event)" />
+    <ChatInput
+      @send-message="$emit('send-message', $event)"
+      @select-thread="$emit('select-thread', $event)"
+      @new-thread="$emit('new-thread')"
+    />
   </div>
 </template>
 
@@ -27,7 +31,12 @@ interface ChatAreaProps {
 }
 
 const props = defineProps<ChatAreaProps>()
-defineEmits<(e: 'send-message', message: string) => void>()
+
+defineEmits<{
+  (e: 'send-message', message: string): void
+  (e: 'select-thread', id: string): void
+  (e: 'new-thread'): void
+}>()
 
 const messagesContainer = ref<HTMLElement | null>(null)
 
