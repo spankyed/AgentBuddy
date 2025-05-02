@@ -55,7 +55,8 @@ import {
   Brain,
   History,
   Sparkle,
-  Workflow
+  Workflow,
+  Bird
 } from 'lucide-vue-next'
 
 interface ToolbarProps {
@@ -73,6 +74,7 @@ const pluginItems = [
   { id: 'code', icon: Code, label: 'Code' },
   { id: 'components', icon: Box, label: 'Components' },
   { id: 'prompt', icon: Sparkle, label: 'Prompt Builder' },
+  { id: 'angel', icon: Bird, label: 'Angel' },
 ]
 
 const pinnedItems = [
