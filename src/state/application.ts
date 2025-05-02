@@ -1,5 +1,5 @@
 import { assign, createActor, log, setup, fromPromise, spawnChild } from 'xstate';
-import type { Message, ActionItem, ContextItem, CanvasContent, Theme } from '../helpers/types';
+import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
 import mockData from './mockData';
 
 // Define the context
@@ -9,7 +9,6 @@ interface ApplicationContext {
   actions: ActionItem[];
   contextItems: ContextItem[];
   canvasContent: CanvasContent;
-  theme: Theme;
   isPluginMode: boolean;
   currentThreadId: string | null;
   messageInput: string;
@@ -26,7 +25,6 @@ type ApplicationEvent =
   | { type: 'REMOVE_CONTEXT_ITEM'; itemId: string }
   | { type: 'SET_CANVAS_CONTENT'; content: CanvasContent }
   | { type: 'PROCESS_MESSAGE' }
-  | { type: 'TOGGLE_THEME' }
   | { type: 'TOGGLE_PLUGIN_MODE' }
   | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
@@ -107,9 +105,6 @@ export const applicationMachine = setup({
           ? event.content
           : { id: '1', type: 'text' as const, content: '' }
     }),
-    toggleTheme: assign({
-      theme: ({ context }) => context.theme === 'light' ? 'dark' : 'light'
-    }),
     togglePluginMode: assign({
       isPluginMode: ({ context }) => !context.isPluginMode
     }),
@@ -145,7 +140,6 @@ export const applicationMachine = setup({
     actions: mockData.actions,
     contextItems: mockData.contextItems,
     canvasContent: mockData.canvasContent,
-    theme: 'dark',
     isPluginMode: false,
     currentThreadId: null,
     messageInput: '',
@@ -180,9 +174,7 @@ export const applicationMachine = setup({
     SET_CANVAS_CONTENT: {
       actions: 'updateCanvasContent'
     },
-    TOGGLE_THEME: {
-      actions: 'toggleTheme'
-    },
+
     TOGGLE_PLUGIN_MODE: {
       actions: 'togglePluginMode'
     },

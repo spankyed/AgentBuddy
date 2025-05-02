@@ -24,5 +24,3 @@ export interface CanvasContent {
   type: 'text' | 'code' | 'image' | 'graph' | 'table';
   content: string | any;
 }
-
-export type Theme = 'light' | 'dark';
