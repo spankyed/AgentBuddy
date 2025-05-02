@@ -59,6 +59,7 @@
     <Threads
       :threads="mockThreads"
       @select-thread="handleSelectThread"
+      @new-thread="handleNewThread"
     />
   </div>
 </template>
@@ -69,6 +70,17 @@ import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-
 import Threads from './Threads.vue'
 import type { Thread } from './Threads.vue'
 import type { Component } from 'vue'
+
+// Define emits including new button actions
+const emit = defineEmits<{
+  (e: 'send-message', message: string): void
+  (e: 'select-thread', id: string): void
+  (e: 'quick-message'): void
+  (e: 'attach-file'): void
+  (e: 'voice-input'): void
+  (e: 'new-thread'): void
+}>()
+
 
 interface ActionButton {
   icon: Component
@@ -155,14 +167,6 @@ const mockThreads: Thread[] = [
   }
 ]
 
-// Define emits including new button actions
-const emit = defineEmits<{
-  (e: 'send-message', message: string): void
-  (e: 'select-thread', id: string): void
-  (e: 'quick-message'): void
-  (e: 'attach-file'): void
-  (e: 'voice-input'): void
-}>()
 
 const handleButtonClick = (action: string) => {
   emit(action)
@@ -177,6 +181,10 @@ const handleSubmit = () => {
     }
     messageContent.value = ''
   }
+}
+
+const handleNewThread = (id: string) => {
+  emit('new-thread', id)
 }
 
 const handleSelectThread = (id: string) => {

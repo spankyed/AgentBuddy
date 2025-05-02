@@ -1,14 +1,27 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2">
-    <button
-      type="button"
-      class="flex items-center w-full px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-      @click="isOpen = !isOpen"
-    >
-      <History :size="16" class="mr-2" />
-      Threads
-      <ChevronDown :size="16" class="ml-2" :class="{ 'rotate-180': isOpen }" />
-    </button>
+    <div class="flex items-center content-between">
+      <div class="flex-grow">
+        <button
+          type="button"
+          class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+          @click="isOpen = !isOpen"
+        >
+          <History :size="16" class="mr-2" />
+          Threads
+          <ChevronDown :size="16" class="ml-2" :class="{ 'rotate-180': isOpen }" />
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+        @click="$emit('new-thread')"
+      >
+        <Plus :size="16" class="mr-2" />
+        New thread
+      </button>
+    </div>
 
     <div 
       v-if="isOpen"
@@ -31,7 +44,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { History, ChevronDown } from 'lucide-vue-next'
+import { History, ChevronDown, Plus } from 'lucide-vue-next'
 
 export interface Thread {
   id: string
@@ -46,7 +59,10 @@ export interface ThreadsProps {
 const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 
-const emit = defineEmits<(e: 'select-thread', id: string) => void>()
+const emit = defineEmits<{
+  (e: 'select-thread', id: string): void
+  (e: 'new-thread'): void
+}>()
 
 const handleSelectThread = (id: string) => {
   emit('select-thread', id)
