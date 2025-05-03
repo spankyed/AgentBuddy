@@ -1,7 +1,7 @@
 <template>
   <div 
     :class="[
-      'flex pb-6 pt-2 animate-fade-in',
+      'flex pb-6 pt-2 animate-fade-in w-full',
       isUser ? 'justify-end' : 'justify-start'
     ]"
   >

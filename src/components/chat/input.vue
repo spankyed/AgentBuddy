@@ -4,7 +4,7 @@
       @submit.prevent="handleSubmit"
       class="pb-4 max-w-[80%] mx-auto"
     >
-      <div class="flex flex-col border rounded-lg border-neutral-800 bg-neutral-800">
+      <div class="flex flex-col border rounded-lg bg-neutral-800" :class="$style.input">
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
           <!-- Contenteditable div -->
@@ -193,6 +193,10 @@ const handleSelectThread = (id: string) => {
 </script>
 
 <style lang="scss" module>
+.input {
+  border-color: rgb(60 60 60);;
+}
+
 [contenteditable].empty:before {
   content: attr(data-placeholder);
   color: #666;
