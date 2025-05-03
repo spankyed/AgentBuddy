@@ -6,7 +6,7 @@
         class="flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
       >
         <ChevronLeft :size="14" />
-        {{ isPlugin ? 'Plugin' : 'Context Inspection' }}
+        {{ isPlugin ? 'Plugin' : 'Agent Inspection' }}
         <ChevronRight :size="14" />
       </button>
       <button 
