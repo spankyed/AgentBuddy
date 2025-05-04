@@ -48,7 +48,7 @@ import { applicationActor } from '@/application';
 import type { Plugin } from '@/plugins';
 import { computed } from 'vue';
 
-defineEmits<(e: 'select-plugin', pluginId: string) => void>();
+defineEmits<(e: 'select-plugin', id: string) => void>();
 
 interface ToolbarProps {
   activePlugin: Plugin;

@@ -5,7 +5,7 @@
       <Toolbar 
         :plugins="plugins"
         :active-plugin="activePlugin"
-        @select-plugin="send({ type: 'SELECT_PLUGIN', pluginId })"
+        @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
       />
       
       <!-- Main Content Area -->
