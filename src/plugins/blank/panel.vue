@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between p-4 border-b border-neutral-800">
+  <div class="flex items-center justify-between border-b border-neutral-800">
     <h2 class="text-sm font-medium text-neutral-200">No Context</h2>
   </div>
 </template>

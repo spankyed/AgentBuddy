@@ -5,7 +5,7 @@
     :key="item.id" 
     :item="item" 
   /> -->
-  <h2 class="text-sm font-medium text-neutral-200">No Context</h2>
+  <h2 class="text-sm font-medium text-neutral-200">No Agent Context</h2>
 </template>
 
 <script setup lang="ts">

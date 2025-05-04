@@ -11,7 +11,7 @@
       </button>
     </div>
     
-    <div class="flex-grow p-4 overflow-y-auto">
+    <div class="flex-grow p-8 overflow-y-auto">
       <slot />
     </div>
   </div>
