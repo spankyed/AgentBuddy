@@ -9,11 +9,11 @@
             :key="item.id"
             :class="[
               'p-2 rounded-lg transition-all duration-200 ease-in-out',
-              activeItem === item.id
+              activePlugin.id === item.id
                 ? 'bg-primary-600 text-white'
                 : 'text-neutral-400 hover:text-white hover:bg-primary-700'
             ]"
-            @click="$emit('select-item', item.id)"
+            @click="$emit('select-plugin', item.id)"
             :title="item.label"
           >
             <component :is="item.icon" :size="24" />
@@ -28,11 +28,11 @@
           :key="item.id"
           :class="[
             'p-2 rounded-lg transition-all duration-200 ease-in-out',
-            activeItem === item.id
+            activePlugin.id === item.id
               ? 'bg-primary-600 text-white'
               : 'text-neutral-400 hover:text-white hover:bg-primary-700'
           ]"
-          @click="$emit('select-item', item.id)"
+          @click="$emit('select-plugin', item.id)"
           :title="item.label"
         >
           <component :is="item.icon" :size="24" />
@@ -43,44 +43,22 @@
 </template>
 
 <script setup lang="ts">
-import { 
-  LayoutGrid, 
-  Code, 
-  Box, 
-  Folder, 
-  ChevronRight, 
-  Star, 
-  BarChart2, 
-  Settings,
-  Brain,
-  History,
-  Sparkle,
-  Workflow,
-  Bird
-} from 'lucide-vue-next'
+import { useSelector } from '@xstate/vue';
+import { applicationActor } from '../state/application';
+import type { Plugin } from '../plugins';
+import { computed } from 'vue';
+
+defineEmits<(e: 'select-plugin', pluginId: string) => void>();
 
 interface ToolbarProps {
-  activeItem: string
+  activePlugin: Plugin;
+  plugins: Plugin[];
 }
 
-defineProps<ToolbarProps>()
-defineEmits<(e: 'select-item', item: string) => void>()
+const props = defineProps<ToolbarProps>();
 
-const pluginItems = [
-  { id: 'history', icon: History, label: 'History' },
-  { id: 'dialog', icon: Workflow, label: 'Dialog' },
-  { id: 'brain', icon: Brain, label: 'Brain' },
-  { id: 'files', icon: Folder, label: 'Files' },
-  { id: 'code', icon: Code, label: 'Code' },
-  { id: 'components', icon: Box, label: 'Components' },
-  { id: 'prompt', icon: Sparkle, label: 'Prompt Builder' },
-  { id: 'angel', icon: Bird, label: 'Angel' },
-]
-
-const pinnedItems = [
-  { id: 'plugins', icon: LayoutGrid, label: 'Plugins' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
-]
+const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
+const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
 </script>
 
 <style lang="scss" module>

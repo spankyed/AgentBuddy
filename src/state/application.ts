@@ -1,45 +1,45 @@
 import { assign, createActor, log, setup, fromPromise, spawnChild } from 'xstate';
-import type { Message, ActionItem, ContextItem, CanvasContent } from '../helpers/types';
+import type { Message, ActionItem, Plugin } from '../helpers/types';
 import mockData from './mockData';
 import { typeOf } from '../helpers/types/typed-ev';
+import plugins, { defaultPlugin } from '../plugins/index';
 
-// Define the context
+export interface ApplicationParams {
+  plugins: Plugin[];
+  defaultPlugin: Plugin;
+}
+
 export interface ApplicationContext {
-  activeToolbarItem: string;
+  agentToggles: {
+    canvas: boolean;
+    panel: boolean;
+  },
+  activePlugin: Plugin;
+  defaultPlugin: Plugin;
+  plugins: Plugin[];
   messages: Message[];
   actions: ActionItem[];
-  contextItems: ContextItem[];
-  canvasContent: CanvasContent;
-  isPluginMode: boolean;
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
 }
 
-// Params
-export interface ApplicationParams {
-  activeToolbarItem: string;
-}
-
-// Define the events
 export type ApplicationEvent =
-  | { type: 'SELECT_TOOLBAR_ITEM'; itemId: string }
+  | { type: 'SELECT_PLUGIN'; pluginId: string }
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'ADD_ACTION'; action: ActionItem }
   | { type: 'UPDATE_ACTION'; actionId: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' }
-  | { type: 'ADD_CONTEXT_ITEM'; item: ContextItem }
-  | { type: 'REMOVE_CONTEXT_ITEM'; itemId: string }
-  | { type: 'SET_CANVAS_CONTENT'; content: CanvasContent }
   | { type: 'PROCESS_MESSAGE' }
-  | { type: 'TOGGLE_PLUGIN_MODE' }
+  | { type: 'TOGGLE_CANVAS_AGENT' }
+  | { type: 'TOGGLE_PANEL_AGENT' }
   | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
+  | { type: 'CANVAS_TOGGLE' }
+  | { type: 'PANEL_TOGGLE' }
 
-
-// Define the state machine
-export const applicationMachine = setup({
+  export const applicationMachine = setup({
   types: {
     context: {} as ApplicationContext,
     events: {} as ApplicationEvent,
@@ -55,8 +55,8 @@ export const applicationMachine = setup({
     })
   },
   actions: {
-    setActiveToolbarItem: assign(({ event }) => ({
-      activeToolbarItem: typeOf('SELECT_TOOLBAR_ITEM', event).itemId
+    setActivePlugin: assign(({ context, event }) => ({
+      activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
     })),
     addMessage: assign(({ context, event }) => ({
       messages: [...context.messages, { 
@@ -87,17 +87,11 @@ export const applicationMachine = setup({
         )
       }
     }),
-    addContextItem: assign(({ context, event }) => ({
-      contextItems: [...context.contextItems, typeOf('ADD_CONTEXT_ITEM', event).item]
-    })),
-    removeContextItem: assign(({ context, event }) => ({
-      contextItems: context.contextItems.filter(item => item.id !== typeOf('REMOVE_CONTEXT_ITEM', event).itemId)
-    })),
-    updateCanvasContent: assign(({ event }) => ({
-      canvasContent: typeOf('SET_CANVAS_CONTENT', event).content
-    })),
-    togglePluginMode: assign(({ context }) => ({
-      isPluginMode: !context.isPluginMode
+    handleAgentToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
+      agentToggles: {
+        ...context.agentToggles,
+        [params]: !context.agentToggles[params]
+      }
     })),
     setCurrentThread: assign(({ event }) => ({
       currentThreadId: typeOf('SELECT_THREAD', event).threadId
@@ -120,20 +114,23 @@ export const applicationMachine = setup({
   }
 }).createMachine({
   id: 'application',
-  context: {
-    activeToolbarItem: 'code',
+  context: ({ input }) => ({
+    agentToggles: {
+      canvas: false,
+      panel: false,
+    },
+    defaultPlugin: input.defaultPlugin,
+    activePlugin: input.plugins[0],
+    plugins: input.plugins,
     messages: mockData.messages,
     actions: mockData.actions,
-    contextItems: mockData.contextItems,
-    canvasContent: mockData.canvasContent,
-    isPluginMode: false,
     currentThreadId: null,
-    messageInput: '',
-    pendingActionId: undefined
-  },
+    messageInput: "",
+    pendingActionId: undefined,
+  }),
   on: {
-    SELECT_TOOLBAR_ITEM: {
-      actions: 'setActiveToolbarItem'
+    SELECT_PLUGIN: {
+      actions: 'setActivePlugin'
     },
     CLEAR_MESSAGES: {
       actions: 'clearMessages'
@@ -154,17 +151,17 @@ export const applicationMachine = setup({
     UPDATE_ACTION: {
       actions: 'updateAction'
     },
-    ADD_CONTEXT_ITEM: {
-      actions: 'addContextItem'
+    CANVAS_TOGGLE: {
+      actions: {
+        type: 'handleAgentToggle',
+        params: 'canvas'
+      }
     },
-    REMOVE_CONTEXT_ITEM: {
-      actions: 'removeContextItem'
-    },
-    SET_CANVAS_CONTENT: {
-      actions: 'updateCanvasContent'
-    },
-    TOGGLE_PLUGIN_MODE: {
-      actions: 'togglePluginMode'
+    PANEL_TOGGLE: {
+      actions: {
+        type: 'handleAgentToggle',
+        params: 'panel'
+      }
     },
     SELECT_THREAD: {
       actions: 'setCurrentThread'
@@ -174,27 +171,28 @@ export const applicationMachine = setup({
     },
     ADD_ASSISTANT_MESSAGE: {
       actions: 'addAssistantMessage'
-    }
+    },
   }
 });
 
 export const applicationActor = createActor(applicationMachine, {
   systemId: 'application',
   input: {
-    activeToolbarItem: 'code'
+    defaultPlugin,
+    plugins,
   }
-  // inspect: (inspEvent) => {
-  //   console.log(inspEvent); // the event that caused the transition
-  // }
 }).start();
 
 applicationActor.subscribe({
-  // Subscribe to events
-  // next: (state) => {
-  //   console.log('---', {state});
-  // },
-  // Subscribe to errors
   error: (error) => {
     console.error('Application State Error:', error);
   }
 });
+
+declare global {
+  interface Window {
+    applicationActor: typeof applicationActor;
+  }
+}
+
+window.applicationActor = applicationActor;
