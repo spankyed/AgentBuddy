@@ -21,8 +21,8 @@
         <!-- Chat Area -->
         <ChatArea 
           :messages="messages"
-          @send-message="handleSendMessage"
-          @new-thread="handleNewThread"
+          @send-message="(content: string) => send({ type: 'SEND_MESSAGE', content })"
+          @new-thread="send({ type: 'CLEAR_MESSAGES' })"
         />
         <!-- <ChatArea>
           <component :is="defaultPlugin.chat" />
