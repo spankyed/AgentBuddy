@@ -42,19 +42,13 @@
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import type { CanvasContent } from '../helpers/types'
 import { ref } from 'vue'
+import { applicationActor } from '@/application'
+import { useSelector } from '@xstate/vue'
+import { id } from '@/plugins/agent/state.ts';
 
-interface CanvasAreaProps {
-  content: CanvasContent
-}
-
-defineProps<CanvasAreaProps>()
-const isPlugin = ref(false)
+const actor = applicationActor.system.get(id);
+const content: CanvasContent = useSelector(actor, (state) => state.context.canvasContent)
 </script>
 
 <style lang="scss" module>
-.component {
-  max-height: 45vh;
-}
-
-/* Add any component-specific styles here */
 </style> 

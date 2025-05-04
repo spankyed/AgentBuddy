@@ -21,12 +21,11 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 }
 
 const mockPlugins = [
-  mockPlugin({ id: 'history', label: 'History', icon: History, }),
+  mockPlugin({ id: 'threads', label: 'Threads', icon: History, }),
   mockPlugin({ id: 'dialog', label: 'Dialog', icon: Workflow, }),
   mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
   mockPlugin({ id: 'files', label: 'Files', icon: Folder, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
-  mockPlugin({ id: 'components', label: 'Components', icon: Box, }),
   mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, }),
 ];
