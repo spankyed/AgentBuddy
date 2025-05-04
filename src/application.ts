@@ -2,7 +2,15 @@ import { assign, createActor, setup, enqueueActions } from 'xstate';
 import type { Plugin } from '@/helpers/types';
 import { typeOf } from '@/helpers/types/typed-ev';
 import plugins, { defaultPlugin } from '@/plugins';
+import { createApp } from 'vue'
+import App from './app.vue'
+import './style.css'
 
+declare global {
+  interface Window {
+    applicationActor: typeof applicationActor;
+  }
+}
 export interface ApplicationParams {
   plugins: Plugin[];
   defaultPlugin: Plugin;
@@ -86,10 +94,7 @@ applicationActor.subscribe({
   }
 });
 
-declare global {
-  interface Window {
-    applicationActor: typeof applicationActor;
-  }
-}
 
 window.applicationActor = applicationActor;
+
+createApp(App).mount('#root')

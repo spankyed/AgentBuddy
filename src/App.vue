@@ -41,7 +41,7 @@ import Toolbar from '@/components/toolbar.vue'
 import CanvasArea from '@/components/canvas.vue'
 import ChatArea from '@/components/chat.vue'
 import ContextPanel from '@/components/panel.vue'
-import { applicationActor } from '@/state/application'
+import { applicationActor } from '@/application'
 import type { ActionItem } from '@/helpers/types'
 import type { Plugin } from '@/plugins'
 

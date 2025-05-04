@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
-import { applicationActor } from '@/state/application';
+import { applicationActor } from '@/application';
 import type { Plugin } from '@/plugins';
 import { computed } from 'vue';
 

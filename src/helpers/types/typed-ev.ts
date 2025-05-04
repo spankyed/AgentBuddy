@@ -1,4 +1,4 @@
-import type { ApplicationEvent } from "../../state/application";
+import type { ApplicationEvent } from "@/application";
 
 // Helper type to extract specific event types
 type ExtractEvent<TEvent extends ApplicationEvent, TType extends TEvent['type']> = Extract<TEvent, { type: TType }>

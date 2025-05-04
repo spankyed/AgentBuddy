@@ -22,9 +22,9 @@
 
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import type { CanvasContent } from '../helpers/types'
+import type { CanvasContent } from '@/helpers/types'
 import { useSelector } from '@xstate/vue'
-import { applicationActor } from '../state/application'
+import { applicationActor } from '@/application'
 
 interface Props {
   label: string

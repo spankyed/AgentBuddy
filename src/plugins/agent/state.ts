@@ -1,7 +1,7 @@
 import { assign, log, setup, fromPromise, spawnChild } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/helpers/types';
 // import { typeOf } from '@/helpers/types/typed-ev';
-import mockData from '@/state/mockData';
+import mockData from './mockData';
 
 export const id = 'agent';
 
