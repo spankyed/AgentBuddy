@@ -1,7 +1,9 @@
 import { setup } from 'xstate';
 
+export const id = '_blank';
+
 const blankState = setup({}).createMachine({
-  id: 'code',
+  id,
   context: {},
   states: {}
 }); 
