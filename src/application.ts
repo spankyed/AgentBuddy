@@ -39,6 +39,7 @@ export const applicationMachine = setup({
   actors: {},
   actions: {
     setActivePlugin: assign(({ context, event }) => ({
+      defaultToggles: { canvas: false, panel: false },
       activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
     })),
     handledDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
