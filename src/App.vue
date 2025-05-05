@@ -8,7 +8,7 @@
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
       />
       
-      <!-- Main Content Area -->
+      <!-- Main Area -->
       <div class="flex flex-col flex-grow overflow-hidden">
         <!-- Canvas Area -->
         <CanvasArea

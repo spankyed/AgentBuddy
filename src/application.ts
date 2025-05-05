@@ -95,7 +95,6 @@ applicationActor.subscribe({
   }
 });
 
-
 window.applicationActor = applicationActor;
 
 createApp(App).mount('#root')
