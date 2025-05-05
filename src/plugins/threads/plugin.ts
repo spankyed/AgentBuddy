@@ -1,0 +1,17 @@
+import type { Plugin } from "@/helpers/types";
+import { History } from 'lucide-vue-next';
+import state, { id } from './state.ts';
+import canvas from './canvas.vue';
+import panel from './panel.vue';
+
+const threadsPlugin: Plugin = {
+  id,
+  label: 'Threads',
+  icon: History,
+  state,
+  canvas,
+  panel,
+  isPinned: true
+};
+
+export default threadsPlugin;

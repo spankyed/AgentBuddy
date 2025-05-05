@@ -1,15 +1,14 @@
-import Panel from './agent/plugin.ts';
+import Agent from './agent/plugin.ts';
+import Threads from './threads/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/helpers/types';
 import { 
   Code, 
-  Box, 
   Folder, 
   Brain,
-  History,
   Sparkle,
   Workflow,
-  Bird
+  Bird,
 } from 'lucide-vue-next';
 
 export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
@@ -21,7 +20,6 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 }
 
 const mockPlugins = [
-  mockPlugin({ id: 'threads', label: 'Threads', icon: History, }),
   mockPlugin({ id: 'dialog', label: 'Dialog', icon: Workflow, }),
   mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
   mockPlugin({ id: 'files', label: 'Files', icon: Folder, }),
@@ -31,8 +29,9 @@ const mockPlugins = [
 ];
 
 export default [
+  Threads,
   ...mockPlugins,
   Blank,
 ];
 
-export const defaultPlugin = Panel;
+export const defaultPlugin = Agent;
