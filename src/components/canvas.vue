@@ -3,10 +3,10 @@
     class="relative flex flex-col flex-grow pb-2 bg-neutral-800"
     :class="$style.component"
   >
-    <div class="w-full">
+    <div class="w-full flex justify-end">
       <button 
         @click="$emit('canvas-toggle')"
-        class="flex items-center gap-1 px-2 py-1 mt-4 ml-3 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+        class="flex items-center gap-1 px-2 py-1 my-4 mr-3 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
       >
         <ChevronLeft :size="14" />
           {{ label }}
