@@ -1,5 +1,5 @@
 import Panel from './agent/plugin.ts';
-import Blank from './blank/plugin.ts';
+import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/helpers/types';
 import { 
   Code, 
