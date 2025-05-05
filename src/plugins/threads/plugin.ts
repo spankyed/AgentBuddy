@@ -11,7 +11,6 @@ const threadsPlugin: Plugin = {
   state,
   canvas,
   panel,
-  isPinned: true
 };
 
 export default threadsPlugin;

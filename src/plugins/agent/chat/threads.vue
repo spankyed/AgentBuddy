@@ -1,17 +1,19 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2">
     <div class="flex items-center content-between">
-      <div class="flex-grow">
-        <button
-          type="button"
-          class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-          @click="isOpen = !isOpen"
-        >
-          Recent Threads
+      <button
+        type="button"
+        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+        @click="isOpen = !isOpen"
+      >
+        Recent Threads
 
-          <History v-if="!isOpen" :size="16" class="ml-2" />
-          <ChevronUp v-else :size="16" class="ml-2" />
-        </button>
+        <History v-if="!isOpen" :size="16" class="ml-2" />
+        <ChevronUp v-else :size="16" class="ml-2" />
+      </button>
+
+      <div class="flex-grow text-center px-12 pb-2 text-sm text-neutral-500">
+        This is a list of your recent threads. Click on a thread to view its content.
       </div>
 
       <button
