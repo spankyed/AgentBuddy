@@ -3,17 +3,42 @@
     class="relative flex flex-col flex-grow pb-2 bg-neutral-800"
     :class="$style.component"
   >
-    <div class="w-full flex justify-end">
-      <button 
+    <!-- HEADER ROW -->
+    <div class="w-full flex items-center my-4 justify-between px-3">
+      <!-- ▸ Breadcrumbs (left) -->
+      <nav
+        v-if="breadcrumbs.length"
+        aria-label="Breadcrumb"
+        class="flex items-center gap-1 ml-2 text-xs text-neutral-400"
+      >
+        <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
+          <span
+            class="cursor-pointer hover:text-white transition-colors"
+            @click="onCrumbClick(crumb)"
+          >
+            {{ crumb.label }}
+          </span>
+          <!-- separator, skip after last -->
+          <ChevronRight
+            v-if="idx < breadcrumbs.length - 1"
+            :size="12"
+            class="mx-1 text-neutral-600"
+          />
+        </template>
+      </nav>
+
+      <!-- ▸ Canvas‑toggle button (right) -->
+      <button
         @click="$emit('canvas-toggle')"
-        class="flex items-center gap-1 px-2 py-1 my-4 mr-3 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+        class="flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
       >
         <ChevronLeft :size="14" />
-          {{ label }}
+        {{ label }}
         <ChevronRight :size="14" />
       </button>
     </div>
 
+    <!-- MAIN SCROLL AREA -->
     <div class="w-full overflow-y-auto">
       <slot />
     </div>
@@ -21,21 +46,36 @@
 </template>
 
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import type { CanvasContent } from '@/helpers/types'
-import { useSelector } from '@xstate/vue'
-import { applicationActor } from '@/application'
+import { ref } from 'vue'
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 interface Props {
   label: string
 }
-
 defineProps<Props>()
 defineEmits<(e: 'canvas-toggle') => void>()
+
+/**
+ * ────────────────────────────────────────────────────────────────────────────────
+ * Mock breadcrumb state
+ * Replace with `useSelector(applicationActor, …)` or props when real data is ready
+ * ────────────────────────────────────────────────────────────────────────────────
+ */
+type Crumb = { label: string; route?: string }
+const breadcrumbs = ref<Crumb[]>([
+  { label: 'Home', route: '/' },
+  { label: 'Projects', route: '/projects' },
+  { label: 'Project 42', route: '/projects/42' },
+])
+
+function onCrumbClick(crumb: Crumb) {
+  // placeholder for navigation logic
+  console.log('Navigate to', crumb.route)
+}
 </script>
 
 <style lang="scss" module>
 .component {
   max-height: 45vh;
 }
-</style> 
+</style>
