@@ -35,6 +35,15 @@
       <div>
         <label class="block mb-2 text-sm font-medium text-neutral-300">Related Threads</label>
         <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            @click="addDetail"
+            class="px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 text-neutral-200 bg-neutral-700 hover:bg-neutral-600"
+          >
+            Link Thread
+            <Plus size="16" class="text-neutral-500" />
+          </button>
+
           <span
             v-for="(thread, index) in threads"
             :key="index"
@@ -52,6 +61,33 @@
         </div>
       </div>
 
+      <div class="flex justify-end items-center gap-2">
+        <!-- Stop button -->
+        <button
+          title="Cancel thread creation"
+          type="submit"
+          :class="[
+            'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-500 hover:text-white',
+          ]"
+        >
+          Cancel
+          <Square :size="22" />
+        </button>
+        <button
+          type="submit"
+          :disabled="!isSaving"
+          :class="[
+            'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2',
+            isSaving
+              ? 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600' 
+              : 'bg-primary-700 text-neutral-400'
+          ]"
+        >
+          Create
+          <CornerDownLeft class="-rotate-45" :size="16" />
+        </button>
+      </div>
+
       <div>
         <!-- <button
           type="button"
@@ -60,13 +96,6 @@
         >
           + Add Detail
         </button> -->
-        <button
-          type="button"
-          @click="addDetail"
-          class="px-3 py-1.5 text-sm font-medium text-white rounded bg-neutral-700 hover:bg-neutral-600"
-        >
-          + Link Thread
-        </button>
       </div>
     </div>
   </div>
@@ -74,11 +103,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, Plus } from 'lucide-vue-next'
 
 const title = ref('Project X')
 const status = ref('Active')
 const threads = ref<string[]>(['USER-182', 'PROJ-13', 'AGENT-7'])
+const isSaving = ref('')
 
 const addDetail = () => {
   threads.value.push('')
