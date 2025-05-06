@@ -34,30 +34,36 @@
       <!-- Threads list -->
       <div>
         <label class="block mb-2 text-sm font-medium text-neutral-300">Related Threads</label>
-        <div class="space-y-2">
-          <input
+        <div class="flex flex-wrap gap-2">
+          <span
             v-for="(thread, index) in threads"
             :key="index"
-            v-model="threads[index]"
-            type="text"
-            class="w-full px-3 py-2 text-sm border rounded bg-neutral-900 border-neutral-700 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-            placeholder="Thread"
-          />
+            class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-700 text-neutral-200 rounded"
+          >
+            {{ thread }}
+            <button
+              type="button"
+              @click="removeThread(index)"
+              class="ml-1 p-1 rounded focus:outline-none"
+            >
+              <X size="16" class="text-neutral-400 hover:text-neutral-200" />
+            </button>
+          </span>
         </div>
       </div>
 
       <div>
-        <button
+        <!-- <button
           type="button"
           @click="addDetail"
           class="px-3 py-1.5 text-sm font-medium text-white rounded bg-neutral-700 hover:bg-neutral-600"
         >
           + Add Detail
-        </button>
+        </button> -->
         <button
           type="button"
           @click="addDetail"
-          class="px-3 py-1.5 ml-2 text-sm font-medium text-white rounded bg-neutral-700 hover:bg-neutral-600"
+          class="px-3 py-1.5 text-sm font-medium text-white rounded bg-neutral-700 hover:bg-neutral-600"
         >
           + Link Thread
         </button>
@@ -68,6 +74,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { X } from 'lucide-vue-next'
 
 const title = ref('Project X')
 const status = ref('Active')
@@ -75,5 +82,9 @@ const threads = ref<string[]>(['USER-182', 'PROJ-13', 'AGENT-7'])
 
 const addDetail = () => {
   threads.value.push('')
+}
+
+const removeThread = (index: number) => {
+  threads.value.splice(index, 1)
 }
 </script> 
