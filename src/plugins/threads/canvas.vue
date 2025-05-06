@@ -37,11 +37,33 @@
     <div class="space-y-2">
       <div
         v-for="thread in threads"
-        :key="thread"
+        :key="thread.id"
         class="flex items-center justify-between px-4 py-2 border rounded-lg bg-neutral-800 border-neutral-700"
       >
-        <span class="text-sm text-neutral-200">{{ thread || 'Untitled detail' }}</span>
-        <ChevronRight :size="16" class="text-neutral-500" />
+        <!-- ID badge and truncated title -->
+        <div class="flex items-center flex-1 space-x-2">
+          <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded">
+            {{ thread.id }}
+          </span>
+          <span class="text-sm truncate text-neutral-200">
+            {{ thread.title || thread.id }}
+          </span>
+        </div>
+        <!-- Status selector and tags -->
+        <div class="flex items-center space-x-3">
+          <select
+            v-model="thread.status"
+            class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
+          >
+            <option value="queued">Queued</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
+            <span v-for="tag in thread.tags" :key="tag" class="px-2 text-xs text-blue-800 bg-blue-100 rounded-full">{{ tag }}</span>
+          </div>
+          <ChevronRight :size="16" class="text-neutral-500" />
+        </div>
       </div>
     </div>
 
@@ -70,10 +92,23 @@ const searchKeyword = ref('')
 const showCreateForm = ref(false)
 const title = ref('Project X')
 const status = ref('Active')
-const threads = ref<string[]>(['USER-182', 'PROJ-13', 'AGENT-7'])
+
+// Define Thread interface and initialize threads with status and tags
+interface Thread {
+  id: string
+  title?: string
+  status: string
+  tags: string[]
+}
+
+const threads = ref<Thread[]>([
+  { id: 'USER-182', title: 'Use css variables from our design systems', status: 'queued', tags: ['backend'] },
+  { id: 'PROJ-13', title: 'Project X', status: 'active', tags: ['frontend', 'ui'] },
+  { id: 'AGENT-7', title: 'Am I conscious?', status: 'inactive', tags: ['api'] },
+])
 
 const addDetail = () => {
-  threads.value.push('')
+  threads.value.push({ id: '', title: '', status: 'open', tags: [] })
 }
 
 function actionButtonClass(status: string) {
