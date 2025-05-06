@@ -55,6 +55,7 @@
             v-model="thread.status"
             class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
           >
+            <option value="draft">Draft</option>
             <option value="queued">Queued</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
