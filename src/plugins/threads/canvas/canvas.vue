@@ -4,15 +4,27 @@
     <!-- Search & Create row -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
       <button
-        @click="showCreateForm = true"
-        type="button"
-        class="px-4 py-2 text-sm font-medium text-white rounded bg-primary-600 hover:bg-primary-500"
+      @click="showCreateForm = true"
+      type="button"
+        class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 bg-primary-600 hover:bg-primary-500'
       >
-        Create
+        <Plus :size="16" class="" />
+        New Thread
       </button>
-      <div class="flex justify-end flex-1 gap-4 text-sm">
+      <div class="flex justify-end flex-1 gap-1 text-sm">
         <!-- <button type="button" class="text-primary-400 hover:underline">Advanced Search</button> -->
-        <button type="button" class="text-primary-400 hover:underline">Filter</button>
+        <button
+          type="button"
+          class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-200 hover:text-white'
+        >
+          Clear filters
+        </button>
+        <button
+          type="button"
+          class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-200 hover:text-white'
+        >
+          Filter
+        </button>
       </div>
       <div class="flex justify-end">
         <!-- Search input -->
@@ -35,6 +47,35 @@
 
     <!-- Threads list section -->
     <div class="space-y-2">
+      <div
+        class="flex items-center justify-between px-4 py-2 border rounded-lg bg-neutral-800 border-neutral-700"
+      >
+        <!-- ID badge and truncated title -->
+        <div class="flex items-center flex-1 space-x-2">
+          <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded">
+            D-1
+          </span>
+          <span class="text-sm truncate text-neutral-200">
+            Draft thread
+          </span>
+        </div>
+        <!-- Status selector and tags -->
+        <div class="flex items-center space-x-3">
+          <select
+            class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
+          >
+            <option value="draft">Draft</option>
+            <option value="queued">Queued</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
+            <span class="px-2 text-xs text-blue-800 bg-blue-100 rounded-full">draft</span>
+          </div>
+          <ChevronRight :size="16" class="text-neutral-500" />
+        </div>
+      </div>
+
       <div
         v-for="thread in threads"
         :key="thread.id"
@@ -74,7 +115,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Create from './create.vue'
-import { Mic, ChevronRight, Search } from 'lucide-vue-next'
+import { Mic, ChevronRight, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id as agentId } from '@/plugins/agent/state'
@@ -103,9 +144,9 @@ interface Thread {
 }
 
 const threads = ref<Thread[]>([
-  { id: 'USER-182', title: 'Use css variables from our design systems', status: 'queued', tags: ['backend'] },
-  { id: 'PROJ-13', title: 'Project X', status: 'active', tags: ['frontend', 'ui'] },
-  { id: 'AGENT-7', title: 'Am I conscious?', status: 'inactive', tags: ['api'] },
+  { id: 'U-182', title: 'Use css variables from our design systems', status: 'queued', tags: ['backend'] },
+  { id: 'P-13', title: 'Project X', status: 'active', tags: ['frontend', 'ui'] },
+  { id: 'WI-7', title: 'Some work item for the agent', status: 'inactive', tags: ['agent'] },
 ])
 
 const addDetail = () => {
