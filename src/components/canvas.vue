@@ -65,7 +65,7 @@ type Crumb = { label: string; route?: string }
 const breadcrumbs = ref<Crumb[]>([
   { label: 'Home', route: '/' },
   { label: 'Projects', route: '/projects' },
-  { label: 'Project 42', route: '/projects/42' },
+  { label: 'Project 42', route: '/projects/42' },
 ])
 
 function onCrumbClick(crumb: Crumb) {
