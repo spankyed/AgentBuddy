@@ -12,13 +12,13 @@
           />
         </div>
         <div class="w-full md:w-40">
-          <label class="block mb-1 text-sm font-medium text-neutral-300">Status</label>
+          <label class="block mb-1 text-sm font-medium text-neutral-300">Type</label>
           <select
-            v-model="status"
+            v-model="type"
             class="w-full px-3 py-2 text-sm border rounded bg-neutral-900 border-neutral-700 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
-            <option value="Active">Active</option>
-            <option value="Archived">Archived</option>
+            <option value="work-item">Work Item</option>
+            <option value="work-item">Project</option>
           </select>
         </div>
       </div>
@@ -106,8 +106,8 @@ import { ref } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 
 const title = ref('Project X')
-const status = ref('Active')
-const threads = ref<string[]>(['USER-182', 'PROJ-13', 'AGENT-7'])
+const type = ref('work-item')
+const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const isSaving = ref('')
 
 const addDetail = () => {
