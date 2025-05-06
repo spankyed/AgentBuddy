@@ -1,6 +1,13 @@
 <template>
   <div class="flex flex-col h-full border-l w-96 bg-neutral-900 border-neutral-800">
-    <div class="flex items-center justify-between p-4 border-b border-neutral-800">
+    <div class="flex flex-end justify-between p-4 border-b border-neutral-800">
+      <button
+        @click="$emit('panel-back')"
+        class="flex items gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+      >
+        <ChevronLeft :size="18" />
+        Back
+      </button>
       <button 
         @click="$emit('panel-toggle')"
         class="flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
@@ -29,7 +36,7 @@ interface Props {
 }
 
 defineProps<Props>();
-defineEmits<(e: 'panel-toggle') => void>();
+defineEmits<(e: 'panel-toggle' | 'panel-back') => void>();
 </script>
 
 <style lang="scss" module>
