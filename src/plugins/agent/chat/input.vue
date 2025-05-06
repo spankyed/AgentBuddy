@@ -50,8 +50,7 @@
               ]"
             >
               Stop Agent
-              <!-- <Square :size="16" fill='inherit' /> -->
-              <SoftStopIcon :size="22" />
+              <Square :size="22" />
             </button>
             <button
               type="submit"
@@ -81,8 +80,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, Square } from 'lucide-vue-next'
-import SoftStopIcon from '@/components/SoftStopIcon.vue'
+import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
+import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Thread } from './threads.vue'
 import type { Component } from 'vue'
