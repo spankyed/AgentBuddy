@@ -11,7 +11,7 @@
         aria-label="Breadcrumb"
         class="flex items-center gap-1 ml-2 text-xs text-neutral-400"
       >
-        <template v-for="(crumb, idx) in breadcrumbs" :key="idx">
+        <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
             class="cursor-pointer hover:text-white transition-colors"
             @click="onCrumbClick(crumb)"
@@ -24,20 +24,14 @@
             :size="12"
             class="mx-1 text-neutral-600"
           />
-        </template>
+        </div>
       </nav>
 
       <!-- ▸ Canvas‑toggle button (right) -->
       <ToggleButton
         @toggle="$emit('canvas-toggle')"
       >
-        <template #left-icon>
-          <ChevronLeft :size="14" />
-        </template>
         {{ label }}
-        <template #right-icon>
-          <ChevronRight :size="14" />
-        </template>
       </ToggleButton>
     </div>
 
@@ -50,7 +44,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronRight } from 'lucide-vue-next'
 import ToggleButton from '@/components/design/ToggleButton.vue'
 
 interface Props {

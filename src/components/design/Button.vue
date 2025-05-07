@@ -40,7 +40,4 @@ const variantClasses = computed(() => {
       return 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600'
   }
 })
-
-// Add named export to ensure component can be imported
-defineExpose({})
 </script> 
