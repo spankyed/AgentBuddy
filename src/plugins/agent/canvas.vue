@@ -1,6 +1,6 @@
 <template>
   <!-- Agent Canvas Content -->
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-4xl mx-auto relative">
     <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
       <template v-if="content.type === 'code'">
         <div class="relative">
@@ -36,6 +36,12 @@
       <p class="text-sm italic text-neutral-300">please rewrite this code using css variables from our design systems</p>
     </div>
   </div>
+  <!-- Toggle Button -->
+  <!-- <div style="position: absolute; bottom: 2rem; right: 2rem; z-index: 10;">
+    <ToggleButton :active="showAll" @toggle="toggleShowAll">
+      {{ showAll ? 'Show current' : 'Show all' }}
+    </ToggleButton>
+  </div> -->
 </template>
 
 <script setup lang="ts">
@@ -45,9 +51,17 @@ import { ref } from 'vue'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/agent/state.ts';
+import { defineAsyncComponent } from 'vue'
 
 const actor = applicationActor.system.get(id);
 const content: CanvasContent = useSelector(actor, (state) => state.context.canvasContent)
+
+// const showAll = ref(false)
+// function toggleShowAll() {
+//   showAll.value = !showAll.value
+// }
+
+// const ToggleButton = defineAsyncComponent(() => import('@/components/design/ToggleButton.vue'))
 </script>
 
 <style lang="scss" module>
