@@ -26,8 +26,6 @@
 
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import ContextItem from './item.vue';
-import type { ContextItem as ContextItemType } from '../../helpers/types';
 import { useSelector } from '@xstate/vue';
 import { applicationActor } from '../../state/application';
 

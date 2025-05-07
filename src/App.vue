@@ -25,12 +25,12 @@
       </div>
       
       <!-- Context Panel -->
-      <ContextPanel 
+      <InspectionPanel 
         @panel-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'panel' })"
         :label="`${toggles.panel ? defaultPlugin.label : activePlugin.label} Inspection`">
         <component v-if="toggles.panel" :is="defaultPlugin.panel" />
         <component v-else :is="activePlugin.panel" />
-      </ContextPanel>
+      </InspectionPanel>
     </div>
   </div>
 </template>
@@ -38,9 +38,9 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
 import Toolbar from '@/components/toolbar.vue'
-import CanvasArea from '@/components/canvas.vue'
-import ChatArea from '@/components/chat.vue'
-import ContextPanel from '@/components/panel.vue'
+import CanvasArea from '@/components/canvas-area.vue'
+import ChatArea from '@/components/chat-area.vue'
+import InspectionPanel from '@/components/inspection-panel.vue'
 import { applicationActor } from '@/application'
 import type { ActionItem } from '@/helpers/types'
 import type { Plugin } from '@/plugins'
