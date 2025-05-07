@@ -37,10 +37,10 @@
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
-import Toolbar from '@/components/toolbar.vue'
-import CanvasArea from '@/components/canvas-area.vue'
-import ChatArea from '@/components/chat-area.vue'
-import InspectionPanel from '@/components/inspection-panel.vue'
+import Toolbar from '@/components/layout/toolbar.vue'
+import CanvasArea from '@/components/layout/canvas-area.vue'
+import ChatArea from '@/components/layout/chat-area.vue'
+import InspectionPanel from '@/components/layout/inspection-panel.vue'
 import { applicationActor } from '@/application'
 import type { ActionItem } from '@/helpers/types'
 import type { Plugin } from '@/plugins'
