@@ -4,27 +4,27 @@
     <!-- Search & Create row -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
       <button
-      @click="showCreateForm = true"
-      type="button"
-        class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 bg-primary-600 hover:bg-primary-500'
+        @click="showCreateForm = true"
+        type="button"
+        class="px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 bg-primary-600 hover:bg-primary-500"
       >
         <Plus :size="16" class="" />
         New Thread
       </button>
       <div class="flex justify-end flex-1 gap-1 text-sm">
         <!-- <button type="button" class="text-primary-400 hover:underline">Advanced Search</button> -->
-        <button
+        <Button
           type="button"
-          class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-200 hover:text-white'
+          variant="transparent"
         >
           Clear filters
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          class='px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-200 hover:text-white'
+          variant="transparent"
         >
           Filter
-        </button>
+        </Button>
       </div>
       <div class="flex justify-end">
         <!-- Search input -->
@@ -119,6 +119,7 @@ import { Mic, ChevronRight, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id as agentId } from '@/plugins/agent/state'
+import Button from '@/components/design/Button.vue'
 
 // Silences unused import warnings for icon components (used in template)
 void Mic

@@ -28,14 +28,17 @@
       </nav>
 
       <!-- ▸ Canvas‑toggle button (right) -->
-      <button
-        @click="$emit('canvas-toggle')"
-        class="flex items-center gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg hover:bg-neutral-700 text-neutral-500 hover:text-white"
+      <ToggleButton
+        @toggle="$emit('canvas-toggle')"
       >
-        <ChevronLeft :size="14" />
+        <template #left-icon>
+          <ChevronLeft :size="14" />
+        </template>
         {{ label }}
-        <ChevronRight :size="14" />
-      </button>
+        <template #right-icon>
+          <ChevronRight :size="14" />
+        </template>
+      </ToggleButton>
     </div>
 
     <!-- MAIN SCROLL AREA -->
@@ -48,6 +51,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import ToggleButton from '@/components/design/ToggleButton.vue'
 
 interface Props {
   label: string

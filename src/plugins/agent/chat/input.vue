@@ -38,33 +38,22 @@
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
             <!-- Stop button -->
-            <button
+            <Button 
               title="Stop agent work"
               type="submit"
               :disabled="!messageContent"
-              :class="[
-                'px-4 py-2 h-7 rounded text-sm font-medium text-neutral-800 transition-colors flex items-center gap-2',
-                messageContent
-                  ? 'bg-gray-300 text-white hover:bg-gray-200 active:bg-primary-400' 
-                  : 'bg-gray-500 text-neutral-300'
-              ]"
+              variant="secondary"
             >
               Stop Agent
               <Square :size="22" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               :disabled="!messageContent"
-              :class="[
-                'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2',
-                messageContent
-                  ? 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600' 
-                  : 'bg-primary-700 text-neutral-400'
-              ]"
             >
               Send
               <CornerDownLeft class="-rotate-45" :size="16" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -85,6 +74,7 @@ import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Thread } from './threads.vue'
 import type { Component } from 'vue'
+import Button from '@/components/design/Button.vue'
 
 // Define emits including new button actions
 const emit = defineEmits<{
@@ -185,7 +175,8 @@ const mockThreads: Thread[] = [
 
 
 const handleButtonClick = (action: string) => {
-  emit(action)
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  emit(action as any)
 }
 
 const handleSubmit = () => {
