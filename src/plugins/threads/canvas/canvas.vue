@@ -4,7 +4,7 @@
     <!-- Search & Create row -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
       <button
-        @click="showCreateForm = true"
+        @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
         type="button"
         class="px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 bg-primary-600 hover:bg-primary-500"
       >
@@ -117,22 +117,20 @@ import { ref } from 'vue'
 import Create from './create.vue'
 import { Mic, ChevronRight, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
-import { useSelector } from '@xstate/vue'
-import { id as agentId } from '@/plugins/agent/state'
+import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/components/design/Button.vue'
+import { id } from '@/plugins/threads/state'
 
 // Silences unused import warnings for icon components (used in template)
-void Mic
-void ChevronRight
 
-// Snapshot typing – cast from unknown to expected shape
-const actor = applicationActor.system.get(agentId)
+// Get threads actor and state
+const actor = applicationActor.system.get(id)
+const showCreateForm = useSelector(actor, (snap: ThreadsSnapshot) => snap.context.showCreateForm)
 // biome-ignore lint/suspicious/noExplicitAny: We cast unknown snapshot to expected context shape
-const actions = useSelector(actor, (snapshot) => (snapshot as { context: { actions: { id: string; description: string; status: string }[] } }).context.actions)
+const actions = useSelector(actor, (snapshot) => (snapshot as any).context.actions)
 
 // Local state for form inputs
 const searchKeyword = ref('')
-const showCreateForm = ref(false)
 const title = ref('Project X')
 const status = ref('Active')
 
