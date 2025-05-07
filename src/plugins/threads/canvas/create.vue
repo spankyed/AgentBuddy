@@ -8,6 +8,7 @@
           <input
             v-model="title"
             type="text"
+            :placeholder="placeholder"
             class="w-full px-3 py-2 text-sm border rounded bg-neutral-900 border-neutral-700 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           />
         </div>
@@ -18,7 +19,7 @@
             class="w-full px-3 py-2 text-sm border rounded bg-neutral-900 border-neutral-700 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
-            <option value="work-item">Project</option>
+            <option value="project">Project</option>
           </select>
         </div>
       </div>
@@ -38,7 +39,7 @@
           <button
             type="button"
             @click="addDetail"
-            class="px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 text-neutral-200 bg-neutral-700 hover:bg-neutral-600"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-700 hover:bg-neutral-600"
           >
             Link Thread
             <Plus size="16" class="text-neutral-500" />
@@ -53,7 +54,7 @@
             <button
               type="button"
               @click="removeThread(index)"
-              class="ml-1 p-1 rounded focus:outline-none"
+              class="p-1 ml-1 rounded focus:outline-none"
             >
               <X size="16" class="text-neutral-400 hover:text-neutral-200" />
             </button>
@@ -61,7 +62,7 @@
         </div>
       </div>
 
-      <div class="flex justify-end items-center gap-2">
+      <div class="flex items-center justify-end gap-2">
         <!-- Stop button -->
         <button
           title="Cancel thread creation"
@@ -102,11 +103,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 
-const title = ref('Project X')
+const title = ref('')
 const type = ref('work-item')
+// Placeholder options for title based on selected type
+const workItemPlaceholders = [
+  'Review latest PR for UX improvements',
+  'Tackle sprint tasks for Q2',
+  'Implement dev feedback for bug fixes'
+]
+const projectPlaceholders = [
+  'Q3 marketing campaign',
+  'Upcoming project milestones',
+  'Settings page redesign',
+]
+const placeholder = ref('')
+const setRandomPlaceholder = () => {
+  const list = type.value === 'work-item'
+    ? workItemPlaceholders
+    : projectPlaceholders
+  placeholder.value = list[Math.floor(Math.random() * list.length)]
+}
+onMounted(() => setRandomPlaceholder())
+watch(type, () => setRandomPlaceholder())
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const isSaving = ref('')
 
