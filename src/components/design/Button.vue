@@ -2,7 +2,7 @@
   <button
     :type="props.type ?? 'button'"
     :disabled="props.disabled"
-    :class="[baseClasses, variantClasses]"
+    :class="[baseClasses, variantClasses, props.class]"
   >
     <slot />
   </button>
@@ -15,6 +15,7 @@ const props = defineProps<{
   variant?: 'primary' | 'secondary' | 'transparent'
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
+  class?: string
 }>()
 
 const baseClasses = 'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2'
