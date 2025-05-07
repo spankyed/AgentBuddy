@@ -1,4 +1,4 @@
-import { assign, createActor, setup, enqueueActions } from 'xstate';
+import { assign, createActor, setup, enqueueActions, type Actor } from 'xstate';
 import type { Plugin } from '@/helpers/types';
 import { typeOf } from '@/helpers/types/typed-ev';
 import plugins, { defaultPlugin } from '@/plugins';
@@ -8,7 +8,7 @@ import './style.css'
 
 declare global {
   interface Window {
-    applicationActor: typeof applicationActor;
+    applicationActor: Actor<typeof applicationMachine>;
   }
 }
 export interface ApplicationParams {
