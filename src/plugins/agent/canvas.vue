@@ -37,6 +37,16 @@
     </div>
   </div>
   <!-- Toggle Button -->
+  <!-- <div style="display: flex; justify-content: center; position: absolute; top: 1rem; left: 0; width: 100%; z-index: 10;"> -->
+  <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
+    <Button
+      type="button"
+      variant="transparent"
+      :class="'pointer-events-auto'"
+    >
+      Go to workboard
+    </Button>
+  </div>
   <!-- <div style="position: absolute; bottom: 2rem; right: 2rem; z-index: 10;">
     <ToggleButton :active="showAll" @toggle="toggleShowAll">
       {{ showAll ? 'Show current' : 'Show all' }}
@@ -52,6 +62,7 @@ import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/agent/state.ts';
 import { defineAsyncComponent } from 'vue'
+import Button from '@/components/design/Button.vue'
 
 const actor = applicationActor.system.get(id);
 const content: CanvasContent = useSelector(actor, (state) => state.context.canvasContent)
