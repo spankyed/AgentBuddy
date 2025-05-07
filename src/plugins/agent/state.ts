@@ -34,62 +34,62 @@ const blankState = setup({
       });
     })
   },
-    actions: {
-      addMessage: assign(({ context, event }) => ({
-        messages: [...context.messages, { 
-          id: Date.now().toString(),
-          content: event.content,
-          // content: typeOf('SEND_MESSAGE', event).content,
-          role: 'user' as const,
-          timestamp: new Date()
-        }]
-      })),
-      addAssistantMessage: assign(({ context, event }) => ({
-        messages: [...context.messages, {
-          id: Date.now().toString(),
-          content: event.content,
-          // content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
-          role: 'assistant' as const,
-          timestamp: new Date(),
-        }]
-      })),
-      addAction: assign(({ context, event }) => ({
-        actions: [...context.actions, event.action]
-        // actions: [...context.actions, typeOf('ADD_ACTION', event).action]
-      })),
-      updateAction: assign(({ context, event }) => {
-        const typedEvent = event;
-        // const typedEvent = typeOf('UPDATE_ACTION', event);
-        return {
-          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-          actions: context.actions.map((action: any) => 
-            action.id === typedEvent.actionId 
-              ? { ...action, status: typedEvent.status }
-              : action
-          )
-        }
-      }),
-      setCurrentThread: assign(({ event }) => ({
-        currentThreadId: event.threadId
-        // currentThreadId: typeOf('SELECT_THREAD', event).threadId
-      })),
-      updateMessageInput: assign(({ event }) => ({
-        messageInput: event.content
-        // messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
-      })),
-      setPendingActionId: assign(() => {
-        const newAction: ActionItem = {
-          id: Date.now().toString(),
-          description: 'Processing your request...',
-          status: 'in-progress',
-          timestamp: new Date()
-        }
-        return { pendingActionId: newAction.id }
-      }),
-      clearMessages: assign(() => ({
-        messages: []
-      }))
-    }
+  actions: {
+    addMessage: assign(({ context, event }) => ({
+      messages: [...context.messages, { 
+        id: Date.now().toString(),
+        content: event.content,
+        // content: typeOf('SEND_MESSAGE', event).content,
+        role: 'user' as const,
+        timestamp: new Date()
+      }]
+    })),
+    addAssistantMessage: assign(({ context, event }) => ({
+      messages: [...context.messages, {
+        id: Date.now().toString(),
+        content: event.content,
+        // content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
+        role: 'assistant' as const,
+        timestamp: new Date(),
+      }]
+    })),
+    addAction: assign(({ context, event }) => ({
+      actions: [...context.actions, event.action]
+      // actions: [...context.actions, typeOf('ADD_ACTION', event).action]
+    })),
+    updateAction: assign(({ context, event }) => {
+      const typedEvent = event;
+      // const typedEvent = typeOf('UPDATE_ACTION', event);
+      return {
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        actions: context.actions.map((action: any) => 
+          action.id === typedEvent.actionId 
+            ? { ...action, status: typedEvent.status }
+            : action
+        )
+      }
+    }),
+    setCurrentThread: assign(({ event }) => ({
+      currentThreadId: event.threadId
+      // currentThreadId: typeOf('SELECT_THREAD', event).threadId
+    })),
+    updateMessageInput: assign(({ event }) => ({
+      messageInput: event.content
+      // messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
+    })),
+    setPendingActionId: assign(() => {
+      const newAction: ActionItem = {
+        id: Date.now().toString(),
+        description: 'Processing your request...',
+        status: 'in-progress',
+        timestamp: new Date()
+      }
+      return { pendingActionId: newAction.id }
+    }),
+    clearMessages: assign(() => ({
+      messages: []
+    }))
+  }
 }).createMachine({
   id,
   context: ({ input }) => ({
