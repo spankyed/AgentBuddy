@@ -31,16 +31,13 @@ const blankState = setup({
 }).createMachine({
   id,
   initial: 'display',
-
   context: ({ input }) => ({
   }),
-
   states: {
     display: {
       meta: breadcrumb('display', 'Display', true),
     },
   },
-
   on: {
     ...TRAIL_CLICK([
       ['.display', 'display'],
