@@ -15,14 +15,14 @@ interface Props {
 
 const props = defineProps<Props>();
 
-function isRouteMap(x: unknown): x is RouteComponents {
-  return typeof x === 'object' && x !== null;
+function isVueComponent(x: unknown): x is RouteComponents {
+  return x.render && x.setup; // Check if it's a Vue component - need to find a better way
 }
 
 const resolved = computed<Component | undefined>(() => {
   if (!props.views) return undefined;
 
-  if (isRouteMap(props.views)) {
+  if (!isVueComponent(props.views)) {
     // Prefer an explicit match, otherwise first component in the record
     return (
       props.views[props.target || ''] ??
@@ -31,7 +31,7 @@ const resolved = computed<Component | undefined>(() => {
     );
   }
 
-  // Single‑view plugin
+  // Single vue component
   return props.views;
 });
 </script>
