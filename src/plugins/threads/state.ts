@@ -1,33 +1,104 @@
-import { setup } from 'xstate';
+import { setup, assign, log } from 'xstate';
 
 export const id = 'threads';
 
+interface ThreadsContext {
+  selectedThreadId?: string;
+}
+
+type ThreadsEvents =
+  | { type: 'SHOW_CREATE_FORM' }
+  | { type: 'THREAD_CREATED'; id: string }
+  | { type: 'SELECT_THREAD'; id: string }
+  | { type: 'CANCEL_CREATE' }
+  // internal
+  | { type: 'ROUTE_CLICK'; target: string };
+
+
+// type Views = 'list' | 'create' | 'view';
+
 const threadsState = setup({
-  types: {
-    context: {} as {
-      showCreateForm: boolean;
-    },
-    events: {} as 
-      | { type: 'SHOW_CREATE_FORM' }
-      | { type: 'HIDE_CREATE_FORM' }
+  types: { context: {} as ThreadsContext, events: {} as ThreadsEvents },
+  actors: {},
+  actions: {},
+  guards: {
+    targetIs: ({ event }, params: { view: string }) => {
+      console.log('targetIs: ', event);
+      return (event as any).target === params.view
+    }
   }
 }).createMachine({
   id,
-  context: {
-    showCreateForm: false,
-  },
+  initial: 'list',
+  context: () => ({
+    selectedThreadId: undefined,
+  }),
   on: {
-    SHOW_CREATE_FORM: {
-      actions: ({ context }) => {
-        context.showCreateForm = true;
+    'ROUTE_CLICK': [
+      {
+        guard: { type: 'targetIs', params: { view: 'list' } },
+        target: '.list',
+      },
+      // {
+      //   guard: { type: 'targetIs', params: { view: 'create' } },
+      //   target: '.create',
+      // },
+      // {
+      //   guard: { type: 'targetIs', params: { view: 'view' } },
+      //   target: '.view',
+      // },
+    ]
+  },
+  states: {
+    'list': {
+      meta: { 
+        breadcrumb: {
+          label: 'Threads',
+          target: 'list',
+          default: true
+        },
+      },
+      on: {
+        SHOW_CREATE_FORM: 'create',
+        SELECT_THREAD: {
+          target: 'view',
+          actions: assign({
+            selectedThreadId: (_, e) => (e as any)?.id,
+          }),
+        },
       },
     },
-    HIDE_CREATE_FORM: {
-      actions: ({ context }) => {
-        context.showCreateForm = false;
+
+    'create': {
+      meta: { 
+        breadcrumb: {
+          label: 'New Thread',
+          target: 'create'
+        },
       },
-    }
-  }
-}); 
+      on: {
+        THREAD_CREATED: {
+          target: 'view',
+          actions: assign({
+            selectedThreadId: (_, e) => (e as any)?.id,
+          }),
+        },
+        CANCEL_CREATE: { target: 'list' },
+      },
+    },
+
+    'view': {
+      meta: {
+        breadcrumb: (ctx: ThreadsContext) => {
+          console.log('ctx: ', ctx);
+          return ({
+            label: ctx.selectedThreadId ? `Thread ${ctx.selectedThreadId}` : 'Thread',
+            target: 'view'
+          })
+        }
+      },
+    },
+  },
+});
 
 export default threadsState;

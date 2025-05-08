@@ -4,7 +4,7 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="w-full flex items-center my-4 justify-between px-3">
+    <div class="w-full flex items-center my-4 px-3">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs.length"
@@ -14,7 +14,7 @@
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
             class="cursor-pointer hover:text-white transition-colors"
-            @click="onCrumbClick(crumb)"
+            @click="$emit('crumb-click', crumb.target)"
           >
             {{ crumb.label }}
           </span>
@@ -28,11 +28,13 @@
       </nav>
 
       <!-- ▸ Canvas‑toggle button (right) -->
-      <ToggleButton
-        @toggle="$emit('canvas-toggle')"
-      >
-        {{ label }}
-      </ToggleButton>
+      <div class="ml-auto" >
+        <ToggleButton
+          @toggle="$emit('canvas-toggle')"
+        >
+          {{ label }}
+        </ToggleButton>
+      </div>
     </div>
 
     <!-- MAIN SCROLL AREA -->
@@ -46,30 +48,17 @@
 import { ref } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
 import ToggleButton from '@/components/design/ToggleButton.vue'
+import { applicationActor } from '@/application'
 
 interface Props {
   label: string
+  breadcrumbs?: { label: string; target?: string }[]
 }
 defineProps<Props>()
-defineEmits<(e: 'canvas-toggle') => void>()
-
-/**
- * ────────────────────────────────────────────────────────────────────────────────
- * Mock breadcrumb state
- * Replace with `useSelector(applicationActor, …)` or props when real data is ready
- * ────────────────────────────────────────────────────────────────────────────────
- */
-type Crumb = { label: string; route?: string }
-const breadcrumbs = ref<Crumb[]>([
-  { label: 'Home', route: '/' },
-  { label: 'Projects', route: '/projects' },
-  { label: 'Project 42', route: '/projects/42' },
-])
-
-function onCrumbClick(crumb: Crumb) {
-  // placeholder for navigation logic
-  console.log('Navigate to', crumb.route)
-}
+defineEmits<{
+  (e: 'canvas-toggle'): void
+  (e: 'crumb-click', target: string): void
+}>()
 </script>
 
 <style lang="scss" module>

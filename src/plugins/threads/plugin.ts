@@ -1,7 +1,9 @@
 import type { Plugin } from "@/helpers/types";
 import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
-import canvas from './canvas/canvas.vue';
+import list from './canvas/list.vue';
+import create from './canvas/create.vue';
+import blank from './canvas/blank.vue';
 import panel from './panel.vue';
 
 const threadsPlugin: Plugin = {
@@ -9,7 +11,11 @@ const threadsPlugin: Plugin = {
   label: 'Threads',
   icon: History,
   state,
-  canvas,
+  canvas: {
+    list,
+    create,
+    view: blank,
+  },
   panel,
 };
 

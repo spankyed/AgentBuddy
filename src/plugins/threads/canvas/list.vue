@@ -1,6 +1,5 @@
 <template>
-  <Create v-if="showCreateForm" />
-  <div v-else class="max-w-5xl px-6 py-4 mx-auto space-y-6">
+  <div class="max-w-5xl px-6 py-4 mx-auto space-y-6">
     <!-- Search & Create row -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
       <button
