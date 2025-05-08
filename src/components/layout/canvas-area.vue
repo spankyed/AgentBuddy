@@ -9,7 +9,7 @@
       <nav
         v-if="breadcrumbs.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-xs text-neutral-400"
+        class="flex items-center gap-1 ml-2 text-sm text-neutral-400"
       >
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
