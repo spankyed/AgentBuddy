@@ -76,7 +76,8 @@ export const applicationMachine = setup({
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
     })),
-    sendRouteClick: sendTo(({ system, context }) => system.get(context.activePlugin.id), ({ event }) => event),
+    sendRouteClick: sendTo(({ system, context }) => 
+      system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: assign(({ context, event }) => ({
       defaultToggles: { canvas: false, panel: false },

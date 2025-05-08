@@ -31,7 +31,7 @@ export type AgentEvent =
 
 const typeOf = safeEvents<AgentEvent>();
   
-const blankState = setup({
+const agentState = setup({
   types: { context: {} as AgentContext, events: {} as AgentEvent },
   actors: {
     delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
@@ -107,19 +107,6 @@ const blankState = setup({
     messageInput: "",
     pendingActionId: undefined,
   }),
-  states: {
-    'display': {
-      meta: { ...breadcrumb('display', 'Display', true) },
-      on: {
-        VIEW_WORKLOAD: {
-          target: 'workload',
-        },
-      }
-    },
-    'workload': {
-      meta: { ...breadcrumb('workload', 'Workload') },
-    }
-  },
   on: {
     ...TRAIL_CLICK([
       ['.display', 'display'],
@@ -159,7 +146,21 @@ const blankState = setup({
     // REMOVE_CONTEXT_ITEM: {
     //   actions: 'removeContextItem'
     // },
-  }
+  },
+  states: {
+    'display': {
+      id: 'display',
+      meta: { ...breadcrumb('display', 'Display', true) },
+      on: {
+        VIEW_WORKLOAD: {
+          target: 'workload',
+        },
+      }
+    },
+    'workload': {
+      meta: { ...breadcrumb('workload', 'Workload') },
+    }
+  },
 }); 
 
-export default blankState;
+export default agentState;

@@ -11,7 +11,6 @@ const agentPlugin: Plugin = {
   label: 'Agent',
   // icon: Brain,
   state,
-  // canvas,
   canvas: {
     display,
     workload
