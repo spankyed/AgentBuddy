@@ -44,7 +44,6 @@ import CanvasArea from '@/components/layout/canvas-area.vue'
 import ChatArea from '@/components/layout/chat-area.vue'
 import InspectionPanel from '@/components/layout/inspection-panel.vue'
 import { applicationActor } from '@/application'
-import type { ActionItem } from '@/helpers/types'
 import type { Plugin } from '@/plugins'
 import Router from '@/components/layout/router.vue'
 

@@ -20,7 +20,7 @@
 import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
-import type { Message } from '@/helpers/types'
+import type { Message } from '@/plugins/agent/types'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/agent/state.ts';

@@ -1,4 +1,4 @@
-import type { Message, ActionItem, ContextItem, CanvasContent } from '@/helpers/types';
+import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/agent/types';
 
 const messages: Message[] = [
   {
