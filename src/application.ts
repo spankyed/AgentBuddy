@@ -37,14 +37,14 @@ export interface ApplicationContext {
   defaultPlugin: Plugin;
   plugins: Plugin[];
   breadcrumbs: BreadcrumbItem[];
-  routeTarget: string;
+  targetView: string;
 }
 
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
-  | { type: 'ROUTE_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
-  | { type: 'ROUTE_CLICK'; target: string }
+  | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
+  | { type: 'TRAIL_CLICK'; target: string }
 
 export const applicationMachine = setup({
   types: {
@@ -53,14 +53,14 @@ export const applicationMachine = setup({
     input: {} as ApplicationParams,
   },
   actors: {
-    breadcrumbsObserver: fromCallback<{ type: 'OBSERVE_PLUGIN_ROUTES'; id: string }, string>(({ system, receive, input: id }) => {
+    pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target }: UpdateData) =>
-        system.get('application').send({ type: 'ROUTE_UPDATE', crumbs, target });
+        system.get('application').send({ type: 'TRAIL_UPDATE', crumbs, target });
 
       let unsubscribe = trailActor(system.get(id), onStateChange);
 
       receive((event) => {
-        if (event.type === 'OBSERVE_PLUGIN_ROUTES') {
+        if (event.type === 'TRAIL_NEW_PLUGIN') {
           unsubscribe();
           unsubscribe = trailActor(system.get(event.id), onStateChange);
         }
@@ -70,12 +70,12 @@ export const applicationMachine = setup({
     }),
   },
   actions: {
-    setRouteTarget: assign(({ event }) => ({
-      routeTarget: (event as any).target
-      // routeTarget: typeOf(['ROUTE_CLICK', 'ROUTE_UPDATE'], event).target
+    setTargetView: assign(({ event }) => ({
+      targetView: (event as any).target
+      // targetView: typeOf(['TRAIL_CLICK', 'TRAIL_UPDATE'], event).target
     })),
     sendRouteClick: sendTo(({ system, context }) => system.get(context.activePlugin.id), ({ event }) => event),
-    setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('ROUTE_UPDATE', event).crumbs })),
+    setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: assign(({ context, event }) => ({
       defaultToggles: { canvas: false, panel: false },
       activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
@@ -93,11 +93,11 @@ export const applicationMachine = setup({
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });
       }
     }),
-    resubscribeBreadcrumbs: sendTo('breadcrumbsObserver', ({ context }) => ({
-      type: 'OBSERVE_PLUGIN_ROUTES',
+    trailNewPlugin: sendTo('pluginTrailer', ({ context }) => ({
+      type: 'TRAIL_NEW_PLUGIN',
       id: context.activePlugin.id
     })),
-    observeBreadcrumbs: spawnChild('breadcrumbsObserver', { id: 'breadcrumbsObserver', input: ({ context }) => context.activePlugin.id })
+    trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id })
   }
 }).createMachine({
   id: 'application',
@@ -110,18 +110,18 @@ export const applicationMachine = setup({
       canvas: false,
       panel: false,
     },
-    routeTarget: '',
+    targetView: '',
   }),
   entry: [
     'spawnPluginActors',
-    'observeBreadcrumbs'
+    'trailActivePlugin'
   ],
   on: {
-    ROUTE_UPDATE: {
-      actions: ['setBreadcrumbs', 'setRouteTarget'],
+    TRAIL_UPDATE: {
+      actions: ['setBreadcrumbs', 'setTargetView'],
     },
-    ROUTE_CLICK: {
-      actions: ['setRouteTarget', 'sendRouteClick'],
+    TRAIL_CLICK: {
+      actions: ['setTargetView', 'sendRouteClick'],
     },
     DEFAULT_TOGGLE: {
       actions: {
@@ -132,7 +132,7 @@ export const applicationMachine = setup({
     SELECT_PLUGIN: {
       actions: [
         'setActivePlugin',
-        'resubscribeBreadcrumbs',
+        'trailNewPlugin',
       ]
     },
   }

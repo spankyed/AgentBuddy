@@ -10,7 +10,7 @@ import type { RouteComponents } from '@/plugins/types.ts';
 
 interface Props {
   views?: Component | RouteComponents;
-  route?: string;
+  target?: string;
 }
 
 const props = defineProps<Props>();
@@ -25,7 +25,7 @@ const resolved = computed<Component | undefined>(() => {
   if (isRouteMap(props.views)) {
     // Prefer an explicit match, otherwise first component in the record
     return (
-      props.views[props.route || ''] ??
+      props.views[props.target || ''] ??
       Object.values(props.views)[0] ?? // safe fallback
       undefined
     );

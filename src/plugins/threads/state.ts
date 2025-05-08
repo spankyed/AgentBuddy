@@ -12,7 +12,7 @@ type ThreadsEvents =
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
   // internal
-  | { type: 'ROUTE_CLICK'; target: string };
+  | { type: 'TRAIL_CLICK'; target: string };
 
 
 // type Views = 'list' | 'create' | 'view';
@@ -34,7 +34,7 @@ const threadsState = setup({
     selectedThreadId: undefined,
   }),
   on: {
-    'ROUTE_CLICK': [
+    'TRAIL_CLICK': [
       {
         guard: { type: 'targetIs', params: { view: 'list' } },
         target: '.list',

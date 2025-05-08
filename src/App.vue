@@ -12,13 +12,13 @@
       <div class="flex flex-col flex-grow overflow-hidden">
         <!-- Canvas Area -->
         <CanvasArea
-          @crumb-click="(target: string) => send({ type: 'ROUTE_CLICK', target })"
+          @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
           @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
           :breadcrumbs="breadcrumbs"
           :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`">
           <component v-if="toggles.canvas" :is="defaultPlugin.canvas" />
           <!-- <component v-else :is="activePlugin.canvas" /> -->
-          <Router v-else :views="activePlugin.canvas" :route="routeTarget" />
+          <Router v-else :views="activePlugin.canvas" :target="targetView" />
         </CanvasArea>
 
         <!-- Chat Area -->
@@ -56,7 +56,7 @@ const defaultPlugin = useSelector(applicationActor, (state) => state.context.def
 const toggles = useSelector(applicationActor, (state) => state.context.defaultToggles)
 const plugins = useSelector(applicationActor, (state) => state.context.plugins)
 const breadcrumbs = useSelector(applicationActor, (state) => state.context.breadcrumbs as Crumb[])
-const routeTarget = useSelector(applicationActor, (state) => state.context.routeTarget)
+const targetView = useSelector(applicationActor, (state) => state.context.targetView)
 </script>
 
 <style lang="scss" module>
