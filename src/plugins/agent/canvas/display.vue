@@ -38,7 +38,7 @@
   </div>
   <!-- Toggle Button -->
   <!-- <div style="display: flex; justify-content: center; position: absolute; top: 1rem; left: 0; width: 100%; z-index: 10;"> -->
-  <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
+  <div class="absolute top-4 z-10 ml-1 pointer-events-none">
     <Button
       @click="actor.send({ type: 'VIEW_WORKLOAD' })"
       type="button"
