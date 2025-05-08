@@ -1,7 +1,8 @@
 import type { Plugin } from "@/helpers/types";
 import state, { id } from './state.ts';
-// import canvas from './canvas.vue';
-import canvas from './canvas.vue';
+import display from './canvas/display.vue';
+import workload from './canvas/blank.vue';
+// import workload from './canvas/workload.vue';
 import panel from './panel/panel.vue';
 import chat from './chat/chat.vue';
 
@@ -10,7 +11,11 @@ const agentPlugin: Plugin = {
   label: 'Agent',
   // icon: Brain,
   state,
-  canvas,
+  // canvas,
+  canvas: {
+    display,
+    workload
+  },
   panel,
   chat
 };

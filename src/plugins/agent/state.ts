@@ -2,6 +2,7 @@ import { assign, log, setup, fromPromise, spawnChild } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/helpers/types';
 // import { typeOf } from '@/helpers/types/typed-ev';
 import mockData from './mockData';
+import breadcrumb from '@/helpers/breadcrumb';
 
 export const id = 'agent';
 
@@ -92,6 +93,7 @@ const blankState = setup({
   }
 }).createMachine({
   id,
+  initial: 'display',
   context: ({ input }) => ({
     messages: mockData.messages,
     actions: mockData.actions,
@@ -101,7 +103,20 @@ const blankState = setup({
     messageInput: "",
     pendingActionId: undefined,
   }),
-  states: {},
+  states: {
+    'display': {
+      meta: { ...breadcrumb('display', 'Display', true) },
+      on: {
+        
+        VIEW_WORKLOAD: {
+          target: 'workload',
+        },
+      }
+    },
+    'workload': {
+      meta: { ...breadcrumb('workload', 'Workload') },
+    }
+  },
   on: {
     SEND_MESSAGE: {
       actions: [

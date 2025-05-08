@@ -3,13 +3,23 @@
     :type="props.type ?? 'button'"
     :disabled="props.disabled"
     :class="[baseClasses, variantClasses, props.class]"
-  >
+    @click="$emit('click', $event)"
+    @contextmenu="$emit('contextmenu', $event)"
+    @touchend="$emit('touchend', $event)"
+    @touchstart.passive="$emit('touchstart', $event)">
     <slot />
   </button>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+
+defineEmits<{
+  (e: 'click', event: Event): void;
+  (e: 'contextmenu', event: Event): void;
+  (e: 'touchend', event: Event): void;
+  (e: 'touchstart', event: Event): void;
+}>();
 
 const props = defineProps<{
   variant?: 'primary' | 'secondary' | 'transparent'

@@ -40,11 +40,12 @@
   <!-- <div style="display: flex; justify-content: center; position: absolute; top: 1rem; left: 0; width: 100%; z-index: 10;"> -->
   <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
     <Button
+      @click="actor.send({ type: 'VIEW_WORKLOAD' })"
       type="button"
       variant="transparent"
       :class="'pointer-events-auto'"
     >
-      Go to workboard
+      View workload
     </Button>
   </div>
   <!-- <div style="position: absolute; bottom: 2rem; right: 2rem; z-index: 10;">
