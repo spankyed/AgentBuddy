@@ -43,7 +43,7 @@
       @click="actor.send({ type: 'VIEW_WORKLOAD' })"
       type="button"
       variant="transparent"
-      :class="'pointer-events-auto'"
+      :class="'pointer-events-auto mx-1 px-2 py-1 text-xs tracking-wider uppercase rounded-lg'"
     >
       View workload
     </Button>
@@ -63,6 +63,7 @@ import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/agent/state.ts';
 import { defineAsyncComponent } from 'vue'
+import ToggleButton from '@/components/design/toggle-button.vue'
 import Button from '@/components/design/Button.vue'
 
 const actor = applicationActor.system.get(id);

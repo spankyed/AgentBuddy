@@ -47,7 +47,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
-import ToggleButton from '@/components/design/ToggleButton.vue'
+import ToggleButton from '@/components/design/toggle-button.vue'
 import { applicationActor } from '@/application'
 
 interface Props {

@@ -3,9 +3,9 @@
     :class="baseClasses"
     @click="$emit('toggle')"
   >
-    <ChevronLeft :size="14" />
+    <ChevronLeft v-if='!hideChevrons' :size="14" />
     <slot />
-    <ChevronRight :size="14" />
+    <ChevronRight v-if='!hideChevrons' :size="14" />
   </button>
 </template>
 
@@ -15,6 +15,7 @@ import { defineEmits } from 'vue'
 
 const props = defineProps<{
   active?: boolean
+  hideChevrons?: boolean
 }>()
 
 defineEmits<(e: 'toggle') => void>()
