@@ -1,3 +1,4 @@
+import breadcrumb, { breadcrumbWithParams } from '@/helpers/breadcrumb';
 import { setup, assign, log } from 'xstate';
 
 export const id = 'threads';
@@ -51,13 +52,7 @@ const threadsState = setup({
   },
   states: {
     'list': {
-      meta: { 
-        breadcrumb: {
-          label: 'Threads',
-          target: 'list',
-          default: true
-        },
-      },
+      meta: { ...breadcrumb('list', 'Threads', true) },
       on: {
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {
@@ -70,12 +65,7 @@ const threadsState = setup({
     },
 
     'create': {
-      meta: { 
-        breadcrumb: {
-          label: 'New Thread',
-          target: 'create'
-        },
-      },
+      meta: { ...breadcrumb('create', 'New Thread') },
       on: {
         THREAD_CREATED: {
           target: 'view',
@@ -88,15 +78,7 @@ const threadsState = setup({
     },
 
     'view': {
-      meta: {
-        breadcrumb: (ctx: ThreadsContext) => {
-          console.log('ctx: ', ctx);
-          return ({
-            label: ctx.selectedThreadId ? `Thread ${ctx.selectedThreadId}` : 'Thread',
-            target: 'view'
-          })
-        }
-      },
+      meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadId') },
     },
   },
 });
