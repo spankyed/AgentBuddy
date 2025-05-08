@@ -1,4 +1,6 @@
-import type { AnyActor, AnyMachineSnapshot } from "xstate";
+import type { AnyActor, AnyEventObject, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
+import { safeEvents } from "@/helpers/types/safe-events";
+import { GuardArgs } from "node_modules/xstate/dist/declarations/src/guards";
 
 export interface BreadcrumbItem {
   label: string;
@@ -49,4 +51,21 @@ export default function trailActor(actor: AnyActor, onStateChange: (data: Update
     onStateChange(computeCrumbs(snapshot));
     prevSnapshot = snapshot;
   }).unsubscribe;
+}
+
+// Helpers
+export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string };
+const typeOf = safeEvents<TrailClickEvent>();
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export const targetIs = ({ event }: any, params: { view: string }) => typeOf('TRAIL_CLICK', event).target === params.view
+
+type RouteTuple = [string, string];
+type TransitionConfig = TransitionConfigOrTarget<MachineContext, EventObject, EventObject, ProvidedActor, ParameterizedObject, ParameterizedObject, string, EventObject, MetaObject>
+export function TRAIL_CLICK<T extends TransitionConfig>(routes: RouteTuple[]) {
+  return {
+    ['TRAIL_CLICK' as keyof T]: routes.map(([target, view]) => ({
+      guard: { type: 'targetIs', params: { view } },
+      target,
+    }))
+  }
 }

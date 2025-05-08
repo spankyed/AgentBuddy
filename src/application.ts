@@ -3,7 +3,7 @@ import { assign, createActor, setup, enqueueActions, log, fromCallback, spawnChi
 import { createBrowserInspector } from '@statelyai/inspect';
 import type { Plugin } from '@/helpers/types';
 import logErrors from '@/helpers/log-errors';
-import { typeOf } from '@/helpers/types/typed-ev';
+import { safeEvents } from '@/helpers/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/helpers/trail-actor';
 import plugins, { defaultPlugin } from '@/plugins';
 import { createApp } from 'vue'
@@ -45,6 +45,8 @@ export type ApplicationEvent =
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
   | { type: 'TRAIL_CLICK'; target: string }
+
+const typeOf = safeEvents<ApplicationEvent>();
 
 export const applicationMachine = setup({
   types: {

@@ -3,6 +3,8 @@ import type { Message, ActionItem, ContextItem, CanvasContent } from '@/helpers/
 // import { typeOf } from '@/helpers/types/typed-ev';
 import mockData from './mockData';
 import breadcrumb from '@/helpers/breadcrumb';
+import { safeEvents } from '@/helpers/types/safe-events';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/helpers/trail-actor';
 
 export const id = 'agent';
 
@@ -17,15 +19,20 @@ export interface AgentContext {
 }
 
 export type AgentEvent =
+  | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; content: string }
+  | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
   // | { type: 'ADD_ACTION'; action: ActionItem }
   // | { type: 'UPDATE_ACTION'; actionId: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
-  | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
+  | TrailClickEvent;
 
+const typeOf = safeEvents<AgentEvent>();
+  
 const blankState = setup({
+  types: { context: {} as AgentContext, events: {} as AgentEvent },
   actors: {
     delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -39,8 +46,7 @@ const blankState = setup({
     addMessage: assign(({ context, event }) => ({
       messages: [...context.messages, { 
         id: Date.now().toString(),
-        content: event.content,
-        // content: typeOf('SEND_MESSAGE', event).content,
+        content: typeOf('SEND_MESSAGE', event).content,
         role: 'user' as const,
         timestamp: new Date()
       }]
@@ -48,48 +54,46 @@ const blankState = setup({
     addAssistantMessage: assign(({ context, event }) => ({
       messages: [...context.messages, {
         id: Date.now().toString(),
-        content: event.content,
-        // content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
+        content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
         role: 'assistant' as const,
         timestamp: new Date(),
       }]
     })),
-    addAction: assign(({ context, event }) => ({
-      actions: [...context.actions, event.action]
-      // actions: [...context.actions, typeOf('ADD_ACTION', event).action]
-    })),
-    updateAction: assign(({ context, event }) => {
-      const typedEvent = event;
-      // const typedEvent = typeOf('UPDATE_ACTION', event);
-      return {
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        actions: context.actions.map((action: any) => 
-          action.id === typedEvent.actionId 
-            ? { ...action, status: typedEvent.status }
-            : action
-        )
-      }
-    }),
     setCurrentThread: assign(({ event }) => ({
-      currentThreadId: event.threadId
-      // currentThreadId: typeOf('SELECT_THREAD', event).threadId
+      currentThreadId: typeOf('SELECT_THREAD', event).threadId
     })),
-    updateMessageInput: assign(({ event }) => ({
-      messageInput: event.content
-      // messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
-    })),
-    setPendingActionId: assign(() => {
-      const newAction: ActionItem = {
-        id: Date.now().toString(),
-        description: 'Processing your request...',
-        status: 'in-progress',
-        timestamp: new Date()
-      }
-      return { pendingActionId: newAction.id }
-    }),
     clearMessages: assign(() => ({
       messages: []
-    }))
+    })),
+    // addAction: assign(({ context, event }) => ({
+    //   actions: [...context.actions, typeOf('ADD_ACTION', event).action]
+    // })),
+    // updateAction: assign(({ context, event }) => {
+    //   const typedEvent = typeOf('UPDATE_ACTION', event);
+    //   return {
+    //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    //     actions: context.actions.map((action: any) => 
+    //       action.id === typedEvent.actionId 
+    //         ? { ...action, status: typedEvent.status }
+    //         : action
+    //     )
+    //   }
+    // }),
+    // updateMessageInput: assign(({ event }) => ({
+    //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
+    // })),
+    // setPendingActionId: assign(() => {
+    //   const newAction: ActionItem = {
+    //     id: Date.now().toString(),
+    //     description: 'Processing your request...',
+    //     status: 'in-progress',
+    //     timestamp: new Date()
+    //   }
+    //   return { pendingActionId: newAction.id }
+    // }),
+  },
+  guards: {
+    targetIs,
   }
 }).createMachine({
   id,
@@ -107,7 +111,6 @@ const blankState = setup({
     'display': {
       meta: { ...breadcrumb('display', 'Display', true) },
       on: {
-        
         VIEW_WORKLOAD: {
           target: 'workload',
         },
@@ -118,6 +121,10 @@ const blankState = setup({
     }
   },
   on: {
+    ...TRAIL_CLICK([
+      ['.display', 'display'],
+      ['.workload', 'workload'],
+    ]),
     SEND_MESSAGE: {
       actions: [
         'addMessage',

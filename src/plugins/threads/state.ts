@@ -1,4 +1,6 @@
 import breadcrumb, { breadcrumbWithParams } from '@/helpers/breadcrumb';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/helpers/trail-actor';
+import { safeEvents } from '@/helpers/types/safe-events';
 import { setup, assign, log } from 'xstate';
 
 export const id = 'threads';
@@ -7,26 +9,28 @@ interface ThreadsContext {
   selectedThreadId?: string;
 }
 
-type ThreadsEvents =
+type ThreadsEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'THREAD_CREATED'; id: string }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
   // internal
-  | { type: 'TRAIL_CLICK'; target: string };
+  | TrailClickEvent;
 
+const typeOf = safeEvents<ThreadsEvent>();
 
 // type Views = 'list' | 'create' | 'view';
 
 const threadsState = setup({
-  types: { context: {} as ThreadsContext, events: {} as ThreadsEvents },
+  types: { context: {} as ThreadsContext, events: {} as ThreadsEvent },
   actors: {},
-  actions: {},
+  actions: {
+    setSelectedThreadId: assign({
+      selectedThreadId: ({ event }) => typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event).id,
+    }),
+  },
   guards: {
-    targetIs: ({ event }, params: { view: string }) => {
-      console.log('targetIs: ', event);
-      return (event as any).target === params.view
-    }
+    targetIs
   }
 }).createMachine({
   id,
@@ -35,20 +39,12 @@ const threadsState = setup({
     selectedThreadId: undefined,
   }),
   on: {
-    'TRAIL_CLICK': [
-      {
-        guard: { type: 'targetIs', params: { view: 'list' } },
-        target: '.list',
-      },
-      // {
-      //   guard: { type: 'targetIs', params: { view: 'create' } },
-      //   target: '.create',
-      // },
-      // {
-      //   guard: { type: 'targetIs', params: { view: 'view' } },
-      //   target: '.view',
-      // },
-    ]
+    // ...TRAIL_CLICK<ThreadsEvent>([
+    ...TRAIL_CLICK([
+      ['.list', 'list'],
+      ['.create', 'create'],
+      ['.view', 'view'],
+    ]),
   },
   states: {
     'list': {
@@ -57,9 +53,7 @@ const threadsState = setup({
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {
           target: 'view',
-          actions: assign({
-            selectedThreadId: (_, e) => (e as any)?.id,
-          }),
+          actions: 'setSelectedThreadId',
         },
       },
     },
@@ -69,9 +63,7 @@ const threadsState = setup({
       on: {
         THREAD_CREATED: {
           target: 'view',
-          actions: assign({
-            selectedThreadId: (_, e) => (e as any)?.id,
-          }),
+          actions: 'setSelectedThreadId',
         },
         CANCEL_CREATE: { target: 'list' },
       },
