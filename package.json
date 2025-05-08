@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@statelyai/inspect": "^0.4.0",
     "@xstate/vue": "^4.0.2",
     "lucide-vue-next": "^0.503.0",
     "reka-ui": "^2.2.0",

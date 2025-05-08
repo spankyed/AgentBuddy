@@ -1,6 +1,6 @@
 import type { Actor } from 'xstate';
 import { assign, createActor, setup, enqueueActions, log, fromCallback, spawnChild, sendTo } from 'xstate';
-// import { createBrowserInspector } from '@statelyai/inspect';
+import { createBrowserInspector } from '@statelyai/inspect';
 import type { Plugin } from '@/helpers/types';
 import logErrors from '@/helpers/log-errors';
 import { typeOf } from '@/helpers/types/typed-ev';
@@ -10,7 +10,7 @@ import { createApp } from 'vue'
 import App from './app.vue'
 import './style.css'
 
-// const { inspect } = createBrowserInspector();
+const { inspect } = createBrowserInspector();
 
 declare global {
   interface Window {
@@ -140,7 +140,7 @@ export const applicationMachine = setup({
 
 export const applicationActor = createActor(applicationMachine, {
   systemId: 'application',
-  // inspect,
+  inspect,
   input: {
     defaultPlugin,
     plugins,
