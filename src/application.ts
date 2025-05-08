@@ -4,7 +4,7 @@ import { createBrowserInspector } from '@statelyai/inspect';
 import type { Plugin } from '@/helpers/types';
 import logErrors from '@/helpers/log-errors';
 import { typeOf } from '@/helpers/types/typed-ev';
-import trailActor, { type UpdateData } from '@/helpers/trail-actor';
+import trailActor, { computeCrumbs, type UpdateData } from '@/helpers/trail-actor';
 import plugins, { defaultPlugin } from '@/plugins';
 import { createApp } from 'vue'
 import App from './app.vue'
@@ -70,9 +70,9 @@ export const applicationMachine = setup({
     }),
   },
   actions: {
-    setTargetView: assign(({ event }) => ({
-      targetView: (event as any).target
-      // targetView: typeOf(['TRAIL_CLICK', 'TRAIL_UPDATE'], event).target
+    setTargetView: assign(({ event, system }, params?: string) => ({
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
     })),
     sendRouteClick: sendTo(({ system, context }) => system.get(context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
@@ -80,7 +80,7 @@ export const applicationMachine = setup({
       defaultToggles: { canvas: false, panel: false },
       activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
     })),
-    handledDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
+    handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
       defaultToggles: {
         ...context.defaultToggles,
         [params]: !context.defaultToggles[params]
@@ -93,12 +93,28 @@ export const applicationMachine = setup({
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });
       }
     }),
-    trailNewPlugin: sendTo('pluginTrailer', ({ context }) => ({
-      type: 'TRAIL_NEW_PLUGIN',
-      id: context.activePlugin.id
-    })),
+    trailNewPlugin: enqueueActions(({ enqueue, context, event }) => {
+      let pluginId = ''
+      if (event.type === 'DEFAULT_TOGGLE') {
+        pluginId = !context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id;
+      } else {
+        pluginId = typeOf('SELECT_PLUGIN', event).pluginId;
+      }
+
+      enqueue.sendTo('pluginTrailer', {
+        type: 'TRAIL_NEW_PLUGIN',
+        id: pluginId
+      });
+      // enqueue({ type: 'setTargetView', params: pluginId });
+      enqueue.assign(({ system }) => ({
+        targetView: computeCrumbs(system.get(pluginId).getSnapshot()).target
+      }))
+    }),
     trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id })
-  }
+  },
+  guards: {
+    isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
+  },
 }).createMachine({
   id: 'application',
   context: ({ input }) => ({
@@ -123,12 +139,24 @@ export const applicationMachine = setup({
     TRAIL_CLICK: {
       actions: ['setTargetView', 'sendRouteClick'],
     },
-    DEFAULT_TOGGLE: {
-      actions: {
-        type: 'handledDefaultToggle',
-        params: ({ event }) => event.area
+    DEFAULT_TOGGLE: [
+      {
+        guard: 'isCanvasToggle',
+        actions: [
+          'trailNewPlugin',
+          {
+            type: 'handleDefaultToggle',
+            params: ({ event }) => event.area // 'canvas'
+          }
+        ]
+      },
+      {
+        actions: {
+          type: 'handleDefaultToggle',
+          params: ({ event }) => event.area // 'panel'
+        }
       }
-    },
+    ],
     SELECT_PLUGIN: {
       actions: [
         'setActivePlugin',

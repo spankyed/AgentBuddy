@@ -1,4 +1,4 @@
-import { type AnyActor, type AnyMachineSnapshot, fromCallback } from "xstate";
+import type { AnyActor, AnyMachineSnapshot } from "xstate";
 
 export interface BreadcrumbItem {
   label: string;
@@ -7,10 +7,10 @@ export interface BreadcrumbItem {
 
 export type UpdateData = {
   crumbs: BreadcrumbItem[];
-  target: string;
+  target?: string;
 }
 
-function computeCrumbs(state: AnyMachineSnapshot): BreadcrumbItem[] {
+export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
   let crumbs = state._nodes.slice(1).map((node) => ({
     id: node.id,
     label: node.meta?.breadcrumb?.label,
@@ -21,29 +21,32 @@ function computeCrumbs(state: AnyMachineSnapshot): BreadcrumbItem[] {
     crumbs = crumbs.slice(1);
 
     if (!crumbs.length) {
-      return [];
+      return { crumbs: [], target: undefined };
     }
   }
 
-  return [
+  const breadcrumbs = [
     defaultState?.meta?.breadcrumb,
     ...crumbs,
   ].map(({ label, target }) => ({ label, target }));
+  
+  const target = breadcrumbs[breadcrumbs.length - 1]?.target; 
+
+  return { crumbs: breadcrumbs, target };
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export default function trailActor(actor: AnyActor, onStateChange: (data: UpdateData) => any) {
   let prevSnapshot: AnyMachineSnapshot | undefined;
 
+  onStateChange(computeCrumbs(actor.getSnapshot()));
+
   return actor.subscribe((snapshot: AnyMachineSnapshot) => {
     if (snapshot === prevSnapshot) {
       return;
     }
 
-    const crumbs = computeCrumbs(snapshot);
-    const target = crumbs[crumbs.length - 1]?.target; 
-
-    onStateChange({ crumbs, target });
+    onStateChange(computeCrumbs(snapshot));
     prevSnapshot = snapshot;
   }).unsubscribe;
 }

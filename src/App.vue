@@ -16,8 +16,7 @@
           @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
           :breadcrumbs="breadcrumbs"
           :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`">
-          <component v-if="toggles.canvas" :is="defaultPlugin.canvas" />
-          <!-- <component v-else :is="activePlugin.canvas" /> -->
+          <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
           <Router v-else :views="activePlugin.canvas" :target="targetView" />
         </CanvasArea>
 
