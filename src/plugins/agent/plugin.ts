@@ -1,10 +1,10 @@
 import type { Plugin } from "@/helpers/types";
-import state, { id } from './state.ts';
-import content from './canvas/content.vue';
-import workload from './canvas/blank.vue';
+import state, { id } from '@/plugins/agent/state.ts';
+import content from '@/plugins/agent/canvas/content.vue';
+import workload from '@/plugins/agent/canvas/blank.vue';
 // import workload from './canvas/workload.vue';
-import panel from './panel/panel.vue';
-import chat from './chat/chat.vue';
+import panel from '@/plugins/agent/panel/panel.vue';
+import chat from '@/plugins/agent/chat/chat.vue';
 
 const agentPlugin: Plugin = {
   id,
