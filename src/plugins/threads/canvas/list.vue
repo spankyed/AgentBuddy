@@ -5,7 +5,7 @@
       <button
         @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
         type="button"
-        class="px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 bg-primary-600 hover:bg-primary-500"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 bg-primary-600 hover:bg-primary-500"
       >
         <Plus :size="16" class="" />
         New Thread
@@ -78,14 +78,15 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between px-4 py-2 border rounded-lg bg-neutral-800 border-neutral-700"
+        class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-800 border-neutral-700 hover:bg-neutral-700"
+        @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
       >
         <!-- ID badge and truncated title -->
         <div class="flex items-center flex-1 space-x-2">
-          <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded">
+          <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded hover:bg-blue-400">
             {{ thread.id }}
           </span>
-          <span class="text-sm truncate text-neutral-200">
+          <span class="text-sm truncate text-neutral-200 hover:text-neutral-100">
             {{ thread.title || thread.id }}
           </span>
         </div>
