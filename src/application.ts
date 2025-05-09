@@ -80,7 +80,7 @@ export const applicationMachine = setup({
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: assign(({ context, event }) => ({
-      defaultToggles: { canvas: false, panel: false },
+      defaultToggles: { ...context.defaultToggles, canvas: false },
       activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
     })),
     handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
