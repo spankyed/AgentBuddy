@@ -1,6 +1,6 @@
 import type { Plugin } from "@/helpers/types";
 import state, { id } from './state.ts';
-import display from './canvas/display.vue';
+import content from './canvas/content.vue';
 import workload from './canvas/blank.vue';
 // import workload from './canvas/workload.vue';
 import panel from './panel/panel.vue';
@@ -12,7 +12,7 @@ const agentPlugin: Plugin = {
   // icon: Brain,
   state,
   canvas: {
-    display,
+    content,
     workload
   },
   panel,
