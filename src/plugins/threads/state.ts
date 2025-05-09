@@ -11,8 +11,8 @@ interface ThreadsContext {
 
 type ThreadsEvent =
   | { type: 'SHOW_CREATE_FORM' }
-  | { type: 'THREAD_CREATED'; id: string }
   | { type: 'SELECT_THREAD'; id: string }
+  | { type: 'CREATE_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
   // internal
   | TrailClickEvent;
@@ -26,7 +26,7 @@ const threadsState = setup({
   actors: {},
   actions: {
     setSelectedThreadId: assign({
-      selectedThreadId: ({ event }) => typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event).id,
+      selectedThreadId: ({ event }) => typeOf(['SELECT_THREAD', 'CREATE_THREAD'], event).id,
     }),
   },
   guards: {
@@ -61,7 +61,7 @@ const threadsState = setup({
     'create': {
       meta: { ...breadcrumb('create', 'New Thread') },
       on: {
-        THREAD_CREATED: {
+        CREATE_THREAD: {
           target: 'view',
           actions: 'setSelectedThreadId',
         },

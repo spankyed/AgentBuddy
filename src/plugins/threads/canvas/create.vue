@@ -67,6 +67,7 @@
         <button
           title="Cancel thread creation"
           type="submit"
+          @click="actor.send({ type: 'CANCEL_CREATE' })"
           :class="[
             'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-500 hover:text-white',
           ]"
@@ -76,6 +77,7 @@
         </button>
         <button
           type="submit"
+          @click="actor.send({ type: 'CREATE_THREAD' })"
           :disabled="!isSaving"
           :class="[
             'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2',
@@ -105,6 +107,12 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
+import { applicationActor } from '@/application'
+import { useSelector } from '@xstate/vue'
+import { id } from '@/plugins/threads/state.ts';
+
+const actor = applicationActor.system.get(id);
+// const someState = useSelector(actor, (state) => state.context.someState)
 
 const title = ref('')
 const type = ref('work-item')
