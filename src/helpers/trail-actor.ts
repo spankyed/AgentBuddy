@@ -13,12 +13,22 @@ export type UpdateData = {
 }
 
 export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
-  let crumbs = state._nodes.slice(1).map((node) => ({
-    id: node.id,
-    label: node.meta?.breadcrumb?.label,
-    target: node.meta?.breadcrumb?.target,
-  }))
-  const defaultState = Object.values(state.machine.states).find((state) => state.meta?.breadcrumb?.default);
+  let crumbs = state._nodes.slice(1).map((node) => {
+    const breadcrumb = node.meta?.breadcrumb;
+    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
+    return {
+      id: node.id,
+      label: breadcrumbItem?.label,
+      target: breadcrumbItem?.target,
+    };
+  });
+
+  const defaultState = Object.values(state.machine.states).find((s) => {
+    const breadcrumb = s.meta?.breadcrumb;
+    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
+    return breadcrumbItem?.default;
+  });
+
   if (defaultState?.id === crumbs[0]?.id) {
     crumbs = crumbs.slice(1);
 
@@ -31,8 +41,8 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
     defaultState?.meta?.breadcrumb,
     ...crumbs,
   ].map(({ label, target }) => ({ label, target }));
-  
-  const target = breadcrumbs[breadcrumbs.length - 1]?.target; 
+
+  const target = breadcrumbs[breadcrumbs.length - 1]?.target;
 
   return { crumbs: breadcrumbs, target };
 }
