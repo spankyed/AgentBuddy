@@ -47,35 +47,6 @@
     <!-- Threads list section -->
     <div class="space-y-2">
       <div
-        class="flex items-center justify-between px-4 py-2 border rounded-lg bg-neutral-800 border-neutral-700"
-      >
-        <!-- ID badge and truncated title -->
-        <div class="flex items-center flex-1 space-x-2">
-          <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded">
-            D-1
-          </span>
-          <span class="text-sm truncate text-neutral-200">
-            Draft thread
-          </span>
-        </div>
-        <!-- Status selector and tags -->
-        <div class="flex items-center space-x-3">
-          <select
-            class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
-          >
-            <option value="draft">Draft</option>
-            <option value="queued">Queued</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
-            <span class="px-2 text-xs text-blue-800 bg-blue-100 rounded-full">draft</span>
-          </div>
-          <ChevronRight :size="16" class="text-neutral-500" />
-        </div>
-      </div>
-
-      <div
         v-for="thread in threads"
         :key="thread.id"
         class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-800 border-neutral-700 hover:bg-neutral-700"
@@ -104,7 +75,13 @@
           <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
             <span v-for="tag in thread.tags" :key="tag" class="px-2 text-xs text-blue-800 bg-blue-100 rounded-full">{{ tag }}</span>
           </div>
-          <ChevronRight :size="16" class="text-neutral-500" />
+          <button
+            @click.stop="addDetail"
+            type="button"
+            class="flex items-center justify-center p-2 rounded-full text-neutral-500 hover:text-neutral-400 hover:bg-neutral-900"
+          >
+            <Headset :size="16" />
+          </button>
         </div>
       </div>
     </div>
@@ -115,7 +92,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Create from './create.vue'
-import { Mic, ChevronRight, Search, Plus } from 'lucide-vue-next'
+import { Headset, ChevronRight, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/components/design/Button.vue'
