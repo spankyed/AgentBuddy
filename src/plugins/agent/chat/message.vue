@@ -7,11 +7,11 @@
   >
     <div 
       :class="[
-        'max-w-[80%] rounded-xl  px-4 py-3',
+        'max-w-[80%] rounded-md  px-4 py-3',
         isUser ? 'bg-neutral-700 text-white' : 'bg-neutral-800 text-white'
       ]"
     >
-      <div class="text-sm leading-relaxed whitespace-pre-line">
+      <div class="leading-relaxed whitespace-pre-line text-md">
         <p 
           v-for="(paragraph, index) in message.content.split('\n')"
           :key="index"
