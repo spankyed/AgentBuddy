@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-5xl px-6 py-4 mx-auto space-y-6">
+  <div class="max-w-5xl px-6 py-4 mx-auto space-y-6 root-container">
     <div class="p-4 space-y-6">
       <!-- Title & Status -->
       <div class="flex flex-col gap-4 md:flex-row">
@@ -83,7 +83,7 @@
         </div>
         <div 
           v-if="isMessagesOpen"
-          class="mt-2 overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700"
+          class="mt-2 overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700 messages-container"
         >
           <ul class="space-y-1">
             <li v-for="(message, index) in messages" :key="index" 
@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
@@ -135,6 +135,22 @@ watch(type, () => setRandomPlaceholder())
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const isSaving = ref('')
 const isMessagesOpen = ref(false)
+
+watch(isMessagesOpen, async (isOpen) => {
+  if (isOpen) {
+    await nextTick()
+    const [messagesContainer, rootContainer] = [
+      document.querySelector('.messages-container'),
+      document.querySelector('.root-container')?.parentElement
+    ]
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+    }
+    if (rootContainer) {
+      rootContainer.scrollTop = rootContainer.scrollHeight
+    }
+  }
+})
 
 const addDetail = () => {
   threads.value.push('')
