@@ -97,7 +97,7 @@ const agentState = setup({
   }
 }).createMachine({
   id,
-  initial: 'content',
+  initial: 'canvas',
   context: ({ input }) => ({
     messages: mockData.messages,
     actions: mockData.actions,
@@ -109,7 +109,7 @@ const agentState = setup({
   }),
   on: {
     ...TRAIL_CLICK([
-      ['.content', 'content'],
+      ['.canvas', 'canvas'],
       ['.workload', 'workload'],
     ]),
     SEND_MESSAGE: {
@@ -148,9 +148,8 @@ const agentState = setup({
     // },
   },
   states: {
-    'content': {
-      id: 'content',
-      meta: { ...breadcrumb('content', 'Content', true) },
+    'canvas': {
+      meta: { ...breadcrumb('canvas', 'Agent', true) },
       on: {
         VIEW_WORKLOAD: {
           target: 'workload',
