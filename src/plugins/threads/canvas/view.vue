@@ -39,16 +39,16 @@
           <button
             type="button"
             @click="addDetail"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900 hover:bg-neutral-700"
+            class="flex items-center gap-2 px-4 py-2 mr-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
           >
             Link Thread
-            <Plus :size="16" class="text-neutral-500" />
+            <Plus :size="16" class="text-neutral-300" />
           </button>
 
           <span
             v-for="(thread, index) in threads"
             :key="index"
-            class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900 text-neutral-200 rounded"
+            class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
             {{ thread }}
             <button
@@ -69,7 +69,7 @@
           <button
             type="button"
             @click="addTag"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-200 transition-colors rounded hover:text-purple-100 h-7 bg-purple-900/30 hover:bg-purple-800/30"
+            class="flex items-center gap-2 px-4 py-2 mr-2 text-sm font-medium text-purple-200 transition-colors rounded hover:text-purple-100 h-7 bg-purple-900/30 hover:bg-purple-500/30"
           >
             Add Tag
             <Plus :size="16" class="text-purple-300" />

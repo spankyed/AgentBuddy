@@ -49,10 +49,10 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between border rounded-md cursor-pointer bg-neutral-900 border-neutral-700"
+        class="flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/50 border-neutral-800"
       >
       
-        <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-800" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
+        <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-600/30" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
           <!-- ID badge and truncated title -->
           <div class="flex items-center flex-1 space-x-2">
             <span class="px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -74,7 +74,7 @@
               <option value="inactive">Inactive</option>
             </select>
             <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
-              <span v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-100 bg-purple-900 rounded-full">{{ tag }}</span>
+              <span v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30">{{ tag }}</span>
             </div>
           </div>
         </div>
@@ -82,7 +82,7 @@
         <button
           @click.stop="addDetail"
           type="button"
-          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800"
+          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-600/30"
         >
           Chat
           <Headset :size="16" class="ml-2"/>
