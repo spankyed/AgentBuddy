@@ -59,9 +59,9 @@
 
           <!-- Mode select -->
           <select
-            class="absolute bottom-0 px-2 py-1 mb-2 transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            class="absolute bottom-0 px-2 py-1 mb-2 text-right transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
           >
-            <option value="conversation">Conversation</option>
+            <option value="conversation">Working</option>
             <option value="note-taking">Note Taking</option>
           </select>
         </div>
