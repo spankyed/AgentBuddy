@@ -12,7 +12,6 @@
     "@statelyai/inspect": "^0.4.0",
     "@xstate/vue": "^4.0.2",
     "lucide-vue-next": "^0.503.0",
-    "reka-ui": "^2.2.0",
     "vue": "^3.3.4",
     "vue-arrange": "^1.5.0",
     "xstate": "^5.19.2"
