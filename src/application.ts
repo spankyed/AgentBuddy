@@ -16,9 +16,7 @@ declare global {
   }
 }
 
-const applicationMachine = createApplicationState();
-
-export const applicationActor = createActor(applicationMachine, {
+export const applicationActor = createActor(createApplicationState(), {
   systemId: 'application',
   inspect,
   input: {

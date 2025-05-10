@@ -26,8 +26,6 @@
 
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { useSelector } from '@xstate/vue';
-import { applicationActor } from '../../state/application';
 
 interface Props {
   label: string

@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Component } from 'vue';
-import type { RouteComponents } from '@/plugins/types.ts';
+import type { RouteComponents } from '@/helpers/types';
 
 interface Props {
   views?: Component | RouteComponents;
@@ -15,8 +15,12 @@ interface Props {
 
 const props = defineProps<Props>();
 
-function isVueComponent(x: unknown): x is RouteComponents {
-  return x.render && x.setup; // Check if it's a Vue component - need to find a better way
+function isVueComponent(x: Component | RouteComponents | undefined): x is RouteComponents {
+  return (
+    typeof x === 'object' &&
+    (x as RouteComponents).render !== undefined &&
+    (x as RouteComponents).setup !== undefined
+  );
 }
 
 const resolved = computed<Component | undefined>(() => {
@@ -24,8 +28,11 @@ const resolved = computed<Component | undefined>(() => {
 
   if (!isVueComponent(props.views)) {
     // Prefer an explicit match, otherwise first component in the record
+
+    const target: string = props.target || '';
+
     return (
-      props.views[props.target || ''] ??
+      props.views[target as keyof typeof props['views']] ??
       Object.values(props.views)[0] ?? // safe fallback
       undefined
     );

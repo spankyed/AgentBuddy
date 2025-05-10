@@ -44,7 +44,6 @@ import CanvasArea from '@/components/layout/canvas-area.vue'
 import ChatArea from '@/components/layout/chat-area.vue'
 import InspectionPanel from '@/components/layout/inspection-panel.vue'
 import { applicationActor } from '@/application'
-import type { Plugin } from '@/plugins'
 import Router from '@/components/layout/router.vue'
 
 const send = applicationActor.send
@@ -53,7 +52,7 @@ const activePlugin = useSelector(applicationActor, (state) => state.context.acti
 const defaultPlugin = useSelector(applicationActor, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationActor, (state) => state.context.defaultToggles)
 const plugins = useSelector(applicationActor, (state) => state.context.plugins)
-const breadcrumbs = useSelector(applicationActor, (state) => state.context.breadcrumbs as Crumb[])
+const breadcrumbs = useSelector(applicationActor, (state) => state.context.breadcrumbs)
 const targetView = useSelector(applicationActor, (state) => state.context.targetView)
 </script>
 
