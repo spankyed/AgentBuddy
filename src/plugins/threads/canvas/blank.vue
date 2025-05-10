@@ -64,16 +64,23 @@
 
       <!-- Messages Container -->
       <div class="mt-6">
-        <button 
-          @click="isMessagesOpen = !isMessagesOpen"
-          class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-        >
-          <span>Messages ({{ messages.length }})</span>
-          <ChevronDown 
-            :size="16" 
-            :class="[`transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
-          />
-        </button>
+        <div class="flex gap-2">
+          <button 
+            @click="isMessagesOpen = !isMessagesOpen"
+            class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+          >
+            <span>View Messages ({{ messages.length }})</span>
+            <ChevronDown 
+              :size="16" 
+              :class="[`ml-1 transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
+            />
+          </button>
+          <button 
+            class="ml-auto text-sm font-medium text-white hover:underline"
+          >
+            View canvas and chat
+          </button>
+        </div>
         <div 
           v-if="isMessagesOpen"
           class="mt-2 overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700"
