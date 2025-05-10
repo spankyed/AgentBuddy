@@ -49,16 +49,16 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between border rounded-lg cursor-pointer bg-neutral-900 border-neutral-700"
+        class="flex items-center justify-between border rounded-md cursor-pointer bg-neutral-900 border-neutral-700"
       >
       
         <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-800" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
           <!-- ID badge and truncated title -->
           <div class="flex items-center flex-1 space-x-2">
-            <span class="px-2 py-1 text-xs font-semibold text-white bg-blue-500 rounded hover:bg-blue-400">
+            <span class="px-2 py-1 text-xs font-semibold text-neutral-500">
               {{ thread.id }}
             </span>
-            <span class="text-sm truncate text-neutral-200 hover:text-neutral-100">
+            <span class="text-sm text-white truncate hover:text-neutral-100">
               {{ thread.title || thread.id }}
             </span>
           </div>
@@ -82,7 +82,7 @@
         <button
           @click.stop="addDetail"
           type="button"
-          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-400 hover:bg-neutral-800"
+          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800"
         >
           Chat
           <Headset :size="16" class="ml-2"/>
