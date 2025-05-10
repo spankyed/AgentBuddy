@@ -98,7 +98,7 @@ import { ref } from 'vue'
 import { Headset, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector, useActor } from '@xstate/vue'
-import Button from '@/components/design/Button.vue'
+import Button from '@/components/design/button.vue'
 import { id } from '@/plugins/threads/state'
 
 interface Thread {

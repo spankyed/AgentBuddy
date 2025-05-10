@@ -1,6 +1,6 @@
 <template>
   <!-- Agent Canvas Content -->
-  <div class="max-w-4xl mx-auto relative">
+  <div class="relative max-w-4xl mx-auto">
     <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
       <template v-if="content.type === 'code'">
         <div class="relative">
@@ -38,7 +38,7 @@
   </div>
   <!-- Toggle Button -->
   <!-- <div style="display: flex; justify-content: center; position: absolute; top: 1rem; left: 0; width: 100%; z-index: 10;"> -->
-  <div class="absolute top-4 z-10 ml-1 pointer-events-none">
+  <div class="absolute z-10 ml-1 pointer-events-none top-4">
     <Button
       @click="actor.send({ type: 'VIEW_WORKLOAD' })"
       type="button"
@@ -63,8 +63,7 @@ import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/agent/state.ts';
 import { defineAsyncComponent } from 'vue'
-import ToggleButton from '@/components/design/toggle-button.vue'
-import Button from '@/components/design/Button.vue'
+import Button from '@/components/design/button.vue'
 
 const actor = applicationActor.system.get(id);
 const content: CanvasContent = useSelector(actor, (state) => state.context.canvasContent)
@@ -74,7 +73,6 @@ const content: CanvasContent = useSelector(actor, (state) => state.context.canva
 //   showAll.value = !showAll.value
 // }
 
-// const ToggleButton = defineAsyncComponent(() => import('@/components/design/ToggleButton.vue'))
 </script>
 
 <style lang="scss" module>
