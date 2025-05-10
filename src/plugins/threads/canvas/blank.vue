@@ -42,7 +42,7 @@
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-700 hover:bg-neutral-600"
           >
             Link Thread
-            <Plus size="16" class="text-neutral-500" />
+            <Plus :size="16" class="text-neutral-500" />
           </button>
 
           <span
@@ -56,7 +56,7 @@
               @click="removeThread(index)"
               class="p-1 ml-1 rounded focus:outline-none"
             >
-              <X size="16" class="text-neutral-400 hover:text-neutral-200" />
+              <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
             </button>
           </span>
         </div>
