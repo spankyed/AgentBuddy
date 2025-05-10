@@ -1,5 +1,5 @@
 import breadcrumb, { breadcrumbWithParams } from '@/helpers/breadcrumb';
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/helpers/trail-actor';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/state/trail-actor';
 import { safeEvents } from '@/helpers/types/safe-events';
 import { setup, assign, log } from 'xstate';
 

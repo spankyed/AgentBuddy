@@ -5,7 +5,7 @@ import {
   targetIs,          // guard that checks event.target against a CSS selector
   TRAIL_CLICK,        // helper that converts selector → state mappings
   type TrailClickEvent
-} from '@/helpers/trail-actor';
+} from '@/state/trail-actor';
 
 
 export const id = '_blank';

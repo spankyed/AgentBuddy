@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-5xl px-6 py-4 mx-auto space-y-6">
-    <div class="p-4 space-y-6 border rounded-lg bg-neutral-800 border-neutral-700">
+    <div class="p-4 space-y-6 border rounded-lg bg-neutral-900 border-neutral-700">
       <!-- Title & Status -->
       <div class="flex flex-col gap-4 md:flex-row">
         <div class="flex-1">

@@ -1,6 +1,5 @@
-import type { AnyActor, AnyEventObject, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
+import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
 import { safeEvents } from "@/helpers/types/safe-events";
-import { GuardArgs } from "node_modules/xstate/dist/declarations/src/guards";
 
 export interface BreadcrumbItem {
   label: string;

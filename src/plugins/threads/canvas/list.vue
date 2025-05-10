@@ -49,11 +49,10 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-800 border-neutral-700 hover:bg-neutral-700"
-        @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
+        class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-800 border-neutral-700 hover:bg-neutral-600"
       >
         <!-- ID badge and truncated title -->
-        <div class="flex items-center flex-1 space-x-2">
+        <div class="flex items-center flex-1 space-x-2" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
           <span class="px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded hover:bg-blue-400">
             {{ thread.id }}
           </span>
