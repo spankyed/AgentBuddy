@@ -49,7 +49,7 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-800 border-neutral-700 hover:bg-neutral-600"
+        class="flex items-center justify-between px-4 py-2 border rounded-lg cursor-pointer bg-neutral-900 border-neutral-700 hover:bg-neutral-800"
       >
         <!-- ID badge and truncated title -->
         <div class="flex items-center flex-1 space-x-2" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
@@ -72,7 +72,7 @@
             <option value="inactive">Inactive</option>
           </select>
           <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
-            <span v-for="tag in thread.tags" :key="tag" class="px-2 text-xs text-blue-800 bg-blue-100 rounded-full">{{ tag }}</span>
+            <span v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-100 bg-purple-900 rounded-full">{{ tag }}</span>
           </div>
           <button
             @click.stop="addDetail"
