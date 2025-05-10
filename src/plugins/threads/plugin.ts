@@ -3,7 +3,7 @@ import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
 import create from './canvas/create.vue';
-import blank from './canvas/blank.vue';
+import view from './canvas/view.vue';
 import panel from './panel.vue';
 
 const threadsPlugin: Plugin = {
@@ -14,7 +14,7 @@ const threadsPlugin: Plugin = {
   canvas: {
     list,
     create,
-    view: blank,
+    view,
   },
   panel,
 };
