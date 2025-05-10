@@ -62,6 +62,36 @@
         </div>
       </div>
 
+      <!-- Tags list -->
+      <div>
+        <label class="block mb-2 text-sm font-medium text-neutral-300">Tags</label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            @click="addTag"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-200 transition-colors rounded hover:text-purple-100 h-7 bg-purple-900/30 hover:bg-purple-800/30"
+          >
+            Add Tag
+            <Plus :size="16" class="text-purple-300" />
+          </button>
+
+          <span
+            v-for="(tag, index) in tags"
+            :key="index"
+            class="inline-flex items-center pl-3 py-0.5 text-sm bg-purple-900/30 text-purple-200 rounded"
+          >
+            {{ tag }}
+            <button
+              type="button"
+              @click="removeTag(index)"
+              class="p-1 ml-1 rounded focus:outline-none"
+            >
+              <X :size="16" class="text-purple-300 hover:text-purple-100" />
+            </button>
+          </span>
+        </div>
+      </div>
+
       <!-- Messages Container -->
       <div class="mt-6">
         <div class="flex gap-2">
@@ -133,6 +163,7 @@ const setRandomPlaceholder = () => {
 onMounted(() => setRandomPlaceholder())
 watch(type, () => setRandomPlaceholder())
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
+const tags = ref<string[]>(['bug', 'frontend', 'high-priority'])
 const isSaving = ref('')
 const isMessagesOpen = ref(false)
 
@@ -158,6 +189,14 @@ const addDetail = () => {
 
 const removeThread = (index: number) => {
   threads.value.splice(index, 1)
+}
+
+const addTag = () => {
+  tags.value.push('')
+}
+
+const removeTag = (index: number) => {
+  tags.value.splice(index, 1)
 }
 
 // Mock message data
