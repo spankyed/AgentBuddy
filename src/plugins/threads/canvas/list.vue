@@ -95,27 +95,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Create from './create.vue'
-import { Headset, ChevronRight, Search, Plus } from 'lucide-vue-next'
+import { Headset, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/components/design/Button.vue'
 import { id } from '@/plugins/threads/state'
 
-// Silences unused import warnings for icon components (used in template)
-
-// Get threads actor and state
-const actor = applicationActor.system.get(id)
-const showCreateForm = useSelector(actor, (snap: ThreadsSnapshot) => snap.context.showCreateForm)
-// biome-ignore lint/suspicious/noExplicitAny: We cast unknown snapshot to expected context shape
-const actions = useSelector(actor, (snapshot) => (snapshot as any).context.actions)
-
-// Local state for form inputs
-const searchKeyword = ref('')
-const title = ref('Project X')
-const status = ref('Active')
-
-// Define Thread interface and initialize threads with status and tags
 interface Thread {
   id: string
   title?: string
@@ -123,6 +108,9 @@ interface Thread {
   tags: string[]
 }
 
+const actor = applicationActor.system.get(id)
+
+const searchKeyword = ref('')
 const threads = ref<Thread[]>([
   { id: 'U-182', title: 'Use css variables from our design systems', status: 'queued', tags: ['backend'] },
   { id: 'P-13', title: 'Project X', status: 'active', tags: ['frontend', 'ui'] },
@@ -132,21 +120,7 @@ const threads = ref<Thread[]>([
 const addDetail = () => {
   threads.value.push({ id: '', title: '', status: 'open', tags: [] })
 }
-
-function actionButtonClass(status: string) {
-  switch (status) {
-    case 'completed':
-      return 'bg-neutral-700 text-white border-neutral-700 hover:bg-neutral-600'
-    case 'in-progress':
-      return 'bg-primary-700 text-white border-primary-700 hover:bg-primary-600'
-    default:
-      return 'bg-neutral-800 text-neutral-400 border-neutral-800 hover:bg-neutral-700'
-  }
-}
 </script>
 
 <style lang="scss" module>
-/********************
-Scoped styles can be added here if needed. Most styling is handled via Tailwind.
-********************/
 </style> 
