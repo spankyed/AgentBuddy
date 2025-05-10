@@ -64,8 +64,20 @@
 
       <!-- Messages Container -->
       <div class="mt-6">
-        <label class="block mb-2 text-sm font-medium text-neutral-300">Messages</label>
-        <div class="overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700">
+        <button 
+          @click="isMessagesOpen = !isMessagesOpen"
+          class="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+        >
+          <span>Messages ({{ messages.length }})</span>
+          <ChevronDown 
+            :size="16" 
+            :class="[`transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
+          />
+        </button>
+        <div 
+          v-if="isMessagesOpen"
+          class="mt-2 overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700"
+        >
           <ul class="space-y-1">
             <li v-for="(message, index) in messages" :key="index" 
                 :class="[
@@ -83,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { X, Plus } from 'lucide-vue-next'
+import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/threads/state.ts';
@@ -115,6 +127,7 @@ onMounted(() => setRandomPlaceholder())
 watch(type, () => setRandomPlaceholder())
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const isSaving = ref('')
+const isMessagesOpen = ref(false)
 
 const addDetail = () => {
   threads.value.push('')
