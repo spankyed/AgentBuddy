@@ -31,7 +31,7 @@
           v-model="searchKeyword"
           type="text"
           placeholder="Search"
-          class="px-4 py-2 text-sm border rounded-tl rounded-bl w-96 bg-neutral-900 border-neutral-700 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-primary-600"
+          class="px-4 py-2 text-sm rounded-tl rounded-bl w-96 bg-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-primary-600"
         />
         <button
           type="button"
@@ -49,10 +49,10 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/50 border-neutral-800"
+        class="flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/80 border-neutral-800"
       >
       
-        <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-600/30" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
+        <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-600/50" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
           <!-- ID badge and truncated title -->
           <div class="flex items-center flex-1 space-x-2">
             <span class="px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -82,7 +82,7 @@
         <button
           @click.stop="addDetail"
           type="button"
-          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-600/30"
+          class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-600/50"
         >
           Chat
           <Headset :size="16" class="ml-2"/>
