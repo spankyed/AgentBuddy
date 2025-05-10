@@ -1,6 +1,6 @@
-// ---------------------------------------------------------------------------
-// Utility:  Extract the specific event(s) out of a union
-// ---------------------------------------------------------------------------
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Utility:  Extract the specific event(s) out of a union
+ * ────────────────────────────────────────────────────────────────────────── */
 export type ExtractEvent<
   TEvent extends { type: string },
   TType extends TEvent['type']
@@ -34,5 +34,5 @@ export const safeEvents =
     }
     // TypeScript knows it's one of the expected types here
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        return event as any;
+    return event as any;
   };
