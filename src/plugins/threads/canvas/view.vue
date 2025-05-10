@@ -4,7 +4,7 @@
       <!-- Title & Status -->
       <div class="flex flex-col gap-4 md:flex-row">
         <div class="flex-1">
-          <label class="block mb-1 ml-1 text-sm font-medium text-neutral-500">Title</label>
+          <Label>Title</Label>
           <input
             v-model="title"
             type="text"
@@ -13,7 +13,7 @@
           />
         </div>
         <div class="w-full md:w-40">
-          <label class="block mb-1 ml-1 text-sm font-medium text-neutral-500">Type</label>
+          <Label>Type</Label>
           <select
             v-model="type"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -26,7 +26,7 @@
 
       <!-- Context -->
       <div>
-        <label class="block mb-2 ml-1 text-sm font-medium text-neutral-500">Context</label>
+        <Label>Context</Label>
         <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
           <p class="text-sm italic text-neutral-300">please use css variables from our design systems to remove hardcoded colors</p>
         </div>
@@ -34,7 +34,7 @@
 
       <!-- Threads list -->
       <div>
-        <label class="block mb-2 ml-1 text-sm font-medium text-neutral-500">Related Threads</label>
+        <Label>Related Threads</Label>
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
@@ -64,7 +64,7 @@
 
       <!-- Tags list -->
       <div>
-        <label class="block mb-2 ml-1 text-sm font-medium text-neutral-500">Tags</label>
+        <Label>Tags</Label>
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
@@ -134,7 +134,8 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/threads/state.ts';
+import { id } from '@/plugins/threads/state.ts'
+import Label from '@/components/design/label.vue'
 
 const actor = applicationActor.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
