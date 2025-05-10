@@ -108,22 +108,21 @@
           <button 
             class="ml-auto text-sm font-medium text-white hover:underline"
           >
-            View canvas and chat
+            Open thread
           </button>
         </div>
-        <div 
-          v-if="isMessagesOpen"
-          class="mt-2 overflow-y-auto border rounded-lg max-h-96 bg-neutral-800 border-neutral-700 messages-container"
-        >
-          <ul class="space-y-1">
-            <li v-for="(message, index) in messages" :key="index" 
-                :class="[
-                  'px-3 py-2 text-sm truncate',
-                  message.sender === 'user' ? 'bg-neutral-700 text-neutral-200' : 'bg-neutral-600 text-neutral-300'
-                ]">
-              {{ message.text }}
-            </li>
-          </ul>
+        <div v-if="isMessagesOpen" class="p-3 pr-0 mt-2 overflow-hidden rounded-sm bg-neutral-900">
+          <div class="overflow-y-auto max-h-96 messages-container">
+            <ul class="mr-2 space-y-1">
+              <li v-for="(message, index) in messages" :key="index" 
+                  :class="[
+                    'px-3 py-2 text-sm truncate rounded-sm',
+                    message.sender === 'user' ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-300'
+                  ]">
+                {{ message.text }}
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
