@@ -1,15 +1,15 @@
 // /apps/web/src/composables/useChat.ts
 // import { useQueryClient } from '@tanstack/vue-query';
 import { trpc } from './chat';
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
 export function useChat() {
-  const sessionId = ref<string>();
+  const sessionId: Ref<string | undefined> = ref<string | undefined>();
 
   async function start(model = 'gpt-4o') {
-    const { sessionId } = await trpc.chat.openSession.mutate({ model });
-    sessionId.value = sessionId;
-    trpc.chat.onToken.subscribe({ sessionId }, {
+    const { sessionId: newSessionId } = await trpc.chat.openSession.mutate({ model });
+    sessionId.value = newSessionId;
+    trpc.chat.onToken.subscribe({ sessionId: newSessionId }, {
       onData: (d) => tokens.value.push(d.token),
     });
   }
