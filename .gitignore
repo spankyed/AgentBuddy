@@ -4,3 +4,11 @@ node_modules
 .idea
 *.DS_Store
 .turbo
+
+# Build output
+dist/
+*/dist
+**/dist
+build/
+*/build
+**/build
