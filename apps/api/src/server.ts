@@ -1,0 +1,2 @@
+// Fastify + tRPC bootstrap
+export {}
