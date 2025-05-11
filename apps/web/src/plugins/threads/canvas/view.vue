@@ -134,7 +134,7 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/threads/state.ts'
+import { id } from '@/plugins/threads/state'
 import Label from '@/components/design/label.vue'
 
 const actor = applicationActor.system.get(id);

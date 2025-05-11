@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state.ts';
+import { id } from '@/plugins/agent/state';
 
 const actor = applicationActor.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
