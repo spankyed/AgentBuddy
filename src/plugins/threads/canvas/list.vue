@@ -85,7 +85,7 @@
           class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-700/50"
         >
           Chat
-          <Headset :size="16" class="ml-2"/>
+          <MessageCircleMore :size="16" class="ml-2"/>
         </button>
       </div>
     </div>
@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Headset, Search, Plus } from 'lucide-vue-next'
+import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/components/design/button.vue'
