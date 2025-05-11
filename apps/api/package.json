@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "build": "tsc -p . && tsup src/server.ts --format esm,cjs",
+    "build": "tsc -p . && tsup src/index.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js"
