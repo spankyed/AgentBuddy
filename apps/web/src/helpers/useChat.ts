@@ -7,9 +7,9 @@ export function useChat() {
   const sessionId = ref<string>();
 
   async function start(model = 'gpt-4o') {
-    const res = await trpc.chat.openSession.mutate({ model });
-    sessionId.value = res.sessionId;
-    trpc.chat.onToken.subscribe({ sessionId: res.sessionId }, {
+    const { sessionId } = await trpc.chat.openSession.mutate({ model });
+    sessionId.value = sessionId;
+    trpc.chat.onToken.subscribe({ sessionId }, {
       onData: (d) => tokens.value.push(d.token),
     });
   }
