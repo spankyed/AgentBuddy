@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,7 +15,8 @@
     "lucide-vue-next": "^0.503.0",
     "vue": "^3.3.4",
     "vue-arrange": "^1.5.0",
-    "xstate": "^5.19.2"
+    "xstate": "^5.19.2",
+    "@agent/api": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
@@ -25,6 +26,6 @@
     "tailwindcss": "^3.3.2",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
-    "vue-tsc": "^1.8.5"
+    "vue-tsc": "^1.8.27"
   }
 }
