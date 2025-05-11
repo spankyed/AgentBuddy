@@ -97,7 +97,7 @@
         <div class="flex gap-2">
           <button 
             @click="isMessagesOpen = !isMessagesOpen"
-            class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+            class="flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
           >
             <span>View Messages ({{ messages.length }})</span>
             <ChevronDown 
@@ -108,7 +108,7 @@
           <button 
             class="ml-auto text-sm font-medium text-white hover:underline"
           >
-            Open thread
+            Continue to chat
           </button>
         </div>
         <div v-if="isMessagesOpen" class="p-3 pr-0 mt-2 overflow-hidden rounded-sm bg-neutral-900">

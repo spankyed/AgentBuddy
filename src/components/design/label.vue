@@ -1,5 +1,5 @@
 <template>
-  <label :class="['block text-sm font-medium text-neutral-500 mb-2 ml-1', props.class]">
+  <label :class="['block text-sm font-medium text-neutral-500 mb-3 ml-0', props.class]">
     <slot></slot>
   </label>
 </template>
