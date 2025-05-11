@@ -1,0 +1,2 @@
+export declare const agentMachine: import("xstate").StateMachine<import("xstate").MachineContext, import("xstate").AnyEventObject, Record<string, import("xstate").AnyActorRef>, import("xstate").ProvidedActor, import("xstate").ParameterizedObject, import("xstate").ParameterizedObject, string, import("xstate").StateValue, string, unknown, import("xstate").NonReducibleUnknown, import("xstate").EventObject, import("xstate").MetaObject, any>;
+//# sourceMappingURL=agentMachine.d.ts.map

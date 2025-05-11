@@ -1,5 +1,13 @@
 {
-  "scripts": {
-    "build": "tsc -p . && tsup src/server.ts --format esm,cjs"
+  "compilerOptions": {
+    "target": "es2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "jsx": "preserve",
+    "types": []
   }
 }
