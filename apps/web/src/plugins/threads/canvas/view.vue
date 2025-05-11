@@ -133,11 +133,11 @@
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
-import { useSelector } from '@xstate/vue'
 import { id } from '@/plugins/threads/state'
 import Label from '@/components/design/label.vue'
 
-const actor = applicationActor.system.get(id);
+// Keep actor reference for future use
+// const actor = applicationActor.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
 
 const title = ref('')
@@ -164,7 +164,7 @@ onMounted(() => setRandomPlaceholder())
 watch(type, () => setRandomPlaceholder())
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const tags = ref<string[]>(['bug', 'frontend', 'high-priority'])
-const isSaving = ref('')
+// const isSaving = ref('')
 const isMessagesOpen = ref(false)
 
 watch(isMessagesOpen, async (isOpen) => {

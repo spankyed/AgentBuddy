@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
 import { applicationActor } from '@/application';
-import type { Plugin } from '@/plugins';
+import type { Plugin } from '@/helpers/types';
 import { computed } from 'vue';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();

@@ -5,7 +5,7 @@ import logErrors from '@/helpers/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
 import { createApplicationState } from '@/state/app-state';
 import { createApp } from 'vue'
-import App from './app.vue'
+import App from './App.vue'
 import './style.css'
 
 const { inspect } = createBrowserInspector();

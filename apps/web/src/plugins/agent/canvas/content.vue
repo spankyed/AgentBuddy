@@ -57,17 +57,20 @@
 
 <script setup lang="ts">
 import { Copy, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import type { CanvasContent } from '../helpers/types'
-import { ref } from 'vue'
+import type { CanvasContent } from '../types'
+import { ref, computed } from 'vue'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state.ts';
+import { id } from '@/plugins/agent/state';
 import { defineAsyncComponent } from 'vue'
 import Button from '@/components/design/button.vue'
 
-const actor = applicationActor.system.get(id);
-const content: CanvasContent = useSelector(actor, (state) => state.context.canvasContent)
+interface AgentContext {
+  canvasContent: CanvasContent
+}
 
+const actor = applicationActor.system.get(id);
+const content = useSelector(actor, (state: { context: AgentContext }) => state.context.canvasContent)
 // const showAll = ref(false)
 // function toggleShowAll() {
 //   showAll.value = !showAll.value

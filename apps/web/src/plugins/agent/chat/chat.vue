@@ -23,13 +23,17 @@ import ChatInput from './input.vue'
 import type { Message } from '@/plugins/agent/types'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state.ts';
+import { id } from '@/plugins/agent/state';
+
+interface AgentContext {
+  messages: Message[]
+}
 
 const actor = applicationActor.system.get(id);
-const messages = useSelector(actor, (state) => state.context.messages)
+const messages = useSelector(actor, (state: { context: AgentContext }) => state.context.messages)
 const messagesContainer = ref<HTMLElement | null>(null)
 
-watch(() => messages.length, async () => {
+watch(() => (messages.value as Message[]).length, async () => {
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
