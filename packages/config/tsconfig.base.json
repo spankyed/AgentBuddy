@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "build": "tsc -p . && tsup src/server.ts --format esm,cjs"
+  }
+}

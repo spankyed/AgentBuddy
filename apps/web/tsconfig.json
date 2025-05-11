@@ -1,4 +1,5 @@
 {
+  "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
     /* Linting */
     "strict": true,
