@@ -10,7 +10,8 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@agent/api": ["../api/src"]
     }
   },
   "files": [],

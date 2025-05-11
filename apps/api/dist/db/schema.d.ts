@@ -107,14 +107,14 @@ export declare const message: import("drizzle-orm/sqlite-core").SQLiteTableWithC
             tableName: "message";
             dataType: "string";
             columnType: "SQLiteText";
-            data: string;
+            data: "user" | "assistant" | "system";
             driverParam: string;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: ["user", "assistant", "system"];
             baseColumn: never;
             identity: undefined;
             generated: undefined;

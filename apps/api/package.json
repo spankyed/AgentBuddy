@@ -32,6 +32,8 @@
   "devDependencies": {
     "@trpc/client": "^11.1.2",
     "@trpc/server": "^11.1.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.17",
     "@types/ws": "^8.18.1",
     "adapters.ws": "link:@trpc/server/adapters.ws",
     "tsup": "^8.4.0",
