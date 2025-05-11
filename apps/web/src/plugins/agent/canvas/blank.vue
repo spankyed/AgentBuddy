@@ -107,7 +107,12 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 
   // delete if dropped on trash
   if (moving.destination.identifier === trashBin) {
-    targetTable.value = targetTable.value.filter((r: any) => r.id !== moving.payload.id) as any
+    const payloadId = moving.payload.id
+    if ('listId' in moving.payload) {
+      items.value = items.value.filter(r => r.id !== payloadId)
+    } else {
+      lists.value = lists.value.filter(r => r.id !== payloadId)
+    }
     return
   }
 
