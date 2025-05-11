@@ -1,5 +1,8 @@
 {
-  "extends": "../../packages/config/tsconfig.base.json",
+  "extends": [
+    "../../packages/config/tsconfig.base.json",
+    "@vue/tsconfig/tsconfig.json"
+  ],
   "compilerOptions": {
     /* Linting */
     "strict": false,
@@ -7,10 +10,14 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
+    /* Module Resolution */
+    "moduleResolution": "node",
+    "types": ["vite/client", "vue", "@trpc/client"],
+
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["src/*"]
     }
   },
   "include": ["src/**/*"],

@@ -1,6 +1,6 @@
 // /apps/web/src/composables/useChat.ts
 // import { useQueryClient } from '@tanstack/vue-query';
-import { trpc } from '@abuddy/api';
+import { trpc } from './chat';
 import { ref } from 'vue';
 
 export function useChat() {
