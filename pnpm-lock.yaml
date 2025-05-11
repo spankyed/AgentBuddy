@@ -73,7 +73,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@agent/api':
+      '@abuddy/api':
         specifier: workspace:*
         version: link:../api
       '@statelyai/inspect':

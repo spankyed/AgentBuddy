@@ -1,5 +1,5 @@
 {
-  "name": "@agent/web",
+  "name": "@abuddy/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,7 +20,7 @@
     "vue": "^3.3.4",
     "vue-arrange": "^1.5.0",
     "xstate": "^5.19.2",
-    "@agent/api": "workspace:*"
+    "@abuddy/api": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
