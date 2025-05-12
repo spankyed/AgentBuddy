@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import type { AddPrefix } from './prefix-events';
-import type { Ev } from '../state/bus';
 import { type EventsFromSchemas, pluginBus } from './plugin-bus';
 
 const busEvent = pluginBus('chat')

@@ -2,6 +2,8 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../db/client';
 import { LlmRunner } from '../llm/runner';
+import { type EventsWithoutPlugin, pluginBus } from '../shared/plugin-bus';
+import { z } from 'zod';
 
 export interface Ctx {
   model: string;
@@ -9,17 +11,23 @@ export interface Ctx {
   abortController?: AbortController;
 }
 
-export type Ev =
-  | { type: 'USER_MSG'; content: string }
-  | { type: 'LLM_DONE' }
-  | { type: 'TOKEN'; token: string }
-  | { type: 'CANCEL' };
+const busEvent = pluginBus('chat')
+
+const ChatEvents = [
+  busEvent('USER_MSG', { content: z.string() }),
+  busEvent('LLM_DONE'),
+  busEvent('TOKEN', { token: z.string() }),
+  busEvent('CANCEL'),
+] as const
+
+export type BusEvent =
+  | EventsWithoutPlugin<typeof ChatEvents>
 
 
-export const agentMachine = setup({
+export const chatMachine = setup({
   types: {
     context: {} as Ctx,
-    events: {} as Ev,
+    events: {} as BusEvent,
   },
   actions: {
     storePrompt: assign({
