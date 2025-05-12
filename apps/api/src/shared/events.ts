@@ -1,16 +1,16 @@
 import { z } from 'zod';
-import { AgentEvents, type AgentOutgoingEvents } from '../state/plugins/agent/state';
-import type { EventsFromSchemas } from './plugin-bus';
+import { type agent, IncomingAgentEvents, type OutgoingAgentEvents } from '../state/plugins/agent/state';
+import type { EventsFromSchemas, WithPlugin } from './plugin-bus';
 
 const BusEvents = [
-  ...AgentEvents,
+  ...IncomingAgentEvents,
 ] as const
 
 export type IncomingPluginEvents =
-  | EventsFromSchemas<typeof AgentEvents>
+  | EventsFromSchemas<typeof IncomingAgentEvents>
 
 export type OutgoingPluginEvents = 
-  | AgentOutgoingEvents
+  | WithPlugin<typeof agent, OutgoingAgentEvents>
 
 /** Zod validator derived from above union */
 export const IncomingEventSchema: z.ZodType<IncomingPluginEvents> = z.discriminatedUnion('type', BusEvents);

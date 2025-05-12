@@ -8,11 +8,11 @@ import { z } from 'zod';
 import { safeEvents } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
 
-const agent = 'agent' as const;
+export const agent = 'agent' as const;
 
 const busEvent = pluginBus(agent);
 
-export const AgentEvents = [
+export const IncomingAgentEvents = [
   busEvent('USER_MSG', { content: z.string() }),
   busEvent('CANCEL'),
   // busEvent('LLM_DONE'),
@@ -23,13 +23,11 @@ export type AgentInternalEvents =
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 
-export type AgentEvent = Simplify<EventsWithoutPlugin<typeof AgentEvents> | AgentInternalEvents>;
-
-export type AgentOutgoingEvents = WithPlugin<
-  typeof agent,
+export type OutgoingAgentEvents = 
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
-  >;
+
+export type ReceivableAgentEvent = Simplify<EventsWithoutPlugin<typeof IncomingAgentEvents> | AgentInternalEvents>;
 
 export interface AgentContext {
   model: string;
@@ -40,7 +38,7 @@ export interface AgentContext {
 export const agentMachine = setup({
   types: {
     context: {} as AgentContext,
-    events: {} as AgentEvent,
+    events: {} as ReceivableAgentEvent,
   },
   actions: {
     emitToken: ({ system }) => {
