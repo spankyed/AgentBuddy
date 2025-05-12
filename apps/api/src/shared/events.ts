@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { AgentPluginEvents  } from '../state/plugins/agent/state';
-import type { EventsFromSchemas } from './type-helpers';
+import { mergePlugins, type EventsFromSchemas } from './type-helpers';
 
-const events = {
- ...AgentPluginEvents
-};
+
+const events = mergePlugins(
+  AgentPluginEvents,
+);
 
 export type OutgoingPluginEvents = typeof events.outgoing;
 export type IncomingPluginEvents = EventsFromSchemas<typeof events.incoming>;

@@ -92,6 +92,25 @@ export function emit<
   };
 }
 
+export function mergePlugins<
+  const P extends readonly {                           // tuple of plugins
+    incoming: readonly z.ZodTypeAny[];
+    outgoing: unknown;
+  }[]
+>(...plugins: P) {
+  /* 1 ─ runtime concat for the zod discriminatedUnion */
+  const incoming = plugins.flatMap(p => p.incoming) as unknown as
+    { [K in keyof P]: P[K]['incoming'] }[number];
+
+  /* 2 ─ type‑level union of all `.outgoing` members */
+  type Outgoing = { [K in keyof P]: P[K]['outgoing'] }[number];
+
+  return {                 // the value we return
+    incoming,              // <- real array of schemas
+    outgoing: {} as Outgoing,   // <- phantom, type‑only
+  } as const;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Utility:  Type-safe wrapper for sendParent
  * ────────────────────────────────────────────────────────────────────────── */
