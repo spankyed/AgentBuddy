@@ -31,7 +31,7 @@ export interface AgentContext {
   abortController?: AbortController;
 }
 
-export const AgentPluginEvents = fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
+export const AgentPluginEvents = fromPlugin(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
 
 export const agentMachine = setup({
   types: {

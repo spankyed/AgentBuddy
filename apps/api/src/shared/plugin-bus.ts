@@ -63,12 +63,12 @@ export function pluginBus<P extends string>(plugin: P) {
 
 /* UPDATED signature — note the “ = never ” default on T */
 export function fromPlugin<
-  O extends { type: string },   // outgoing‑event union (supplied explicitly)
-  P extends string              // plugin literal (captured from value `plugin`)
->() {
+    T extends readonly z.ZodTypeAny[]   // inferred from first argument
+  >(incomingEvents: T) {
   return <
-    T extends readonly z.ZodTypeAny[]   // inferred from argument
-  >(incomingEvents: T) => ({
+    O extends { type: string },   // outgoing‑event union
+    P extends string              // plugin literal
+  >() => ({
       incoming: incomingEvents,
       outgoing: {} as WithPlugin<P, O>,
     });
