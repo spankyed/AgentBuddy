@@ -2,12 +2,14 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
-import { type EventsWithoutPlugin, pluginBus } from '../../../shared/plugin-bus';
+import { emit, type EventsWithoutPlugin, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
+import { safeEvents } from '../../../shared/safe-events';
+import { bus } from '../../bus-state';
 
-const id = 'agent' as const;
+const agent = 'agent' as const;
 
-const busEvent = pluginBus(id);
+const busEvent = pluginBus(agent);
 
 export const AgentEvents = [
   busEvent('USER_MSG', { content: z.string() }),
@@ -24,12 +26,22 @@ export interface AgentContext {
   abortController?: AbortController;
 }
 
+export type AgentOutgoingEvents = 
+  | { type: 'LLM_DONE' }
+  | { type: 'TOKEN'; token: string };
+
 export const agentMachine = setup({
   types: {
     context: {} as AgentContext,
     events: {} as AgentEvent,
   },
   actions: {
+    emitToken: ({ system }) => {
+      system.get(bus).send(emit(agent, {
+        type: 'TOKEN',
+        token: 'some string'
+      }));
+    },
     storePrompt: assign({
       userPrompt: ({ event }) => (event.type === 'USER_MSG' ? event.content : undefined),
     }),
@@ -42,7 +54,7 @@ export const agentMachine = setup({
   },
 }).createMachine(
   {
-    id,
+    id: agent,
     initial: 'idle',
     context: {
       model: 'gpt-4',

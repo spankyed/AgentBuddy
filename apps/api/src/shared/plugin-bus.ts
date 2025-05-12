@@ -1,4 +1,5 @@
 import { z, type ZodRawShape } from 'zod';
+import type { OutgoingPluginEvents } from './events';
 
 /* ———————————————————————————————————————————————— *
  *  Utilities to keep IDE tooltips tidy
@@ -40,4 +41,21 @@ export function pluginBus<P extends string>(plugin: P) {
     }) as z.ZodObject<
       Simplify<{ type: z.ZodLiteral<T>; plugin: z.ZodLiteral<P> } & S>
     >;
+}
+
+export function emit<
+  P extends string,
+  E extends OutgoingPluginEvents
+>(
+  plugin: P,
+  event: E
+): {
+  type: 'OUTGOING';
+  event: Simplify<E & { plugin: P }>;
+} {
+  // runtime is just an object spread; the heavy lifting is at type level
+  return {
+    type: 'OUTGOING',
+    event: { ...event, plugin } as Simplify<E & { plugin: P }>,
+  };
 }
