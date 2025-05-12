@@ -1,6 +1,5 @@
 import { trpc } from './trpc';
 import { ref, onUnmounted } from 'vue';
-import type { WireEvent } from '../../../api/src/shared/rpc-events';
 
 export function useChat() {
   const tokens = ref<string[]>([]);
@@ -11,7 +10,7 @@ export function useChat() {
     subscription = trpc.bus.sub.subscribe(
       { sessionId: 'shared' }, // sessionId is ignored now
       {
-        onData: (event: WireEvent) => {
+        onData: (event) => {
           if (event.type === 'TOKEN') {
             tokens.value.push(event.token);
           }
