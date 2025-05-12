@@ -1,17 +1,9 @@
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingPluginEvents } from '../shared/events';
-import { initTRPC } from '@trpc/server';
-import type { Context } from '../server';
+import { procedure, router } from '.';
 
-const t = initTRPC.context<Context>().create();
-
-export const router    = t.router;
-export const procedure = t.procedure;
-export const mergeRouters = t.mergeRouters;
-
-
-export const busRouter = router({
+export const pluginBusRouter = router({
   /** COMMAND / fire-and-forget */
   send: procedure
     .input(IncomingEventSchema)
@@ -34,6 +26,3 @@ export const busRouter = router({
       }),
     ),
 });
-
-export const appRouter = router({ bus: busRouter });
-export type AppRouter = typeof appRouter;
