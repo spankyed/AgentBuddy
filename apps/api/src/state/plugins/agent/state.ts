@@ -5,7 +5,7 @@ import { LlmRunner } from './runner';
 import type { EventsWithoutPlugin, Simplify, WithPlugin } from '../../../shared/plugin-bus';
 import { emit, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
-import { safeEvents } from '../../../shared/safe-events';
+import { sendParentSafe } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
 
 export const agent = 'agent' as const;
@@ -15,8 +15,6 @@ const busEvent = pluginBus(agent);
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { content: z.string() }),
   busEvent('CANCEL'),
-  // busEvent('LLM_DONE'),
-  // busEvent('TOKEN', { token: z.string() }),
 ] as const
 
 export type AgentInternalEvents = 
@@ -87,16 +85,18 @@ export const agentMachine = setup({
   }
 );
 
+const sendBack = sendParentSafe<AgentInternalEvents>();
+
 async function runLlm(ctx: AgentContext, signal: AbortSignal) {
   const { userPrompt = '', model } = ctx;
   const runner = new LlmRunner(model);
 
   for await (const token of runner.stream(userPrompt, { signal })) {
     // Persist & bubble up token events
-    sendParent({ type: 'TOKEN', token });
+    sendBack('TOKEN', { token });
   }
 
-  sendParent({ type: 'LLM_DONE' });
+  sendBack('LLM_DONE');
   // Persist assistant message
   // await db
   //   .insert(schema.message)

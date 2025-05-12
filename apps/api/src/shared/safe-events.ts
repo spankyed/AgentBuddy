@@ -1,3 +1,16 @@
+import { sendParent } from 'xstate';
+import type { Simplify } from './plugin-bus';
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Utility:  Type-safe wrapper for sendParent
+ * ────────────────────────────────────────────────────────────────────────── */
+export function sendParentSafe<TEvent extends { type: string }>() {
+  return <Type extends TEvent['type']>(
+    type: Type,
+    payload?: Simplify<Omit<Extract<TEvent, { type: Type }>, 'type'>>
+  ) => sendParent({ type, ...(payload || {}) });
+}
+
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Utility:  Extract the specific event(s) out of a union
  * ────────────────────────────────────────────────────────────────────────── */
