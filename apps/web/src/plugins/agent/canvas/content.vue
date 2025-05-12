@@ -59,7 +59,7 @@
 import { Copy } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import Button from '@/components/design/button.vue'
+import Button from '@/components/design/futton.vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
 const actor: AgentState = applicationActor.system.get(id);

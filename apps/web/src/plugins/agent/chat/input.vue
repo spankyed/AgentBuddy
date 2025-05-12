@@ -84,7 +84,7 @@ import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Thread } from './threads.vue'
 import type { Component } from 'vue'
-import Button from '@/components/design/button.vue'
+import Button from '@/components/design/futton.vue'
 
 // Define emits including new button actions
 const emit = defineEmits<{
