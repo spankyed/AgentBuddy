@@ -4,6 +4,7 @@ node_modules
 .idea
 *.DS_Store
 .turbo
+.vite
 
 # Build output
 dist/
