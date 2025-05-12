@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentEvents } from '../state/plugins/agent';
+import { AgentEvents } from '../state/plugins/agent/state';
 import type { EventsFromSchemas } from './plugin-bus';
 
 const BusEvents = [

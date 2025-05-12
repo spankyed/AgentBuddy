@@ -1,8 +1,8 @@
 import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
-import { db, schema } from '../../db/client';
-import { LlmRunner } from '../../llm/runner';
-import { type EventsWithoutPlugin, pluginBus } from '../../shared/plugin-bus';
+import { db, schema } from '../../../db/client';
+import { LlmRunner } from './runner';
+import { type EventsWithoutPlugin, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
 
 const id = 'agent' as const;
