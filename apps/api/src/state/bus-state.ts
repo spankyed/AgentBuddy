@@ -20,10 +20,9 @@ export const busMachine = setup({
     emitted: {} as OutgoingEvent,
   },
   actions: {
-    routeIncoming: ({ event, system }) => {
-      // Handle incoming event
-      console.log('Routing incoming event:', event);
-      system.get(event.event.plugin).send(event);
+    routeIncoming: ({ event: incoming, system }) => {
+      console.log('Routing incoming event:', incoming);
+      system.get(incoming.event.plugin).send(incoming.event);
     }
   }
 }).createMachine(
