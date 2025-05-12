@@ -21,9 +21,7 @@ export type WithPlugin<
   P extends string,              // the plugin literal
   E extends { type: string },    // the original union (must have `type`)
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-> = E extends any
-      ? Simplify<E & { plugin: P }>
-      : never;
+> = E extends any ? Simplify<E & { plugin: P }> : never;
 
 /* ———————————————————————————————————————————————— *
  *   Factory that bakes a fixed `plugin` literal in
@@ -51,6 +49,26 @@ export function pluginBus<P extends string>(plugin: P) {
     }) as z.ZodObject<
       Simplify<{ type: z.ZodLiteral<T>; plugin: z.ZodLiteral<P> } & S>
     >;
+}
+
+/* ———————————————————————————————————————————————— *
+ *   Helper to generate plugin event definitions
+ *    const events = {
+ *      ...fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
+ *    }
+ * ———————————————————————————————————————————————— */
+
+/* UPDATED signature — note the “ = never ” default on T */
+export function fromPlugin<
+  O extends { type: string },   // outgoing‑event union (supplied explicitly)
+  P extends string              // plugin literal (captured from value `plugin`)
+>() {
+  return <
+    T extends readonly z.ZodTypeAny[]   // inferred from argument
+  >(incomingEvents: T) => ({
+      incoming: incomingEvents,
+      outgoing: {} as WithPlugin<P, O>,
+    });
 }
 
 export function emit<

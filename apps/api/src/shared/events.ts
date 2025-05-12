@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { type agent, IncomingAgentEvents, type OutgoingAgentEvents } from '../state/plugins/agent/state';
-import type { EventsFromSchemas, WithPlugin } from './plugin-bus';
+import { fromPlugin, type EventsFromSchemas } from './plugin-bus';
 
-const BusEvents = [
-  ...IncomingAgentEvents,
-] as const
+const events = {
+  ...fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
+};
 
-export type OutgoingPluginEvents = 
-  | WithPlugin<typeof agent, OutgoingAgentEvents>
+const BusEvents = events.incoming;
+
+export type OutgoingPluginEvents = typeof events.outgoing;
 
 export type IncomingPluginEvents = EventsFromSchemas<typeof BusEvents>;
 
