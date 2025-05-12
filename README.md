@@ -20,3 +20,7 @@ For VSCode users, add these settings to your .vscode/settings.json:
   "typescript.enablePromptUseWorkspaceTsdk": true
 }
 ```
+
+## License
+
+Private project - All rights reserved

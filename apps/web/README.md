@@ -1,6 +1,6 @@
 # AgentBuddy
 
-A modern Vue 3 application built with TypeScript and Vite, featuring a plugin-based architecture with XState state management. The application provides a flexible workspace environment with a toolbar, canvas area, chat interface, and inspection panel.
+Built with Vue 3, TypeScript and Vite. We've developed a plugin-based architecture with XState state management. The application features a flexible canvas area, chat interface, inspection panel, and toolbar.
 
 ## Tech Stack
 
@@ -34,12 +34,11 @@ Plugins available in the application:
 
 - **Agent**: Default plugin (main functionality)
 - **Threads**: Thread management
-- **Dialog**: Conversation interface
-- **Brain**: Knowledge management
+- **Dialog**: Conversation pathways
+- **Brain**: Operations management
 - **Files**: File system interface
-- **Code**: Code editing/viewing
+- **Code**: Code editing/viewing tools
 - **Prompt Builder**: AI prompt construction
-- **Angel**: Assistant interface
 
 ## Project Structure
 
