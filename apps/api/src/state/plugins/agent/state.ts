@@ -1,4 +1,4 @@
-import { createMachine, assign, sendParent, setup } from 'xstate';
+import { assign, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
