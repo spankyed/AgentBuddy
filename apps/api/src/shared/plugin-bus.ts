@@ -4,7 +4,7 @@ import type { OutgoingPluginEvents } from './events';
 /* ———————————————————————————————————————————————— *
  *  Utilities to keep IDE tooltips tidy
  * ———————————————————————————————————————————————— */
-type Simplify<T> = { [K in keyof T]: T[K] } & {};
+export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 type StripPlugin<T> = T extends { plugin: string } ? Omit<T, 'plugin'> : T;
 
 // From a readonly array of Zod schemas → union of inferred objects
@@ -19,6 +19,7 @@ export type EventsWithoutPlugin<
 export type WithPlugin<
   P extends string,              // the plugin literal
   E extends { type: string },    // the original union (must have `type`)
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 > = E extends any
       ? Simplify<E & { plugin: P }>
       : never;

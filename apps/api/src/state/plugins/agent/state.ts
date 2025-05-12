@@ -2,7 +2,8 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
-import { emit, type EventsWithoutPlugin, pluginBus, WithPlugin } from '../../../shared/plugin-bus';
+import type { EventsWithoutPlugin, Simplify, WithPlugin } from '../../../shared/plugin-bus';
+import { emit, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
 import { safeEvents } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
@@ -13,12 +14,16 @@ const busEvent = pluginBus(agent);
 
 export const AgentEvents = [
   busEvent('USER_MSG', { content: z.string() }),
-  busEvent('LLM_DONE'),
-  busEvent('TOKEN', { token: z.string() }),
   busEvent('CANCEL'),
+  // busEvent('LLM_DONE'),
+  // busEvent('TOKEN', { token: z.string() }),
 ] as const
 
-export type AgentEvent = EventsWithoutPlugin<typeof AgentEvents>
+export type AgentInternalEvents = 
+  | { type: 'LLM_DONE' }
+  | { type: 'TOKEN'; token: string }
+
+export type AgentEvent = Simplify<EventsWithoutPlugin<typeof AgentEvents> | AgentInternalEvents>;
 
 export type AgentOutgoingEvents = WithPlugin<
   typeof agent,
