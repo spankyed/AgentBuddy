@@ -1,137 +1,158 @@
-import { sendParent } from 'xstate';
+/* ============================================================================
+ *  Type‑helper toolkit for the Plugin‑Bus layer
+ *  – Keeps Zod schemas, XState events, and runtime helpers in sync
+ * ========================================================================== */
+
 import { z, type ZodRawShape } from 'zod';
+import { sendParent } from 'xstate';
 import type { OutgoingPluginEvents } from './events';
 
-/* ———————————————————————————————————————————————— *
- *  Utilities to keep IDE tooltips tidy
- * ———————————————————————————————————————————————— */
+/* --------------------------------------------------------------------------
+ *  1.  Tiny utilities
+ * ------------------------------------------------------------------------ */
+/** Flatten intersections so tooltips stay readable. */
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
+
+/** Remove the `plugin` field when you only need the core event shape. */
 type StripPlugin<T> = T extends { plugin: string } ? Omit<T, 'plugin'> : T;
 
-/* ──  Helper to merge plugin events with internal events ─────── */
-export type MergeReceivable<TIncoming extends readonly z.ZodTypeAny[], TInternal> = Simplify<EventsWithoutPlugin<TIncoming> | TInternal>;
-
-// From a readonly array of Zod schemas → union of inferred objects
+/* --------------------------------------------------------------------------
+ *  2.  Transform Zod schema tuples ⇢ event unions
+ * ------------------------------------------------------------------------ */
+/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
 export type EventsFromSchemas<
   S extends readonly z.ZodTypeAny[]
-  > = { [K in keyof S]: z.infer<S[K]> }[number];
+> = { [K in keyof S]: z.infer<S[K]> }[number];
 
+/** Same as above but *without* the `plugin` property. */
 export type EventsWithoutPlugin<
   S extends readonly z.ZodTypeAny[]
-  > = Simplify<StripPlugin<EventsFromSchemas<S>>>;
+> = Simplify<StripPlugin<EventsFromSchemas<S>>>;
 
-/* ──  Generic helper: add a plugin literal to each union member ─────── */
+/** Merge incoming (external) events with internal machine events. */
+export type MergeReceivable<
+  TIncoming extends readonly z.ZodTypeAny[],
+  TInternal
+> = Simplify<EventsWithoutPlugin<TIncoming> | TInternal>;
+
+/* --------------------------------------------------------------------------
+ *  3.  Helper: add a `plugin` literal to every union member
+ * ------------------------------------------------------------------------ */
 export type WithPlugin<
-  P extends string,              // the plugin literal
-  E extends { type: string },    // the original union (must have `type`)
+  P extends string,
+  E extends { type: string }
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 > = E extends any ? Simplify<E & { plugin: P }> : never;
 
-/* ———————————————————————————————————————————————— *
- *   Factory that bakes a fixed `plugin` literal in
- *    const chatBus = pluginBus('chat')
- *    chatBus('USER_MSG', { content: z.string() })
- *      → z.object({
- *          type:    z.literal('USER_MSG'),
- *          content: z.string(),
- *          plugin:  z.literal('chat')
- *        })
- * ———————————————————————————————————————————————— */
+/* --------------------------------------------------------------------------
+ *  4.  Factory: build Zod schemas that carry a fixed `plugin` literal
+ * ------------------------------------------------------------------------ */
+/**
+ * ```ts
+ * const bus = pluginBus('chat');
+ * const UserMsg = bus('USER_MSG', { content: z.string() });
+ * ```
+ */
 export function pluginBus<P extends string>(plugin: P) {
   return <
     T extends string,
     // biome-ignore lint/complexity/noBannedTypes: <explanation>
-    S extends ZodRawShape = {}          // ← default = empty object
+    S extends ZodRawShape = {}
   >(
     type: T,
-    shape?: S                          // ← now optional
+    shape?: S,
   ) =>
     z.object({
-      type:   z.literal(type),
-      ...(shape ?? {}),                // ← safe when `shape` is undefined
+      type: z.literal(type),
+      ...(shape ?? {}),
       plugin: z.literal(plugin),
     }) as z.ZodObject<
       Simplify<{ type: z.ZodLiteral<T>; plugin: z.ZodLiteral<P> } & S>
     >;
 }
 
-/* ———————————————————————————————————————————————— *
- *   Helper to generate plugin event definitions
- *    const events = {
- *      ...fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
- *    }
- * ———————————————————————————————————————————————— */
-
-/* UPDATED signature — note the “ = never ” default on T */
+/* --------------------------------------------------------------------------
+ *  5.  Helper: package one plugin’s events
+ *     fromPlugin(incomingSchemas)()<Outgoing, typeof plugin>
+ * ------------------------------------------------------------------------ */
 export function fromPlugin<
-    T extends readonly z.ZodTypeAny[]   // inferred from first argument
-  >(incomingEvents: T) {
+  T extends readonly z.ZodTypeAny[]
+>(incoming: T) {
   return <
-    O extends { type: string },   // outgoing‑event union
-    P extends string              // plugin literal
+    O extends { type: string },
+    P extends string
   >() => ({
-      incoming: incomingEvents,
-      outgoing: {} as WithPlugin<P, O>,
-    });
+    incoming,
+    outgoing: {} as WithPlugin<P, O>,
+  });
 }
 
+/* --------------------------------------------------------------------------
+ *  6.  Runtime helper: build an OUTGOING envelope
+ * ------------------------------------------------------------------------ */
 export function emit<
   P extends string,
   E extends Simplify<Omit<OutgoingPluginEvents, 'plugin'>>
 >(
   plugin: P,
-  event: E
-): {
-  type: 'OUTGOING';
-  event: Simplify<E & { plugin: P }>;
-} {
-  // runtime is just an object spread; the heavy lifting is at type level
+  event: E,
+) {
   return {
-    type: 'OUTGOING',
+    type: 'OUTGOING' as const,
     event: { ...event, plugin } as Simplify<E & { plugin: P }>,
   };
 }
 
+/* --------------------------------------------------------------------------
+ *  7.  Combine any number of plugins into one definition object
+ * ------------------------------------------------------------------------ */
 export function mergePlugins<
-  const P extends readonly {                           // tuple of plugins
+  const P extends readonly {
     incoming: readonly z.ZodTypeAny[];
     outgoing: unknown;
-  }[]
+  }[],
 >(...plugins: P) {
-  /* 1 ─ runtime concat for the zod discriminatedUnion */
+  // 7‑a. Runtime: concatenate incoming schema tuples
   const incoming = plugins.flatMap(p => p.incoming) as unknown as
     { [K in keyof P]: P[K]['incoming'] }[number];
 
-  /* 2 ─ type‑level union of all `.outgoing` members */
+  // 7‑b. Types: union of all plugins’ outgoing events
   type Outgoing = { [K in keyof P]: P[K]['outgoing'] }[number];
 
-  return {                 // the value we return
-    incoming,              // <- real array of schemas
-    outgoing: {} as Outgoing,   // <- phantom, type‑only
+  return {
+    incoming,
+    outgoing: {} as Outgoing,
   } as const;
 }
 
-/* ────────────────────────────────────────────────────────────────────────── *
- *  Utility:  Type-safe wrapper for sendParent
- * ────────────────────────────────────────────────────────────────────────── */
+/* --------------------------------------------------------------------------
+ *  8.  XState helpers
+ * ------------------------------------------------------------------------ */
+/** Wrap `sendParent` so event names & payloads are type‑safe. */
 export function sendParentSafe<TEvent extends { type: string }>() {
-  return <Type extends TEvent['type']>(
+  return <
+    Type extends TEvent['type']
+  >(
     type: Type,
     payload?: Simplify<Omit<Extract<TEvent, { type: Type }>, 'type'>>
   ) => sendParent({ type, ...(payload || {}) });
 }
 
-/* ────────────────────────────────────────────────────────────────────────── *
- *  Utility:  Extract the specific event(s) out of a union
- * ────────────────────────────────────────────────────────────────────────── */
+/* --------------------------------------------------------------------------
+ *  9.  Event‑narrowing helpers
+ * ------------------------------------------------------------------------ */
 export type ExtractEvent<
   TEvent extends { type: string },
-  TType extends TEvent['type']
+  TType extends TEvent['type'],
 > = Extract<TEvent, { type: TType }>;
 
-/* ────────────────────────────────────────────────────────────────────────── *
- *  Factory: safeEvents  ➜  returns “typeOf” for a given event union
- * ────────────────────────────────────────────────────────────────────────── */
+/**
+ * Usage:
+ * ```ts
+ * const typeOf = safeEvents<MyUnion>();
+ * const msg = typeOf(['A', 'B'], evt);   // evt is now narrowed
+ * ```
+ */
 export const safeEvents =
   <TEvent extends { type: string }>() =>
   <
