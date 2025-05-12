@@ -11,18 +11,12 @@
 <script setup lang="ts">
 import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import ContextItem from './item.vue'
-import type { ContextItem as ContextItemType } from '../types'
-import { ref, computed } from 'vue'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state';
+import { id, type AgentState } from '@/plugins/agent/state';
 
-interface AgentContext {
-  contextItems: ContextItemType[]
-}
-
-const actor = applicationActor.system.get(id);
-const items = useSelector(actor, (state: { context: AgentContext }) => state.context.contextItems)
+const actor: AgentState = applicationActor.system.get(id);
+const items = useSelector(actor, (state) => state.context.contextItems)
 </script>
 
 <style lang="scss" module>

@@ -1,4 +1,4 @@
-import { assign, log, setup, fromPromise, spawnChild } from 'xstate';
+import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/agent/types';
 // import { typeOf } from '@/helpers/types/typed-ev';
 import mockData from './mockData';
@@ -6,9 +6,11 @@ import breadcrumb from '@/helpers/breadcrumb';
 import { safeEvents } from '@/helpers/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/state/trail-actor';
 
-export const id = 'agent';
+export const id = 'agent' as const;
 
-export interface AgentContext {
+export type AgentState = ActorRefFrom<typeof agentState>;
+
+interface AgentContext {
   messages: Message[];
   actions: ActionItem[];
   contextItems: ContextItem[];
@@ -18,7 +20,7 @@ export interface AgentContext {
   pendingActionId?: string;
 }
 
-export type AgentEvent =
+type AgentEvent =
   | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }

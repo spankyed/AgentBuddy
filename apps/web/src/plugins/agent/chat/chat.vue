@@ -1,7 +1,7 @@
 <template>
   <!-- Agent Chat Content -->
   <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-    <div class="w-9/12 mx-auto space-y-2 pt-2">
+    <div class="w-9/12 pt-2 mx-auto space-y-2">
       <ChatMessage 
         v-for="message in messages" 
         :key="message.id" 
@@ -23,14 +23,10 @@ import ChatInput from './input.vue'
 import type { Message } from '@/plugins/agent/types'
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state';
+import { id, type AgentState } from '@/plugins/agent/state';
 
-interface AgentContext {
-  messages: Message[]
-}
-
-const actor = applicationActor.system.get(id);
-const messages = useSelector(actor, (state: { context: AgentContext }) => state.context.messages)
+const actor: AgentState = applicationActor.system.get(id);
+const messages = useSelector(actor, (state) => state.context.messages)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 watch(() => (messages.value as Message[]).length, async () => {
