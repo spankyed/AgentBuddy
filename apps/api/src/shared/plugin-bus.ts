@@ -13,10 +13,18 @@ export type EventsFromSchemas<
 > = { [K in keyof S]: z.infer<S[K]> }[number];
 export type EventsWithoutPlugin<
   S extends readonly z.ZodTypeAny[]
-> = Simplify<StripPlugin<EventsFromSchemas<S>>>;
+  > = Simplify<StripPlugin<EventsFromSchemas<S>>>;
+
+/* ──  Generic helper: add a plugin literal to each union member ─────── */
+export type WithPlugin<
+  P extends string,              // the plugin literal
+  E extends { type: string },    // the original union (must have `type`)
+> = E extends any
+      ? Simplify<E & { plugin: P }>
+      : never;
 
 /* ———————————————————————————————————————————————— *
- * 3. Factory that bakes a fixed `plugin` literal in
+ *   Factory that bakes a fixed `plugin` literal in
  *    const chatBus = pluginBus('chat')
  *    chatBus('USER_MSG', { content: z.string() })
  *      → z.object({
@@ -45,7 +53,7 @@ export function pluginBus<P extends string>(plugin: P) {
 
 export function emit<
   P extends string,
-  E extends OutgoingPluginEvents
+  E extends Simplify<Omit<OutgoingPluginEvents, 'plugin'>>
 >(
   plugin: P,
   event: E

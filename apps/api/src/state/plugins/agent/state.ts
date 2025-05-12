@@ -2,7 +2,7 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
-import { emit, type EventsWithoutPlugin, pluginBus } from '../../../shared/plugin-bus';
+import { emit, type EventsWithoutPlugin, pluginBus, WithPlugin } from '../../../shared/plugin-bus';
 import { z } from 'zod';
 import { safeEvents } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
@@ -20,15 +20,17 @@ export const AgentEvents = [
 
 export type AgentEvent = EventsWithoutPlugin<typeof AgentEvents>
 
+export type AgentOutgoingEvents = WithPlugin<
+  typeof agent,
+  | { type: 'LLM_DONE' }
+  | { type: 'TOKEN'; token: string }
+  >;
+
 export interface AgentContext {
   model: string;
   userPrompt?: string;
   abortController?: AbortController;
 }
-
-export type AgentOutgoingEvents = 
-  | { type: 'LLM_DONE' }
-  | { type: 'TOKEN'; token: string };
 
 export const agentMachine = setup({
   types: {
