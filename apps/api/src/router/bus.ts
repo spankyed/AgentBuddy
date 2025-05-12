@@ -1,25 +1,28 @@
 import { router, procedure } from '../trpc';
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
-import { type WireEvent, WireEventSchema } from '../shared/rpc-events';
-import type { Ev } from '../state/bus';
+import type { BusEvent } from '../state/bus-state';
+import { IncomingEventSchema, type OutgoingPluginEvents } from '../shared/events';
 
 export const busRouter = router({
   /** COMMAND / fire-and-forget */
   send: procedure
-    .input(WireEventSchema)
+    .input(IncomingEventSchema)
     .mutation(({ ctx, input }) => {
-      ctx.actor.send(input as Ev);
+      ctx.actor.send({
+        type: 'INCOMING',
+        event: input,
+      });
     }),
 
   /** EVENT STREAM out of the actor */
   sub: procedure
     .input(z.object({ sessionId: z.string() }))
     .subscription(({ ctx }) =>
-      observable<WireEvent>((emit) => {
+      observable<OutgoingPluginEvents>((emit) => {
         const sub = ctx.actor.subscribe((snapshot) => {
-          if ('type' in snapshot) {
-            emit.next(snapshot as WireEvent);
+          if ('type' in snapshot && snapshot.type === 'OUTGOING') {
+            emit.next(snapshot.event);
           }
         });
 

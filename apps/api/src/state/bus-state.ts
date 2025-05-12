@@ -1,94 +1,42 @@
-import { createMachine, assign, sendParent, setup } from 'xstate';
-import { v4 as uuid } from 'uuid';
-import { db, schema } from '../db/client';
-import { LlmRunner } from '../llm/runner';
-import { type EventsWithoutPlugin, pluginBus } from '../shared/plugin-bus';
-import { z } from 'zod';
+import { createMachine, setup } from 'xstate';
+import type { EventsFromSchemas } from '../shared/plugin-bus';
+import type { AgentEvents } from './plugins/agent';
+import type { IncomingPluginEvents, OutgoingPluginEvents } from '../shared/events';
 
-export interface Ctx {
-  model: string;
-  userPrompt?: string;
-  abortController?: AbortController;
+export type BusEvent = 
+  | { type: 'INCOMING'; event: IncomingPluginEvents }
+  | { type: 'OUTGOING'; event: OutgoingPluginEvents}
+
+export interface BusContext {
+  threads: string[];
 }
 
-const busEvent = pluginBus('chat')
+export const bus = 'bus' as const;
 
-const ChatEvents = [
-  busEvent('USER_MSG', { content: z.string() }),
-  busEvent('LLM_DONE'),
-  busEvent('TOKEN', { token: z.string() }),
-  busEvent('CANCEL'),
-] as const
-
-export type BusEvent =
-  | EventsWithoutPlugin<typeof ChatEvents>
-
-
-export const chatMachine = setup({
+export const busMachine = setup({
   types: {
-    context: {} as Ctx,
+    context: {} as BusContext,
     events: {} as BusEvent,
   },
   actions: {
-    storePrompt: assign({
-      userPrompt: ({ event }) => (event.type === 'USER_MSG' ? event.content : undefined),
-    }),
-    spawnLlmTask: assign(({ context }) => {
-      const abort = new AbortController();
-      runLlm(context, abort.signal);
-      return { abortController: abort };
-    }),
-    // abortLlm: (ctx) => ctx.abortController?.abort(),
-  },
+    routeIncoming: ({ event }) => {
+      // Handle incoming event
+      console.log('Routing incoming event:', event);
+      // Add logic to route the event to the appropriate plugin
+    }
+  }
 }).createMachine(
   {
-    id: 'agent',
-    initial: 'idle',
+    id: bus,
     context: {
-      model: 'gpt-4o',
+      threads: [],
     },
-    states: {
-      idle: {
-        on: {
-          USER_MSG: {
-            target: 'thinking',
-            actions: 'storePrompt',
-          },
-        },
+    on: {
+      INCOMING: {
+        actions: 'routeIncoming'
       },
-      thinking: {
-        entry: ['spawnLlmTask'],
-        on: {
-          LLM_DONE: 'idle',
-          CANCEL: {
-            target: 'idle',
-            // actions: 'abortLlm',
-          },
-        },
+      OUTGOING: {
       },
-    },
+    }
   }
 );
-
-async function runLlm(ctx: Ctx, signal: AbortSignal) {
-  const { userPrompt = '', model } = ctx;
-  const runner = new LlmRunner(model);
-
-  for await (const token of runner.stream(userPrompt, { signal })) {
-    // Persist & bubble up token events
-    sendParent({ type: 'TOKEN', token });
-  }
-
-  sendParent({ type: 'LLM_DONE' });
-  // Persist assistant message
-  // await db
-  //   .insert(schema.message)
-  //   .values({
-  //     id: uuid(),
-  //     sessionId,
-  //     role: 'assistant',
-  //     content: runner.buffer(),
-  //     createdAt: Date.now(),
-  //   })
-  //   .run();
-}
