@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
 import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/plugin-bus';
-import { emit, pluginBus } from '../../../shared/plugin-bus';
+import { emit, fromPlugin, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
 import { sendParentSafe } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
@@ -25,11 +25,13 @@ export type OutgoingAgentEvents =
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 
-  export interface AgentContext {
+export interface AgentContext {
   model: string;
   userPrompt?: string;
   abortController?: AbortController;
 }
+
+export const AgentPluginEvents = fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
 
 export const agentMachine = setup({
   types: {

@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { type agent, IncomingAgentEvents, type OutgoingAgentEvents } from '../state/plugins/agent/state';
+import { AgentPluginEvents  } from '../state/plugins/agent/state';
 import { fromPlugin, type EventsFromSchemas } from './plugin-bus';
 
 const events = {
-  ...fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
+ ...AgentPluginEvents
 };
 
 export type OutgoingPluginEvents = typeof events.outgoing;
