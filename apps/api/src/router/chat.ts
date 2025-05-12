@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { observable } from '@trpc/server/observable';
 import { message, session } from '../db/schema';
 
-export const chatRouter = router({
+export const apiRouter = router({
   openSession: procedure
     .input(z.object({ model: z.string().default('gpt-4o') }))
     .output(z.object({ sessionId: z.string() }))

@@ -1,4 +1,4 @@
 import { router } from '../trpc';
-import { chatRouter } from './chat';
-export const appRouter = router({ chat: chatRouter });
+import { apiRouter } from './chat';
+export const appRouter = router({ api: apiRouter });
 export type AppRouter = typeof appRouter;
