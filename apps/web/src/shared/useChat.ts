@@ -20,7 +20,7 @@ export function useChat() {
   }
 
   async function send(content: string) {
-    await trpc.bus.send.mutate({ type: 'USER_MSG', content });
+    await trpc.bus.send.mutate({ type: 'USER_MSG', content, plugin: 'agent' });
   }
 
   onUnmounted(() => {
