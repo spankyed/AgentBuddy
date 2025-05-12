@@ -1,7 +1,7 @@
 import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
 import Blank from './_blank/plugin.ts';
-import type { Plugin } from '@/helpers/types';
+import type { Plugin } from '@/shared/types/index.ts';
 import { 
   Code, 
   Folder, 

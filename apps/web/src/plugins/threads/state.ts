@@ -1,6 +1,6 @@
-import breadcrumb, { breadcrumbWithParams } from '@/helpers/breadcrumb';
+import breadcrumb, { breadcrumbWithParams } from '@/shared/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/state/trail-actor';
-import { safeEvents } from '@/helpers/types/safe-events';
+import { safeEvents } from '@/shared/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 

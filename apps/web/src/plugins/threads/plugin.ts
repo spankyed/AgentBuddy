@@ -1,4 +1,4 @@
-import type { Plugin } from "@/helpers/types";
+import type { Plugin } from "@/shared/types/index.ts";
 import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
