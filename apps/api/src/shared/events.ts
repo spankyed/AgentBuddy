@@ -6,11 +6,8 @@ const events = {
   ...fromPlugin<OutgoingAgentEvents, typeof agent>()(IncomingAgentEvents)
 };
 
-const BusEvents = events.incoming;
-
 export type OutgoingPluginEvents = typeof events.outgoing;
-
-export type IncomingPluginEvents = EventsFromSchemas<typeof BusEvents>;
+export type IncomingPluginEvents = EventsFromSchemas<typeof events.incoming>;
 
 /** Zod validator derived from above union */
-export const IncomingEventSchema: z.ZodType<IncomingPluginEvents> = z.discriminatedUnion('type', BusEvents);
+export const IncomingEventSchema: z.ZodType<IncomingPluginEvents> = z.discriminatedUnion('type', events.incoming);
