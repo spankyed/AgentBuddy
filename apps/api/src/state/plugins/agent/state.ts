@@ -5,7 +5,7 @@ import { LlmRunner } from './runner';
 import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/type-helpers';
 import { emit, fromPlugin, pluginBus, sendParentSafe } from '../../../shared/type-helpers';
 import { z } from 'zod';
-import { bus } from '../../bus-state';
+import { bus } from '../../bus';
 
 export const agent = 'agent' as const;
 
