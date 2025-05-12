@@ -9,15 +9,13 @@ export interface BusContext {
   threads: string[];
 }
 
-type OutgoingEvent = Extract<BusEvent, { type: 'OUTGOING' }>;
-
 export const bus = 'bus' as const;
 
 export const busMachine = setup({
   types: {
     context: {} as BusContext,
     events: {} as BusEvent,
-    emitted: {} as OutgoingEvent,
+    emitted: {} as Extract<BusEvent, { type: 'OUTGOING' }>,
   },
   actions: {
     routeIncoming: ({ event: incoming, system }) => {
