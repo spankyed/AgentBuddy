@@ -2,10 +2,9 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
-import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/plugin-bus';
-import { emit, fromPlugin, pluginBus } from '../../../shared/plugin-bus';
+import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/type-helpers';
+import { emit, fromPlugin, pluginBus, sendParentSafe } from '../../../shared/type-helpers';
 import { z } from 'zod';
-import { sendParentSafe } from '../../../shared/safe-events';
 import { bus } from '../../bus-state';
 
 export const agent = 'agent' as const;
