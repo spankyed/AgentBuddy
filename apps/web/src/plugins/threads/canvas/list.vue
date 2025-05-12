@@ -63,8 +63,9 @@
             </span>
           </div>
           <!-- Status selector and tags -->
-          <div class="flex items-center space-x-3" @click.stop>
+          <div class="flex items-center space-x-3">
             <select
+              @click.stop
               v-model="thread.status"
               class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
             >
@@ -74,7 +75,7 @@
               <option value="inactive">Inactive</option>
             </select>
             <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
-              <span v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30">{{ tag }}</span>
+              <span @click.stop v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30">{{ tag }}</span>
             </div>
           </div>
         </div>
