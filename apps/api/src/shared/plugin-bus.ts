@@ -6,23 +6,6 @@ import { z, type ZodRawShape } from 'zod';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 /* ———————————————————————————————————————————————— *
- * 2. Generic “bus‑event” constructor WITHOUT plugin
- *    busEvent('USER_MSG', { content: z.string() })
- *      → z.object({ type: z.literal('USER_MSG'), content: z.string() })
- * ———————————————————————————————————————————————— */
-export function busEvent<
-  T extends string,                          // event type literal
-  S extends ZodRawShape                      // field schema map
->(type: T, shape: S) {
-  return z.object({
-    type: z.literal(type),
-    ...shape,
-  }) as z.ZodObject<
-    Simplify<{ type: z.ZodLiteral<T> } & S>
-  >;
-}
-
-/* ———————————————————————————————————————————————— *
  * 3. Factory that bakes a fixed `plugin` literal in
  *    const chatBus = pluginBus('chat')
  *    chatBus('USER_MSG', { content: z.string() })
