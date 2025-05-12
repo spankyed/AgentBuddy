@@ -10,7 +10,8 @@ type StripPlugin<T> = T extends { plugin: string } ? Omit<T, 'plugin'> : T;
 // From a readonly array of Zod schemas → union of inferred objects
 export type EventsFromSchemas<
   S extends readonly z.ZodTypeAny[]
-> = { [K in keyof S]: z.infer<S[K]> }[number];
+  > = { [K in keyof S]: z.infer<S[K]> }[number];
+
 export type EventsWithoutPlugin<
   S extends readonly z.ZodTypeAny[]
   > = Simplify<StripPlugin<EventsFromSchemas<S>>>;
