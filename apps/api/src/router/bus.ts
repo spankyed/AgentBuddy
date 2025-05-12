@@ -1,7 +1,6 @@
 import { router, procedure } from '../trpc';
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
-import type { BusEvent } from '../state/bus-state';
 import { IncomingEventSchema, type OutgoingPluginEvents } from '../shared/events';
 
 export const busRouter = router({
@@ -20,13 +19,10 @@ export const busRouter = router({
     .input(z.object({ sessionId: z.string() }))
     .subscription(({ ctx }) =>
       observable<OutgoingPluginEvents>((emit) => {
-        const sub = ctx.actor.subscribe((snapshot) => {
-          if ('type' in snapshot && snapshot.type === 'OUTGOING') {
-            emit.next(snapshot.event);
-          }
+        return ctx.actor.on('OUTGOING', ({ event }) => {
+          console.log('Notification received!', event);
+          emit.next(event);
         });
-
-        return () => sub.unsubscribe();
       }),
     ),
 });
