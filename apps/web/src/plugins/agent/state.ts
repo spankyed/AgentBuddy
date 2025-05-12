@@ -1,6 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/agent/types';
-// import { typeOf } from '@/helpers/types/typed-ev';
 import mockData from './mockData';
 import breadcrumb from '@/helpers/breadcrumb';
 import { safeEvents } from '@/helpers/types/safe-events';

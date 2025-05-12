@@ -7,8 +7,8 @@
 <script setup lang="ts">
 import { applicationActor } from '@/application'
 import { useSelector } from '@xstate/vue'
-import { id } from '@/plugins/agent/state.ts';
+import { id, type BlankState } from '@/plugins/_blank/state.ts';
 
-const actor = applicationActor.system.get(id);
+const actor: BlankState = applicationActor.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
 </script> 

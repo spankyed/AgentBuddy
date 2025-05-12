@@ -99,7 +99,7 @@ import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/components/design/button.vue'
-import { id } from '@/plugins/threads/state'
+import { id, type ThreadsState } from '@/plugins/threads/state';
 
 interface Thread {
   id: string
@@ -108,7 +108,7 @@ interface Thread {
   tags: string[]
 }
 
-const actor = applicationActor.system.get(id)
+const actor: ThreadsState = applicationActor.system.get(id);
 
 const searchKeyword = ref('')
 const threads = ref<Thread[]>([

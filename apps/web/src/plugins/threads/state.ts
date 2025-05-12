@@ -2,9 +2,10 @@ import breadcrumb, { breadcrumbWithParams } from '@/helpers/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/state/trail-actor';
 import { safeEvents } from '@/helpers/types/safe-events';
 import { setup, assign, log } from 'xstate';
+import type { ActorRefFrom } from 'xstate';
 
-export const id = 'threads';
-
+export const id = 'threads' as const;
+export type ThreadsState = ActorRefFrom<typeof threadsState>;
 interface ThreadsContext {
   selectedThreadId?: string;
 }
