@@ -1,25 +1,32 @@
-// /apps/web/src/composables/useChat.ts
-// import { useQueryClient } from '@tanstack/vue-query';
 import { trpc } from './trpc';
-import { ref, type Ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
+import type { WireEvent } from '../../../api/src/shared/rpc-events';
 
 export function useChat() {
-  const sessionId: Ref<string | undefined> = ref<string | undefined>();
-
-  async function start(model = 'gpt-4o') {
-    const { sessionId: newSessionId } = await trpc.api.openSession.mutate({ model });
-    sessionId.value = newSessionId;
-    trpc.api.onToken.subscribe({ sessionId: newSessionId }, {
-      onData: (d) => tokens.value.push(d.token),
-    });
-  }
-
   const tokens = ref<string[]>([]);
+  let subscription: ReturnType<typeof trpc.bus.sub.subscribe> | undefined;
+
+  async function start() {
+    // Subscribe to events from the shared actor
+    subscription = trpc.bus.sub.subscribe(
+      { sessionId: 'shared' }, // sessionId is ignored now
+      {
+        onData: (event: WireEvent) => {
+          if (event.type === 'TOKEN') {
+            tokens.value.push(event.token);
+          }
+        },
+      }
+    );
+  }
 
   async function send(content: string) {
-    if (!sessionId.value) return;
-    await trpc.api.userMessage.mutate({ sessionId: sessionId.value, content });
+    await trpc.bus.send.mutate({ type: 'USER_MSG', content });
   }
+
+  onUnmounted(() => {
+    subscription?.unsubscribe();
+  });
 
   return { start, send, tokens };
 }

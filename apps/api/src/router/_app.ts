@@ -1,4 +1,5 @@
 import { router } from '../trpc';
-import { apiRouter } from './chat';
-export const appRouter = router({ api: apiRouter });
+import { busRouter } from './bus';
+
+export const appRouter = router({ bus: busRouter });
 export type AppRouter = typeof appRouter;

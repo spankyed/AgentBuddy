@@ -3,16 +3,16 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '../db/client';
 import { LlmRunner } from '../llm/runner';
 
-interface Ctx {
-  sessionId: string;
+export interface Ctx {
   model: string;
   userPrompt?: string;
   abortController?: AbortController;
 }
 
-type Ev =
+export type Ev =
   | { type: 'USER_MSG'; content: string }
   | { type: 'LLM_DONE' }
+  | { type: 'TOKEN'; token: string }
   | { type: 'CANCEL' };
 
 export const agentMachine = setup({
@@ -36,7 +36,6 @@ export const agentMachine = setup({
     id: 'agent',
     initial: 'idle',
     context: {
-      sessionId: '',
       model: 'gpt-4o',
     },
     states: {
@@ -63,12 +62,12 @@ export const agentMachine = setup({
 );
 
 async function runLlm(ctx: Ctx, signal: AbortSignal) {
-  const { sessionId, userPrompt = '', model } = ctx;
+  const { userPrompt = '', model } = ctx;
   const runner = new LlmRunner(model);
 
   for await (const token of runner.stream(userPrompt, { signal })) {
     // Persist & bubble up token events
-    sendParent({ type: 'TOKEN', token, sessionId });
+    sendParent({ type: 'TOKEN', token });
   }
 
   sendParent({ type: 'LLM_DONE' });
