@@ -12,8 +12,10 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Module Resolution */
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "types": ["vite/client", "vue", "@trpc/client"],
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
 
     /* Paths */
     "baseUrl": ".",
