@@ -1,2 +1,2 @@
 // Export types only
-export type { AppRouter } from './router/_app';
+export type { AppRouter } from './router/bus';

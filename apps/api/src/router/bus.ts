@@ -26,3 +26,6 @@ export const busRouter = router({
       }),
     ),
 });
+
+export const appRouter = router({ bus: busRouter });
+export type AppRouter = typeof appRouter;
