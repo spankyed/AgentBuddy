@@ -2,7 +2,7 @@ import { router, procedure } from '../trpc';
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { type WireEvent, WireEventSchema } from '../shared/rpc-events';
-import type { Ev } from '../agents/agentMachine';
+import type { Ev } from '../state/bus';
 
 export const busRouter = router({
   /** COMMAND / fire-and-forget */

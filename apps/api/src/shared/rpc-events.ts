@@ -1,16 +1,15 @@
 import { z } from 'zod';
+import type { AddPrefix } from './prefix-events';
+import type { Ev } from '../state/bus';
 
 /** TypeScript discriminated-union of ALL wire events */
 export type WireEvent =
-  | { type: 'USER_MSG'; content: string }
-  | { type: 'LLM_DONE' }
-  | { type: 'TOKEN'; token: string }
-  | { type: 'CANCEL' };
+  | AddPrefix<Ev, 'SYS'>
 
 /** Zod validator derived from that union */
 export const WireEventSchema: z.ZodType<WireEvent> = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('USER_MSG'), content: z.string() }),
-  z.object({ type: z.literal('LLM_DONE') }),
-  z.object({ type: z.literal('TOKEN'), token: z.string() }),
-  z.object({ type: z.literal('CANCEL') }),
+  z.object({ type: z.literal('SYS::USER_MSG'), content: z.string() }),
+  z.object({ type: z.literal('SYS::LLM_DONE') }),
+  z.object({ type: z.literal('SYS::TOKEN'), token: z.string() }),
+  z.object({ type: z.literal('SYS::CANCEL') }),
 ]);
