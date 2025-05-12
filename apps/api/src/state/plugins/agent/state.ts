@@ -2,7 +2,7 @@ import { createMachine, assign, sendParent, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '../../../db/client';
 import { LlmRunner } from './runner';
-import type { EventsWithoutPlugin, Simplify, WithPlugin } from '../../../shared/plugin-bus';
+import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/plugin-bus';
 import { emit, pluginBus } from '../../../shared/plugin-bus';
 import { z } from 'zod';
 import { sendParentSafe } from '../../../shared/safe-events';
@@ -25,9 +25,7 @@ export type OutgoingAgentEvents =
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 
-export type ReceivableAgentEvent = Simplify<EventsWithoutPlugin<typeof IncomingAgentEvents> | AgentInternalEvents>;
-
-export interface AgentContext {
+  export interface AgentContext {
   model: string;
   userPrompt?: string;
   abortController?: AbortController;
@@ -36,7 +34,7 @@ export interface AgentContext {
 export const agentMachine = setup({
   types: {
     context: {} as AgentContext,
-    events: {} as ReceivableAgentEvent,
+    events: {} as MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>,
   },
   actions: {
     emitToken: ({ system }) => {

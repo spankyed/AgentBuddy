@@ -7,6 +7,9 @@ import type { OutgoingPluginEvents } from './events';
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 type StripPlugin<T> = T extends { plugin: string } ? Omit<T, 'plugin'> : T;
 
+/* ──  Helper to merge plugin events with internal events ─────── */
+export type MergeReceivable<TIncoming extends readonly z.ZodTypeAny[], TInternal> = Simplify<EventsWithoutPlugin<TIncoming> | TInternal>;
+
 // From a readonly array of Zod schemas → union of inferred objects
 export type EventsFromSchemas<
   S extends readonly z.ZodTypeAny[]
