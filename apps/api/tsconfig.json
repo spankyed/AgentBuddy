@@ -1,0 +1,11 @@
+{
+  "extends": "../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,          // ← emit types
+    "declarationMap": true,
+    "emitDeclarationOnly": true   // build‑time type pack
+  },
+  "include": ["src"]
+}

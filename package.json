@@ -1,29 +1,25 @@
 {
-  "name": "project",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "agent-buddy",
+  "version": "1.0.0",
+  "description": "",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "watch": "turbo watch dev",
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "be": "pnpm --filter @abuddy/api build",
+    "fe": "pnpm --filter @abuddy/web build"
+  },
+  "keywords": [],
+  "author": "angel santiago",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "devDependencies": {
+    "@types/node": "^22.15.17"
   },
   "dependencies": {
-    "@statelyai/inspect": "^0.4.0",
-    "@xstate/vue": "^4.0.2",
-    "lucide-vue-next": "^0.503.0",
-    "vue": "^3.3.4",
-    "vue-arrange": "^1.5.0",
-    "xstate": "^5.19.2"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^4.2.3",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.24",
-    "sass": "^1.87.0",
-    "tailwindcss": "^3.3.2",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5",
-    "vue-tsc": "^1.8.5"
+    "concurrently": "^9.1.2",
+    "npm-run-all": "^4.1.5"
   }
 }

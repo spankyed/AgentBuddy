@@ -1,0 +1,37 @@
+{
+  "name": "@abuddy/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "run-p dev:typecheck dev:serve",
+    "dev:typecheck": "vue-tsc --noEmit --watch --preserveWatchOutput",
+    "dev:serve": "vite",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "run-s typecheck build:prod",
+    "build:prod": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@abuddy/api": "workspace:*",
+    "@statelyai/inspect": "^0.4.0",
+    "@trpc/client": "^11.1.2",
+    "@trpc/server": "^11.1.2",
+    "@xstate/vue": "^4.0.2",
+    "lucide-vue-next": "^0.503.0",
+    "vue": "^3.3.4",
+    "vue-arrange": "^1.5.0",
+    "xstate": "^5.19.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "@vue/tsconfig": "^0.7.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "sass": "^1.87.0",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.8.3",
+    "vite": "^4.4.5",
+    "vue-tsc": "^2.0.0"
+  }
+}

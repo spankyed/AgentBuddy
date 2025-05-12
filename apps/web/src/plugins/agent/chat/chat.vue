@@ -1,0 +1,47 @@
+<template>
+  <!-- Agent Chat Content -->
+  <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
+    <div class="w-9/12 pt-2 mx-auto space-y-2">
+      <ChatMessage 
+        v-for="message in messages" 
+        :key="message.id" 
+        :message="message" 
+      />
+    </div>
+  </div>
+  <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
+  <ChatInput
+    @send-message="(content: string) => actor.send({ type: 'SEND_MESSAGE', content })"
+    @new-thread="actor.send({ type: 'CLEAR_MESSAGES' })"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
+import ChatMessage from './message.vue'
+import ChatInput from './input.vue'
+import type { Message } from '@/plugins/agent/types'
+import { applicationActor } from '@/application'
+import { useSelector } from '@xstate/vue'
+import { id, type AgentState } from '@/plugins/agent/state';
+
+const actor: AgentState = applicationActor.system.get(id);
+const messages = useSelector(actor, (state) => state.context.messages)
+const messagesContainer = ref<HTMLElement | null>(null)
+
+watch(() => (messages.value as Message[]).length, async () => {
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+})
+</script>
+
+<style lang="scss" module>
+.messagesContainer {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+</style> 
