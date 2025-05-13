@@ -1,8 +1,8 @@
 import { db } from '../db/client';
 import { createActor } from 'xstate';
-import { busMachine } from '../state/bus';
+import { backendState } from '../state/backend';
 
-export const sharedActor = createActor(busMachine, {
+export const sharedActor = createActor(backendState, {
   input: { model: 'gpt-4o' }
 }).start();
 

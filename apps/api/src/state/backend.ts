@@ -11,7 +11,7 @@ export interface BusContext {
 
 export const bus = 'bus' as const;
 
-export const busMachine = setup({
+export const backendState = setup({
   types: {
     context: {} as BusContext,
     events: {} as BusEvent,
