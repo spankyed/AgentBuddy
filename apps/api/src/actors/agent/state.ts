@@ -3,9 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { LlmRunner } from '@/actors/agent/runner';
 import type { MergeReceivable } from '@/shared/type-helpers';
-import { emit, fromPlugin, pluginBus, sendParentSafe } from '@/shared/type-helpers';
+import { emit, fromPlugin, pluginBus } from '@/shared/type-helpers';
 import { z } from 'zod';
 import { bus } from '@/actors/backend';
+import { sendParentSafe } from '@/shared/actor-helpers';
 
 export const agent = 'agent' as const;
 
@@ -92,10 +93,10 @@ async function runLlm(ctx: AgentContext, signal: AbortSignal) {
 
   for await (const token of runner.stream(userPrompt, { signal })) {
     // Persist & bubble up token events
-    sendBack('TOKEN', { token });
+    sendBack({ type: 'TOKEN', token });
   }
 
-  sendBack('LLM_DONE');
+  sendBack({ type: 'LLM_DONE' });
   // Persist assistant message
   // await db
   //   .insert(schema.message)
