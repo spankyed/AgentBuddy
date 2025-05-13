@@ -22,8 +22,8 @@ export const backendSystem = setup({
   actions: {
     routeIncoming: ({ event: incoming, system }) => {
       console.log('Routing incoming event:', incoming);
-      const { plugin, ...event } = incoming.event;
-      system.get(plugin).send(event);
+      const { systemId, ...event } = incoming.event;
+      system.get(systemId).send(event);
     },
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of Object.entries(systemStates)) {

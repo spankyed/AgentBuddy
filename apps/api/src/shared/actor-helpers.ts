@@ -70,14 +70,14 @@ export function getActor<Id extends SystemIds>(
 
 export function emit<
   P extends string,
-  E extends Simplify<Omit<OutgoingSystemEvents, 'plugin'>>
+  E extends Simplify<Omit<OutgoingSystemEvents, 'systemId'>>
 >(
-  plugin: P,
+  systemId: P,
   event: E,
 ) {
   return {
     type: 'OUTGOING' as const,
-    event: { ...event, plugin } as Simplify<E & { plugin: P }>,
+    event: { ...event, systemId } as Simplify<E & { systemId: P }>,
   };
 }
 

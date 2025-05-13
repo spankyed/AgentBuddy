@@ -12,8 +12,8 @@ import type { OutgoingSystemEvents } from '@/shared/events';
 /** Flatten intersections so tooltips stay readable. */
 export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
-/** Remove the `plugin` field when you only need the core event shape. */
-type StripSystem<T> = T extends { plugin: string } ? Omit<T, 'plugin'> : T;
+/** Remove the `systemId` field when you only need the core event shape. */
+type StripSystem<T> = T extends { systemId: string } ? Omit<T, 'systemId'> : T;
 
 /* --------------------------------------------------------------------------
  *  2.  Transform Zod schema tuples ⇢ event unions
@@ -23,7 +23,7 @@ export type EventsFromSchemas<
   S extends readonly z.ZodTypeAny[]
 > = { [K in keyof S]: z.infer<S[K]> }[number];
 
-/** Same as above but *without* the `plugin` property. */
+/** Same as above but *without* the `systemId` property. */
 export type EventsWithoutSystem<
   S extends readonly z.ZodTypeAny[]
 > = Simplify<StripSystem<EventsFromSchemas<S>>>;
@@ -35,16 +35,16 @@ export type MergeReceivable<
 > = Simplify<EventsWithoutSystem<TIncoming> | TInternal>;
 
 /* --------------------------------------------------------------------------
- *  3.  Helper: add a `plugin` literal to every union member
+ *  3.  Helper: add a `systemId` literal to every union member
  * ------------------------------------------------------------------------ */
 export type WithSystem<
   P extends string,
   E extends { type: string }
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-> = E extends any ? Simplify<E & { plugin: P }> : never;
+> = E extends any ? Simplify<E & { systemId: P }> : never;
 
 /* --------------------------------------------------------------------------
- *  4.  Factory: build Zod schemas that carry a fixed `plugin` literal
+ *  4.  Factory: build Zod schemas that carry a fixed `systemId` literal
  * ------------------------------------------------------------------------ */
 /**
  * ```ts
@@ -52,7 +52,7 @@ export type WithSystem<
  * const UserMsg = bus('USER_MSG', { content: z.string() });
  * ```
  */
-export function systemBus<P extends string>(plugin: P) {
+export function systemBus<P extends string>(systemId: P) {
   return <
     T extends string,
     // biome-ignore lint/complexity/noBannedTypes: <explanation>
@@ -64,15 +64,15 @@ export function systemBus<P extends string>(plugin: P) {
     z.object({
       type: z.literal(type),
       ...(shape ?? {}),
-      plugin: z.literal(plugin),
+      systemId: z.literal(systemId),
     }) as z.ZodObject<
-      Simplify<{ type: z.ZodLiteral<T>; plugin: z.ZodLiteral<P> } & S>
+      Simplify<{ type: z.ZodLiteral<T>; systemId: z.ZodLiteral<P> } & S>
     >;
 }
 
 /* --------------------------------------------------------------------------
- *  5.  Helper: package one plugin’s events
- *     fromSystem(incomingSchemas)()<Outgoing, typeof plugin>
+ *  5.  Helper: package one systemId’s events
+ *     fromSystem(incomingSchemas)()<Outgoing, typeof systemId>
  * ------------------------------------------------------------------------ */
 export function fromSystem<
   T extends readonly z.ZodTypeAny[]
@@ -87,19 +87,19 @@ export function fromSystem<
 }
 
 /* --------------------------------------------------------------------------
- *  7.  Combine any number of plugins into one definition object
+ *  7.  Combine any number of systems into one definition object
  * ------------------------------------------------------------------------ */
 export function mergeSystems<
   const P extends readonly {
     incoming: readonly z.ZodTypeAny[];
     outgoing: unknown;
   }[],
->(...plugins: P) {
+>(...systems: P) {
   // 7‑a. Runtime: concatenate incoming schema tuples
-  const incoming = plugins.flatMap(p => p.incoming) as unknown as
+  const incoming = systems.flatMap(p => p.incoming) as unknown as
     { [K in keyof P]: P[K]['incoming'] }[number];
 
-  // 7‑b. Types: union of all plugins’ outgoing events
+  // 7‑b. Types: union of all systemIds’ outgoing events
   type Outgoing = { [K in keyof P]: P[K]['outgoing'] }[number];
 
   return {
