@@ -44,10 +44,6 @@ export const agentState = setup({
         type: 'TOKEN',
         token: 'some string'
       }));
-      getActor(system, agent).send({
-        type: 'TOKEN',
-        token: 'some string'
-      });
     },
     storePrompt: assign({
       userPrompt: ({ event }) => (event.type === 'USER_MSG' ? event.content : undefined),
