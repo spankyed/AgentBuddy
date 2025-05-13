@@ -32,6 +32,28 @@
         </div>
       </div>
 
+      <!-- Notes -->
+      <div>
+        <button 
+          @click="isNotesOpen = !isNotesOpen"
+          class="flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded text-neutral-300 hover:bg-neutral-700"
+        >
+          <span>Add Notes</span>
+          <ChevronDown 
+            :size="16" 
+            :class="[`ml-1 transition-transform`, isNotesOpen ? 'rotate-180' : '']"
+          />
+        </button>
+
+        <div v-if="isNotesOpen" class="p-3 mt-2 rounded-sm bg-neutral-900">
+          <textarea
+            v-model="notes"
+            class="w-full h-64 p-2 text-sm rounded bg-neutral-900 focus:outline-none focus:ring-1 focus:ring-primary-600 resize-handle"
+            placeholder="Add thread notes here..."
+          ></textarea>
+        </div>
+      </div>
+
       <!-- Threads list -->
       <div>
         <Label>Related Threads</Label>
@@ -167,6 +189,8 @@ const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const tags = ref<string[]>(['bug', 'frontend', 'high-priority'])
 // const isSaving = ref('')
 const isMessagesOpen = ref(false)
+const isNotesOpen = ref(false)
+const notes = ref('')
 
 watch(isMessagesOpen, async (isOpen) => {
   if (isOpen) {
@@ -215,4 +239,18 @@ const messages = ref<{ text: string, sender: string }[]>([
   { text: 'Yet another example of a long message that needs truncation.', sender: 'other' },
   { text: 'Final message to demonstrate overflow handling.', sender: 'user' }
 ]);
-</script> 
+</script>
+
+<style scoped>
+.resize-handle {
+  resize: vertical;
+  overflow: auto;
+}
+
+.resize-handle::-webkit-resizer {
+  border-width: .1rem;
+  border-style: solid;
+  border-color: transparent #3d3d3d #3d3d3d transparent;
+  background-color: transparent;
+}
+</style>
