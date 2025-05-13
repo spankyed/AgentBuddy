@@ -9,7 +9,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@plugins/*": ["src/state/plugins/*"]
     }
   },
   "include": ["src"]

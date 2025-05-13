@@ -2,8 +2,8 @@ import { mergePlugins } from '@/shared/type-helpers';
 
 export { bus } from "@/state/backend";
 
-export { agent } from "@plugins/agent/state";
-import { agentState, AgentPluginEvents } from "@plugins/agent/state";
+export { agent } from "@/state/agent/state";
+import { agentState, AgentPluginEvents } from "@/state/agent/state";
 
 export default [
   agentState,
