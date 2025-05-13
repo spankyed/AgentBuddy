@@ -1,7 +1,7 @@
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingPluginEvents } from '@/shared/events';
-import { procedure, router } from '@/router';
+import { procedure, router } from './trpc';
 
 export const pluginBusRouter = router({
   /** COMMAND / fire-and-forget */
