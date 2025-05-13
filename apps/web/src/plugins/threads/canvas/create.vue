@@ -75,9 +75,9 @@
           Cancel
           <Square :size="22" />
         </button>
+        <!-- @click="actor.send({ type: 'CREATE_THREAD' })" -->
         <button
           type="submit"
-          @click="actor.send({ type: 'CREATE_THREAD' })"
           :disabled="!isSaving"
           :class="[
             'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2',
