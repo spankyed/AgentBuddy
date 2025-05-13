@@ -10,12 +10,6 @@ import './style.css'
 
 const { inspect } = createBrowserInspector();
 
-declare global {
-  interface Window {
-    applicationActor: Actor<ReturnType<typeof createApplicationState>>;
-  }
-}
-
 export const applicationActor = createActor(createApplicationState(), {
   systemId: 'application',
   inspect,
@@ -27,6 +21,12 @@ export const applicationActor = createActor(createApplicationState(), {
 
 applicationActor.subscribe(logErrors('Application'));
 
-window.applicationActor = applicationActor;
-
 createApp(App).mount('#root')
+
+declare global {
+  interface Window {
+    applicationActor: Actor<ReturnType<typeof createApplicationState>>;
+  }
+}
+
+window.applicationActor = applicationActor;
