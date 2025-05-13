@@ -39,12 +39,12 @@
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
-import Toolbar from '@/components/layout/toolbar.vue'
-import CanvasArea from '@/components/layout/canvas-area.vue'
-import ChatArea from '@/components/layout/chat-area.vue'
-import InspectionPanel from '@/components/layout/inspection-panel.vue'
+import Toolbar from '@/shared/layout/toolbar.vue'
+import CanvasArea from '@/shared/layout/canvas-area.vue'
+import ChatArea from '@/shared/layout/chat-area.vue'
+import InspectionPanel from '@/shared/layout/inspection-panel.vue'
 import { applicationActor } from '@/application'
-import Router from '@/components/layout/router.vue'
+import Router from '@/shared/layout/router.vue'
 
 const send = applicationActor.send
 

@@ -133,7 +133,7 @@
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationActor } from '@/application'
-import Label from '@/components/design/label.vue'
+import Label from '@/shared/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 
 const actor: ThreadsState = applicationActor.system.get(id);
