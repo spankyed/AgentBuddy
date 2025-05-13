@@ -3,7 +3,7 @@ import { createActor } from 'xstate';
 import { createBrowserInspector } from '@statelyai/inspect';
 import logErrors from '@/shared/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
-import { createApplicationState } from '@/state/app-state';
+import { createApplicationState } from '@/actors/app-state';
 import { createApp } from 'vue'
 import App from './App.vue'
 import './style.css'

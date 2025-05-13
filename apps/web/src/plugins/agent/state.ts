@@ -3,7 +3,7 @@ import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/
 import mockData from './mockData';
 import breadcrumb from '@/shared/breadcrumb';
 import { safeEvents } from '@/shared/types/safe-events';
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/state/trail-actor';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/actors/trail-actor';
 
 export const id = 'agent' as const;
 
