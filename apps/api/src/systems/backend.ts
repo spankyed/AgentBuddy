@@ -13,7 +13,7 @@ export interface BusContext {
 
 export const bus = 'bus' as const;
 
-export const backendState = setup({
+export const backendSystem = setup({
   types: {
     context: {} as BusContext,
     events: {} as BusEvent,

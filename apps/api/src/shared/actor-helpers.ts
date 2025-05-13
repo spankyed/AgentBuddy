@@ -3,7 +3,7 @@ import type systemStates from '@/systems';
 import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingPluginEvents } from './events';
-import { bus, type backendState } from '@/systems';
+import { bus, type backendSystem } from '@/systems';
 
 type ExtractEvent<
   TEvent extends { type: string },
@@ -85,6 +85,6 @@ export function getBus(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   system: ActorSystem<any>,
 ) {
-  type ActorRef = ActorRefFromLogic<typeof backendState>;
+  type ActorRef = ActorRefFromLogic<typeof backendSystem>;
   return system.get(bus) as ActorRef;
 }
