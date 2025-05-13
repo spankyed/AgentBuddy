@@ -65,7 +65,11 @@ export function getActor<Id extends SystemId>(
   type ActorRef = ActorRefFromLogic<SystemStates[Id]>;
   // type ActorEvents = EventFromLogic<SystemStates[Id]>;
   
-  return system.get(id) as ActorRef;
+  const actor = system.get(id);
+  if (!actor) {
+    throw new Error(`Actor with id '${id}' not found in the system`);
+  }
+  return actor as ActorRef;
 }
 
 export function emit<
@@ -89,7 +93,11 @@ export function getBus(
   system: ActorSystem<any>,
 ) {
   type ActorRef = ActorRefFromLogic<typeof backendSystem>;
-  return system.get(bus) as ActorRef;
+  const busActor = system.get(bus);
+  if (!busActor) {
+    throw new Error(`Bus actor not found in the system`);
+  }
+  return busActor as ActorRef;
 }
 
 export function logErrors(actor: string) {
