@@ -6,7 +6,7 @@ import plugins, { defaultPlugin } from '@/plugins';
 import { createApplicationState } from '@/actors/app-state';
 import { createApp } from 'vue'
 import './style.css'
-import App from './App.vue';
+import App from './app.vue';
 
 const { inspect } = createBrowserInspector();
 
