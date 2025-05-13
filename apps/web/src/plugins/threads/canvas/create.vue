@@ -107,12 +107,12 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Label from '@/shared/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 
-const actor: ThreadsState = applicationActor.system.get(id);
+const actor: ThreadsState = applicationState.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
 
 const title = ref('')

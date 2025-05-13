@@ -21,11 +21,11 @@ import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import type { Message } from '@/plugins/agent/types'
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
-const actor: AgentState = applicationActor.system.get(id);
+const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.messages)
 const messagesContainer = ref<HTMLElement | null>(null)
 

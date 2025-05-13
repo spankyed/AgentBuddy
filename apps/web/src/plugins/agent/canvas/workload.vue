@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import { id as threadsId } from '@/plugins/agent/state.ts'
 
 /* -------------------------------------------------------------------------- */
@@ -89,7 +89,7 @@ const arrangeableOptions = {
 /*  XState integration                                                         */
 /* -------------------------------------------------------------------------- */
 
-const threadsActor = applicationActor.system.get(threadsId)
+const threadsActor = applicationState.system.get(threadsId)
 
 function onCardClick(item: WorkItem) {
   threadsActor.send({ type: 'SELECT_THREAD', id: String(item.id) })

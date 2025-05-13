@@ -5,10 +5,10 @@
 </template>
 
 <script setup lang="ts">
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 
-const actor: ThreadsState = applicationActor.system.get(id);
+const actor: ThreadsState = applicationState.system.get(id);
 // const someState = useSelector(actor, (state) => state.context.someState)
 </script> 

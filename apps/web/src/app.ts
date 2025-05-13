@@ -5,12 +5,12 @@ import logErrors from '@/shared/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
 import { createApplicationState } from '@/actors/app-state';
 import { createApp } from 'vue'
-import App from './App.vue'
 import './style.css'
+import App from './App.vue';
 
 const { inspect } = createBrowserInspector();
 
-export const applicationActor = createActor(createApplicationState(), {
+export const applicationState = createActor(createApplicationState(), {
   systemId: 'application',
   inspect,
   input: {
@@ -19,14 +19,14 @@ export const applicationActor = createActor(createApplicationState(), {
   }
 }).start();
 
-applicationActor.subscribe(logErrors('Application'));
+applicationState.subscribe(logErrors('Application'));
 
 createApp(App).mount('#root')
 
 declare global {
   interface Window {
-    applicationActor: Actor<ReturnType<typeof createApplicationState>>;
+    applicationState: Actor<ReturnType<typeof createApplicationState>>;
   }
 }
 
-window.applicationActor = applicationActor;
+window.applicationState = applicationState;

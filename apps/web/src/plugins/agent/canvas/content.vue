@@ -57,12 +57,12 @@
 
 <script setup lang="ts">
 import { Copy } from 'lucide-vue-next'
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Button from '@/shared/design/button.vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
-const actor: AgentState = applicationActor.system.get(id);
+const actor: AgentState = applicationState.system.get(id);
 const content = useSelector(actor, (state) => state.context.canvasContent)
 // const showAll = ref(false)
 // function toggleShowAll() {

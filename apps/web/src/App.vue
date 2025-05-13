@@ -43,17 +43,17 @@ import Toolbar from '@/shared/layout/toolbar.vue'
 import CanvasArea from '@/shared/layout/canvas-area.vue'
 import ChatArea from '@/shared/layout/chat-area.vue'
 import InspectionPanel from '@/shared/layout/inspection-panel.vue'
-import { applicationActor } from '@/application'
+import { applicationState } from '@/app'
 import Router from '@/shared/layout/router.vue'
 
-const send = applicationActor.send
+const send = applicationState.send
 
-const activePlugin = useSelector(applicationActor, (state) => state.context.activePlugin)
-const defaultPlugin = useSelector(applicationActor, (state) => state.context.defaultPlugin)
-const toggles = useSelector(applicationActor, (state) => state.context.defaultToggles)
-const plugins = useSelector(applicationActor, (state) => state.context.plugins)
-const breadcrumbs = useSelector(applicationActor, (state) => state.context.breadcrumbs)
-const targetView = useSelector(applicationActor, (state) => state.context.targetView)
+const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
+const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
+const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
+const plugins = useSelector(applicationState, (state) => state.context.plugins)
+const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
+const targetView = useSelector(applicationState, (state) => state.context.targetView)
 </script>
 
 <style lang="scss" module>
