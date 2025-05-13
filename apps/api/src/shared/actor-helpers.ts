@@ -2,7 +2,7 @@ import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from
 import type systemStates from '@/systems';
 import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
-import type { OutgoingPluginEvents } from './events';
+import type { OutgoingSystemEvents } from './events';
 import { bus, type backendSystem } from '@/systems';
 
 type ExtractEvent<
@@ -70,7 +70,7 @@ export function getActor<Id extends SystemIds>(
 
 export function emit<
   P extends string,
-  E extends Simplify<Omit<OutgoingPluginEvents, 'plugin'>>
+  E extends Simplify<Omit<OutgoingSystemEvents, 'plugin'>>
 >(
   plugin: P,
   event: E,

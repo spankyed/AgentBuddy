@@ -1,9 +1,9 @@
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
-import { IncomingEventSchema, type OutgoingPluginEvents } from '@/shared/events';
+import { IncomingEventSchema, type OutgoingSystemEvents } from '@/shared/events';
 import { procedure, router } from './trpc';
 
-export const pluginBusRouter = router({
+export const systemBusRouter = router({
   /** COMMAND / fire-and-forget */
   send: procedure
     .input(IncomingEventSchema)
@@ -18,7 +18,7 @@ export const pluginBusRouter = router({
   sub: procedure
     .input(z.object({ sessionId: z.string() }))
     .subscription(({ ctx }) =>
-      observable<OutgoingPluginEvents>((emit) => {
+      observable<OutgoingSystemEvents>((emit) => {
         return ctx.actor.on('OUTGOING', ({ event }) => {
           console.log('Notification received!', event);
           emit.next(event);

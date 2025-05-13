@@ -1,11 +1,11 @@
 import { emit, setup, enqueueActions } from 'xstate';
-import type { IncomingPluginEvents, OutgoingPluginEvents } from '@/shared/events';
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
 import systemStates from '@/systems';
 import type { SystemIds } from '@/shared/actor-helpers';
 
 export type BusEvent = 
-  | { type: 'INCOMING'; event: IncomingPluginEvents }
-  | { type: 'OUTGOING'; event: OutgoingPluginEvents}
+  | { type: 'INCOMING'; event: IncomingSystemEvents }
+  | { type: 'OUTGOING'; event: OutgoingSystemEvents}
 
 export interface BusContext {
   threads: string[];

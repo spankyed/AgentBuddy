@@ -1,4 +1,4 @@
-import { mergePlugins } from '@/shared/event-helpers';
+import { mergeSystems } from '@/shared/event-helpers';
 
 export { bus } from "@/systems/backend";
 
@@ -9,7 +9,7 @@ export default {
   [agent]: agentSystem,
 } as const;
 
-export const events = mergePlugins(
+export const events = mergeSystems(
   AgentSystemEvents,
 );
 

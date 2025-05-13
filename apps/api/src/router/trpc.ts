@@ -1,4 +1,4 @@
-import type { OutgoingPluginEvents } from '../shared/events';
+import type { OutgoingSystemEvents } from '../shared/events';
 import { initTRPC } from '@trpc/server';
 import type { Context } from './context';
 

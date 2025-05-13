@@ -3,14 +3,14 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { LlmRunner } from '@/systems/agent/runner';
 import type { MergeReceivable } from '@/shared/event-helpers';
-import { fromPlugin, pluginBus } from '@/shared/event-helpers';
+import { fromSystem, systemBus } from '@/shared/event-helpers';
 import { z } from 'zod';
 import { bus } from '@/systems/backend';
 import { emit, getActor, sendParentSafe } from '@/shared/actor-helpers';
 
 export const agent = 'agent' as const;
 
-const busEvent = pluginBus(agent);
+const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { content: z.string() }),
@@ -31,7 +31,7 @@ export interface AgentContext {
   abortController?: AbortController;
 }
 
-export const AgentSystemEvents = fromPlugin(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
+export const AgentSystemEvents = fromSystem(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
 
 export const agentSystem = setup({
   types: {
