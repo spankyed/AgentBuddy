@@ -1,5 +1,5 @@
 import { emit, setup } from 'xstate';
-import type { IncomingPluginEvents, OutgoingPluginEvents } from '../shared/events';
+import type { IncomingPluginEvents, OutgoingPluginEvents } from '@/shared/events';
 
 export type BusEvent = 
   | { type: 'INCOMING'; event: IncomingPluginEvents }

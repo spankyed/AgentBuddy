@@ -1,7 +1,7 @@
 import { assign, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
-import { LlmRunner } from './runner';
+import { LlmRunner } from '@plugins/agent/runner';
 import type { MergeReceivable } from '@/shared/type-helpers';
 import { emit, fromPlugin, pluginBus, sendParentSafe } from '@/shared/type-helpers';
 import { z } from 'zod';

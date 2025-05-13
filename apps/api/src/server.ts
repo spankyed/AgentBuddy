@@ -1,8 +1,7 @@
-// /apps/api/src/server.ts
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
-import { appRouter } from './router';
-import { createContext } from './router/context';
+import { appRouter } from '@/router';
+import { createContext } from '@/router/context';
 
 const port = 3001;
 

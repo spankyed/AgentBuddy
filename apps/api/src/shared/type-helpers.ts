@@ -5,7 +5,7 @@
 
 import { z, type ZodRawShape } from 'zod';
 import { sendParent } from 'xstate';
-import type { OutgoingPluginEvents } from './events';
+import type { OutgoingPluginEvents } from '@/shared/events';
 
 /* --------------------------------------------------------------------------
  *  1.  Tiny utilities

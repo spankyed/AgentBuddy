@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { AgentPluginEvents  } from '../state/plugins/agent/state';
-import { mergePlugins, type EventsFromSchemas } from './type-helpers';
+import { AgentPluginEvents  } from '@/state/plugins/agent/state';
+import { mergePlugins, type EventsFromSchemas } from '@/shared/type-helpers';
 
 const events = mergePlugins(
   AgentPluginEvents,

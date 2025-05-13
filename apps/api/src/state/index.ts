@@ -1,9 +1,9 @@
-export { bus } from "./backend";
-export { agent } from "./plugins/agent/state";
-import { agentState } from "./plugins/agent/state";
+export { bus } from "@/state/backend";
+export { agent } from "@plugins/agent/state";
+import { agentState } from "@plugins/agent/state";
 
 export default [
   agentState,
 ]
 
-export { backendState } from "./backend";
+export { backendState } from "@/state/backend";

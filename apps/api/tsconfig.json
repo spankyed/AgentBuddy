@@ -8,7 +8,8 @@
     "emitDeclarationOnly": true,   // build‑time type pack
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@plugins/*": ["src/state/plugins/*"]
     }
   },
   "include": ["src"]

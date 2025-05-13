@@ -1,7 +1,7 @@
-import type { OutgoingPluginEvents } from '../shared/events';
+import type { OutgoingPluginEvents } from '@/shared/events';
 import { initTRPC } from '@trpc/server';
-import type { Context } from './context';
-import { pluginBusRouter } from './bus-router';
+import type { Context } from '@/router/context';
+import { pluginBusRouter } from '@/router/bus-router';
 const t = initTRPC.context<Context>().create();
 
 export const router    = t.router;
