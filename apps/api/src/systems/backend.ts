@@ -1,7 +1,7 @@
 import { emit, setup, enqueueActions } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
-import systemStates from '@/systems';
-import type { SystemIds } from '@/shared/actor-helpers';
+import systems from '@/systems';
+import type { SystemId } from '@/shared/actor-helpers';
 
 export type BusEvent = 
   | { type: 'INCOMING'; event: IncomingSystemEvents }
@@ -26,8 +26,8 @@ export const backendSystem = setup({
       system.get(systemId).send(event);
     },
     spawnActors: enqueueActions(({ enqueue }) => {
-      for (const [id, state] of Object.entries(systemStates)) {
-        enqueue.spawnChild(state, { systemId: id as SystemIds });
+      for (const [id, state] of Object.entries(systems)) {
+        enqueue.spawnChild(state, { systemId: id as SystemId });
       }
     }),
   }

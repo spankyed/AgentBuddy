@@ -1,5 +1,5 @@
 import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from 'xstate';
-import type systemStates from '@/systems';
+import type systems from '@/systems';
 import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from './events';
@@ -54,10 +54,10 @@ export const safeEvents =
     return event as any;
   };
 
-type SystemStates = typeof systemStates;
-export type SystemIds = keyof SystemStates;
+type SystemStates = typeof systems;
+export type SystemId = keyof SystemStates;
 
-export function getActor<Id extends SystemIds>(
+export function getActor<Id extends SystemId>(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   system: ActorSystem<any>,
   id: Id,
