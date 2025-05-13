@@ -22,7 +22,7 @@
       </div>
 
       <!-- Pinned bottom section -->
-      <div class="flex flex-col items-center space-y-6 mt-auto pt-6">
+      <div class="flex flex-col items-center pt-6 mt-auto space-y-6">
         <button
           v-for="item in pinnedItems"
           :key="item.id"
@@ -43,19 +43,15 @@
 </template>
 
 <script setup lang="ts">
-import { useSelector } from '@xstate/vue';
-import { applicationActor } from '@/application';
 import type { Plugin } from '@/shared/types';
 import { computed } from 'vue';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();
 
-interface ToolbarProps {
+const props = defineProps<{
   activePlugin: Plugin;
   plugins: Plugin[];
-}
-
-const props = defineProps<ToolbarProps>();
+}>();
 
 const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
 const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
