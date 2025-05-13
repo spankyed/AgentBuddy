@@ -2,8 +2,8 @@ import { mergePlugins } from '@/shared/event-helpers';
 
 export { bus } from "@/systems/backend";
 
-export { agent } from "@/systems/agent/state";
-import { agent, agentSystem, AgentPluginEvents } from "@/systems/agent/state";
+export { agent } from "@/systems/agent/system";
+import { agent, agentSystem, AgentPluginEvents } from "@/systems/agent/system";
 
 export default {
   [agent]: agentSystem
