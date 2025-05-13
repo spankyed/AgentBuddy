@@ -33,7 +33,7 @@ export interface AgentContext {
 
 export const AgentPluginEvents = fromPlugin(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
 
-export const agentState = setup({
+export const agentSystem = setup({
   types: {
     context: {} as AgentContext,
     events: {} as MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>,
