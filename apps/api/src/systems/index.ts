@@ -6,7 +6,7 @@ export { agent } from "@/systems/agent/system";
 import { agent, agentSystem, AgentPluginEvents } from "@/systems/agent/system";
 
 export default {
-  [agent]: agentSystem
+  [agent]: agentSystem,
 } as const;
 
 export const events = mergePlugins(
