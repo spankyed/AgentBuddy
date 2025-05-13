@@ -1,6 +1,6 @@
 import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from 'xstate';
 import type actorStates from '@/actors';
-import type { Simplify } from './type-helpers';
+import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingPluginEvents } from './events';
 import { bus, type backendState } from '@/actors';

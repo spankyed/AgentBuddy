@@ -1,4 +1,4 @@
-import { mergePlugins } from '@/shared/type-helpers';
+import { mergePlugins } from '@/shared/event-helpers';
 
 export { bus } from "@/actors/backend";
 
