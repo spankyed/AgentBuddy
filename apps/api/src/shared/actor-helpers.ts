@@ -69,15 +69,18 @@ export function getActor<Id extends SystemId>(
 }
 
 export function emit<
-  P extends string,
-  E extends Simplify<Omit<OutgoingSystemEvents, 'systemId'>>
+  T extends OutgoingSystemEvents['type'],
+  E extends Extract<OutgoingSystemEvents, { type: T }>
 >(
-  systemId: P,
-  event: E,
+  systemId: E['systemId'],
+  // Explicitly require all properties except systemId
+  event: Omit<E, 'systemId'> & { type: T }
 ) {
+  // Type-safe emit function that ensures all required properties for a given event type are provided
+  const fullEvent = { ...event, systemId } as E;
   return {
     type: 'OUTGOING' as const,
-    event: { ...event, systemId } as Simplify<E & { systemId: P }>,
+    event: fullEvent,
   };
 }
 
