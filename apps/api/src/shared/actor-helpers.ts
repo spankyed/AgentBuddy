@@ -88,3 +88,11 @@ export function getBus(
   type ActorRef = ActorRefFromLogic<typeof backendSystem>;
   return system.get(bus) as ActorRef;
 }
+
+export function logErrors(actor: string) {
+  return {
+    error: (error: unknown) => {
+      console.error(`${actor} State Error:`, error);
+    }
+  }
+}
