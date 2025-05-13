@@ -3,10 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { LlmRunner } from '@/actors/agent/runner';
 import type { MergeReceivable } from '@/shared/type-helpers';
-import { emit, fromPlugin, pluginBus } from '@/shared/type-helpers';
+import { fromPlugin, pluginBus } from '@/shared/type-helpers';
 import { z } from 'zod';
 import { bus } from '@/actors/backend';
-import { sendParentSafe } from '@/shared/actor-helpers';
+import { emit, getActor, sendParentSafe } from '@/shared/actor-helpers';
 
 export const agent = 'agent' as const;
 
@@ -44,6 +44,10 @@ export const agentState = setup({
         type: 'TOKEN',
         token: 'some string'
       }));
+      getActor(system, agent).send({
+        type: 'TOKEN',
+        token: 'some string'
+      });
     },
     storePrompt: assign({
       userPrompt: ({ event }) => (event.type === 'USER_MSG' ? event.content : undefined),

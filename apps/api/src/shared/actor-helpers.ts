@@ -2,6 +2,7 @@ import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from
 import type actorStates from '@/actors';
 import type { Simplify } from './type-helpers';
 import { sendParent } from 'xstate';
+import type { OutgoingPluginEvents } from './events';
 
 type ExtractEvent<
   TEvent extends { type: string },
@@ -64,4 +65,17 @@ export function getActor<Id extends ActorIds>(
   // type ActorEvents = EventFromLogic<ActorStates[Id]>;
   
   return system.get(id) as ActorRef;
+}
+
+export function emit<
+  P extends string,
+  E extends Simplify<Omit<OutgoingPluginEvents, 'plugin'>>
+>(
+  plugin: P,
+  event: E,
+) {
+  return {
+    type: 'OUTGOING' as const,
+    event: { ...event, plugin } as Simplify<E & { plugin: P }>,
+  };
 }

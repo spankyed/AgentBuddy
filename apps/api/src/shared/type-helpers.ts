@@ -87,22 +87,6 @@ export function fromPlugin<
 }
 
 /* --------------------------------------------------------------------------
- *  6.  Runtime helper: build an OUTGOING envelope
- * ------------------------------------------------------------------------ */
-export function emit<
-  P extends string,
-  E extends Simplify<Omit<OutgoingPluginEvents, 'plugin'>>
->(
-  plugin: P,
-  event: E,
-) {
-  return {
-    type: 'OUTGOING' as const,
-    event: { ...event, plugin } as Simplify<E & { plugin: P }>,
-  };
-}
-
-/* --------------------------------------------------------------------------
  *  7.  Combine any number of plugins into one definition object
  * ------------------------------------------------------------------------ */
 export function mergePlugins<
