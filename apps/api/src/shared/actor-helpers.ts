@@ -1,9 +1,9 @@
 import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from 'xstate';
-import type actorStates from '@/actors';
+import type actorStates from '@/systems';
 import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingPluginEvents } from './events';
-import { bus, type backendState } from '@/actors';
+import { bus, type backendState } from '@/systems';
 
 type ExtractEvent<
   TEvent extends { type: string },

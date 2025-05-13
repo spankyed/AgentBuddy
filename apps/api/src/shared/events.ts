@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { EventsFromSchemas } from '@/shared/event-helpers';
-import { events } from '@/actors';
+import { events } from '@/systems';
 
 export type OutgoingPluginEvents = typeof events.outgoing;
 export type IncomingPluginEvents = EventsFromSchemas<typeof events.incoming>;

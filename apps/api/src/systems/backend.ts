@@ -1,6 +1,6 @@
 import { emit, setup, enqueueActions } from 'xstate';
 import type { IncomingPluginEvents, OutgoingPluginEvents } from '@/shared/events';
-import actorStates from '@/actors';
+import actorStates from '@/systems';
 
 export type BusEvent = 
   | { type: 'INCOMING'; event: IncomingPluginEvents }
