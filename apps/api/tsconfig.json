@@ -5,7 +5,11 @@
     "rootDir": "src",
     "declaration": true,          // ← emit types
     "declarationMap": true,
-    "emitDeclarationOnly": true   // build‑time type pack
+    "emitDeclarationOnly": true,   // build‑time type pack
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src"]
 }

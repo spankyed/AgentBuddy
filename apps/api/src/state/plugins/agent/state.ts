@@ -1,11 +1,11 @@
 import { assign, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
-import { db, schema } from '../../../db/client';
+import { db, schema } from '@/db/client';
 import { LlmRunner } from './runner';
-import type { EventsWithoutPlugin, MergeReceivable } from '../../../shared/type-helpers';
-import { emit, fromPlugin, pluginBus, sendParentSafe } from '../../../shared/type-helpers';
+import type { MergeReceivable } from '@/shared/type-helpers';
+import { emit, fromPlugin, pluginBus, sendParentSafe } from '@/shared/type-helpers';
 import { z } from 'zod';
-import { bus } from '../../backend';
+import { bus } from '@/state/backend';
 
 export const agent = 'agent' as const;
 
