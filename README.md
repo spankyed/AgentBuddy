@@ -62,7 +62,7 @@ Basic Plugin Skeleton:
 ```
 ``` js
 // plugin.ts
-export const _blank = {
+export const _blankPlugin = {
   id: '_blank',
   label: 'Blank',
   icon: Box,
