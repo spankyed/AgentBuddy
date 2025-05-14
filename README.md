@@ -50,6 +50,10 @@ Only the default plugin can define content to be shown in the chat area. The can
 ```
 
 
+# Systems
+
+Todo
+
 
 # Getting Started
 
@@ -61,7 +65,8 @@ pnpm fe        # Vite + Tailwind
 pnpm run dev
 ```
 
-# tRPC TypeScript version requirement
+# Requirements
+### tRPC TypeScript version requirement
 ```
 TypeScript version >=5.7.2 is now required (non-breaking)
 tRPC now requires TypeScript version 5.7.2 or higher. This change was made in response to a bug report where we decided to take a forward-looking approach.
