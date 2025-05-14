@@ -50,8 +50,8 @@ Only the default plugin can define content to be shown in the chat area. The can
 ```
 
 ``` yml
-The basic structure of a plugin:
-📦 plugin-x
+Basic Plugin Skeleton:
+📦 _blank
  ┣ 📜 canvas.vue  -- main workspace
  ┣ 📜 panel.vue   -- sidebar panel
  ┣ 📜 plugin.ts   -- entry file; exports state & components
@@ -60,9 +60,9 @@ The basic structure of a plugin:
 
 Expose a plugin by creating a plugin object:
 ``` js
-const pluginX = {
-  id: 'plugin-x',
-  label: 'Plugin X',
+const _blank = {
+  id: '_blank',
+  label: 'Blank',
   icon: Box,
   state,
   canvas,
@@ -99,8 +99,8 @@ Display different content in the canvas depending what state you're plugin is cu
 ```
 To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`.
 ``` js
-const pluginX = {
-  id: 'plugin-x',
+const plugin = {
+  id: 'plugin',
   // ...
   canvas: {
     list: list,
@@ -112,7 +112,7 @@ const pluginX = {
 
 // in the plugin XState machine
 createMachine({
-  id: 'plugin-x',
+  id: 'plugin',
   initial: 'list',
   states: {
     // ...
