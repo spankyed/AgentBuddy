@@ -29,7 +29,7 @@
 
 Plugins define what gets shown in a specific area of the UI. Two plugins, the default and active plugins, can be showing content at any given time.
 
-Only the default plugin can define content to be shown in the chat area. The canvas and the side panel (inspection panel) can be toggled to show custom content from the currently active plugin. Below is an example of a common UI arrangement you'll see. Where, although the active plugin could display content in the side panel, currently the default plugin (`agent`) is using it to display LLM context.
+Only the default plugin can define content to be shown in the chat area. The active plugin can show custom content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see. Where, although the active plugin could display content in the side panel, currently the default plugin (`agent`) is toggled visible - perhaps displaying some LLM context.
 
 ```
                       │                            │                                      
