@@ -136,7 +136,7 @@ createMachine({
 │                           │    │                         │    │                           │
 └───────────────────────────┘    └─────────────────────────┘    └───────────────────────────┘
 ```
-Systems are the building blocks of our agent. And that is agent singular. The current hype and language around multiple agents interacting is confusing and unneeded. Instead of multiple agents, we have multiple systems that make up one larger agent. Need more capabilities? Add more systems.
+Systems are the building blocks of the agent. And that is agent singular. I believe the current hype and language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems that make up a unified agent. Need more capabilities? Add more systems.
 
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new tasks comes in while the other task is still going. We can spin up another parallel system to handle this new task, and orchestrate the two with some parent system.
 
