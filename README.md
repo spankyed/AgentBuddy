@@ -1,4 +1,6 @@
-# Plugin-Actor system
+
+
+# Plugin - Actor - System
 ```
   ┌─────────┐              ┌─────────┐            ┌─────────┐              ┌─────────┐  
   │ plugins │              │         │            │         │              │ systems │  
@@ -67,7 +69,7 @@ export const _blank = {
   state,
   canvas,
   panel,
-}; // Expose a plugin by creating a plugin object
+}; // Expose a plugin by defining a plugin object
 ```
 
 Depending on what state a plugin is currently in, different content can be displayed in the canvas.
@@ -86,13 +88,13 @@ Depending on what state a plugin is currently in, different content can be displ
                                                │            │    │
                                                └────────────┴────┘
 ```
-To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`.
+To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`. Example:
 ``` js
 const plugin = {
   id: 'plugin',
   // ...
   canvas: {
-    list: list,
+    list,
     create,
     view,
   },
@@ -117,6 +119,21 @@ createMachine({
 ```
 
 # Systems
+```
+┌─────────────────────────────┐     ┌─────────────────────────────┐      ┌─────────────────────────────┐
+│                             │     │                             │      │                             │
+│          System A           │     │                             │      │          System C           │
+│                             │     │                             │      │                             │
+│                             │     │                             │      │                             │
+│  ┌─────────┐   ┌─────────┐  │     │                             │      │  ┌─────────┐   ┌─────────┐  │
+│  │System a1│──▶│System a2│  │────▶│          System B           │─────▶│  │System c1│──▶│System c2│  │
+│  └─────────┘   └─────────┘  │     │                             │      │  └─────────┘   └─────────┘  │
+│         ┌─────────┐ │       │     │                             │      │                             │
+│         │System a3│◀┘       │     │                             │      │                             │
+│         └─────────┘         │     │                             │      │                             │
+│                             │     │                             │      │                             │
+└─────────────────────────────┘     └─────────────────────────────┘      └─────────────────────────────┘
+```
 Systems are the building blocks of our agent. And that is agent singular. The current hype and language around multiple agents interacting is confusing and unneeded. Instead of multiple agents, we have multiple systems that make up one larger agent. Need more capabilities? Add more systems.
 
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new tasks comes in while the other task is still going. We can spin up another parallel system to handle this new task, and orchestrate the two with some parent system.
