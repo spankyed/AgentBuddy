@@ -25,47 +25,47 @@
 
 # Plugins
 
-Plugins define what gets shown in a specific area of the app. There are two special types of plugins: default and active.
+Plugins define what gets shown in a specific area of the UI. Two plugins, the default and active plugins, can be showing content at any given time.
 
-The default plugin, and only it, can define content to be shown in the chat area. However, the canvas and the inspection panel can be toggled to show custom content from the active plugin.
+Only the default plugin can define content to be shown in the chat area. The canvas and the inspection panel can be toggled to show custom content from the currently active plugin.
 
 ```
-                   ┌────────────────────────────────────────────┐                    
-                   │                                            │                    
-                   │ ╔════════════════╗      ╔═══════════════╗  │                    
-                   │ ║ Default Plugin ║      ║ Active Plugin ║  │                    
-                   │ ╚════════════════╝      ╚═══════════════╝  │                    
-                   │ ┌────────────┬───┐      ┌────────────┬───┐ │                    
-                   │ │            │ I │      │            │ I │ │                    
-                   │ │   Canvas   │ n │      │   Canvas   │ n │ │                    
-                   │ │            │ s │      │            │ s │ │                    
-                   │ ├────────────┤ p │      └────────────┤ p │ │                    
-                   │ │            │ e │                   │ e │ │                    
-                   │ │    Chat    │ c │                   │ c │ │                    
-                   │ │            │ t │                   │ t │ │                    
-                   │ └────────────┴───┘                   └───┘ │                    
-                   │                                            │                    
-                   └────────────────────────────────────────────┘                    
-                                                                                     
-─────────────────────────────────────────────────────────────────────────────────────
-                                                                                     
-                                             │                                       
-    ╔═════════════════════════════════╗      │      ┌─────────────────┬───────┐      
-    ║        Default + Active         ║      │      │                 │       │      
-    ╚═════════════════════════════════╝      │      │                 │       │      
-                                             │      │     Canvas      │   I   │      
-                   │ ┌────────────┬───┐      │      │                 │   n   │      
-                   │ │            │ I │    ╔═╩═╗    │                 │   s   │      
-                   │ │   Canvas   │ n │    ║ = ║    ├─────────────────┤   p   │      
-                   │ │            │ s │    ╚═╦═╝    │                 │   e   │      
-    ┌────────────┐ │ └────────────┤ p │      │      │                 │   c   │      
-    │            │ │              │ e │      │      │      Chat       │   t   │      
-    │    Chat    │ │              │ c │      │      │                 │       │      
-    │            │ │              │ t │      │      │                 │       │      
-    └────────────┘ │              └───┘      │      └─────────────────┴───────┘      
-                                             │                                       
-                                             │                                       
-                                             │                                                                        
+                 ┌────────────────────────────────────────────┐               
+                 │                                            │               
+                 │ ╔════════════════╗      ╔═══════════════╗  │               
+                 │ ║ Default Plugin ║      ║ Active Plugin ║  │               
+                 │ ╚════════════════╝      ╚═══════════════╝  │               
+                 │ ┌────────────┬───┐      ┌────────────┬───┐ │               
+                 │ │            │ I │      │            │ I │ │               
+                 │ │   Canvas   │ n │      │   Canvas   │ n │ │               
+                 │ │            │ s │      │            │ s │ │               
+                 │ ├────────────┤ p │      └────────────┤ p │ │               
+                 │ │            │ e │                   │ e │ │               
+                 │ │    Chat    │ c │                   │ c │ │               
+                 │ │            │ t │                   │ t │ │               
+                 │ └────────────┴───┘                   └───┘ │               
+                 │                                            │               
+                 └────────────────────────────────────────────┘               
+                                                                              
+───────────────────────────────────────────────────────────────────────────────
+                                                                              
+                                           │                                 
+  ╔═════════════════════════════════╗      │      ┌─────────────────┬───────┐
+  ║        Default + Active         ║      │      │                 │       │
+  ╚═════════════════════════════════╝      │      │                 │       │
+                                           │      │     Canvas      │   I   │
+                 │ ┌────────────┬───┐      │      │                 │   n   │
+                 │ │            │ I │    ╔═╩═╗    │                 │   s   │
+                 │ │   Canvas   │ n │    ║ = ║    ├─────────────────┤   p   │
+                 │ │            │ s │    ╚═╦═╝    │                 │   e   │
+  ┌────────────┐ │ └────────────┤ p │      │      │                 │   c   │
+  │            │ │              │ e │      │      │      Chat       │   t   │
+  │    Chat    │ │              │ c │      │      │                 │       │
+  │            │ │              │ t │      │      │                 │       │
+  └────────────┘ │              └───┘      │      └─────────────────┴───────┘
+                                           │                                 
+                                           │                                 
+                                           │                                                                 
 ```
 
 
