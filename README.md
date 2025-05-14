@@ -142,6 +142,26 @@ Systems can be started when the app starts up. Or a system can be spawned on the
 
 In a similar vein, systems can have child systems, allowing developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the front end.
 
+Below is an example of sending a message to the `threads`  front end plugin from a backend system.
+``` js
+import { getBus } from '@/shared/actor-helpers';
+
+const pluginId = 'threads';
+
+setup({
+  actions: {
+    sayHello: ({ system }) => {
+      system.get(bus).send(emit(pluginId, {
+        type: 'Hello',
+        message: 'World'
+      }));
+    },
+  }
+})
+.createMachine({ id: 'system' })
+```
+
+
 # Getting Started
 
 From root run:
