@@ -77,15 +77,15 @@ Depending on what state a plugin is currently in, different content can be displ
                                                                   
 ╔════════════════════════════════════════╗     Bread > Crumbs     
 ║        Canvas Component Routes         ║     ┌────────────┬────┐
-╠════════════╦╦════════════╦╦════════════╣     │            │    │
-│            ││            │║            ║     │   Canvas   │    │
-│    List    ││   Create   │║  Details   ║  ┌──│   Target   │    │
-│            ││            │║            ║  │  │            │    │
-└────────────┘└────────────┘╚════════════╝  │  ├────────────┤    │
-                                   ▲        │  │            │    │
-                                   │        │  │            │    │
-                                   └────────┘  │            │    │
-                                               │            │    │
+╠════════════╦╦════════════╦╦════════════╣     │            │████│
+│            ││            │║            ║     │   Canvas   │████│
+│    List    ││   Create   │║  Details   ║  ┌──│   Target   │████│
+│            ││            │║            ║  │  │            │████│
+└────────────┘└────────────┘╚════════════╝  │  ├────────────┤████│
+                                   ▲        │  │████████████│████│
+                                   │        │  │████████████│████│
+                                   └────────┘  │████████████│████│
+                                               │████████████│████│
                                                └────────────┴────┘
 ```
 To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`. Example:
