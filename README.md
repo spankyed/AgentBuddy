@@ -30,23 +30,23 @@ Plugins define what gets shown in a specific area of the UI. Two plugins, the de
 Only the default plugin can define content to be shown in the chat area. The canvas and the inspection panel can be toggled to show custom content from the currently active plugin.
 
 ```
-                     │                          │                                      
-                     │                          │   ╔═════════════════════════════════╗
-╔════════════════╗   │    ╔════════════════╗    │   ║   Whats currently being shown   ║
-║ Default Plugin ║   │    ║ Active Plugin  ║    │   ╚══╦═════════════════╦═══════╦════╝
-╠════════════╦═══╣   │    ╠════════════╦═══╣    │      │                 │       │     
-│            │ I │   │    │            │ I │    │      │                 │       │     
-│   Canvas   │ n │ ╔═╩═╗  │   Canvas   │ n │  ╔═╩═╗    │     Canvas      │   I   │     
-│            │ s │ ║ + ║  │            │ s │  ║ = ║    │                 │   n   │     
-├────────────┤ p │ ╚═╦═╝  └────────────┤ p │  ╚═╦═╝    │                 │   s   │     
-│            │ e │   │                 │ e │    │      ├─────────────────┤   p   │     
-│    Chat    │ c │   │                 │ c │    │      │                 │   e   │     
-│            │ t │   │                 │ t │    │      │                 │   c   │     
-└────────────┴───┘   │                 └───┘    │      │      Chat       │   t   │     
-                     │                          │      │                 │       │     
-                     │                          │      │                 │       │     
-                     │                          │      └─────────────────┴───────┘     
-                     │                          │                                                            
+                      │                            │                                       
+                      │                            │    ╔═════════════════════════════════╗
+╔════════════════╗    │     ╔════════════════╗     │    ║   Whats currently being shown   ║
+║ Default Plugin ║    │     ║ Active Plugin  ║     │    ╚══╦═════════════════╦═══════╦════╝
+╠════════════╦═══╣    │     ╠════════════╦═══╣     │       │                 │       │     
+│            │ I │    │     │            │ I │     │       │                 │       │     
+│   Canvas   │ n │  ╔═╩═╗   │   Canvas   │ n │   ╔═╩═╗     │     Canvas      │   I   │     
+│            │ s │  ║ + ║   │            │ s │   ║ = ║     │                 │   n   │     
+├────────────┤ p │  ╚═╦═╝   └────────────┤ p │   ╚═╦═╝     │                 │   s   │     
+│            │ e │    │                  │ e │     │       ├─────────────────┤   p   │     
+│    Chat    │ c │    │                  │ c │     │       │                 │   e   │     
+│            │ t │    │                  │ t │     │       │                 │   c   │     
+└────────────┴───┘    │                  └───┘     │       │      Chat       │   t   │     
+                      │                            │       │                 │       │     
+                      │                            │       │                 │       │     
+                      │                            │       └─────────────────┴───────┘     
+                      │                            │                                                
 ```
 
 
