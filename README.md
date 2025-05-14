@@ -25,7 +25,7 @@
 
 # Plugins
 
-Plugins define what gets shown in a specific area of the app. There are two special types of plugins:
+Plugins define what gets shown in a specific area of the app. There are two special types of plugins: default and active.
 
 The default plugin, and only it, can define content to be shown in the chat area. However, the canvas and the inspection panel can be toggled to show custom content from the active plugin.
 
@@ -58,12 +58,12 @@ The default plugin, and only it, can define content to be shown in the chat area
                                                   │       ├─────────────────┤   p   │      
                                                   │       │                 │   e   │      
                                                   │       │                 │   c   │      
-                                                  │       │     Canvas      │   t   │      
+                                                  │       │      Chat       │   t   │      
                                                   │       │                 │       │      
                                                   │       │                 │       │      
                                                   │       └─────────────────┴───────┘      
                                                   │                                        
-                                                  ▼                                        
+                                                  │                                        
 ```
 
 
