@@ -140,9 +140,9 @@ Systems are the building blocks of the agent. And that is agent singular. I beli
 
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new task comes in while the other task is still going. We can spin up a parallel system to handle this new task and orchestrate the two with a parent system.
 
-In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the front end.
+In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the frontend.
 
-Below is an example of sending a message to the `threads`  front end plugin from a backend system.
+Below is an example of sending a message to the `threads`  frontend plugin from a backend system.
 ``` js
 const pluginId = 'threads';
 
