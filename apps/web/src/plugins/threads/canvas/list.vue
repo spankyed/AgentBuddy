@@ -45,7 +45,7 @@
     </div>
 
     <!-- Threads list section -->
-    <div class="space-y-2">
+    <div class="threads">
       <div
         v-for="thread in threads"
         :key="thread.id"
