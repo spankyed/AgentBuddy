@@ -27,7 +27,7 @@
 
 Plugins define what gets shown in a specific area of the UI. Two plugins, the default and active plugins, can be showing content at any given time.
 
-Only the default plugin can define content to be shown in the chat area. The canvas and the inspection panel can be toggled to show custom content from the currently active plugin.
+Only the default plugin can define content to be shown in the chat area. The canvas and the inspection panel can be toggled to show custom content from the currently active plugin. Below is an example of a common UI arrangement you'll see.
 
 ```
                       │                            │                                      
@@ -35,25 +35,102 @@ Only the default plugin can define content to be shown in the chat area. The can
 ╔════════════════╗    │     ╔════════════════╗     │    ║  What's currently being shown  ║
 ║ Default Plugin ║    │     ║ Active Plugin  ║     │    ╚══╦═════════════════╦═══════╦═══╝
 ╠════════════╦═══╣    │     ╠════════════╦═══╣     │       │                 │       │    
-│            │ I │    │     │            │ I │     │       │                 │       │    
-│   Canvas   │ n │    │     │   Canvas   │ n │     │       │     Canvas      │   I   │    
-│            │ s │  ╔═╩═╗   │            │ s │   ╔═╩═╗     │                 │   n   │    
-├────────────┤ p │  ║ + ║   └────────────┤ p │   ║ = ║     │                 │   s   │    
-│            │ e │  ╚═╦═╝                │ e │   ╚═╦═╝     ├─────────────────┤   p   │    
-│    Chat    │ c │    │                  │ c │     │       │                 │   e   │    
-│            │ t │    │                  │ t │     │       │                 │   c   │    
-└────────────┴───┘    │                  └───┘     │       │      Chat       │   t   │    
+│            │ I │    │     │            │   │     │       │                 │       │    
+│            │ n │    │     │   Canvas   │   │     │       │     Canvas      │   I   │    
+│            │ s │  ╔═╩═╗   │            │   │   ╔═╩═╗     │                 │   n   │    
+├────────────┤ p │  ║ + ║   ├────────────┤   │   ║ = ║     │                 │   s   │    
+│            │ e │  ╚═╦═╝   │            │   │   ╚═╦═╝     ├─────────────────┤   p   │    
+│    Chat    │ c │    │     │            │   │     │       │                 │   e   │    
+│            │ t │    │     │            │   │     │       │                 │   c   │    
+└────────────┴───┘    │     └────────────┴───┘     │       │      Chat       │   t   │    
                       │                            │       │                 │       │    
                       │                            │       │                 │       │    
                       │                            │       └─────────────────┴───────┘    
                       │                            │                                      
 ```
 
+The basic structure of a plugin:
+📦 plugin-x
+ ┣ 📜 canvas.vue  -- main workspace
+ ┣ 📜 panel.vue   -- sidebar panel
+ ┣ 📜 plugin.ts   -- entry file; exports state & components
+ ┗ 📜 state.ts    -- XState machine for plugin logic
+
+Expose a plugin by creating a plugin object:
+```
+const pluginX = {
+  id: 'plugin-x',
+  label: 'Plugin X',
+  icon: Box,
+  state,
+  canvas,
+  panel,
+};
+```
+
+Display different content in the canvas depending what state you're plugin is currently in.
+```
+                             │                                            
+                             │                                            
+╔═════════════════════════╗  │  ╔════════════════════════════════════════╗
+║   Single canvas page    ║  │  ║         Multiple canvas routes         ║
+╚═════╦════════════╦══════╝  │  ╠════════════╦╦════════════╦╦════════════╣
+      ║            ║         │  │            ││            │║            ║
+      ║  Content   ║         │  │    List    ││   Create   │║  Details   ║
+      ║            ║         │  │            ││            │║            ║
+      ╚════════════╝         │  └────────────┘└────────────┘╚════════════╝
+             ▲               │                                     ▲      
+             │               │                                     │      
+           ┌─┘               │                     ┌───────────────┘      
+     ┌─────┼──────┬───┐      │     Bread > Crumbs──┼─────┬───┐            
+     │     │      │   │      │              │      │     │   │            
+     │   Target   │   │      │              │   Target   │   │            
+     │            │   │      │              │            │   │            
+     ├────────────┤   │      │              ├────────────┤   │            
+     │            │   │      │              │            │   │            
+     │            │   │      │              │            │   │            
+     │            │   │      │              │            │   │            
+     └────────────┴───┘      │              └────────────┴───┘            
+                             │                                            
+                             │                                            
+                             ▼                                            
+```
+To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`.
+```
+const pluginX = {
+  id: 'plugin-x',
+  // ...
+  canvas: {
+    list: list,
+    create,
+    view,
+  },
+  panel,
+};
+
+// in the plugin XState machine
+createMachine({
+  id: 'plugin-x',
+  initial: 'list',
+  states: {
+    // ...
+    'create': {
+      meta: { ...breadcrumb('create', 'New Thread') },
+      on: {
+        CREATE_THREAD: { ... },
+        CANCEL_CREATE: { target: 'list' },
+      },
+    },
+  },
+})
+```
 
 # Systems
+Systems are the building blocks of our agent. And that is agent singular. The current hype and language around multiple agents interacting is confusing and unneeded. Instead of multiple agents, we have multiple systems that make up one larger agent. Need more capabilities? Add more systems.
 
-Todo
+Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new tasks comes in while the other task is still going. We can spin up another parallel system to handle this new task, and orchestrate the two with some parent system.
 
+In a similar vein, systems can have child systems, allowing developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the front end.
 
 # Getting Started
 
