@@ -49,12 +49,14 @@ Only the default plugin can define content to be shown in the chat area. The can
                       │                            │                                      
 ```
 
+```
 The basic structure of a plugin:
 📦 plugin-x
  ┣ 📜 canvas.vue  -- main workspace
  ┣ 📜 panel.vue   -- sidebar panel
  ┣ 📜 plugin.ts   -- entry file; exports state & components
  ┗ 📜 state.ts    -- XState machine for plugin logic
+```
 
 Expose a plugin by creating a plugin object:
 ```
