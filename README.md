@@ -51,51 +51,46 @@ Only the default plugin can define content to be shown in the chat area. The can
 
 ``` yml
 Basic Plugin Skeleton:
+
 📦 _blank
  ┣ 📜 canvas.vue  -- main workspace
  ┣ 📜 panel.vue   -- sidebar panel
  ┣ 📜 plugin.ts   -- entry file; exports state & components
  ┗ 📜 state.ts    -- XState machine for plugin logic
 ```
-
-Expose a plugin by creating a plugin object:
 ``` js
-const _blank = {
+// plugin.ts
+export const _blank = {
   id: '_blank',
   label: 'Blank',
   icon: Box,
   state,
   canvas,
   panel,
-};
+}; // Expose a plugin by creating a plugin object
 ```
 
-Display different content in the canvas depending what state you're plugin is currently in.
+Depending on what state a plugin is currently in, different content can be displayed in the canvas.
 ```
-                             │                                            
-                             │                                            
-╔═════════════════════════╗  │  ╔════════════════════════════════════════╗
-║   Single canvas page    ║  │  ║         Multiple canvas routes         ║
-╚═════╦════════════╦══════╝  │  ╠════════════╦╦════════════╦╦════════════╣
-      ║            ║         │  │            ││            │║            ║
-      ║  Content   ║         │  │    List    ││   Create   │║  Details   ║
-      ║            ║         │  │            ││            │║            ║
-      ╚════════════╝         │  └────────────┘└────────────┘╚════════════╝
-             ▲               │                                     ▲      
-             │               │                                     │      
-           ┌─┘               │                     ┌───────────────┘      
-     ┌─────┼──────┬───┐      │     Bread > Crumbs──┼─────┬───┐            
-     │     │      │   │      │              │      │     │   │            
-     │   Target   │   │      │              │   Target   │   │            
-     │            │   │      │              │            │   │            
-     ├────────────┤   │      │              ├────────────┤   │            
-     │            │   │      │              │            │   │            
-     │            │   │      │              │            │   │            
-     │            │   │      │              │            │   │            
-     └────────────┴───┘      │              └────────────┴───┘            
-                             │                                            
-                             │                                            
-                             ▼                                            
+╔════════════════════════════════════════╗
+║        Canvas Component Routes         ║
+╠════════════╦╦════════════╦╦════════════╣
+│            ││            │║            ║
+│    List    ││   Create   │║  Details   ║
+│            ││            │║            ║
+└────────────┘└────────────┘╚════════════╝
+                                   ▲      
+                                   │      
+                   ┌───────────────┘      
+            ┌──────┼─────┬───┐            
+  Bread > Crumbs   │     │   │            
+            │   Target   │   │            
+            │            │   │            
+            ├────────────┤   │            
+            │            │   │            
+            │            │   │            
+            │            │   │            
+            └────────────┴───┘            
 ```
 To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`.
 ``` js
