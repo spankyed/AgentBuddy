@@ -51,10 +51,15 @@ Only the default plugin can define content to be shown in the chat area. The can
 
 
 
-# root
+# Getting Started
+
+From root run:
+```
 pnpm install
 pnpm be        # tsc --watch + nodemon
 pnpm fe        # Vite + Tailwind
+pnpm run dev
+```
 
 # tRPC TypeScript version requirement
 ```
