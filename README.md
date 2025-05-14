@@ -138,14 +138,12 @@ createMachine({
 ```
 Systems are the building blocks of the agent. And that is agent singular. I believe the current hype and language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems that make up a unified agent. Need more capabilities? Add more systems.
 
-Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new tasks comes in while the other task is still going. We can spin up another parallel system to handle this new task, and orchestrate the two with some parent system.
+Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new task comes in while the other task is still going. We can spin up a parallel system to handle this new task and orchestrate the two with a parent system.
 
-In a similar vein, systems can have child systems, allowing developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the front end.
+In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the front end.
 
 Below is an example of sending a message to the `threads`  front end plugin from a backend system.
 ``` js
-import { getBus } from '@/shared/actor-helpers';
-
 const pluginId = 'threads';
 
 setup({
