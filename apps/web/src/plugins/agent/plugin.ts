@@ -16,7 +16,8 @@ const agentPlugin: Plugin = {
     workload
   },
   panel,
-  chat
+  chat,
+  // welcomeScreen // show this component when the app is first loaded
 };
 
 export default agentPlugin;
