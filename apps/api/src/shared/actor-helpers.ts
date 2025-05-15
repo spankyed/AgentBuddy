@@ -76,12 +76,12 @@ export function emit<
   T extends OutgoingSystemEvents['type'],
   E extends Extract<OutgoingSystemEvents, { type: T }>
 >(
-  systemId: E['systemId'],
-  // Explicitly require all properties except systemId
-  event: Omit<E, 'systemId'> & { type: T }
+  pluginId: E['pluginId'],
+  // Explicitly require all properties except pluginId
+  event: Omit<E, 'pluginId'> & { type: T }
 ) {
   // Type-safe emit function that ensures all required properties for a given event type are provided
-  const fullEvent = { ...event, systemId } as E;
+  const fullEvent = { ...event, pluginId } as E;
   return {
     type: 'OUTGOING' as const,
     event: fullEvent,
@@ -95,7 +95,7 @@ export function getBus(
   type ActorRef = ActorRefFromLogic<typeof backendSystem>;
   const busActor = system.get(bus);
   if (!busActor) {
-    throw new Error(`Bus actor not found in the system`);
+    throw new Error("Bus actor not found in the system");
   }
   return busActor as ActorRef;
 }

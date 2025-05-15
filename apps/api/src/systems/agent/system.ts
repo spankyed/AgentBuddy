@@ -22,6 +22,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN'; token: string }
 
 export type OutgoingAgentEvents = 
+  | { type: 'WAKEUP' }
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 

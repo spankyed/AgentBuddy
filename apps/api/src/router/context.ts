@@ -3,15 +3,15 @@ import { createActor } from 'xstate';
 import { backendSystem } from '@/systems';
 import { logErrors } from '@/shared/actor-helpers';
 
-const actor = createActor(backendSystem, {
+export const backendActor = createActor(backendSystem, {
   input: { model: 'gpt-4o' }
 }).start();
 
-actor.subscribe(logErrors('Backend'));
+backendActor.subscribe(logErrors('Backend'));
 
 export const createContext = () => ({
   db,
-  actor
+  actor: backendActor
 });
 
 export type Context = ReturnType<typeof createContext>;

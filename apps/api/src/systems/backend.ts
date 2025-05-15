@@ -1,9 +1,10 @@
-import { emit, setup, enqueueActions } from 'xstate';
+import { emit as notify, setup, enqueueActions, raise, log, sendTo } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
-import systems from '@/systems';
-import type { SystemId } from '@/shared/actor-helpers';
+import systems, { agent } from '@/systems';
+import { emit, safeEvents, type SystemId } from '@/shared/actor-helpers';
 
 export type BusEvent = 
+  | { type: 'WAKEUP'; }
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents}
 
@@ -13,6 +14,7 @@ export interface BusContext {
 
 export const bus = 'bus' as const;
 
+const typeOf = safeEvents<BusEvent>();
 export const backendSystem = setup({
   types: {
     context: {} as BusContext,
@@ -20,9 +22,9 @@ export const backendSystem = setup({
     emitted: {} as Extract<BusEvent, { type: 'OUTGOING' }>,
   },
   actions: {
-    routeIncoming: ({ event: incoming, system }) => {
-      console.log('Routing incoming event:', incoming);
-      const { systemId, ...event } = incoming.event;
+    routeIncoming: ({ event: incoming, system, }) => {
+      console.log('Incoming event:', incoming);
+      const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },
     spawnActors: enqueueActions(({ enqueue }) => {
@@ -38,12 +40,29 @@ export const backendSystem = setup({
     context: {
       threads: [],
     },
+    initial: 'disconnected',
     on: {
-      INCOMING: {
-        actions: 'routeIncoming'
+      WAKEUP: {
+        target: '.connected',
       },
-      OUTGOING: {
-        actions: emit(({ event }) => event),
+    },
+    states: {
+      disconnected: {},
+      connected: {
+        entry: raise(({ context, event }) => emit(agent, { type: 'WAKEUP'})),
+        // entry: raise(emit(agent, {
+        //   type: 'WAKEUP',
+        //   // initialMessage: 'Welcome back user!',
+        // })),
+        // entry: sendTo(agent, { type: 'WAKEUP' }),
+        on: {
+          INCOMING: {
+            actions: 'routeIncoming'
+          },
+          OUTGOING: {
+            actions: notify(({ event }) => event),
+          },
+        }
       },
     }
   }

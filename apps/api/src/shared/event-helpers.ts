@@ -35,13 +35,13 @@ export type MergeReceivable<
 > = Simplify<EventsWithoutSystem<TIncoming> | TInternal>;
 
 /* --------------------------------------------------------------------------
- *  3.  Helper: add a `systemId` literal to every union member
+ *  3.  Helper: add a `pluginId` literal to every union member
  * ------------------------------------------------------------------------ */
-export type WithSystem<
+export type WithPlugin<
   P extends string,
   E extends { type: string }
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-> = E extends any ? Simplify<E & { systemId: P }> : never;
+> = E extends any ? Simplify<E & { pluginId: P }> : never;
 
 /* --------------------------------------------------------------------------
  *  4.  Factory: build Zod schemas that carry a fixed `systemId` literal
@@ -82,7 +82,7 @@ export function fromSystem<
     P extends string
   >() => ({
     incoming,
-    outgoing: {} as WithSystem<P, O>,
+    outgoing: {} as WithPlugin<P, O>,
   });
 }
 

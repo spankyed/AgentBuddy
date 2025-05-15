@@ -1,5 +1,6 @@
-import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo } from 'xstate';
+import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
 import type { Plugin } from '@/shared/types';
+import { trpc } from '@/shared/trpc';
 import { safeEvents } from '@/shared/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/actors/route-trailer';
 
@@ -25,6 +26,8 @@ export interface ApplicationContext {
   targetView: string;
 }
 
+const application = 'application' as const;
+
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
@@ -42,7 +45,7 @@ export const createApplicationState = () => setup({
   actors: {
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target }: UpdateData) =>
-        system.get('application').send({ type: 'TRAIL_UPDATE', crumbs, target });
+        system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target });
 
       let unsubscribe = trailActor(system.get(id), onStateChange);
 
@@ -54,6 +57,29 @@ export const createApplicationState = () => setup({
       });
 
       return unsubscribe;
+    }),
+    
+    backendListener: fromCallback(({ system }) => {
+      console.log('connecting to backend');
+      const subscription = trpc.bus.sub.subscribe(
+        undefined, // sessionId is ignored now
+        {
+          // onConnectionStateChange(state) {
+          // },
+          onError: (error) => {
+            console.error('Error in subscription:', error);
+          },
+          onData: (event) => {
+            console.log('event: ', event);
+            const { pluginId, ...ev } = event;
+            system.get(pluginId).send(ev);
+          },
+        }
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     }),
   },
   actions: {
@@ -104,7 +130,7 @@ export const createApplicationState = () => setup({
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
   },
 }).createMachine({
-  id: 'application',
+  id: application,
   context: ({ input }) => ({
     plugins: input.plugins,
     activePlugin: input.plugins[0],
@@ -116,10 +142,26 @@ export const createApplicationState = () => setup({
     },
     targetView: '',
   }),
+  initial: 'setup',
   entry: [
     'spawnPluginActors',
-    'trailActivePlugin'
+    'trailActivePlugin',
   ],
+  states: {
+    'setup': {
+      always: [{
+        target: 'running',
+        actions: spawnChild('backendListener'),
+      }]
+    },
+    'running': {
+      initial: 'connected',
+      states: {
+        'connected': {},
+        'disconnected': {},
+      }
+    },
+  },
   on: {
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],
