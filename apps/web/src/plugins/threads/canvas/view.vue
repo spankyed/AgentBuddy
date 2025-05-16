@@ -128,7 +128,7 @@
             />
           </button>
           <button 
-            class="ml-auto text-sm font-medium text-white underline"
+            class="ml-auto text-sm font-medium underline text-neutral-100 hover:text-white"
           >
             Continue to chat
           </button>
