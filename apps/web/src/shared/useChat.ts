@@ -8,7 +8,7 @@ export function useChat() {
   async function start() {
     // Subscribe to events from the shared actor
     subscription = trpc.bus.sub.subscribe(
-      { sessionId: 'shared' }, // sessionId is ignored now
+      undefined,
       {
         onData: (event) => {
           if (event.type === 'TOKEN') {
