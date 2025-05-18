@@ -1,5 +1,5 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
-import { safeEvents } from "@/shared/types/safe-events";
+import { safeEvents } from "@/core/types/safe-events";
 
 export interface BreadcrumbItem {
   label: string;

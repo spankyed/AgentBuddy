@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Plugin } from '@/shared/types';
+import type { Plugin } from '@/core/types';
 import { computed } from 'vue';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();

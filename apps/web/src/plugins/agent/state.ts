@@ -1,9 +1,9 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/agent/types';
 import mockData from './mockData';
-import breadcrumb from '@/shared/breadcrumb';
-import { safeEvents } from '@/shared/types/safe-events';
-import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/actors/route-trailer';
+import breadcrumb from '@/core/breadcrumb';
+import { safeEvents } from '@/core/types/safe-events';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 
 export const id = 'agent' as const;
 

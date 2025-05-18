@@ -1,8 +1,8 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
-import type { Plugin } from '@/shared/types';
-import { trpc } from '@/shared/trpc';
-import { safeEvents } from '@/shared/types/safe-events';
-import trailActor, { computeCrumbs, type UpdateData } from '@/actors/route-trailer';
+import type { Plugin } from '@/core/types';
+import { trpc } from '@/core/trpc';
+import { safeEvents } from '@/core/types/safe-events';
+import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 
 interface BreadcrumbItem {
   label: string;

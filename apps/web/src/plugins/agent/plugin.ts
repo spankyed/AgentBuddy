@@ -1,4 +1,4 @@
-import type { Plugin } from "@/shared/types";
+import type { Plugin } from "@/core/types";
 import state, { id } from '@/plugins/agent/state.ts';
 import content from '@/plugins/agent/canvas/content.vue';
 import workload from '@/plugins/agent/canvas/workload.vue';

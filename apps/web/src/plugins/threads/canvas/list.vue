@@ -99,7 +99,7 @@ import { ref } from 'vue'
 import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector, useActor } from '@xstate/vue'
-import Button from '@/shared/design/button.vue'
+import Button from '@/core/design/button.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 
 interface Thread {

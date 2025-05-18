@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Component } from 'vue';
-import type { RouteComponents } from '@/shared/types';
+import type { RouteComponents } from '@/core/types';
 
 interface Props {
   views?: Component | RouteComponents;

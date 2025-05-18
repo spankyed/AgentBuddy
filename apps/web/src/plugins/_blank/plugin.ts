@@ -1,4 +1,4 @@
-import type { Plugin } from "@/shared/types/index.ts";
+import type { Plugin } from "@/core/types/index.ts";
 import { Box } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas.vue';
