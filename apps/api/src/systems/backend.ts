@@ -1,4 +1,4 @@
-import { emit as notify, setup, enqueueActions, raise, log, sendTo } from 'xstate';
+import { emit as notify, setup, enqueueActions, raise, log, sendTo, type ActorRefFromLogic, assign, fromPromise, spawnChild } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
 import systems, { agent } from '@/systems';
 import { emit, safeEvents, type SystemId } from '@/shared/actor-helpers';
@@ -27,6 +27,11 @@ export const backendSystem = setup({
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },
+    sendConnected: (({ system }) => {
+      for (const id of Object.keys(systems)) {
+        system.get(id).send({ type: 'WAKEUP' });
+      }
+    }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of Object.entries(systems)) {
         enqueue.spawnChild(state, { systemId: id as SystemId });
@@ -36,7 +41,6 @@ export const backendSystem = setup({
 }).createMachine(
   {
     id: bus,
-    entry: 'spawnActors',
     context: {
       threads: [],
     },
@@ -46,15 +50,12 @@ export const backendSystem = setup({
         target: '.connected',
       },
     },
+    entry: 'spawnActors',
     states: {
-      disconnected: {},
+      disconnected: {
+      },
       connected: {
-        entry: raise(({ context, event }) => emit(agent, { type: 'WAKEUP'})),
-        // entry: raise(emit(agent, {
-        //   type: 'WAKEUP',
-        //   // initialMessage: 'Welcome back user!',
-        // })),
-        // entry: sendTo(agent, { type: 'WAKEUP' }),
+        entry: 'sendConnected',
         on: {
           INCOMING: {
             actions: 'routeIncoming'
