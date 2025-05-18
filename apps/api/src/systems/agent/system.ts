@@ -1,4 +1,4 @@
-import { assign, setup } from 'xstate';
+import { assign, log, raise, sendTo, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { LlmRunner } from '@/systems/agent/runner';
@@ -18,6 +18,7 @@ export const IncomingAgentEvents = [
 ] as const
 
 export type AgentInternalEvents = 
+  | { type: 'WAKEUP' }
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 
@@ -40,6 +41,9 @@ export const agentSystem = setup({
     events: {} as MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>,
   },
   actions: {
+    sendFEWakeup: ({ system }) => {
+      system.get(bus).send(emit(agent, { type: 'WAKEUP'}));
+    },
     emitToken: ({ system }) => {
       system.get(bus).send(emit(agent, {
         type: 'TOKEN',
@@ -62,6 +66,13 @@ export const agentSystem = setup({
     initial: 'idle',
     context: {
       model: 'gpt-4',
+    },
+    on: {
+      WAKEUP: {
+        target: '.idle',
+        // actions: 'emitToken',
+        actions: 'sendFEWakeup',
+      },
     },
     states: {
       idle: {
