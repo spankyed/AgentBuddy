@@ -46,10 +46,8 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     throw new Error('No agent system found');
   }
 
-  // Get the appropriate stream handler
   const streamHandler = getStreamHandler(provider);
 
-  // Create the stream based on provider
   const stream = await openai.responses.create({
     model: "gpt-4.1",
     // instructions: '',
@@ -57,7 +55,6 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     stream: true,
   });
 
-  // Process the stream
   for await (const event of stream) {
     // console.log(event);
     
