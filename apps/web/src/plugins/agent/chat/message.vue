@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Message } from '@/plugins/agent/types'
+import type { Message } from '@abuddy/api'
 
 interface ChatMessageProps {
   message: Message

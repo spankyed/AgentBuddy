@@ -25,3 +25,16 @@ export interface CanvasContent {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   content: string | any;
 }
+
+export interface Thread {
+  id: string;
+  title: string;
+  timestamp: Date;
+}
+
+export interface AgentPluginData {
+  messages: Message[];
+  contextItems: ContextItem[];
+  canvasContent: CanvasContent;
+  threads: Thread[];
+}
