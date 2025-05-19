@@ -165,7 +165,7 @@ Most of the time we don't need to code a new system to change the behavior of th
 
 The fundamental break through here is to imagine the agent <-> human interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times agent <-> agent dialog or even agent <-> application-event dialog.
 
-In that sense, everything is composable through this dialog node-like data interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flows of dialog nodes.
+In that sense, everything is composable through this dialog node-like data interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
 ```
                                                                         
                ╔═════════════════════════════════════════╗               
