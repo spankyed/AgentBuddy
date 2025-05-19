@@ -36,6 +36,7 @@ export namespace ECS {
 export const AttrKind = {
   Role            : 'role',
   RelationDetails : 'relationDetails',
+  Custom: (k: string) => k,   // helper
 } as const;
 
 export type AttrKind = typeof AttrKind[keyof typeof AttrKind] | (string & {});
@@ -46,7 +47,7 @@ export interface AttributePayloads {
   [AttrKind.RelationDetails] : ECS.RelationDetail;     // struct defined above
   /** fallback for custom kinds */
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    [key: string]              : any;
+  [key: string]              : any;
 }
 
 export type AttributeValue<K extends AttrKind = AttrKind> =

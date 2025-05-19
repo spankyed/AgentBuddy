@@ -1,49 +1,77 @@
+/*───────────────────────────────────────────────────────────────────────────
+ * relation-index.ts – array‑backed (no Set) with single‑pass updateIndex
+ *───────────────────────────────────────────────────────────────────────────*/
 import type { ECS } from "./types";
 
-interface RelationIndex {
-  [relationType: string]: {
-    bySource: { [sourceEntityID: string]: ECS.EntityId[] };
-    byTarget: { [targetEntityID: string]: ECS.EntityId[] };
-  };
+/*-------------------------------------------------------------------------*\
+| 1 ▸ Index shapes                                                          |
+\*-------------------------------------------------------------------------*/
+interface DirectionLists {
+  [entityId: string]: ECS.EntityId[]; // relation entity IDs
 }
 
-export const relationIndex: RelationIndex = {};
-
-export function addToIndex(relationType: string, sourceEntityID: ECS.EntityId, targetEntityID: ECS.EntityId, relationEntityID: ECS.EntityId): void {
-  if (!relationIndex[relationType]) {
-    relationIndex[relationType] = { bySource: {}, byTarget: {} };
-  }
-  if (!relationIndex[relationType].bySource[sourceEntityID]) {
-    relationIndex[relationType].bySource[sourceEntityID] = [];
-  }
-  if (!relationIndex[relationType].byTarget[targetEntityID]) {
-    relationIndex[relationType].byTarget[targetEntityID] = [];
-  }
-
-  relationIndex[relationType].bySource[sourceEntityID].push(relationEntityID);
-  relationIndex[relationType].byTarget[targetEntityID].push(relationEntityID);
+interface RelationIndexEntry {
+  bySource: DirectionLists;
+  byTarget: DirectionLists;
 }
 
-export function removeFromIndex(relationType: string, sourceEntityID: ECS.EntityId, targetEntityID: ECS.EntityId, relationEntityID: ECS.EntityId): void {
-  relationIndex[relationType].bySource[sourceEntityID] = relationIndex[relationType].bySource[sourceEntityID].filter(id => id !== relationEntityID);
-  relationIndex[relationType].byTarget[targetEntityID] = relationIndex[relationType].byTarget[targetEntityID].filter(id => id !== relationEntityID);
-}
+export const relationIndex: Record<string, RelationIndexEntry> = {};
 
-export function updateIndex(
-  relationType: string,
-  relationEntityID: ECS.EntityId,
-  oldSourceEntityID: ECS.EntityId,
-  oldTargetEntityID: ECS.EntityId,
-  newSourceEntityID?: ECS.EntityId,
-  newTargetEntityID?: ECS.EntityId,
+const ensureEntry = (kind: string): RelationIndexEntry => {
+  if (!relationIndex[kind]) relationIndex[kind] = { bySource: {}, byTarget: {} };
+  return relationIndex[kind];
+};
+
+/*-------------------------------------------------------------------------*\
+| 2 ▸ Add / Remove helpers                                                  |
+\*-------------------------------------------------------------------------*/
+export function addToIndex(
+  kind: string,
+  source: ECS.EntityId,
+  target: ECS.EntityId,
+  relId: ECS.EntityId,
 ): void {
-  if (newSourceEntityID && oldSourceEntityID !== newSourceEntityID) {
-    removeFromIndex(relationType, oldSourceEntityID, oldTargetEntityID, relationEntityID);
-    addToIndex(relationType, newSourceEntityID, oldTargetEntityID, relationEntityID);
-  }
+  const e = ensureEntry(kind);
+  if (!e.bySource[source]) e.bySource[source] = [];
+  if (!e.byTarget[target]) e.byTarget[target] = [];
+  if (!e.bySource[source].includes(relId)) e.bySource[source].push(relId);
+  if (!e.byTarget[target].includes(relId)) e.byTarget[target].push(relId);
+}
 
-  if (newTargetEntityID && oldTargetEntityID !== newTargetEntityID) {
-    removeFromIndex(relationType, oldSourceEntityID, oldTargetEntityID, relationEntityID);
-    addToIndex(relationType, oldSourceEntityID, newTargetEntityID, relationEntityID);
+export function removeFromIndex(
+  kind: string,
+  source: ECS.EntityId,
+  target: ECS.EntityId,
+  relId: ECS.EntityId,
+): void {
+  const e = relationIndex[kind];
+  if (!e) return;
+  if (e.bySource[source]) e.bySource[source] = e.bySource[source].filter((id) => id !== relId);
+  if (e.byTarget[target]) e.byTarget[target] = e.byTarget[target].filter((id) => id !== relId);
+  // tidy up empty buckets
+  if (e.bySource[source]?.length === 0) delete e.bySource[source];
+  if (e.byTarget[target]?.length === 0) delete e.byTarget[target];
+  if (Object.keys(e.bySource).length === 0 && Object.keys(e.byTarget).length === 0) {
+    delete relationIndex[kind];
   }
+}
+
+/*-------------------------------------------------------------------------*\
+| 3 ▸ Single‑pass updateIndex                                               |
+\*-------------------------------------------------------------------------*/
+export function updateIndex(
+  kind: string,
+  relId: ECS.EntityId,
+  oldSource: ECS.EntityId,
+  oldTarget: ECS.EntityId,
+  newSource?: ECS.EntityId,
+  newTarget?: ECS.EntityId,
+): void {
+  const finalSource = newSource ?? oldSource;
+  const finalTarget = newTarget ?? oldTarget;
+  // No change → early exit
+  if (finalSource === oldSource && finalTarget === oldTarget) return;
+  // Remove once, add once → guarantees no duplicates
+  removeFromIndex(kind, oldSource, oldTarget, relId);
+  addToIndex(kind, finalSource, finalTarget, relId);
 }

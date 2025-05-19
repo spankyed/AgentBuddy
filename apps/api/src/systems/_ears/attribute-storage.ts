@@ -1,390 +1,267 @@
-/* attribute‑store.ts – generic edition */
+/*───────────────────────────────────────────────────────────────────────────
+ * attribute-store.ts – Map‑backed, AttrKind‑typed (multi‑value safe)
+ *───────────────────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/shared/utils";
 import { logInternal } from "@/systems/_ears/debug/log";
 import { createEntity } from "./create-entity";
 import {
-	updateIndex,
-	relationIndex,
 	addToIndex,
 	removeFromIndex,
+	updateIndex,
+	relationIndex,
 } from "./relation-index";
 import { ECS } from "./types";
 
-const attributeStore: ECS.AttributeStore = {};
+/*-------------------------------------------------------------------------*\
+|   ▸ Internal store                                                        |
+\*-------------------------------------------------------------------------*/
+const store = new Map<ECS.AttrKind, Map<ECS.EntityId, ECS.AttributeValue[]>>();
 
+const bucket = (kind: ECS.AttrKind) => {
+	if (!store.has(kind)) store.set(kind, new Map());
+	return store.get(kind) as Map<ECS.EntityId, ECS.AttributeValue[]>;
+};
+
+/*-------------------------------------------------------------------------*\
+|   ▸ Core mutators                                                         |
+\*-------------------------------------------------------------------------*/
 function addAttribute(
 	entityID: ECS.EntityId,
-	attributeType: string,
+	kind: ECS.AttrKind,
 	value: ECS.AttributeValue,
 ): void {
-	if (!attributeStore[attributeType]) {
-		attributeStore[attributeType] = {} as ECS.AttributeTypeMap;
-	}
-
-	if (!attributeStore[attributeType][entityID]) {
-		attributeStore[attributeType][entityID] = []; // multiple attributes of the same type allowed
-	}
-
-	attributeStore[attributeType][entityID].push(value);
-
-	logInternal("AA", false, attributeType, entityID, value);
+	const b = bucket(kind);
+	if (!b.has(entityID)) b.set(entityID, []);
+	const attributes = b.get(entityID);
+	if (attributes) attributes.push(value); // multiple attrs of same kind allowed
+	logInternal("AA", false, kind, entityID, value);
 }
 
-function addRole(entityID: ECS.EntityId, roleName: string): void {
-	addAttribute(entityID, "role", roleName);
-}
-
-// function addStatus(entityID: ECS.EntityId, roleName: string): void {
-//   addAttribute(entityID, 'status', roleName);
-// }
-
-// function addState(entityID: ECS.EntityId, state: string): void {
-//   addAttribute(entityID, 'status', roleName);
-// }
+const addRole = (id: ECS.EntityId, role: string) =>
+	addAttribute(id, ECS.AttrKind.Role, role);
 
 function addRelation(
-	sourceEntityID: ECS.EntityId,
+	source: ECS.EntityId,
 	relationType: string,
-	targetEntityID: ECS.EntityId,
+	target: ECS.EntityId,
 	info?: ECS.AttributeValue,
 ): ECS.EntityId {
-	const relationEntityID = createEntity(ECS.Entity.Relation, true);
-	const relationDetails: ECS.RelationDetail = {
-		sourceEntity: sourceEntityID,
-		targetEntity: targetEntityID,
+	const relId = createEntity(ECS.Entity.Relation, true);
+	const details: ECS.RelationDetail = {
+		sourceEntity: source,
+		targetEntity: target,
 		relationType,
 		info,
 	};
-
-	addAttribute(relationEntityID, "relationDetails", relationDetails);
-	addToIndex(relationType, sourceEntityID, targetEntityID, relationEntityID);
-	return relationEntityID;
+	addAttribute(relId, ECS.AttrKind.RelationDetails, details);
+	addToIndex(relationType, source, target, relId);
+	return relId;
 }
 
 function updateAttribute(
 	entityID: ECS.EntityId,
-	attributeType: string,
+	kind: ECS.AttrKind,
 	newValue: ECS.AttributeValue,
 	index = 0,
-) {
-	if (!attributeStore[attributeType]) {
-		attributeStore[attributeType] = {};
+): void {
+	const b = bucket(kind);
+	if (!b.has(entityID)) b.set(entityID, []);
+	const list = b.get(entityID) || [];
+	if (index < 0) return;
+	if (index >= list.length) list.push(newValue);
+	else {
+		const current = list[index];
+		list[index] =
+			current && isPlainObject(current) && isPlainObject(newValue)
+				? { ...current, ...newValue }
+				: newValue;
 	}
-
-	const currentAttribute = getAttribute(entityID, attributeType);
-
-	if (currentAttribute && isPlainObject(currentAttribute) && isPlainObject(newValue)) {
-		attributeStore[attributeType][entityID][index] = {
-			...currentAttribute,
-			...newValue,
-		};
-	} else {
-		attributeStore[attributeType][entityID][index] = newValue;
-	}
-	logInternal("AU", false, attributeType, entityID, newValue);
+	logInternal("AU", false, kind, entityID, newValue);
 }
 
 function updateAttributeByCriteria(
 	entityID: ECS.EntityId,
-	attributeType: string,
+	kind: ECS.AttrKind,
 	criteria: ECS.AttributeValue,
 	newValue: ECS.AttributeValue,
-): void {
-	const index = getAttributeIndexByCriteria(entityID, attributeType, criteria);
-	if (index !== -1) {
-		updateAttribute(entityID, attributeType, newValue, index);
-	}
+) {
+	const idx = getAttributeIndexByCriteria(entityID, kind, criteria);
+	if (idx !== -1) updateAttribute(entityID, kind, newValue, idx);
 }
 
-// Update a role for an entity
-function updateRole(
-	entityID: ECS.EntityId,
-	oldRoleName: string,
-	newRoleName: string,
-): void {
-	const roles = getAttributes(entityID, "role");
-	const roleIndex = roles.indexOf(oldRoleName);
-	if (roleIndex !== -1) {
-		roles[roleIndex] = newRoleName; // Update the role
-		updateAttribute(entityID, "role", roles); // Update the attribute in the store
-	}
-}
+const updateRole = (id: ECS.EntityId, oldR: string, newR: string) =>
+	updateAttributeByCriteria(id, ECS.AttrKind.Role, oldR, newR);
 
 function updateRelation(
-	relationEntityID: ECS.EntityId,
-	newSourceEntityID?: ECS.EntityId,
-	newTargetEntityID?: ECS.EntityId,
+	relId: ECS.EntityId,
+	newSource?: ECS.EntityId,
+	newTarget?: ECS.EntityId,
 	newInfo?: ECS.AttributeValue,
 ): void {
-	const relationDetails = getAttribute(
-		relationEntityID,
-		"relationDetails",
-	) as ECS.RelationDetail | null;
-
-	if (!relationDetails) return;
-
-	let shouldUpdateIdx = false;
-	const oldSourceEntityID = relationDetails.sourceEntity;
-	const oldTargetEntityID = relationDetails.targetEntity;
-
-	if (newSourceEntityID && newSourceEntityID !== oldSourceEntityID) {
-		relationDetails.sourceEntity = newSourceEntityID;
-		shouldUpdateIdx = true;
+	const d = getRelation(relId);
+	if (!d) return;
+	const { sourceEntity: oldS, targetEntity: oldT, relationType } = d;
+	let touched = false;
+	if (newSource && newSource !== oldS) {
+		d.sourceEntity = newSource;
+		touched = true;
 	}
-	if (newTargetEntityID && newTargetEntityID !== oldTargetEntityID) {
-		relationDetails.targetEntity = newTargetEntityID;
-		shouldUpdateIdx = true;
+	if (newTarget && newTarget !== oldT) {
+		d.targetEntity = newTarget;
+		touched = true;
 	}
-	if (newInfo !== undefined) relationDetails.info = newInfo;
-
-	updateAttribute(relationEntityID, "relationDetails", relationDetails);
-
-	if (shouldUpdateIdx) {
+	if (newInfo !== undefined) d.info = newInfo;
+	updateAttribute(relId, ECS.AttrKind.RelationDetails, d);
+	if (touched)
 		updateIndex(
-			relationDetails.relationType,
-			relationEntityID,
-			oldSourceEntityID,
-			oldTargetEntityID,
-			newSourceEntityID,
-			newTargetEntityID,
+			relationType,
+			relId,
+			oldS,
+			oldT,
+			d.sourceEntity,
+			d.targetEntity,
 		);
-	}
 }
+
+/*-------------------------------------------------------------------------*\
+|   ▸ Removal helpers                                                       |
+\*-------------------------------------------------------------------------*/
 function removeAttribute(
 	entityID: ECS.EntityId,
-	attributeType: string,
+	kind: ECS.AttrKind,
 	index = 0,
-): void {
-	const typeMap = attributeStore[attributeType];
-
-	if (!typeMap) return;
-
-	let value = "";
-	if (typeMap?.[entityID]) {
-		value = typeMap[entityID][index];
-		typeMap[entityID].splice(index, 1);
-	}
-	if (typeMap[entityID]?.length === 0) {
-		delete typeMap[entityID];
-	}
-	logInternal("AR", false, attributeType, entityID, value);
+): ECS.AttributeValue | undefined {
+	const kindBucket = store.get(kind);
+	const list = kindBucket?.get(entityID);
+	if (!list) return undefined;
+	const [removed] = list.splice(index, 1);
+	if (!list.length && kindBucket) kindBucket.delete(entityID);
+	logInternal("AR", false, kind, entityID, removed);
+	return removed;
 }
 
-function removeAttributeByCriteria(
-	entityID: ECS.EntityId,
-	attributeType: string,
+const removeAttributeByCriteria = (
+	id: ECS.EntityId,
+	kind: ECS.AttrKind,
 	criteria: ECS.AttributeValue,
-): void {
-	const index = getAttributeIndexByCriteria(entityID, attributeType, criteria);
-	if (index !== -1) {
-		removeAttribute(entityID, attributeType, index);
-	}
+) => {
+	const idx = getAttributeIndexByCriteria(id, kind, criteria);
+	if (idx !== -1) removeAttribute(id, kind, idx);
+};
+
+function removeRelation(relId: ECS.EntityId): void {
+	const d = getRelation(relId);
+	if (!d) return;
+	removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
+	destroyEntity(relId);
 }
 
-function removeRelation(relationEntityID: ECS.EntityId): void {
-	const relationDetails = getRelation(relationEntityID);
-	if (relationDetails) {
-		removeFromIndex(
-			relationDetails.relationType,
-			relationDetails.sourceEntity,
-			relationDetails.targetEntity,
-			relationEntityID,
-		);
-		destroyEntity(relationEntityID);
-		// removeAttribute(relationEntityID, 'relationDetails'); // just remove the relation details
-	}
+const removeRole = (id: ECS.EntityId, role: string) =>
+	removeAttributeByCriteria(id, ECS.AttrKind.Role, role);
+
+/*-------------------------------------------------------------------------*\
+|   ▸ Look‑ups / queries                                                    |
+\*-------------------------------------------------------------------------*/
+const matches = (criteria: ECS.AttributeValue) => (attr: ECS.AttributeValue) =>
+	isPlainObject(criteria)
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		? Object.entries(criteria).every(([k, v]) => (attr as any)[k] === v)
+		: attr === criteria;
+
+function getAttributes(entityID: ECS.EntityId, kind: ECS.AttrKind) {
+	return store.get(kind)?.get(entityID) ?? [];
 }
 
-function removeRole(entityID: ECS.EntityId, roleName: string): void {
-	removeAttributeByCriteria(entityID, "role", roleName);
-}
+const getAttribute = (id: ECS.EntityId, kind: ECS.AttrKind, idx = 0) =>
+	getAttributes(id, kind)[idx] ?? null;
 
-function getAttributeIndexByCriteria(
-	entityID: ECS.EntityId,
-	attributeType: string,
-	criteria: ECS.AttributeValue,
-): number {
-	const attributes = getAttributes(entityID, attributeType);
-	return attributes.findIndex((attribute) =>
-		isPlainObject(criteria)
-			? Object.entries(criteria).every(
-					([key, value]) => attribute[key] === value,
-				)
-			: attribute === criteria,
-	);
-}
+const getAttributeIndexByCriteria = (
+	id: ECS.EntityId,
+	kind: ECS.AttrKind,
+	c: ECS.AttributeValue,
+) => getAttributes(id, kind).findIndex(matches(c));
 
-function getAttributesByType(attributeType: string): ECS.AttributeTypeMap {
-	return attributeStore[attributeType] || [];
-}
+const getRoles = (id: ECS.EntityId) =>
+	getAttributes(id, ECS.AttrKind.Role) as string[];
+const hasRole = (id: ECS.EntityId, role: string) => getRoles(id).includes(role);
+const hasRoleX = (role: string) => (item: ECS.AttributeValue) =>
+	hasRole(item, role);
 
-function getFirstAttributeByType(
-	attributeType: string,
-): ECS.AttributeValue | null {
-	const attributes: ECS.AttributeTypeMap = getAttributesByType(attributeType);
-	const entityID = Object.keys(attributes)[0] as ECS.EntityId;
-	return entityID ? attributes[entityID][0] : null;
-}
-
-function getAttributes(
-	entityID: ECS.EntityId,
-	attributeType: string,
-): ECS.AttributeValue[] {
-	return attributeStore[attributeType]?.[entityID] || [];
-}
-
-function getAttribute(
-	entityID: ECS.EntityId,
-	attributeType: string,
-	index = 0,
-): ECS.AttributeValue | null {
-	const attributes = getAttributes(entityID, attributeType);
-	return attributes.length > index ? attributes[index] : null;
-}
-
-function getRoles(entityID: ECS.EntityId): string[] {
-	return getAttributes(entityID, "role") as string[];
-}
-
-function hasRole(entityID: ECS.EntityId, roleName: string): boolean {
-	const roles = getAttributes(entityID, "role");
-	return roles.includes(roleName);
-}
-
-function hasRoleX(roleName: string): (item: ECS.AttributeValue) => boolean {
-	return (item: ECS.AttributeValue) => hasRole(item, roleName);
-}
-
-function getRelation(
-	relationEntityID: ECS.EntityId,
-): ECS.RelationDetail | null {
-	const relationAttributes = getAttributes(relationEntityID, "relationDetails");
-	return relationAttributes.length > 0
-		? (relationAttributes[0] as ECS.RelationDetail)
-		: null;
-}
+const getRelation = (relId: ECS.EntityId): ECS.RelationDetail | null =>
+	(getAttributes(relId, ECS.AttrKind.RelationDetails)[0] ??
+		null) as ECS.RelationDetail | null;
 
 function queryEntitiesByAttribute(
-	attributeType: string,
+	kind: ECS.AttrKind,
 	criteria?: ECS.AttributeValue,
 ): ECS.EntityId[] {
-	const typeMap = attributeStore[attributeType];
-	const entities = Object.keys(typeMap || {}) as ECS.EntityId[];
+	const b = store.get(kind);
+	if (!b) return [];
+	if (!criteria) return Array.from(b.keys());
+	return Array.from(b.entries())
+		.filter(([, list]) => list.some(matches(criteria)))
+		.map(([id]) => id);
+}
 
-	if (!criteria) {
-		return entities;
+const queryEntitiesByRole = (role: string) =>
+	queryEntitiesByAttribute(ECS.AttrKind.Role, role);
+
+function queryEntitiesInRelationTo(target: ECS.EntityId): ECS.EntityId[] {
+	const out = new Set<ECS.EntityId>();
+	for (const relType of Object.keys(relationIndex)) {
+		const { bySource, byTarget } = relationIndex[relType];
+		for (const relId of bySource[target] ?? []) {
+			const d = getRelation(relId);
+			if (d) out.add(d.targetEntity);
+		}
+		for (const relId of byTarget[target] ?? []) {
+			const d = getRelation(relId);
+			if (d) out.add(d.sourceEntity);
+		}
 	}
-
-	return entities.filter((entityID) =>
-		isPlainObject(criteria)
-			? typeMap[entityID].some((attribute) =>
-					Object.entries(criteria).every(
-						([key, value]) => attribute[key] === value,
-					),
-				)
-			: typeMap[entityID].includes(criteria),
-	);
-}
-
-function queryEntitiesByRole(role: string): ECS.EntityId[] {
-	return queryEntitiesByAttribute("role", role);
-}
-
-function queryEntitiesInRelationTo(
-	targetEntityID: ECS.EntityId,
-): ECS.EntityId[] {
-	const getRelatedEntities = (
-		index: { [entityID: string]: ECS.EntityId[] },
-		inverse: boolean,
-	) => {
-		return (index[targetEntityID] || [])
-			.map((relationEntityID) =>
-				inverse
-					? attributeStore.relationDetails[relationEntityID]?.[0]?.sourceEntity
-					: attributeStore.relationDetails[relationEntityID]?.[0]?.targetEntity,
-			)
-			.filter((e) => e); // Filter out any undefined entries
-	};
-
-	const relatedEntities = Object.keys(relationIndex).reduce(
-		(acc, relationType) => {
-			const { bySource, byTarget } = relationIndex[relationType];
-			return acc.concat(
-				getRelatedEntities(bySource, false),
-				getRelatedEntities(byTarget, true),
-			);
-		},
-		[] as ECS.EntityId[],
-	);
-
-	return Array.from(new Set(relatedEntities)); // Return unique entities
+	return [...out];
 }
 
 function queryEntitiesByRelationTo(
 	relationType: string,
 	entityID: ECS.EntityId,
-	isSource?: boolean,
-): (ECS.EntityId | undefined)[] {
-	const relationIDs =
+	isSource = false,
+): ECS.EntityId[] {
+	const ids =
 		relationIndex[relationType]?.[isSource ? "bySource" : "byTarget"][
 			entityID
-		] || [];
-	return relationIDs
-		.map((relationID) => {
-			const relationDetails = getRelation(relationID);
-			return isSource
-				? relationDetails?.targetEntity
-				: relationDetails?.sourceEntity;
+		] ?? [];
+	return ids
+		.map((relId) => {
+			const d = getRelation(relId);
+			return isSource ? d?.targetEntity : d?.sourceEntity;
 		})
-		.filter((e) => e); // Filter out any undefined entries
+		.filter(Boolean) as ECS.EntityId[];
 }
 
+/*-------------------------------------------------------------------------*\
+|   ▸ Entity teardown                                                       |
+\*-------------------------------------------------------------------------*/
 function destroyEntity(entityID: ECS.EntityId): void {
-	const directions = ["bySource", "byTarget"];
-
-	for (const direction in Object.keys(relationIndex)) {
-		for (const indexKey in directions) {
-			const index =
-				relationIndex[direction][
-					indexKey as keyof (typeof relationIndex)[string]
-				];
-
-			if (index[entityID]) {
-				for (const relationEntityID of index[entityID]) {
-					const relationDetails = getRelation(relationEntityID);
-
-					if (relationDetails) {
-						// const oppositeIndexKey = relationDetails.sourceEntity === entityID ? 'byTarget' : 'bySource';
-						const oppositeEntityID =
-							relationDetails.sourceEntity === entityID
-								? relationDetails.targetEntity
-								: relationDetails.sourceEntity;
-
-						removeFromIndex(
-							direction,
-							oppositeEntityID,
-							entityID,
-							relationEntityID,
-						);
-						removeAttribute(relationEntityID, "relationDetails");
-					}
-				}
-
-				delete index[entityID]; // Remove the entity from the index
+	for (const relType of Object.keys(relationIndex)) {
+		const { bySource, byTarget } = relationIndex[relType];
+		for (const dir of [bySource, byTarget]) {
+			const relIds = dir[entityID] ?? [];
+			for (const relId of relIds) {
+				const d = getRelation(relId);
+				if (d) removeFromIndex(relType, d.sourceEntity, d.targetEntity, relId);
+				removeAttribute(relId, ECS.AttrKind.RelationDetails);
 			}
+			delete dir[entityID];
 		}
 	}
-
-	for (const attributeType in Object.keys(attributeStore)) {
-		if (attributeStore[attributeType][entityID]) {
-			delete attributeStore[attributeType][entityID]; // Remove the entity's attributes
-		}
-	}
+	for (const kind of store.keys()) bucket(kind).delete(entityID);
 }
 
+/*-------------------------------------------------------------------------*\
+|   ▸ Public exports                                                        |
+\*-------------------------------------------------------------------------*/
 export {
-	// createEntity,
-	destroyEntity,
 	addAttribute,
 	addRole,
 	addRelation,
@@ -396,11 +273,8 @@ export {
 	removeAttributeByCriteria,
 	removeRole,
 	removeRelation,
-	// queries
 	getAttributes,
 	getAttribute,
-	getAttributesByType,
-	getFirstAttributeByType,
 	getRoles,
 	hasRole,
 	hasRoleX,
@@ -409,4 +283,5 @@ export {
 	queryEntitiesByRole,
 	queryEntitiesInRelationTo,
 	queryEntitiesByRelationTo,
+	destroyEntity,
 };

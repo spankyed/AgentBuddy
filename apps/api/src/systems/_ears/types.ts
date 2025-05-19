@@ -1,37 +1,60 @@
-// types.ts  ── ultra‑light edition
+/*───────────────────────────────────────────────────────────────────────────
+ * types.ts – ECS core & attribute vocabulary (rev‑2 with AttrKind.Custom)
+ *───────────────────────────────────────────────────────────────────────────*/
+
+/*-------------------------------------------------------------------------*\
+| 1 ▸ Core ECS entity identifiers                                           |
+\*-------------------------------------------------------------------------*/
 export namespace ECS {
-  /** High‑level kinds of entities you’ll create */
   export enum Entity {
-    Message = 'Message',
-    Thread = 'Thread',
-    Relation  = 'Relation',
-    Task      = 'Task',
+    Message  = 'Message',
+    Thread   = 'Thread',
+    Relation = 'Relation',
+    Task     = 'Task',
   }
-
-  /**
-   * Compile‑time guarantee that an ID carries its entity prefix,
-   * e.g. `"Camera‑abc123"`.
-   */
-  export type EntityId = `${ECS.Entity}-${string}`;
-
+  export type EntityId = `${Entity}-${string}`;
   export interface RelationDetail {
-    sourceEntity: ECS.EntityId;
-    targetEntity: ECS.EntityId;
-    relationType: string;
-    info?: AttributeValue;
+    sourceEntity : EntityId;
+    targetEntity : EntityId;
+    relationType : string;
+    info?        : AttributeValue;
+  }
+  export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+
+  /*-------------------------------------------------------------------------*\
+  | 2 ▸ Attribute kinds & payload typings                                     |
+  \*-------------------------------------------------------------------------*/
+  /** Canonical bucket names */
+  export const AttrKindValues = {
+    Role            : 'role',
+    RelationDetails : 'relationDetails',
+  } as const;
+
+  /** Helper to mint user‑defined bucket names at call‑site */
+  const _custom = <T extends string>(k: T) => k as T & AttrKind;
+
+  export const AttrKind = {
+    ...AttrKindValues,
+    Custom: _custom,
+  } as const;
+
+  export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+
+  /** Payload mapping for first‑class buckets; extend per‑app */
+  export interface AttributePayloads {
+    [AttrKindValues.Role]            : string;
+    [AttrKindValues.RelationDetails] : ECS.RelationDetail;
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    [key: string]                    : any; // fallback for custom kinds
   }
 
-  export type AttributeStore = Record<ECS.AttributeType, ECS.AttributeTypeMap>;
-  export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
-  
-  /** Any string label is allowed as an attribute bucket */
-  export type AttributeType  = string;
+  export type AttributeValue<K extends AttrKind = AttrKind> =
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    K extends keyof AttributePayloads ? AttributePayloads[K] : any;
 
-  /** Payload is generic/unknown—specialize locally if needed */
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    export type AttributeValue = any;
-
-  /**
-   * attributeStore[attributeType][entityId] -> AttributeValue[]
-   */
+  /*-------------------------------------------------------------------------*\
+  | 3 ▸ Compatibility re‑exports                                              |
+  \*-------------------------------------------------------------------------*/
+  export type AttributeType  = AttrKind;
+  export type AttributeStore = Record<string, ECS.AttributeTypeMap>;
 }
