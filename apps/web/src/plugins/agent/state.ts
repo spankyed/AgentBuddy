@@ -123,6 +123,9 @@ const agentState = setup({
     WAKEUP: {
       actions: 'setPluginData'
     },
+    TOKEN_STREAM: {
+      actions: log(({ event }) => `Token stream: ${event.token}`)
+    },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'
     // },

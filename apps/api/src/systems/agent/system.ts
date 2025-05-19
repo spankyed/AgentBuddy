@@ -1,13 +1,13 @@
-import { assign, fromPromise, log, raise, sendTo, setup } from 'xstate';
+import { assign, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
-// import { LlmRunner } from '@/systems/agent/runner';
+import { chatStream, message } from '@/systems/agent/runner';
 import agentPluginData from './mockData';
 import type { MergeReceivable } from '@/shared/event-helpers';
 import { fromSystem, systemBus } from '@/shared/event-helpers';
 import { z } from 'zod';
 import { bus } from '@/systems/backend';
-import { emit, getActor, sendParentSafe } from '@/shared/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/actor-helpers';
 
 export const agent = 'agent' as const;
 
@@ -21,51 +21,49 @@ export const IncomingAgentEvents = [
 export type AgentInternalEvents = 
   | { type: 'WAKEUP' }
   | { type: 'LLM_DONE' }
-  | { type: 'TOKEN'; token: string }
+  | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
   | { type: 'WAKEUP'; pluginData: typeof agentPluginData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
-  | { type: 'TOKEN'; token: string }
+  | { type: 'TOKEN_STREAM'; token: string }
 
 export interface AgentContext {
-  model: string;
   userPrompt?: string;
   abortController?: AbortController;
 }
 
 export const AgentSystemEvents = fromSystem(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
+type ReceivableEvents = MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>;
+const typeOf = safeEvents<ReceivableEvents>();
 
 export const agentSystem = setup({
   types: {
     context: {} as AgentContext,
-    events: {} as MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>,
+    events: {} as ReceivableEvents,
   },
   actors: {
-    delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      system.get(bus).send(emit(agent, { 
-        type: 'ADD_ASSISTANT_MESSAGE', 
-        content: input.content 
-      }));
-    })
+    chatStream
   },
   actions: {
+    logError: (_, event: ErrorActorEvent<unknown, string>) => {
+      console.error('Chat stream error:', event.error);
+    },
+    sendToken: ({ system, event }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'TOKEN_STREAM',
+        token: typeOf('TOKEN_STREAM', event).token
+      }));
+    },
     sendFEWakeup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'WAKEUP',
         pluginData: agentPluginData
       }));
     },
-    emitToken: ({ system }) => {
-      system.get(bus).send(emit(agent, {
-        type: 'TOKEN',
-        token: 'some string'
-      }));
-    },
-    storePrompt: assign({
-      userPrompt: ({ event }) => (event.type === 'USER_MSG' ? event.content : undefined),
+    storeUserMessage: assign({
+      userPrompt: ({ event }) => typeOf('USER_MSG', event).content,
     }),
     spawnLlmTask: assign(({ context }) => {
       const abort = new AbortController();
@@ -79,9 +77,12 @@ export const agentSystem = setup({
     id: agent,
     initial: 'idle',
     context: {
-      model: 'gpt-4',
+      userPrompt: undefined,
     },
     on: {
+      TOKEN_STREAM: {
+        actions: 'sendToken',
+      },
       WAKEUP: {
         target: '.idle',
         // actions: 'emitToken',
@@ -93,21 +94,28 @@ export const agentSystem = setup({
         on: {
           USER_MSG: {
             target: 'processMessage',
-            actions: 'storePrompt',
+            actions: 'storeUserMessage',
           },
         },
       },
       processMessage: {
         invoke: {
-          id: 'delayedResponse',
-          src: 'delayedResponse',
-          input: {
-            content: "I'm analyzing your request to rewrite the code with CSS variables. Give me a moment to prepare a response."
-          },
+          id: 'chatStream',
+          src: 'chatStream',
+          input: ({ context }) => ({
+            messages: [
+              message('system', 'You are a helpful AI assistant.'),
+              message('user', context.userPrompt || '')
+            ],
+            provider: 'openai'
+          }),
           onDone: {
             target: 'idle',
-            // actions: 'emitToken',
+            // actions: raise({ type: 'LLM_DONE' })
           },
+          onError: {
+            target: 'idle',
+          }
         },
       },
       thinking: {
@@ -127,7 +135,6 @@ export const agentSystem = setup({
 const sendBack = sendParentSafe<AgentInternalEvents>();
 
 async function runLlm(ctx: AgentContext, signal: AbortSignal) {
-  const { userPrompt = '', model } = ctx;
   // const runner = new LlmRunner(model);
 
   // for await (const token of runner.stream(userPrompt, { signal })) {
