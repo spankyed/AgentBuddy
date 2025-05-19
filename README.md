@@ -1,7 +1,7 @@
 
+<h1 align="center">Agent-Buddy</h1>
+<p align="center"><strong>A vibe-working platform.</strong></p>
 
-# AgentBuddy
-A vibe‑forward workspace.
 
 Today's top AI agent platforms fall short of offering a robust, reliable, and scalable experience. They also fail at being easily personalized. Agent‑Buddy does things differently. With exceptional product design, meticulous engineering, and clear‑eyed leadership, we create tools that align deeply with the humans who use them.
 
