@@ -1,12 +1,12 @@
 
 <h1 align="center">Agent-Buddy</h1>
-<p align="center"><strong>A vibe-working platform.</strong></p>
+<p align="center"><strong>A vibe-working platform</strong></p>
 
 
 Today's top AI agent platforms fall short of offering a robust, reliable, and scalable experience. They also fall short of being easily personalized. Agent‑Buddy does things differently. With exceptional product design, meticulous engineering, and clear‑eyed leadership, we create tools that align deeply with the humans who use them.
 
 
-<p align="center"><strong>Join us in bringing better vibes with Agent‑Buddy.</strong></p>
+<p align="center"><strong>Join us in bringing better vibes with Agent‑Buddy</strong></p>
 
 # Plugins
 ```
