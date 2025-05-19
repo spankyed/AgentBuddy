@@ -45,11 +45,13 @@ export interface AttributePayloads {
   [AttrKind.Role]            : string;                 // user‑defined label
   [AttrKind.RelationDetails] : ECS.RelationDetail;     // struct defined above
   /** fallback for custom kinds */
-  [key: string]              : unknown;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    [key: string]              : any;
 }
 
 export type AttributeValue<K extends AttrKind = AttrKind> =
-  K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  K extends keyof AttributePayloads ? AttributePayloads[K] : any;
 
 /*-------------------------------------------------------------------------*\
 | 3 ▸ Convenience aliases                                                   |

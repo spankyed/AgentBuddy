@@ -1,4 +1,4 @@
-import { isObject } from "@/shared/utils";
+import { isPlainObject } from "@/shared/utils";
 import { getStyles, type internals } from "./styles";
 
 function formatTimestamp(date: Date) {
@@ -9,19 +9,21 @@ function formatTimestamp(date: Date) {
 
 const allowVerbose = false;
 
-export function logInternal(type: keyof typeof internals, verbose = false, ...messages: string[]) {
-  const [ first, ...rest ] = messages;
-  const timestamp = formatTimestamp(new Date())
+export function logInternal(type: keyof typeof internals, verbose = false, ...messages: unknown[]) {
+  if (!messages.length) return;
+  const [firstRaw, ...restRaw] = messages;
+  const timestamp = formatTimestamp(new Date());
   const { primary, secondary, label, bold, reset, dim } = getStyles(type);
-  const time = `[${dim}${timestamp}${reset}] `
+  const time = `[${dim}${timestamp}${reset}] `;
   const header = `${primary}${bold} ${label} ${reset}`;
-  const main = `${secondary}${bold} ${first} `;
+  const main = `${secondary}${bold} ${String(firstRaw)} `;
   let logOutput = `${time}${header}${main}`;
 
+  const rest = restRaw.map(String);
   const logs = ['ER', 'IN'].includes(type)
     ? rest
-    : rest.filter(value => value && !isObject(value) && (!value.length || value.length < 24)); // print only short strings
-  
+    : rest.filter((value) => value.length < 24);
+
   for (const log of logs) {
     logOutput += `${log} `;
   }
