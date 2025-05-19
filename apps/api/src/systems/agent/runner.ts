@@ -68,10 +68,9 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     });
   }
 
-  // Optionally signal completion
-  // agentSys.send({
-  //   type: 'LLM_DONE'
-  // });
+  agentSys.send({
+    type: 'LLM_DONE'
+  });
 })
 
 // export const chatCompletionsStream = async function(messages: ChatMessage[]) {

@@ -29,12 +29,12 @@ const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.messages)
 const messagesContainer = ref<HTMLElement | null>(null)
 
-watch(() => (messages.value as Message[]).length, async () => {
+watch(messages, async () => {
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
-})
+}, { deep: true })
 </script>
 
 <style lang="scss" module>

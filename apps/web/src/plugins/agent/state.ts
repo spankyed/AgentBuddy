@@ -81,6 +81,29 @@ const agentState = setup({
         threads: typedEvent.pluginData.threads
       };
     }),
+    handleTokenStream: assign(({ context, event }) => {
+      const token = typeOf('TOKEN_STREAM', event).token;
+      const { messages, pendingActionId } = context;
+      if (pendingActionId) {
+        return {
+          messages: messages.map(m => m.id === pendingActionId ? { ...m, content: m.content + token } : m),
+        };
+      }
+
+      const newId = Date.now().toString();
+      return {
+        messages: [...messages, {
+          id: newId,
+          content: token,
+          role: 'assistant' as const,
+          timestamp: new Date(),
+        }],
+        pendingActionId: newId,
+      };
+    }),
+    finishStream: assign(({ context }) => ({
+      pendingActionId: undefined,
+    })),
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
     // })),
@@ -124,7 +147,10 @@ const agentState = setup({
       actions: 'setPluginData'
     },
     TOKEN_STREAM: {
-      actions: log(({ event }) => `Token stream: ${event.token}`)
+      actions: 'handleTokenStream'
+    },
+    LLM_DONE: {
+      actions: 'finishStream'
     },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'

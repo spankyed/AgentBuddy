@@ -56,6 +56,11 @@ export const agentSystem = setup({
         token: typeOf('TOKEN_STREAM', event).token
       }));
     },
+    sendLLMDone: ({ system, event }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'LLM_DONE',
+      }));
+    },
     sendFEWakeup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'WAKEUP',
@@ -111,7 +116,7 @@ export const agentSystem = setup({
           }),
           onDone: {
             target: 'idle',
-            // actions: raise({ type: 'LLM_DONE' })
+            actions: 'sendLLMDone',
           },
           onError: {
             target: 'idle',
