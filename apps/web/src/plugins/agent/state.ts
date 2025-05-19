@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { Message, ContextItem, CanvasContent } from '@abuddy/api';
+import type { Message, ContextItem, CanvasContent, OutgoingAgentEvents } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -22,11 +22,10 @@ interface AgentContext {
 type AgentEvent =
   | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; content: string }
-  | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
-  | { type: 'WAKEUP'; pluginData: { messages: Message[], contextItems: ContextItem[], canvasContent: CanvasContent, threads: { id: string; title: string; timestamp: Date }[] } }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
+  | OutgoingAgentEvents
   | TrailClickEvent;
 
 const typeOf = safeEvents<AgentEvent>();

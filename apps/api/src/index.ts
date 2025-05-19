@@ -7,3 +7,5 @@ export type {
   Thread,
   AgentPluginData
 } from '@/shared/types';
+
+export type { OutgoingAgentEvents } from './systems/agent/system';
