@@ -70,7 +70,7 @@
     </form>
 
     <Threads
-      :threads="mockThreads"
+      :threads="threads"
       @select-thread="handleSelectThread"
       @new-thread="handleNewThread"
     />
@@ -85,6 +85,9 @@ import Threads from './threads.vue'
 import type { Thread } from './threads.vue'
 import type { Component } from 'vue'
 import Button from '@/core/design/button.vue'
+import { applicationState } from '@/app'
+import { useSelector } from '@xstate/vue'
+import { id, type AgentState } from '@/plugins/agent/state'
 
 // Define emits including new button actions
 const emit = defineEmits<{
@@ -128,6 +131,10 @@ const leftButtons: ActionButton[] = [
   },
 ]
 
+// Get threads data from the state
+const actor: AgentState = applicationState.system.get(id);
+const threads = useSelector(actor, (state) => state.context.threads)
+
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
 
@@ -163,25 +170,6 @@ const handleKeydown = (e: KeyboardEvent) => {
     handleSubmit()
   }
 }
-
-// Mock data - replace with real data from your app
-const mockThreads: Thread[] = [
-  {
-    id: '1',
-    title: 'UI Layout Reorganization Instructions',
-    timestamp: new Date(Date.now() - 1000 * 60 * 9) // 9 minutes ago
-  },
-  {
-    id: '2',
-    title: 'Adding Padding to Scrollbar in CSS',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60) // 1 hour ago
-  },
-  {
-    id: '3',
-    title: 'Enhancing Chat Interface Design',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60) // 1 hour ago
-  }
-]
 
 
 const handleButtonClick = (action: string) => {

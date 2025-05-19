@@ -1,6 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
 import type { Message, ActionItem, ContextItem, CanvasContent } from '@/plugins/agent/types';
-import mockData from './mockData';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -15,6 +14,7 @@ interface AgentContext {
   actions: ActionItem[];
   contextItems: ContextItem[];
   canvasContent: CanvasContent;
+  threads: { id: string; title: string; timestamp: Date }[];
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
@@ -26,6 +26,7 @@ type AgentEvent =
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
+  | { type: 'WAKEUP'; pluginData: { messages: Message[], actions: ActionItem[], contextItems: ContextItem[], canvasContent: CanvasContent, threads: { id: string; title: string; timestamp: Date }[] } }
   // | { type: 'ADD_ACTION'; action: ActionItem }
   // | { type: 'UPDATE_ACTION'; actionId: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
@@ -74,6 +75,17 @@ const agentState = setup({
     clearMessages: assign(() => ({
       messages: []
     })),
+    setPluginData: assign(({ event }) => {
+      const typedEvent = typeOf('WAKEUP', event);
+      console.log('typedEvent: ', typedEvent);
+      return {
+        messages: typedEvent.pluginData.messages,
+        actions: typedEvent.pluginData.actions,
+        contextItems: typedEvent.pluginData.contextItems,
+        canvasContent: typedEvent.pluginData.canvasContent,
+        threads: typedEvent.pluginData.threads
+      };
+    }),
     // addAction: assign(({ context, event }) => ({
     //   actions: [...context.actions, typeOf('ADD_ACTION', event).action]
     // })),
@@ -108,10 +120,11 @@ const agentState = setup({
   id,
   initial: 'canvas',
   context: ({ input }) => ({
-    messages: mockData.messages,
-    actions: mockData.actions,
-    contextItems: mockData.contextItems,
-    canvasContent: mockData.canvasContent,
+    messages: [],
+    actions: [],
+    contextItems: [],
+    canvasContent: { id: '0', type: 'text', content: 'Waiting for data...' },
+    threads: [],
     currentThreadId: null,
     messageInput: "",
     pendingActionId: undefined,
@@ -135,6 +148,9 @@ const agentState = setup({
     },
     SELECT_THREAD: {
       actions: 'setCurrentThread'
+    },
+    WAKEUP: {
+      actions: 'setPluginData'
     },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'

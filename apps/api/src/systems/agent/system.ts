@@ -2,6 +2,7 @@ import { assign, fromPromise, log, raise, sendTo, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 // import { LlmRunner } from '@/systems/agent/runner';
+import agentPluginData from './mockData';
 import type { MergeReceivable } from '@/shared/event-helpers';
 import { fromSystem, systemBus } from '@/shared/event-helpers';
 import { z } from 'zod';
@@ -23,7 +24,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN'; token: string }
 
 export type OutgoingAgentEvents = 
-  | { type: 'WAKEUP' }
+  | { type: 'WAKEUP'; pluginData: typeof agentPluginData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
@@ -52,7 +53,10 @@ export const agentSystem = setup({
   },
   actions: {
     sendFEWakeup: ({ system }) => {
-      system.get(bus).send(emit(agent, { type: 'WAKEUP'}));
+      system.get(bus).send(emit(agent, { 
+        type: 'WAKEUP',
+        pluginData: agentPluginData
+      }));
     },
     emitToken: ({ system }) => {
       system.get(bus).send(emit(agent, {
