@@ -1,6 +1,7 @@
 // import { logInternal } from "../debug/Log";
 import type { ECS } from "./types";
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const id_counters: Record<ECS.Entity, number> = {} as any; // todo use uuid and/or persistent storage
 
 const createEntity = (type: ECS.Entity, skipLog?: boolean): ECS.EntityId => {
