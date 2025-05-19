@@ -1,18 +1,18 @@
-import { logInternal } from "../debug/Log";
-import type { ECS } from "./types";
+// import { logInternal } from "../debug/Log";
+// import type { ECS } from "./types";
 
-const id_counters: Record<ECS.Entity, number> = {} as any; // todo use uuid and/or persistent storage
+// const id_counters: Record<ECS.Entity, number> = {} as any; // todo use uuid and/or persistent storage
 
-const createEntity = <T extends keyof typeof id_counters>(type: T, skipLog?: boolean): ECS.ID[T] => {
-  id_counters[type] = (id_counters[type] || 0) + 1;
+// const createEntity = <T extends keyof typeof id_counters>(type: T, skipLog?: boolean): ECS.ID[T] => {
+//   id_counters[type] = (id_counters[type] || 0) + 1;
 
-  const newEntity = `${type}-${id_counters[type]}` as ECS.ID[T];
+//   const newEntity = `${type}-${id_counters[type]}` as ECS.ID[T];
 
-  logInternal('EC', skipLog, newEntity);
+//   logInternal('EC', skipLog, newEntity);
 
-  return newEntity;
-};
+//   return newEntity;
+// };
 
-export {
-  createEntity
-};
+// export {
+//   createEntity
+// };
