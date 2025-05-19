@@ -1,29 +1,11 @@
 
 
-# Plugin - Actor - System
-```
-                           ┌─────────┐            ┌─────────┐                           
-                           │         │            │         │                           
-  ╔═════════╗              │         │            │         │              ╔═════════╗  
-  ║ plugins ║              │         │            │         │              ║ systems ║  
-┌─╩═════════╩─┐     ┌───── │         │            │         │ ────┐      ┌─╩═════════╩─┐
-│    Brain    │ ◀───┘      │         │            │         │     └────▶ │    Brain    │
-├─────────────┤            │         │  ◀───────  │         │            ├─────────────┤
-│    Agent    │ ───────▶   │         │            │         │   ◀─────── │    Agent    │
-├─────────────┤            │         │ ┌────────┐ │         │            ├─────────────┤
-│   Threads   │ ───────▶   │   Web   │ │  Full  │ │ Backend │   ◀─────── │   Threads   │
-├─────────────┤            │   Bus   │ │ Duplex │ │   Bus   │            ├─────────────┤
-│   Prompts   │ ───────▶   │         │ └────────┘ │         │   ◀─────── │   Prompts   │
-├─────────────┤            │         │            │         │            ├─────────────┤
-│    Files    │ ───────▶   │         │  ───────▶  │         │   ◀─────── │    Files    │
-├─────────────┤            │         │            │         │            ├─────────────┤
-│    Code     │ ───────▶   │         │            │         │   ◀─────── │    Code     │
-└─────────────┘            │         │            │         │            └─────────────┘
-                           │         │            │         │                           
-                           │         │            │         │                           
-                           │         │            │         │                           
-                           └─────────┘            └─────────┘                           
-```
+# AgentBuddy
+A vibe‑forward workspace.
+
+Today's top AI agent platforms fall short of offering a robust, reliable, and scalable experience. They also fail at being easily personalized. Agent‑Buddy does things differently. With exceptional product design, meticulous engineering, and clear‑eyed leadership, we create tools that align deeply with the humans who use them.
+
+Join us in bringing better vibes with Agent‑Buddy.
 
 # Plugins
 ```
@@ -71,7 +53,8 @@ export const _blankPlugin = {
 }; // Expose a plugin by defining a plugin object
 ```
 
-Depending on what state a plugin is currently in, different content can be displayed in the canvas.
+### Canvas sub-routing
+A plugin can choose to display different content depending what state the plugin is currently in using sub-routes.
 ```
                                                                   
 ╔════════════════════════════════════════╗     Bread > Crumbs     
@@ -87,7 +70,7 @@ Depending on what state a plugin is currently in, different content can be displ
                                                │████████████│████│
                                                └────────────┴────┘
 ```
-To define a canvas with component routing, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`. Example:
+To define a plugin with sub-routes for different canvas component, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`. Example:
 ``` js
 // plugin.ts
 const plugin = {
@@ -140,7 +123,31 @@ Systems are the building blocks for the agent. That is agent singular. I believe
 
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with a some parent system.
 
-In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the frontend.
+In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used and interacted with by other backend systems or by plugins on the frontend.
+
+```
+                           ┌─────────┐            ┌─────────┐                           
+                           │         │            │         │                           
+  ╔═════════╗              │         │            │         │              ╔═════════╗  
+  ║ plugins ║              │         │            │         │              ║ systems ║  
+┌─╩═════════╩─┐     ┌───── │         │            │         │ ────┐      ┌─╩═════════╩─┐
+│    Brain    │ ◀───┘      │         │            │         │     └────▶ │    Brain    │
+├─────────────┤            │         │  ◀───────  │         │            ├─────────────┤
+│    Agent    │ ───────▶   │         │            │         │   ◀─────── │    Agent    │
+├─────────────┤            │         │ ┌────────┐ │         │            ├─────────────┤
+│   Threads   │ ───────▶   │   Web   │ │  Full  │ │ Backend │   ◀─────── │   Threads   │
+├─────────────┤            │   Bus   │ │ Duplex │ │   Bus   │            ├─────────────┤
+│   Prompts   │ ───────▶   │         │ └────────┘ │         │   ◀─────── │   Prompts   │
+├─────────────┤            │         │            │         │            ├─────────────┤
+│    Files    │ ───────▶   │         │  ───────▶  │         │   ◀─────── │    Files    │
+├─────────────┤            │         │            │         │            ├─────────────┤
+│    Code     │ ───────▶   │         │            │         │   ◀─────── │    Code     │
+└─────────────┘            │         │            │         │            └─────────────┘
+                           │         │            │         │                           
+                           │         │            │         │                           
+                           │         │            │         │                           
+                           └─────────┘            └─────────┘                           
+```
 
 Below is an example of sending a message to the `threads` frontend plugin from a backend system.
 ``` js
