@@ -52,6 +52,7 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
   // Create the stream based on provider
   const stream = await openai.responses.create({
     model: "gpt-4.1",
+    // instructions: '',
     input: input.messages,
     stream: true,
   });
@@ -72,21 +73,3 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     type: 'LLM_DONE'
   });
 })
-
-// export const chatCompletionsStream = async function(messages: ChatMessage[]) {
-//   const stream = await openai.responses.create({
-//     model: "gpt-4.1",
-//     input: messages,
-//     // input: [
-//     //     {
-//     //         role: "user",
-//     //         content: "Say 'double bubble bath' ten times fast.",
-//     //     },
-//     // ],
-//     stream: true,
-//   });
-
-//   for await (const event of stream) {
-//     console.log(event);
-//   }
-// };
