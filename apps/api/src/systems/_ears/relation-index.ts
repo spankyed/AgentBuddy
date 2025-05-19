@@ -1,13 +1,13 @@
 /*───────────────────────────────────────────────────────────────────────────
  * relation-index.ts – array‑backed (no Set) with single‑pass updateIndex
  *───────────────────────────────────────────────────────────────────────────*/
-import type { ECS } from "./types";
+import type { EARS } from "./types";
 
 /*-------------------------------------------------------------------------*\
 | 1 ▸ Index shapes                                                          |
 \*-------------------------------------------------------------------------*/
 interface DirectionLists {
-  [entityId: string]: ECS.EntityId[]; // relation entity IDs
+  [entityId: string]: EARS.EntityId[]; // relation entity IDs
 }
 
 interface RelationIndexEntry {
@@ -27,9 +27,9 @@ const ensureEntry = (kind: string): RelationIndexEntry => {
 \*-------------------------------------------------------------------------*/
 export function addToIndex(
   kind: string,
-  source: ECS.EntityId,
-  target: ECS.EntityId,
-  relId: ECS.EntityId,
+  source: EARS.EntityId,
+  target: EARS.EntityId,
+  relId: EARS.EntityId,
 ): void {
   const e = ensureEntry(kind);
   if (!e.bySource[source]) e.bySource[source] = [];
@@ -40,9 +40,9 @@ export function addToIndex(
 
 export function removeFromIndex(
   kind: string,
-  source: ECS.EntityId,
-  target: ECS.EntityId,
-  relId: ECS.EntityId,
+  source: EARS.EntityId,
+  target: EARS.EntityId,
+  relId: EARS.EntityId,
 ): void {
   const e = relationIndex[kind];
   if (!e) return;
@@ -61,11 +61,11 @@ export function removeFromIndex(
 \*-------------------------------------------------------------------------*/
 export function updateIndex(
   kind: string,
-  relId: ECS.EntityId,
-  oldSource: ECS.EntityId,
-  oldTarget: ECS.EntityId,
-  newSource?: ECS.EntityId,
-  newTarget?: ECS.EntityId,
+  relId: EARS.EntityId,
+  oldSource: EARS.EntityId,
+  oldTarget: EARS.EntityId,
+  newSource?: EARS.EntityId,
+  newTarget?: EARS.EntityId,
 ): void {
   const finalSource = newSource ?? oldSource;
   const finalTarget = newTarget ?? oldTarget;

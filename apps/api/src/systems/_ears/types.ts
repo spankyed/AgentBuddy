@@ -1,11 +1,11 @@
 /*───────────────────────────────────────────────────────────────────────────
- * types.ts – ECS core & attribute vocabulary (rev‑2 with AttrKind.Custom)
+ * types.ts – EARS core & attribute vocabulary
  *───────────────────────────────────────────────────────────────────────────*/
 
 /*-------------------------------------------------------------------------*\
-| 1 ▸ Core ECS entity identifiers                                           |
+|   ▸ Core EARS entity identifiers                                          |
 \*-------------------------------------------------------------------------*/
-export namespace ECS {
+export namespace EARS {
   export enum Entity {
     Message  = 'Message',
     Thread   = 'Thread',
@@ -22,7 +22,7 @@ export namespace ECS {
   export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
 
   /*-------------------------------------------------------------------------*\
-  | 2 ▸ Attribute kinds & payload typings                                     |
+  |   ▸ Attribute kinds & payload typings                                     |
   \*-------------------------------------------------------------------------*/
   /** Canonical bucket names */
   export const AttrKindValues = {
@@ -43,7 +43,7 @@ export namespace ECS {
   /** Payload mapping for first‑class buckets; extend per‑app */
   export interface AttributePayloads {
     [AttrKindValues.Role]            : string;
-    [AttrKindValues.RelationDetails] : ECS.RelationDetail;
+    [AttrKindValues.RelationDetails] : EARS.RelationDetail;
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     [key: string]                    : any; // fallback for custom kinds
   }
@@ -53,8 +53,8 @@ export namespace ECS {
     K extends keyof AttributePayloads ? AttributePayloads[K] : any;
 
   /*-------------------------------------------------------------------------*\
-  | 3 ▸ Compatibility re‑exports                                              |
+  |   ▸ Compatibility re‑exports                                              |
   \*-------------------------------------------------------------------------*/
   export type AttributeType  = AttrKind;
-  export type AttributeStore = Record<string, ECS.AttributeTypeMap>;
+  export type AttributeStore = Record<string, EARS.AttributeTypeMap>;
 }
