@@ -71,7 +71,7 @@ A plugin can choose to display different content depending what state the plugin
                                                │████████████│████│
                                                └────────────┴────┘
 ```
-To define a plugin with sub-routes for different canvas component, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states like `meta: { ... breadcrumb('target', 'Title') }`. Example:
+To define a plugin with sub-routes to display various canvas components, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states with `meta: { ... breadcrumb('target', 'Title') }`. Example:
 ``` js
 // plugin.ts
 const plugin = {
