@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { Message, ContextItem, CanvasContent, OutgoingAgentEvents } from '@abuddy/api';
+import type { Message, ContextItem, CanvasContent, Thread, OutgoingAgentEvents } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -13,7 +13,7 @@ interface AgentContext {
   messages: Message[];
   contextItems: ContextItem[];
   canvasContent: CanvasContent;
-  threads: { id: string; title: string; timestamp: Date }[];
+  threads: Thread[];
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
