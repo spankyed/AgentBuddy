@@ -1,6 +1,6 @@
 /* attribute‑store.ts – generic edition */
-import { isObject } from "@/shared/utils";
-import { logInternal } from "@/systems/_ears/debug/Log";
+import { isPlainObject } from "@/shared/utils";
+import { logInternal } from "@/systems/_ears/debug/log";
 import { createEntity } from "./create-entity";
 import {
 	updateIndex,
@@ -73,7 +73,7 @@ function updateAttribute(
 
 	const currentAttribute = getAttribute(entityID, attributeType);
 
-	if (currentAttribute && isObject(currentAttribute) && isObject(newValue)) {
+	if (currentAttribute && isPlainObject(currentAttribute) && isPlainObject(newValue)) {
 		attributeStore[attributeType][entityID][index] = {
 			...currentAttribute,
 			...newValue,
@@ -206,7 +206,7 @@ function getAttributeIndexByCriteria(
 ): number {
 	const attributes = getAttributes(entityID, attributeType);
 	return attributes.findIndex((attribute) =>
-		isObject(criteria)
+		isPlainObject(criteria)
 			? Object.entries(criteria).every(
 					([key, value]) => attribute[key] === value,
 				)
@@ -276,7 +276,7 @@ function queryEntitiesByAttribute(
 	}
 
 	return entities.filter((entityID) =>
-		isObject(criteria)
+		isPlainObject(criteria)
 			? typeMap[entityID].some((attribute) =>
 					Object.entries(criteria).every(
 						([key, value]) => attribute[key] === value,
