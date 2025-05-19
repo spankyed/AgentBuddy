@@ -29,9 +29,9 @@ Today's top AI agent platforms fall short of offering a robust, reliable, and sc
                         │                            │                                      
 ```
 
-Plugins can define components they want to show in a specific area of the UI. A default and an active plugin, can be showing content at any given time.
+Plugins can define interfaces to be shown in a specific area of the UI. A default and an active plugin, can be showing content at any given time.
 
-The default plugin is set to be the `agent` plugin. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
+The default plugin is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
 
 ``` yml
 Basic Plugin Skeleton:
