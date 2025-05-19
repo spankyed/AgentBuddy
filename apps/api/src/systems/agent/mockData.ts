@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import type { Message, ActionItem, ContextItem, CanvasContent, Thread, AgentPluginData } from '@/shared/types';
+import type { Message, ContextItem, CanvasContent, Thread, AgentPluginData } from '@/shared/types';
 
 const messages: Message[] = [
   {

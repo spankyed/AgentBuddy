@@ -5,13 +5,6 @@ export interface Message {
   timestamp: Date;
 }
 
-export interface ActionItem {
-  id: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed';
-  timestamp: Date;
-}
-
 export interface ContextItem {
   id: string;
   title: string;
