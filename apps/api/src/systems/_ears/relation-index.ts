@@ -1,4 +1,4 @@
-import { ECS } from "./types";
+import type { ECS } from "./types";
 
 interface RelationIndex {
   [relationType: string]: {

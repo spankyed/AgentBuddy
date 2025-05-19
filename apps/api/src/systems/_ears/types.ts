@@ -2,10 +2,8 @@
 export namespace ECS {
   /** High‑level kinds of entities you’ll create */
   export enum Entity {
-    Scene     = 'Scene',
-    Camera    = 'Camera',
-    Light     = 'Light',
-    Character = 'Character',
+    Message = 'Message',
+    Thread = 'Thread',
     Relation  = 'Relation',
     Task      = 'Task',
   }
