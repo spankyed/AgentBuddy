@@ -1,10 +1,9 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2">
-    <div class="flex items-center content-between">
+    <div class="flex items-center content-between" @click="isOpen = !isOpen">
       <button
         type="button"
         class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-        @click="isOpen = !isOpen"
       >
         Recent Threads
 
@@ -12,14 +11,18 @@
         <ChevronUp v-else :size="16" class="ml-2" />
       </button>
 
-      <div class="flex-grow text-center px-12 pb-2 text-sm text-neutral-500">
-        This is a list of your recent threads. Click on a thread to view its content.
+      <div class="flex-grow px-12 pb-2 text-sm text-center">
+        <span
+          @click.stop="$emit('new-thread')"
+          class="text-center text-neutral-500 hover:text-neutral-200 hover:cursor-pointer">
+          This is a list of your recent threads. Click on a thread to view its content.
+        </span>
       </div>
 
       <button
         type="button"
         class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-        @click="$emit('new-thread')"
+        @click.stop="$emit('new-thread')"
       >
         <Plus :size="16" class="mr-2" />
         New thread
