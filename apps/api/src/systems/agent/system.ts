@@ -6,7 +6,7 @@ import agentPluginData from './mockData';
 import type { MergeReceivable } from '@/shared/event-helpers';
 import { fromSystem, systemBus } from '@/shared/event-helpers';
 import { z } from 'zod';
-import { bus } from '@/systems/backend';
+import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/actor-helpers';
 
 export const agent = 'agent' as const;

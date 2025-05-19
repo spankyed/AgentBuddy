@@ -2,7 +2,7 @@
  * attribute-store.ts – Map‑backed, AttrKind‑typed (multi‑value safe)
  *───────────────────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/shared/utils";
-import { logInternal } from "@/systems/_ears/debug/log";
+import { logInternal } from "@/shared/debug/log";
 import { createEntity } from "./create-entity";
 import {
 	addToIndex,

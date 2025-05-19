@@ -1,6 +1,6 @@
 import { mergeSystems } from '@/shared/event-helpers';
 
-export { bus } from "@/systems/backend";
+export { bus } from "@/systems/_bus/backend";
 
 export { agent } from "@/systems/agent/system";
 import { agent, agentSystem, AgentSystemEvents } from "@/systems/agent/system";
@@ -13,4 +13,4 @@ export const events = mergeSystems(
   AgentSystemEvents,
 );
 
-export { backendSystem } from "@/systems/backend";
+export { backendSystem } from "@/systems/_bus/backend";
