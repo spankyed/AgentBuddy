@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { agent, type agentSystem } from './system';
+import { agent, type agentSystem } from '../system';
 import { type ActorRefFrom, fromPromise } from 'xstate';
 import { handleOpenAIStream } from './openai-stream-handler';
 

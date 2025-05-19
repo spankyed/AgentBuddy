@@ -1,7 +1,7 @@
 import { assign, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
-import { chatStream, message } from '@/systems/agent/runner';
+import { chatStream, message } from '@/systems/agent/llm/runner';
 import agentPluginData from './mockData';
 import type { MergeReceivable } from '@/shared/event-helpers';
 import { fromSystem, systemBus } from '@/shared/event-helpers';
