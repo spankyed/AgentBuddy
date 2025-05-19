@@ -1,7 +1,7 @@
-import { assign, log, raise, sendTo, setup } from 'xstate';
+import { assign, fromPromise, log, raise, sendTo, setup } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
-import { LlmRunner } from '@/systems/agent/runner';
+// import { LlmRunner } from '@/systems/agent/runner';
 import type { MergeReceivable } from '@/shared/event-helpers';
 import { fromSystem, systemBus } from '@/shared/event-helpers';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ export type AgentInternalEvents =
 
 export type OutgoingAgentEvents = 
   | { type: 'WAKEUP' }
+  | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
   | { type: 'TOKEN'; token: string }
 
@@ -39,6 +40,15 @@ export const agentSystem = setup({
   types: {
     context: {} as AgentContext,
     events: {} as MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>,
+  },
+  actors: {
+    delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      system.get(bus).send(emit(agent, { 
+        type: 'ADD_ASSISTANT_MESSAGE', 
+        content: input.content 
+      }));
+    })
   },
   actions: {
     sendFEWakeup: ({ system }) => {
@@ -78,8 +88,21 @@ export const agentSystem = setup({
       idle: {
         on: {
           USER_MSG: {
-            target: 'thinking',
+            target: 'processMessage',
             actions: 'storePrompt',
+          },
+        },
+      },
+      processMessage: {
+        invoke: {
+          id: 'delayedResponse',
+          src: 'delayedResponse',
+          input: {
+            content: "I'm analyzing your request to rewrite the code with CSS variables. Give me a moment to prepare a response."
+          },
+          onDone: {
+            target: 'idle',
+            // actions: 'emitToken',
           },
         },
       },
@@ -101,12 +124,12 @@ const sendBack = sendParentSafe<AgentInternalEvents>();
 
 async function runLlm(ctx: AgentContext, signal: AbortSignal) {
   const { userPrompt = '', model } = ctx;
-  const runner = new LlmRunner(model);
+  // const runner = new LlmRunner(model);
 
-  for await (const token of runner.stream(userPrompt, { signal })) {
+  // for await (const token of runner.stream(userPrompt, { signal })) {
     // Persist & bubble up token events
-    sendBack({ type: 'TOKEN', token });
-  }
+    // sendBack({ type: 'TOKEN', token });
+  // }
 
   sendBack({ type: 'LLM_DONE' });
   // Persist assistant message

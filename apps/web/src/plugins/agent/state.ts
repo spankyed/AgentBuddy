@@ -4,6 +4,7 @@ import mockData from './mockData';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
+import { trpc } from '@/core/trpc';
 
 export const id = 'agent' as const;
 
@@ -35,15 +36,22 @@ const typeOf = safeEvents<AgentEvent>();
 const agentState = setup({
   types: { context: {} as AgentContext, events: {} as AgentEvent },
   actors: {
-    delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      system.get(id).send({ 
-        type: 'ADD_ASSISTANT_MESSAGE', 
-        content: input.content 
-      });
-    })
+    // delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
+    //   await new Promise(resolve => setTimeout(resolve, 1000));
+    //   system.get(id).send({ 
+    //     type: 'ADD_ASSISTANT_MESSAGE', 
+    //     content: input.content 
+    //   });
+    // })
   },
   actions: {
+    sendMessage: ({ event }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'USER_MSG',
+        content: typeOf('SEND_MESSAGE', event).content,
+      });
+    },
     addMessage: assign(({ context, event }) => ({
       messages: [...context.messages, { 
         id: Date.now().toString(),
@@ -116,11 +124,7 @@ const agentState = setup({
     SEND_MESSAGE: {
       actions: [
         'addMessage',
-        spawnChild('delayedResponse', {
-          input: {
-            content: "I'm analyzing your request to rewrite the code with CSS variables. Give me a moment to prepare a response."
-          }
-        }),
+        'sendMessage',
       ],
     },
     CLEAR_MESSAGES: {

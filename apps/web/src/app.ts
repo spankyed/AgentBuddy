@@ -3,7 +3,7 @@ import { createActor } from 'xstate';
 import { createBrowserInspector } from '@statelyai/inspect';
 import logErrors from '@/core/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
-import { createApplicationState } from '@/core/actors/application';
+import { application, createApplicationState } from '@/core/actors/application';
 import { createApp } from 'vue'
 import './style.css'
 import App from './app.vue';
@@ -11,7 +11,7 @@ import App from './app.vue';
 // const { inspect } = createBrowserInspector();
 
 export const applicationState = createActor(createApplicationState(), {
-  systemId: 'application',
+  systemId: application,
   // inspect,
   input: {
     defaultPlugin,

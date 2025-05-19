@@ -26,7 +26,7 @@ export interface ApplicationContext {
   targetView: string;
 }
 
-const application = 'application' as const;
+export const application = 'application' as const;
 
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
