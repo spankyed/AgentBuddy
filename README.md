@@ -27,9 +27,9 @@
 
 # Plugins
 
-Plugins define what gets shown in a specific area of the UI. Two plugins, the default and active plugins, can be showing content at any given time.
+Plugins can define components they want to show in a specific area of the UI. A default and an active plugin, can be showing content at any given time.
 
-Only the default plugin can define content to be shown in the chat area. The active plugin can show custom content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see. Where, although the active plugin could display content in the side panel, currently the default plugin (`agent`) is toggled visible - perhaps displaying some LLM context.
+The default plugin is set to be the `agent` plugin. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
 
 ```
                         │                            │                                      
@@ -137,13 +137,13 @@ createMachine({
 └─────────────────────────┘░                                                            
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░                                                            
 ```
-Systems are the building blocks of the agent. And that is agent singular. I believe the current hype and language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems that make up a unified agent. Need more capabilities? Add more systems.
+Systems are the building blocks for the agent. That is agent singular. I believe the current language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems that make up a unified agent. Need more capabilities? Add more systems.
 
-Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, we may have one system in the middle of a task, then a new task comes in while the other task is still going. We can spin up a parallel system to handle this new task and orchestrate the two with a parent system.
+Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with a some parent system.
 
 In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used by other backend systems or sent to plugins on the frontend.
 
-Below is an example of sending a message to the `threads`  frontend plugin from a backend system.
+Below is an example of sending a message to the `threads` frontend plugin from a backend system.
 ``` js
 const pluginId = 'threads';
 
@@ -159,6 +159,37 @@ setup({
 })
 .createMachine({ id: 'system' })
 ```
+
+# Dialogs
+```
+                                          
+╔═════════════════════════════════════════╗
+║               Dialog Flow               ║
+╚════════════════════╦════════════════════╝
+     ┌────────┬──────┼──────┬────────┐     
+     │        │      │      │        │     
+     ▼        ▼      ▼      ▼        ▼     
+     .        .      .      .        .     
+    (█)      (█)    (█)    (█)      (█)    
+     '        '      '      '        '     
+     │        │      │      │        │     
+  ┌──┴──┐     ▼      ▼      ▼     ┌──┴──┐  
+  ▼     ▼     .      .      .     ▼     ▼  
+  .     .    (█)    (█)    (█)    .     .  
+ (█)   (█)    '      '      '    (█)   (█) 
+  '     '            │            '     '  
+        │            ▼                     
+        ▼            .                     
+        .           (█)                    
+       (█)           '                     
+        '                                  
+```
+Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application to the end-user (and in special cases to the agent itself).
+
+The fundamental break through here is to imagine the agent <-> human interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times agent<->agent dialog or even agent <-> application-event dialog.
+
+In that sense, everything is an actor‑like dialog node, in which we have full control of our application and therefore our agent by just updating database records (dialog nodes).
+
 
 
 # Getting Started
