@@ -11,7 +11,6 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 
 interface AgentContext {
   messages: Message[];
-  actions: ActionItem[];
   contextItems: ContextItem[];
   canvasContent: CanvasContent;
   threads: { id: string; title: string; timestamp: Date }[];
@@ -26,9 +25,7 @@ type AgentEvent =
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
-  | { type: 'WAKEUP'; pluginData: { messages: Message[], actions: ActionItem[], contextItems: ContextItem[], canvasContent: CanvasContent, threads: { id: string; title: string; timestamp: Date }[] } }
-  // | { type: 'ADD_ACTION'; action: ActionItem }
-  // | { type: 'UPDATE_ACTION'; actionId: string; status: 'pending' | 'in-progress' | 'completed' | 'failed' }
+  | { type: 'WAKEUP'; pluginData: { messages: Message[], contextItems: ContextItem[], canvasContent: CanvasContent, threads: { id: string; title: string; timestamp: Date }[] } }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | TrailClickEvent;
 
@@ -80,38 +77,14 @@ const agentState = setup({
       console.log('typedEvent: ', typedEvent);
       return {
         messages: typedEvent.pluginData.messages,
-        actions: typedEvent.pluginData.actions,
         contextItems: typedEvent.pluginData.contextItems,
         canvasContent: typedEvent.pluginData.canvasContent,
         threads: typedEvent.pluginData.threads
       };
     }),
-    // addAction: assign(({ context, event }) => ({
-    //   actions: [...context.actions, typeOf('ADD_ACTION', event).action]
-    // })),
-    // updateAction: assign(({ context, event }) => {
-    //   const typedEvent = typeOf('UPDATE_ACTION', event);
-    //   return {
-    //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    //     actions: context.actions.map((action: any) => 
-    //       action.id === typedEvent.actionId 
-    //         ? { ...action, status: typedEvent.status }
-    //         : action
-    //     )
-    //   }
-    // }),
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
     // })),
-    // setPendingActionId: assign(() => {
-    //   const newAction: ActionItem = {
-    //     id: Date.now().toString(),
-    //     description: 'Processing your request...',
-    //     status: 'in-progress',
-    //     timestamp: new Date()
-    //   }
-    //   return { pendingActionId: newAction.id }
-    // }),
   },
   guards: {
     targetIs,
@@ -121,7 +94,6 @@ const agentState = setup({
   initial: 'canvas',
   context: ({ input }) => ({
     messages: [],
-    actions: [],
     contextItems: [],
     canvasContent: { id: '0', type: 'text', content: 'Waiting for data...' },
     threads: [],
@@ -154,12 +126,6 @@ const agentState = setup({
     },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'
-    // },
-    // ADD_ACTION: {
-    //   actions: 'addAction'
-    // },
-    // UPDATE_ACTION: {
-    //   actions: 'updateAction'
     // },
     // ADD_CONTEXT_ITEM: {
     //   actions: 'addContextItem'

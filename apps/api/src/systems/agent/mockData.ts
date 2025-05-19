@@ -36,7 +36,6 @@ export interface Thread {
 
 export interface AgentPluginData {
   messages: Message[];
-  actions: ActionItem[];
   contextItems: ContextItem[];
   canvasContent: CanvasContent;
   threads: Thread[];
@@ -72,45 +71,6 @@ const messages: Message[] = [
     content: 'please rewrite this code using css variables from our design systems',
     role: 'user',
     timestamp: new Date(Date.now() - 1000 * 60)
-  }
-];
-
-const actions: ActionItem[] = [
-  {
-    id: uuid(),
-    description: 'Remove code comments',
-    status: 'completed',
-    timestamp: new Date(Date.now() - 1000 * 60 * 3)
-  },
-  {
-    id: uuid(),
-    description: 'Verify folder structure',
-    status: 'completed',
-    timestamp: new Date(Date.now() - 1000 * 60 * 2)
-  },
-  {
-    id: uuid(),
-    description: 'Run test coverage',
-    status: 'completed',
-    timestamp: new Date(Date.now() - 1000 * 60)
-  },
-  {
-    id: uuid(),
-    description: 'Add new test',
-    status: 'in-progress',
-    timestamp: new Date()
-  },
-  {
-    id: uuid(),
-    description: 'Check task finished',
-    status: 'pending',
-    timestamp: new Date()
-  },
-  {
-    id: uuid(),
-    description: 'Respond "yes drill sergeant!"',
-    status: 'pending',
-    timestamp: new Date()
   }
 ];
 
@@ -199,7 +159,6 @@ const threads: Thread[] = [
 
 export const agentPluginData: AgentPluginData = {
   messages,
-  actions,
   contextItems,
   canvasContent,
   threads
