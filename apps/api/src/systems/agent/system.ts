@@ -11,7 +11,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import { addAttribute } from '@/shared/ears/attribute-storage';
 import { createEntity } from '@/shared/ears/create-entity';
 import { EARS } from '@/shared/ears/types';
-import { addToAgent, getLastMessage } from './accessors/system';
+import { addToAgent, getLastMessage } from './accessors';
 
 export const agent = 'agent' as const;
 
