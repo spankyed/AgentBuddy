@@ -13,3 +13,6 @@ export function removeLineBreaks(input: string): string {
 export function mergeObjs<T extends object>(a: T, b: Partial<T>): T {
   return { ...a, ...b };
 }
+
+export const entries = <T extends Record<string, unknown>>(obj: T) =>
+  Object.entries(obj) as Array<[keyof T, T[keyof T]]>

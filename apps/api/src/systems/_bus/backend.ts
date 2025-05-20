@@ -2,6 +2,9 @@ import { emit as notify, setup, enqueueActions, sendTo } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
 import systems, { agent } from '@/systems';
 import { emit, safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
+import { entries } from '@/shared/utils';
+import { createEntity } from '@/shared/ears/create-entity';
+import { EARS } from '../../shared/ears/types';
 
 export type BusEvent = 
   | { type: 'WAKEUP'; }
@@ -33,8 +36,12 @@ export const backendSystem = setup({
       }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
-      for (const [id, state] of Object.entries(systems)) {
-        enqueue.spawnChild(state, { systemId: id as SystemId });
+      for (const [id, state] of entries(systems)) {
+        const inputs = {
+          agent: createEntity(EARS.Entity.Agent),
+        } as const;
+
+        enqueue.spawnChild(state, { input: inputs[id] ,systemId: id as SystemId });
       }
     }),
   }

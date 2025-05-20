@@ -8,6 +8,10 @@ import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
 import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
+import { addAttribute } from '@/shared/ears/attribute-storage';
+import { createEntity } from '@/shared/ears/create-entity';
+import { EARS } from '@/shared/ears/types';
+import { addToAgent, getLastMessage } from './accessors/system';
 
 export const agent = 'agent' as const;
 
@@ -34,6 +38,7 @@ export type OutgoingAgentEvents =
   | { type: 'TOKEN_STREAM'; token: string }
 
 export interface AgentContext {
+  agentId: EARS.EntityId;
   userPrompt?: string;
 }
 
@@ -43,6 +48,7 @@ const typeOf = safeEvents<ReceivableEvents>();
 
 export const agentSystem = setup({
   types: {
+    input: {} as EARS.EntityId,
     context: {} as AgentContext,
     events: {} as ReceivableEvents,
   },
@@ -81,17 +87,23 @@ export const agentSystem = setup({
         pluginData: agentPluginData
       }));
     },
-    storeUserMessage: assign({
-      userPrompt: ({ event }) => typeOf('USER_MSG', event).content,
-    }),
+    storeUserMessage: ({ context, event }) => {
+      const content = typeOf('USER_MSG', event).content;
+      // overwrite the current prompt (remove previous, then add)
+      const msgEntity = createEntity(EARS.Entity.Message);
+      addAttribute(msgEntity, EARS.AttrKind.Custom('text'), content);
+
+      addToAgent(context.agentId, msgEntity);
+    },
   },
 }).createMachine(
   {
     id: agent,
     initial: 'idle',
-    context: {
+    context: ({ input }) => ({
+      agentId: input,
       userPrompt: undefined,
-    },
+    }),
     on: {
       TOKEN_STREAM: {
         actions: 'sendToken',
@@ -123,7 +135,7 @@ export const agentSystem = setup({
           input: ({ context }) => ({
             messages: [
               message('system', 'You are a helpful AI assistant.'),
-              message('user', context.userPrompt || '')
+              message("user", getLastMessage(context.agentId)),
             ],
             provider: 'openai',
           }),

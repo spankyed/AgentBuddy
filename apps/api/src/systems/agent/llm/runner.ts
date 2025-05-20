@@ -16,7 +16,7 @@ export interface ChatMessage {
 
 export const message = (
   role: ChatMessage['role'],
-  content: string,
+  content = '',
 ): ChatMessage => ({ role, content });
 
 type StreamCallback = (content: string) => void;

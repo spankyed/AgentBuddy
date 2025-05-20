@@ -7,6 +7,7 @@
 \*-------------------------------------------------------------------------*/
 export namespace EARS {
   export enum Entity {
+    Agent    = 'Agent',
     Message  = 'Message',
     Thread   = 'Thread',
     Relation = 'Relation',
