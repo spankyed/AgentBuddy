@@ -2,7 +2,7 @@ import type { ActorSystem, ActorRefFromLogic, EventFromLogic, AnyActorRef } from
 import type systems from '@/systems';
 import type { Simplify } from './event-helpers';
 import { sendParent } from 'xstate';
-import type { OutgoingSystemEvents } from './events';
+import type { OutgoingSystemEvents } from '@/shared/events';
 import { bus, type backendSystem } from '@/systems';
 
 type ExtractEvent<

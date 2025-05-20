@@ -1,7 +1,7 @@
 import { emit as notify, setup, enqueueActions, sendTo } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
 import systems, { agent } from '@/systems';
-import { emit, safeEvents, type SystemId } from '@/shared/actor-helpers';
+import { emit, safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
 
 export type BusEvent = 
   | { type: 'WAKEUP'; }

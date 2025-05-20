@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import { createActor } from 'xstate';
 import { backendSystem, bus } from '@/systems';
-import { logErrors } from '@/shared/actor-helpers';
+import { logErrors } from '@/shared/utils/actor-helpers';
 // import { createSkyInspector } from '@statelyai/inspect';
 
 // const sky = createSkyInspector();

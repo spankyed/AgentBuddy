@@ -6,7 +6,7 @@
 // import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 // import { z } from 'zod';
 // import { bus } from '@/systems/backend';
-// import { emit, getActor, sendParentSafe } from '@/shared/actor-helpers';
+// import { emit, getActor, sendParentSafe } from '@/shared/utils/actor-helpers';
 
 // export const brain = 'brain' as const;
 
