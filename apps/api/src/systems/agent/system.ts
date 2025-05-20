@@ -2,16 +2,14 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
-import agentPluginData from './mockData';
+import agentPluginData from './mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
 import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
-import { addAttribute } from '@/shared/ears/attribute-storage';
-import { createEntity } from '@/shared/ears/create-entity';
-import { EARS } from '@/shared/ears/types';
-import { addToAgent, getLastMessage } from './accessors';
+import { addMessageToLatestThread, getLastMessage } from './accessors';
+import type { EARS } from '@/shared/ears/types';
 
 export const agent = 'agent' as const;
 
@@ -89,11 +87,7 @@ export const agentSystem = setup({
     },
     storeUserMessage: ({ context, event }) => {
       const content = typeOf('USER_MSG', event).content;
-      // overwrite the current prompt (remove previous, then add)
-      const msgEntity = createEntity(EARS.Entity.Message);
-      addAttribute(msgEntity, EARS.AttrKind.Custom('text'), content);
-
-      addToAgent(context.agentId, msgEntity);
+      addMessageToLatestThread(content);
     },
   },
 }).createMachine(
@@ -135,7 +129,7 @@ export const agentSystem = setup({
           input: ({ context }) => ({
             messages: [
               message('system', 'You are a helpful AI assistant.'),
-              message("user", getLastMessage(context.agentId)),
+              message("user", getLastMessage()),
             ],
             provider: 'openai',
           }),

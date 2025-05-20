@@ -1,29 +1,54 @@
-import { addRole, hasRoleX, queryEntitiesByRelationTo, removeRole, addRelation, getAttribute } from '@/shared/ears/attribute-storage';
+import { addRole, hasRoleX, queryEntitiesByRelationTo, removeRole, addRelation, getAttribute, queryEntitiesByRole, addAttribute } from '@/shared/ears/attribute-storage';
+import { createEntity } from '@/shared/ears/create-entity';
 import { EARS } from '@/shared/ears/types';
 
-export function addToAgent(agentId: EARS.EntityId, messageId: EARS.EntityId) {
-  addRelation(agentId, 'contains', messageId);
+function getLastThreadId(): EARS.EntityId | undefined {
+  return queryEntitiesByRole(EARS.RoleKind.Custom('last_thread'))[0] ?? undefined;
 }
 
-export function setLastMessage(agentId: EARS.EntityId, newMessageId: EARS.EntityId) {
-  const messages = queryEntitiesByRelationTo('contains', agentId, true);
-  const lastMessage = messages.find(hasRoleX('last'));
+function getLastMessageId(): EARS.EntityId | undefined {
+  return queryEntitiesByRole(EARS.RoleKind.Custom('last_message'))[0] ?? undefined;
+}
 
-  if (lastMessage){
-    removeRole(lastMessage, 'last')
+export function addMessageToLatestThread(content: string) {
+  const newMsgId = createEntity(EARS.Entity.Message);
+  addAttribute(newMsgId, EARS.AttrKind.Custom('text'), content);
+  const lastThreadId = getLastThreadId();
+
+  if (!lastThreadId) {
+    console.warn('No last thread found');
+    return;
   }
 
-  addRole(newMessageId, 'last')
+  addRelation(lastThreadId, EARS.RelKind.CONTAINS, newMsgId);
+
+  setLastMessage(newMsgId, lastThreadId);
 }
 
-export function getLastMessage(agentId: EARS.EntityId): string | undefined {
-  const messages = queryEntitiesByRelationTo('contains', agentId, true);
-  messages.find(hasRoleX('last'));
+export function setLastMessage(newMessageId: EARS.EntityId, threadId?: EARS.EntityId) {
+  const lastThreadId = threadId || getLastThreadId();
 
-  if (messages.length === 0) {
+  if (!lastThreadId) {
+    console.warn('No last thread found');
+    return;
+  }
+  const messages = queryEntitiesByRelationTo(EARS.RelKind.CONTAINS, lastThreadId, true);
+  const lastMessage = messages.find(hasRoleX(EARS.RoleKind.Custom('last_message')));
+
+  if (lastMessage){
+    removeRole(lastMessage, EARS.RoleKind.Custom('last_message'))
+  }
+
+  addRole(newMessageId, EARS.RoleKind.Custom('last_message'));
+}
+
+export function getLastMessage(): string | undefined {
+  const lastMessageId = getLastMessageId();
+
+  if (!lastMessageId) {
+    console.warn('No last thread found');
     return undefined;
   }
 
-  console.log('last one b4 super', getAttribute(messages[0], EARS.AttrKind.Custom('text')));
-  return getAttribute(messages[0], EARS.AttrKind.Custom('text')) ?? undefined;
+  return getAttribute(lastMessageId, EARS.AttrKind.Custom('text')) ?? undefined;
 }

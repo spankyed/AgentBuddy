@@ -2,9 +2,12 @@ import { db } from '@/db/client';
 import { createActor } from 'xstate';
 import { backendSystem, bus } from '@/systems';
 import { logErrors } from '@/shared/utils/actor-helpers';
+import { loadMockData } from '@/systems/agent/accessors/load-initial-data';
 // import { createSkyInspector } from '@statelyai/inspect';
 
 // const sky = createSkyInspector();
+
+loadMockData();
 
 export const backendActor = createActor(backendSystem, {
   // inspect: sky.inspect,

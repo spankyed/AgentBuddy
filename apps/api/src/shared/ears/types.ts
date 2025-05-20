@@ -1,61 +1,96 @@
 /*───────────────────────────────────────────────────────────────────────────
- * types.ts – EARS core & attribute vocabulary
+ * types.ts – EARS entities, relations, roles & attributes (rev‑4)
  *───────────────────────────────────────────────────────────────────────────*/
 
-/*-------------------------------------------------------------------------*\
-|   ▸ Core EARS entity identifiers                                          |
-\*-------------------------------------------------------------------------*/
 export namespace EARS {
+  /*-------------------------------------------------------------------------*\
+  | 1 ▸ Entity identifiers                                                   |
+  \*-------------------------------------------------------------------------*/
   export enum Entity {
     Agent    = 'Agent',
     Message  = 'Message',
     Thread   = 'Thread',
     Relation = 'Relation',
+    CtxItem  = 'CtxItem',
+    CanvasItem   = 'CanvasItem',
     Task     = 'Task',
   }
   export type EntityId = `${Entity}-${string}`;
+
+  /*-------------------------------------------------------------------------*\
+  | 2 ▸ Relation kinds                                                       |
+  \*-------------------------------------------------------------------------*/
+  const RelKindValues = {
+    CONTAINS   : 'CONTAINS',
+    SPAWNED    : 'SPAWNED',
+    REPLIED_TO : 'REPLIED_TO',
+    OWNS       : 'OWNS',
+  } as const;
+
+  const _relCustom = <T extends string>(k: T) => k as T & RelKind;
+
+  export const RelKind = {
+    ...RelKindValues,
+    Custom: _relCustom,
+  } as const;
+
+  export type RelKind = typeof RelKindValues[keyof typeof RelKindValues] | (string & {});
+
   export interface RelationDetail {
     sourceEntity : EntityId;
     targetEntity : EntityId;
-    relationType : string;
+    relationType : RelKind;
     info?        : AttributeValue;
   }
-  export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
 
   /*-------------------------------------------------------------------------*\
-  |   ▸ Attribute kinds & payload typings                                     |
+  | 3 ▸ Role kinds  (attribute "role" payload)                               |
   \*-------------------------------------------------------------------------*/
-  /** Canonical bucket names */
+  const RoleKindValues = {
+    // Last        : 'last',
+  } as const;
+
+  const _roleCustom = <T extends string>(k: T) => k as T & RoleKind;
+
+  export const RoleKind = {
+    ...RoleKindValues,
+    Custom: _roleCustom,
+  } as const;
+
+  export type RoleKind = typeof RoleKindValues[keyof typeof RoleKindValues] | (string & {});
+
+  /*-------------------------------------------------------------------------*\
+  | 4 ▸ Attribute kinds & payloads                                           |
+  \*-------------------------------------------------------------------------*/
   export const AttrKindValues = {
-    Role            : 'role',
+    Role            : 'role',          // payload ⇒ RoleKind
     RelationDetails : 'relationDetails',
   } as const;
 
-  /** Helper to mint user‑defined bucket names at call‑site */
-  const _custom = <T extends string>(k: T) => k as T & AttrKind;
+  const _attrCustom = <T extends string>(k: T) => k as T & AttrKind;
 
   export const AttrKind = {
     ...AttrKindValues,
-    Custom: _custom,
+    Custom: _attrCustom,
   } as const;
 
   export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
 
-  /** Payload mapping for first‑class buckets; extend per‑app */
   export interface AttributePayloads {
-    [AttrKindValues.Role]            : string;
-    [AttrKindValues.RelationDetails] : EARS.RelationDetail;
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    [key: string]                    : any; // fallback for custom kinds
+    [AttrKindValues.Role]            : RoleKind;
+    [AttrKindValues.RelationDetails] : RelationDetail;
+    // biome-ignore lint/suspicious/noExplicitAny: fallback for user buckets
+    [key: string]                    : any;
   }
 
-  export type AttributeValue<K extends AttrKind = AttrKind> =
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+  // biome-ignore lint/suspicious/noExplicitAny: generic fallback
+  export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : any;
+
+  export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
 
   /*-------------------------------------------------------------------------*\
-  |   ▸ Compatibility re‑exports                                              |
+  | 5 ▸ Compat aliases                                                       |
   \*-------------------------------------------------------------------------*/
   export type AttributeType  = AttrKind;
-  export type AttributeStore = Record<string, EARS.AttributeTypeMap>;
+  export type AttributeStore = Record<string, AttributeTypeMap>;
 }
