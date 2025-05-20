@@ -11,7 +11,7 @@
     <!-- glow -->
     <span
       :class="[
-        'absolute inset-0 rounded-full scale-[2] blur-[4px] opacity-40',
+        'absolute inset-0 rounded-full scale-[2] blur-[1px] opacity-40',
         statusColorClass
       ]"
     />
@@ -50,7 +50,11 @@ const messages = useSelector(actor, (state) => state.context.messages)
 //   }
 // })
 const statusLabel = computed(() => 'Running')
-const statusColorClass = computed(() => 'bg-green-500')
+// const statusColorClass = computed(() => 'bg-green-500')
+// const statusColorClass = computed(() => 'bg-purple-700/80')
+const statusColorClass = computed(() => 'bg-zinc-500')
+// const statusColorClass = computed(() => 'bg-blue-500')
+// const statusColorClass = computed(() => 'bg-purple-500')
 </script>
 
 <style lang="scss" module>
