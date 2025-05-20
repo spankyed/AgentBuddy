@@ -4,7 +4,7 @@ import type { StreamHandler } from './runner';
 /**
  * Handles OpenAI stream events and processes them according to their type
  */
-export const handleOpenAIStream: StreamHandler<OpenAI.Responses.ResponseStreamEvent, boolean> = (event, callback) => {
+export const handleOpenAIStream: StreamHandler<OpenAI.Responses.ResponseStreamEvent> = (event, callback) => {
   // Log the event type for debugging
   // console.log(`Processing event type: ${event.type}`);
 

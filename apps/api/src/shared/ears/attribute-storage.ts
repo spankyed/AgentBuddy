@@ -46,7 +46,7 @@ function addRelation(
 	target: EARS.EntityId,
 	info?: EARS.AttributeValue,
 ): EARS.EntityId {
-	const relId = createEntity(EARS.Entity.Relation, true);
+	const relId = createEntity(EARS.Entity.Relation);
 	const details: EARS.RelationDetail = {
 		sourceEntity: source,
 		targetEntity: target,

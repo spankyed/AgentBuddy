@@ -20,8 +20,7 @@ export const message = (
 ): ChatMessage => ({ role, content });
 
 type StreamCallback = (content: string) => void;
-type StreamHandler<E> = (event: E, cb: StreamCallback) => void;
-
+export type StreamHandler<E> = (event: E, cb: StreamCallback) => void;
 
 /* ------------------------------------------------------------------ */
 /* Provider registry                                                  */
@@ -29,11 +28,26 @@ type StreamHandler<E> = (event: E, cb: StreamCallback) => void;
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_API_KEY });
 
-const handlers: Record<LLMProvider, StreamHandler<unknown>> = {
+// Define a mapping from provider name to its specific stream event type
+interface ProviderStreamEventMap {
+  openai: OpenAI.Responses.ResponseStreamEvent;
+  // anthropic: AnthropicStreamEvent; // TODO: add when implemented
+  // google: GoogleStreamEvent;       // TODO: add when implemented
+}
+
+// Enforce that every provider has a correctly-typed handler
+const streamHandlers: { [P in keyof ProviderStreamEventMap]: StreamHandler<ProviderStreamEventMap[P]> } = {
   openai: handleOpenAIStream,
   // anthropic: handleAnthropicStream,
   // google:   handleGoogleStream,
 };
+
+// Helper to retrieve a handler while preserving its precise event type
+function getStreamHandler<P extends keyof ProviderStreamEventMap>(
+  provider: P,
+): StreamHandler<ProviderStreamEventMap[P]> {
+  return streamHandlers[provider];
+}
 
 /* ------------------------------------------------------------------ */
 /* Main stream actor                                                  */
@@ -52,7 +66,7 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     return;
   }
 
-  const streamHandler = handlers[provider];
+  const streamHandler = getStreamHandler(provider);
 
   const stream = await openai.responses.create(
     {
