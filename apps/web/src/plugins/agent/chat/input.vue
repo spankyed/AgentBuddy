@@ -1,10 +1,12 @@
 <template>
-  <div>
+  <div class="overflow-visible">
     <form 
       @submit.prevent="handleSubmit"
       class="pb-4 max-w-[80%] mx-auto"
     >
-      <div class="flex flex-col border rounded-lg bg-neutral-800" :class="$style.input">
+      <div class="relative flex flex-col border rounded-lg bg-neutral-800" :class="$style.input">
+        <StatusIndicator/>
+
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
           <!-- Contenteditable div -->
@@ -89,6 +91,7 @@ import Button from '@/core/design/button.vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state'
+import StatusIndicator from './status-indicator.vue'
 
 // Define emits including new button actions
 const emit = defineEmits<{
