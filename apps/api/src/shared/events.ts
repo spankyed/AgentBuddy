@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { EventsFromSchemas } from '@/shared/event-helpers';
+import type { EventsFromSchemas } from '@/shared/utils/event-helpers';
 import { events } from '@/systems';
 
 export type OutgoingSystemEvents = typeof events.outgoing;

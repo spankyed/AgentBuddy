@@ -3,11 +3,11 @@ import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
 import agentPluginData from './mockData';
-import type { MergeReceivable } from '@/shared/event-helpers';
-import { fromSystem, systemBus } from '@/shared/event-helpers';
+import type { MergeReceivable } from '@/shared/utils/event-helpers';
+import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
 import { bus } from '@/systems/_bus/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 
 export const agent = 'agent' as const;
 

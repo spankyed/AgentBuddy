@@ -1,4 +1,4 @@
-import { mergeSystems } from '@/shared/event-helpers';
+import { mergeSystems } from '@/shared/utils/event-helpers';
 
 export { bus } from "@/systems/_bus/backend";
 

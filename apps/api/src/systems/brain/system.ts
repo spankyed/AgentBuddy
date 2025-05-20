@@ -2,8 +2,8 @@
 // import { v4 as uuid } from 'uuid';
 // import { db, schema } from '@/db/client';
 // // import { LlmRunner } from '@/systems/brain/runner';
-// import type { MergeReceivable } from '@/shared/event-helpers';
-// import { fromSystem, systemBus } from '@/shared/event-helpers';
+// import type { MergeReceivable } from '@/shared/utils/event-helpers';
+// import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 // import { z } from 'zod';
 // import { bus } from '@/systems/backend';
 // import { emit, getActor, sendParentSafe } from '@/shared/actor-helpers';
