@@ -19,7 +19,7 @@ export const systemBusRouter = router({
     .subscription(({ ctx }) =>
       observable<OutgoingSystemEvents>((emit) => {
         const { unsubscribe } = ctx.actor.on('OUTGOING', ({ event }) => {
-          console.log('Outgoing message: ', event);
+          console.log('Outgoing message: ', event.type);
           emit.next(event);
         })
 
