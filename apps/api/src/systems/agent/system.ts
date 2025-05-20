@@ -1,4 +1,4 @@
-import { assign, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
+import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
@@ -21,17 +21,20 @@ export const IncomingAgentEvents = [
 export type AgentInternalEvents = 
   | { type: 'WAKEUP' }
   | { type: 'LLM_DONE' }
+  | { type: 'LLM_ABORTED' }
+  | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
   | { type: 'WAKEUP'; pluginData: typeof agentPluginData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
+  | { type: 'LLM_ABORTED' }
+  | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
 
 export interface AgentContext {
   userPrompt?: string;
-  abortController?: AbortController;
 }
 
 export const AgentSystemEvents = fromSystem(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
@@ -61,6 +64,17 @@ export const agentSystem = setup({
         type: 'LLM_DONE',
       }));
     },
+    sendLLMAborted: ({ system }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'LLM_ABORTED',
+      }));
+    },
+    sendLLMError: ({ system, event }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'LLM_ERROR',
+        error: typeOf('LLM_ERROR', event).error
+      }));
+    },
     sendFEWakeup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'WAKEUP',
@@ -70,12 +84,6 @@ export const agentSystem = setup({
     storeUserMessage: assign({
       userPrompt: ({ event }) => typeOf('USER_MSG', event).content,
     }),
-    spawnLlmTask: assign(({ context }) => {
-      const abort = new AbortController();
-      runLlm(context, abort.signal);
-      return { abortController: abort };
-    }),
-    // abortLlm: (ctx) => ctx.abortController?.abort(),
   },
 }).createMachine(
   {
@@ -88,9 +96,14 @@ export const agentSystem = setup({
       TOKEN_STREAM: {
         actions: 'sendToken',
       },
+      LLM_ABORTED: {
+        actions: 'sendLLMAborted',
+      },
+      LLM_ERROR: {
+        actions: 'sendLLMError',
+      },
       WAKEUP: {
         target: '.idle',
-        // actions: 'emitToken',
         actions: 'sendFEWakeup',
       },
     },
@@ -112,7 +125,7 @@ export const agentSystem = setup({
               message('system', 'You are a helpful AI assistant.'),
               message('user', context.userPrompt || '')
             ],
-            provider: 'openai'
+            provider: 'openai',
           }),
           onDone: {
             target: 'idle',
@@ -120,17 +133,18 @@ export const agentSystem = setup({
           },
           onError: {
             target: 'idle',
+            actions: 'sendLLMError',
           }
         },
-      },
-      thinking: {
-        entry: ['spawnLlmTask'],
         on: {
-          LLM_DONE: 'idle',
-          CANCEL: {
+          LLM_ABORTED: 'idle',
+          LLM_ERROR: {
             target: 'idle',
-            // actions: 'abortLlm',
+            actions: 'sendLLMError',
           },
+          CANCEL: {
+            actions: cancel("chatStream"),
+          }
         },
       },
     },
