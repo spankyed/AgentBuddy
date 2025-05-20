@@ -92,6 +92,17 @@ function updateAttributeByCriteria(
 const updateRole = (id: EARS.EntityId, oldR: string, newR: string) =>
 	updateAttributeByCriteria(id, EARS.AttrKind.Role, oldR, newR);
 
+function updateExclusiveRole(
+	id: EARS.EntityId, oldR: string, newR: string) {
+	const roles = getRoles(id);
+	if (roles.length > 1) {
+		removeRole(id, oldR);
+		addRole(id, newR);
+	} else {
+		updateRole(id, oldR, newR);
+	}
+}
+
 function updateRelation(
 	relId: EARS.EntityId,
 	newSource?: EARS.EntityId,
