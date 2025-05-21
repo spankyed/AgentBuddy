@@ -3,7 +3,9 @@
 <p align="center"><strong>A vibe-working platform</strong></p>
 
 <p align="center">
-Current AI agent platforms provide inconsistent experiences and struggle to scale effectively where it matters, causing users to become frustrated. Despite being new, many platforms feel outdated due to rigid prompting schemes and limited extensibility options. Agent-Buddy takes a different approach, focusing on meticulous product design, exceptional engineering, and a clear vision to create a tool that aligns deeply with user needs.
+Current AI agent platforms provide inconsistent experiences and struggle to scale effectively where it matters, causing users to become frustrated. Despite being young, many platforms feel outdated due to rigid prompting schemes and limited extensibility options. Agent-Buddy was built with a different approach in mind - a clear-eyed vision to create a tool that aligns deeply with user needs.
+
+We focused meticulously on product and platform design to engineer an exceptional AI agent experience.
 </p>
 
 <p align="center"><strong>Please join us in bringing better vibes with the Agent‑Buddy platform</strong></p>
@@ -26,11 +28,13 @@ Current AI agent platforms provide inconsistent experiences and struggle to scal
 └─────────────────────────┘░                                                            
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░                                                            
 ```
-Systems are the building blocks for the agent. That is agent singular. I believe the current language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems to make up a unified agent. Need more capabilities? Add more systems.
+Systems provide the foundation for a unified agent. Need more capabilities? Add more systems.
 
-Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with a some parent system.
+Systems should primarily be used to provide integrations for external services or to make available custom functionality that isn't currently supported by the core framework like video generation.
 
-In a similar vein, systems can have child systems. This allows developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used and interacted with by other backend systems or by plugins on the frontend.
+Systems can have child systems. Allowing developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used and interacted with by other backend systems or by plugins on the frontend.
+
+Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with some parent system. However, this particular use-case is better handled using dialog steps, discussed further down. 
 
 ```
                            ┌─────────┐            ┌─────────┐                           
@@ -80,10 +84,10 @@ setup({
 });
 ```
 
-# Dialogs
-Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
+# Dialogs - Flows & Steps
+Dialog flows and steps are used as the building blocks for agent modification. Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
 
-The fundamental break through here is to imagine the `agent <-> user` interaction as the user navigating a dialog tree. Then expanding that model of a dialog tree to include at times `agent <-> agent` dialog, `agent <-> application-event` dialog, and even `application-event <-> application-event` considering that the core logic is built using [actors](https://stately.ai/docs/state-machine-actors#:~:text=State%20machine%20actors%20are%20actors,about%20state%20machines%20in%20depth.) and state machines.
+A way to think of this is to imagine an `agent <-> user` interaction as the user navigating some dialog tree. Then expanding that model of a dialog tree to include at times `agent <-> agent` dialog, `agent <-> application-event` dialog, and even `application-event <-> application-event` (since the core logic is built using [actors](https://stately.ai/docs/state-machine-actors#:~:text=State%20machine%20actors%20are%20actors,about%20state%20machines%20in%20depth.) and state machines).
 
 In that sense, everything is composable through this node-like dialog interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
 ```
