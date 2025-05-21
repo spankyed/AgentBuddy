@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "build": "tsc -p . && tsup src/index.d.ts src/server.ts --format esm,cjs --dts",
+    "build": "tsc -p . && tsup src/types.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js"
@@ -11,10 +11,10 @@
   "keywords": [],
   "author": "angel santiago",
   "main": "dist/server.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/types.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/types.d.ts",
       "default": "./dist/server.js"
     }
   },
