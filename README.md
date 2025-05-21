@@ -2,7 +2,7 @@
 <h1 align="center">Agent-Buddy</h1>
 <p align="center"><strong>A vibe-working platform</strong></p>
 
-Today's top AI agent platforms do not provide a robust, reliable, or scalable experience. They also offer very little for building and extending upon their platforms - in a way feeling outdated. So with Agent‑Buddy, we choice to do things differently. And through exceptional product design, meticulous engineering, and a clear‑eyed vision, we created a tool that we feel aligns deeply with the user.
+Today's top AI agent platforms do not provide a robust, reliable, or scalable experience. They also offer very little for building and extending upon their platforms - in a way feeling outdated. So with Agent‑Buddy, we chose to do things differently. And through exceptional product design, meticulous engineering, and a clear‑eyed vision, we created a tool that we feel aligns deeply with the user.
 
 <p align="center"><strong>Join us in bringing better vibes with Agent‑Buddy</strong></p>
 
