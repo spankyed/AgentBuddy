@@ -74,7 +74,7 @@ setup({
 ```
 
 # Dialogs
-Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application to the end-user (and in special cases to the agent itself).
+Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
 
 The fundamental break through here is to imagine the agent <-> human interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times agent <-> agent dialog or even agent <-> application-event dialog.
 
