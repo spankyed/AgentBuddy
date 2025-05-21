@@ -83,9 +83,9 @@ setup({
 # Dialogs
 Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
 
-The fundamental break through here is to imagine the `agent <-> human` interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times `agent <-> agent` dialog or even `agent <-> application-event` dialog.
+The fundamental break through here is to imagine the `agent <-> user` interaction as the user navigating a dialog tree. Then expanding that model of a dialog tree to include at times `agent <-> agent` dialog, `agent <-> application-event` dialog, and even `application-event <-> application-event` considering that the core logic is built using [actors](https://stately.ai/docs/state-machine-actors#:~:text=State%20machine%20actors%20are%20actors,about%20state%20machines%20in%20depth.) and state machines.
 
-In that sense, everything is composable through this dialog node-like data interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
+In that sense, everything is composable through this node-like dialog interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
 ```
                                                                         
                ╔═════════════════════════════════════════╗               
