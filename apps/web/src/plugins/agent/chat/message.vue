@@ -8,7 +8,7 @@
     <div 
       :class="[
         'max-w-[80%] rounded-md  px-4 py-3',
-        isUser ? 'bg-neutral-800 text-white' : 'max-w-[90%] bg-neutral-900/40 text-white'
+        isUser ? 'bg-neutral-700/20 text-white border border-gray-700/30' : 'max-w-[90%] bg-neutral-900/40 text-white'
       ]"
     >
       <div class="leading-relaxed whitespace-pre-line text-md">
