@@ -3,10 +3,10 @@
 <p align="center"><strong>A vibe-working platform</strong></p>
 
 <p align="center">
-Today's top AI agent platforms provide an unreliable experience, that doesn't scale well where it matters and leave users frustrated. Thanks to rigid prompting schemes and lackluster extensibility options - these platforms feel outdated. So with Agent‑Buddy, we did some things differently. Through exceptional product design, meticulous engineering, and a clear‑eyed vision, we created a tool that we feel aligns more deeply with the user.
+Today's top AI agent platforms provide an unreliable experience, that doesn't scale well where it matters and leave users frustrated. Although new, these platforms already feel outdated, thanks to rigid prompting schemes and lackluster extensibility options. So with Agent‑Buddy we did some things differently. Through exceptional product design, meticulous engineering, and a clear‑eyed vision, we created a tool that we feel aligns more deeply with the user.
 </p>
 
-<p align="center"><strong>Join us in bringing better vibes with Agent‑Buddy platform</strong></p>
+<p align="center"><strong>Please join us in bringing better vibes with the Agent‑Buddy platform</strong></p>
 
 # Systems
 ```
