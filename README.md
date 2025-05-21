@@ -26,7 +26,7 @@ Today's top AI agent platforms fall short of offering a robust, reliable, and sc
 └─────────────────────────┘░                                                            
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░                                                            
 ```
-Systems are the building blocks for the agent. That is agent singular. I believe the current language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems that make up a unified agent. Need more capabilities? Add more systems.
+Systems are the building blocks for the agent. That is agent singular. I believe the current language around multiple agents interacting is confusing and unnecessary. Instead of multiple agents, we adopt multiple systems to make up a unified agent. Need more capabilities? Add more systems.
 
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with a some parent system.
 
