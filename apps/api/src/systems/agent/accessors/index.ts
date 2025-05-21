@@ -19,7 +19,6 @@ const latestMessageId = (): EARS.EntityId | undefined =>
 
 /*──────────────────── public API ─────────────────────────*/
 
-/** create a Message, attach it to the “latest thread”, mark it as newest */
 export function addMessageToLatestThread(text: string) {
   const threadId = latestThreadId();
   if (!threadId) return console.warn('No latest thread found');
@@ -32,7 +31,6 @@ export function addMessageToLatestThread(text: string) {
     .id();                                                    // returns new message ID
 }
 
-/** re‑flag an existing message entity as the latest for (optionally) a thread */
 export function setNewMessage(msgId: EARS.EntityId, threadId = latestThreadId()) {
   if (!threadId) return console.warn('No latest thread found');
 
@@ -43,7 +41,6 @@ export function setNewMessage(msgId: EARS.EntityId, threadId = latestThreadId())
     .id();
 }
 
-/** convenience accessor for the newest message’s text */
 export function getLatestMessage(): string | undefined {
   const msgId = latestMessageId();
   return msgId ? getAttribute(msgId, EARS.AttrKind.Custom('text')) as string : undefined;

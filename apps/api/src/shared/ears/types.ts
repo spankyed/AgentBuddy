@@ -98,6 +98,7 @@ export namespace EARS {
     entity : EARS.Entity;
     attrs? : Record<string, unknown>;
     roles? : EARS.RoleKind[];
+    uniqueRoles? : EARS.RoleKind[];
     rels?  : { kind: EARS.RelKind; target: Blueprint | EARS.EntityId; info?: unknown }[];
   };
 }

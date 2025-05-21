@@ -62,7 +62,7 @@ export function loadMockData(): void {
    *───────────────────────*/
   if (!latestThreadId) return; // should never happen
 
-  // Get all messages except the last one and the last message separately
+  // Get all messages except the last one, handling the last message separately
   const lastMsg = messageBps[messageBps.length - 1];
   const restMessagesBps = messageBps.slice(0, -1);
 
@@ -73,8 +73,7 @@ export function loadMockData(): void {
 
   /* Last‑message bookkeeping */
   if (lastMsg) {
-    // Use array indexing which TypeScript knows is safe after length check
-    const lastMsgId = spawn(lastMsg);    // cached ID
+    const lastMsgId = spawn(lastMsg);
     addRelation(latestThreadId, EARS.RelKind.CONTAINS, lastMsgId);
     setNewMessage(lastMsgId, latestThreadId);
   }

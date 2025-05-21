@@ -1,6 +1,8 @@
+import { unique } from "drizzle-orm/gel-core";
 import { addAttribute, addRole, addRelation } from "./attribute-storage";
 import { createEntity } from "./create-entity";
 import { EARS } from "./types";
+import { tx } from "./transaction";
 
 /*────────── Fluent builder ─────────*/
 export const bp = (entity: EARS.Entity) => {
@@ -13,6 +15,11 @@ export const bp = (entity: EARS.Entity) => {
       return chain;
     },
     role : (r: EARS.RoleKind) => {
+      if (!b.roles) b.roles = [];
+      b.roles.push(r);
+      return chain;
+    },
+    uniqueRole : (r: EARS.RoleKind) => {
       if (!b.roles) b.roles = [];
       b.roles.push(r);
       return chain;
@@ -49,6 +56,10 @@ export const spawn = (
 
     for (const r of node.roles ?? [])
       addRole(id, r);
+
+    for (const r of node.uniqueRoles ?? [])
+      tx(id)
+        .uniqueRole(r)  
 
     for (const { kind, target } of node.rels ?? []) {
       const tgtId = typeof target === 'object' ? go(target) : target;
