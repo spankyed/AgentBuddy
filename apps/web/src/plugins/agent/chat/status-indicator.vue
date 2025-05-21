@@ -31,15 +31,6 @@ import { id, type AgentState } from '@/plugins/agent/state';
 const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.messages)
 
-// const statusLabel = computed(() => {
-//   switch (status.value) {
-//     case 'running':   return 'Running'
-//     case 'planning':  return 'Planning'
-//     case 'idle':      return 'Idle'
-//     case 'error':     return 'Error'
-//     default:          return 'Unknown'
-//   }
-// })
 // const statusColorClass = computed(() => {
 //   switch (status.value) {
 //     case 'running':   return 'bg-green-500'
@@ -49,7 +40,6 @@ const messages = useSelector(actor, (state) => state.context.messages)
 //     default:          return 'bg-gray-500'
 //   }
 // })
-const statusLabel = computed(() => 'Running')
 // const statusColorClass = computed(() => 'bg-green-500')
 // const statusColorClass = computed(() => 'bg-purple-700/80')
 const statusColorClass = computed(() => 'bg-zinc-500')
