@@ -29,7 +29,7 @@ export function logInternal(type: keyof typeof internals, verbose = false, ...me
   }
 
   if (allowVerbose || !verbose) {
-    console.log(logOutput + reset);
+    // console.log(logOutput + reset);
   }
 }
 
