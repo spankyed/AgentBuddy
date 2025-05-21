@@ -8,100 +8,6 @@ Today's top AI agent platforms fall short of offering a robust, reliable, and sc
 
 <p align="center"><strong>Join us in bringing better vibes with Agent‑Buddy</strong></p>
 
-# Plugins
-```
-                        │                            │                                      
-                        │                            │    ╔════════════════════════════════╗
-╔══════════════════╗    │    ╔══════════════════╗    │    ║  What's currently being shown  ║
-║  Default Plugin  ║    │    ║  Active Plugin   ║    │    ╚══╦═════════════════╦═══════╦═══╝
-╠════════════╦═════╣    │    ╠════════════╦═════╣    │       │█████████████████│███████│    
-│            │█ I █│    │    │████████████│     │    │       │█████████████████│██   ██│    
-│            │█ n █│    │    │██ Canvas ██│     │    │       │█████ Canvas ████│██ I ██│    
-│            │█ s █│  ╔═╩═╗  │████████████│     │  ╔═╩═╗     │█████████████████│██ n ██│    
-├────────────┤█ p █│  ║ + ║  ├────────────┤     │  ║ = ║     │█████████████████│██ s ██│    
-│████████████│█ e █│  ╚═╦═╝  │            │     │  ╚═╦═╝     ├─────────────────┤██ p ██│    
-│███ Chat ███│█ c █│    │    │            │     │    │       │█████████████████│██ e ██│    
-│████████████│█ t █│    │    │            │     │    │       │█████████████████│██ c ██│    
-└────────────┴─────┘    │    └────────────┴─────┘    │       │██████ Chat █████│██ t ██│    
-                        │                            │       │█████████████████│██   ██│    
-                        │                            │       │█████████████████│███████│    
-                        │                            │       └─────────────────┴───────┘    
-                        │                            │                                      
-```
-
-Plugins can define interfaces to be shown in a specific area of the UI. A default and an active plugin can be showing content at any given time.
-
-The default plugin is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
-
-``` yml
-Basic Plugin Skeleton:
-
-📦 _blank
- ┣ 📜 canvas.vue  -- main workspace
- ┣ 📜 panel.vue   -- sidebar panel
- ┣ 📜 plugin.ts   -- entry file; exports state & components
- ┗ 📜 state.ts    -- XState machine for plugin logic
-```
-``` js
-// plugin.ts
-export const _blankPlugin = {
-  id: '_blank',
-  label: 'Blank',
-  icon: Box,
-  state,
-  canvas,
-  panel,
-}; // Expose a plugin by defining a plugin object
-```
-
-### Canvas sub-routing
-A plugin can choose to display different content depending what state the plugin is currently in using sub-routes.
-```
-                                                                  
-╔════════════════════════════════════════╗     Bread > Crumbs     
-║        Canvas Component Routes         ║     ┌────────────┬────┐
-╠════════════╦╦════════════╦╦════════════╣     │            │████│
-│            ││            │║████████████║     │   Canvas   │████│
-│    List    ││   Create   │║███ View ███║  ┌──│   Target   │████│
-│            ││            │║████████████║  │  │            │████│
-└────────────┘└────────────┘╚════════════╝  │  ├────────────┤████│
-                                   ▲        │  │████████████│████│
-                                   │        │  │████████████│████│
-                                   └────────┘  │████████████│████│
-                                               │████████████│████│
-                                               └────────────┴────┘
-```
-To define a plugin with sub-routes to display various canvas components, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states with `meta: { ... breadcrumb('target', 'Title') }`. Example:
-``` js
-// plugin.ts
-const plugin = {
-  id: 'plugin',
-  // ...
-  canvas: {
-    list,
-    create,
-    view,
-  },
-  panel,
-};
-
-// state.ts
-createMachine({
-  id: 'plugin',
-  initial: 'list',
-  states: {
-    // ...
-    'create': {
-      meta: { ...breadcrumb('create', 'New Thread') },
-      on: {
-        CREATE_THREAD: { ... },
-        CANCEL_CREATE: { target: 'list' },
-      },
-    },
-  },
-})
-```
-
 # Systems
 ```
 ╔═════════════════════════════════════════════════════════════════════════════════════╗ 
@@ -198,6 +104,99 @@ In that sense, everything is composable through this dialog node-like data inter
        '                         '                                       
 ```
 
+# Plugins
+```
+                        │                            │                                      
+                        │                            │    ╔════════════════════════════════╗
+╔══════════════════╗    │    ╔══════════════════╗    │    ║  What's currently being shown  ║
+║  Default Plugin  ║    │    ║  Active Plugin   ║    │    ╚══╦═════════════════╦═══════╦═══╝
+╠════════════╦═════╣    │    ╠════════════╦═════╣    │       │█████████████████│███████│    
+│            │█ I █│    │    │████████████│     │    │       │█████████████████│██   ██│    
+│            │█ n █│    │    │██ Canvas ██│     │    │       │█████ Canvas ████│██ I ██│    
+│            │█ s █│  ╔═╩═╗  │████████████│     │  ╔═╩═╗     │█████████████████│██ n ██│    
+├────────────┤█ p █│  ║ + ║  ├────────────┤     │  ║ = ║     │█████████████████│██ s ██│    
+│████████████│█ e █│  ╚═╦═╝  │            │     │  ╚═╦═╝     ├─────────────────┤██ p ██│    
+│███ Chat ███│█ c █│    │    │            │     │    │       │█████████████████│██ e ██│    
+│████████████│█ t █│    │    │            │     │    │       │█████████████████│██ c ██│    
+└────────────┴─────┘    │    └────────────┴─────┘    │       │██████ Chat █████│██ t ██│    
+                        │                            │       │█████████████████│██   ██│    
+                        │                            │       │█████████████████│███████│    
+                        │                            │       └─────────────────┴───────┘    
+                        │                            │                                      
+```
+
+Plugins can define interfaces to be shown in a specific area of the UI. A default and an active plugin can be showing content at any given time.
+
+The default plugin is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
+
+``` yml
+Basic Plugin Skeleton:
+
+📦 _blank
+ ┣ 📜 canvas.vue  -- main workspace
+ ┣ 📜 panel.vue   -- sidebar panel
+ ┣ 📜 plugin.ts   -- entry file; exports state & components
+ ┗ 📜 state.ts    -- XState machine for plugin logic
+```
+``` js
+// plugin.ts
+export const _blankPlugin = {
+  id: '_blank',
+  label: 'Blank',
+  icon: Box,
+  state,
+  canvas,
+  panel,
+}; // Expose a plugin by defining a plugin object
+```
+
+### Canvas sub-routing
+A plugin can choose to display different content depending what state the plugin is currently in using sub-routes.
+```
+                                                                  
+╔════════════════════════════════════════╗     Bread > Crumbs     
+║        Canvas Component Routes         ║     ┌────────────┬────┐
+╠════════════╦╦════════════╦╦════════════╣     │            │████│
+│            ││            │║████████████║     │   Canvas   │████│
+│    List    ││   Create   │║███ View ███║  ┌──│   Target   │████│
+│            ││            │║████████████║  │  │            │████│
+└────────────┘└────────────┘╚════════════╝  │  ├────────────┤████│
+                                   ▲        │  │████████████│████│
+                                   │        │  │████████████│████│
+                                   └────────┘  │████████████│████│
+                                               │████████████│████│
+                                               └────────────┴────┘
+```
+To define a plugin with sub-routes to display various canvas components, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states with `meta: { ... breadcrumb('target', 'Title') }`. Example:
+``` js
+// plugin.ts
+const plugin = {
+  id: 'plugin',
+  // ...
+  canvas: {
+    list,
+    create,
+    view,
+  },
+  panel,
+};
+
+// state.ts
+createMachine({
+  id: 'plugin',
+  initial: 'list',
+  states: {
+    // ...
+    'create': {
+      meta: { ...breadcrumb('create', 'New Thread') },
+      on: {
+        CREATE_THREAD: { ... },
+        CANCEL_CREATE: { target: 'list' },
+      },
+    },
+  },
+})
+```
 
 # Getting Started
 
