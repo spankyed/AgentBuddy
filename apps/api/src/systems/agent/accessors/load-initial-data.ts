@@ -1,117 +1,84 @@
-import {
-  addAttribute,
-  addRelation,
-  addRole,
-} from '@/shared/ears/attribute-storage';
-import { createEntity } from '@/shared/ears/create-entity';
-import { EARS } from '@/shared/ears/types';
-import type {
-  AgentPluginData,
-  Message,
-  ContextItem,
-  CanvasContent,
-  Thread,
-} from '@/shared/types';
-import { setLastMessage } from '.';
 import mockData from '../mock-data';
+import { bp, spawn } from '@/shared/ears/blueprint';
+import { addRole, addRelation } from '@/shared/ears/attribute-storage';
+import { EARS } from '@/shared/ears/types';
+import { setNewMessage } from '.';
 
 /**
- * Loads all mock data into the EARS attribute store
+ *   • All messages / context items / canvas content attach to the _newest_ thread
+ *   • Every thread entity is created
  */
-export function loadMockData(
-): void {
-  const lastThreadId = loadThreads(mockData.threads);
+export function loadMockData(): void {
+  const messageBps = mockData.messages.map(m =>
+    bp(EARS.Entity.Message)
+      .attr('text', m.content)
+      .attr('sender', m.sender)
+      .attr('timestamp', m.timestamp)
+      .build(),
+  );
 
-  if (!lastThreadId) {
+  const ctxItemBps = mockData.contextItems.map(c =>
+    bp(EARS.Entity.CtxItem)
+      .attr('title', c.title)
+      .attr('content', c.content)
+      .attr('type', c.type)
+      .build(),
+  );
+
+  const canvasBp = bp(EARS.Entity.CanvasItem)
+    .attr('type', mockData.canvasContent.type)
+    .attr('content', mockData.canvasContent.content)
+    .build();
+
+  /*───────────────────────*
+   * 2 ▸ Find newest thread *
+   *───────────────────────*/
+  const newestThread = mockData.threads.reduce((acc, t) =>
+    !acc || t.timestamp > acc.timestamp ? t : acc, undefined as typeof mockData.threads[number] | undefined);
+
+  if (!newestThread) {
     console.warn('No threads found in mock data');
     return;
   }
 
-  addRole(lastThreadId, EARS.RoleKind.Custom('last_thread'));
+  /*───────────────────────*
+   * 3 ▸ Spawn all threads  *
+   *───────────────────────*/
+  let latestThreadId: EARS.EntityId | undefined;
 
-  loadMessages(lastThreadId, mockData.messages);
-  loadContextItems(lastThreadId, mockData.contextItems);
-  loadCanvasContent(lastThreadId, mockData.canvasContent);
-}
+  for (const t of mockData.threads) {
+    const threadId = spawn(
+      bp(EARS.Entity.Thread)
+        .attr('title', t.title)
+        .attr('timestamp', t.timestamp)
+        .build(),
+    );
 
-/*───────────────────────────────────────────────────────────────*
- * ▸ Messages                                                    *
- *───────────────────────────────────────────────────────────────*/
-function loadMessages(threadId: EARS.EntityId, messages: Message[]): void {
-  for (const [idx, m] of messages.entries()) {
-    const msgEntity = createEntity(EARS.Entity.Message);
-
-    addAttribute(msgEntity, EARS.AttrKind.Custom('text'), m.content);
-    addAttribute(msgEntity, EARS.AttrKind.Role, m.role);
-    addAttribute(msgEntity, EARS.AttrKind.Custom('timestamp'), m.timestamp);
-
-    // Thread (agent) contains message
-    addRelation(threadId, EARS.RelKind.CONTAINS, msgEntity);
-
-    if (idx === messages.length - 1) setLastMessage(msgEntity, threadId);
-  }
-}
-
-/*───────────────────────────────────────────────────────────────*
- * ▸ Context items                                               *
- *───────────────────────────────────────────────────────────────*/
-function loadContextItems(
-  threadId: EARS.EntityId,
-  contextItems: ContextItem[],
-): void {
-  for (const item of contextItems) {
-    const ctxEntity = createEntity(EARS.Entity.CtxItem);
-
-    addAttribute(ctxEntity, EARS.AttrKind.Custom('title'), item.title);
-    addAttribute(ctxEntity, EARS.AttrKind.Custom('content'), item.content);
-    addAttribute(ctxEntity, EARS.AttrKind.Custom('type'), item.type);
-
-    // addRole(ctxEntity, EARS.RoleKind.Custom('contextItem'));
-
-    // Agent owns these standalone context items
-    addRelation(threadId, EARS.RelKind.CONTAINS, ctxEntity);
-  }
-}
-
-/*───────────────────────────────────────────────────────────────*
- * ▸ Canvas content                                              *
- *───────────────────────────────────────────────────────────────*/
-function loadCanvasContent(
-  threadId: EARS.EntityId,
-  canvas: CanvasContent,
-): void {
-  const canvasEntity = createEntity(EARS.Entity.CanvasItem);
-
-  addAttribute(canvasEntity, EARS.AttrKind.Custom('type'), canvas.type);
-  addAttribute(canvasEntity, EARS.AttrKind.Custom('content'), canvas.content);
-
-  // addRole(canvasEntity, EARS.RoleKind.Custom('canvas'));
-
-  addRelation(threadId, EARS.RelKind.CONTAINS, canvasEntity);
-}
-
-/*───────────────────────────────────────────────────────────────*
- * ▸ Threads                                                     *
- *───────────────────────────────────────────────────────────────*/
-function loadThreads(
-  threads: Thread[],
-): EARS.EntityId | undefined {
-  let newestThreadId: EARS.EntityId | undefined;
-  let newestTs = Number.NEGATIVE_INFINITY;
-
-  for (const t of threads) {
-    const threadEntity = createEntity(EARS.Entity.Thread);
-
-    addAttribute(threadEntity, EARS.AttrKind.Custom('title'), t.title);
-    addAttribute(threadEntity, EARS.AttrKind.Custom('timestamp'), t.timestamp);
-
-    /* --- pick the most‑recent timestamp on the fly --- */
-    const ts = t.timestamp.getTime();              // to epoch‑ms
-    if (ts > newestTs) {
-      newestTs = ts;
-      newestThreadId = threadEntity;
-    }
+    if (t === newestThread) latestThreadId = threadId;
   }
 
-  return newestThreadId;
+  /*───────────────────────*
+   * 4 ▸ Attach children    *
+   *───────────────────────*/
+  if (!latestThreadId) return; // should never happen
+
+  // Get all messages except the last one and the last message separately
+  const lastMsg = messageBps[messageBps.length - 1];
+  const restMessagesBps = messageBps.slice(0, -1);
+
+  for (const threadChildBp of [...restMessagesBps, ...ctxItemBps, canvasBp]) {
+    const childId = spawn(threadChildBp);                 // entity (deduped)
+    addRelation(latestThreadId, EARS.RelKind.CONTAINS, childId);
+  }
+
+  /* Last‑message bookkeeping */
+  if (lastMsg) {
+    // Use array indexing which TypeScript knows is safe after length check
+    const lastMsgId = spawn(lastMsg);    // cached ID
+    addRelation(latestThreadId, EARS.RelKind.CONTAINS, lastMsgId);
+    setNewMessage(lastMsgId, latestThreadId);
+  }
+
+  /* Mark the newest thread */
+  addRole(latestThreadId, EARS.RoleKind.Custom('latest_thread'));
 }
