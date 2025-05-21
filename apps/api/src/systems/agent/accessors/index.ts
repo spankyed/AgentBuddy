@@ -1,54 +1,50 @@
-import { addRole, hasRoleX, queryEntitiesByRelationTo, removeRole, addRelation, getAttribute, queryEntitiesByRole, addAttribute } from '@/shared/ears/attribute-storage';
-import { createEntity } from '@/shared/ears/create-entity';
+// latest‑message.ts  ── same behaviour, now powered by the `tx` helper
+import {
+  queryEntitiesByRole,
+  queryEntitiesByRelationTo,
+  getAttribute,
+} from '@/shared/ears/attribute-storage';
+import { tx } from '@/shared/ears/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 
-function getLatestThreadId(): EARS.EntityId | undefined {
-  return queryEntitiesByRole(EARS.RoleKind.Custom('latest_thread'))[0] ?? undefined;
+/*──────────────────────── helpers ────────────────────────*/
+const LATEST_THREAD  = EARS.RoleKind.Custom('latest_thread');
+const LATEST_MESSAGE = EARS.RoleKind.Custom('latest_message');
+
+const latestThreadId = (): EARS.EntityId | undefined =>
+  queryEntitiesByRole(LATEST_THREAD)[0];
+
+const latestMessageId = (): EARS.EntityId | undefined =>
+  queryEntitiesByRole(LATEST_MESSAGE)[0];
+
+/*──────────────────── public API ─────────────────────────*/
+
+/** create a Message, attach it to the “latest thread”, mark it as newest */
+export function addMessageToLatestThread(text: string) {
+  const threadId = latestThreadId();
+  if (!threadId) return console.warn('No latest thread found');
+
+  tx(EARS.Entity.Message)
+    .set('text', text)
+    .set('timestamp', new Date())
+    .rel(EARS.RelKind.CONTAINS, threadId)
+    .uniqueRole(LATEST_MESSAGE)               // bump exclusive flag
+    .id();                                                    // returns new message ID
 }
 
-function getLatestMessageId(): EARS.EntityId | undefined {
-  return queryEntitiesByRole(EARS.RoleKind.Custom('latest_message'))[0] ?? undefined;
+/** re‑flag an existing message entity as the latest for (optionally) a thread */
+export function setNewMessage(msgId: EARS.EntityId, threadId = latestThreadId()) {
+  if (!threadId) return console.warn('No latest thread found');
+
+  // ensure relation & swap exclusive role
+  tx(msgId)
+    .rel(EARS.RelKind.CONTAINS, threadId)                     // idempotent add
+    .uniqueRole(LATEST_MESSAGE)
+    .id();
 }
 
-export function addMessageToLatestThread(content: string) {
-  const newMsgId = createEntity(EARS.Entity.Message);
-  addAttribute(newMsgId, EARS.AttrKind.Custom('text'), content);
-  const latestThreadId = getLatestThreadId();
-
-  if (!latestThreadId) {
-    console.warn('No new thread found');
-    return;
-  }
-
-  addRelation(latestThreadId, EARS.RelKind.CONTAINS, newMsgId);
-
-  setNewMessage(newMsgId, latestThreadId);
-}
-
-export function setNewMessage(newMessageId: EARS.EntityId, threadId?: EARS.EntityId) {
-  const latestThreadId = threadId || getLatestThreadId();
-
-  if (!latestThreadId) {
-    console.warn('No new thread found');
-    return;
-  }
-  const messages = queryEntitiesByRelationTo(EARS.RelKind.CONTAINS, latestThreadId, true);
-  const lastLatestMessage = messages.find(hasRoleX(EARS.RoleKind.Custom('latest_message')));
-
-  if (lastLatestMessage){
-    removeRole(lastLatestMessage, EARS.RoleKind.Custom('latest_message'))
-  }
-
-  addRole(newMessageId, EARS.RoleKind.Custom('latest_message'));
-}
-
+/** convenience accessor for the newest message’s text */
 export function getLatestMessage(): string | undefined {
-  const latestMessageId = getLatestMessageId();
-
-  if (!latestMessageId) {
-    console.warn('No latest thread found');
-    return undefined;
-  }
-
-  return getAttribute(latestMessageId, EARS.AttrKind.Custom('text')) ?? undefined;
+  const msgId = latestMessageId();
+  return msgId ? getAttribute(msgId, EARS.AttrKind.Custom('text')) as string : undefined;
 }
