@@ -132,9 +132,9 @@ In that sense, everything is composable through this dialog node-like data inter
                         │                            │                                      
 ```
 
-Plugins can define interfaces to be shown in a specific area of the UI. A default and an active plugin can be showing content at any given time.
+Plugins allow developers the ability to define interfaces for a specific area of the UI. A default and an active plugin can be showing content at any given time.
 
-The default plugin is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel (inspection panel). Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
+The "default plugin" is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel, aka inspection panel. Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
 
 ``` yml
 Basic Plugin Skeleton:
@@ -158,7 +158,7 @@ export const _blankPlugin = {
 ```
 
 ### Canvas sub-routing
-A plugin can choose to display different content depending what state the plugin is currently in using sub-routes.
+With sub-routes, a plugin can display different components or pages depending on what state the plugin is currently in.
 ```
                                                                   
 ╔════════════════════════════════════════╗     Bread > Crumbs     
@@ -174,7 +174,7 @@ A plugin can choose to display different content depending what state the plugin
                                                │████████████│████│
                                                └────────────┴────┘
 ```
-To define a plugin with sub-routes to display various canvas components, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object to the corresponding states with `meta: { ... breadcrumb('target', 'Title') }`. Example:
+To define a plugin with sub-routes, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object like `{ ...breadcrumb('target', 'Title') }` to the corresponding states. Example:
 ``` js
 // plugin.ts
 const plugin = {
