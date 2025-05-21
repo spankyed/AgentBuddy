@@ -5,31 +5,31 @@ const messages: Message[] = [
   {
     id: uuid(),
     content: 'Can you help me understand how to use CSS variables in my design system?',
-    role: 'user',
+    sender: 'user',
     timestamp: new Date(Date.now() - 1000 * 60 * 5)
   },
   {
     id: uuid(),
     content: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
-    role: 'assistant',
+    sender: 'assistant',
     timestamp: new Date(Date.now() - 1000 * 60 * 4)
   },
   {
     id: uuid(),
     content: 'That makes sense. Can you show me how to use them with a color palette?',
-    role: 'user',
+    sender: 'user',
     timestamp: new Date(Date.now() - 1000 * 60 * 3)
   },
   {
     id: uuid(),
     content: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
-    role: 'assistant',
+    sender: 'assistant',
     timestamp: new Date(Date.now() - 1000 * 60 * 2)
   },
   {
     id: uuid(),
     content: 'please rewrite this code using css variables from our design systems',
-    role: 'user',
+    sender: 'user',
     timestamp: new Date(Date.now() - 1000 * 60)
   }
 ];

@@ -138,7 +138,7 @@
 //   //   .values({
 //   //     id: uuid(),
 //   //     sessionId,
-//   //     role: 'assistant',
+//   //     sender: 'assistant',
 //   //     content: runner.buffer(),
 //   //     createdAt: Date.now(),
 //   //   })

@@ -34,7 +34,7 @@ interface ChatMessageProps {
 
 const props = defineProps<ChatMessageProps>()
 
-const isUser = computed(() => props.message.role === 'user')
+const isUser = computed(() => props.message.sender === 'user')
 </script>
 
 <style lang="scss" module>

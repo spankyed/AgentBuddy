@@ -11,7 +11,7 @@ export const message = sqliteTable('message', {
   sessionId: text('session_id')
     .notNull()
     .references(() => session.id),
-  role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
+  sender: text('sender', { enum: ['user', 'assistant', 'system'] }).notNull(),
   content: text('content').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });

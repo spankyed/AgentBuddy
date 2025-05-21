@@ -93,4 +93,11 @@ export namespace EARS {
   \*-------------------------------------------------------------------------*/
   export type AttributeType  = AttrKind;
   export type AttributeStore = Record<string, AttributeTypeMap>;
+
+  export type Blueprint = {
+    entity : EARS.Entity;
+    attrs? : Record<string, unknown>;
+    roles? : EARS.RoleKind[];
+    rels?  : { kind: EARS.RelKind; target: Blueprint | EARS.EntityId; info?: unknown }[];
+  };
 }

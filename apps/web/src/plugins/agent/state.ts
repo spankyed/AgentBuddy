@@ -60,7 +60,7 @@ const agentState = setup({
       messages: [...context.messages, { 
         id: Date.now().toString(),
         content: typeOf('SEND_MESSAGE', event).content,
-        role: 'user' as const,
+        sender: 'user' as const,
         timestamp: new Date()
       }]
     })),
@@ -68,7 +68,7 @@ const agentState = setup({
       messages: [...context.messages, {
         id: Date.now().toString(),
         content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
-        role: 'assistant' as const,
+        sender: 'assistant' as const,
         timestamp: new Date(),
       }]
     })),
@@ -102,7 +102,7 @@ const agentState = setup({
         messages: [...messages, {
           id: newId,
           content: token,
-          role: 'assistant' as const,
+          sender: 'assistant' as const,
           timestamp: new Date(),
         }],
         pendingActionId: newId,

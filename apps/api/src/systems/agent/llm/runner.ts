@@ -10,14 +10,14 @@ import { handleOpenAIStream } from './openai-stream-handler';
 export type LLMProvider = 'openai'; // add more when implemented
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  sender: 'user' | 'assistant' | 'system';
   content: string;
 }
 
 export const message = (
-  role: ChatMessage['role'],
+  sender: ChatMessage['sender'],
   content = '',
-): ChatMessage => ({ role, content });
+): ChatMessage => ({ sender, content });
 
 type StreamCallback = (content: string) => void;
 export type StreamHandler<E> = (event: E, cb: StreamCallback) => void;
@@ -72,7 +72,11 @@ export const chatStream = fromPromise<void, { messages: ChatMessage[], provider?
     {
       model: 'gpt-4.1',
       // instructions: '',
-      input: input.messages,
+      // instructions: input.instructions,
+      input: input.messages.map((msg) => ({
+        role: msg.sender,
+        content: msg.content,
+      })),
       stream: true,
     },
     { signal: abortSignal },
