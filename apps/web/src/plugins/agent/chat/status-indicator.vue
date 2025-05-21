@@ -7,11 +7,11 @@
   <!-- dot + glow -->
   <span class="relative inline-block">
     <!-- solid dot -->
-    <span :class="['block h-3 w-3 rounded-full', statusColorClass]" />
+    <span :class="['block h-3 w-3 rounded-full transition-colors duration-300 ease-in-out', statusColorClass]" />
     <!-- glow -->
     <span
       :class="[
-        'absolute inset-0 rounded-full scale-[2] blur-[1px] opacity-40',
+        'absolute inset-0 rounded-full scale-[2] blur-[1px] opacity-40 transition-colors duration-300 ease-in-out',
         statusColorClass
       ]"
     />
@@ -42,9 +42,8 @@ const messages = useSelector(actor, (state) => state.context.messages)
 // })
 // const statusColorClass = computed(() => 'bg-green-500')
 // const statusColorClass = computed(() => 'bg-purple-700/80')
-const statusColorClass = computed(() => 'bg-zinc-500')
-// const statusColorClass = computed(() => 'bg-blue-500')
-// const statusColorClass = computed(() => 'bg-purple-500')
+// Use the statusColor from the state machine
+const statusColorClass = useSelector(actor, (state) => state.context.statusColor)
 </script>
 
 <style lang="scss" module>

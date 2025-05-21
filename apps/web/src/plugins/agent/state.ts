@@ -9,6 +9,8 @@ export const id = 'agent' as const;
 
 export type AgentState = ActorRefFrom<typeof agentState>;
 
+type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
+
 interface AgentContext {
   messages: Message[];
   contextItems: ContextItem[];
@@ -17,6 +19,7 @@ interface AgentContext {
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
+  statusColor: StatusColor;
 }
 
 type AgentEvent =
@@ -24,6 +27,7 @@ type AgentEvent =
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
+  | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | OutgoingAgentEvents
   | TrailClickEvent;
@@ -33,15 +37,18 @@ const typeOf = safeEvents<AgentEvent>();
 const agentState = setup({
   types: { context: {} as AgentContext, events: {} as AgentEvent },
   actors: {
-    // delayedResponse: fromPromise<void, { content: string }>(async ({ input, system }) => {
-    //   await new Promise(resolve => setTimeout(resolve, 1000));
-    //   system.get(id).send({ 
-    //     type: 'ADD_ASSISTANT_MESSAGE', 
-    //     content: input.content 
-    //   });
-    // })
+    resetStatusColorAfterDelay: fromPromise<void, void>(async ({ system }) => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      system.get(id).send({ type: 'RESET_STATUS_COLOR' });
+    })
   },
   actions: {
+    setStatusColor: assign((_, params?: { color: StatusColor}) => {
+      if (params?.color) {
+        return { statusColor: params.color };
+      }
+      return { statusColor: 'bg-zinc-500' as StatusColor };
+    }),
     sendMessage: ({ event }) => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -122,6 +129,7 @@ const agentState = setup({
     currentThreadId: null,
     messageInput: "",
     pendingActionId: undefined,
+    statusColor: 'bg-zinc-500' as StatusColor,
   }),
   on: {
     ...TRAIL_CLICK([
@@ -132,7 +140,11 @@ const agentState = setup({
       actions: [
         'addMessage',
         'sendMessage',
+        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
       ],
+    },
+    RESET_STATUS_COLOR: {
+      actions: 'setStatusColor',
     },
     CLEAR_MESSAGES: {
       actions: 'clearMessages'
@@ -150,7 +162,11 @@ const agentState = setup({
       actions: 'handleTokenStream'
     },
     LLM_DONE: {
-      actions: 'finishStream'
+      actions: [
+        'finishStream',
+        { type: 'setStatusColor', params: { color: 'bg-green-500' } },
+        spawnChild('resetStatusColorAfterDelay'),
+      ]
     },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'
