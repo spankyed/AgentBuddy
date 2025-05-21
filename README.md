@@ -56,27 +56,34 @@ In a similar vein, systems can have child systems. This allows developers to orc
                            └─────────┘            └─────────┘                           
 ```
 
-Below is an example of sending a message to the `threads` frontend plugin from a backend system.
+Below is an example code snippet for sending a message to a frontend plugin from a backend system. A working understanding of [Xstate](https://stately.ai/docs/state-machines-and-statecharts) and state-machines is highly recommended, as they are used ubiquitously throughout the FE and BE. 
 ``` js
 const pluginId = 'threads';
 
 setup({
   actions: {
-    sayHello: ({ system }) => {
-      system.get(bus).send(emit(pluginId, {
-        type: 'Hello',
-        message: 'World'
-      }));
-    },
-  }
+    sendHello: ({ system }) =>
+      system.get(bus).send(
+        emit(pluginId, { type: 'GREET', message: '🌍 Hey, User!' })
+      ),
+  },
 })
-.createMachine({ id: 'system' })
+.createMachine({
+  id: 'system',
+  initial: 'idle',
+  states: {
+    idle: {
+      on: { WAKEUP: { target: 'working', actions: 'sendHello' } },
+    },
+    working: { },
+  },
+});
 ```
 
 # Dialogs
 Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
 
-The fundamental break through here is to imagine the agent <-> human interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times agent <-> agent dialog or even agent <-> application-event dialog.
+The fundamental break through here is to imagine the `agent <-> human` interaction as navigating a dialog tree. And then to expand that model of a dialog tree to include at times `agent <-> agent` dialog or even `agent <-> application-event` dialog.
 
 In that sense, everything is composable through this dialog node-like data interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
 ```
