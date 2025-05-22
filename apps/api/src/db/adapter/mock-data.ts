@@ -1,60 +1,83 @@
-// schema.ts
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+// // mockData.ts
+// import { EARS } from '@/shared/ears/types';
+// import {
+//   entity,
+//   attrText,
+//   attrTime,
+//   attrJson,
+//   role,
+//   relation,
+// } from './schema';
 
-export const entity = sqliteTable("entity", {
-	id: text("id").primaryKey(),
-	type: text("type").notNull(),
-	version: integer("version").notNull().default(0),
-	createdAt: integer("created_at").notNull(),
-});
+// const nowMs = Date.now();
 
-function mkAttr(
-	table: string,
-	sqlType: (name: string) => ReturnType<typeof integer | typeof text>,
-) {
-	return sqliteTable(
-		table,
-		{
-			entityId: text("entity_id")
-				.notNull()
-				.references(() => entity.id),
-			kind: text("kind").notNull(),
-			idx: integer("idx").notNull().default(0),
-			value: sqlType("value"),
-		},
-		(t) => ({
-			pk: [t.entityId, t.kind, t.idx] as const,
-		}),
-	);
-}
+// export const now = new Date(nowMs);
 
-export const attrText = mkAttr("attribute_text", text);
-export const attrTime = mkAttr("attribute_timestamp", integer);
-export const attrInt = mkAttr("attribute_int", integer);
-export const attrJson = mkAttr("attribute_json", text);
-
-export const role = sqliteTable(
-	"role",
-	{
-		entityId: text("entity_id")
-			.notNull()
-			.references(() => entity.id),
-		role: text("role").notNull(),
-	},
-	(t) => ({ pk: [t.entityId, t.role] as const }),
-);
-
-export const relation = sqliteTable(
-	"relation",
-	{
-		srcId: text("src_id")
-			.notNull()
-			.references(() => entity.id),
-		kind: text("kind").notNull(),
-		tgtId: text("tgt_id")
-			.notNull()
-			.references(() => entity.id),
-		info: text("info").notNull().default("{}"),
-	},
-	(t) => ({ pk: [t.srcId, t.kind, t.tgtId] as const }),
-);
+// export const rows = {
+//   entity: [
+//     { id: 'Agent-demo',   type: 'Agent',   createdAt: nowMs },
+//     { id: 'Thread-ui',    type: 'Thread',  createdAt: nowMs - 9 * 60_000 },
+//     { id: 'Msg-1',        type: 'Message', createdAt: nowMs - 5 * 60_000 },
+//     { id: 'Msg-2',        type: 'Message', createdAt: nowMs - 4 * 60_000 },
+//   ],
+//   attrText: [
+//     {
+//       entityId: 'Thread-ui',
+//       kind:     'title',
+//       idx:       0,
+//       value:    'UI Layout Reorganisation',
+//     },
+//     {
+//       entityId: 'Msg-1',
+//       kind:     'text',
+//       idx:       0,
+//       value:    'How do I use CSS vars?',
+//     },
+//     {
+//       entityId: 'Msg-1',
+//       kind:     'sender',
+//       idx:       0,
+//       value:    'user',
+//     },
+//   ],
+//   attrTime: [
+//     {
+//       entityId: 'Thread-ui',
+//       kind:     'timestamp',
+//       idx:       0,
+//       value:    nowMs - 9 * 60_000,
+//     },
+//     {
+//       entityId: 'Msg-1',
+//       kind:     'timestamp',
+//       idx:       0,
+//       value:    nowMs - 5 * 60_000,
+//     },
+//   ],
+//   role: [
+//     {
+//       entityId: 'Thread-ui',
+//       role:     EARS.RoleKind.Custom('latest_thread'),
+//     },
+//   ],
+//   relation: [
+//     {
+//       srcId: 'Agent-demo',
+//       kind:   EARS.RelKind.OWNS,
+//       tgtId:  'Thread-ui',
+//       info:   JSON.stringify({}),
+//     },
+//     {
+//       srcId: 'Thread-ui',
+//       kind:   EARS.RelKind.CONTAINS,
+//       tgtId:  'Msg-1',
+//       info:   JSON.stringify({}),
+//     },
+//     {
+//       srcId: 'Thread-ui',
+//       kind:   EARS.RelKind.CONTAINS,
+//       tgtId:  'Msg-2',
+//       info:   JSON.stringify({}),
+//     },
+//   ],
+// };
