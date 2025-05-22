@@ -1,83 +1,95 @@
-import mockData from '../mock-data';
-import { bp, spawn } from '@/shared/ears/blueprint';
-import { addRole, addRelation } from '@/shared/ears/attribute-storage';
+import { rows } from '../mock-data';
+import { tx } from '@/shared/ears/transaction';
 import { EARS } from '@/shared/ears/types';
 import { setNewMessage } from '.';
 
 /**
- *   • All messages / context items / canvas content attach to the _newest_ thread
- *   • Every thread entity is created
+ * Load mock data from the new rows structure
+ * - Entities, roles, and relations are loaded directly
+ * - The latest message is identified and set
  */
 export function loadMockData(): void {
-  const messageBps = mockData.messages.map(m =>
-    bp(EARS.Entity.Message)
-      .attr('text', m.content)
-      .attr('sender', m.sender)
-      .attr('timestamp', m.timestamp)
-      .build(),
-  );
-
-  const ctxItemBps = mockData.contextItems.map(c =>
-    bp(EARS.Entity.CtxItem)
-      .attr('title', c.title)
-      .attr('content', c.content)
-      .attr('type', c.type)
-      .build(),
-  );
-
-  const canvasBp = bp(EARS.Entity.CanvasItem)
-    .attr('type', mockData.canvasContent.type)
-    .attr('content', mockData.canvasContent.content)
-    .build();
-
-  /*───────────────────────*
-   * 2 ▸ Find newest thread *
-   *───────────────────────*/
-  const newestThread = mockData.threads.reduce((acc, t) =>
-    !acc || t.timestamp > acc.timestamp ? t : acc, undefined as typeof mockData.threads[number] | undefined);
-
-  if (!newestThread) {
-    console.warn('No threads found in mock data');
+  if (!rows.entity || rows.entity.length === 0) {
+    console.warn('No entities found in mock data');
     return;
   }
 
   /*───────────────────────*
-   * 3 ▸ Spawn all threads  *
+   * 1 ▸ Spawn all entities *
    *───────────────────────*/
-  let latestThreadId: EARS.EntityId | undefined;
+  const entityIds: Record<string, EARS.EntityId> = {};
 
-  for (const t of mockData.threads) {
-    const threadId = spawn(
-      bp(EARS.Entity.Thread)
-        .attr('title', t.title)
-        .attr('timestamp', t.timestamp)
-        .build(),
-    );
-
-    if (t === newestThread) latestThreadId = threadId;
+  for (const entity of rows.entity) {
+    // Extract core entity properties
+    const { id, entityType, createdAt, ...attributes } = entity;
+    
+    // Create entity using tx helper
+    const txBuilder = tx(id as EARS.EntityId)
+      .set('timestamp', createdAt);
+    
+    // Add all other attributes to the entity
+    for (const [key, value] of Object.entries(attributes)) {
+      if (key !== 'id' && key !== 'entityType' && key !== 'createdAt') {
+        txBuilder.set(key, value);
+      }
+    }
+    
+    // Create the entity and store its ID for reference
+    const entityId = txBuilder.id();
+    entityIds[id] = entityId;
   }
 
   /*───────────────────────*
-   * 4 ▸ Attach children    *
+   * 2 ▸ Create relations   *
    *───────────────────────*/
-  if (!latestThreadId) return; // should never happen
-
-  // Get all messages except the last one, handling the last message separately
-  const lastMsg = messageBps[messageBps.length - 1];
-  const restMessagesBps = messageBps.slice(0, -1);
-
-  for (const threadChildBp of [...restMessagesBps, ...ctxItemBps, canvasBp]) {
-    const childId = spawn(threadChildBp);                 // entity (deduped)
-    addRelation(latestThreadId, EARS.RelKind.CONTAINS, childId);
+  if (rows.relation) {
+    for (const relation of rows.relation) {
+      const { srcId, kind, tgtId } = relation;
+      
+      // Only create relations if both source and target entities exist
+      if (entityIds[srcId] && entityIds[tgtId]) {
+        tx(entityIds[srcId])
+          .rel(kind, entityIds[tgtId])
+          .id();
+      }
+    }
   }
 
-  /* Last‑message bookkeeping */
-  if (lastMsg) {
-    const lastMsgId = spawn(lastMsg);
-    addRelation(latestThreadId, EARS.RelKind.CONTAINS, lastMsgId);
-    setNewMessage(lastMsgId, latestThreadId);
+  /*───────────────────────*
+   * 3 ▸ Assign roles       *
+   *───────────────────────*/
+  if (rows.role) {
+    for (const roleAssignment of rows.role) {
+      const { entityId, role } = roleAssignment;
+      
+      if (entityIds[entityId]) {
+        tx(entityIds[entityId])
+          .role(role)
+          .id();
+      }
+    }
   }
 
-  /* Mark the newest thread */
-  addRole(latestThreadId, EARS.RoleKind.Custom('latest_thread'));
+  /*───────────────────────*
+   * 4 ▸ Set latest message *
+   *───────────────────────*/
+  // Find the thread with the latest_thread role
+  const latestThreadRole = rows.role?.find(r => 
+    r.role === EARS.RoleKind.Custom('latest_thread')
+  );
+  
+  if (latestThreadRole) {
+    const latestThreadId = entityIds[latestThreadRole.entityId];
+    
+    // Find the latest message (the one with the most recent timestamp)
+    const messageEntities = rows.entity.filter(e => e.entityType === EARS.Entity.Message);
+    const latestMessage = messageEntities.reduce((latest, msg) => 
+      !latest || (msg.timestamp && latest?.timestamp && msg.timestamp > latest.timestamp) ? msg : latest, 
+      undefined as typeof messageEntities[number] | undefined
+    );
+    
+    if (latestMessage && entityIds[latestMessage.id]) {
+      setNewMessage(entityIds[latestMessage.id], latestThreadId);
+    }
+  }
 }

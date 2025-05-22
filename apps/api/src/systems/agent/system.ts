@@ -2,7 +2,7 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
-import agentPluginData from './mock-data';
+import { rows } from './mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
@@ -28,7 +28,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
-  | { type: 'WAKEUP'; pluginData: typeof agentPluginData }
+  | { type: 'WAKEUP'; rows: typeof rows }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
@@ -82,7 +82,7 @@ export const agentSystem = setup({
     sendFEWakeup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'WAKEUP',
-        pluginData: agentPluginData
+        rows: rows
       }));
     },
     storeUserMessage: ({ context, event }) => {

@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { Message, ContextItem, CanvasContent, Thread, OutgoingAgentEvents } from '@abuddy/api';
+import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, Entity } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -12,10 +12,10 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 interface AgentContext {
-  messages: Message[];
-  contextItems: ContextItem[];
-  canvasContent: CanvasContent;
-  threads: Thread[];
+  messages: MessageEntity[];
+  contextItems: ContextItemEntity[];
+  canvasContent: CanvasContentEntity;
+  threads: ThreadEntity[];
   currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
@@ -28,6 +28,7 @@ type AgentEvent =
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
+  | { type: 'RESET_STATUS_COLOR'; }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
   | OutgoingAgentEvents
   | TrailClickEvent;
@@ -59,18 +60,22 @@ const agentState = setup({
     addMessage: assign(({ context, event }) => ({
       messages: [...context.messages, { 
         id: Date.now().toString(),
+        entityType: 'Message' as const,
+        createdAt: Date.now(),
         content: typeOf('SEND_MESSAGE', event).content,
         sender: 'user' as const,
-        timestamp: new Date()
-      }]
+        timestamp: Date.now()
+      } as MessageEntity]
     })),
     addAssistantMessage: assign(({ context, event }) => ({
       messages: [...context.messages, {
         id: Date.now().toString(),
+        entityType: 'Message' as const,
+        createdAt: Date.now(),
         content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
         sender: 'assistant' as const,
-        timestamp: new Date(),
-      }]
+        timestamp: Date.now(),
+      } as MessageEntity]
     })),
     setCurrentThread: assign(({ event }) => ({
       currentThreadId: typeOf('SELECT_THREAD', event).threadId
@@ -81,11 +86,24 @@ const agentState = setup({
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('WAKEUP', event);
       console.log('typedEvent: ', typedEvent);
+      
+      // Filter entities by their respective types
       return {
-        messages: typedEvent.pluginData.messages,
-        contextItems: typedEvent.pluginData.contextItems,
-        canvasContent: typedEvent.pluginData.canvasContent,
-        threads: typedEvent.pluginData.threads
+        messages: typedEvent.rows.entity
+          .filter((e): e is MessageEntity => e.entityType === 'Message'),
+        contextItems: typedEvent.rows.entity
+          .filter((e): e is ContextItemEntity => e.entityType === 'ContextItem'),
+        canvasContent: typedEvent.rows.entity
+          .filter((e): e is CanvasContentEntity => e.entityType === 'CanvasContent')[0] || 
+          { 
+            id: '0', 
+            entityType: 'CanvasContent' as const, 
+            contentType: 'text' as const, 
+            content: 'No content available',
+            createdAt: Date.now()
+          } as CanvasContentEntity,
+        threads: typedEvent.rows.entity
+          .filter((e): e is ThreadEntity => e.entityType === 'Thread'),
       };
     }),
     handleTokenStream: assign(({ context, event }) => {
@@ -101,10 +119,12 @@ const agentState = setup({
       return {
         messages: [...messages, {
           id: newId,
+          entityType: 'Message' as const,
           content: token,
           sender: 'assistant' as const,
-          timestamp: new Date(),
-        }],
+          timestamp: Date.now(),
+          createdAt: Date.now()
+        } as MessageEntity],
         pendingActionId: newId,
       };
     }),
@@ -124,7 +144,13 @@ const agentState = setup({
   context: ({ input }) => ({
     messages: [],
     contextItems: [],
-    canvasContent: { id: '0', type: 'text', content: 'Waiting for data...' },
+    canvasContent: { 
+      id: '0', 
+      entityType: 'CanvasContent' as const, 
+      contentType: 'text' as const, 
+      content: 'Waiting for data...', 
+      createdAt: Date.now() 
+    } as CanvasContentEntity,
     threads: [],
     currentThreadId: null,
     messageInput: "",
