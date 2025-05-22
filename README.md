@@ -3,9 +3,9 @@
 <p align="center"><strong>A vibe-working platform</strong></p>
 
 <p align="center">
-Current AI agent platforms provide inconsistent experiences and struggle to scale effectively where it matters, causing users to become frustrated. Despite being young, many platforms feel outdated due to rigid prompting schemes and limited extensibility options. Agent-Buddy was built with a different approach in mind - a clear-eyed vision to create a tool that aligns deeply with user needs.
+Current AI agent platforms provide inconsistent experiences and struggle to scale effectively where it matters, causing users to become frustrated. Despite being young, many platforms feel outdated due to rigid prompting schemes and limited extensibility options. Agent-Buddy was built with a different approach in mind. An approach guided by a clear-eyed vision to create a tool that aligns deeply with user needs.
 
-We focused meticulously on product and platform design to engineer an exceptional AI agent experience.
+We innovated on the product and platform design to deliver an exceptional AI agent experience.
 </p>
 
 <p align="center"><strong>Please join us in bringing better vibes with the Agent‑Buddy platform</strong></p>
