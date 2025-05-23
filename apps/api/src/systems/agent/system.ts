@@ -2,7 +2,7 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
-import { rows } from './mock-data';
+import { rows } from '../brain/mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
@@ -21,14 +21,12 @@ export const IncomingAgentEvents = [
 ] as const
 
 export type AgentInternalEvents = 
-  | { type: 'STARTUP' }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
   | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
-  | { type: 'STARTUP'; rows: typeof rows }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
@@ -79,12 +77,6 @@ export const agentSystem = setup({
         error: typeOf('LLM_ERROR', event).error
       }));
     },
-    sendFEStartup: ({ system }) => {
-      system.get(bus).send(emit(agent, { 
-        type: 'STARTUP',
-        rows: rows
-      }));
-    },
     storeUserMessage: ({ context, event }) => {
       const content = typeOf('USER_MSG', event).content;
       addMessageToLatestThread(content);
@@ -107,10 +99,6 @@ export const agentSystem = setup({
       },
       LLM_ERROR: {
         actions: 'sendLLMError',
-      },
-      STARTUP: {
-        target: '.idle',
-        actions: 'sendFEStartup',
       },
     },
     states: {

@@ -10,7 +10,7 @@ export const rows: Rows = {
     // Thread entities
     { 
       id: 'Thread-1', 
-      entityType: 'Thread', 
+      entityType: EARS.Entity.Thread, 
       createdAt: nowMs - 9 * 61_000,
       title: 'UI Layout Reorganization Instructions',
       timestamp: nowMs - 9 * 60_000,
@@ -19,7 +19,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Thread-2', 
-      entityType: 'Thread', 
+      entityType: EARS.Entity.Thread, 
       createdAt: nowMs - 61 * 60_000,
       title: 'Adding Padding to Scrollbar in CSS',
       timestamp: nowMs - 61 * 60_000,
@@ -28,7 +28,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Thread-3', 
-      entityType: 'Thread', 
+      entityType: EARS.Entity.Thread, 
       createdAt: nowMs - 60 * 60_000,
       title: 'Enhancing Chat Interface Design',
       timestamp: nowMs - 60 * 60_000,
@@ -37,7 +37,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Thread-4', 
-      entityType: 'Thread', 
+      entityType: EARS.Entity.Thread, 
       createdAt: nowMs - 60 * 60_000,
       title: 'Project X',
       timestamp: nowMs - 60 * 60_000,
@@ -47,7 +47,7 @@ export const rows: Rows = {
     // Message entities
     { 
       id: 'Message-1', 
-      entityType: 'Message', 
+      entityType: EARS.Entity.Message, 
       createdAt: nowMs - 5 * 60_000,
       content: 'Can you help me understand how to use CSS variables in my design system?',
       sender: 'user',
@@ -55,7 +55,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Message-2', 
-      entityType: 'Message', 
+      entityType: EARS.Entity.Message, 
       createdAt: nowMs - 4 * 60_000,
       content: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
       sender: 'assistant',
@@ -63,7 +63,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Message-3', 
-      entityType: 'Message', 
+      entityType: EARS.Entity.Message, 
       createdAt: nowMs - 3 * 60_000,
       content: 'That makes sense. Can you show me how to use them with a color palette?',
       sender: 'user',
@@ -71,7 +71,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Message-4', 
-      entityType: 'Message', 
+      entityType: EARS.Entity.Message, 
       createdAt: nowMs - 2 * 60_000,
       content: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
       sender: 'assistant',
@@ -79,7 +79,7 @@ export const rows: Rows = {
     },
     { 
       id: 'Message-5', 
-      entityType: 'Message', 
+      entityType: EARS.Entity.Message, 
       createdAt: nowMs - 1 * 60_000,
       content: 'please rewrite this code using css variables from our design systems',
       sender: 'user',
@@ -89,7 +89,7 @@ export const rows: Rows = {
     // ContextItem item entities
     { 
       id: 'ContextItem-1', 
-      entityType: 'ContextItem', 
+      entityType: EARS.Entity.ContextItem, 
       createdAt: nowMs,
       title: 'Project Overview',
       content: 'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using \'Content here, content here\', making it look like readable English.',
@@ -97,7 +97,7 @@ export const rows: Rows = {
     },
     { 
       id: 'ContextItem-2', 
-      entityType: 'ContextItem', 
+      entityType: EARS.Entity.ContextItem, 
       createdAt: nowMs,
       title: 'CSS Variables Example',
       content: `
@@ -123,7 +123,7 @@ export const rows: Rows = {
     },
     { 
       id: 'ContextItem-3', 
-      entityType: 'ContextItem', 
+      entityType: EARS.Entity.ContextItem, 
       createdAt: nowMs,
       title: 'Color Palette',
       content: 'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using \'Content here, content here\', making it look like readable English.',
@@ -132,8 +132,8 @@ export const rows: Rows = {
     
     // Canvas content
     { 
-      id: 'Canvas-1', 
-      entityType: 'CanvasContent', 
+      id: 'CanvasItem-1', 
+      entityType: EARS.Entity.CanvasItem, 
       createdAt: nowMs,
       contentType: 'code',
       content: `/* Before: Using hardcoded colors */
@@ -230,7 +230,7 @@ export const rows: Rows = {
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
-      tgtId: 'Canvas-1',
+      tgtId: 'CanvasItem-1',
       info: JSON.stringify({}),
     },
   ],

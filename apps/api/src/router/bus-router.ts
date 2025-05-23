@@ -23,7 +23,7 @@ export const systemBusRouter = router({
           emit.next(event);
         })
 
-        ctx.actor.send({ type: 'STARTUP' });
+        ctx.actor.send({ type: 'CLIENT_CONNECTED' });
         return () => {
           console.log('Cleaning up subscription');
           unsubscribe()

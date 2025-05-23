@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, Entity } from '@abuddy/api';
+import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, StartupData } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -30,6 +30,7 @@ type AgentEvent =
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
+  | { type: 'STARTUP'; pluginData: StartupData[typeof id] }
   | OutgoingAgentEvents
   | TrailClickEvent;
 
@@ -89,21 +90,10 @@ const agentState = setup({
       
       // Filter entities by their respective types
       return {
-        messages: typedEvent.rows.entity
-          .filter((e): e is MessageEntity => e.entityType === 'Message'),
-        contextItems: typedEvent.rows.entity
-          .filter((e): e is ContextItemEntity => e.entityType === 'ContextItem'),
-        canvasContent: typedEvent.rows.entity
-          .filter((e): e is CanvasContentEntity => e.entityType === 'CanvasContent')[0] || 
-          { 
-            id: '0', 
-            entityType: 'CanvasContent' as const, 
-            contentType: 'text' as const, 
-            content: 'No content available',
-            createdAt: Date.now()
-          } as CanvasContentEntity,
-        threads: typedEvent.rows.entity
-          .filter((e): e is ThreadEntity => e.entityType === 'Thread'),
+        messages: typedEvent.pluginData.messages,
+        contextItems: typedEvent.pluginData.contextItems,
+        canvasContent: typedEvent.pluginData.canvasContent,
+        threads: typedEvent.pluginData.threads,
       };
     }),
     handleTokenStream: assign(({ context, event }) => {
@@ -146,8 +136,8 @@ const agentState = setup({
     contextItems: [],
     canvasContent: { 
       id: '0', 
-      entityType: 'CanvasContent' as const, 
-      contentType: 'text' as const, 
+      entityType: 'CanvasItem', 
+      contentType: 'text', 
       content: 'Waiting for data...', 
       createdAt: Date.now() 
     } as CanvasContentEntity,

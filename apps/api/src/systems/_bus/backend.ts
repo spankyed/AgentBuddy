@@ -1,15 +1,15 @@
-import { emit as notify, setup, enqueueActions, sendTo } from 'xstate';
+import { emit as notify, setup, enqueueActions } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
-import systems, { agent } from '@/systems';
-import { emit, safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
+import systems from '@/systems';
+import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
 import { entries } from '@/shared/utils';
 import { createEntity } from '@/shared/ears/create-entity';
-import { EARS } from '../../shared/ears/types';
+import { EARS } from '@/shared/ears/types';
 
 export type BusEvent = 
-  | { type: 'STARTUP'; }
+  | { type: 'CLIENT_CONNECTED'; }
   | { type: 'INCOMING'; event: IncomingSystemEvents }
-  | { type: 'OUTGOING'; event: OutgoingSystemEvents}
+  | { type: 'OUTGOING'; event: OutgoingSystemEvents }
 
 export interface BusContext {
   threads: string[];
@@ -32,16 +32,17 @@ export const backendSystem = setup({
     },
     sendConnected: (({ system }) => {
       for (const id of Object.keys(systems)) {
-        system.get(id).send({ type: 'STARTUP' });
+        system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {
         const inputs = {
           agent: createEntity(EARS.Entity.Agent),
+          brain: createEntity(EARS.Entity.Brain),
         } as const;
 
-        enqueue.spawnChild(state, { input: inputs[id] ,systemId: id as SystemId });
+        enqueue.spawnChild(state, { input: inputs[id as keyof typeof inputs], systemId: id as SystemId });
       }
     }),
   }
@@ -53,7 +54,7 @@ export const backendSystem = setup({
     },
     initial: 'disconnected',
     on: {
-      STARTUP: {
+      CLIENT_CONNECTED: {
         target: '.connected',
       },
     },

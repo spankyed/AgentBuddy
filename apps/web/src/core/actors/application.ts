@@ -3,6 +3,8 @@ import type { Plugin } from '@/core/types';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
+import type { StartupData } from '@abuddy/api';
+import { entries } from '../utils';
 
 interface BreadcrumbItem {
   label: string;
@@ -29,6 +31,7 @@ export interface ApplicationContext {
 export const application = 'application' as const;
 
 export type ApplicationEvent =
+  | { type: 'STARTUP'; startupData: StartupData }
   | { type: 'SELECT_PLUGIN'; pluginId: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
@@ -83,6 +86,11 @@ export const createApplicationState = () => setup({
     }),
   },
   actions: {
+    sendStartupData: ({ system, event }) => {
+      for (const [pluginId, data] of entries(typeOf('STARTUP', event).startupData)) {
+        system.get(pluginId).send({ type: 'STARTUP', pluginData: data });
+      }
+    },
     setTargetView: assign(({ event, system }, params?: string) => ({
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
@@ -163,6 +171,9 @@ export const createApplicationState = () => setup({
     },
   },
   on: {
+    STARTUP: {
+      actions: ['sendStartupData'],
+    },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],
     },

@@ -1,7 +1,6 @@
-import { rows } from '../mock-data';
+import { rows } from './mock-data';
 import { tx } from '@/shared/ears/transaction';
 import type { EARS } from '@/shared/ears/types';
-import { setNewMessage } from '.';
 
 /**
  * Load mock data from the new rows structure

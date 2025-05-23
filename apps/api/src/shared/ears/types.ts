@@ -8,10 +8,11 @@ export namespace EARS {
   \*-------------------------------------------------------------------------*/
   export enum Entity {
     Agent    = 'Agent',
+    Brain    = 'Brain',
     Message  = 'Message',
     Thread   = 'Thread',
     Relation = 'Relation',
-    CtxItem  = 'CtxItem',
+    ContextItem  = 'ContextItem',
     CanvasItem   = 'CanvasItem',
     Task     = 'Task',
   }

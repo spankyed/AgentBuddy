@@ -76,7 +76,7 @@ export function emit<
   T extends OutgoingSystemEvents['type'],
   E extends Extract<OutgoingSystemEvents, { type: T }>
 >(
-  pluginId: E['pluginId'],
+  pluginId: E['pluginId'] | 'application',
   // Explicitly require all properties except pluginId
   event: Omit<E, 'pluginId'> & { type: T }
 ) {

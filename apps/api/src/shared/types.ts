@@ -11,7 +11,7 @@ export interface BaseEntity {
 
 // Message entity
 export interface MessageEntity extends BaseEntity {
-  entityType: 'Message';
+  entityType: EARS.Entity.Message;
   content: string;
   sender: 'user' | 'assistant' | 'system';
   timestamp: number;
@@ -19,7 +19,7 @@ export interface MessageEntity extends BaseEntity {
 
 // Thread entity
 export interface ThreadEntity extends BaseEntity {
-  entityType: 'Thread';
+  entityType: EARS.Entity.Thread;
   title: string;
   // topic: string;
   // sideTopics?: string[];
@@ -30,7 +30,7 @@ export interface ThreadEntity extends BaseEntity {
 
 // ContextItem entity
 export interface ContextItemEntity extends BaseEntity {
-  entityType: 'ContextItem';
+  entityType: EARS.Entity.ContextItem;
   title: string;
   content: string;
   itemType: 'text' | 'code' | 'image' | 'json';
@@ -38,7 +38,7 @@ export interface ContextItemEntity extends BaseEntity {
 
 // CanvasContent entity
 export interface CanvasContentEntity extends BaseEntity {
-  entityType: 'CanvasContent';
+  entityType: EARS.Entity.CanvasItem;
   contentType: 'text' | 'code' | 'image' | 'graph' | 'table';
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
   content: string | any;
