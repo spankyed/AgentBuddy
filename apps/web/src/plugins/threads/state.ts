@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity } from '@abuddy/api';
 
 const typeOf = safeEvents<ThreadsEvent>();
 
@@ -21,14 +21,26 @@ type ThreadsEvent =
 interface ThreadsContext {
   threads: ThreadEntity[];
   selectedThreadId?: string;
+  view: {
+    selectedThread?: ThreadEntity;
+    messages?: MessageEntity[];
+  }
 }
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadsEvent },
   actors: {},
   actions: {
-    setSelectedThreadId: assign({
-      selectedThreadId: ({ event }) => typeOf(['SELECT_THREAD', 'CREATE_THREAD'], event).id,
+    setSelectedThread: assign(({ event, context }) => {
+      const typedEvent = typeOf('SELECT_THREAD', event);
+      const selectedThread = context.threads.find(t => t.id === typedEvent.id);
+
+      return {
+        selectedThreadId:  selectedThread?.shortCode,
+        view: {
+          selectedThread,
+        },
+      };
     }),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
@@ -37,7 +49,11 @@ const threadsState = setup({
       // Access the threads directly from the startup data
       return {
         threads: typedEvent.pluginData.threads,
-        selectedThreadId: typedEvent.pluginData.threads[0]?.id,
+        selectedThreadId: typedEvent.pluginData.threads[0]?.shortCode,
+        // view: {
+        //   selectedThread: typedEvent.pluginData.threads[0],
+        //   messages: [],
+        // },
       };
     }),
   },
@@ -50,6 +66,10 @@ const threadsState = setup({
   context: () => ({
     threads: [],
     selectedThreadId: undefined,
+    view: {
+      selectedThread: undefined,
+      messages: undefined,
+    },
   }),
   on: {
     STARTUP: {
@@ -69,7 +89,7 @@ const threadsState = setup({
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {
           target: 'view',
-          actions: 'setSelectedThreadId',
+          actions: 'setSelectedThread',
         },
       },
     },
@@ -79,7 +99,7 @@ const threadsState = setup({
       on: {
         CREATE_THREAD: {
           target: 'view',
-          actions: 'setSelectedThreadId',
+          actions: 'setSelectedThread',
         },
         CANCEL_CREATE: { target: 'list' },
       },
