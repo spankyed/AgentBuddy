@@ -21,14 +21,14 @@ export const IncomingAgentEvents = [
 ] as const
 
 export type AgentInternalEvents = 
-  | { type: 'WAKEUP' }
+  | { type: 'STARTUP' }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
   | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
-  | { type: 'WAKEUP'; rows: typeof rows }
+  | { type: 'STARTUP'; rows: typeof rows }
   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
@@ -81,7 +81,7 @@ export const agentSystem = setup({
     },
     sendFEWakeup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
-        type: 'WAKEUP',
+        type: 'STARTUP',
         rows: rows
       }));
     },
@@ -108,7 +108,7 @@ export const agentSystem = setup({
       LLM_ERROR: {
         actions: 'sendLLMError',
       },
-      WAKEUP: {
+      STARTUP: {
         target: '.idle',
         actions: 'sendFEWakeup',
       },

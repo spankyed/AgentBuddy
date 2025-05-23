@@ -84,7 +84,7 @@ const agentState = setup({
       messages: []
     })),
     setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('WAKEUP', event);
+      const typedEvent = typeOf('STARTUP', event);
       console.log('typedEvent: ', typedEvent);
       
       // Filter entities by their respective types
@@ -181,7 +181,7 @@ const agentState = setup({
     SELECT_THREAD: {
       actions: 'setCurrentThread'
     },
-    WAKEUP: {
+    STARTUP: {
       actions: 'setPluginData'
     },
     TOKEN_STREAM: {

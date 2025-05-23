@@ -77,7 +77,7 @@ setup({
   initial: 'idle',
   states: {
     idle: {
-      on: { WAKEUP: { target: 'working', actions: 'sendHello' } },
+      on: { STARTUP: { target: 'working', actions: 'sendHello' } },
     },
     working: { },
   },

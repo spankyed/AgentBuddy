@@ -23,7 +23,7 @@ export const systemBusRouter = router({
           emit.next(event);
         })
 
-        ctx.actor.send({ type: 'WAKEUP' });
+        ctx.actor.send({ type: 'STARTUP' });
         return () => {
           console.log('Cleaning up subscription');
           unsubscribe()

@@ -18,12 +18,12 @@
 // ] as const
 
 // export type BrainInternalEvents = 
-//   | { type: 'WAKEUP' }
+//   | { type: 'STARTUP' }
 //   | { type: 'LLM_DONE' }
 //   | { type: 'TOKEN'; token: string }
 
 // export type OutgoingBrainEvents = 
-//   | { type: 'WAKEUP' }
+//   | { type: 'STARTUP' }
 //   | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
 //   | { type: 'LLM_DONE' }
 //   | { type: 'TOKEN'; token: string }
@@ -52,7 +52,7 @@
 //   },
 //   actions: {
 //     sendFEWakeup: ({ system }) => {
-//       system.get(bus).send(emit(brain, { type: 'WAKEUP'}));
+//       system.get(bus).send(emit(brain, { type: 'STARTUP'}));
 //     },
 //     emitToken: ({ system }) => {
 //       system.get(bus).send(emit(brain, {
@@ -78,7 +78,7 @@
 //       model: 'gpt-4',
 //     },
 //     on: {
-//       WAKEUP: {
+//       STARTUP: {
 //         target: '.idle',
 //         // actions: 'emitToken',
 //         actions: 'sendFEWakeup',

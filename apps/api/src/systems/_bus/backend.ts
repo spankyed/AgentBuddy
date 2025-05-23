@@ -7,7 +7,7 @@ import { createEntity } from '@/shared/ears/create-entity';
 import { EARS } from '../../shared/ears/types';
 
 export type BusEvent = 
-  | { type: 'WAKEUP'; }
+  | { type: 'STARTUP'; }
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents}
 
@@ -32,7 +32,7 @@ export const backendSystem = setup({
     },
     sendConnected: (({ system }) => {
       for (const id of Object.keys(systems)) {
-        system.get(id).send({ type: 'WAKEUP' });
+        system.get(id).send({ type: 'STARTUP' });
       }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
@@ -53,7 +53,7 @@ export const backendSystem = setup({
     },
     initial: 'disconnected',
     on: {
-      WAKEUP: {
+      STARTUP: {
         target: '.connected',
       },
     },
