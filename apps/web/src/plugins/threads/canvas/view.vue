@@ -1,12 +1,12 @@
 <template>
   <div class="max-w-5xl px-6 py-4 mx-auto space-y-6 root-container">
     <div class="p-4 space-y-6">
-      <!-- Title & Status -->
+      <!-- Topic & Status -->
       <div class="flex flex-col gap-4 md:flex-row">
         <div class="flex-1">
-          <Label>Title</Label>
+          <Label>Topic</Label>
           <input
-            v-model="title"
+            v-model="topic"
             type="text"
             :placeholder="placeholder"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -163,9 +163,9 @@ const actor: ThreadsState = applicationState.system.get(id);
 // Keep actor reference for future use
 // const someState = useSelector(actor, (state) => state.context.someState)
 
-const title = ref('')
+const topic = ref('')
 const type = ref('work-item')
-// Placeholder options for title based on selected type
+// Placeholder options for topic based on selected type
 const workItemPlaceholders = [
   'Review latest PR for UX improvements',
   'Tackle sprint tasks for Q2',

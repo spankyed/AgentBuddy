@@ -53,13 +53,13 @@
       >
       
         <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-700/50" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
-          <!-- ID badge and truncated title -->
+          <!-- ID badge and truncated topic -->
           <div class="flex items-center flex-1 space-x-2">
             <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-500">
               {{ thread.shortCode }}
             </span>
             <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
-              {{ thread.title || thread.shortCode }}
+              {{ thread.topic || thread.shortCode }}
             </span>
           </div>
           <!-- Status selector and tags -->

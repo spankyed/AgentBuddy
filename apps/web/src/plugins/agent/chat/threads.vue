@@ -40,7 +40,7 @@
           @click="handleSelectThread(thread.id)"
         >
           <div class="flex items-center justify-between">
-            <span class="text-sm text-neutral-200">{{ thread.title }}</span>
+            <span class="text-sm text-neutral-200">{{ thread.topic }}</span>
             <span class="text-xs text-neutral-500">{{ formatTime(thread.timestamp) }}</span>
           </div>
         </button>
@@ -51,15 +51,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { History, ChevronUp, Plus } from 'lucide-vue-next'
-
-export interface Thread {
-  id: string
-  title: string
-  timestamp: Date
-}
+import type { ThreadEntity } from '@abuddy/api';
 
 export interface ThreadsProps {
-  threads: Thread[]
+  threads: ThreadEntity[]
 }
 
 const props = defineProps<ThreadsProps>()
