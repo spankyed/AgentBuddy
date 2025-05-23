@@ -15,7 +15,8 @@ export const rows: Rows = {
       title: 'UI Layout Reorganization Instructions',
       timestamp: nowMs - 9 * 60_000,
       shortCode: 'U-182',
-      tags: ['ui', 'design', 'frontend']
+      tags: ['ui', 'design', 'frontend'],
+      status: 'active'
     },
     { 
       id: 'Thread-2', 
@@ -24,7 +25,8 @@ export const rows: Rows = {
       title: 'Adding Padding to Scrollbar in CSS',
       timestamp: nowMs - 61 * 60_000,
       shortCode: 'WI-45',
-      tags: ['css', 'frontend']
+      tags: ['css', 'frontend'],
+      status: 'queued'
     },
     { 
       id: 'Thread-3', 
@@ -33,7 +35,8 @@ export const rows: Rows = {
       title: 'Enhancing Chat Interface Design',
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'U-67',
-      tags: ['ui', 'chat', 'design']
+      tags: ['ui', 'chat', 'design'],
+      status: 'draft'
     },
     { 
       id: 'Thread-4', 
@@ -42,7 +45,8 @@ export const rows: Rows = {
       title: 'Project X',
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'P-13',
-      tags: ['project', 'backend']
+      tags: ['project', 'backend'],
+      status: 'inactive'
     },
     // Message entities
     { 

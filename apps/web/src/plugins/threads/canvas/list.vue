@@ -56,10 +56,10 @@
           <!-- ID badge and truncated title -->
           <div class="flex items-center flex-1 space-x-2">
             <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-500">
-              {{ thread.id }}
+              {{ thread.shortCode }}
             </span>
             <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
-              {{ thread.title || thread.id }}
+              {{ thread.title || thread.shortCode }}
             </span>
           </div>
           <!-- Status selector and tags -->
@@ -95,31 +95,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
+import type { ThreadEntity } from '@abuddy/api';
 
-interface Thread {
+// Using ThreadEntity from API types, with local interface for any UI-specific properties
+interface ThreadItem extends Partial<ThreadEntity> {
   id: string
-  title?: string
   status: string
   tags: string[]
 }
 
 const actor: ThreadsState = applicationState.system.get(id);
-
-const searchKeyword = ref('')
-const threads = ref<Thread[]>([
-  { id: 'U-182', title: 'Use css variables from our design systems', status: 'queued', tags: ['backend'] },
-  { id: 'P-13', title: 'Project X', status: 'active', tags: ['frontend', 'ui'] },
-  { id: 'WI-7', title: 'Some work item for the agent', status: 'inactive', tags: ['agent'] },
-])
+const threads = useSelector(actor, (state) => state.context.threads);
+const searchKeyword = ref('');
 
 const addDetail = () => {
-  threads.value.push({ id: '', title: '', status: 'open', tags: [] })
+  // Since we're now using state machine, we should send an event to create a new thread
+  actor.send({ type: 'SHOW_CREATE_FORM' });
 }
 </script>
 

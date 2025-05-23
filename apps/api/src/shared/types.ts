@@ -26,6 +26,7 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   shortCode?: string;
   tags?: string[];
+  status?: 'draft' | 'queued' | 'active' | 'inactive';
 }
 
 // ContextItem entity
