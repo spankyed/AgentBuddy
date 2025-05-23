@@ -26,10 +26,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Message } from '@abuddy/api'
+import type { MessageEntity } from '@abuddy/api'
 
 interface ChatMessageProps {
-  message: Message
+  message: MessageEntity
 }
 
 const props = defineProps<ChatMessageProps>()

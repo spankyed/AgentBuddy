@@ -11,7 +11,7 @@
     </div>
     
     <div v-if="isExpanded" class="p-4 border-t border-neutral-800 animate-slide-down">
-      <template v-if="item.type === 'code'">
+      <template v-if="item.itemType === 'code'">
         <div class="relative">
           <pre class="p-3 overflow-x-auto font-mono text-xs text-white rounded bg-neutral-900">
             <code>{{ item.content }}</code>
@@ -35,10 +35,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown, ChevronUp, Copy } from 'lucide-vue-next'
-import type { ContextItem as ContextItemType } from '@abuddy/api'
+import type { ContextItemEntity  } from '@abuddy/api'
 
 interface ContextItemProps {
-  item: ContextItemType
+  item: ContextItemEntity
 }
 
 defineProps<ContextItemProps>()

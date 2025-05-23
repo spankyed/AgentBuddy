@@ -2,7 +2,7 @@
   <!-- Agent Canvas Content -->
   <div class="relative max-w-4xl mx-auto">
     <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
-      <template v-if="content.type === 'code'">
+      <template v-if="content.contentType === 'code'">
         <div class="relative">
           <pre class="p-6 overflow-x-auto font-mono text-sm text-white rounded-lg bg-neutral-900">
             <code>{{ content.content }}</code>
@@ -16,11 +16,11 @@
         </div>
       </template>
       
-      <template v-else-if="content.type === 'text'">
+      <template v-else-if="content.contentType === 'text'">
         <div class="prose">{{ content.content }}</div>
       </template>
       
-      <template v-else-if="content.type === 'image'">
+      <template v-else-if="content.contentType === 'image'">
         <img :src="content.content" alt="Canvas content" class="h-auto max-w-full" />
       </template>
       
@@ -29,10 +29,10 @@
       </template>
     </div>
     
-    <div v-if="content.type === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
+    <div v-if="content.contentType === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
       <p class="text-sm italic text-neutral-300">please rewrite this code using css variables from our design systems</p>
     </div>
-    <div v-if="content.type === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
+    <div v-if="content.contentType === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
       <p class="text-sm italic text-neutral-300">please rewrite this code using css variables from our design systems</p>
     </div>
   </div>

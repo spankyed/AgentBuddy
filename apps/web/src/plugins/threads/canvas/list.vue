@@ -103,13 +103,6 @@ import Button from '@/core/design/button.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEntity } from '@abuddy/api';
 
-// Using ThreadEntity from API types, with local interface for any UI-specific properties
-interface ThreadItem extends Partial<ThreadEntity> {
-  id: string
-  status: string
-  tags: string[]
-}
-
 const actor: ThreadsState = applicationState.system.get(id);
 const threads = useSelector(actor, (state) => state.context.threads);
 const searchKeyword = ref('');

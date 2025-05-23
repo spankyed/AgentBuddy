@@ -75,7 +75,7 @@ const handleNewThread = () => {
   isOpen.value = false
 }
 
-const formatTime = (timestamp: Date) => {
+const formatTime = (timestamp: Date | number | string) => {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit'
