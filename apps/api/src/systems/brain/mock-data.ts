@@ -167,6 +167,10 @@ export const rows: Rows = {
       role: EARS.RoleKind.Custom('latest_thread'),
     },
     {
+      entityId: 'Thread-1',
+      role: EARS.RoleKind.Custom('selected_thread'),
+    },
+    {
       entityId: 'Message-1',
       role: EARS.RoleKind.Custom('latest_message'),
     },

@@ -10,10 +10,13 @@ function byEntityType<
   return (r): r is Extract<Row, { entityType: K }> => r.entityType === type
 }
 
-export type StartupData = Record<
-  keyof typeof pluginStartupLoaders,
-  ReturnType<typeof pluginStartupLoaders[keyof typeof pluginStartupLoaders]>
->;
+type LoaderMap = typeof pluginStartupLoaders;
+
+export type StartupData = {
+  [K in keyof LoaderMap]:
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    LoaderMap[K] extends (...args: any[]) => infer R ? R : never
+};
 
 const pluginStartupLoaders = {
   agent: () => {
@@ -24,6 +27,15 @@ const pluginStartupLoaders = {
       threads: rows.entity.filter(byEntityType(EARS.Entity.Thread)),
       // currentThreadId: rows.entity.filter(byEntityType(EARS.Entity.Thread))[0].id,
     }
+  },
+  threads: () => {
+    const threads = rows.entity.filter(byEntityType(EARS.Entity.Thread));
+    const selectedThreadId = rows.role.find(r => r.role === EARS.RoleKind.Custom('selected_thread'))?.entityId;
+
+    return {
+      threads,
+      selectedThreadId,
+    }
   }
 }
 
@@ -31,7 +43,8 @@ export function getStartupData(): StartupData {
   const startupData = {} as StartupData;
 
   for (const [plugin, loader] of entries(pluginStartupLoaders)) {
-    startupData[plugin] = loader();
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    startupData[plugin] = loader() as any;
   }
 
   return startupData;

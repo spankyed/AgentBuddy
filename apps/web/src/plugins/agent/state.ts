@@ -84,18 +84,7 @@ const agentState = setup({
     clearMessages: assign(() => ({
       messages: []
     })),
-    setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('STARTUP', event);
-      console.log('typedEvent: ', typedEvent);
-      
-      // Filter entities by their respective types
-      return {
-        messages: typedEvent.pluginData.messages,
-        contextItems: typedEvent.pluginData.contextItems,
-        canvasContent: typedEvent.pluginData.canvasContent,
-        threads: typedEvent.pluginData.threads,
-      };
-    }),
+
     handleTokenStream: assign(({ context, event }) => {
       const token = typeOf('TOKEN_STREAM', event).token;
       const { messages, pendingActionId } = context;
@@ -124,6 +113,15 @@ const agentState = setup({
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
     // })),
+    setPluginData: assign(({ event }) => {
+      const typedEvent = typeOf('STARTUP', event);
+      return {
+        messages: typedEvent.pluginData.messages,
+        contextItems: typedEvent.pluginData.contextItems,
+        canvasContent: typedEvent.pluginData.canvasContent,
+        threads: typedEvent.pluginData.threads,
+      };
+    }),
   },
   guards: {
     targetIs,
@@ -148,6 +146,9 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
   }),
   on: {
+    STARTUP: {
+      actions: 'setPluginData'
+    },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],
       ['.workload', 'workload'],
@@ -170,9 +171,6 @@ const agentState = setup({
     },
     SELECT_THREAD: {
       actions: 'setCurrentThread'
-    },
-    STARTUP: {
-      actions: 'setPluginData'
     },
     TOKEN_STREAM: {
       actions: 'handleTokenStream'

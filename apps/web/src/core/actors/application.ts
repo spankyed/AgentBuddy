@@ -108,13 +108,7 @@ export const createApplicationState = () => setup({
         [params]: !context.defaultToggles[params]
       }
     })),
-    spawnPluginActors: enqueueActions(({ enqueue, context }) => {
-      enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
-
-      for (const plugin of context.plugins) {
-        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
-      }
-    }),
+    trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id }),
     trailNewPlugin: enqueueActions(({ enqueue, context, event }) => {
       let pluginId = ''
       if (event.type === 'DEFAULT_TOGGLE') {
@@ -132,7 +126,13 @@ export const createApplicationState = () => setup({
         targetView: computeCrumbs(system.get(pluginId).getSnapshot()).target
       }))
     }),
-    trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id })
+    spawnPluginActors: enqueueActions(({ enqueue, context }) => {
+      enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
+
+      for (const plugin of context.plugins) {
+        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+      }
+    }),
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',

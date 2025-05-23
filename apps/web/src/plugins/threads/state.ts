@@ -3,24 +3,25 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
+import type { StartupData, ThreadEntity } from '@abuddy/api';
+
+const typeOf = safeEvents<ThreadsEvent>();
 
 export const id = 'threads' as const;
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
-interface ThreadsContext {
-  selectedThreadId?: string;
-}
 
 type ThreadsEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
-  // internal
+  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
   | TrailClickEvent;
-
-const typeOf = safeEvents<ThreadsEvent>();
-
 // type Views = 'list' | 'create' | 'view';
+interface ThreadsContext {
+  threads: ThreadEntity[];
+  selectedThreadId?: string;
+}
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadsEvent },
@@ -28,6 +29,16 @@ const threadsState = setup({
   actions: {
     setSelectedThreadId: assign({
       selectedThreadId: ({ event }) => typeOf(['SELECT_THREAD', 'CREATE_THREAD'], event).id,
+    }),
+    setPluginData: assign(({ event }) => {
+      const typedEvent = typeOf('STARTUP', event);
+      console.log("typedEvent: ", typedEvent);
+
+      // Access the threads directly from the startup data
+      return {
+        threads: typedEvent.pluginData.threads,
+        selectedThreadId: typedEvent.pluginData.threads[0]?.id,
+      };
     }),
   },
   guards: {
@@ -37,9 +48,13 @@ const threadsState = setup({
   id,
   initial: 'list',
   context: () => ({
+    threads: [],
     selectedThreadId: undefined,
   }),
   on: {
+    STARTUP: {
+      actions: 'setPluginData'
+    },
     // ...TRAIL_CLICK<ThreadsEvent>([
     ...TRAIL_CLICK([
       ['.list', 'list'],
