@@ -21,7 +21,11 @@ export interface MessageEntity extends BaseEntity {
 export interface ThreadEntity extends BaseEntity {
   entityType: 'Thread';
   title: string;
+  // topic: string;
+  // sideTopics?: string[];
   timestamp: number;
+  shortCode?: string;
+  tags?: string[];
 }
 
 // ContextItem entity

@@ -7,30 +7,44 @@ export const now = new Date(nowMs);
 // Using the data from the original file but restructured to match the adapter/mock-data.ts format
 export const rows: Rows = {
   entity: [
-    // Thread entities with their attributes combined
+    // Thread entities
     { 
       id: 'Thread-1', 
       entityType: 'Thread', 
-      createdAt: nowMs - 9 * 60_000,
+      createdAt: nowMs - 9 * 61_000,
       title: 'UI Layout Reorganization Instructions',
-      timestamp: nowMs - 9 * 60_000
+      timestamp: nowMs - 9 * 60_000,
+      shortCode: 'U-182',
+      tags: ['ui', 'design', 'frontend']
     },
     { 
       id: 'Thread-2', 
       entityType: 'Thread', 
-      createdAt: nowMs - 60 * 60_000,
+      createdAt: nowMs - 61 * 60_000,
       title: 'Adding Padding to Scrollbar in CSS',
-      timestamp: nowMs - 60 * 60_000
+      timestamp: nowMs - 61 * 60_000,
+      shortCode: 'WI-45',
+      tags: ['css', 'frontend']
     },
     { 
       id: 'Thread-3', 
       entityType: 'Thread', 
       createdAt: nowMs - 60 * 60_000,
       title: 'Enhancing Chat Interface Design',
-      timestamp: nowMs - 60 * 60_000
+      timestamp: nowMs - 60 * 60_000,
+      shortCode: 'U-67',
+      tags: ['ui', 'chat', 'design']
     },
-    
-    // Message entities with their attributes combined
+    { 
+      id: 'Thread-4', 
+      entityType: 'Thread', 
+      createdAt: nowMs - 60 * 60_000,
+      title: 'Project X',
+      timestamp: nowMs - 60 * 60_000,
+      shortCode: 'P-13',
+      tags: ['project', 'backend']
+    },
+    // Message entities
     { 
       id: 'Msg-1', 
       entityType: 'Message', 
@@ -72,7 +86,7 @@ export const rows: Rows = {
       timestamp: nowMs - 1 * 60_000
     },
     
-    // Context item entities with their attributes combined
+    // Context item entities
     { 
       id: 'Context-1', 
       entityType: 'ContextItem', 
@@ -116,7 +130,7 @@ export const rows: Rows = {
       itemType: 'text'
     },
     
-    // Canvas content entity with attributes combined
+    // Canvas content
     { 
       id: 'Canvas-1', 
       entityType: 'CanvasContent', 
@@ -156,7 +170,7 @@ export const rows: Rows = {
   
   // Relationships between entities
   relation: [
-    // Thread contains messages
+    // messages
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
@@ -188,7 +202,7 @@ export const rows: Rows = {
       info: JSON.stringify({}),
     },
     
-    // threads owns context items
+    // context items
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
@@ -208,7 +222,7 @@ export const rows: Rows = {
       info: JSON.stringify({}),
     },
     
-    // threads owns canvas content
+    // canvas content
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
