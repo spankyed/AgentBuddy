@@ -46,7 +46,7 @@ export const rows: Rows = {
     },
     // Message entities
     { 
-      id: 'Msg-1', 
+      id: 'Message-1', 
       entityType: 'Message', 
       createdAt: nowMs - 5 * 60_000,
       content: 'Can you help me understand how to use CSS variables in my design system?',
@@ -54,7 +54,7 @@ export const rows: Rows = {
       timestamp: nowMs - 5 * 60_000
     },
     { 
-      id: 'Msg-2', 
+      id: 'Message-2', 
       entityType: 'Message', 
       createdAt: nowMs - 4 * 60_000,
       content: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
@@ -62,7 +62,7 @@ export const rows: Rows = {
       timestamp: nowMs - 4 * 60_000
     },
     { 
-      id: 'Msg-3', 
+      id: 'Message-3', 
       entityType: 'Message', 
       createdAt: nowMs - 3 * 60_000,
       content: 'That makes sense. Can you show me how to use them with a color palette?',
@@ -70,7 +70,7 @@ export const rows: Rows = {
       timestamp: nowMs - 3 * 60_000
     },
     { 
-      id: 'Msg-4', 
+      id: 'Message-4', 
       entityType: 'Message', 
       createdAt: nowMs - 2 * 60_000,
       content: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
@@ -78,7 +78,7 @@ export const rows: Rows = {
       timestamp: nowMs - 2 * 60_000
     },
     { 
-      id: 'Msg-5', 
+      id: 'Message-5', 
       entityType: 'Message', 
       createdAt: nowMs - 1 * 60_000,
       content: 'please rewrite this code using css variables from our design systems',
@@ -86,9 +86,9 @@ export const rows: Rows = {
       timestamp: nowMs - 1 * 60_000
     },
     
-    // Context item entities
+    // ContextItem item entities
     { 
-      id: 'Context-1', 
+      id: 'ContextItem-1', 
       entityType: 'ContextItem', 
       createdAt: nowMs,
       title: 'Project Overview',
@@ -96,7 +96,7 @@ export const rows: Rows = {
       itemType: 'text'
     },
     { 
-      id: 'Context-2', 
+      id: 'ContextItem-2', 
       entityType: 'ContextItem', 
       createdAt: nowMs,
       title: 'CSS Variables Example',
@@ -122,7 +122,7 @@ export const rows: Rows = {
       itemType: 'code'
     },
     { 
-      id: 'Context-3', 
+      id: 'ContextItem-3', 
       entityType: 'ContextItem', 
       createdAt: nowMs,
       title: 'Color Palette',
@@ -166,6 +166,10 @@ export const rows: Rows = {
       entityId: 'Thread-1',
       role: EARS.RoleKind.Custom('latest_thread'),
     },
+    {
+      entityId: 'Message-1',
+      role: EARS.RoleKind.Custom('latest_message'),
+    },
   ],
   
   // Relationships between entities
@@ -174,31 +178,31 @@ export const rows: Rows = {
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Msg-1',
+      tgtId: 'Message-1',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Msg-2',
+      tgtId: 'Message-2',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Msg-3',
+      tgtId: 'Message-3',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Msg-4',
+      tgtId: 'Message-4',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Msg-5',
+      tgtId: 'Message-5',
       info: JSON.stringify({}),
     },
     
@@ -206,19 +210,19 @@ export const rows: Rows = {
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
-      tgtId: 'Context-1',
+      tgtId: 'ContextItem-1',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
-      tgtId: 'Context-2',
+      tgtId: 'ContextItem-2',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.OWNS,
-      tgtId: 'Context-3',
+      tgtId: 'ContextItem-3',
       info: JSON.stringify({}),
     },
     

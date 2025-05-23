@@ -1,6 +1,6 @@
 import { rows } from '../mock-data';
 import { tx } from '@/shared/ears/transaction';
-import { EARS } from '@/shared/ears/types';
+import type { EARS } from '@/shared/ears/types';
 import { setNewMessage } from '.';
 
 /**
@@ -67,29 +67,6 @@ export function loadMockData(): void {
           .role(role)
           .id();
       }
-    }
-  }
-
-  /*───────────────────────*
-   * 4 ▸ Set latest message *
-   *───────────────────────*/
-  // Find the thread with the latest_thread role
-  const latestThreadRole = rows.role?.find(r => 
-    r.role === EARS.RoleKind.Custom('latest_thread')
-  );
-  
-  if (latestThreadRole) {
-    const latestThreadId = entityIds[latestThreadRole.entityId];
-    
-    // Find the latest message (the one with the most recent timestamp)
-    const messageEntities = rows.entity.filter(e => e.entityType === EARS.Entity.Message);
-    const latestMessage = messageEntities.reduce((latest, msg) => 
-      !latest || (msg.timestamp && latest?.timestamp && msg.timestamp > latest.timestamp) ? msg : latest, 
-      undefined as typeof messageEntities[number] | undefined
-    );
-    
-    if (latestMessage && entityIds[latestMessage.id]) {
-      setNewMessage(entityIds[latestMessage.id], latestThreadId);
     }
   }
 }
