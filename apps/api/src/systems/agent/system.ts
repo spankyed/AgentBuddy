@@ -79,7 +79,7 @@ export const agentSystem = setup({
         error: typeOf('LLM_ERROR', event).error
       }));
     },
-    sendFEWakeup: ({ system }) => {
+    sendFEStartup: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'STARTUP',
         rows: rows
@@ -110,7 +110,7 @@ export const agentSystem = setup({
       },
       STARTUP: {
         target: '.idle',
-        actions: 'sendFEWakeup',
+        actions: 'sendFEStartup',
       },
     },
     states: {

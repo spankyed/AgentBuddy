@@ -51,7 +51,7 @@
 //     })
 //   },
 //   actions: {
-//     sendFEWakeup: ({ system }) => {
+//     sendFEStartup: ({ system }) => {
 //       system.get(bus).send(emit(brain, { type: 'STARTUP'}));
 //     },
 //     emitToken: ({ system }) => {
@@ -81,7 +81,7 @@
 //       STARTUP: {
 //         target: '.idle',
 //         // actions: 'emitToken',
-//         actions: 'sendFEWakeup',
+//         actions: 'sendFEStartup',
 //       },
 //     },
 //     states: {
