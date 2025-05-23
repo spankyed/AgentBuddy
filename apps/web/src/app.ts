@@ -8,11 +8,11 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './app.vue';
 
-// const { inspect } = createBrowserInspector();
+const { inspect } = createBrowserInspector();
 
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
-  // inspect,
+  inspect,
   input: {
     defaultPlugin,
     plugins,
