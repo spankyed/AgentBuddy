@@ -11,15 +11,19 @@ const typeOf = safeEvents<ReceivableEvents>();
 
 export const brain = 'brain' as const;
 
-export const IncomingBrainEvents = [] as const
+const busEvent = systemBus(brain);
+
+export const IncomingBrainEvents = [
+  busEvent('EMPTY_BRAIN', {}),
+] as const
+
 export type BrainInternalEvents = 
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingBrainEvents =
   | { type: 'STARTUP'; startupData: ReturnType<typeof getStartupData> }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const BrainSystemEvents = fromSystem(IncomingBrainEvents as any)<OutgoingBrainEvents, typeof brain>()
+export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
 
 
