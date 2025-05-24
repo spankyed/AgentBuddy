@@ -116,19 +116,7 @@
             Chat About {{ topic.slice(0, 10) }}...
           </Button>
         </div>
-        <div v-if="isMessagesOpen" class="p-3 pr-0 mt-2 overflow-hidden rounded-sm bg-neutral-900">
-          <div class="overflow-y-auto max-h-96 messages-container">
-            <ul class="mr-2 space-y-1">
-              <li v-for="(message, index) in messages" :key="index" 
-                  :class="[
-                    'px-3 py-2 text-sm truncate rounded-sm',
-                    message.sender === 'user' ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-300'
-                  ]">
-                {{ message.text }}
-              </li>
-            </ul>
-          </div>
-        </div>
+        <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
       </div>
     </div>
   </div>
@@ -142,6 +130,7 @@ import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
+import MessageList from './message-list.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
