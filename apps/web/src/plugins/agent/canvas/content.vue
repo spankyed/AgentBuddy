@@ -30,10 +30,10 @@
     </div>
     
     <div v-if="content.contentType === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
-      <p class="text-sm italic text-neutral-300">please rewrite this code using css variables from our design systems</p>
+      <p class="text-sm text-neutral-300">please rewrite this code using css variables from our design systems</p>
     </div>
     <div v-if="content.contentType === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">
-      <p class="text-sm italic text-neutral-300">please rewrite this code using css variables from our design systems</p>
+      <p class="text-sm text-neutral-300">please rewrite this code using css variables from our design systems</p>
     </div>
   </div>
   <!-- Toggle Button -->
