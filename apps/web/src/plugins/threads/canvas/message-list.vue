@@ -6,7 +6,7 @@
             :key="index" 
             @click="toggleMessage(index)"
             :class="[
-              'px-3 py-2 text-sm rounded-sm cursor-pointer transition-all duration-200',
+              'px-3 py-2 text-sm rounded-sm cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:brightness-110',
               { 'truncate': expandedMessageIndex !== index },
               message.sender === 'user' ? 'bg-neutral-700/20 text-white border border-gray-700/30' : 'bg-neutral-900/40 text-white',
             ]">
