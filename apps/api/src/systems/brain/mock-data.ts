@@ -15,6 +15,7 @@ export const rows: Rows = {
       topic: 'UI Layout Reorganization Instructions',
       timestamp: nowMs - 9 * 60_000,
       shortCode: 'U-182',
+      threadType: 'work-item',
       tags: ['ui', 'design', 'frontend'],
       status: 'active'
     },
@@ -25,6 +26,7 @@ export const rows: Rows = {
       topic: 'Adding Padding to Scrollbar in CSS',
       timestamp: nowMs - 61 * 60_000,
       shortCode: 'WI-45',
+      threadType: 'work-item',
       tags: ['css', 'frontend'],
       status: 'queued'
     },
@@ -35,6 +37,7 @@ export const rows: Rows = {
       topic: 'Enhancing Chat Interface Design',
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'U-67',
+      threadType: 'work-item',
       tags: ['ui', 'chat', 'design'],
       status: 'draft'
     },
@@ -45,6 +48,7 @@ export const rows: Rows = {
       topic: 'Project X',
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'P-13',
+      threadType: 'project',
       tags: ['project', 'backend'],
       status: 'inactive'
     },
