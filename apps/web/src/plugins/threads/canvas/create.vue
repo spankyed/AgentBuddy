@@ -8,7 +8,7 @@
           <input
             v-model="topic"
             type="text"
-            :placeholder="placeholder"
+            placeholder="Thread Topic"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           />
         </div>
@@ -117,26 +117,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 
 const topic = ref('')
 const type = ref('work-item')
-// Placeholder options for topic based on selected type
-const workItemPlaceholders = [
-  'Review latest PR for UX improvements',
-  'Tackle sprint tasks for Q2',
-  'Implement dev feedback for bug fixes'
-]
-const projectPlaceholders = [
-  'Q3 marketing campaign',
-  'Upcoming project milestones',
-  'Settings page redesign',
-]
-const placeholder = ref('')
-const setRandomPlaceholder = () => {
-  const list = type.value === 'work-item'
-    ? workItemPlaceholders
-    : projectPlaceholders
-  placeholder.value = list[Math.floor(Math.random() * list.length)]
-}
-onMounted(() => setRandomPlaceholder())
-watch(type, () => setRandomPlaceholder())
+
 const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
 const isSaving = ref('')
 
