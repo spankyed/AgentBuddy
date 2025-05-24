@@ -4,7 +4,7 @@ import {
   queryEntitiesByRelationTo,
   getAttribute,
 } from '@/shared/ears/attribute-storage';
-import { tx } from '@/shared/ears/transaction';                      // path to the helper file
+import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 
 /*──────────────────────── helpers ────────────────────────*/

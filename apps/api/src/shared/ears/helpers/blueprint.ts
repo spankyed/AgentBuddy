@@ -1,7 +1,7 @@
 import { unique } from "drizzle-orm/gel-core";
-import { addAttribute, addRole, addRelation } from "./attribute-storage";
-import { createEntity } from "./create-entity";
-import { EARS } from "./types";
+import { addAttribute, addRole, addRelation } from "../attribute-storage";
+import { createEntity } from "../create-entity";
+import { EARS } from "../types";
 import { tx } from "./transaction";
 
 /*────────── Fluent builder ─────────*/

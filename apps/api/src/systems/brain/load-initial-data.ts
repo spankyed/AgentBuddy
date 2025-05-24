@@ -1,5 +1,5 @@
 import { rows } from './mock-data';
-import { tx } from '@/shared/ears/transaction';
+import { tx } from '@/shared/ears/helpers/transaction';
 import type { EARS } from '@/shared/ears/types';
 
 /**
