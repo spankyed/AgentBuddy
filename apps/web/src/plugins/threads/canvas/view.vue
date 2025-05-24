@@ -34,29 +34,6 @@
         </div>
       </div>
 
-      <!-- Notes -->
-      <!-- <div>
-        <button 
-          @click="isNotesOpen = !isNotesOpen"
-          class="flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded text-neutral-300 hover:bg-neutral-700"
-        >
-          <span>Add Notes</span>
-          <ChevronDown 
-            :size="16" 
-            :class="[`ml-1 transition-transform`, isNotesOpen ? 'rotate-180' : '']"
-          />
-        </button>
-
-        <div v-if="isNotesOpen" class="p-3 mt-2 rounded-sm bg-neutral-900">
-          <textarea
-            :value="notes"
-            @input="e => updateField('notes', e.target as HTMLTextAreaElement)"
-            class="w-full h-64 p-2 text-sm rounded bg-neutral-900 focus:outline-none focus:ring-1 focus:ring-primary-600 resize-handle"
-            placeholder="Add thread notes here..."
-          ></textarea>
-        </div>
-      </div> -->
-
       <!-- Threads list -->
       <div>
         <!-- <Label>Related Threads</Label> -->
@@ -197,8 +174,6 @@ const setRandomPlaceholder = () => {
 const threads = ref<string[]>(relatedThreads.value || [])
 // const isSaving = ref('')
 const isMessagesOpen = ref(false)
-const isNotesOpen = ref(false)
-const notes = ref('')
 
 onMounted(() => setRandomPlaceholder())
 watch(type, () => setRandomPlaceholder())
