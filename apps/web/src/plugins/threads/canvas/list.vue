@@ -74,9 +74,9 @@
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
+            <!-- <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
               <span @click.stop v-for="tag in thread.tags" :key="tag" class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30">{{ tag }}</span>
-            </div>
+            </div> -->
           </div>
         </div>
 
@@ -101,7 +101,6 @@ import { applicationState } from '@/app'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
-import type { ThreadEntity } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
 const threads = useSelector(actor, (state) => state.context.threads);
