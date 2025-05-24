@@ -11,10 +11,11 @@ export namespace EARS {
     Brain    = 'Brain',
     Message  = 'Message',
     Thread   = 'Thread',
+    Tag      = 'Tag',
     Relation = 'Relation',
     ContextItem  = 'ContextItem',
     CanvasItem   = 'CanvasItem',
-    Task     = 'Task',
+    // Task     = 'Task',
   }
   export type EntityId = `${Entity}-${string}`;
 
@@ -25,7 +26,7 @@ export namespace EARS {
     CONTAINS   : 'CONTAINS',
     SPAWNED    : 'SPAWNED',
     REPLIED_TO : 'REPLIED_TO',
-    OWNS       : 'OWNS',
+    HAS       : 'HAS',
   } as const;
 
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;

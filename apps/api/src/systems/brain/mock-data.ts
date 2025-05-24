@@ -1,13 +1,14 @@
 import { EARS } from '@/shared/ears/types';
-import type { Rows, MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/shared/types';
+import type { Rows } from '@/shared/types';
 
 const nowMs = Date.now();
 export const now = new Date(nowMs);
 
-// Using the data from the original file but restructured to match the adapter/mock-data.ts format
 export const rows: Rows = {
   entity: [
-    // Thread entities
+    /*───────────────────────────────────────────────────────────────*
+     * Thread entities                                               *
+     *───────────────────────────────────────────────────────────────*/
     { 
       id: 'Thread-1', 
       entityType: EARS.Entity.Thread, 
@@ -16,7 +17,6 @@ export const rows: Rows = {
       timestamp: nowMs - 9 * 60_000,
       shortCode: 'U-182',
       threadType: 'work-item',
-      tags: ['ui', 'design', 'frontend'],
       status: 'active'
     },
     { 
@@ -27,7 +27,6 @@ export const rows: Rows = {
       timestamp: nowMs - 61 * 60_000,
       shortCode: 'WI-45',
       threadType: 'work-item',
-      tags: ['css', 'frontend'],
       status: 'queued'
     },
     { 
@@ -38,7 +37,6 @@ export const rows: Rows = {
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'U-67',
       threadType: 'work-item',
-      tags: ['ui', 'chat', 'design'],
       status: 'draft'
     },
     { 
@@ -49,10 +47,56 @@ export const rows: Rows = {
       timestamp: nowMs - 60 * 60_000,
       shortCode: 'P-13',
       threadType: 'project',
-      tags: ['project', 'backend'],
       status: 'inactive'
     },
-    // Message entities
+    /*───────────────────────────────────────────────────────────────*
+     * Tag entities                                                  *
+     *───────────────────────────────────────────────────────────────*/
+    {
+      id: 'Tag-1',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'ui'
+    },
+    {
+      id: 'Tag-2',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'design'
+    },
+    {
+      id: 'Tag-3',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'frontend'
+    },
+    {
+      id: 'Tag-4',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'css'
+    },
+    {
+      id: 'Tag-5',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'chat'
+    },
+    {
+      id: 'Tag-6',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'project'
+    },
+    {
+      id: 'Tag-7',
+      entityType: EARS.Entity.Tag,
+      createdAt: nowMs,
+      name: 'backend'
+    },
+    /*───────────────────────────────────────────────────────────────*
+     * Message entities                                              *
+     *───────────────────────────────────────────────────────────────*/
     { 
       id: 'Message-1', 
       entityType: EARS.Entity.Message, 
@@ -94,7 +138,9 @@ export const rows: Rows = {
       timestamp: nowMs - 1 * 60_000
     },
     
-    // ContextItem item entities
+    /*───────────────────────────────────────────────────────────────*
+     * ContextItem item entities                                     *
+     *───────────────────────────────────────────────────────────────*/
     { 
       id: 'ContextItem-1', 
       entityType: EARS.Entity.ContextItem, 
@@ -138,7 +184,9 @@ export const rows: Rows = {
       itemType: 'text'
     },
     
-    // Canvas content
+    /*───────────────────────────────────────────────────────────────*
+     * Canvas content                                                *
+     *───────────────────────────────────────────────────────────────*/
     { 
       id: 'CanvasItem-1', 
       entityType: EARS.Entity.CanvasItem, 
@@ -168,7 +216,9 @@ export const rows: Rows = {
     }
   ],
   
-  // Role assignments
+  /*───────────────────────────────────────────────────────────────*
+   * Role assignments                                              *
+   *───────────────────────────────────────────────────────────────*/
   role: [
     {
       entityId: 'Thread-1',
@@ -184,9 +234,13 @@ export const rows: Rows = {
     },
   ],
   
-  // Relationships between entities
+  /*───────────────────────────────────────────────────────────────*
+   * Relationships between entities                                *
+   *───────────────────────────────────────────────────────────────*/
   relation: [
-    // messages
+    /*───────────────────────────────────────────────────────────────*
+     * Messages                                                      *
+     *───────────────────────────────────────────────────────────────*/
     {
       srcId: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
@@ -218,31 +272,99 @@ export const rows: Rows = {
       info: JSON.stringify({}),
     },
     
-    // context items
+    /*───────────────────────────────────────────────────────────────*
+     * Context items                                                 *
+     *───────────────────────────────────────────────────────────────*/
     {
       srcId: 'Thread-1',
-      kind: EARS.RelKind.OWNS,
+      kind: EARS.RelKind.HAS,
       tgtId: 'ContextItem-1',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
-      kind: EARS.RelKind.OWNS,
+      kind: EARS.RelKind.HAS,
       tgtId: 'ContextItem-2',
       info: JSON.stringify({}),
     },
     {
       srcId: 'Thread-1',
-      kind: EARS.RelKind.OWNS,
+      kind: EARS.RelKind.HAS,
       tgtId: 'ContextItem-3',
       info: JSON.stringify({}),
     },
     
-    // canvas content
+    /*───────────────────────────────────────────────────────────────*
+     * Canvas content                                                *
+     *───────────────────────────────────────────────────────────────*/
     {
       srcId: 'Thread-1',
-      kind: EARS.RelKind.OWNS,
+      kind: EARS.RelKind.HAS,
       tgtId: 'CanvasItem-1',
+      info: JSON.stringify({}),
+    },
+
+    /*───────────────────────────────────────────────────────────────*
+     * Thread-tag relationships                                      *
+     *───────────────────────────────────────────────────────────────*/
+    {
+      srcId: 'Thread-1',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-1',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-1',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-2',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-1',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-3',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-2',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-4',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-2',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-3',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-3',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-1',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-3',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-5',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-3',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-2',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-4',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-6',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-4',
+      kind: EARS.RelKind.HAS,
+      tgtId: 'Tag-7',
       info: JSON.stringify({}),
     },
   ],

@@ -1,15 +1,11 @@
 import type { EARS } from './ears/types';
 
-// New interfaces for the EARS entity/role/relation structure
-
-// Base entity interface with common properties
 export interface BaseEntity {
   id: string;
   entityType: string;
   createdAt: number;
 }
 
-// Message entity
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   content: string;
@@ -17,7 +13,6 @@ export interface MessageEntity extends BaseEntity {
   timestamp: number;
 }
 
-// Thread entity
 export interface ThreadEntity extends BaseEntity {
   entityType: EARS.Entity.Thread;
   topic: string;
@@ -25,11 +20,9 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   shortCode?: string;
   threadType: 'work-item' | 'project';
-  tags?: string[];
   status?: 'draft' | 'queued' | 'active' | 'inactive';
 }
 
-// ContextItem entity
 export interface ContextItemEntity extends BaseEntity {
   entityType: EARS.Entity.ContextItem;
   title: string;
@@ -37,7 +30,6 @@ export interface ContextItemEntity extends BaseEntity {
   itemType: 'text' | 'code' | 'image' | 'json';
 }
 
-// CanvasContent entity
 export interface CanvasContentEntity extends BaseEntity {
   entityType: EARS.Entity.CanvasItem;
   contentType: 'text' | 'code' | 'image' | 'graph' | 'table';
@@ -45,24 +37,23 @@ export interface CanvasContentEntity extends BaseEntity {
   content: string | any;
 }
 
-// Union type for all entity types
-export type Entity = MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity;
+export interface TagEntity extends BaseEntity {
+  entityType: EARS.Entity.Tag;
+  name: string;
+}
 
-// Role assignment
+export type Entity = MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity;
+
 export interface RoleAssignment {
   entityId: string;
   role: EARS.RoleKind;
 }
-
-// Relation between entities
 export interface Relation {
   srcId: string;
   kind: EARS.RelKind;
   tgtId: string;
   info: string; // JSON string
 }
-
-// The complete rows structure
 export interface Rows {
   entity: Entity[];
   role: RoleAssignment[];

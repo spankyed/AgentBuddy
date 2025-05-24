@@ -117,7 +117,7 @@
 // 	relation: [
 // 		{
 // 			srcId: "Agent-demo",
-// 			kind: EARS.RelKind.OWNS,
+// 			kind: EARS.RelKind.HAS,
 // 			tgtId: "Thread-ui",
 // 			info: {},
 // 		},
