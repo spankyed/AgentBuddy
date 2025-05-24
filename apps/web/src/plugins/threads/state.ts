@@ -15,7 +15,6 @@ type ViewData = Partial<ThreadEntity> & {
   messages?: MessageEntity[];
   relatedThreads?: string[];
   tags?: string[];
-  notes?: string;
 }
 
 type ThreadsEvent =
@@ -24,7 +23,7 @@ type ThreadsEvent =
   | { type: 'CREATE_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
   | { type: 'STARTUP'; pluginData: StartupData['threads'] }
-  | { type: 'UPDATE_THREAD_DATA'; key: keyof ThreadEntity | 'notes' | 'tags' | 'relatedThreads'; value: unknown }
+  | { type: 'UPDATE_THREAD_DATA'; key: keyof ThreadEntity | 'tags' | 'relatedThreads'; value: unknown }
   | { type: 'ADD_THREAD' }
   | { type: 'REMOVE_THREAD'; index: number }
   | { type: 'ADD_TAG' }
@@ -93,7 +92,7 @@ const threadsState = setup({
         thread[typedEvent.key] = typedEvent.value as any;
       }
 
-      const { messages, relatedThreads, tags, notes, ...updatedThread } = thread;
+      const { messages, relatedThreads, tags, ...updatedThread } = thread;
       const updateThreads = context.threads.map(t => t.id === thread.id ? updatedThread : t);
 
       return {
@@ -155,7 +154,6 @@ const threadsState = setup({
       messages: undefined,
       relatedThreads: undefined,
       tags: undefined,
-      notes: undefined,
     },
   }),
   on: {

@@ -35,7 +35,7 @@
       </div>
 
       <!-- Notes -->
-      <div>
+      <!-- <div>
         <button 
           @click="isNotesOpen = !isNotesOpen"
           class="flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded text-neutral-300 hover:bg-neutral-700"
@@ -55,7 +55,7 @@
             placeholder="Add thread notes here..."
           ></textarea>
         </div>
-      </div>
+      </div> -->
 
       <!-- Threads list -->
       <div>
@@ -218,7 +218,7 @@ watch(isMessagesOpen, async (isOpen) => {
   }
 })
 
-type attrKeys = 'topic' | 'threadType' | 'notes' | 'tags' | 'relatedThreads'
+type attrKeys = 'topic' | 'threadType' | 'tags' | 'relatedThreads'
 const updateField = (key: attrKeys, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
   actor.send({ type: 'UPDATE_THREAD_DATA', key, value });
