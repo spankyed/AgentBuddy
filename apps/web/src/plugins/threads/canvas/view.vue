@@ -139,7 +139,6 @@ import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
-import type { ThreadEntity } from '@abuddy/api';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 
@@ -171,7 +170,7 @@ watch(isMessagesOpen, async (isOpen) => {
   }
 })
 
-type attrKeys = 'topic' | 'threadType' | 'tags' | 'relatedThreads'
+type attrKeys = 'topic' | 'threadType'
 const updateField = (key: attrKeys, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
   actor.send({ type: 'UPDATE_THREAD_DATA', key, value });

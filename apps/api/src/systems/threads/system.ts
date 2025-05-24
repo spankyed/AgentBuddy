@@ -22,7 +22,7 @@ export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingThreadsEvents = 
-  | { type: 'VIEW_DATA', threadId: EARS.EntityId, messages: Partial<MessageEntity>[] }
+  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, messages: Partial<MessageEntity>[] }
 
 export interface ThreadsContext {
   threadsId: EARS.EntityId;
@@ -43,9 +43,9 @@ export const threadsSystem = setup({
       const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
       const messages = getThreadMessages(threadId);
 
-      system.get(bus).send(emit('application', { 
-        type: 'VIEW_DATA',
-        threadId,
+      system.get(bus).send(emit(threads, { 
+        type: 'SET_VIEW_DATA',
+        id: threadId,
         messages,
       }));
     },

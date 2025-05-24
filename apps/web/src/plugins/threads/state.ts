@@ -3,33 +3,38 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents } from '@abuddy/api';
 import type { EARS } from '@abuddy/api';
+import { trpc } from '@/core/trpc';
 
-const typeOf = safeEvents<ThreadsEvent>();
+const typeOf = safeEvents<UIEvent>();
 
 export const id = 'threads' as const;
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 type ViewData = Partial<ThreadEntity> & {
-  messages?: MessageEntity[];
+  messages?: Partial<MessageEntity>[];
   relatedThreads?: string[];
   tags?: string[];
 }
 
-type ThreadsEvent =
+type SystemEvent =
+  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
+  | OutgoingThreadsEvents
+
+type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD'; id: string }
   | { type: 'CANCEL_CREATE' }
-  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
   | { type: 'UPDATE_THREAD_DATA'; key: keyof ThreadEntity | 'tags' | 'relatedThreads'; value: unknown }
   | { type: 'ADD_THREAD' }
   | { type: 'REMOVE_THREAD'; index: number }
   | { type: 'ADD_TAG' }
   | { type: 'REMOVE_TAG'; index: number }
+  | SystemEvent
   | TrailClickEvent;
-// type Views = 'list' | 'create' | 'view';
+
 interface ThreadsContext {
   threads: ThreadEntity[];
   selectedThreadId?: string;
@@ -37,9 +42,28 @@ interface ThreadsContext {
 }
 
 const threadsState = setup({
-  types: { context: {} as ThreadsContext, events: {} as ThreadsEvent },
+  types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {},
   actions: {
+    sendViewThread: ({ event }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'VIEW_THREAD',
+        threadId: typeOf('SELECT_THREAD', event).id,
+      });
+    },
+    setViewData: assign(({ event, context }) => {
+      const { id, messages } = typeOf('SET_VIEW_DATA', event);
+      console.log("messages: ", messages);
+      return {
+        view: {
+          ...context.view,
+          messages,
+          // relatedThreads: messages,
+          // tags: data.tags,
+        }
+      }
+    }),
     setSelectedThread: assign(({ event, context }) => {
       const typedEvent = typeOf('SELECT_THREAD', event);
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
@@ -160,7 +184,10 @@ const threadsState = setup({
     STARTUP: {
       actions: 'setPluginData'
     },
-    // ...TRAIL_CLICK<ThreadsEvent>([
+    SET_VIEW_DATA: {
+      actions: 'setViewData',
+    },
+    // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
@@ -174,7 +201,7 @@ const threadsState = setup({
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {
           target: 'view',
-          actions: 'setSelectedThread',
+          actions: ['setSelectedThread', 'sendViewThread'],
         },
       },
     },
