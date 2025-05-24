@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full border-l w-96 bg-neutral-900 border-neutral-800">
+  <div class="flex flex-col h-full border-l w-[30rem] bg-neutral-900 border-neutral-800">
     <div class="flex items-center p-4 border-b border-neutral-800">
       <button
         @click="$emit('panel-back')"
@@ -36,4 +36,5 @@ defineEmits<(e: 'panel-toggle' | 'panel-back') => void>();
 </script>
 
 <style lang="scss" module>
+
 </style> 
