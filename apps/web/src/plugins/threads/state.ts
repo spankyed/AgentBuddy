@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity } from '@abuddy/api';
 import type { EARS } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
@@ -14,8 +14,8 @@ export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 type ViewData = Partial<ThreadEntity> & {
   messages?: Partial<MessageEntity>[];
-  relatedThreads?: string[];
-  tags?: string[];
+  relatedThreads?: Partial<ThreadEntity>[];
+  tags?: Partial<TagEntity>[];
 }
 
 type SystemEvent =
@@ -53,14 +53,14 @@ const threadsState = setup({
       });
     },
     setViewData: assign(({ event, context }) => {
-      const { id, messages } = typeOf('SET_VIEW_DATA', event);
-      console.log("messages: ", messages);
+      const { id, data } = typeOf('SET_VIEW_DATA', event);
+
       return {
         view: {
           ...context.view,
-          messages,
-          // relatedThreads: messages,
-          // tags: data.tags,
+          messages: data.messages,
+          relatedThreads: data.relatedThreads,
+          tags: data.tags,
         }
       }
     }),

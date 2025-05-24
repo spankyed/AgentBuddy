@@ -374,12 +374,6 @@ export const rows: Rows = {
     {
       srcId: 'Thread-4',
       kind: EARS.RelKind.PARENT_OF,
-      tgtId: 'Thread-2',
-      info: JSON.stringify({}),
-    },
-    {
-      srcId: 'Thread-4',
-      kind: EARS.RelKind.PARENT_OF,
       tgtId: 'Thread-3',
       info: JSON.stringify({}),
     },

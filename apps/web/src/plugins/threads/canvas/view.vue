@@ -48,11 +48,11 @@
           </button>
 
           <span
-            v-for="(thread, index) in threads"
+            v-for="(thread, index) in relatedThreads"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
-            {{ thread }}
+            {{ thread.shortCode }}
             <button
               type="button"
               @click="() => actor.send({ type: 'REMOVE_THREAD', index })"
@@ -82,7 +82,7 @@
             :key="index"
             class="inline-flex items-center pl-3 py-0.5 text-sm bg-purple-900/30 text-purple-200 rounded"
           >
-            {{ tag }}
+            {{ tag.name }}
             <button
               type="button"
               @click="() => actor.send({ type: 'REMOVE_TAG', index })"
@@ -150,7 +150,6 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 
-const threads = ref<string[]>(relatedThreads.value || [])
 // const isSaving = ref('')
 const isMessagesOpen = ref(false)
 

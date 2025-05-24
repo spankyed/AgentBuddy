@@ -6,8 +6,9 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import type { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { getThreadMessages } from './accessors';
+import { getViewData } from './accessors';
 import type { MessageEntity } from '@/types';
+import type { ThreadsViewData } from './types';
 
 export const threads = 'threads' as const;
 
@@ -22,7 +23,7 @@ export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingThreadsEvents = 
-  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, messages: Partial<MessageEntity>[] }
+  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadsViewData }
 
 export interface ThreadsContext {
   threadsId: EARS.EntityId;
@@ -41,12 +42,11 @@ export const threadsSystem = setup({
   actions: {
     sendViewData: ({ system, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
-      const messages = getThreadMessages(threadId);
 
       system.get(bus).send(emit(threads, { 
         type: 'SET_VIEW_DATA',
         id: threadId,
-        messages,
+        data: getViewData(threadId),
       }));
     },
   },
