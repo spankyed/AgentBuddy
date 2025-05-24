@@ -80,7 +80,6 @@ const threadsState = setup({
 
       return {
         threads: typedEvent.pluginData.threads,
-        selectedThreadId: typedEvent.pluginData.threads[0]?.shortCode,
       };
     }),
     updateThreadData: assign(({ event, context }) => {

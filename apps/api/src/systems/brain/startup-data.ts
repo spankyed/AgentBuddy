@@ -30,11 +30,9 @@ const pluginStartupLoaders = {
   },
   threads: () => {
     const threads = rows.entity.filter(byEntityType(EARS.Entity.Thread));
-    const selectedThreadId = rows.role.find(r => r.role === EARS.RoleKind.Custom('selected_thread'))?.entityId;
 
     return {
       threads,
-      selectedThreadId,
     }
   }
 }
