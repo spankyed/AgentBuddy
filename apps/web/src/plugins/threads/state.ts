@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadsViewData } from '@abuddy/api';
 import type { EARS } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
@@ -12,11 +12,7 @@ const typeOf = safeEvents<UIEvent>();
 export const id = 'threads' as const;
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
-type ViewData = Partial<ThreadEntity> & {
-  messages?: Partial<MessageEntity>[];
-  relatedThreads?: Partial<ThreadEntity>[];
-  tags?: Partial<TagEntity>[];
-}
+type ViewData = Partial<ThreadEntity> & ThreadsViewData;
 
 type SystemEvent =
   | { type: 'STARTUP'; pluginData: StartupData['threads'] }
