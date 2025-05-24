@@ -67,44 +67,20 @@ const threadsState = setup({
     setSelectedThread: assign(({ event, context }) => {
       const typedEvent = typeOf('SELECT_THREAD', event);
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
-
-      const messages: MessageEntity[] = [
-        { id: 'msg-1', entityType: 'Message' as EARS.Entity.Message, content: 'This is a sample message that is quite long and should be truncated.', sender: 'user', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-2', entityType: 'Message' as EARS.Entity.Message, content: 'Another message that will not fit in one line.', sender: 'assistant', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-3', entityType: 'Message' as EARS.Entity.Message, content: 'Short message.', sender: 'user', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-4', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation. Yet another example of a long message that need. Yet another example of a long message that need.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-5', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-6', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-7', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-8', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-9', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-10', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-11', entityType: 'Message' as EARS.Entity.Message, content: 'Yet another example of a long message that needs truncation.', sender: 'system', timestamp: Date.now(), createdAt: Date.now() },
-        { id: 'msg-12', entityType: 'Message' as EARS.Entity.Message, content: 'Final message to demonstrate overflow handling.', sender: 'user', timestamp: Date.now(), createdAt: Date.now() }
-      ];
-      const relatedThreads = ['U-182', 'P-13', 'WI-7'];
       
       return {
         selectedThreadId: selectedThread?.shortCode,
         view: {
           ...selectedThread,
-          messages,
-          relatedThreads,
         },
       };
     }),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
-      console.log("typedEvent: ", typedEvent);
 
-      // Access the threads directly from the startup data
       return {
         threads: typedEvent.pluginData.threads,
         selectedThreadId: typedEvent.pluginData.threads[0]?.shortCode,
-        // view: {
-        //   selectedThread: typedEvent.pluginData.threads[0],
-        //   messages: [],
-        // },
       };
     }),
     updateThreadData: assign(({ event, context }) => {
@@ -125,42 +101,34 @@ const threadsState = setup({
       };
     }),
     addThread: assign(({ context }) => {
-      const relatedThreads = [...(context.view.relatedThreads || []), ''];
       return {
         view: {
           ...context.view,
-          relatedThreads
         }
       };
     }),
     removeThread: assign(({ event, context }) => {
       const typedEvent = typeOf('REMOVE_THREAD', event);
-      const relatedThreads = [...(context.view.relatedThreads || [])];
-      relatedThreads.splice(typedEvent.index, 1);
       return {
         view: {
           ...context.view,
-          relatedThreads
         }
       };
     }),
     addTag: assign(({ context }) => {
-      const tags = [...(context.view.tags || []), ''];
       return {
         view: {
           ...context.view,
-          tags
+          tags: [...(context.view.tags || [])]
         }
       };
     }),
     removeTag: assign(({ event, context }) => {
       const typedEvent = typeOf('REMOVE_TAG', event);
-      const tags = [...(context.view.tags || [])];
-      tags.splice(typedEvent.index, 1);
       return {
         view: {
           ...context.view,
-          tags
+          tags: [...(context.view.tags || [])].filter((_, index) => index !== typedEvent.index)
         }
       };
     }),
