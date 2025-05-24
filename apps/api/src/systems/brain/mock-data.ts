@@ -101,7 +101,7 @@ export const rows: Rows = {
       id: 'Message-1', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 5 * 60_000,
-      text: 'Can you help me understand how to use CSS variables in my design system?',
+      text: 'I\'m working on implementing a new design system for our web application, and I\'ve heard CSS variables could help make our styles more maintainable. Can you help me understand how to use CSS variables effectively? I\'m particularly interested in how they could help us maintain consistency across different components and make theme updates easier.',
       sender: 'user',
       timestamp: nowMs - 5 * 60_000
     },
@@ -109,7 +109,7 @@ export const rows: Rows = {
       id: 'Message-2', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 4 * 60_000,
-      text: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
+      text: 'CSS variables, also known as custom properties, are a powerful feature for building maintainable design systems. They allow you to define reusable values that can be referenced throughout your stylesheets. The syntax follows this pattern: `--variable-name: value;` when defining, and `var(--variable-name)` when using them.\n\nOne of the biggest advantages is that you can update these values in one place and see the changes reflect across your entire application. They also support features like fallback values and can be modified dynamically using JavaScript. Let me show you a practical example in the canvas area above.',
       sender: 'assistant',
       timestamp: nowMs - 4 * 60_000
     },
@@ -117,7 +117,7 @@ export const rows: Rows = {
       id: 'Message-3', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 3 * 60_000,
-      text: 'That makes sense. Can you show me how to use them with a color palette?',
+      text: 'That explanation really helps! I think I see how this could improve our codebase. Could you show me a specific example of how we might implement a color palette using CSS variables? We currently have different shades of blue scattered throughout our CSS files, and it\'s becoming hard to maintain consistency.',
       sender: 'user',
       timestamp: nowMs - 3 * 60_000
     },
@@ -125,7 +125,7 @@ export const rows: Rows = {
       id: 'Message-4', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 2 * 60_000,
-      text: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
+      text: "I've updated the canvas with a comprehensive color palette example using CSS variables. You can define your colors once in the :root selector like this:\n\n:root {\n  --primary-100: #e3f2fd;\n  --primary-500: #2196f3;\n  --primary-900: #0d47a1;\n}\n\nThen use them throughout your CSS with var(--primary-500) for your main brand color, var(--primary-100) for lighter variants, and var(--primary-900) for darker accents. This makes it much easier to maintain a consistent color scheme and update colors globally when needed.",
       sender: 'assistant',
       timestamp: nowMs - 2 * 60_000
     },
@@ -133,7 +133,7 @@ export const rows: Rows = {
       id: 'Message-5', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 1 * 60_000,
-      text: 'please rewrite this code using css variables from our design systems',
+      text: 'This is exactly what we need! Could you help me refactor our current CSS code to use these variables from our design system? I want to make sure we\'re following best practices and maintaining consistency across all components.',
       sender: 'user',
       timestamp: nowMs - 1 * 60_000
     },
