@@ -40,6 +40,7 @@ export interface CanvasContentEntity extends BaseEntity {
 export interface TagEntity extends BaseEntity {
   entityType: EARS.Entity.Tag;
   name: string;
+  color?: string;
 }
 
 export type Entity = MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity;
