@@ -58,7 +58,7 @@ Systems can be started when the app starts up. Or a system can be spawned on the
                            └─────────┘            └─────────┘                           
 ```
 
-Below is an example code snippet for sending a message to a frontend plugin from a backend system. A working understanding of [Xstate](https://stately.ai/docs/state-machines-and-statecharts) and state-machines is highly recommended, as they are used ubiquitously throughout the FE and BE. 
+A working understanding of [Xstate](https://stately.ai/docs/state-machines-and-statecharts) and state-machines is highly recommended, as they are used ubiquitously throughout the FE and BE. Below is an example code snippet for sending a message to a frontend plugin from a backend system.
 ``` js
 const pluginId = 'threads';
 
