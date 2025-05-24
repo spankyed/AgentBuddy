@@ -2,19 +2,19 @@
   <div class="max-w-5xl px-6 py-4 mx-auto space-y-6 root-container">
     <div class="p-4 space-y-6">
       <!-- Topic & Status -->
-      <div class="flex flex-col gap-4 md:flex-row">
+      <div class="flex flex-col items-center gap-4 md:flex-row">
         <div class="flex-1">
-          <Label>Topic</Label>
+          <!-- <Label>Topic</Label> -->
           <input
             :value="topic"
             @input="e => updateField('topic', e.target as HTMLInputElement)"
             type="text"
             :placeholder="placeholder"
-            class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+            class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           />
         </div>
         <div class="w-full md:w-40">
-          <Label>Type</Label>
+          <!-- <Label>Type</Label> -->
           <select
             :value="type"
             @input="e => updateField('threadType', e.target as HTMLSelectElement)"
@@ -59,7 +59,7 @@
 
       <!-- Threads list -->
       <div>
-        <Label>Related Threads</Label>
+        <!-- <Label>Related Threads</Label> -->
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
@@ -89,7 +89,7 @@
 
       <!-- Tags list -->
       <div>
-        <Label>Tags</Label>
+        <!-- <Label>Tags</Label> -->
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
@@ -130,11 +130,13 @@
               :class="[`ml-1 transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
             />
           </button>
-          <button 
-            class="ml-auto text-sm font-medium underline text-neutral-100 hover:text-white"
+          <Button 
+            type="button"
+            variant="secondary"
+            class="ml-auto"
           >
-            Continue to chat
-          </button>
+            Chat About {{ topic.slice(0, 10) }}...
+          </Button>
         </div>
         <div v-if="isMessagesOpen" class="p-3 pr-0 mt-2 overflow-hidden rounded-sm bg-neutral-900">
           <div class="overflow-y-auto max-h-96 messages-container">
@@ -162,6 +164,7 @@ import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEntity } from '@abuddy/api';
 import { useSelector } from '@xstate/vue'
+import Button from '@/core/design/button.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
