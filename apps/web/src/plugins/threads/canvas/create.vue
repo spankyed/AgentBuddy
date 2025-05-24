@@ -2,18 +2,18 @@
   <div class="max-w-5xl px-6 py-4 mx-auto space-y-6">
     <div class="p-4 space-y-6">
       <!-- Topic & Status -->
-      <div class="flex flex-col gap-4 md:flex-row">
+      <div class="flex flex-col items-center gap-4 md:flex-row">
         <div class="flex-1">
-          <Label>Topic</Label>
+          <!-- <Label>Topic</Label> -->
           <input
             v-model="topic"
             type="text"
             placeholder="Thread Topic"
-            class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+            class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           />
         </div>
         <div class="w-full md:w-40">
-          <Label>Type</Label>
+          <!-- <Label>Type</Label> -->
           <select
             v-model="type"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -34,7 +34,7 @@
 
       <!-- Threads list -->
       <div>
-        <Label>Related Threads</Label>
+        <!-- <Label>Related Threads</Label> -->
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
