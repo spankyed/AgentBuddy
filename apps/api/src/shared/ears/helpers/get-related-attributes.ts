@@ -31,4 +31,3 @@ export function getRelatedAttributes<T>(
     return obj as { id: string } & T;
   });
 }
-
