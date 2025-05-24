@@ -9,7 +9,7 @@
             :value="topic"
             @input="e => updateField('topic', e.target as HTMLInputElement)"
             type="text"
-            :placeholder="placeholder"
+            placeholder="Thread Topic"
             class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           />
         </div>
@@ -151,32 +151,10 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 
-
-// Placeholder options for topic based on selected type
-const workItemPlaceholders = [
-  'Review latest PR for UX improvements',
-  'Tackle sprint tasks for Q2',
-  'Implement dev feedback for bug fixes'
-]
-const projectPlaceholders = [
-  'Q3 marketing campaign',
-  'Upcoming project milestones',
-  'Settings page redesign',
-]
-const placeholder = ref('')
-const setRandomPlaceholder = () => {
-  const list = type.value === 'work-item'
-    ? workItemPlaceholders
-    : projectPlaceholders
-  placeholder.value = list[Math.floor(Math.random() * list.length)]
-}
-
 const threads = ref<string[]>(relatedThreads.value || [])
 // const isSaving = ref('')
 const isMessagesOpen = ref(false)
 
-onMounted(() => setRandomPlaceholder())
-watch(type, () => setRandomPlaceholder())
 watch(isMessagesOpen, async (isOpen) => {
   if (isOpen) {
     await nextTick()
