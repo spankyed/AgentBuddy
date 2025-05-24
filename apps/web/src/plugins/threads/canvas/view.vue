@@ -30,7 +30,7 @@
       <div>
         <Label>Instructions</Label>
         <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
-          <p class="text-sm italic text-neutral-300">please use css variables from our design systems to remove hardcoded colors</p>
+          <p class="text-sm text-neutral-300">please use css variables from our design systems to remove hardcoded colors</p>
         </div>
       </div>
 
