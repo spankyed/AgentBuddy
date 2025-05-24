@@ -37,7 +37,7 @@ type UIEvent =
 
 interface ThreadsContext {
   threads: ThreadEntity[];
-  selectedThreadId?: string;
+  selectedThreadCode?: string;
   view: ViewData
 }
 
@@ -69,7 +69,7 @@ const threadsState = setup({
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
       
       return {
-        selectedThreadId: selectedThread?.shortCode,
+        selectedThreadCode: selectedThread?.shortCode,
         view: {
           ...selectedThread,
         },
@@ -140,7 +140,7 @@ const threadsState = setup({
   initial: 'list',
   context: () => ({
     threads: [],
-    selectedThreadId: undefined,
+    selectedThreadCode: undefined,
     view: {
       messages: undefined,
       relatedThreads: undefined,
@@ -185,7 +185,7 @@ const threadsState = setup({
     },
 
     'view': {
-      meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadId') },
+      meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadCode') },
       on: {
         UPDATE_THREAD_DATA: {
           actions: 'updateThreadData',

@@ -23,6 +23,6 @@ export function breadcrumbWithParams<C>(
 }
 // equivalent to something like:
 // breadcrumb: (ctx: ThreadsContext) => ({
-//   label: ctx.selectedThreadId ? `Thread ${ctx.selectedThreadId}` : 'Thread',
+//   label: ctx.selectedThreadCode ? `Thread ${ctx.selectedThreadCode}` : 'Thread',
 //   target: 'view'
 // })
