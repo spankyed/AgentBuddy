@@ -86,7 +86,7 @@
           class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-700/50"
         >
           Chat
-          <MessageCircleMore :size="16" class="ml-2"/>
+          <MessageCircleMore :size="16" class="ml-1.5"/>
         </button>
       </div>
     </div>

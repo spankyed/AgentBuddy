@@ -95,8 +95,8 @@
       </div>
 
       <!-- Messages Container -->
-      <div class="mt-6">
-        <div class="flex gap-2">
+      <div class="mt-5">
+        <div class="flex gap-2 pb-2">
           <button
             v-if="messages.length > 0"
             @click="isMessagesOpen = !isMessagesOpen"
@@ -113,7 +113,8 @@
             variant="secondary"
             class="ml-auto"
           >
-            Chat About {{ topic.slice(0, 10) }}...
+          Chat About {{ topic.slice(0, 10) }}
+          <MessageCircleMore :size="16" class=""/>
           </Button>
         </div>
         <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
@@ -124,7 +125,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick, computed } from 'vue'
-import { X, Plus, ChevronDown } from 'lucide-vue-next'
+import { X, Plus, ChevronDown, MessageCircleMore } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
