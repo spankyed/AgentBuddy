@@ -367,5 +367,33 @@ export const rows: Rows = {
       tgtId: 'Tag-7',
       info: JSON.stringify({}),
     },
+
+    /*───────────────────────────────────────────────────────────────*
+     * Parent-child thread relationships                             *
+     *───────────────────────────────────────────────────────────────*/
+    {
+      srcId: 'Thread-4',
+      kind: EARS.RelKind.PARENT_OF,
+      tgtId: 'Thread-2',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-4',
+      kind: EARS.RelKind.PARENT_OF,
+      tgtId: 'Thread-3',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-4',
+      kind: EARS.RelKind.PARENT_OF,
+      tgtId: 'Thread-2',
+      info: JSON.stringify({}),
+    },
+    {
+      srcId: 'Thread-2',
+      kind: EARS.RelKind.PARENT_OF,
+      tgtId: 'Thread-1',
+      info: JSON.stringify({}),
+    },
   ],
 };

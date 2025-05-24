@@ -23,6 +23,7 @@ export namespace EARS {
   | 2 ▸ Relation kinds                                                       |
   \*-------------------------------------------------------------------------*/
   const RelKindValues = {
+    PARENT_OF   : 'PARENT_OF',
     CONTAINS   : 'CONTAINS',
     SPAWNED    : 'SPAWNED',
     REPLIED_TO : 'REPLIED_TO',
