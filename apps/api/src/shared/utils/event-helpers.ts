@@ -49,7 +49,7 @@ export type WithPlugin<
 /**
  * ```ts
  * const bus = systemBus('chat');
- * const UserMsg = bus('USER_MSG', { content: z.string() });
+ * const UserMsg = bus('USER_MSG', { text: z.string() });
  * ```
  */
 export function systemBus<P extends string>(systemId: P) {

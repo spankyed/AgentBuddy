@@ -16,7 +16,7 @@ export const agent = 'agent' as const;
 const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
-  busEvent('USER_MSG', { content: z.string() }),
+  busEvent('USER_MSG', { text: z.string() }),
   busEvent('CANCEL'),
 ] as const
 
@@ -27,7 +27,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents = 
-  | { type: 'ADD_ASSISTANT_MESSAGE'; content: string }
+  | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
   | { type: 'LLM_ERROR'; error: unknown }
@@ -78,8 +78,8 @@ export const agentSystem = setup({
       }));
     },
     storeUserMessage: ({ context, event }) => {
-      const content = typeOf('USER_MSG', event).content;
-      addMessageToLatestThread(content);
+      const text = typeOf('USER_MSG', event).text;
+      addMessageToLatestThread(text);
     },
   },
 }).createMachine(
@@ -163,7 +163,7 @@ async function runLlm(ctx: AgentContext, signal: AbortSignal) {
   //     id: uuid(),
   //     sessionId,
   //     role: 'assistant',
-  //     content: runner.buffer(),
+  //     text: runner.buffer(),
   //     createdAt: Date.now(),
   //   })
   //   .run();

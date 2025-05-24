@@ -13,7 +13,7 @@
     >
       <div class="leading-relaxed whitespace-pre-line text-md">
         <p 
-          v-for="(paragraph, index) in message.content.split('\n')"
+          v-for="(paragraph, index) in message.text.split('\n')"
           :key="index"
           :class="{ 'mt-2': index > 0 }"
         >

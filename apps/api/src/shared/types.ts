@@ -8,7 +8,7 @@ export interface BaseEntity {
 
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
-  content: string;
+  text: string;
   sender: 'user' | 'assistant' | 'system';
   timestamp: number;
 }

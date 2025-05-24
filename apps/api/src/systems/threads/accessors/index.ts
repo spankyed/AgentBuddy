@@ -28,7 +28,7 @@ const getThreadMessages = (threadId: EARS.EntityId) =>
     EARS.RelKind.CONTAINS,
     EARS.Entity.Message,
     {
-      content: EARS.AttrKind.Custom('content'),
+      text: EARS.AttrKind.Custom('text'),
       sender:  EARS.AttrKind.Custom('sender'),
       timestamp: EARS.AttrKind.Custom('timestamp'),
     }

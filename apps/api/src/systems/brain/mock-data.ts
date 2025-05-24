@@ -101,7 +101,7 @@ export const rows: Rows = {
       id: 'Message-1', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 5 * 60_000,
-      content: 'Can you help me understand how to use CSS variables in my design system?',
+      text: 'Can you help me understand how to use CSS variables in my design system?',
       sender: 'user',
       timestamp: nowMs - 5 * 60_000
     },
@@ -109,7 +109,7 @@ export const rows: Rows = {
       id: 'Message-2', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 4 * 60_000,
-      content: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
+      text: 'CSS variables (also known as custom properties) allow you to store specific values to reuse throughout a document. They follow this syntax: `--variable-name: value;`\n\nLet me show you an example in the canvas area above.',
       sender: 'assistant',
       timestamp: nowMs - 4 * 60_000
     },
@@ -117,7 +117,7 @@ export const rows: Rows = {
       id: 'Message-3', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 3 * 60_000,
-      content: 'That makes sense. Can you show me how to use them with a color palette?',
+      text: 'That makes sense. Can you show me how to use them with a color palette?',
       sender: 'user',
       timestamp: nowMs - 3 * 60_000
     },
@@ -125,7 +125,7 @@ export const rows: Rows = {
       id: 'Message-4', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 2 * 60_000,
-      content: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
+      text: "Sure! I've updated the canvas with a color palette example using CSS variables. You can define your colors once in the :root selector and then reuse them throughout your CSS.",
       sender: 'assistant',
       timestamp: nowMs - 2 * 60_000
     },
@@ -133,7 +133,7 @@ export const rows: Rows = {
       id: 'Message-5', 
       entityType: EARS.Entity.Message, 
       createdAt: nowMs - 1 * 60_000,
-      content: 'please rewrite this code using css variables from our design systems',
+      text: 'please rewrite this code using css variables from our design systems',
       sender: 'user',
       timestamp: nowMs - 1 * 60_000
     },

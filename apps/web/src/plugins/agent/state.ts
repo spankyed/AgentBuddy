@@ -24,12 +24,12 @@ interface AgentContext {
 
 type AgentEvent =
   | { type: 'VIEW_WORKLOAD'; }
-  | { type: 'SEND_MESSAGE'; content: string }
+  | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
-  // | { type: 'UPDATE_MESSAGE_INPUT'; content: string }
+  // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | { type: 'STARTUP'; pluginData: StartupData[typeof id] }
   | OutgoingAgentEvents
   | TrailClickEvent;
@@ -55,7 +55,7 @@ const agentState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
-        content: typeOf('SEND_MESSAGE', event).content,
+        text: typeOf('SEND_MESSAGE', event).text,
       });
     },
     addMessage: assign(({ context, event }) => ({
@@ -63,7 +63,7 @@ const agentState = setup({
         id: Date.now().toString(),
         entityType: 'Message' as const,
         createdAt: Date.now(),
-        content: typeOf('SEND_MESSAGE', event).content,
+        text: typeOf('SEND_MESSAGE', event).text,
         sender: 'user' as const,
         timestamp: Date.now()
       } as MessageEntity]
@@ -73,7 +73,7 @@ const agentState = setup({
         id: Date.now().toString(),
         entityType: 'Message' as const,
         createdAt: Date.now(),
-        content: typeOf('ADD_ASSISTANT_MESSAGE', event).content,
+        text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
         sender: 'assistant' as const,
         timestamp: Date.now(),
       } as MessageEntity]
@@ -90,7 +90,7 @@ const agentState = setup({
       const { messages, pendingActionId } = context;
       if (pendingActionId) {
         return {
-          messages: messages.map(m => m.id === pendingActionId ? { ...m, content: m.content + token } : m),
+          messages: messages.map(m => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
         };
       }
 
@@ -99,7 +99,7 @@ const agentState = setup({
         messages: [...messages, {
           id: newId,
           entityType: 'Message' as const,
-          content: token,
+          text: token,
           sender: 'assistant' as const,
           timestamp: Date.now(),
           createdAt: Date.now()
@@ -111,7 +111,7 @@ const agentState = setup({
       pendingActionId: undefined,
     })),
     // updateMessageInput: assign(({ event }) => ({
-    //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).content
+    //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).text
     // })),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);

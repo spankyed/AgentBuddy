@@ -124,7 +124,7 @@
                     'px-3 py-2 text-sm truncate rounded-sm',
                     message.sender === 'user' ? 'bg-neutral-800 text-neutral-200' : 'bg-neutral-900 text-neutral-300'
                   ]">
-                {{ message.content }}
+                {{ message.text }}
               </li>
             </ul>
           </div>
