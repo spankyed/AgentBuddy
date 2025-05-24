@@ -30,7 +30,7 @@
       <div>
         <Label>Instructions</Label>
         <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
-          <p class="text-sm text-neutral-300">please use css variables from our design systems to remove hardcoded colors</p>
+          <p class="text-sm text-neutral-300">{{ instructions }}</p>
         </div>
       </div>
 
@@ -150,6 +150,7 @@ const relatedThreads = useSelector(actor, (state) => state.context.view.relatedT
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
+const instructions = ref('placeholder instructions');
 
 // const isSaving = ref('')
 const isMessagesOpen = ref(false)
