@@ -23,7 +23,6 @@ export const handleOpenAIStream: StreamHandler<OpenAI.Responses.ResponseStreamEv
 
     case 'response.output_text.delta': // This is the actual text content being streamed
     if ('delta' in event && typeof event.delta === 'string') {
-        console.log('event.delta: ', event.delta);
         callback(event.delta);
         return true;
       }
