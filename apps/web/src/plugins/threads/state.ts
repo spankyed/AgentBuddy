@@ -38,7 +38,7 @@ export type CreateData = {
   topic: string;
   threadType: ThreadEntity['threadType'];
   tags: string[];
-  relatedThreads?: string[];
+  relatedThreads: string[];
   instructions: string;
 };
 
@@ -53,6 +53,18 @@ const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {},
   actions: {
+    sendCreateThread: ({ context }) => {
+      console.log('create', context.create);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_THREAD',
+        topic: context.create.topic,
+        threadType: context.create.threadType,
+        tags: context.create.tags,
+        relatedThreads: context.create.relatedThreads,
+        instructions: context.create.instructions,
+      });
+    },
     sendViewThread: ({ event }) => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -157,8 +169,8 @@ const threadsState = setup({
     selectedThreadCode: undefined,
     view: {
       messages: undefined,
-      relatedThreads: undefined,
-      tags: undefined,
+      relatedThreads: [],
+      tags: [],
     },
     create: {
       topic: '',
@@ -199,6 +211,7 @@ const threadsState = setup({
       on: {
         CREATE_THREAD: {
           target: 'view',
+          actions: 'sendCreateThread',
         },
         CANCEL_CREATE: { target: 'list' },
         UPDATE_CREATE_DATA: {

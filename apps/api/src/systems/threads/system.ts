@@ -6,8 +6,8 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import type { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { getViewData } from './accessors';
-import type { MessageEntity } from '@/types';
+import { createThread, getViewData } from './accessors';
+import type { MessageEntity, ThreadEntity } from '@/types';
 import type { ThreadsViewData } from './types';
 
 export const threads = 'threads' as const;
@@ -15,7 +15,13 @@ export const threads = 'threads' as const;
 const busEvent = systemBus(threads);
 
 export const IncomingThreadsEvents = [
-  busEvent('CREATE_THREAD', { content: z.string() }),
+  busEvent('CREATE_THREAD', {
+    topic: z.string(),
+    threadType: z.string(),
+    tags: z.array(z.string()),
+    relatedThreads: z.array(z.string()),
+    instructions: z.string(),
+  }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
 ] as const
 
@@ -24,6 +30,7 @@ export type ThreadsInternalEvents =
 
 export type OutgoingThreadsEvents = 
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadsViewData }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId }
 
 export interface ThreadsContext {
   threadsId: EARS.EntityId;
@@ -40,6 +47,28 @@ export const threadsSystem = setup({
     input: {} as EARS.EntityId,
   },
   actions: {
+    createThread: ({ system, event }) => {
+      const thread = typeOf('CREATE_THREAD', event);
+      console.log(thread);
+
+      // const threadId = createThread(
+      //   {
+      //     entityType: EARS.Entity.Thread,
+      //     topic: thread.topic,
+      //     threadType: thread.threadType as ThreadEntity['threadType'],
+      //     timestamp: Date.now(),
+      //     // shortCode: '',
+      //     // status: 'active',
+      //   },
+      //   thread.tags,
+      //   thread.relatedThreads,
+      // );
+
+      // system.get(bus).send(emit(threads, { 
+      //   type: 'THREAD_CREATED',
+      //   id: threadId,
+      // }));
+    },
     sendViewData: ({ system, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
@@ -62,6 +91,9 @@ export const threadsSystem = setup({
     states: {
       idle: {
         on: {
+          CREATE_THREAD: {
+            actions: 'createThread',
+          },
           VIEW_THREAD: {
             actions: 'sendViewData',
           },
