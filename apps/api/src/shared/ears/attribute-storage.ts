@@ -16,6 +16,7 @@ import { EARS } from "./types";
 |   ▸ Internal store                                                        |
 \*-------------------------------------------------------------------------*/
 const store = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
+const entityIndex = new Set<EARS.EntityId>();
 
 const bucket = (kind: EARS.AttrKind) => {
 	if (!store.has(kind)) store.set(kind, new Map());
@@ -34,6 +35,7 @@ function addAttribute(
 	if (!b.has(entityID)) b.set(entityID, []);
 	const attributes = b.get(entityID);
 	if (attributes) attributes.push(value); // multiple attrs of same kind allowed
+	entityIndex.add(entityID);
 	logInternal("AA", false, kind, entityID, value);
 }
 
@@ -256,6 +258,14 @@ function destroyEntity(entityID: EARS.EntityId): void {
 		}
 	}
 	for (const kind of store.keys()) bucket(kind).delete(entityID);
+	entityIndex.delete(entityID);
+}
+
+/*-------------------------------------------------------------------------*\
+|   ▸ Entity retrieval                                                      |
+\*-------------------------------------------------------------------------*/
+function getAllEntities(): EARS.EntityId[] {
+  return Array.from(entityIndex);
 }
 
 /*-------------------------------------------------------------------------*\
@@ -284,4 +294,5 @@ export {
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
   destroyEntity, createEntity,
+  getAllEntities,
 };
