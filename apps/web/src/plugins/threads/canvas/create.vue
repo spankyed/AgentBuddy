@@ -29,9 +29,13 @@
       <!-- Instructions -->
       <div>
         <Label>Instructions</Label>
-        <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
-          <p class="text-sm text-neutral-300">{{ instructions }}</p>
-        </div>
+        <textarea
+          :value="instructions"
+          @input="e => updateField('instructions', e.target as HTMLTextAreaElement)"
+          rows="4"
+          placeholder="Enter thread instructions..."
+          class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 min-h-[80px] max-h-[200px] resize-y"
+        ></textarea>
       </div>
 
       <!-- Threads list -->
