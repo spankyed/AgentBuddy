@@ -18,6 +18,19 @@ import { EARS } from "./types";
 const store = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
 const entityIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();
 
+/*-------------------------------------------------------------------------*\
+|   ▸ Entity retrieval                                                      |
+\*-------------------------------------------------------------------------*/
+function getAllEntities(): EARS.EntityId[] {
+  const result: EARS.EntityId[] = [];
+  for (const ids of entityIndex.values()) result.push(...ids);
+  return result;
+}
+
+function getEntitiesOfType(entityType: EARS.Entity): EARS.EntityId[] {
+  return Array.from(entityIndex.get(entityType) ?? []);
+}
+
 /**
  * Helper: deduce the entity type from its ID (assumes IDs are prefixed with the
  * entity type followed by a dash, e.g. `Thread-abc123`). If the prefix does not
@@ -172,14 +185,14 @@ function removeAttribute(
   return removed;
 }
 
-const removeAttributeByCriteria = (
+function removeAttributeByCriteria(
   id: EARS.EntityId,
   kind: EARS.AttrKind,
   criteria: EARS.AttributeValue,
-) => {
+) {
   const idx = getAttributeIndexByCriteria(id, kind, criteria);
   if (idx !== -1) removeAttribute(id, kind, idx);
-};
+}
 
 function removeRelation(relId: EARS.EntityId): void {
   const d = getRelation(relId);
@@ -188,8 +201,9 @@ function removeRelation(relId: EARS.EntityId): void {
   destroyEntity(relId);
 }
 
-const removeRole = (id: EARS.EntityId, role: string) =>
+function removeRole(id: EARS.EntityId, role: string) {
   removeAttributeByCriteria(id, EARS.AttrKind.Role, role);
+}
 
 /*-------------------------------------------------------------------------*\
 |   ▸ Look‑ups / queries                                                    |
@@ -204,24 +218,32 @@ function getAttributes(entityID: EARS.EntityId, kind: EARS.AttrKind) {
   return store.get(kind)?.get(entityID) ?? [];
 }
 
-const getAttribute = (id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) =>
-  getAttributes(id, kind)[idx] ?? null;
+function getAttribute(id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) {
+  return getAttributes(id, kind)[idx] ?? null;
+}
 
-const getAttributeIndexByCriteria = (
+function getAttributeIndexByCriteria(
   id: EARS.EntityId,
   kind: EARS.AttrKind,
   c: EARS.AttributeValue,
-) => getAttributes(id, kind).findIndex(matches(c));
+) {
+  return getAttributes(id, kind).findIndex(matches(c));
+}
 
-const getRoles = (id: EARS.EntityId) =>
-  getAttributes(id, EARS.AttrKind.Role) as string[];
-const hasRole = (id: EARS.EntityId, role: string) => getRoles(id).includes(role);
-const hasRoleX = (role: string) => (item: EARS.AttributeValue) =>
-  hasRole(item, role);
+function getRoles(id: EARS.EntityId) {
+  return getAttributes(id, EARS.AttrKind.Role) as string[];
+}
+function hasRole(id: EARS.EntityId, role: string) {
+  return getRoles(id).includes(role);
+}
+function hasRoleX(role: string) {
+  return (item: EARS.AttributeValue) => hasRole(item, role);
+}
 
-const getRelation = (relId: EARS.EntityId): EARS.RelationDetail | null =>
-  (getAttributes(relId, EARS.AttrKind.RelationDetails)[0] ??
-    null) as EARS.RelationDetail | null;
+function getRelation(relId: EARS.EntityId): EARS.RelationDetail | null {
+  return getAttributes(relId, EARS.AttrKind.RelationDetails)[0] ??
+    null;
+}
 
 function queryEntitiesByAttribute(
   kind: EARS.AttrKind,
@@ -235,8 +257,9 @@ function queryEntitiesByAttribute(
     .map(([id]) => id);
 }
 
-const queryEntitiesByRole = (role: string) =>
-  queryEntitiesByAttribute(EARS.AttrKind.Role, role);
+function queryEntitiesByRole(role: string) {
+  return queryEntitiesByAttribute(EARS.AttrKind.Role, role);
+}
 
 function queryEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[] {
   const out = new Set<EARS.EntityId>();
@@ -289,19 +312,6 @@ function destroyEntity(entityID: EARS.EntityId): void {
   }
   for (const kind of store.keys()) bucket(kind).delete(entityID);
   removeEntityFromIndex(entityID);
-}
-
-/*-------------------------------------------------------------------------*\
-|   ▸ Entity retrieval                                                      |
-\*-------------------------------------------------------------------------*/
-function getAllEntities(): EARS.EntityId[] {
-  const result: EARS.EntityId[] = [];
-  for (const ids of entityIndex.values()) result.push(...ids);
-  return result;
-}
-
-function getEntitiesOfType(entityType: EARS.Entity): EARS.EntityId[] {
-  return Array.from(entityIndex.get(entityType) ?? []);
 }
 
 /*-------------------------------------------------------------------------*\
