@@ -6,7 +6,8 @@
         <div class="flex-1">
           <!-- <Label>Topic</Label> -->
           <input
-            v-model="topic"
+            :value="topic"
+            @input="e => updateField('topic', e.target as HTMLInputElement)"
             type="text"
             placeholder="Thread Topic"
             class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -15,7 +16,8 @@
         <div class="w-full md:w-40">
           <!-- <Label>Type</Label> -->
           <select
-            v-model="type"
+            :value="threadType"
+            @input="e => updateField('threadType', e.target as HTMLSelectElement)"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
@@ -28,7 +30,7 @@
       <div>
         <Label>Instructions</Label>
         <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
-          <p class="text-sm text-neutral-300">please use css variables from our design systems to remove hardcoded colors</p>
+          <p class="text-sm text-neutral-300">{{ instructions }}</p>
         </div>
       </div>
 
@@ -38,7 +40,7 @@
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            @click="addDetail"
+            @click="addThread"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-700 hover:bg-neutral-600"
           >
             Link Thread
@@ -46,7 +48,7 @@
           </button>
 
           <span
-            v-for="(thread, index) in threads"
+            v-for="(thread, index) in relatedThreads"
             :key="index"
             class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-700 text-neutral-200 rounded"
           >
@@ -76,19 +78,14 @@
           <Square :size="22" />
         </button>
         <!-- @click="actor.send({ type: 'CREATE_THREAD' })" -->
-        <button
+        <Button
           type="submit"
-          :disabled="!isSaving"
-          :class="[
-            'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2',
-            isSaving
-              ? 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600' 
-              : 'bg-primary-700 text-neutral-400'
-          ]"
+          :disabled="isSaving"
+          variant="primary"
+          @click="actor.send({ type: 'CREATE_THREAD' })"
         >
           Create
-          <CornerDownLeft class="-rotate-45" :size="16" />
-        </button>
+        </Button>
       </div>
 
       <div>
@@ -110,22 +107,37 @@ import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/design/label.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
+import { id, type CreateData, type ThreadsState } from '@/plugins/threads/state';
+import Button from '@/core/design/button.vue';
+
 
 const actor: ThreadsState = applicationState.system.get(id);
-// const someState = useSelector(actor, (state) => state.context.someState)
+const tags = useSelector(actor, (state) => state.context.create.tags);
+const topic = useSelector(actor, (state) => state.context.create.topic);
+const threadType = useSelector(actor, (state) => state.context.create.threadType);
+const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreads);
+const instructions = useSelector(actor, (state) => state.context.create.instructions);
 
-const topic = ref('')
-const type = ref('work-item')
+const isSaving = ref(false)
 
-const threads = ref<string[]>(['U-182', 'P-13', 'WI-7'])
-const isSaving = ref('')
-
-const addDetail = () => {
-  threads.value.push('')
+const addThread = () => {
+  actor.send({ type: 'ADD_THREAD' })
 }
 
 const removeThread = (index: number) => {
-  threads.value.splice(index, 1)
+  actor.send({ type: 'REMOVE_THREAD', index })
+}
+
+const addTag = () => {
+  actor.send({ type: 'ADD_TAG' })
+}
+
+const removeTag = (index: number) => {
+  actor.send({ type: 'REMOVE_TAG', index })
+}
+
+const updateField = (key: keyof CreateData, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+  const value = element.value;
+  actor.send({ type: 'UPDATE_CREATE_DATA', key, value });
 }
 </script> 

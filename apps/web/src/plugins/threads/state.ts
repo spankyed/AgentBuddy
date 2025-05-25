@@ -12,7 +12,6 @@ const typeOf = safeEvents<UIEvent>();
 export const id = 'threads' as const;
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
-type ViewData = Partial<ThreadEntity> & ThreadsViewData;
 
 type SystemEvent =
   | { type: 'STARTUP'; pluginData: StartupData['threads'] }
@@ -21,9 +20,10 @@ type SystemEvent =
 type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'CREATE_THREAD'; id: string }
+  | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
-  | { type: 'UPDATE_THREAD_DATA'; key: keyof ThreadEntity | 'tags' | 'relatedThreads'; value: unknown }
+  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
   | { type: 'ADD_THREAD' }
   | { type: 'REMOVE_THREAD'; index: number }
   | { type: 'ADD_TAG' }
@@ -31,10 +31,22 @@ type UIEvent =
   | SystemEvent
   | TrailClickEvent;
 
+
+export type ViewData = Partial<ThreadEntity> & ThreadsViewData;
+
+export type CreateData = {
+  topic: string;
+  threadType: ThreadEntity['threadType'];
+  tags: string[];
+  relatedThreads?: string[];
+  instructions: string;
+};
+
 interface ThreadsContext {
   threads: ThreadEntity[];
   selectedThreadCode?: string;
-  view: ViewData
+  view: ViewData;
+  create: CreateData;
 }
 
 const threadsState = setup({
@@ -78,31 +90,37 @@ const threadsState = setup({
         threads: typedEvent.pluginData.threads,
       };
     }),
-    updateThreadData: assign(({ event, context }) => {
-      const typedEvent = typeOf('UPDATE_THREAD_DATA', event);
-      const thread = context.view;
+    updateThreadData: assign(({ event, context }, params: { key: 'view' | 'create' }) => {
+      const typedEvent = typeOf(['UPDATE_VIEW_DATA', 'UPDATE_CREATE_DATA'], event);
+      const thread = context[params.key];
       
       if (typedEvent.key in thread) {
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        thread[typedEvent.key] = typedEvent.value as any;
+        thread[typedEvent.key] = typedEvent.value;
       }
 
-      const { messages, relatedThreads, tags, ...updatedThread } = thread;
-      const updateThreads = context.threads.map(t => t.id === thread.id ? updatedThread : t);
+      if (params.key === 'view') {
+        const viewThread = thread as ViewData;
+        const { messages, relatedThreads, tags, ...updatedThread } = viewThread;
+        const updateThreads = context.threads.map(t => t.id === viewThread.id ? updatedThread : t);
+  
+        return {
+          threads: updateThreads as ThreadEntity[],
+          view: viewThread,
+        };
+      }
 
       return {
-        threads: updateThreads as ThreadEntity[],
-        view: thread
+        create: thread as CreateData,
       };
     }),
-    addThread: assign(({ context }) => {
+    addChildThread: assign(({ context }) => {
       return {
         view: {
           ...context.view,
         }
       };
     }),
-    removeThread: assign(({ event, context }) => {
+    removeChildThread: assign(({ event, context }) => {
       const typedEvent = typeOf('REMOVE_THREAD', event);
       return {
         view: {
@@ -142,6 +160,13 @@ const threadsState = setup({
       relatedThreads: undefined,
       tags: undefined,
     },
+    create: {
+      topic: '',
+      threadType: 'work-item',
+      tags: [],
+      relatedThreads: [],
+      instructions: '',
+    },
   }),
   on: {
     STARTUP: {
@@ -174,23 +199,35 @@ const threadsState = setup({
       on: {
         CREATE_THREAD: {
           target: 'view',
-          actions: 'setSelectedThread',
         },
         CANCEL_CREATE: { target: 'list' },
+        UPDATE_CREATE_DATA: {
+          actions: {
+            type: 'updateThreadData',
+            params: {
+              key: 'create',
+            }
+          },
+        },
       },
     },
 
     'view': {
       meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadCode') },
       on: {
-        UPDATE_THREAD_DATA: {
-          actions: 'updateThreadData',
+        UPDATE_VIEW_DATA: {
+          actions: {
+            type: 'updateThreadData',
+            params: {
+              key: 'view',
+            }
+          },
         },
         ADD_THREAD: {
-          actions: 'addThread',
+          actions: 'addChildThread',
         },
         REMOVE_THREAD: {
-          actions: 'removeThread',
+          actions: 'removeChildThread',
         },
         ADD_TAG: {
           actions: 'addTag',

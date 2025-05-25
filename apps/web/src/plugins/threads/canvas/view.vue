@@ -164,7 +164,7 @@ watch(isMessagesOpen, async (isOpen) => {
 type attrKeys = 'topic' | 'threadType'
 const updateField = (key: attrKeys, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
-  actor.send({ type: 'UPDATE_THREAD_DATA', key, value });
+  actor.send({ type: 'UPDATE_VIEW_DATA', key, value });
 }
 </script>
 
