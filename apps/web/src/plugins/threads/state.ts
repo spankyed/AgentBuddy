@@ -1,7 +1,7 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
-import { setup, assign, log } from 'xstate';
+import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadsViewData } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
@@ -22,10 +22,12 @@ type UIEvent =
   | { type: 'CANCEL_CREATE' }
   | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
   | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
+  | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'ADD_THREAD' }
   | { type: 'REMOVE_THREAD'; index: number }
   | { type: 'ADD_TAG' }
   | { type: 'REMOVE_TAG'; index: number }
+  | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | SystemEvent
   | TrailClickEvent;
 
@@ -63,13 +65,13 @@ const ANIMATION_DURATION = 2000; // 2 seconds, matching CSS animation duration
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
-  actors: {},
+  actors: {
+    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, self }) => {
+      await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
+      self.send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+    })
+  },
   actions: {
-    clearNewThreadFlags: assign(({ context }) => ({
-      threads: context.threads.map(thread => 
-        thread.isNew ? { ...thread, isNew: false } : thread
-      )
-    })),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
       const thread = context.create;
@@ -190,6 +192,11 @@ const threadsState = setup({
         }
       };
     }),
+    clearNewThreadFlag: assign(({ context }) => {
+      return {
+        threads: context.threads.map(t => t.id === context.selectedThreadCode ? { ...t, isNew: false } : t),
+      };
+    }),
   },
   guards: {
     targetIs
@@ -208,8 +215,18 @@ const threadsState = setup({
     create: { ...defaultCreate },
   }),
   on: {
+    CLEAR_NEW_THREAD_FLAG: {
+      actions: 'clearNewThreadFlag'
+    },
     THREAD_CREATED: {
-      actions: ['addThenResetCreateForm']
+      actions: [
+        'addThenResetCreateForm',
+        spawnChild('clearNewThreadFlag', {
+          input: ({ event }) => ({
+            id: typeOf('THREAD_CREATED', event).id,
+          })
+        })
+      ]
     },
     STARTUP: {
       actions: 'setPluginData'
@@ -227,20 +244,26 @@ const threadsState = setup({
   states: {
     'list': {
       meta: { ...breadcrumb('list', 'Threads', true) },
-      after: {
-        [ANIMATION_DURATION]: {
-          actions: 'clearNewThreadFlags'
-        }
-      },
       on: {
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {
           target: 'view',
           actions: ['setSelectedThread', 'sendViewThread'],
         },
+        UPDATE_THREAD_STATUS: {
+          actions: assign(({ event, context }) => {
+            const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
+            return {
+              threads: context.threads.map(t => 
+                t.id === typedEvent.id 
+                  ? { ...t, status: typedEvent.status }
+                  : t
+              )
+            };
+          })
+        },
       },
     },
-
     'create': {
       meta: { ...breadcrumb('create', 'New Thread') },
       on: {
