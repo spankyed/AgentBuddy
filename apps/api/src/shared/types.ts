@@ -19,8 +19,8 @@ export interface ThreadEntity extends BaseEntity {
   sideTopics?: string[];
   timestamp: number;
   shortCode?: string;
-  threadType: 'work-item' | 'project';
-  status?: 'draft' | 'queued' | 'active' | 'inactive';
+  threadType: 'work-item' | 'project' | 'user';
+  status: 'draft' | 'queued' | 'active' | 'inactive';
 }
 
 export interface ContextItemEntity extends BaseEntity {

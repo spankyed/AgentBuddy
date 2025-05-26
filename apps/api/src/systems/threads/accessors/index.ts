@@ -3,17 +3,34 @@ import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
 import type { ThreadsViewData } from '../types';
 import { getRelatedAttributes } from '@/shared/ears/helpers/get-related-attributes';
+import { getEntitiesOfType } from '@/shared/ears';
 
-type NewThread = Omit<ThreadEntity, 'id' | 'createdAt' | 'updatedAt'>;
+type NewThread = Omit<ThreadEntity, 'id' | 'createdAt' | 'updatedAt' | 'shortCode'>;
 
-export function createThread(thread: NewThread) {
-  tx(EARS.Entity.Thread)
+type ThreadTypeCodes = 'U' | 'P' | 'WI';
+type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
+
+export function createThread(thread: NewThread, tags: string[], relatedThreads: string[]) {
+  const threadCount = getEntitiesOfType(EARS.Entity.Thread).length;
+  const shortCodesMap: Record<ThreadEntity['threadType'], ThreadTypeCodes> = {
+    'work-item': 'WI',
+    'project': 'P',
+    'user': 'U',
+  } as const;
+
+  const shortCode = `${shortCodesMap[thread.threadType]}-${threadCount}` as ThreadTypeShortCode;
+
+  const newThreadId = tx(EARS.Entity.Thread)
     .set('topic', thread.topic)
     .set('timestamp', thread.timestamp)
-    .set('shortCode', thread.shortCode)
+    .set('shortCode', shortCode)
     .set('threadType', thread.threadType)
     .set('status', thread.status)
-    .id();                                                    // returns new thread ID
+    .set('createdAt', thread.timestamp)
+    .set('updatedAt', thread.timestamp)
+    .id(); // returns new thread ID
+
+  return { id: newThreadId, shortCode };
 }
 
 export function updateAttribute(threadId: EARS.EntityId, attr: EARS.AttrKind | string, value: unknown) {

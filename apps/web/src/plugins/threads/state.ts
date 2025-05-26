@@ -4,14 +4,12 @@ import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadsViewData } from '@abuddy/api';
-import type { EARS } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
 const typeOf = safeEvents<UIEvent>();
 
 export const id = 'threads' as const;
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
-
 
 type SystemEvent =
   | { type: 'STARTUP'; pluginData: StartupData['threads'] }
@@ -41,6 +39,14 @@ export type CreateData = {
   relatedThreads: string[];
   instructions: string;
 };
+const defaultCreate: CreateData = {
+  topic: '',
+  threadType: 'work-item',
+  tags: [],
+  relatedThreads: [],
+  instructions: '',
+}
+
 
 interface ThreadsContext {
   threads: ThreadEntity[];
@@ -53,6 +59,25 @@ const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {},
   actions: {
+    addResetCreateForm: assign(({ context, event }) => {
+      const typedEvent = typeOf('THREAD_CREATED', event);
+      const thread = context.create;
+      const newThread = {
+        ...thread,
+        id: typedEvent.id,
+        entityType: typedEvent.entityType,
+        shortCode: typedEvent.shortCode,
+        createdAt: typedEvent.timestamp,
+        updatedAt: typedEvent.timestamp,
+        timestamp: typedEvent.timestamp,
+        status: 'draft',
+      } as ThreadEntity;
+
+      return {
+        threads: [newThread, ...context.threads],
+        create: defaultCreate,
+      }
+    }),
     sendCreateThread: ({ context }) => {
       console.log('create', context.create);
       trpc.bus.send.mutate({
@@ -85,7 +110,7 @@ const threadsState = setup({
       }
     }),
     setSelectedThread: assign(({ event, context }) => {
-      const typedEvent = typeOf('SELECT_THREAD', event);
+      const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event);
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
       
       return {
@@ -172,15 +197,12 @@ const threadsState = setup({
       relatedThreads: [],
       tags: [],
     },
-    create: {
-      topic: '',
-      threadType: 'work-item',
-      tags: [],
-      relatedThreads: [],
-      instructions: '',
-    },
+    create: { ...defaultCreate },
   }),
   on: {
+    THREAD_CREATED: {
+      actions: ['setSelectedThread', 'addResetCreateForm'],
+    },
     STARTUP: {
       actions: 'setPluginData'
     },
