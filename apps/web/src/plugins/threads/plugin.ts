@@ -1,7 +1,7 @@
 import type { Plugin } from "@/core/types/index.ts";
 import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
-import list from './canvas/list.vue';
+import list from './canvas/list/list.vue';
 import create from './canvas/create.vue';
 import view from './canvas/view.vue';
 import panel from './panel.vue';
