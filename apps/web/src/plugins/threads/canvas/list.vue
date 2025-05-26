@@ -59,7 +59,7 @@
               {{ thread.shortCode }}
             </span>
             <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
-              {{ thread.topic || 'Untitled...' }}
+              {{ thread.topic || 'Untitled thread...' }}
             </span>
           </div>
           <!-- Status selector and tags -->

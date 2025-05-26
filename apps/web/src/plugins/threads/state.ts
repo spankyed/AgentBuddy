@@ -83,11 +83,7 @@ const threadsState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_THREAD',
-        topic: context.create.topic,
-        threadType: context.create.threadType,
-        tags: context.create.tags,
-        relatedThreads: context.create.relatedThreads,
-        instructions: context.create.instructions,
+        ...context.create,
       });
     },
     sendViewThread: ({ event }) => {
