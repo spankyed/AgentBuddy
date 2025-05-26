@@ -59,7 +59,7 @@ const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {},
   actions: {
-    addResetCreateForm: assign(({ context, event }) => {
+    addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
       const thread = context.create;
       const newThread = {
@@ -197,7 +197,7 @@ const threadsState = setup({
   }),
   on: {
     THREAD_CREATED: {
-      actions: ['setSelectedThread', 'addResetCreateForm'],
+      actions: ['addThenResetCreateForm'],
     },
     STARTUP: {
       actions: 'setPluginData'
@@ -228,7 +228,7 @@ const threadsState = setup({
       meta: { ...breadcrumb('create', 'New Thread') },
       on: {
         CREATE_THREAD: {
-          target: 'view',
+          target: 'list',
           actions: 'sendCreateThread',
         },
         CANCEL_CREATE: { target: 'list' },
