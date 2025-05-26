@@ -47,18 +47,29 @@ const defaultCreate: CreateData = {
   instructions: '',
 }
 
+export type ThreadUIState = {
+  isNew?: boolean;
+};
+export type ThreadWithUI = ThreadEntity & ThreadUIState;
 
 interface ThreadsContext {
-  threads: ThreadEntity[];
+  threads: ThreadWithUI[];
   selectedThreadCode?: string;
   view: ViewData;
   create: CreateData;
 }
 
+const ANIMATION_DURATION = 800; // 1 second, matching Tailwind transition duration
+
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {},
   actions: {
+    clearNewThreadFlags: assign(({ context }) => ({
+      threads: context.threads.map(thread => 
+        thread.isNew ? { ...thread, isNew: false } : thread
+      )
+    })),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
       const thread = context.create;
@@ -71,7 +82,8 @@ const threadsState = setup({
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
         status: 'draft',
-      } as ThreadEntity;
+        isNew: true, // Mark as new when created
+      } as ThreadWithUI;
 
       return {
         threads: [newThread, ...context.threads],
@@ -197,7 +209,7 @@ const threadsState = setup({
   }),
   on: {
     THREAD_CREATED: {
-      actions: ['addThenResetCreateForm'],
+      actions: ['addThenResetCreateForm']
     },
     STARTUP: {
       actions: 'setPluginData'
@@ -215,6 +227,11 @@ const threadsState = setup({
   states: {
     'list': {
       meta: { ...breadcrumb('list', 'Threads', true) },
+      after: {
+        [ANIMATION_DURATION]: {
+          actions: 'clearNewThreadFlags'
+        }
+      },
       on: {
         SHOW_CREATE_FORM: 'create',
         SELECT_THREAD: {

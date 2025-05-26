@@ -49,7 +49,10 @@
       <div
         v-for="thread in threads"
         :key="thread.id"
-        class="flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/80 border-neutral-800"
+        :class="[
+          'flex items-center justify-between overflow-hidden border rounded-md cursor-pointer border-neutral-800 transition-colors duration-1000',
+          thread.isNew ? 'bg-primary-600/20' : 'bg-neutral-900/80'
+        ]"
       >
       
         <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-700/50" @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })">
@@ -100,7 +103,7 @@ import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
+import { id, type ThreadsState, type ThreadWithUI } from '@/plugins/threads/state';
 
 const actor: ThreadsState = applicationState.system.get(id);
 const threads = useSelector(actor, (state) => state.context.threads);
@@ -111,6 +114,3 @@ const addDetail = () => {
   actor.send({ type: 'SHOW_CREATE_FORM' });
 }
 </script>
-
-<style lang="scss" module>
-</style> 
