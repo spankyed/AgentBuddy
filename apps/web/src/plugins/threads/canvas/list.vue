@@ -50,8 +50,8 @@
         v-for="thread in threads"
         :key="thread.id"
         :class="[
-          'flex items-center justify-between overflow-hidden border rounded-md cursor-pointer border-neutral-800 transition-colors duration-1000',
-          thread.isNew ? 'bg-primary-600/20' : 'bg-neutral-900/80'
+          'flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/80 border-neutral-800',
+          { 'animate-highlight': thread.isNew }
         ]"
       >
       
@@ -89,7 +89,7 @@
           class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-700/50"
         >
           Chat
-          <MessageCircleMore :size="16" class="ml-1.5"/>
+          <Headset :size="16" class="ml-1.5"/>
         </button>
       </div>
     </div>
@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { MessageCircleMore, Search, Plus } from 'lucide-vue-next'
+import { Headset, Search, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector, useActor } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
@@ -114,3 +114,20 @@ const addDetail = () => {
   actor.send({ type: 'SHOW_CREATE_FORM' });
 }
 </script>
+
+<style lang="scss">
+@keyframes highlight {
+  0% {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    background-color: rgba(23, 23, 23, 0.8);
+    border-color: rgb(38, 38, 38);
+  }
+}
+
+.animate-highlight {
+  animation: highlight 2s ease-out forwards;
+}
+</style>

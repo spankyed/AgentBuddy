@@ -59,7 +59,7 @@ interface ThreadsContext {
   create: CreateData;
 }
 
-const ANIMATION_DURATION = 800; // 1 second, matching Tailwind transition duration
+const ANIMATION_DURATION = 2000; // 2 seconds, matching CSS animation duration
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
