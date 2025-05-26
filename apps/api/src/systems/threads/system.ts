@@ -49,8 +49,6 @@ export const threadsSystem = setup({
   actions: {
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
-      console.log(thread);
-
       const timestamp = Date.now();
 
       const { id: threadId, shortCode } = createThread(
