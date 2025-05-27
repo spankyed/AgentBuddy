@@ -61,7 +61,7 @@
         </template>
         <template v-else>
           <div
-            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden border rounded-md bg-neutral-800/70 border-neutral-800"
+            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden border rounded-md bg-neutral-800/80 border-neutral-800"
           ></div>
         </template>
       </div>

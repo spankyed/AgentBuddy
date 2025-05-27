@@ -5,7 +5,7 @@
       { 'animate-highlight': thread.isNew }
     ]"
   >
-    <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-700/50" @click="$emit('select', thread.id)">
+    <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-800/50" @click="$emit('select', thread.id)">
       <!-- ID badge and truncated topic -->
       <div class="flex items-center flex-1 space-x-2">
         <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -34,7 +34,7 @@
     <button
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
-      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-700/50"
+      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800/50"
     >
       Chat
       <MessageCircleMore :size="16" class="ml-1.5"/>
