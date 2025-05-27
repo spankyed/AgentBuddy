@@ -57,7 +57,7 @@ watch(values, () => {
         >
           <TagsInputInput
             placeholder="Add tag..."
-            class="focus:outline-none flex-1 rounded !bg-transparent placeholder:text-neutral-500 px-1"
+            class="focus:outline-none flex-1 rounded !bg-transparent placeholder:text-neutral-500 p-1"
             @keydown.enter.prevent
           />
         </ComboboxInput>
@@ -71,13 +71,13 @@ watch(values, () => {
       </ComboboxTrigger>
     </ComboboxAnchor>
 
-    <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-0 bg-neutral-900 overflow-hidden rounded rounded-t-none shadow-[0px_10px_38px_-10px_rgba(22,_23,_24,_0.35),_0px_10px_20px_-15px_rgba(22,_23,_24,_0.2)] will-change-[opacity,transform] data-[side=top]:animate-slideDownAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade">
-      <ComboboxViewport class="p-[5px]">
+    <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-0 bg-neutral-800 overflow-hidden rounded rounded-t-none shadow-[0px_10px_38px_-10px_rgba(22,_23,_24,_0.35),_0px_10px_20px_-15px_rgba(22,_23,_24,_0.2)] will-change-[opacity,transform] data-[side=top]:animate-slideDownAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade">
+      <ComboboxViewport class="p-[5px] bg-neutral-900/60">
         <ComboboxGroup>
           <ComboboxItem
             v-for="(option, index) in filteredOptions"
             :key="index"
-            class="text-[13px] leading-none text-neutral-200 rounded-[3px] flex items-center h-[25px] pr-[35px] pl-[25px] relative select-none data-[disabled]:text-neutral-600 data-[disabled]:pointer-events-none data-[highlighted]:outline-none data-[highlighted]:bg-neutral-700 data-[highlighted]:text-neutral-100"
+            class="text-[13px] leading-none text-neutral-200 rounded-[3px] flex items-center h-[25px] pr-[35px] pl-[25px] relative select-none data-[disabled]:text-neutral-600 data-[disabled]:pointer-events-none data-[highlighted]:outline-none data-[highlighted]:bg-purple-900/40 data-[highlighted]:text-neutral-100"
             :value="option"
           >
             <ComboboxItemIndicator
