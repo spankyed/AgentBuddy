@@ -3,6 +3,8 @@ import { agent, type agentSystem } from '../system';
 import { type ActorRefFrom, fromPromise } from 'xstate';
 import { handleOpenAIStream } from './openai-stream-handler';
 
+// ! replace with ai-sdk - https://github.com/vercel/ai
+
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
 /* ------------------------------------------------------------------ */
