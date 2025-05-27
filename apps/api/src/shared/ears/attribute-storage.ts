@@ -69,16 +69,16 @@ function bucket(kind: EARS.AttrKind) {
 |   ▸ Core mutators                                                         |
 \*-------------------------------------------------------------------------*/
 function addAttribute(
-  entityID: EARS.EntityId,
+  id: EARS.EntityId,
   kind: EARS.AttrKind,
   value: EARS.AttributeValue,
 ): void {
   const b = bucket(kind);
-  if (!b.has(entityID)) b.set(entityID, []);
-  const attributes = b.get(entityID);
+  if (!b.has(id)) b.set(id, []);
+  const attributes = b.get(id);
   if (attributes) attributes.push(value); // multiple attrs of same kind allowed
-  addEntityToIndex(entityID);
-  logInternal("AA", false, kind, entityID, value);
+  addEntityToIndex(id);
+  logInternal("AA", false, kind, id, value);
 }
 
 function addRole(id: EARS.EntityId, role: string) {
@@ -104,14 +104,14 @@ function addRelation(
 }
 
 function updateAttribute(
-  entityID: EARS.EntityId,
+  id: EARS.EntityId,
   kind: EARS.AttrKind,
   newValue: EARS.AttributeValue,
   index = 0,
 ): void {
   const b = bucket(kind);
-  if (!b.has(entityID)) b.set(entityID, []);
-  const list = b.get(entityID) || [];
+  if (!b.has(id)) b.set(id, []);
+  const list = b.get(id) || [];
   if (index < 0) return;
   if (index >= list.length) list.push(newValue);
   else {
@@ -121,17 +121,17 @@ function updateAttribute(
         ? { ...current, ...newValue }
         : newValue;
   }
-  logInternal("AU", false, kind, entityID, newValue);
+  logInternal("AU", false, kind, id, newValue);
 }
 
 function updateAttributeByCriteria(
-  entityID: EARS.EntityId,
+  id: EARS.EntityId,
   kind: EARS.AttrKind,
   criteria: EARS.AttributeValue,
   newValue: EARS.AttributeValue,
 ) {
-  const idx = getAttributeIndexByCriteria(entityID, kind, criteria);
-  if (idx !== -1) updateAttribute(entityID, kind, newValue, idx);
+  const idx = getAttributeIndexByCriteria(id, kind, criteria);
+  if (idx !== -1) updateAttribute(id, kind, newValue, idx);
 }
 
 const updateRole = (id: EARS.EntityId, oldR: string, newR: string) =>
@@ -172,16 +172,16 @@ function updateRelation(
 |   ▸ Removal helpers                                                       |
 \*-------------------------------------------------------------------------*/
 function removeAttribute(
-  entityID: EARS.EntityId,
+  id: EARS.EntityId,
   kind: EARS.AttrKind,
   index = 0,
 ): EARS.AttributeValue | undefined {
   const kindBucket = store.get(kind);
-  const list = kindBucket?.get(entityID);
+  const list = kindBucket?.get(id);
   if (!list) return undefined;
   const [removed] = list.splice(index, 1);
-  if (!list.length && kindBucket) kindBucket.delete(entityID);
-  logInternal("AR", false, kind, entityID, removed);
+  if (!list.length && kindBucket) kindBucket.delete(id);
+  logInternal("AR", false, kind, id, removed);
   return removed;
 }
 
@@ -214,8 +214,8 @@ const matches = (criteria: EARS.AttributeValue) => (attr: EARS.AttributeValue) =
     ? Object.entries(criteria).every(([k, v]) => (attr as any)[k] === v)
     : attr === criteria;
 
-function getAttributesOfKind(entityID: EARS.EntityId, kind: EARS.AttrKind) {
-  return store.get(kind)?.get(entityID) ?? [];
+function getAttributesOfKind(id: EARS.EntityId, kind: EARS.AttrKind) {
+  return store.get(kind)?.get(id) ?? [];
 }
 
 function getAttribute(id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) {
@@ -279,12 +279,12 @@ function queryEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[] {
 
 function queryEntitiesByRelationTo(
   relationType: string,
-  entityID: EARS.EntityId,
+  id: EARS.EntityId,
   isSource = false,
 ): EARS.EntityId[] {
   const ids =
     relationIndex[relationType]?.[isSource ? "bySource" : "byTarget"][
-      entityID
+      id
     ] ?? [];
   return ids
     .map((relId) => {
@@ -297,21 +297,21 @@ function queryEntitiesByRelationTo(
 /*-------------------------------------------------------------------------*\
 |   ▸ Entity teardown                                                       |
 \*-------------------------------------------------------------------------*/
-function destroyEntity(entityID: EARS.EntityId): void {
+function destroyEntity(id: EARS.EntityId): void {
   for (const relType of Object.keys(relationIndex)) {
     const { bySource, byTarget } = relationIndex[relType];
     for (const dir of [bySource, byTarget]) {
-      const relIds = dir[entityID] ?? [];
+      const relIds = dir[id] ?? [];
       for (const relId of relIds) {
         const d = getRelation(relId);
         if (d) removeFromIndex(relType, d.sourceEntity, d.targetEntity, relId);
         removeAttribute(relId, EARS.AttrKind.RelationDetails);
       }
-      delete dir[entityID];
+      delete dir[id];
     }
   }
-  for (const kind of store.keys()) bucket(kind).delete(entityID);
-  removeEntityFromIndex(entityID);
+  for (const kind of store.keys()) bucket(kind).delete(id);
+  removeEntityFromIndex(id);
 }
 
 /*-------------------------------------------------------------------------*\
