@@ -20,7 +20,7 @@
           <PaginationListItem
             v-if="page.type === 'page'"
             :key="index"
-            class="w-9 h-9 border border-neutral-700/60 rounded-lg data-[selected]:!bg-neutral-700 data-[selected]:shadow-sm data-[selected]:text-white hover:bg-neutral-700/40 transition"
+            class="w-9 h-9 border border-neutral-700/60 rounded-lg data-[selected]:!bg-neutral-900/70 data-[selected]:shadow-sm data-[selected]:text-white hover:bg-neutral-700/40 transition"
             :value="page.value"
             :disabled="isDisabled"
           >
