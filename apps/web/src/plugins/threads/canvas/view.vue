@@ -37,31 +37,10 @@
       <!-- Tags list -->
       <div>
         <!-- <Label>Tags</Label> -->
-        <div class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            @click="() => actor.send({ type: 'ADD_TAG' })"
-            class="flex items-center gap-2 px-4 py-2 mr-2 text-sm font-medium text-purple-200 transition-colors rounded hover:text-purple-100 h-7 bg-purple-900/30 hover:bg-purple-500/30"
-          >
-            Add Tag
-            <Plus :size="16" class="text-purple-300" />
-          </button>
-
-          <span
-            v-for="(tag, index) in tags"
-            :key="index"
-            class="inline-flex items-center pl-3 py-0.5 text-sm bg-purple-900/30 text-purple-200 rounded"
-          >
-            {{ tag.name }}
-            <button
-              type="button"
-              @click="() => actor.send({ type: 'REMOVE_TAG', index })"
-              class="p-1 ml-1 rounded focus:outline-none"
-            >
-              <X :size="16" class="text-purple-300 hover:text-purple-100" />
-            </button>
-          </span>
-        </div>
+        <TagInput 
+          v-model="tagNames"
+          @update:modelValue="updateTags"
+        />
       </div>
 
       <!-- Threads list -->
@@ -135,26 +114,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, computed } from 'vue'
-import { X, Plus, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
+import { ref, watch, nextTick, computed } from 'vue'
+import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import MessageList from './message-list.vue'
+import TagInput from './tag-input.vue'
+import type { TagEntity } from '@abuddy/api';
+import type { EARS } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
-const tags = useSelector(actor, (state) => state.context.view.tags || []);
+const tags = useSelector(actor, (state) => state.context.view.tags || [] as TagEntity[]);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
+const isMessagesOpen = ref(false);
 
-// const isSaving = ref('')
-const isMessagesOpen = ref(false)
+// Transform tags array to string array for TagInput
+const tagNames = computed(() => {
+  const tagList = tags.value || [];
+  return tagList.map((tag: Partial<TagEntity>) => tag.name || '');
+});
+
+// Update tags in state when TagInput changes
+const updateTags = (newTags: string[]) => {
+  const tagObjects: TagEntity[] = newTags.map(name => ({
+    name,
+    entityType: "Tag" as EARS.Entity.Tag,
+    id: crypto.randomUUID(), // Generate a unique ID for each tag
+    createdAt: Date.now()
+  }));
+  actor.send({ 
+    type: 'UPDATE_VIEW_DATA', 
+    key: 'tags', 
+    value: tagObjects
+  });
+};
+
 
 watch(isMessagesOpen, async (isOpen) => {
   if (isOpen) {
@@ -172,7 +174,7 @@ watch(isMessagesOpen, async (isOpen) => {
   }
 })
 
-type attrKeys = 'topic' | 'threadType'
+type attrKeys = 'topic' | 'threadType' | 'tags'
 const updateField = (key: attrKeys, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
   actor.send({ type: 'UPDATE_VIEW_DATA', key, value });

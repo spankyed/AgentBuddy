@@ -20,7 +20,7 @@ type UIEvent =
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagEntity[] }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
   | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
