@@ -40,8 +40,6 @@
           <Search :size="16" class="text-neutral-500" />
         </button>
       </div>
-
-
     </div>
 
     <!-- Threads list section -->
