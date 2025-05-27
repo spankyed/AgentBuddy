@@ -214,12 +214,12 @@ const matches = (criteria: EARS.AttributeValue) => (attr: EARS.AttributeValue) =
     ? Object.entries(criteria).every(([k, v]) => (attr as any)[k] === v)
     : attr === criteria;
 
-function getAttributes(entityID: EARS.EntityId, kind: EARS.AttrKind) {
+function getAttributesOfKind(entityID: EARS.EntityId, kind: EARS.AttrKind) {
   return store.get(kind)?.get(entityID) ?? [];
 }
 
 function getAttribute(id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) {
-  return getAttributes(id, kind)[idx] ?? null;
+  return getAttributesOfKind(id, kind)[idx] ?? null;
 }
 
 function getAttributeIndexByCriteria(
@@ -227,11 +227,11 @@ function getAttributeIndexByCriteria(
   kind: EARS.AttrKind,
   c: EARS.AttributeValue,
 ) {
-  return getAttributes(id, kind).findIndex(matches(c));
+  return getAttributesOfKind(id, kind).findIndex(matches(c));
 }
 
 function getRoles(id: EARS.EntityId) {
-  return getAttributes(id, EARS.AttrKind.Role) as string[];
+  return getAttributesOfKind(id, EARS.AttrKind.Role) as string[];
 }
 function hasRole(id: EARS.EntityId, role: string) {
   return getRoles(id).includes(role);
@@ -241,7 +241,7 @@ function hasRoleX(role: string) {
 }
 
 function getRelation(relId: EARS.EntityId): EARS.RelationDetail | null {
-  return getAttributes(relId, EARS.AttrKind.RelationDetails)[0] ??
+  return getAttributesOfKind(relId, EARS.AttrKind.RelationDetails)[0] ??
     null;
 }
 
@@ -329,7 +329,7 @@ export {
   removeAttributeByCriteria,
   removeRole,
   removeRelation,
-  getAttributes,
+  getAttributesOfKind,
   getAttribute,
   getRoles,
   hasRole,
