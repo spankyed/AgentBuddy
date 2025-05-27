@@ -97,6 +97,6 @@ const addDetail = () => {
 }
 
 .animate-highlight {
-  animation: highlight 2s ease-out forwards;
+  animation: highlight 1s ease-out forwards;
 }
 </style>

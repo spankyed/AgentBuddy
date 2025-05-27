@@ -61,14 +61,14 @@ interface ThreadsContext {
   create: CreateData;
 }
 
-const ANIMATION_DURATION = 2000; // 2 seconds, matching CSS animation duration
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
   actors: {
-    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, self }) => {
+    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, system }) => {
+      const ANIMATION_DURATION = 1000;
       await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
-      self.send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+      system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
     })
   },
   actions: {
@@ -192,11 +192,9 @@ const threadsState = setup({
         }
       };
     }),
-    clearNewThreadFlag: assign(({ context }) => {
-      return {
-        threads: context.threads.map(t => t.id === context.selectedThreadCode ? { ...t, isNew: false } : t),
-      };
-    }),
+    clearNewThreadFlag: assign(({ context, event }) => ({
+      threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
+    })),
   },
   guards: {
     targetIs
