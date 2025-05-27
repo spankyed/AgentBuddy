@@ -40,7 +40,7 @@
         <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            @click="() => actor.send({ type: 'ADD_THREAD' })"
+            @click="() => actor.send({ type: 'LINK_THREAD' })"
             class="flex items-center gap-2 px-4 py-2 mr-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
           >
             Link Thread
@@ -55,7 +55,7 @@
             {{ thread.shortCode }}
             <button
               type="button"
-              @click="() => actor.send({ type: 'REMOVE_THREAD', index })"
+              @click="() => actor.send({ type: 'REMOVE_LINK', index })"
               class="p-1 ml-1 rounded focus:outline-none"
             >
               <X :size="16" class="text-neutral-400 hover:text-neutral-200" />

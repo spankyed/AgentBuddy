@@ -17,14 +17,14 @@ type SystemEvent =
 
 type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
+  | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
   | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
-  | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
-  | { type: 'ADD_THREAD' }
-  | { type: 'REMOVE_THREAD'; index: number }
+  | { type: 'LINK_THREAD' }
+  | { type: 'REMOVE_LINK'; index: number }
   | { type: 'ADD_TAG' }
   | { type: 'REMOVE_TAG'; index: number }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
@@ -168,7 +168,7 @@ const threadsState = setup({
       };
     }),
     removeChildThread: assign(({ event, context }) => {
-      const typedEvent = typeOf('REMOVE_THREAD', event);
+      const typedEvent = typeOf('REMOVE_LINK', event);
       return {
         view: {
           ...context.view,
@@ -294,10 +294,10 @@ const threadsState = setup({
             }
           },
         },
-        ADD_THREAD: {
+        LINK_THREAD: {
           actions: 'addChildThread',
         },
-        REMOVE_THREAD: {
+        REMOVE_LINK: {
           actions: 'removeChildThread',
         },
         ADD_TAG: {

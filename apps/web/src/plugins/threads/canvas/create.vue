@@ -125,11 +125,11 @@ const instructions = useSelector(actor, (state) => state.context.create.instruct
 const isSaving = ref(false)
 
 const addThread = () => {
-  actor.send({ type: 'ADD_THREAD' })
+  actor.send({ type: 'LINK_THREAD' })
 }
 
 const removeThread = (index: number) => {
-  actor.send({ type: 'REMOVE_THREAD', index })
+  actor.send({ type: 'REMOVE_LINK', index })
 }
 
 const addTag = () => {
