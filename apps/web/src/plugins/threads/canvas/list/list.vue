@@ -31,13 +31,13 @@
           v-model="searchKeyword"
           type="text"
           placeholder="Search"
-          class="px-4 py-2 text-sm rounded-tl rounded-bl w-96 bg-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-primary-600"
+          class="px-4 py-2 text-sm rounded-tl rounded-bl w-96 bg-neutral-900 placeholder-neutral-500 focus:outline-none"
         />
         <button
           type="button"
-          class="px-4 py-2 text-sm font-medium text-white rounded-tr rounded-br bg-neutral-700 hover:bg-neutral-600"
+          class="px-4 py-2 text-sm font-medium rounded-tr rounded-br text-neutral-500 bg-neutral-700 hover:bg-neutral-600 hover:text-neutral-100"
         >
-          <Search :size="16" class="text-neutral-500" />
+          <Search :size="16" />
         </button>
       </div>
     </div>
