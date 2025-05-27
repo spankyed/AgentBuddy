@@ -62,48 +62,12 @@
       </div>
       
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex justify-center mt-6">
-        <PaginationRoot
-          :page="currentPage"
-          :itemsPerPage="threadsPerPage"
+      <div class="mt-6">
+        <Pagination
           :total="threads.length"
-          @update:page="val => (currentPage = val)"
-        >
-          <PaginationList v-slot="{ items }" class="flex items-center gap-1 text-stone-700 dark:text-white">
-            <PaginationFirst class="flex items-center justify-center transition bg-transparent rounded-lg w-9 h-9 hover:bg-white dark:hover:bg-stone-700/70 disabled:opacity-50 dark:disabled:opacity-30" :disabled="currentPage === 1">
-              <ChevronsRight class="rotate-180" />
-            </PaginationFirst>
-            <PaginationPrev class="flex items-center justify-center mr-4 transition bg-transparent rounded-lg w-9 h-9 hover:bg-white dark:hover:bg-stone-700/70 disabled:opacity-50 dark:disabled:opacity-30" :disabled="currentPage === 1">
-              <ChevronRight class="rotate-180" />
-            </PaginationPrev>
-            
-            <template v-for="(page, index) in items">
-              <PaginationListItem
-                v-if="page.type === 'page'"
-                :key="index"
-                class="w-9 h-9 border dark:border-stone-800 rounded-lg data-[selected]:!bg-white dark:data-[selected]:!bg-stone-700 data-[selected]:shadow-sm data-[selected]:text-blackA11 dark:data-[selected]:text-white hover:bg-white dark:hover:bg-stone-700/70 transition"
-                :value="page.value"
-              >
-                {{ page.value }}
-              </PaginationListItem>
-              <PaginationEllipsis
-                v-else
-                :key="page.type"
-                :index="index"
-                class="flex items-center justify-center w-9 h-9"
-              >
-                &#8230;
-              </PaginationEllipsis>
-            </template>
-            
-            <PaginationNext class="flex items-center justify-center ml-4 transition bg-transparent rounded-lg w-9 h-9 hover:bg-white dark:hover:bg-stone-700/70 disabled:opacity-50 dark:disabled:opacity-30" :disabled="currentPage === totalPages">
-              <ChevronRight />
-            </PaginationNext>
-            <PaginationLast class="flex items-center justify-center transition bg-transparent rounded-lg w-9 h-9 hover:bg-white dark:hover:bg-stone-700/70 disabled:opacity-50 dark:disabled:opacity-30" :disabled="currentPage === totalPages">
-              <ChevronsRight />
-            </PaginationLast>
-          </PaginationList>
-        </PaginationRoot>
+          :items-per-page="threadsPerPage"
+          @page-changed="page => currentPage = page"
+        />
       </div>
     </div>
 
@@ -112,58 +76,15 @@
 
 <script setup lang="ts">
 import { ref, computed, type Ref } from 'vue'
-import { Search, Plus, ChevronRight, ChevronsRight } from 'lucide-vue-next'
+import { Search, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
-import Button   from '@/core/design/button.vue'
-import Thread   from './thread.vue'
+import Button from '@/core/design/button.vue'
+import Pagination from '@/core/design/pagination.vue'
+import Thread from './thread.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
-import {
-  PaginationRoot, PaginationList, PaginationListItem,
-  PaginationEllipsis, PaginationFirst, PaginationLast,
-  PaginationNext, PaginationPrev
-} from 'reka-ui'
 
-/* ─────────────────────────────
-   Composable: generic pagination
-   ──────────────────────────── */
-function usePagination (
-  totalItems: Ref<number>,
-  perPage = 6,
-  maxButtons = 7,          // incl. ellipses & ends
-) {
-  const page = ref(1)
 
-  const totalPages = computed(() =>
-    Math.max(1, Math.ceil(totalItems.value / perPage)),
-  )
-
-  const slice = computed<[number, number]>(() => {
-    const start = (page.value - 1) * perPage
-    return [start, start + perPage]
-  })
-
-  const pages = computed<(number | '…')[]>(() => {
-    const total = totalPages.value
-    if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1)
-
-    const window = maxButtons - 3          // first + last + 2×ellipsis
-    const left   = Math.max(2, page.value - Math.floor(window / 2))
-    const right  = Math.min(total - 1, left + window - 1)
-
-    const range  = Array.from({ length: right - left + 1 }, (_, i) => left + i)
-
-    return [
-      1,
-      left > 2 ? '…' : null,
-      ...range,
-      right < total - 1 ? '…' : null,
-      total,
-    ].filter(Boolean) as (number | '…')[]
-  })
-
-  return { page, totalPages, pages, slice }
-}
 
 /* ─────────────────────────────
    Component state
@@ -171,14 +92,13 @@ function usePagination (
 const actor: ThreadsState = applicationState.system.get(id)
 const threads            = useSelector(actor, s => s.context.threads)
 
-const threadsPerPage     = 3
-const threadCount = computed(() => threads.value.length)
-const { page: currentPage, totalPages, pages: visiblePages, slice } =
-  usePagination(threadCount, threadsPerPage)
+const threadsPerPage = 3
+const currentPage = ref(1)
 
-const paginatedThreads = computed(() =>
-  threads.value.slice(...slice.value),
-)
+const paginatedThreads = computed(() => {
+  const start = (currentPage.value - 1) * threadsPerPage
+  return threads.value.slice(start, start + threadsPerPage)
+})
 
 const searchKeyword = ref('');
 
