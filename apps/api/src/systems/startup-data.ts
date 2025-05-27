@@ -1,3 +1,4 @@
+import { getAllAttributes, getEntitiesOfType } from '@/shared/ears';
 import { rows } from './brain/mock-data';
 import { EARS } from '@/shared/ears/types';
 import type { Rows } from '@/shared/types';
@@ -29,7 +30,12 @@ const pluginStartupLoaders = {
     }
   },
   threads: () => {
-    const threads = rows.entity.filter(byEntityType(EARS.Entity.Thread));
+    const threadIds = getEntitiesOfType(EARS.Entity.Thread)
+    const threads = threadIds.map(id => ({
+      id,
+      entityType: EARS.Entity.Thread,
+      ...getAllAttributes(id)
+    })).reverse();
 
     return {
       threads,
