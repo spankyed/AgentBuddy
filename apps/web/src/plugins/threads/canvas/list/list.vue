@@ -47,7 +47,7 @@
       <div
         v-for="thread in paginatedThreads"
         :key="thread.id"
-        class="flex items-center justify-between overflow-hidden border rounded-md bg-neutral-900/80 border-neutral-800"
+        class="flex items-center justify-between overflow-hidden m-0.5 rounded-md bg-neutral-900/80 border-neutral-800"
       >
         <template v-if="!isPlaceholderThread(thread)">
           <Thread
@@ -58,7 +58,7 @@
         </template>
         <template v-else>
           <div
-            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden border rounded-md bg-neutral-800/80 border-neutral-800"
+            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden rounded-md bg-neutral-800/80"
           ></div>
         </template>
       </div>

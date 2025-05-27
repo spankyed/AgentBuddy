@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'flex w-full items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/80 border-neutral-800',
+      'flex w-full items-center justify-between overflow-hidden rounded-md cursor-pointer bg-neutral-900/80',
       { 'animate-highlight': thread.isNew }
     ]"
   >
