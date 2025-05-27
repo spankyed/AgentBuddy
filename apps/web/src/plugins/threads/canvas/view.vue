@@ -34,19 +34,10 @@
         </div>
       </div>
 
-      <!-- Tags list -->
-      <div>
-        <!-- <Label>Tags</Label> -->
-        <TagInput 
-          v-model="tagNames"
-          @update:modelValue="updateTags"
-        />
-      </div>
-
-      <!-- Threads list -->
-      <div>
+      <!-- Tags & Related Threads -->
+      <div class="flex flex-wrap gap-2">
         <!-- <Label>Related Threads</Label> -->
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap flex-1 gap-2">
           <button
             type="button"
             @click="() => actor.send({ type: 'LINK_THREAD' })"
@@ -71,6 +62,11 @@
             </button>
           </span>
         </div>
+        <!-- <Label>Tags</Label> -->
+        <TagInput 
+          v-model="tagNames"
+          @update:modelValue="updateTags"
+        />
       </div>
 
       <!-- Messages Container -->
