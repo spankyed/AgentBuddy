@@ -222,6 +222,21 @@ function getAttribute(id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) {
   return getAttributesOfKind(id, kind)[idx] ?? null;
 }
 
+type EntityAttributes = Record<
+  EARS.AttrKind,
+  EARS.AttributeValue | EARS.AttributeValue[]
+>;
+function getAllAttributes(id: EARS.EntityId): EntityAttributes {
+  // result is an object where key is kind, is a single attribute value or an array of attributes
+  const result: EntityAttributes = {} as EntityAttributes;
+  for (const kind of store.keys()) {
+    const attributes = getAttributesOfKind(id, kind);
+    if (attributes.length === 0) continue;
+    result[kind] = attributes.length === 1 ? attributes[0] : attributes;
+  }
+  return result;
+}
+
 function getAttributeIndexByCriteria(
   id: EARS.EntityId,
   kind: EARS.AttrKind,
@@ -343,4 +358,5 @@ export {
   createEntity,
   getAllEntities,
   getEntitiesOfType,
+  getAllAttributes,
 };
