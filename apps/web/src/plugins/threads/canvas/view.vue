@@ -28,7 +28,7 @@
 
       <!-- Instructions -->
       <div>
-        <Label>Instructions</Label>
+        <!-- <Label>Instructions</Label> -->
         <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
           <p class="text-sm text-neutral-300">{{ instructions }}</p>
         </div>
