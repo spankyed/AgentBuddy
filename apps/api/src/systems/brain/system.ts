@@ -5,7 +5,7 @@ import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import type { EARS } from '@/shared/ears/types';
-import { getStartupData } from './startup-data';
+import { getStartupData } from '../startup-data';
 
 const typeOf = safeEvents<ReceivableEvents>();
 

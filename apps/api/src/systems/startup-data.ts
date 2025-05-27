@@ -1,4 +1,4 @@
-import { rows } from './mock-data';
+import { rows } from './brain/mock-data';
 import { EARS } from '@/shared/ears/types';
 import type { Rows } from '@/shared/types';
 import { entries } from '@/shared/utils';
