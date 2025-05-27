@@ -2,22 +2,47 @@
 //  * attribute-store.graphology.ts – Same public API, Graphology‑powered engine
 //  *───────────────────────────────────────────────────────────────────────────*/
 // import Graph from 'graphology';
-// import { Attributes } from 'graphology-types';
+// import { addNodeAttributeIndex } from 'graphology-indexes';
 // import { isPlainObject } from '@/shared/utils';
 // import { logInternal } from '@/shared/debug/log';
 // import { createEntity as _createEntity } from './create-entity';
 // import { EARS } from './types';
 
 // /*-------------------------------------------------------------------------*\
-// |   ▸ Internal graph (directed & multi‑edge)                                |
+// |   ▸ Internal graph & indexes                                              |
 // \*-------------------------------------------------------------------------*/
 // const graph = new Graph({ type: 'directed', multi: true });
+
+// /** Secondary per‑kind attribute indexes (lazy created) */
+// const attrIndexes = new Map<EARS.AttrKind, ReturnType<typeof addNodeAttributeIndex>>();
+// const ensureAttrIndex = (kind: EARS.AttrKind) => {
+//   if (!attrIndexes.has(kind)) attrIndexes.set(kind, addNodeAttributeIndex(graph, kind as string));
+//   return attrIndexes.get(kind);
+// };
+
+// /** Entity‑type → Set<EntityId>  (O(1) getEntitiesOfType) */
+// const typeIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();
+// const addToTypeIndex = (id: EARS.EntityId, t?: EARS.Entity) => {
+//   if (!t) return;
+//   if (!typeIndex.has(t)) typeIndex.set(t, new Set());
+//   typeIndex.get(t)?.add(id);
+// };
+// const removeFromTypeIndex = (id: EARS.EntityId, t?: EARS.Entity) => {
+//   if (!t) return;
+//   const bucket = typeIndex.get(t);
+//   if (!bucket) return;
+//   bucket.delete(id);
+//   if (!bucket.size) typeIndex.delete(t);
+// };
 
 // /*-------------------------------------------------------------------------*\
 // |   ▸ Helpers                                                               |
 // \*-------------------------------------------------------------------------*/
 // function ensureNode(id: EARS.EntityId, type?: EARS.Entity) {
-//   if (!graph.hasNode(id)) graph.addNode(id, { type });
+//   if (!graph.hasNode(id)) {
+//     graph.addNode(id, { type });
+//     addToTypeIndex(id, type);
+//   }
 // }
 
 // function attrBucket(nodeId: EARS.EntityId, kind: EARS.AttrKind): EARS.AttributeValue[] {
@@ -32,6 +57,7 @@
 // function addAttribute(id: EARS.EntityId, kind: EARS.AttrKind, value: EARS.AttributeValue) {
 //   ensureNode(id, entityTypeOf(id));
 //   attrBucket(id, kind).push(value);
+//   ensureAttrIndex(kind); // create index ahead of time (kept in sync by lib)
 //   logInternal('AA', false, kind, id, value);
 // }
 
@@ -113,7 +139,6 @@
 //   const src = newSource ?? cur.sourceEntity;
 //   const tgt = newTarget ?? cur.targetEntity;
 
-//   // If endpoints change we need to recreate the edge (Graphology edge endpoints are immutable)
 //   if (src !== cur.sourceEntity || tgt !== cur.targetEntity) {
 //     graph.dropEdge(relId);
 //     graph.addDirectedEdgeWithKey(relId, src, tgt, {
@@ -124,7 +149,6 @@
 //     graph.setEdgeAttribute(relId, 'info', newInfo);
 //   }
 
-//   // keep RelationDetails attribute on the pseudo‑node in sync
 //   updateAttribute(relId, EARS.AttrKind.RelationDetails, {
 //     sourceEntity: src,
 //     targetEntity: tgt,
@@ -194,6 +218,15 @@
 // const hasRoleX = (role: string) => (item: EARS.AttributeValue) => hasRole(item, role);
 
 // function queryEntitiesByAttribute(kind: EARS.AttrKind, criteria?: EARS.AttributeValue): EARS.EntityId[] {
+//   // Fast path using secondary index
+//   if (criteria !== undefined && attrIndexes.has(kind)) {
+//     const idx = ensureAttrIndex(kind);
+//     const set = idx.get(criteria);
+//     if (set) return [...set] as EARS.EntityId[];
+//     return [];
+//   }
+
+//   // Fallback scan
 //   const out: EARS.EntityId[] = [];
 //   graph.forEachNode((id, attrs) => {
 //     const list = (attrs[kind] as EARS.AttributeValue[]) ?? [];
@@ -206,8 +239,8 @@
 
 // function queryEntitiesInRelationTo(target: EARS.EntityId): EARS.EntityId[] {
 //   const out = new Set<EARS.EntityId>();
-//   graph.forEachInEdge(target, (_e, attrs, src) => out.add(src as EARS.EntityId));
-//   graph.forEachOutEdge(target, (_e, attrs, _src, tgt) => out.add(tgt as EARS.EntityId));
+//   graph.forEachInEdge(target, (_e, _attrs, src) => out.add(src as EARS.EntityId));
+//   graph.forEachOutEdge(target, (_e, _attrs, _src, tgt) => out.add(tgt as EARS.EntityId));
 //   return [...out];
 // }
 
@@ -235,7 +268,7 @@
 // }
 
 // function getEntitiesOfType(entityType: EARS.Entity): EARS.EntityId[] {
-//   return graph.filterNodes((id, attrs) => attrs.type === entityType) as EARS.EntityId[];
+//   return [...(typeIndex.get(entityType) ?? [])] as EARS.EntityId[];
 // }
 
 // function getAllEntities(): EARS.EntityId[] {
@@ -243,12 +276,13 @@
 // }
 
 // function destroyEntity(id: EARS.EntityId) {
-//   // remove incident edges
+//   const t = graph.getNodeAttribute(id, 'type') as EARS.Entity | undefined;
+//   removeFromTypeIndex(id, t);
 //   graph.dropNode(id);
 // }
 
 // /*-------------------------------------------------------------------------*\
-// |   ▸ Public re‑exports (API compatibility)                                 |
+// |   ▸ Public re‑exports (API compatibility                                  |
 // \*-------------------------------------------------------------------------*/
 // export {
 //   addAttribute,
