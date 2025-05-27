@@ -50,15 +50,22 @@
         v-for="thread in paginatedThreads"
         :key="thread.id"
         :class="[
-          'flex items-center justify-between overflow-hidden border rounded-md cursor-pointer bg-neutral-900/80 border-neutral-800',
-          { 'animate-highlight': thread.isNew }
+          'flex items-center justify-between overflow-hidden border rounded-md bg-neutral-900/80 border-neutral-800',
+          { 'animate-highlight': isNewThread(thread) }
         ]"
       >
-        <Thread
-          :thread="thread"
-          @select="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
-          @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
-        />
+        <template v-if="!isPlaceholderThread(thread)">
+          <Thread
+            :thread="thread"
+            @select="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
+            @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
+          />
+        </template>
+        <template v-else>
+          <div
+            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden border rounded-md bg-neutral-800/70 border-neutral-800"
+          ></div>
+        </template>
       </div>
     </div>
     <!-- Pagination -->
@@ -81,7 +88,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import Pagination from '@/core/design/pagination.vue'
 import Thread from './thread.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state'
+import { id, type ThreadsState, type ThreadWithUI } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
@@ -90,10 +97,28 @@ const currentPage = ref(1)
 
 const paginatedThreads = computed(() => {
   const start = (currentPage.value - 1) * threadsPerPage
-  return threads.value.slice(start, start + threadsPerPage)
+  const slicedThreads = threads.value.slice(start, start + threadsPerPage)
+  
+  // Add placeholder threads if needed
+  const placeholders = Array(threadsPerPage - slicedThreads.length).fill(null).map((_, i) => ({
+    id: `placeholder-${i}`,
+    isPlaceholder: true
+  }))
+  
+  return [...slicedThreads, ...placeholders]
 })
 
 const searchKeyword = ref('');
+
+function isNewThread(thread: ThreadWithUI | { id: string; isNew?: boolean }) {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  return (thread as any).isNew === true;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder: boolean } {
+  return thread.isPlaceholder === true;
+}
 </script>
 
 <style lang="scss">
