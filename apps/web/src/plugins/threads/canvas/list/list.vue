@@ -45,7 +45,7 @@
     </div>
 
     <!-- Threads list section -->
-    <div class="threads">
+    <div class="threads min-h-[16.5rem]">
       <div
         v-for="thread in paginatedThreads"
         :key="thread.id"
@@ -60,15 +60,14 @@
           @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
         />
       </div>
-      
-      <!-- Pagination -->
-      <div class="mt-6">
-        <Pagination
-          :total="threads.length"
-          :items-per-page="threadsPerPage"
-          @page-changed="page => currentPage = page"
-        />
-      </div>
+    </div>
+    <!-- Pagination -->
+    <div class="mx-auto">
+      <Pagination
+        :total="threads.length"
+        :items-per-page="threadsPerPage"
+        @page-changed="page => currentPage = page"
+      />
     </div>
 
   </div>
@@ -84,15 +83,9 @@ import Pagination from '@/core/design/pagination.vue'
 import Thread from './thread.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
 
-
-
-/* ─────────────────────────────
-   Component state
-   ──────────────────────────── */
 const actor: ThreadsState = applicationState.system.get(id)
-const threads            = useSelector(actor, s => s.context.threads)
-
-const threadsPerPage = 3
+const threads = useSelector(actor, s => s.context.threads)
+const threadsPerPage = 6
 const currentPage = ref(1)
 
 const paginatedThreads = computed(() => {
@@ -101,12 +94,6 @@ const paginatedThreads = computed(() => {
 })
 
 const searchKeyword = ref('');
-
-
-const addDetail = () => {
-  // Since we're now using state machine, we should send an event to create a new thread
-  actor.send({ type: 'SHOW_CREATE_FORM' });
-}
 </script>
 
 <style lang="scss">
