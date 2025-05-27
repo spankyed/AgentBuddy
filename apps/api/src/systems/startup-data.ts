@@ -1,7 +1,7 @@
 import { getAllAttributes, getEntitiesOfType } from '@/shared/ears';
 import { rows } from './brain/mock-data';
 import { EARS } from '@/shared/ears/types';
-import type { Rows } from '@/shared/types';
+import type { Rows, ThreadEntity } from '@/shared/types';
 import { entries } from '@/shared/utils';
 
 type Row = Rows['entity'][number]
@@ -31,12 +31,22 @@ const pluginStartupLoaders = {
   },
   threads: () => {
     const threadIds = getEntitiesOfType(EARS.Entity.Thread)
-    const threads = threadIds.map(id => ({
-      id,
-      entityType: EARS.Entity.Thread,
-      ...getAllAttributes(id)
-    })).reverse();
-
+    const threads = threadIds.map(id => {
+      const attrs = getAllAttributes(id);
+      return {
+        id,
+        entityType: EARS.Entity.Thread,
+        topic: attrs.topic || '',
+        timestamp: attrs.timestamp || Date.now(),
+        threadType: attrs.threadType || 'work-item',
+        status: attrs.status || 'draft',
+        shortCode: attrs.shortCode,
+        createdAt: attrs.timestamp || Date.now(),
+        updatedAt: attrs.timestamp || Date.now(),
+        ...attrs
+      } as ThreadEntity;
+    }).reverse();
+    
     return {
       threads,
     }
