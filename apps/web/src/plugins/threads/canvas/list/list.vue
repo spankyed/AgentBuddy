@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-5xl px-6 py-4 mx-auto space-y-6">
+  <div class="max-w-5xl px-6 py-4 mx-auto">
     <!-- Search & Create row -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
       <button
@@ -43,14 +43,11 @@
     </div>
 
     <!-- Threads list section -->
-    <div class="threads min-h-[16.5rem]">
+    <div class="threads min-h-[16.5rem] py-4 pt-5">
       <div
         v-for="thread in paginatedThreads"
         :key="thread.id"
-        :class="[
-          'flex items-center justify-between overflow-hidden border rounded-md bg-neutral-900/80 border-neutral-800',
-          { 'animate-highlight': isNewThread(thread) }
-        ]"
+        class="flex items-center justify-between overflow-hidden border rounded-md bg-neutral-900/80 border-neutral-800"
       >
         <template v-if="!isPlaceholderThread(thread)">
           <Thread
