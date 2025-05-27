@@ -17,6 +17,7 @@ type SystemEvent =
 
 type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
+  | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType'; value: string }
@@ -285,6 +286,7 @@ const threadsState = setup({
     'view': {
       meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadCode') },
       on: {
+        GO_BACK: { target: 'list' },
         UPDATE_VIEW_DATA: {
           actions: {
             type: 'updateThreadData',

@@ -97,6 +97,7 @@
       <!-- Messages Container -->
       <div class="mt-5">
         <div class="flex gap-2 pb-2">
+
           <button
             v-if="messages.length > 0"
             @click="isMessagesOpen = !isMessagesOpen"
@@ -108,10 +109,20 @@
               :class="[`ml-1 transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
             />
           </button>
+          <button
+            topic="Cancel thread creation"
+            type="submit"
+            @click="actor.send({ type: 'GO_BACK' })"
+            :class="[
+              'ml-auto px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-500 hover:text-white',
+            ]"
+          >
+            <ArrowLeft :size="22" />
+            Back
+          </button>
           <Button 
             type="button"
             variant="secondary"
-            class="ml-auto"
           >
           Chat About {{ topic.slice(0, 10) }}
           <MessageCircleMore :size="16" class=""/>
@@ -125,7 +136,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick, computed } from 'vue'
-import { X, Plus, ChevronDown, MessageCircleMore } from 'lucide-vue-next'
+import { X, Plus, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
