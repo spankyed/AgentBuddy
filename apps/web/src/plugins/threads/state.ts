@@ -195,6 +195,16 @@ const threadsState = setup({
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
+    updateThreadStatus: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
+      return {
+        threads: context.threads.map(t => 
+          t.id === typedEvent.id 
+            ? { ...t, status: typedEvent.status }
+            : t
+        )
+      };
+    }),
   },
   guards: {
     targetIs
@@ -249,16 +259,7 @@ const threadsState = setup({
           actions: ['setSelectedThread', 'sendViewThread'],
         },
         UPDATE_THREAD_STATUS: {
-          actions: assign(({ event, context }) => {
-            const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
-            return {
-              threads: context.threads.map(t => 
-                t.id === typedEvent.id 
-                  ? { ...t, status: typedEvent.status }
-                  : t
-              )
-            };
-          })
+          actions: 'updateThreadStatus',
         },
       },
     },
