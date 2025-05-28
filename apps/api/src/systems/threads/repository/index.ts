@@ -1,7 +1,7 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import type { ThreadCreateData, ThreadCreateMeta, ThreadLink, ThreadExtendedView, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
+import type { ThreadCreateData, ThreadLink, ThreadExtendedView, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
 import { getRelatedAttributes } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
 
@@ -22,7 +22,8 @@ export function updateTag(id: EARS.EntityId, props: Partial<TagEntity>) {
     .set('updatedAt', Date.now());
 }
 
-export function createThread(thread: ThreadCreateData & ThreadCreateMeta) {
+export function createThread(thread: ThreadCreateData) {
+  const timestamp = Date.now();
   const threadCount = getEntitiesOfType(EARS.Entity.Thread).length;
   const shortCodesMap: Record<ThreadEntity['threadType'], ThreadTypeCodes> = {
     'work-item': 'WI',
@@ -33,14 +34,14 @@ export function createThread(thread: ThreadCreateData & ThreadCreateMeta) {
   const shortCode = `${shortCodesMap[thread.threadType]}-${threadCount}` as ThreadTypeShortCode;
 
   const newThreadId = tx(EARS.Entity.Thread)
+    .set('status', 'draft')
+    .set('shortCode', shortCode)
+    .set('timestamp', timestamp)
+    .set('createdAt', timestamp)
+    .set('updatedAt', timestamp)
     .set('topic', thread.topic)
     .set('instructions', thread.instructions)
-    .set('timestamp', thread.timestamp)
-    .set('shortCode', shortCode)
     .set('threadType', thread.threadType)
-    .set('status', thread.status)
-    .set('createdAt', thread.timestamp)
-    .set('updatedAt', thread.timestamp)
     .id(); // returns new thread ID
 
   for (const tag of thread.tags ?? []) {
@@ -53,7 +54,7 @@ export function createThread(thread: ThreadCreateData & ThreadCreateMeta) {
       .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
   }
 
-  return { id: newThreadId, shortCode };
+  return { id: newThreadId, shortCode, timestamp };
 }
 
 export function updateAttribute(threadId: EARS.EntityId, attr: EARS.AttrKind | string, value: unknown) {

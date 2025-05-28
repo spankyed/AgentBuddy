@@ -57,17 +57,14 @@ export const threadsSystem = setup({
   actions: {
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
-      const timestamp = Date.now();
 
-      const { id: threadId, shortCode } = createThread(
+      const { id: threadId, shortCode, timestamp } = createThread(
         {
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
           tags: thread.tags as EARS.EntityId[],
           relatedThreads: thread.relatedThreads as ThreadLink[],
-          status: 'draft',
-          timestamp,
         },
       );
 

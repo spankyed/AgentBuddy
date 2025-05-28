@@ -11,8 +11,6 @@ export type ThreadCreateData = Pick<ThreadEntity, 'topic' | 'threadType' | 'inst
   relatedThreads: ThreadLink[];
 }
 
-export type ThreadCreateMeta = Pick<ThreadEntity, 'status' | 'timestamp'>;
-
 export type ThreadTypeCodes = 'U' | 'P' | 'WI';
 export type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
 
