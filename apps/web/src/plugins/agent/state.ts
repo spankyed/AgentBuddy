@@ -133,7 +133,7 @@ const agentState = setup({
     messages: [],
     contextItems: [],
     canvasContent: { 
-      id: '0', 
+      id: 'CanvasItem-0', 
       entityType: 'CanvasItem', 
       contentType: 'text', 
       content: 'Waiting for data...', 
