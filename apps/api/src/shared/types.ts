@@ -16,6 +16,7 @@ export interface MessageEntity extends BaseEntity {
 export interface ThreadEntity extends BaseEntity {
   entityType: EARS.Entity.Thread;
   topic: string;
+  instructions: string;
   sideTopics?: string[];
   timestamp: number;
   shortCode?: string;

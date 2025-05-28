@@ -38,6 +38,7 @@ const pluginStartupLoaders = {
         entityType: EARS.Entity.Thread,
         topic: attrs.topic || '',
         timestamp: attrs.timestamp || Date.now(),
+        instructions: attrs.instructions || '',
         threadType: attrs.threadType || 'work-item',
         status: attrs.status || 'draft',
         shortCode: attrs.shortCode,
