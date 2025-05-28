@@ -38,7 +38,7 @@
     </div>
 
     <!-- MAIN SCROLL AREA -->
-    <div class="w-full overflow-y-auto">
+    <div class="flex-1 w-full overflow-y-auto">
       <slot />
     </div>
   </div>
@@ -61,6 +61,6 @@ defineEmits<{
 
 <style lang="scss" module>
 .component {
-  max-height: 45vh;
+  height: 45vh;
 }
 </style>

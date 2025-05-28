@@ -9,7 +9,7 @@
     />
     
     <!-- Main Area -->
-    <div class="flex flex-col flex-grow overflow-hidden">
+    <div class="flex flex-col flex-grow overflow-hidden w-[100rem]">
         <!-- Canvas Area -->
         <CanvasArea
         @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"

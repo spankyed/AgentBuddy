@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-[6rem] h-full py-4 text-white border-r border-neutral-800">
+  <div class="flex flex-col w-[4rem] h-full py-4 text-white border-r border-neutral-800">
     <div class="flex flex-col h-full">
       <!-- Scrollable section -->
       <div class="flex-1 overflow-y-auto scrollbar-hide">
