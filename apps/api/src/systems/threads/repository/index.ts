@@ -1,20 +1,9 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import type { ThreadsViewData } from '../types';
+import type { NewThread, ThreadLink, ThreadsViewData, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
 import { getRelatedAttributes } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
-
-type NewThread = Omit<ThreadEntity, 'id' | 'createdAt' | 'updatedAt' | 'shortCode'>;
-
-type ThreadTypeCodes = 'U' | 'P' | 'WI';
-type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
-
-export type ThreadLinkRelation = 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates';
-export type ThreadLink = {
-  relation: ThreadLinkRelation;
-  id: EARS.EntityId;
-}
 
 export function createTag(name: string) {
   const tagId = tx(EARS.Entity.Tag)

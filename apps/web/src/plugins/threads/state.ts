@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadsViewData } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadsViewData, ThreadLink } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
 const typeOf = safeEvents<UIEvent>();
@@ -26,7 +26,7 @@ type UIEvent =
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagItem[] }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
   | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
@@ -45,7 +45,7 @@ export type CreateData = {
   topic: string;
   threadType: ThreadEntity['threadType'];
   tags: TagItem[];
-  relatedThreads: string[];
+  relatedThreads: ThreadLink[];
   instructions: string;
 };
 
@@ -63,7 +63,7 @@ export type TagItem = Partial<TagEntity> & {
 interface ThreadsContext {
   threads: ThreadWithUI[];
   selectedThreadCode?: string;
-  view: ViewData;
+  view: ViewData ;
   create: CreateData;
   availableTags: TagItem[];
 }
@@ -160,7 +160,8 @@ const threadsState = setup({
       const thread = context[params.key];
       
       if (typedEvent.key in thread) {
-        thread[typedEvent.key] = typedEvent.value;
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        thread[typedEvent.key] = typedEvent.value as any;
       }
 
       if (params.key === 'view') {
@@ -175,7 +176,8 @@ const threadsState = setup({
       }
 
       return {
-        create: thread as CreateData,
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        create: thread as any satisfies CreateData,
       };
     }),
     addChildThread: assign(({ context }) => {
@@ -220,7 +222,7 @@ const threadsState = setup({
       messages: undefined,
       relatedThreads: [],
       tags: [],
-    },
+    } as ViewData,
     create: { ...defaultCreate },
     availableTags: [],
   }),

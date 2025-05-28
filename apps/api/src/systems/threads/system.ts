@@ -6,8 +6,8 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { createThread, getViewData, type ThreadLink } from './repository';
-import type { MessageEntity, ThreadEntity } from '@/types';
+import { createThread, getViewData } from './repository';
+import type { MessageEntity, ThreadEntity, ThreadLink } from '@/types';
 import type { ThreadsViewData } from './types';
 
 export const threads = 'threads' as const;
