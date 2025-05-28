@@ -61,7 +61,6 @@ export const threadsSystem = setup({
 
       const { id: threadId, shortCode } = createThread(
         {
-          entityType: EARS.Entity.Thread,
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,

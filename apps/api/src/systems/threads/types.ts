@@ -6,7 +6,12 @@ export type ThreadExtendedView = {
   tags?: Partial<TagEntity>[];
 }
 
-export type NewThread = Omit<ThreadEntity, 'id' | 'createdAt' | 'updatedAt' | 'shortCode'>;
+export type ThreadCreateData = Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
+  tags: EARS.EntityId[];
+  relatedThreads: ThreadLink[];
+}
+
+export type ThreadCreateMeta = Pick<ThreadEntity, 'status' | 'timestamp'>;
 
 export type ThreadTypeCodes = 'U' | 'P' | 'WI';
 export type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
