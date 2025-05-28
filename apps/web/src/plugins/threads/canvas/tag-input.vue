@@ -54,7 +54,9 @@ const filteredOptions = computed(() =>
           <TagsInputItemText class="text-sm">
             {{ item.name }}
           </TagsInputItemText>
-          <TagsInputItemDelete>
+          <TagsInputItemDelete
+            @click="values = values.filter((v) => v.id !== item.id)"
+          >
             <X :size="16" />
           </TagsInputItemDelete>
         </TagsInputItem>
