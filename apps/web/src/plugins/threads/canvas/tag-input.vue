@@ -10,7 +10,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<(e: 'update:modelValue', value: TagItem[]) => void>()
 
-const { contains } = useFilter({ sensitivity: 'base' })
+const { startsWith } = useFilter({ sensitivity: 'base' })
 const query = ref('')
 const values = computed({
   get: () => props.modelValue,
@@ -25,7 +25,7 @@ watch(values, () => {
 const filteredOptions = computed(() =>
   props.availableTags
     .filter(option =>
-      contains(option.name, query.value) && !values.value.find(item => item.id === option.id))
+      startsWith(option.name, query.value) && !values.value.find(item => item.id === option.id))
     .map(option => ({
       id: option.id,
       name: option.name,
