@@ -19,6 +19,15 @@ export const IncomingThreadsEvents = [
     topic: z.string(),
     threadType: z.string(),
     tags: z.array(z.string()),
+    // relatedThreads: z.array(z.object({
+    //   relation: z.union([
+    //     z.literal('parent'),
+    //     z.literal('blocks'),
+    //     z.literal('blocked-by'),
+    //     z.literal('duplicates'),
+    //   ]),
+    //   id: z.string(),
+    // })),
     relatedThreads: z.array(z.string()),
     instructions: z.string(),
   }),

@@ -9,39 +9,6 @@ import { trpc } from '@/core/trpc';
 const typeOf = safeEvents<UIEvent>();
 
 export const id = 'threads' as const;
-export type ThreadsState = ActorRefFrom<typeof threadsState>;
-
-type SystemEvent =
-  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
-  | OutgoingThreadsEvents
-
-type UIEvent =
-  | { type: 'SHOW_CREATE_FORM' }
-  | { type: 'GO_BACK' }
-  | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
-  | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagEntity[] }
-  | { type: 'CREATE_THREAD' }
-  | { type: 'CANCEL_CREATE' }
-  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
-  | { type: 'LINK_THREAD' }
-  | { type: 'REMOVE_LINK'; index: number }
-  | { type: 'ADD_TAG' }
-  | { type: 'REMOVE_TAG'; index: number }
-  | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
-  | SystemEvent
-  | TrailClickEvent;
-
-
-export type ViewData = Partial<ThreadEntity> & ThreadsViewData;
-
-export type CreateData = {
-  topic: string;
-  threadType: ThreadEntity['threadType'];
-  tags: string[];
-  relatedThreads: string[];
-  instructions: string;
-};
 const defaultCreate: CreateData = {
   topic: '',
   threadType: 'work-item',
@@ -50,18 +17,53 @@ const defaultCreate: CreateData = {
   instructions: '',
 }
 
+export type ThreadsState = ActorRefFrom<typeof threadsState>;
+type SystemEvent =
+  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
+  | OutgoingThreadsEvents
+type UIEvent =
+  | { type: 'SHOW_CREATE_FORM' }
+  | { type: 'GO_BACK' }
+  | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
+  | { type: 'SELECT_THREAD'; id: string }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagEntity[] }
+  | { type: 'CREATE_THREAD' }
+  | { type: 'CANCEL_CREATE' }
+  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string | string[] }
+  | { type: 'LINK_THREAD' }
+  | { type: 'REMOVE_LINK'; index: number }
+  | { type: 'ADD_TAG' }
+  | { type: 'REMOVE_TAG'; index: number }
+  | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
+  | SystemEvent
+  | TrailClickEvent;
+
+export type ViewData = Partial<ThreadEntity> & ThreadsViewData;
+export type CreateData = {
+  topic: string;
+  threadType: ThreadEntity['threadType'];
+  tags: TagItem[];
+  relatedThreads: string[];
+  instructions: string;
+};
+
 export type ThreadUIState = {
   isNew?: boolean;
 };
 export type ThreadWithUI = ThreadEntity & ThreadUIState;
+export type TagItem = {
+  id: string;
+  name: string;
+  color?: string;
+}
 
 interface ThreadsContext {
   threads: ThreadWithUI[];
   selectedThreadCode?: string;
   view: ViewData;
   create: CreateData;
+  availableTags: TagItem[];
 }
-
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as UIEvent },
@@ -73,6 +75,14 @@ const threadsState = setup({
     })
   },
   actions: {
+    setPluginData: assign(({ event }) => {
+      const typedEvent = typeOf('STARTUP', event);
+
+      return {
+        threads: typedEvent.pluginData.threads,
+        availableTags: typedEvent.pluginData.tags,
+      };
+    }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
       const thread = context.create;
@@ -99,6 +109,7 @@ const threadsState = setup({
         systemId: id,
         type: 'CREATE_THREAD',
         ...context.create,
+        tags: context.create.tags.map(t => t.id),
       });
     },
     sendViewThread: ({ event }) => {
@@ -129,13 +140,6 @@ const threadsState = setup({
         view: {
           ...selectedThread,
         },
-      };
-    }),
-    setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('STARTUP', event);
-
-      return {
-        threads: typedEvent.pluginData.threads,
       };
     }),
     updateThreadData: assign(({ event, context }, params: { key: 'view' | 'create' }) => {
@@ -222,6 +226,7 @@ const threadsState = setup({
       tags: [],
     },
     create: { ...defaultCreate },
+    availableTags: [],
   }),
   on: {
     CLEAR_NEW_THREAD_FLAG: {

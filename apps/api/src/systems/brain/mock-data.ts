@@ -56,43 +56,50 @@ export const rows: Rows = {
       id: 'Tag-1',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'ui'
+      name: 'ui',
+      color: 'yellow'
     },
     {
       id: 'Tag-2',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'design'
+      name: 'design',
+      color: 'blue'
     },
     {
       id: 'Tag-3',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'frontend'
+      name: 'frontend',
+      color: 'green'
     },
     {
       id: 'Tag-4',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'css'
+      name: 'css',
+      color: 'orange'
     },
     {
       id: 'Tag-5',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'chat'
+      name: 'chat',
+      color: 'purple'
     },
     {
       id: 'Tag-6',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'project'
+      name: 'project',
+      color: 'red'
     },
     {
       id: 'Tag-7',
       entityType: EARS.Entity.Tag,
       createdAt: nowMs,
-      name: 'backend'
+      name: 'backend',
+      color: 'pink'
     },
     /*───────────────────────────────────────────────────────────────*
      * Message entities                                              *
