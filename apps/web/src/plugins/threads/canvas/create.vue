@@ -72,6 +72,7 @@
       <div>
         <TagInput 
           v-model="tagNames"
+          :available-tags="availableTags"
           @update:modelValue="updateTags"
         />
       </div>
@@ -119,10 +120,9 @@ import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/design/label.vue'
-import { id, type CreateData, type ThreadsState } from '@/plugins/threads/state';
+import { id, type CreateData, type TagItem, type ThreadsState } from '@/plugins/threads/state';
 import Button from '@/core/design/button.vue';
 import TagInput from './tag-input.vue';
-import type { TagEntity } from '@abuddy/api';
 
 
 const actor: ThreadsState = applicationState.system.get(id);
@@ -131,6 +131,7 @@ const topic = useSelector(actor, (state) => state.context.create.topic);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
 const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreads);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
+const availableTags = useSelector(actor, (state) => state.context.availableTags);
 
 const isSaving = ref(false)
 
@@ -141,11 +142,11 @@ const tagNames = computed(() => {
 });
 
 // Update tags in state when TagInput changes
-const updateTags = (newTags: string[]) => {
+const updateTags = (newTags: TagItem[]) => {
+  console.log('newTags: ', newTags);
   actor.send({ 
-    type: 'UPDATE_CREATE_DATA', 
-    key: 'tags', 
-    value: newTags
+    type: 'UPDATE_CREATE_TAGS',
+    newTags
   });
 };
 
@@ -155,10 +156,6 @@ const addThread = () => {
 
 const removeThread = (index: number) => {
   actor.send({ type: 'REMOVE_LINK', index })
-}
-
-const addTag = () => {
-  actor.send({ type: 'ADD_TAG' })
 }
 
 const removeTag = (index: number) => {

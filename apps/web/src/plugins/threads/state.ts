@@ -26,14 +26,13 @@ type UIEvent =
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagEntity[] }
+  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string | TagItem[] }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
-  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string | string[] }
+  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
-  | { type: 'ADD_TAG' }
-  | { type: 'REMOVE_TAG'; index: number }
+  | { type: 'UPDATE_CREATE_TAGS';  newTags: TagItem[] }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | SystemEvent
   | TrailClickEvent;
@@ -51,8 +50,8 @@ export type ThreadUIState = {
   isNew?: boolean;
 };
 export type ThreadWithUI = ThreadEntity & ThreadUIState;
-export type TagItem = {
-  id: string;
+export type TagItem = Partial<TagEntity> & {
+  id: TagEntity['id'];
   name: string;
   color?: string;
 }
@@ -142,6 +141,15 @@ const threadsState = setup({
         },
       };
     }),
+    updateCreateTags: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_CREATE_TAGS', event);
+      return {
+        create: {
+          ...context.create,
+          tags: typedEvent.newTags,
+        }
+      }
+    }),
     updateThreadData: assign(({ event, context }, params: { key: 'view' | 'create' }) => {
       const typedEvent = typeOf(['UPDATE_VIEW_DATA', 'UPDATE_CREATE_DATA'], event);
       const thread = context[params.key];
@@ -177,23 +185,6 @@ const threadsState = setup({
       return {
         view: {
           ...context.view,
-        }
-      };
-    }),
-    addTag: assign(({ context }) => {
-      return {
-        view: {
-          ...context.view,
-          tags: [...(context.view.tags || [])]
-        }
-      };
-    }),
-    removeTag: assign(({ event, context }) => {
-      const typedEvent = typeOf('REMOVE_TAG', event);
-      return {
-        view: {
-          ...context.view,
-          tags: [...(context.view.tags || [])].filter((_, index) => index !== typedEvent.index)
         }
       };
     }),
@@ -269,6 +260,7 @@ const threadsState = setup({
         },
       },
     },
+
     'create': {
       meta: { ...breadcrumb('create', 'New Thread') },
       on: {
@@ -277,6 +269,9 @@ const threadsState = setup({
           actions: 'sendCreateThread',
         },
         CANCEL_CREATE: { target: 'list' },
+        UPDATE_CREATE_TAGS: {
+          actions: 'updateCreateTags',
+        },
         UPDATE_CREATE_DATA: {
           actions: {
             type: 'updateThreadData',
@@ -305,12 +300,6 @@ const threadsState = setup({
         },
         REMOVE_LINK: {
           actions: 'removeChildThread',
-        },
-        ADD_TAG: {
-          actions: 'addTag',
-        },
-        REMOVE_TAG: {
-          actions: 'removeTag',
         },
       },
     },
