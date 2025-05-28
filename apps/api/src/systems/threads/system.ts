@@ -8,7 +8,7 @@ import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import { createThread, getViewData } from './repository';
 import type { MessageEntity, ThreadEntity, ThreadLink } from '@/types';
-import type { ThreadViewData } from './types';
+import type { ThreadExtendedView } from './types';
 
 export const threads = 'threads' as const;
 
@@ -37,7 +37,7 @@ export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingThreadsEvents = 
-  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadViewData }
+  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedView }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number }
 
 export interface ThreadsContext {

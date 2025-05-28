@@ -1,7 +1,7 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import type { NewThread, ThreadLink, ThreadViewData, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
+import type { NewThread, ThreadLink, ThreadExtendedView, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
 import { getRelatedAttributes } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
 
@@ -22,7 +22,7 @@ export function updateTag(id: EARS.EntityId, props: Partial<TagEntity>) {
     .set('updatedAt', Date.now());
 }
 
-export function createThread(thread: Partial<ThreadEntity>, tags?: EARS.EntityId[], relatedThreads?: ThreadLink[]) {
+export function createThread(thread: NewThread, tags?: EARS.EntityId[], relatedThreads?: ThreadLink[]) {
   const threadCount = getEntitiesOfType(EARS.Entity.Thread).length;
   const shortCodesMap: Record<ThreadEntity['threadType'], ThreadTypeCodes> = {
     'work-item': 'WI',
@@ -98,7 +98,7 @@ const getThreadRelatedThreads = (threadId: EARS.EntityId) =>
     }
   );
 
-export function getViewData(threadId: EARS.EntityId): ThreadViewData {
+export function getViewData(threadId: EARS.EntityId): ThreadExtendedView {
   const messages = getThreadMessages(threadId);
   const tags = getThreadTags(threadId);
   const relatedThreads = getThreadRelatedThreads(threadId);

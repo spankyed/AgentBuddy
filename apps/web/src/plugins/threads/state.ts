@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadViewData, ThreadLink } from '@abuddy/api';
+import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedView, ThreadLink } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
 const typeOf = safeEvents<UIEvent>();
@@ -37,7 +37,7 @@ type UIEvent =
   | SystemEvent
   | TrailClickEvent;
 
-export type ViewData = Partial<ThreadEntity> & ThreadViewData & {
+export type ViewData = Partial<ThreadEntity> & ThreadExtendedView & {
   tags: TagItem[];
 };
 

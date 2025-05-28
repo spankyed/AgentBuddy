@@ -1,6 +1,6 @@
 import type { EARS, MessageEntity, TagEntity, ThreadEntity } from "@/types";
 
-export type ThreadViewData = {
+export type ThreadExtendedView = {
   messages?: Partial<MessageEntity>[];
   relatedThreads?: Partial<ThreadEntity>[];
   tags?: Partial<TagEntity>[];
