@@ -64,11 +64,11 @@ export const threadsSystem = setup({
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
+          tags: thread.tags as EARS.EntityId[],
+          relatedThreads: thread.relatedThreads as ThreadLink[],
           status: 'draft',
           timestamp,
         },
-        thread.tags as EARS.EntityId[],
-        thread.relatedThreads as ThreadLink[],
       );
 
       system.get(bus).send(emit(threads, { 

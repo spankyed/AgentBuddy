@@ -22,7 +22,7 @@ export function updateTag(id: EARS.EntityId, props: Partial<TagEntity>) {
     .set('updatedAt', Date.now());
 }
 
-export function createThread(thread: ThreadCreateData & ThreadCreateMeta, tags?: EARS.EntityId[], relatedThreads?: ThreadLink[]) {
+export function createThread(thread: ThreadCreateData & ThreadCreateMeta) {
   const threadCount = getEntitiesOfType(EARS.Entity.Thread).length;
   const shortCodesMap: Record<ThreadEntity['threadType'], ThreadTypeCodes> = {
     'work-item': 'WI',
@@ -43,12 +43,12 @@ export function createThread(thread: ThreadCreateData & ThreadCreateMeta, tags?:
     .set('updatedAt', thread.timestamp)
     .id(); // returns new thread ID
 
-  for (const tag of tags ?? []) {
+  for (const tag of thread.tags ?? []) {
     tx(newThreadId)
       .rel(EARS.RelKind.HAS, tag);
   }
 
-  for (const relatedThread of relatedThreads ?? []) {
+  for (const relatedThread of thread.relatedThreads ?? []) {
     tx(newThreadId)
       .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
   }
