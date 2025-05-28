@@ -58,7 +58,7 @@ export const threadsSystem = setup({
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
 
-      const { id: threadId, shortCode, timestamp } = createThread(
+      const { id: newThreadId, shortCode, timestamp } = createThread(
         {
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
@@ -70,7 +70,7 @@ export const threadsSystem = setup({
 
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_CREATED',
-        id: threadId,
+        id: newThreadId,
         shortCode,
         entityType: EARS.Entity.Thread,
         timestamp,
