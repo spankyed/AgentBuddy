@@ -54,15 +54,15 @@ export function createThread(thread: NewThread, tags?: EARS.EntityId[], relatedT
     .set('updatedAt', thread.timestamp)
     .id(); // returns new thread ID
 
-  // for (const tag of tags ?? []) {
-  //   tx(newThreadId)
-  //     .rel(EARS.RelKind.HAS, tag);
-  // }
+  for (const tag of tags ?? []) {
+    tx(newThreadId)
+      .rel(EARS.RelKind.HAS, tag);
+  }
 
-  // for (const relatedThread of relatedThreads ?? []) {
-  //   tx(newThreadId)
-  //     .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
-  // }
+  for (const relatedThread of relatedThreads ?? []) {
+    tx(newThreadId)
+      .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
+  }
 
   return { id: newThreadId, shortCode };
 }
