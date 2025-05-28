@@ -68,6 +68,14 @@
         </div>
       </div>
 
+      <!-- Tags -->
+      <div>
+        <TagInput 
+          v-model="tagNames"
+          @update:modelValue="updateTags"
+        />
+      </div>
+
       <div class="flex items-center justify-end gap-2">
         <!-- Stop button -->
         <button
@@ -106,13 +114,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/design/label.vue'
 import { id, type CreateData, type ThreadsState } from '@/plugins/threads/state';
 import Button from '@/core/design/button.vue';
+import TagInput from './tag-input.vue';
+import type { TagEntity } from '@abuddy/api';
 
 
 const actor: ThreadsState = applicationState.system.get(id);
@@ -123,6 +133,21 @@ const relatedThreads = useSelector(actor, (state) => state.context.create.relate
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
 
 const isSaving = ref(false)
+
+// Transform tags array to string array for TagInput
+const tagNames = computed(() => {
+  const tagList = tags.value || [];
+  return tagList;
+});
+
+// Update tags in state when TagInput changes
+const updateTags = (newTags: string[]) => {
+  actor.send({ 
+    type: 'UPDATE_CREATE_DATA', 
+    key: 'tags', 
+    value: newTags
+  });
+};
 
 const addThread = () => {
   actor.send({ type: 'LINK_THREAD' })
