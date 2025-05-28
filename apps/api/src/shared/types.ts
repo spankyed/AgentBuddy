@@ -1,8 +1,8 @@
 import type { EARS } from './ears/types';
 
 export interface BaseEntity {
-  id: string;
-  entityType: string;
+  id: EARS.EntityId;
+  entityType: EARS.Entity;
   createdAt: number;
 }
 
