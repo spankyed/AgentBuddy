@@ -145,7 +145,8 @@ const tagNames = computed(() => {
 const updateTags = (newTags: TagItem[]) => {
   console.log('newTags: ', newTags);
   actor.send({ 
-    type: 'UPDATE_CREATE_TAGS',
+    type: 'UPDATE_TAGS',
+    component: 'create',
     newTags
   });
 };
@@ -156,10 +157,6 @@ const addThread = () => {
 
 const removeThread = (index: number) => {
   actor.send({ type: 'REMOVE_LINK', index })
-}
-
-const removeTag = (index: number) => {
-  actor.send({ type: 'REMOVE_TAG', index })
 }
 
 const updateField = (key: keyof CreateData, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {

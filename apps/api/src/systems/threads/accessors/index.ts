@@ -10,7 +10,30 @@ type NewThread = Omit<ThreadEntity, 'id' | 'createdAt' | 'updatedAt' | 'shortCod
 type ThreadTypeCodes = 'U' | 'P' | 'WI';
 type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
 
-export function createThread(thread: NewThread, tags: string[], relatedThreads: string[]) {
+export type ThreadLinkRelation = 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates';
+export type ThreadLink = {
+  relation: ThreadLinkRelation;
+  id: EARS.EntityId;
+}
+
+export function createTag(name: string) {
+  const tagId = tx(EARS.Entity.Tag)
+    .set('name', name)
+    .set('createdAt', Date.now())
+    .set('updatedAt', Date.now())
+    .id();
+
+  return tagId;
+}
+
+export function updateTag(id: EARS.EntityId, props: Partial<TagEntity>) {
+  tx(id)
+    .set('name', props.name)
+    .set('color', props.color)
+    .set('updatedAt', Date.now());
+}
+
+export function createThread(thread: NewThread, tags?: EARS.EntityId[], relatedThreads?: ThreadLink[]) {
   const threadCount = getEntitiesOfType(EARS.Entity.Thread).length;
   const shortCodesMap: Record<ThreadEntity['threadType'], ThreadTypeCodes> = {
     'work-item': 'WI',
@@ -22,6 +45,7 @@ export function createThread(thread: NewThread, tags: string[], relatedThreads: 
 
   const newThreadId = tx(EARS.Entity.Thread)
     .set('topic', thread.topic)
+    .set('instructions', thread.instructions)
     .set('timestamp', thread.timestamp)
     .set('shortCode', shortCode)
     .set('threadType', thread.threadType)
@@ -29,6 +53,16 @@ export function createThread(thread: NewThread, tags: string[], relatedThreads: 
     .set('createdAt', thread.timestamp)
     .set('updatedAt', thread.timestamp)
     .id(); // returns new thread ID
+
+  // for (const tag of tags ?? []) {
+  //   tx(newThreadId)
+  //     .rel(EARS.RelKind.HAS, tag);
+  // }
+
+  // for (const relatedThread of relatedThreads ?? []) {
+  //   tx(newThreadId)
+  //     .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
+  // }
 
   return { id: newThreadId, shortCode };
 }
@@ -65,7 +99,7 @@ const getThreadTags = (threadId: EARS.EntityId) =>
 const getThreadRelatedThreads = (threadId: EARS.EntityId) =>
   getRelatedAttributes<Partial<ThreadEntity>>(
     threadId,
-    EARS.RelKind.PARENT_OF,
+    EARS.RelKind.Custom('parent_of'),
     EARS.Entity.Thread,
     {
       shortCode: EARS.AttrKind.Custom('shortCode'),

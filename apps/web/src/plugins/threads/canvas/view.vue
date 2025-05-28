@@ -65,6 +65,7 @@
         <!-- <Label>Tags</Label> -->
         <TagInput 
           v-model="tagNames"
+          :available-tags="availableTags"
           @update:modelValue="updateTags"
         />
       </div>
@@ -114,7 +115,7 @@ import { ref, watch, nextTick, computed } from 'vue'
 import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
+import { id, type TagItem, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import MessageList from './message-list.vue'
@@ -126,30 +127,24 @@ const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
+const availableTags = useSelector(actor, (state) => state.context.availableTags);
 const tags = useSelector(actor, (state) => state.context.view.tags || [] as TagEntity[]);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
 const isMessagesOpen = ref(false);
 
-// Transform tags array to string array for TagInput
 const tagNames = computed(() => {
   const tagList = tags.value || [];
-  return tagList.map((tag: Partial<TagEntity>) => tag.name || '');
+  return tagList;
 });
 
 // Update tags in state when TagInput changes
-const updateTags = (newTags: string[]) => {
-  const tagObjects: TagEntity[] = newTags.map(name => ({
-    name,
-    entityType: "Tag" as EARS.Entity.Tag,
-    id: crypto.randomUUID(), // Generate a unique ID for each tag
-    createdAt: Date.now()
-  }));
+const updateTags = (newTags: TagItem[]) => {
   actor.send({ 
-    type: 'UPDATE_VIEW_DATA', 
-    key: 'tags', 
-    value: tagObjects
+    type: 'UPDATE_TAGS',
+    component: 'view',
+    newTags
   });
 };
 

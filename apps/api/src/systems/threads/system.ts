@@ -6,7 +6,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { createThread, getViewData } from './accessors';
+import { createThread, getViewData, type ThreadLink } from './accessors';
 import type { MessageEntity, ThreadEntity } from '@/types';
 import type { ThreadsViewData } from './types';
 
@@ -19,16 +19,15 @@ export const IncomingThreadsEvents = [
     topic: z.string(),
     threadType: z.string(),
     tags: z.array(z.string()),
-    // relatedThreads: z.array(z.object({
-    //   relation: z.union([
-    //     z.literal('parent'),
-    //     z.literal('blocks'),
-    //     z.literal('blocked-by'),
-    //     z.literal('duplicates'),
-    //   ]),
-    //   id: z.string(),
-    // })),
-    relatedThreads: z.array(z.string()),
+    relatedThreads: z.array(z.object({
+      relation: z.union([
+        z.literal('parent_of'),
+        z.literal('blocks'),
+        z.literal('blocked_by'),
+        z.literal('duplicates'),
+      ]),
+      id: z.string(),
+    })),
     instructions: z.string(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
@@ -69,8 +68,8 @@ export const threadsSystem = setup({
           status: 'draft',
           timestamp,
         },
-        thread.tags,
-        thread.relatedThreads,
+        thread.tags as EARS.EntityId[],
+        thread.relatedThreads as ThreadLink[],
       );
 
       system.get(bus).send(emit(threads, { 

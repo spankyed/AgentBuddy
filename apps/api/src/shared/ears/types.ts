@@ -23,11 +23,11 @@ export namespace EARS {
   | 2 ▸ Relation kinds                                                       |
   \*-------------------------------------------------------------------------*/
   const RelKindValues = {
-    PARENT_OF   : 'PARENT_OF',
-    CONTAINS   : 'CONTAINS',
-    SPAWNED    : 'SPAWNED',
-    REPLIED_TO : 'REPLIED_TO',
-    HAS       : 'HAS',
+    PARENT_OF   : 'parent_of',
+    CONTAINS   : 'contains',
+    SPAWNED    : 'spawned',
+    REPLIED_TO : 'replied_to',
+    HAS       : 'has',
   } as const;
 
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;

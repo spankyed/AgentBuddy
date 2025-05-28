@@ -32,12 +32,15 @@ type UIEvent =
   | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
-  | { type: 'UPDATE_CREATE_TAGS';  newTags: TagItem[] }
+  | { type: 'UPDATE_TAGS';  newTags: TagItem[]; component: 'create' | 'view' }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | SystemEvent
   | TrailClickEvent;
 
-export type ViewData = Partial<ThreadEntity> & ThreadsViewData;
+export type ViewData = Partial<ThreadEntity> & ThreadsViewData & {
+  tags: TagItem[];
+};
+
 export type CreateData = {
   topic: string;
   threadType: ThreadEntity['threadType'];
@@ -48,6 +51,7 @@ export type CreateData = {
 
 export type ThreadUIState = {
   isNew?: boolean;
+  tags?: TagItem[];
 };
 export type ThreadWithUI = ThreadEntity & ThreadUIState;
 export type TagItem = Partial<TagEntity> & {
@@ -126,7 +130,7 @@ const threadsState = setup({
           ...context.view,
           messages: data.messages,
           relatedThreads: data.relatedThreads,
-          tags: data.tags,
+          tags: data.tags as TagItem[],
         }
       }
     }),
@@ -138,14 +142,15 @@ const threadsState = setup({
         selectedThreadCode: selectedThread?.shortCode,
         view: {
           ...selectedThread,
+          tags: selectedThread?.tags as TagItem[],
         },
       };
     }),
-    updateCreateTags: assign(({ event, context }) => {
-      const typedEvent = typeOf('UPDATE_CREATE_TAGS', event);
+    updateTags: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_TAGS', event);
       return {
-        create: {
-          ...context.create,
+        [typedEvent.component]: {
+          ...context[typedEvent.component],
           tags: typedEvent.newTags,
         }
       }
@@ -269,8 +274,8 @@ const threadsState = setup({
           actions: 'sendCreateThread',
         },
         CANCEL_CREATE: { target: 'list' },
-        UPDATE_CREATE_TAGS: {
-          actions: 'updateCreateTags',
+        UPDATE_TAGS: {
+          actions: 'updateTags',
         },
         UPDATE_CREATE_DATA: {
           actions: {
@@ -294,6 +299,9 @@ const threadsState = setup({
               key: 'view',
             }
           },
+        },
+        UPDATE_TAGS: {
+          actions: 'updateTags',
         },
         LINK_THREAD: {
           actions: 'addChildThread',
