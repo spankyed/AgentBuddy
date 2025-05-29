@@ -37,7 +37,6 @@ type UIEvent =
   }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
-  | { type: 'UPDATE_TAGS';  newTags: ThreadTagItem[]; component: 'create' | 'view' }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
 type ThreadEvents =
   | UIEvent
@@ -143,15 +142,6 @@ const threadsState = setup({
           tags: tags as ThreadTagItem[],
         },
       };
-    }),
-    updateTags: assign(({ event, context }) => {
-      const typedEvent = typeOf('UPDATE_TAGS', event);
-      return {
-        [typedEvent.component]: {
-          ...context[typedEvent.component],
-          tags: typedEvent.newTags,
-        }
-      }
     }),
     updateThreadData: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
@@ -274,9 +264,6 @@ const threadsState = setup({
           actions: 'sendCreateThread',
         },
         CANCEL_CREATE: { target: 'list' },
-        UPDATE_TAGS: {
-          actions: 'updateTags',
-        },
         UPDATE_THREAD_FIELD: {
           actions: 'updateThreadData',
         },
@@ -289,9 +276,6 @@ const threadsState = setup({
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {
           actions: ['updateThreadData', 'updateThreadInThreads'],
-        },
-        UPDATE_TAGS: {
-          actions: 'updateTags',
         },
         LINK_THREAD: {
           actions: 'addChildThread',

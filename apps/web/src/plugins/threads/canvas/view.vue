@@ -141,9 +141,10 @@ const tagNames = computed(() => {
 // Update tags in state when TagInput changes
 const updateTags = (newTags: ThreadTagItem[]) => {
   actor.send({ 
-    type: 'UPDATE_TAGS',
-    component: 'view',
-    newTags
+    type: 'UPDATE_THREAD_FIELD',
+    state: 'view',
+    key: 'tags',
+    value: newTags,
   });
 };
 

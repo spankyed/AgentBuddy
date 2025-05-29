@@ -141,9 +141,10 @@ const tagNames = computed(() => {
 const updateTags = (newTags: ThreadTagItem[]) => {
   console.log('newTags: ', newTags);
   actor.send({ 
-    type: 'UPDATE_TAGS',
-    component: 'create',
-    newTags
+    type: 'UPDATE_THREAD_FIELD',
+    state: 'create',
+    key: 'tags',
+    value: newTags,
   });
 };
 
