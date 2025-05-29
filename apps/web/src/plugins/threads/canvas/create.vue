@@ -127,7 +127,7 @@ import TagInput from './tag-input.vue';
 
 
 const actor: ThreadsState = applicationState.system.get(id);
-const tags = useSelector(actor, (state) => state.context.create.tagsInput);
+const tags = useSelector(actor, (state) => state.context.create.tagItems);
 const topic = useSelector(actor, (state) => state.context.create.topic);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
 const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreadsInput);

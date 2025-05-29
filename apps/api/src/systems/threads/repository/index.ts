@@ -44,7 +44,7 @@ export function createThread(thread: ThreadCreateData) {
     .set('threadType', thread.threadType)
     .id(); // returns new thread ID
 
-  for (const tag of thread.tagsInput ?? []) {
+  for (const tag of thread.tagItems ?? []) {
     tx(newThreadId)
       .rel(EARS.RelKind.HAS, tag.id);
   }

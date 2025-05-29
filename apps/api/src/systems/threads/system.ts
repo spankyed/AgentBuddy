@@ -23,7 +23,7 @@ const tagsSchema = z.array(z.object({
 const threadSchema = {
   topic: z.string(),
   threadType: z.string(),
-  tagsInput: tagsSchema,
+  tagItems: tagsSchema,
   instructions: z.string(),
   // status: z.union(
   //   ThreadStatuses.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadStatuses>,
@@ -77,7 +77,7 @@ export const threadsSystem = setup({
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
-          tagsInput: thread.tagsInput as ThreadTagItem[],
+          tagItems: thread.tagItems as ThreadTagItem[],
           relatedThreadsInput: thread.relatedThreadsInput as ThreadLinkItem[],
         },
       );

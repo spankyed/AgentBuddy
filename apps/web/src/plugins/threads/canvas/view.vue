@@ -127,7 +127,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreadsInput || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const tags = useSelector(actor, (state) => state.context.view.tagsInput || []);
+const tags = useSelector(actor, (state) => state.context.view.tagItems || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');

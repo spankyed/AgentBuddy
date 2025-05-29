@@ -30,7 +30,7 @@ export type ThreadStartupData = {
 
 export type ThreadEditFields = Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'>;
 export type ThreadListFields = {
-  tagsInput?: ThreadTagItem[];
+  tagItems?: ThreadTagItem[];
   relatedThreadsInput?: ThreadLinkItem[];
 }
 

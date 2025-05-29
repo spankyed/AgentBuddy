@@ -15,7 +15,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
   topic: '',
   threadType: 'work-item',
   instructions: '',
-  tagsInput: [],
+  tagItems: [],
   relatedThreadsInput: [],
 }
 
@@ -81,7 +81,7 @@ const threadsState = setup({
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      const { tagsInput, relatedThreadsInput, ...thread} = context.create;
+      const { tagItems, relatedThreadsInput, ...thread} = context.create;
       const newThread = {
         ...thread,
         id: typedEvent.id,
@@ -91,7 +91,7 @@ const threadsState = setup({
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
         status: 'draft',
-        tags: tagsInput,
+        tags: tagItems,
         isNew: true, // Mark as new when created
       } as ThreadListItem;
 
@@ -124,7 +124,7 @@ const threadsState = setup({
           ...context.view,
           messages: data.messages,
           relatedThreads: data.relatedThreads,
-          tagsInput: data.tags as ThreadTagItem[],
+          tagItems: data.tags as ThreadTagItem[],
           relatedThreadsInput: data.relatedThreads,
         }
       }
@@ -144,7 +144,7 @@ const threadsState = setup({
           topic: selectedThread.topic,
           threadType: selectedThread.threadType,
           instructions: selectedThread.instructions,
-          tagsInput: selectedThread.tags as ThreadTagItem[],
+          tagItems: selectedThread.tags as ThreadTagItem[],
         },
       };
     }),
@@ -153,7 +153,7 @@ const threadsState = setup({
       return {
         [typedEvent.component]: {
           ...context[typedEvent.component],
-          tagsInput: typedEvent.newTags,
+          tagItems: typedEvent.newTags,
         }
       }
     }),
