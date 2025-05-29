@@ -3,6 +3,8 @@ import { rows } from './brain/mock-data';
 import { EARS } from '@/shared/ears/types';
 import type { Rows, TagEntity, ThreadEntity } from '@/shared/types';
 import { entries } from '@/shared/utils';
+import type { ThreadExtended, ThreadStartupData } from '@/types';
+import { getExtendedData } from './threads/repository';
 
 type Row = Rows['entity'][number]
 function byEntityType<
@@ -33,6 +35,8 @@ const pluginStartupLoaders = {
     const threadIds = getEntitiesOfType(EARS.Entity.Thread)
     const threads = threadIds.map(id => {
       const attrs = getAllAttributes(id);
+      const extendedData = getExtendedData(id, 'tags');
+
       return {
         id,
         entityType: EARS.Entity.Thread,
@@ -44,11 +48,12 @@ const pluginStartupLoaders = {
         shortCode: attrs.shortCode,
         createdAt: attrs.timestamp || Date.now(),
         updatedAt: attrs.timestamp || Date.now(),
-        ...attrs
-      } as ThreadEntity;
+        ...attrs,
+        ...extendedData,
+      } as ThreadExtended;
     }).reverse();
 
-    const tags = getEntitiesOfType(EARS.Entity.Tag).map(id => {
+    const availableTags = getEntitiesOfType(EARS.Entity.Tag).map(id => {
       const attrs = getAllAttributes(id);
       return {
         id,
@@ -63,8 +68,8 @@ const pluginStartupLoaders = {
     
     return {
       threads,
-      tags,
-    }
+      availableTags,
+    } as ThreadStartupData
   }
 }
 

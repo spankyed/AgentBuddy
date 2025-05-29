@@ -120,16 +120,17 @@ import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/design/label.vue'
-import { id, type CreateData, type TagItem, type ThreadsState } from '@/plugins/threads/state';
+import { id, type ThreadsState } from '@/plugins/threads/state';
+import type { ThreadTagItem, ThreadEditFields } from '@abuddy/api'
 import Button from '@/core/design/button.vue';
 import TagInput from './tag-input.vue';
 
 
 const actor: ThreadsState = applicationState.system.get(id);
-const tags = useSelector(actor, (state) => state.context.create.tags);
+const tags = useSelector(actor, (state) => state.context.create.tagsInput);
 const topic = useSelector(actor, (state) => state.context.create.topic);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
-const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreads);
+const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreadsInput);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 
@@ -142,7 +143,7 @@ const tagNames = computed(() => {
 });
 
 // Update tags in state when TagInput changes
-const updateTags = (newTags: TagItem[]) => {
+const updateTags = (newTags: ThreadTagItem[]) => {
   console.log('newTags: ', newTags);
   actor.send({ 
     type: 'UPDATE_TAGS',
@@ -159,8 +160,8 @@ const removeThread = (index: number) => {
   actor.send({ type: 'REMOVE_LINK', index })
 }
 
-const updateField = (key: keyof CreateData, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
-  actor.send({ type: 'UPDATE_CREATE_DATA', key, value });
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value });
 }
 </script> 

@@ -3,32 +3,46 @@ import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
-// import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { createThread, getViewData } from './repository';
-import type { MessageEntity, ThreadEntity, ThreadLink } from '@/types';
-import type { ThreadExtendedView } from './types';
+import { createThread, getExtendedData } from './repository';
+import type { ThreadEntity, ThreadLinkItem } from '@/types';
+import { ThreadRelations, ThreadStatuses, type ThreadLinkInput, type ThreadRelatedData, type ThreadTagItem } from './types';
+import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
 
 export const threads = 'threads' as const;
 
 const busEvent = systemBus(threads);
 
+const tagsSchema = z.array(z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string().optional(),
+})).optional();
+
+const threadSchema = {
+  topic: z.string(),
+  threadType: z.string(),
+  tagsInput: tagsSchema,
+  instructions: z.string(),
+  // status: z.union(
+  //   ThreadStatuses.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadStatuses>,
+  // ),
+};
+
+const relatedThreadsSchema = z.array(z.object({
+  thread: z.object({
+    id: z.string(),
+  }),
+  relation: z.union(
+    ThreadRelations.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadRelations>,
+  ),
+}))
+
 export const IncomingThreadsEvents = [
   busEvent('CREATE_THREAD', {
-    topic: z.string(),
-    threadType: z.string(),
-    tags: z.array(z.string()),
-    relatedThreads: z.array(z.object({
-      relation: z.union([
-        z.literal('parent_of'),
-        z.literal('blocks'),
-        z.literal('blocked_by'),
-        z.literal('duplicates'),
-      ]),
-      id: z.string(),
-    })),
-    instructions: z.string(),
+    ...threadSchema,
+    relatedThreadsInput: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
 ] as const
@@ -37,7 +51,7 @@ export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingThreadsEvents = 
-  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedView }
+  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadRelatedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number }
 
 export interface ThreadsContext {
@@ -63,8 +77,8 @@ export const threadsSystem = setup({
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
-          tags: thread.tags as EARS.EntityId[],
-          relatedThreads: thread.relatedThreads as ThreadLink[],
+          tagsInput: thread.tagsInput as ThreadTagItem[],
+          relatedThreadsInput: thread.relatedThreadsInput as ThreadLinkItem[],
         },
       );
 
@@ -82,7 +96,7 @@ export const threadsSystem = setup({
       system.get(bus).send(emit(threads, { 
         type: 'SET_VIEW_DATA',
         id: threadId,
-        data: getViewData(threadId),
+        data: getExtendedData(threadId),
       }));
     },
   },

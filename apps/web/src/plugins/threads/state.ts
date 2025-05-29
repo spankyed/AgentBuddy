@@ -3,69 +3,60 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { StartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedView, ThreadLink } from '@abuddy/api';
+import type { ThreadStartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadRelatedData, ThreadCreateData, ThreadTagItem, ThreadEditFields, ThreadLinkInput } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
+import type { Simplify } from '@/core/types/type-helpers';
+
+export const id = 'threads' as const;
+
+export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 const typeOf = safeEvents<UIEvent>();
 
-export const id = 'threads' as const;
-const defaultCreate: CreateData = {
+const defaultThread: ThreadCreateData | ThreadViewData = {
   topic: '',
   threadType: 'work-item',
-  tags: [],
-  relatedThreads: [],
   instructions: '',
+  tagsInput: [],
+  relatedThreadsInput: [],
 }
 
-export type ThreadsState = ActorRefFrom<typeof threadsState>;
 type SystemEvent =
-  | { type: 'STARTUP'; pluginData: StartupData['threads'] }
+  | { type: 'STARTUP'; pluginData: ThreadStartupData }
   | OutgoingThreadsEvents
 type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
-  | { type: 'UPDATE_VIEW_DATA'; key: 'topic' | 'threadType' | 'tags'; value: string }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
-  | { type: 'UPDATE_CREATE_DATA'; key: keyof CreateData; value: string }
+  | { type: 'UPDATE_THREAD_FIELD'; key: keyof ThreadEditFields; value: ThreadEditFields[keyof ThreadEditFields] }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
-  | { type: 'UPDATE_TAGS';  newTags: TagItem[]; component: 'create' | 'view' }
+  | { type: 'UPDATE_TAGS';  newTags: ThreadTagItem[]; component: 'create' | 'view' }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | SystemEvent
   | TrailClickEvent;
 
-export type ViewData = Partial<ThreadEntity> & ThreadExtendedView & {
-  tags: TagItem[];
-};
+// type ThreadEvents =
+//   | UIEvent
+//   | SystemEvent
+//   | TrailClickEvent;
 
-export type CreateData = {
-  topic: string;
-  threadType: ThreadEntity['threadType'];
-  tags: TagItem[];
-  relatedThreads: ThreadLink[];
-  instructions: string;
-};
-
-export type ThreadUIState = {
+export type ThreadAdditional = {
+  tags?: Partial<TagEntity>[];
   isNew?: boolean;
-  tags?: TagItem[];
 };
-export type ThreadWithUI = ThreadEntity & ThreadUIState;
-export type TagItem = Partial<TagEntity> & {
-  id: TagEntity['id'];
-  name: string;
-  color?: string;
-}
+export type ThreadListItem = Simplify<ThreadEntity & ThreadAdditional>;
+type ThreadViewData = Simplify<ThreadCreateData & { messages?: ThreadRelatedData['messages'] }>;
 
 interface ThreadsContext {
-  threads: ThreadWithUI[];
+  threads: ThreadListItem[];
   selectedThreadCode?: string;
-  view: ViewData ;
-  create: CreateData;
-  availableTags: TagItem[];
+  view: ThreadViewData;
+  create: ThreadCreateData;
+  availableTags: ThreadTagItem[];
 }
 
 const threadsState = setup({
@@ -83,12 +74,12 @@ const threadsState = setup({
 
       return {
         threads: typedEvent.pluginData.threads,
-        availableTags: typedEvent.pluginData.tags,
+        availableTags: typedEvent.pluginData.availableTags,
       };
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      const thread = context.create;
+      const { tagsInput, relatedThreadsInput, ...thread} = context.create;
       const newThread = {
         ...thread,
         id: typedEvent.id,
@@ -99,11 +90,11 @@ const threadsState = setup({
         timestamp: typedEvent.timestamp,
         status: 'draft',
         isNew: true, // Mark as new when created
-      } as ThreadWithUI;
+      } as ThreadListItem;
 
       return {
         threads: [newThread, ...context.threads],
-        create: defaultCreate,
+        create: defaultThread,
       }
     }),
     sendCreateThread: ({ context }) => {
@@ -112,14 +103,14 @@ const threadsState = setup({
         systemId: id,
         type: 'CREATE_THREAD',
         ...context.create,
-        tags: context.create.tags.map(t => t.id),
       });
     },
     sendViewThread: ({ event }) => {
+      const threadId = typeOf('SELECT_THREAD', event).id;
       trpc.bus.send.mutate({
         systemId: id,
         type: 'VIEW_THREAD',
-        threadId: typeOf('SELECT_THREAD', event).id,
+        threadId,
       });
     },
     setViewData: assign(({ event, context }) => {
@@ -130,19 +121,27 @@ const threadsState = setup({
           ...context.view,
           messages: data.messages,
           relatedThreads: data.relatedThreads,
-          tags: data.tags as TagItem[],
+          tagsInput: data.tags as ThreadTagItem[],
+          relatedThreadsInput: data.relatedThreads,
         }
       }
     }),
     setSelectedThread: assign(({ event, context }) => {
       const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event);
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
+      if (!selectedThread) {
+        console.warn(`Selected thread with id ${typedEvent.id} not found in context.`);
+        return {};
+      }
       
       return {
         selectedThreadCode: selectedThread?.shortCode,
         view: {
-          ...selectedThread,
-          tags: selectedThread?.tags as TagItem[],
+          ...defaultThread,
+          topic: selectedThread.topic,
+          threadType: selectedThread.threadType,
+          instructions: selectedThread.instructions,
+          tagsInput: selectedThread.tags as ThreadTagItem[],
         },
       };
     }),
@@ -155,29 +154,22 @@ const threadsState = setup({
         }
       }
     }),
-    updateThreadData: assign(({ event, context }, params: { key: 'view' | 'create' }) => {
-      const typedEvent = typeOf(['UPDATE_VIEW_DATA', 'UPDATE_CREATE_DATA'], event);
-      const thread = context[params.key];
-      
-      if (typedEvent.key in thread) {
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        thread[typedEvent.key] = typedEvent.value as any;
-      }
-
-      if (params.key === 'view') {
-        const viewThread = thread as ViewData;
-        const { messages, relatedThreads, tags, ...updatedThread } = viewThread;
-        const updateThreads = context.threads.map(t => t.id === viewThread.id ? updatedThread : t);
-  
-        return {
-          threads: updateThreads as ThreadEntity[],
-          view: viewThread,
-        };
-      }
-
+    updateCreateData: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
+      const createThread = context.create;
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      createThread[typedEvent.key] = typedEvent.value as any;
       return {
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        create: thread as any satisfies CreateData,
+        create: createThread,
+      };
+    }),
+    updateViewData: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
+      const viewThread = context.view;
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      viewThread[typedEvent.key] = typedEvent.value as any;
+      return {
+        view: viewThread,
       };
     }),
     addChildThread: assign(({ context }) => {
@@ -218,12 +210,8 @@ const threadsState = setup({
   context: () => ({
     threads: [],
     selectedThreadCode: undefined,
-    view: {
-      messages: undefined,
-      relatedThreads: [],
-      tags: [],
-    } as ViewData,
-    create: { ...defaultCreate },
+    view: { ...defaultThread },
+    create: { ...defaultThread },
     availableTags: [],
   }),
   on: {
@@ -279,13 +267,8 @@ const threadsState = setup({
         UPDATE_TAGS: {
           actions: 'updateTags',
         },
-        UPDATE_CREATE_DATA: {
-          actions: {
-            type: 'updateThreadData',
-            params: {
-              key: 'create',
-            }
-          },
+        UPDATE_THREAD_FIELD: {
+          actions: 'updateCreateData',
         },
       },
     },
@@ -294,13 +277,8 @@ const threadsState = setup({
       meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadCode') },
       on: {
         GO_BACK: { target: 'list' },
-        UPDATE_VIEW_DATA: {
-          actions: {
-            type: 'updateThreadData',
-            params: {
-              key: 'view',
-            }
-          },
+        UPDATE_THREAD_FIELD: {
+          actions: 'updateViewData',
         },
         UPDATE_TAGS: {
           actions: 'updateTags',

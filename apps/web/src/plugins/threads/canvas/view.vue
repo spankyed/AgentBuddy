@@ -48,7 +48,7 @@
           </button>
 
           <span
-            v-for="(thread, index) in relatedThreads"
+            v-for="({ thread, relation }, index) in relatedThreads"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
@@ -115,20 +115,19 @@ import { ref, watch, nextTick, computed } from 'vue'
 import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
-import { id, type TagItem, type ThreadsState } from '@/plugins/threads/state';
+import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import MessageList from './message-list.vue'
 import TagInput from './tag-input.vue'
-import type { TagEntity } from '@abuddy/api';
-import type { EARS } from '@abuddy/api';
+import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
-const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
+const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreadsInput || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const tags = useSelector(actor, (state) => state.context.view.tags || [] as TagEntity[]);
+const tags = useSelector(actor, (state) => state.context.view.tagsInput || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
@@ -140,7 +139,7 @@ const tagNames = computed(() => {
 });
 
 // Update tags in state when TagInput changes
-const updateTags = (newTags: TagItem[]) => {
+const updateTags = (newTags: ThreadTagItem[]) => {
   actor.send({ 
     type: 'UPDATE_TAGS',
     component: 'view',
@@ -165,10 +164,10 @@ watch(isMessagesOpen, async (isOpen) => {
   }
 })
 
-type attrKeys = 'topic' | 'threadType' | 'tags'
-const updateField = (key: attrKeys, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
-  actor.send({ type: 'UPDATE_VIEW_DATA', key, value });
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value });
+  console.log('key, value: ', {key, value});
 }
 </script>
 

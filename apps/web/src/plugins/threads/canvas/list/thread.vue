@@ -44,11 +44,11 @@
 
 <script setup lang="ts">
 import { MessageCircleMore } from 'lucide-vue-next'
-import type { ThreadWithUI } from '@/plugins/threads/state';
+import type { ThreadListItem } from '@/plugins/threads/state';
 import type { ThreadEntity } from '@abuddy/api';
 
 defineProps<{
-  thread: ThreadWithUI
+  thread: ThreadListItem
 }>();
 
 defineEmits<{

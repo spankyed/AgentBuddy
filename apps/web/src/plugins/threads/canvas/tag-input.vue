@@ -2,13 +2,13 @@
 import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
-import type { TagItem } from '@/plugins/threads/state';
+import type { ThreadTagItem } from '@abuddy/api';
 
 const props = defineProps<{
-  modelValue: TagItem[];
-  availableTags: TagItem[];
+  modelValue: ThreadTagItem[];
+  availableTags: ThreadTagItem[];
 }>()
-const emit = defineEmits<(e: 'update:modelValue', value: TagItem[]) => void>()
+const emit = defineEmits<(e: 'update:modelValue', value: ThreadTagItem[]) => void>()
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 const query = ref('')

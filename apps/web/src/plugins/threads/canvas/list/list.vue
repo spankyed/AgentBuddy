@@ -83,7 +83,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import Pagination from '@/core/design/pagination.vue'
 import Thread from './thread.vue'
-import { id, type ThreadsState, type ThreadWithUI } from '@/plugins/threads/state'
+import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
@@ -105,13 +105,11 @@ const paginatedThreads = computed(() => {
 
 const searchKeyword = ref('');
 
-function isNewThread(thread: ThreadWithUI | { id: string; isNew?: boolean }) {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  return (thread as any).isNew === true;
+function isNewThread(thread: ThreadListItem) {
+  return thread.isNew === true;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder: boolean } {
+function isPlaceholderThread(thread: ThreadListItem): thread is { id: string; isPlaceholder: boolean } {
   return thread.isPlaceholder === true;
 }
 </script>

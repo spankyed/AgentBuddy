@@ -1,8 +1,8 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import type { ThreadCreateData, ThreadLink, ThreadExtendedView, ThreadTypeCodes, ThreadTypeShortCode } from '../types';
-import { getRelatedAttributes } from '@/shared/ears/helpers/get-related-attributes';
+import { type ThreadLinkRelation, ThreadRelations, type ThreadCreateData, type ThreadRelatedData, type ThreadTypeCodes, type ThreadTypeShortCode, type ThreadLinkItem } from '../types';
+import { getRelatedEntities } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
 
 export function createTag(name: string) {
@@ -44,14 +44,14 @@ export function createThread(thread: ThreadCreateData) {
     .set('threadType', thread.threadType)
     .id(); // returns new thread ID
 
-  for (const tag of thread.tags ?? []) {
+  for (const tag of thread.tagsInput ?? []) {
     tx(newThreadId)
-      .rel(EARS.RelKind.HAS, tag);
+      .rel(EARS.RelKind.HAS, tag.id);
   }
 
-  for (const relatedThread of thread.relatedThreads ?? []) {
+  for (const relatedThread of thread.relatedThreadsInput ?? []) {
     tx(newThreadId)
-      .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.id);
+      .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.thread.id);
   }
 
   return { id: newThreadId, shortCode, timestamp };
@@ -62,9 +62,8 @@ export function updateAttribute(threadId: EARS.EntityId, attr: EARS.AttrKind | s
     .set(attr, value);
 }
 
-
 const getThreadMessages = (threadId: EARS.EntityId) =>
-  getRelatedAttributes<Partial<MessageEntity>>(
+  getRelatedEntities<Partial<MessageEntity>>(
     threadId,
     EARS.RelKind.CONTAINS,
     EARS.Entity.Message,
@@ -76,7 +75,7 @@ const getThreadMessages = (threadId: EARS.EntityId) =>
   );
 
 const getThreadTags = (threadId: EARS.EntityId) =>
-  getRelatedAttributes<Partial<TagEntity>>(
+  getRelatedEntities<Partial<TagEntity>>(
     threadId,
     EARS.RelKind.HAS,
     EARS.Entity.Tag,
@@ -86,10 +85,10 @@ const getThreadTags = (threadId: EARS.EntityId) =>
     }
   );
 
-const getThreadRelatedThreads = (threadId: EARS.EntityId) =>
-  getRelatedAttributes<Partial<ThreadEntity>>(
+const getRelatedThread = (threadId: EARS.EntityId, relation: ThreadLinkRelation) =>
+  getRelatedEntities<Partial<ThreadEntity>>(
     threadId,
-    EARS.RelKind.Custom('parent_of'),
+    EARS.RelKind.Custom(relation),
     EARS.Entity.Thread,
     {
       shortCode: EARS.AttrKind.Custom('shortCode'),
@@ -98,15 +97,30 @@ const getThreadRelatedThreads = (threadId: EARS.EntityId) =>
       status: EARS.AttrKind.Custom('status'),
     }
   );
+const getRelatedThreads = (threadId: EARS.EntityId) =>
+  ThreadRelations
+    .flatMap(rel => 
+      getRelatedThread(threadId, rel).map(thread => ({
+        thread,
+        relation: rel,
+      }))
+    );
 
-export function getViewData(threadId: EARS.EntityId): ThreadExtendedView {
-  const messages = getThreadMessages(threadId);
-  const tags = getThreadTags(threadId);
-  const relatedThreads = getThreadRelatedThreads(threadId);
+type Include = keyof ThreadRelatedData;
+export function getExtendedData(threadId: EARS.EntityId, include?: Include | Include[]): ThreadRelatedData {
+  const extendedData = {} as ThreadRelatedData;
 
-  return {
-    messages,
-    tags,
-    relatedThreads,
-  };
+  if (!include || include.includes('messages')) {
+    extendedData.messages = getThreadMessages(threadId);
+  }
+
+  if (!include || include.includes('tags')) {
+    extendedData.tags = getThreadTags(threadId);
+  }
+
+  if (!include || include.includes('relatedThreads')) {
+    extendedData.relatedThreads = getRelatedThreads(threadId) as ThreadLinkItem[];
+  }
+
+  return extendedData;
 }

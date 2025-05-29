@@ -1,5 +1,6 @@
 import type { EARS } from "@/types";
 import { getAttribute, queryEntitiesByRelationTo } from "../attribute-storage";
+import type { Simplify } from "@/shared/utils/event-helpers";
 
 // map object-keys to AttrKinds
 type AttrMap<T> = { [K in keyof T]: EARS.AttrKind };
@@ -8,12 +9,12 @@ type AttrMap<T> = { [K in keyof T]: EARS.AttrKind };
  * Fetches all entities of a given type related to `sourceId` by `relKind`,
  * and returns an array of `{ id, ...attrs }` objects.
  */
-export function getRelatedAttributes<T>(
+export function getRelatedEntities<T>(
   sourceId: EARS.EntityId,
   relKind: EARS.RelKind,
   targetType: EARS.Entity,
   attrs: AttrMap<T>
-): Array<{ id: string } & T> {
+): Array<Simplify<{ id: string } & T>> {
   // 1) find all related IDs
   const relatedIds = queryEntitiesByRelationTo(relKind, sourceId, true);
 
