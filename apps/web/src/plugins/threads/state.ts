@@ -46,11 +46,10 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type ThreadAdditional = {
+export type ThreadListItem = Simplify<ThreadEntity & {
   tags?: Partial<TagEntity>[];
   isNew?: boolean;
-};
-export type ThreadListItem = Simplify<ThreadEntity & ThreadAdditional>;
+}>;
 
 interface ThreadsContext {
   threads: ThreadListItem[];
