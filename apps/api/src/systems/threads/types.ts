@@ -16,13 +16,13 @@ export type ThreadLinkItem = {
 };
 export type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>
 
-export type ThreadEditFields = Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'>;
+export type ThreadEditFields = Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & ThreadListFields;
 export type ThreadListFields = {
   tags?: ThreadTagItem[];
   relatedThreads?: ThreadLinkItem[];
 }
 
-export type ThreadCreateData = Simplify<ThreadEditFields & ThreadListFields>;
+export type ThreadCreateData = Simplify<ThreadEditFields>;
 export type ThreadViewData = Simplify<
   ThreadCreateData
   & {
