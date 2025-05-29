@@ -130,7 +130,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 const tags = useSelector(actor, (state) => state.context.create.tagItems);
 const topic = useSelector(actor, (state) => state.context.create.topic);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
-const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreadsInput);
+const relatedThreads = useSelector(actor, (state) => state.context.create.threadItems);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 

@@ -16,7 +16,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
   threadType: 'work-item',
   instructions: '',
   tagItems: [],
-  relatedThreadsInput: [],
+  threadItems: [],
 }
 
 type SystemEvent =
@@ -81,7 +81,7 @@ const threadsState = setup({
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      const { tagItems, relatedThreadsInput, ...thread} = context.create;
+      const { tagItems, threadItems, ...thread} = context.create;
       const newThread = {
         ...thread,
         id: typedEvent.id,
@@ -125,7 +125,7 @@ const threadsState = setup({
           messages: data.messages,
           relatedThreads: data.relatedThreads,
           tagItems: data.tags as ThreadTagItem[],
-          relatedThreadsInput: data.relatedThreads,
+          threadItems: data.relatedThreads,
         }
       }
     }),

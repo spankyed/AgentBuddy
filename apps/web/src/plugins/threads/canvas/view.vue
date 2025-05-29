@@ -125,7 +125,7 @@ import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
-const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreadsInput || []);
+const relatedThreads = useSelector(actor, (state) => state.context.view.threadItems || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 const tags = useSelector(actor, (state) => state.context.view.tagItems || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
