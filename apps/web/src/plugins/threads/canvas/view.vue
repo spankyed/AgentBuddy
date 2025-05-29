@@ -5,9 +5,20 @@
       <div class="flex flex-col items-center gap-4 md:flex-row">
         <div class="flex-1">
           <!-- <Label>Topic</Label> -->
+          <div
+            v-show="!isEditingTopic"
+            @click="startEditingTopic"
+            class="w-full px-3 py-2 text-xl rounded bg-neutral-800/40 text-neutral-200 cursor-text"
+          >
+            {{ topic || 'Thread Topic' }}
+          </div>
           <input
+            ref="topicInput"
+            v-show="isEditingTopic"
             :value="topic"
             @input="e => updateField('topic', e.target as HTMLInputElement)"
+            @blur="isEditingTopic = false"
+            @keydown.enter="isEditingTopic = false"
             type="text"
             placeholder="Thread Topic"
             class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -115,6 +126,7 @@ import { ref, watch, nextTick, computed } from 'vue'
 import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
+import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
@@ -131,6 +143,15 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
+const isEditingTopic = ref(false);
+const topicInput: Ref<HTMLInputElement | null> = ref(null);
+
+const startEditingTopic = () => {
+  isEditingTopic.value = true;
+  nextTick(() => {
+    topicInput.value?.focus();
+  });
+};
 const isMessagesOpen = ref(false);
 const tagNames = computed(() => {
 
