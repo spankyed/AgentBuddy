@@ -28,7 +28,7 @@
 
       <!-- Instructions -->
       <div>
-        <Label>Instructions</Label>
+        <!-- <Label>Instructions</Label> -->
         <textarea
           :value="instructions"
           @input="e => updateField('instructions', e.target as HTMLTextAreaElement)"
@@ -38,10 +38,9 @@
         ></textarea>
       </div>
 
-      <!-- Threads list -->
-      <div>
-        <!-- <Label>Related Threads</Label> -->
-        <div class="flex flex-wrap gap-2">
+      <!-- Tags & Related Threads -->
+      <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap flex-1 gap-2">
           <button
             type="button"
             @click="addThread"
@@ -66,10 +65,7 @@
             </button>
           </span>
         </div>
-      </div>
 
-      <!-- Tags -->
-      <div>
         <TagInput 
           v-model="tagNames"
           :available-tags="availableTags"
