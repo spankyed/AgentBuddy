@@ -220,6 +220,7 @@ const threadsState = setup({
       actions: [
         'addThenResetCreateForm',
         spawnChild('clearNewThreadFlag', {
+          id: ({ event }) => `clear-new-thread-flag-${typeOf('THREAD_CREATED', event).id}`,
           input: ({ event }) => ({
             id: typeOf('THREAD_CREATED', event).id,
           })
