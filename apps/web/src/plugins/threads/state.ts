@@ -89,6 +89,7 @@ const threadsState = setup({
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
         status: 'draft',
+        tags: tagsInput,
         isNew: true, // Mark as new when created
       } as ThreadListItem;
 
@@ -150,7 +151,7 @@ const threadsState = setup({
       return {
         [typedEvent.component]: {
           ...context[typedEvent.component],
-          tags: typedEvent.newTags,
+          tagsInput: typedEvent.newTags,
         }
       }
     }),
