@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedData, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
+import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 
@@ -15,8 +15,8 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
   topic: '',
   threadType: 'work-item',
   instructions: '',
-  tagItems: [],
-  threadItems: [],
+  tags: [],
+  relatedThreads: [],
 }
 
 type SystemEvent =
@@ -79,7 +79,7 @@ const threadsState = setup({
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      const { tagItems, threadItems, ...thread} = context.create;
+      const { tags, relatedThreads, ...thread} = context.create;
       const newThread = {
         ...thread,
         id: typedEvent.id,
@@ -89,7 +89,7 @@ const threadsState = setup({
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
         status: 'draft',
-        tags: tagItems,
+        tags,
         isNew: true, // Mark as new when created, will be cleared after animation
       } as ThreadListItem;
 
@@ -121,8 +121,6 @@ const threadsState = setup({
         view: {
           ...context.view,
           ...data,
-          tagItems: data.tags as ThreadTagItem[],
-          threadItems: data.relatedThreads,
           id,
         }
       }
@@ -142,7 +140,7 @@ const threadsState = setup({
         view: {
           ...defaultThread,
           id, shortCode, status, timestamp, topic, threadType, instructions,
-          tagItems: tags as ThreadTagItem[],
+          tags: tags as ThreadTagItem[],
         },
       };
     }),
@@ -151,7 +149,7 @@ const threadsState = setup({
       return {
         [typedEvent.component]: {
           ...context[typedEvent.component],
-          tagItems: typedEvent.newTags,
+          tags: typedEvent.newTags,
         }
       }
     }),

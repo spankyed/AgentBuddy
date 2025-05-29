@@ -51,7 +51,7 @@
           </button>
 
           <span
-            v-for="(thread, index) in threadItems"
+            v-for="(thread, index) in relatedThreads"
             :key="index"
             class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-700 text-neutral-200 rounded"
           >
@@ -125,15 +125,15 @@ const actor: ThreadsState = applicationState.system.get(id);
 const topic = useSelector(actor, (state) => state.context.create.topic);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
-const threadItems = useSelector(actor, (state) => state.context.create.threadItems);
-const tagItems = useSelector(actor, (state) => state.context.create.tagItems);
+const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreads);
+const tags = useSelector(actor, (state) => state.context.create.tags);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 
 const isSaving = ref(false)
 
 // Transform tags array to string array for TagInput
 const tagNames = computed(() => {
-  const tagList = tagItems.value || [];
+  const tagList = tags.value || [];
   return tagList;
 });
 

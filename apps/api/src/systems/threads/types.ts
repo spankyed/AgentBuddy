@@ -18,8 +18,8 @@ export type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityT
 
 export type ThreadEditFields = Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'>;
 export type ThreadListFields = {
-  tagItems?: ThreadTagItem[];
-  threadItems?: ThreadLinkItem[];
+  tags?: ThreadTagItem[];
+  relatedThreads?: ThreadLinkItem[];
 }
 
 export type ThreadCreateData = Simplify<ThreadEditFields & ThreadListFields>;
@@ -35,11 +35,8 @@ export type ThreadViewData = Simplify<
 >;
 
 export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
-export type ThreadExtendedData = {
+export type ThreadExtendedData = ThreadListFields & {
   messages?: Partial<MessageEntity>[];
-  // ? could combine with ThreadListFields
-  relatedThreads?: ThreadLinkItem[];
-  tags?: Partial<TagEntity>[];
 }
 
 export type ThreadStartupData = {

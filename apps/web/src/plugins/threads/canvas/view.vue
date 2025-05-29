@@ -48,7 +48,7 @@
           </button>
 
           <span
-            v-for="({ thread, relation }, index) in threadItems"
+            v-for="({ thread, relation }, index) in relatedThreads"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
@@ -126,15 +126,15 @@ const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const threadItems = useSelector(actor, (state) => state.context.view.threadItems || []);
-const tagItems = useSelector(actor, (state) => state.context.view.tagItems || []);
+const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
+const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
 const isMessagesOpen = ref(false);
 const tagNames = computed(() => {
 
-  const tagList = tagItems.value || [];
+  const tagList = tags.value || [];
   return tagList;
 });
 

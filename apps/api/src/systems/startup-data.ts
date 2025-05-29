@@ -35,7 +35,7 @@ const pluginStartupLoaders = {
     const threadIds = getEntitiesOfType(EARS.Entity.Thread)
     const threads = threadIds.map(id => {
       const attrs = getAllAttributes(id);
-      const extendedData = getExtendedData(id, 'tags');
+      const extendedData = getExtendedData(id, ['tags']);
 
       return {
         id,

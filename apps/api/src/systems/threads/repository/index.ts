@@ -1,7 +1,8 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import { type ThreadLinkRelation, ThreadRelations, type ThreadCreateData, type ThreadExtendedData, type ThreadTypeCodes, type ThreadTypeShortCode, type ThreadLinkItem } from '../types';
+import { ThreadRelations } from '../types';
+import type { ThreadLinkRelation, ThreadCreateData, ThreadExtendedData, ThreadTypeCodes, ThreadTypeShortCode, ThreadLinkItem, ThreadTagItem } from '../types';
 import { getRelatedEntities } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
 
@@ -44,12 +45,12 @@ export function createThread(thread: ThreadCreateData) {
     .set('threadType', thread.threadType)
     .id(); // returns new thread ID
 
-  for (const tag of thread.tagItems ?? []) {
+  for (const tag of thread.tags ?? []) {
     tx(newThreadId)
       .rel(EARS.RelKind.HAS, tag.id);
   }
 
-  for (const relatedThread of thread.threadItems ?? []) {
+  for (const relatedThread of thread.relatedThreads ?? []) {
     tx(newThreadId)
       .rel(EARS.RelKind.Custom(relatedThread.relation), relatedThread.thread.id);
   }
@@ -115,7 +116,7 @@ export function getExtendedData(threadId: EARS.EntityId, include?: Include | Inc
   }
 
   if (!include || include.includes('tags')) {
-    extendedData.tags = getThreadTags(threadId);
+    extendedData.tags = getThreadTags(threadId) as ThreadTagItem[];
   }
 
   if (!include || include.includes('relatedThreads')) {

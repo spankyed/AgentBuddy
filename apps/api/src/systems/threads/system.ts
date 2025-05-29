@@ -23,7 +23,7 @@ const tagsSchema = z.array(z.object({
 const threadSchema = {
   topic: z.string(),
   threadType: z.string(),
-  tagItems: tagsSchema,
+  tags: tagsSchema,
   instructions: z.string(),
   // status: z.union(
   //   ThreadStatuses.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadStatuses>,
@@ -42,7 +42,7 @@ const relatedThreadsSchema = z.array(z.object({
 export const IncomingThreadsEvents = [
   busEvent('CREATE_THREAD', {
     ...threadSchema,
-    threadItems: relatedThreadsSchema.optional(),
+    relatedThreads: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
 ] as const
@@ -77,8 +77,8 @@ export const threadsSystem = setup({
           topic: thread.topic,
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
-          tagItems: thread.tagItems as ThreadTagItem[],
-          threadItems: thread.threadItems as ThreadLinkItem[],
+          tags: thread.tags as ThreadTagItem[],
+          relatedThreads: thread.relatedThreads as ThreadLinkItem[],
         },
       );
 
