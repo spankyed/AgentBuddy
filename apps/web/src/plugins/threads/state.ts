@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadRelatedData, ThreadCreateData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
+import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedData, ThreadCreateData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 
@@ -51,7 +51,7 @@ export type ThreadAdditional = {
   isNew?: boolean;
 };
 export type ThreadListItem = Simplify<ThreadEntity & ThreadAdditional>;
-type ThreadViewData = Simplify<ThreadCreateData & { messages?: ThreadRelatedData['messages'] }>;
+type ThreadViewData = Simplify<ThreadCreateData & { messages?: ThreadExtendedData['messages'] }>;
 
 interface ThreadsContext {
   threads: ThreadListItem[];

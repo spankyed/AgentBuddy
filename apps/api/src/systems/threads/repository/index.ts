@@ -1,7 +1,7 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import { type ThreadLinkRelation, ThreadRelations, type ThreadCreateData, type ThreadRelatedData, type ThreadTypeCodes, type ThreadTypeShortCode, type ThreadLinkItem } from '../types';
+import { type ThreadLinkRelation, ThreadRelations, type ThreadCreateData, type ThreadExtendedData, type ThreadTypeCodes, type ThreadTypeShortCode, type ThreadLinkItem } from '../types';
 import { getRelatedEntities } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
 
@@ -106,9 +106,9 @@ const getRelatedThreads = (threadId: EARS.EntityId) =>
       }))
     );
 
-type Include = keyof ThreadRelatedData;
-export function getExtendedData(threadId: EARS.EntityId, include?: Include | Include[]): ThreadRelatedData {
-  const extendedData = {} as ThreadRelatedData;
+type Include = keyof ThreadExtendedData;
+export function getExtendedData(threadId: EARS.EntityId, include?: Include | Include[]): ThreadExtendedData {
+  const extendedData = {} as ThreadExtendedData;
 
   if (!include || include.includes('messages')) {
     extendedData.messages = getThreadMessages(threadId);

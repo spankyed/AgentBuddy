@@ -16,8 +16,8 @@ export type ThreadLinkItem = {
 };
 export type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>
 
-export type ThreadExtended = Simplify<ThreadEntity & ThreadRelatedData>;
-export type ThreadRelatedData = {
+export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
+export type ThreadExtendedData = {
   messages?: Partial<MessageEntity>[];
   relatedThreads?: ThreadLinkItem[];
   tags?: Partial<TagEntity>[];
