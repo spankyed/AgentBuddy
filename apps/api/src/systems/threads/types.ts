@@ -37,6 +37,7 @@ export type ThreadViewData = Simplify<
 export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 export type ThreadExtendedData = {
   messages?: Partial<MessageEntity>[];
+  // ? could combine with ThreadListFields
   relatedThreads?: ThreadLinkItem[];
   tags?: Partial<TagEntity>[];
 }

@@ -51,7 +51,7 @@
           </button>
 
           <span
-            v-for="(thread, index) in relatedThreads"
+            v-for="(thread, index) in threadItems"
             :key="index"
             class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-700 text-neutral-200 rounded"
           >
@@ -121,20 +121,19 @@ import type { ThreadTagItem, ThreadEditFields } from '@abuddy/api'
 import Button from '@/core/design/button.vue';
 import TagInput from './tag-input.vue';
 
-
 const actor: ThreadsState = applicationState.system.get(id);
-const tags = useSelector(actor, (state) => state.context.create.tagItems);
 const topic = useSelector(actor, (state) => state.context.create.topic);
-const threadType = useSelector(actor, (state) => state.context.create.threadType);
-const relatedThreads = useSelector(actor, (state) => state.context.create.threadItems);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
+const threadType = useSelector(actor, (state) => state.context.create.threadType);
+const threadItems = useSelector(actor, (state) => state.context.create.threadItems);
+const tagItems = useSelector(actor, (state) => state.context.create.tagItems);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 
 const isSaving = ref(false)
 
 // Transform tags array to string array for TagInput
 const tagNames = computed(() => {
-  const tagList = tags.value || [];
+  const tagList = tagItems.value || [];
   return tagList;
 });
 

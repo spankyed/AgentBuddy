@@ -121,6 +121,8 @@ const threadsState = setup({
         view: {
           ...context.view,
           ...data,
+          tagItems: data.tags as ThreadTagItem[],
+          threadItems: data.relatedThreads,
           id,
         }
       }

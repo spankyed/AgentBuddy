@@ -48,7 +48,7 @@
           </button>
 
           <span
-            v-for="({ thread, relation }, index) in relatedThreads"
+            v-for="({ thread, relation }, index) in threadItems"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
@@ -125,16 +125,16 @@ import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 const actor: ThreadsState = applicationState.system.get(id);
 // Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
-const relatedThreads = useSelector(actor, (state) => state.context.view.threadItems || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const tags = useSelector(actor, (state) => state.context.view.tagItems || []);
+const threadItems = useSelector(actor, (state) => state.context.view.threadItems || []);
+const tagItems = useSelector(actor, (state) => state.context.view.tagItems || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = ref('placeholder instructions');
 const isMessagesOpen = ref(false);
-
 const tagNames = computed(() => {
-  const tagList = tags.value || [];
+
+  const tagList = tagItems.value || [];
   return tagList;
 });
 
