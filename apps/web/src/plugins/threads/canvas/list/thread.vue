@@ -28,6 +28,16 @@
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+        <div class="flex space-x-1 overflow-hidden w-28 whitespace-nowrap">
+          <span
+            @click.stop
+            v-for="tag in thread.tags"
+            :key="tag.id"
+            class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30"
+          >
+            {{ tag.name }}
+          </span>
+        </div>
       </div>
     </div>
 
