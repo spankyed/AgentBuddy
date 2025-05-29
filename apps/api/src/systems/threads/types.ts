@@ -23,6 +23,16 @@ export type ThreadListFields = {
 }
 
 export type ThreadCreateData = Simplify<ThreadEditFields & ThreadListFields>;
+export type ThreadViewData = Simplify<
+  ThreadCreateData
+  & {
+    id: ThreadEntity['id'];
+    shortCode: ThreadEntity['shortCode'];
+    status: ThreadEntity['status'];
+    timestamp: ThreadEntity['timestamp'];
+    messages?: ThreadExtendedData['messages'];
+  }
+>;
 
 export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 export type ThreadExtendedData = {

@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedData, ThreadCreateData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
+import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadExtendedData, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 
@@ -51,7 +51,6 @@ export type ThreadAdditional = {
   isNew?: boolean;
 };
 export type ThreadListItem = Simplify<ThreadEntity & ThreadAdditional>;
-type ThreadViewData = Simplify<ThreadCreateData & { messages?: ThreadExtendedData['messages'] }>;
 
 interface ThreadsContext {
   threads: ThreadListItem[];
@@ -92,7 +91,7 @@ const threadsState = setup({
         timestamp: typedEvent.timestamp,
         status: 'draft',
         tags: tagItems,
-        isNew: true, // Mark as new when created
+        isNew: true, // Mark as new when created, will be cleared after animation
       } as ThreadListItem;
 
       return {
@@ -122,10 +121,8 @@ const threadsState = setup({
       return {
         view: {
           ...context.view,
-          messages: data.messages,
-          relatedThreads: data.relatedThreads,
-          tagItems: data.tags as ThreadTagItem[],
-          threadItems: data.relatedThreads,
+          ...data,
+          id,
         }
       }
     }),
@@ -136,15 +133,15 @@ const threadsState = setup({
         console.warn(`Selected thread with id ${typedEvent.id} not found in context.`);
         return {};
       }
+
+      const { id, shortCode, status, timestamp, topic, threadType, instructions, tags } = selectedThread;
       
       return {
-        selectedThreadCode: selectedThread?.shortCode,
+        selectedThreadCode: shortCode,
         view: {
           ...defaultThread,
-          topic: selectedThread.topic,
-          threadType: selectedThread.threadType,
-          instructions: selectedThread.instructions,
-          tagItems: selectedThread.tags as ThreadTagItem[],
+          id, shortCode, status, timestamp, topic, threadType, instructions,
+          tagItems: tags as ThreadTagItem[],
         },
       };
     }),
@@ -206,7 +203,13 @@ const threadsState = setup({
   context: () => ({
     threads: [],
     selectedThreadCode: undefined,
-    view: { ...defaultThread },
+    view: {
+      id: '' as ThreadEntity['id'],
+      shortCode: '',
+      status: 'draft',
+      timestamp: 0,
+      ...defaultThread,
+    } as ThreadViewData,
     create: { ...defaultThread },
     availableTags: [],
   }),
