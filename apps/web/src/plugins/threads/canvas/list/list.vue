@@ -105,11 +105,9 @@ const paginatedThreads = computed(() => {
 
 const searchKeyword = ref('');
 
-function isNewThread(thread: ThreadListItem) {
-  return thread.isNew === true;
-}
 
-function isPlaceholderThread(thread: ThreadListItem): thread is { id: string; isPlaceholder: boolean } {
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder: boolean } {
   return thread.isPlaceholder === true;
 }
 </script>
