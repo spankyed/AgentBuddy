@@ -5,13 +5,11 @@
 
 import { z, type ZodRawShape } from 'zod';
 import type { OutgoingSystemEvents } from '@/shared/events';
+import type { Simplify } from '@/shared/utils/type-helpers';
 
 /* --------------------------------------------------------------------------
  *  1.  Tiny utilities
  * ------------------------------------------------------------------------ */
-/** Flatten intersections so tooltips stay readable. */
-export type Simplify<T> = { [K in keyof T]: T[K] } & {};
-
 /** Remove the `systemId` field when you only need the core event shape. */
 type StripSystem<T> = T extends { systemId: string } ? Omit<T, 'systemId'> : T;
 

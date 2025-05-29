@@ -1,6 +1,6 @@
 import type { EARS } from "@/types";
 import { getAttribute, queryEntitiesByRelationTo } from "../attribute-storage";
-import type { Simplify } from "@/shared/utils/event-helpers";
+import type { Simplify } from '@/shared/utils/type-helpers';
 
 // map object-keys to AttrKinds
 type AttrMap<T> = { [K in keyof T]: EARS.AttrKind };
