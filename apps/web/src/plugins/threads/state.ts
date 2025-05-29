@@ -31,7 +31,12 @@ type UIEvent =
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
-  | { type: 'UPDATE_THREAD_FIELD'; key: keyof ThreadEditFields; value: ThreadEditFields[keyof ThreadEditFields] }
+  | {
+    type: 'UPDATE_THREAD_FIELD';
+    key: keyof ThreadEditFields;
+    value: ThreadEditFields[keyof ThreadEditFields];
+    state: 'create' | 'view';
+  }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
   | { type: 'UPDATE_TAGS';  newTags: ThreadTagItem[]; component: 'create' | 'view' }
@@ -99,7 +104,7 @@ const threadsState = setup({
       }
     }),
     sendCreateThread: ({ context }) => {
-      console.log('create', context.create);
+      // console.log('create', context.create);
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_THREAD',
@@ -155,23 +160,16 @@ const threadsState = setup({
         }
       }
     }),
-    updateCreateData: assign(({ event, context }) => {
+    updateThreadData: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
-      const createThread = context.create;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      createThread[typedEvent.key] = typedEvent.value as any;
+      const { key, value, state } = typedEvent;
+  
       return {
-        create: createThread,
-      };
-    }),
-    updateViewData: assign(({ event, context }) => {
-      const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
-      const viewThread = context.view;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      viewThread[typedEvent.key] = typedEvent.value as any;
-      return {
-        view: viewThread,
-      };
+        [state]: {
+          ...context[state],
+          [key]: value,
+        },
+      } as Pick<typeof context, typeof state>;
     }),
     addChildThread: assign(({ context }) => {
       return {
@@ -269,7 +267,7 @@ const threadsState = setup({
           actions: 'updateTags',
         },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateCreateData',
+          actions: 'updateThreadData',
         },
       },
     },
@@ -279,7 +277,7 @@ const threadsState = setup({
       on: {
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateViewData',
+          actions: 'updateThreadData',
         },
         UPDATE_TAGS: {
           actions: 'updateTags',
