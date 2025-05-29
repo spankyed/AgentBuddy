@@ -33,6 +33,7 @@ type UIEvent =
     type: 'UPDATE_THREAD_FIELD';
     key: keyof ThreadEditFields;
     value: ThreadEditFields[keyof ThreadEditFields];
+    state: 'create' | 'view';
   }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
@@ -152,26 +153,26 @@ const threadsState = setup({
         }
       }
     }),
-    updateCreateData: assign(({ event, context }) => {
+    updateThreadData: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
-      const createThread = context.create;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      createThread[typedEvent.key] = typedEvent.value as any;
+      const { key, value, state } = typedEvent;
+  
       return {
-        create: createThread,
-      };
+        [state]: {
+          ...context[state],
+          [key]: value,
+        },
+      } as Pick<typeof context, typeof state>;
     }),
-    updateViewData: assign(({ event, context }) => {
+    updateThreadInThreads: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
-      const viewThread = context.view;
 
+      const { messages, relatedThreads, ...rest } = context.view;
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      viewThread[typedEvent.key] = typedEvent.value as any;
-      const { messages, relatedThreads, ...rest } = viewThread;
+      rest[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;
       return {
-        threads: context.threads.map(t => t.id === viewThread.id ? newThread : t),
-        view: viewThread,
+        threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
       };
     }),
     addChildThread: assign(({ context }) => {
@@ -277,7 +278,7 @@ const threadsState = setup({
           actions: 'updateTags',
         },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateCreateData',
+          actions: 'updateThreadData',
         },
       },
     },
@@ -287,7 +288,7 @@ const threadsState = setup({
       on: {
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateViewData',
+          actions: ['updateThreadData', 'updateThreadInThreads'],
         },
         UPDATE_TAGS: {
           actions: 'updateTags',
