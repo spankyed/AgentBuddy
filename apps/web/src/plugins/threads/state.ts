@@ -33,7 +33,6 @@ type UIEvent =
     type: 'UPDATE_THREAD_FIELD';
     key: keyof ThreadEditFields;
     value: ThreadEditFields[keyof ThreadEditFields];
-    state: 'create' | 'view';
   }
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
@@ -153,16 +152,27 @@ const threadsState = setup({
         }
       }
     }),
-    updateThreadData: assign(({ event, context }) => {
+    updateCreateData: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
-      const { key, value, state } = typedEvent;
-  
+      const createThread = context.create;
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      createThread[typedEvent.key] = typedEvent.value as any;
       return {
-        [state]: {
-          ...context[state],
-          [key]: value,
-        },
-      } as Pick<typeof context, typeof state>;
+        create: createThread,
+      };
+    }),
+    updateViewData: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
+      const viewThread = context.view;
+
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      viewThread[typedEvent.key] = typedEvent.value as any;
+      const { messages, relatedThreads, ...rest } = viewThread;
+      const newThread = rest as ThreadListItem;
+      return {
+        threads: context.threads.map(t => t.id === viewThread.id ? newThread : t),
+        view: viewThread,
+      };
     }),
     addChildThread: assign(({ context }) => {
       return {
@@ -267,7 +277,7 @@ const threadsState = setup({
           actions: 'updateTags',
         },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateThreadData',
+          actions: 'updateCreateData',
         },
       },
     },
@@ -277,7 +287,7 @@ const threadsState = setup({
       on: {
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {
-          actions: 'updateThreadData',
+          actions: 'updateViewData',
         },
         UPDATE_TAGS: {
           actions: 'updateTags',

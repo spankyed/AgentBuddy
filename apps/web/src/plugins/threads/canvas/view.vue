@@ -166,7 +166,8 @@ watch(isMessagesOpen, async (isOpen) => {
 
 const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
-  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
+  console.log('updateField', key, value);
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value });
 }
 </script>
 

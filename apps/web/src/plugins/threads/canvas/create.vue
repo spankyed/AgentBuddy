@@ -157,6 +157,6 @@ const removeThread = (index: number) => {
 
 const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
-  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'create' });
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value });
 }
 </script> 
