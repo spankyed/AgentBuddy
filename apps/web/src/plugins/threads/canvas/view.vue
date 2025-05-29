@@ -40,9 +40,22 @@
       <!-- Instructions -->
       <div>
         <!-- <Label>Instructions</Label> -->
-        <div class="p-2 border rounded-lg bg-neutral-800 border-neutral-700">
-          <p class="text-sm text-neutral-300">{{ instructions }}</p>
+        <div
+          v-show="!isEditingInstructions"
+          @click="startEditingInstructions"
+          class="px-3 py-2 border rounded-lg bg-neutral-800 border-neutral-700 cursor-text h-[8rem] overflow-y-auto"
+        >
+          <p class="text-sm text-neutral-300">{{ instructions || 'Enter instructions for the agent' }}</p>
         </div>
+        <textarea
+          ref="instructionsInput"
+          v-show="isEditingInstructions"
+          :value="instructions"
+          @input="e => updateField('instructions', e.target as HTMLTextAreaElement)"
+          @blur.passive="isEditingInstructions = false"
+          placeholder="Enter instructions for the agent"
+          class="h-[8rem] w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 resize-y"
+        ></textarea>
       </div>
 
       <!-- Tags & Related Threads -->
@@ -142,14 +155,23 @@ const relatedThreads = useSelector(actor, (state) => state.context.view.relatedT
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
-const instructions = ref('placeholder instructions');
+const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const isEditingTopic = ref(false);
+const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
+const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
 
 const startEditingTopic = () => {
   isEditingTopic.value = true;
   nextTick(() => {
     topicInput.value?.focus();
+  });
+};
+
+const startEditingInstructions = () => {
+  isEditingInstructions.value = true;
+  nextTick(() => {
+    instructionsInput.value?.focus();
   });
 };
 const isMessagesOpen = ref(false);
