@@ -148,7 +148,6 @@ import TagInput from './tag-input.vue'
 import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
-// Access view properties directly from state context
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
@@ -156,10 +155,15 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
+const isMessagesOpen = ref(false);
 const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
 const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
+const tagNames = computed(() => {
+  const tagList = tags.value || [];
+  return tagList;
+});
 
 const startEditingTopic = () => {
   isEditingTopic.value = true;
@@ -174,23 +178,6 @@ const startEditingInstructions = () => {
     instructionsInput.value?.focus();
   });
 };
-const isMessagesOpen = ref(false);
-const tagNames = computed(() => {
-
-  const tagList = tags.value || [];
-  return tagList;
-});
-
-// Update tags in state when TagInput changes
-const updateTags = (newTags: ThreadTagItem[]) => {
-  actor.send({ 
-    type: 'UPDATE_THREAD_FIELD',
-    state: 'view',
-    key: 'tags',
-    value: newTags,
-  });
-};
-
 
 watch(isMessagesOpen, async (isOpen) => {
   if (isOpen) {
@@ -207,6 +194,15 @@ watch(isMessagesOpen, async (isOpen) => {
     }
   }
 })
+
+const updateTags = (newTags: ThreadTagItem[]) => {
+  actor.send({ 
+    type: 'UPDATE_THREAD_FIELD',
+    state: 'view',
+    key: 'tags',
+    value: newTags,
+  });
+};
 
 const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
   const value = element.value;
