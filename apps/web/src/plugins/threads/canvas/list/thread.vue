@@ -5,7 +5,7 @@
       { 'animate-highlight': thread.isNew }
     ]"
   >
-    <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-neutral-800/70" @click="$emit('select', thread.id)">
+    <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-blue-800/20" @click="$emit('select', thread.id)">
       <!-- ID badge and truncated topic -->
       <div class="flex items-center flex-1 space-x-2">
         <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -21,7 +21,7 @@
           @click.stop
           :value="thread.status"
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
-          class="px-2 py-0.5 text-xs rounded bg-neutral-700 text-neutral-200 focus:outline-none"
+          class="px-2 py-0.5 text-xs rounded bg-neutral-800 text-neutral-200 focus:outline-none"
         >
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
@@ -33,7 +33,7 @@
             @click.stop
             v-for="tag in thread.tags"
             :key="tag.id"
-            class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/30 hover:bg-purple-700/30"
+            class="px-2 py-1 text-xs text-purple-200 rounded-full bg-purple-800/40 hover:bg-purple-700/30"
           >
             {{ tag.name }}
           </span>
@@ -44,7 +44,7 @@
     <button
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
-      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800/70"
+      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-blue-800/30"
     >
       Chat
       <MessageCircleMore :size="16" class="ml-1.5"/>
