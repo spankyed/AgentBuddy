@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null;
 

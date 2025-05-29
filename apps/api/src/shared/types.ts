@@ -44,6 +44,7 @@ export interface TagEntity extends BaseEntity {
   color?: string;
 }
 
+// ! remove after move from mock-data
 export type Entity = MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity;
 
 export interface RoleAssignment {
@@ -56,6 +57,8 @@ export interface Relation {
   tgtId: string;
   info: string; // JSON string
 }
+
+// ! remove after move from mock-data
 export interface Rows {
   entity: Entity[];
   role: RoleAssignment[];

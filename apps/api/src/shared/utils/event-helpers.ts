@@ -4,7 +4,6 @@
  * ========================================================================== */
 
 import { z, type ZodRawShape } from 'zod';
-import type { OutgoingSystemEvents } from '@/shared/events';
 import type { Simplify } from '@/shared/utils/type-helpers';
 
 /* --------------------------------------------------------------------------
