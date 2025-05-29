@@ -7,7 +7,7 @@ import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import { createThread, getExtendedData } from './repository';
 import type { ThreadEntity, ThreadLinkItem } from '@/types';
-import { ThreadRelations, ThreadStatuses, type ThreadLinkInput, type ThreadRelatedData, type ThreadTagItem } from './types';
+import { ThreadRelations, type ThreadRelatedData, type ThreadTagItem } from './types';
 import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
 
 export const threads = 'threads' as const;

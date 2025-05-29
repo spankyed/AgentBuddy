@@ -3,15 +3,13 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadRelatedData, ThreadCreateData, ThreadTagItem, ThreadEditFields, ThreadLinkInput } from '@abuddy/api';
+import type { ThreadStartupData, ThreadEntity, MessageEntity, OutgoingThreadsEvents, TagEntity, ThreadRelatedData, ThreadCreateData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 
 export const id = 'threads' as const;
 
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
-
-const typeOf = safeEvents<UIEvent>();
 
 const defaultThread: ThreadCreateData | ThreadViewData = {
   topic: '',
@@ -41,13 +39,12 @@ type UIEvent =
   | { type: 'REMOVE_LINK'; index: number }
   | { type: 'UPDATE_TAGS';  newTags: ThreadTagItem[]; component: 'create' | 'view' }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
+type ThreadEvents =
+  | UIEvent
   | SystemEvent
   | TrailClickEvent;
 
-// type ThreadEvents =
-//   | UIEvent
-//   | SystemEvent
-//   | TrailClickEvent;
+const typeOf = safeEvents<ThreadEvents>();
 
 export type ThreadAdditional = {
   tags?: Partial<TagEntity>[];
@@ -65,7 +62,7 @@ interface ThreadsContext {
 }
 
 const threadsState = setup({
-  types: { context: {} as ThreadsContext, events: {} as UIEvent },
+  types: { context: {} as ThreadsContext, events: {} as ThreadEvents },
   actors: {
     clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, system }) => {
       const ANIMATION_DURATION = 1000;
