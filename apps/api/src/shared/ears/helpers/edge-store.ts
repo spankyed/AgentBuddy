@@ -14,7 +14,7 @@ import { EARS } from "@/shared/ears/types";
 const matchIds = (
   w: Partial<Pick<EARS.RelationDetail,
     "sourceEntity" | "relationType" | "targetEntity">>,
-) => {
+): EARS.EntityId[] => {
   const kinds = w.relationType ? [w.relationType] : Object.keys(relationIndex);
   const out   = new Set<EARS.EntityId>();
 
@@ -22,16 +22,20 @@ const matchIds = (
     const { bySource, byTarget } = relationIndex[k] ?? {};
     if (!bySource) continue;
 
-    const scan = (
-      idx: Record<string, EARS.EntityId[]>,
-      key?: string,
-    ) =>
-      (key ? idx[key] ?? [] : Object.values(idx).flat()).forEach(id =>
-        out.add(id),
-      );
+    // ── source direction
+    if (w.sourceEntity !== undefined) {
+      (bySource[w.sourceEntity] ?? []).forEach(id => out.add(id));
+    } else if (w.targetEntity === undefined) {
+      // wildcard only if *no* other filter
+      Object.values(bySource).flat().forEach(id => out.add(id));
+    }
 
-    scan(bySource, w.sourceEntity);
-    scan(byTarget, w.targetEntity);
+    // ── target direction
+    if (w.targetEntity !== undefined) {
+      (byTarget[w.targetEntity] ?? []).forEach(id => out.add(id));
+    } else if (w.sourceEntity === undefined) {
+      Object.values(byTarget).flat().forEach(id => out.add(id));
+    }
   }
   return [...out];
 };

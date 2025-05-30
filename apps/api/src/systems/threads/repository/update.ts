@@ -8,7 +8,7 @@ const handleTags = (threadId: EARS.EntityId, tags: ThreadTagItem[]) => {
   tx(threadId).unlinkIf(EARS.RelKind.HAS);
   // add exactly the new set
   for (const { id: tagId } of tags) {
-    tx(threadId).linkOne(EARS.RelKind.HAS, tagId);
+    tx(threadId).link(EARS.RelKind.HAS, tagId);
   }
 };
 
@@ -19,7 +19,7 @@ const handleRelatedThreads = (threadId: EARS.EntityId, links: ThreadLinkItem[]) 
   }
   // add the new ones
   for (const { id, relation } of links) {
-    tx(threadId).linkOne(EARS.RelKind.Custom(relation), id);
+    tx(threadId).link(EARS.RelKind.Custom(relation), id);
   }
 };
 
