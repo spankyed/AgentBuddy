@@ -329,6 +329,89 @@ function destroyEntity(id: EARS.EntityId): void {
   removeEntityFromIndex(id);
 }
 
+
+/*───────────────────────────────────────────────────────────────────────────
+ * relation‑helpers.ts – ergonomic CRUD wrappers that hide the relId
+ *───────────────────────────────────────────────────────────────────────────*/
+/** Collect all relIds that match the supplied filters (undefined ⇒ wildcard). */
+function findRelationIds(
+  params: {
+    source?: EARS.EntityId;
+    relationType?: string;
+    target?: EARS.EntityId;
+  },
+): EARS.EntityId[] {
+  const out: EARS.EntityId[] = [];
+
+  const scanDirection = (
+    index: Record<string, EARS.EntityId[]>,
+    entity?: EARS.EntityId,
+  ) => {
+    if (entity) out.push(...(index[entity] ?? []));
+    else for (const relIds of Object.values(index)) out.push(...relIds);
+  };
+
+  const types = params.relationType
+    ? [params.relationType]
+    : Object.keys(relationIndex);
+
+  for (const relType of types) {
+    const { bySource, byTarget } = relationIndex[relType] ?? {};
+    if (!bySource) continue; // unknown relType
+    scanDirection(bySource, params.source);
+    scanDirection(byTarget, params.target);
+  }
+
+  // Deduplicate
+  return [...new Set(out)];
+}
+
+/** Delete *every* relation that matches the criteria. */
+function deleteRelations(
+  opts: { source?: EARS.EntityId; relationType?: string; target?: EARS.EntityId },
+): void {
+  for (const relId of findRelationIds(opts)) removeRelation(relId);
+}
+
+/** Update the first relation that matches the criteria (no‑op if none found). */
+function patchRelation(
+  opts: { source?: EARS.EntityId; relationType?: string; target?: EARS.EntityId },
+  updates: { newSource?: EARS.EntityId; newTarget?: EARS.EntityId; newInfo?: EARS.AttributeValue },
+): void {
+  const [relId] = findRelationIds(opts);
+  if (relId) updateRelation(
+    relId,
+    updates.newSource,
+    updates.newTarget,
+    updates.newInfo,
+  );
+}
+
+/** Idempotent “set” – ensures *exactly one* relation exists between two entities. */
+function setRelation(
+  source: EARS.EntityId,
+  relationType: string,
+  target: EARS.EntityId,
+  info?: EARS.AttributeValue,
+): void {
+  deleteRelations({ source, relationType, target });
+  addRelation(source, relationType, target, info);
+}
+
+/** Read helpers ---------------------------------------------------------- */
+function getRelations(
+  opts: { source?: EARS.EntityId; relationType?: string; target?: EARS.EntityId },
+): EARS.RelationDetail[] {
+  return findRelationIds(opts)
+    .map(getRelation)
+    .filter(Boolean) as EARS.RelationDetail[];
+}
+
+
+export {
+
+};
+
 /*-------------------------------------------------------------------------*\
 |   ▸ Public exports                                                        |
 \*-------------------------------------------------------------------------*/
@@ -359,4 +442,10 @@ export {
   getAllEntities,
   getEntitiesOfType,
   getAllAttributes,
+
+  findRelationIds,  // low‑level “where” selection
+  getRelations,     // read
+  setRelation,      // create / replace
+  patchRelation,    // update
+  deleteRelations,  // delete
 };
