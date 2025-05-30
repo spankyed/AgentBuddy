@@ -6,7 +6,9 @@ import { logInternal }   from "@/shared/debug/log";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "./types";
 import { randomId } from "../utils/random-id";
-import { createEntity } from "./create-entity";
+
+export const createEntity = (t: EARS.Entity) =>
+  `${t}-${randomId()}` as EARS.EntityId;
 
 /*─ base buckets ─*/
 const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();

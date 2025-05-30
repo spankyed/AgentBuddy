@@ -6,12 +6,12 @@ import {
   putAttr, mergeAttr, dropAttr, dropIf,
   grantRole, revokeRole,
   addRelation, updateRelation, removeRelation,
+  createEntity,
 } from "@/shared/ears/attribute-storage";
 
 import { edgeStore } from "@/shared/ears/helpers/edge-store";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
-import { createEntity } from "../create-entity";
 
 /** begin mutation session */
 export const tx = (typeOrId: EARS.Entity | EARS.EntityId) => {

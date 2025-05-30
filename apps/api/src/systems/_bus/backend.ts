@@ -3,8 +3,8 @@ import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events
 import systems from '@/systems';
 import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
 import { entries } from '@/shared/utils';
-import { createEntity } from '@/shared/ears/create-entity';
 import { EARS } from '@/shared/ears/types';
+import { createEntity } from '@/shared/ears';
 
 export type BusEvent = 
   | { type: 'CLIENT_CONNECTED'; }
