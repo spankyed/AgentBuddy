@@ -1,73 +1,84 @@
-import { unique } from "drizzle-orm/gel-core";
-import { addAttribute, addRole, addRelation } from "../attribute-storage";
-import { createEntity } from "../create-entity";
-import { EARS } from "../types";
+// blueprint.ts
 import { tx } from "./transaction";
+import { EARS } from "../types";
 
-/*────────── Fluent builder ─────────*/
+export interface Blueprint {
+  entity: EARS.Entity;
+  attrs?: Record<string, unknown>;
+  roles?: EARS.RoleKind[];
+  uniqueRoles?: EARS.RoleKind[];
+  rels?: Array<{
+    kind: EARS.RelKind;
+    target: Blueprint | EARS.EntityId;
+    info?: unknown;
+  }>;
+}
+
+/** Fluent builder */
 export const bp = (entity: EARS.Entity) => {
-  const b: EARS.Blueprint = { entity };
+  const b: Blueprint = { entity };
 
-  const chain = {
-    attr : (k: string, v: unknown) => {
-      if (!b.attrs) b.attrs = {};
-      b.attrs[k] = v;
-      return chain;
+  return {
+    attr(k: string, v: unknown) {
+      (b.attrs ??= {})[k] = v;
+      return this;
     },
-    role : (r: EARS.RoleKind) => {
-      if (!b.roles) b.roles = [];
-      b.roles.push(r);
-      return chain;
+    grant(r: EARS.RoleKind) {
+      (b.roles ??= []).push(r);
+      return this;
     },
-    uniqueRole : (r: EARS.RoleKind) => {
-      if (!b.roles) b.roles = [];
-      b.roles.push(r);
-      return chain;
+    ensure(r: EARS.RoleKind) {
+      (b.uniqueRoles ??= []).push(r);
+      return this;
     },
-    rel  : (kind: EARS.RelKind, target: EARS.Blueprint | EARS.EntityId, info?: unknown) => {
-      if (!b.rels) b.rels = [];
-      b.rels.push({ kind, target, info });
-      return chain;
+    link(kind: EARS.RelKind, target: Blueprint | EARS.EntityId, info?: unknown) {
+      (b.rels ??= []).push({ kind, target, info });
+      return this;
     },
-    build: () => b,
+    build() {
+      return b;
+    },
   };
-
-  return chain;
 };
 
-/*────────── Spawn (with memo‑dedupe) ─────────*/
-export const spawn = (
-  root: EARS.Blueprint,
+export function spawn(
+  root: Blueprint,
   { dedupe = true } = {},
-): EARS.EntityId => {
-  const cache = dedupe ? new Map<EARS.Blueprint, EARS.EntityId>() : undefined;
+): EARS.EntityId {
+  const cache = dedupe ? new Map<Blueprint, EARS.EntityId>() : undefined;
 
-  const go = (node: EARS.Blueprint): EARS.EntityId => {
+  const go = (node: Blueprint): EARS.EntityId => {
     if (cache?.has(node)) {
-      // We know the value exists since we checked with has()
-      return cache.get(node) as EARS.EntityId;
+      return cache.get(node)!;
     }
 
-    const id = createEntity(node.entity);
+    // start tx on this entity (creates it) and grab its ID
+    const builder = tx(node.entity);
+    const id = builder.id();
     cache?.set(node, id);
 
-    for (const [k, v] of Object.entries(node.attrs ?? {}))
-      addAttribute(id, EARS.AttrKind.Custom(k), v);
+    // apply attributes
+    for (const [k, v] of Object.entries(node.attrs ?? {})) {
+      builder.put(k, v);
+    }
 
-    for (const r of node.roles ?? [])
-      addRole(id, r);
+    // apply roles
+    for (const r of node.roles ?? []) {
+      builder.grant(r);
+    }
+    for (const r of node.uniqueRoles ?? []) {
+      builder.ensure(r);
+    }
 
-    for (const r of node.uniqueRoles ?? [])
-      tx(id)
-        .uniqueRole(r)  
-
-    for (const { kind, target } of node.rels ?? []) {
-      const tgtId = typeof target === 'object' ? go(target) : target;
-      addRelation(id, kind, tgtId);
-    };
+    // apply relations (recursing for Blueprint targets)
+    for (const { kind, target, info } of node.rels ?? []) {
+      const tgtId =
+        typeof target === "object" ? go(target as Blueprint) : target;
+      builder.linkOne(kind, tgtId, info as any);
+    }
 
     return id;
   };
 
   return go(root);
-};
+}

@@ -10,8 +10,7 @@ export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates
 export type ThreadStatus = typeof ThreadStatuses[number];
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
-export type ThreadLinkItem = {
-  thread: Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'>;
+export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
   relation: ThreadLinkRelation
 };
 export type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>

@@ -31,9 +31,7 @@ const threadSchema = {
 };
 
 const relatedThreadsSchema = z.array(z.object({
-  thread: z.object({
-    id: z.string(),
-  }),
+  id: z.string(),
   relation: z.union(
     ThreadRelations.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadRelations>,
   ),

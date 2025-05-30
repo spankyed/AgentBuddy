@@ -1,71 +1,59 @@
-import { rows } from './mock-data';
-import { tx } from '@/shared/ears/helpers/transaction';
-import type { EARS } from '@/shared/ears/types';
+import { rows } from "./mock-data";
+import { tx } from "@/shared/ears/helpers/transaction";
+import { EARS } from "@/shared/ears/types";
 
 /**
- * Load mock data from the new rows structure
- * - Entities, roles, and relations are loaded directly
- * - The latest message is identified and set
+ * Load mock data into the store
  */
 export function loadMockData(): void {
-  if (!rows.entity || rows.entity.length === 0) {
-    console.warn('No entities found in mock data');
+  const { entity = [], relation = [], role = [] } = rows;
+
+  if (!entity.length) {
+    console.warn("No entities found in mock data");
     return;
   }
 
-  /*───────────────────────*
-   * 1 ▸ Spawn all entities *
-   *───────────────────────*/
+  // Keep track of the real IDs we just “touched”
   const entityIds: Record<string, EARS.EntityId> = {};
 
-  for (const entity of rows.entity) {
-    // Extract core entity properties
-    const { id, entityType, createdAt, ...attributes } = entity;
-    
-    // Create entity using tx helper
-    const txBuilder = tx(id as EARS.EntityId)
-      .set('timestamp', createdAt);
-    
-    // Add all other attributes to the entity
-    for (const [key, value] of Object.entries(attributes)) {
-      if (key !== 'id' && key !== 'entityType' && key !== 'createdAt') {
-        txBuilder.set(key, value);
-      }
+  /*──────────────────────────*
+   * 1 ▸ Spawn all entities   *
+   *──────────────────────────*/
+  for (const row of entity) {
+    const { id, entityType, createdAt, ...attrs } = row as any;
+
+    // Start a tx on the given ID and set its timestamp
+    const builder = tx(id as EARS.EntityId).put("timestamp", createdAt);
+
+    // Add every other attribute
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === "id" || key === "entityType" || key === "createdAt")
+        continue;
+      builder.put(key, value);
     }
-    
-    // Create the entity and store its ID for reference
-    const entityId = txBuilder.id();
-    entityIds[id] = entityId;
+
+    // Finalize (builder.id() === id itself)
+    entityIds[id] = builder.id();
   }
 
-  /*───────────────────────*
-   * 2 ▸ Create relations   *
-   *───────────────────────*/
-  if (rows.relation) {
-    for (const relation of rows.relation) {
-      const { srcId, kind, tgtId } = relation;
-      
-      // Only create relations if both source and target entities exist
-      if (entityIds[srcId] && entityIds[tgtId]) {
-        tx(entityIds[srcId])
-          .rel(kind, entityIds[tgtId])
-          .id();
-      }
+  /*──────────────────────────*
+   * 2 ▸ Create relations     *
+   *──────────────────────────*/
+  for (const rel of relation) {
+    const src = entityIds[rel.srcId];
+    const tgt = entityIds[rel.tgtId];
+    if (src && tgt) {
+      tx(src).link(rel.kind, tgt);
     }
   }
 
-  /*───────────────────────*
-   * 3 ▸ Assign roles       *
-   *───────────────────────*/
-  if (rows.role) {
-    for (const roleAssignment of rows.role) {
-      const { entityId, role } = roleAssignment;
-      
-      if (entityIds[entityId]) {
-        tx(entityIds[entityId])
-          .role(role)
-          .id();
-      }
+  /*──────────────────────────*
+   * 3 ▸ Assign roles         *
+   *──────────────────────────*/
+  for (const assignment of role) {
+    const eid = entityIds[assignment.entityId];
+    if (eid) {
+      tx(eid).grant(assignment.role);
     }
   }
 }

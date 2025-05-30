@@ -1,10 +1,9 @@
-import { getAllAttributes, getEntitiesOfType } from '@/shared/ears';
 import { rows } from './brain/mock-data';
 import { EARS } from '@/shared/ears/types';
 import type { Rows, TagEntity, ThreadEntity } from '@/shared/types';
 import { entries } from '@/shared/utils';
-import type { ThreadExtended, ThreadStartupData } from '@/types';
-import { getExtendedData } from './threads/repository';
+import type { ThreadExtended, ThreadStartupData, ThreadTagItem } from '@/types';
+import { qx } from '@/shared/ears/helpers/query';
 
 type Row = Rows['entity'][number]
 function byEntityType<
@@ -31,46 +30,54 @@ const pluginStartupLoaders = {
       // currentThreadId: rows.entity.filter(byEntityType(EARS.Entity.Thread))[0].id,
     }
   },
-  threads: () => {
-    const threadIds = getEntitiesOfType(EARS.Entity.Thread)
-    const threads = threadIds.map(id => {
-      const attrs = getAllAttributes(id);
-      const extendedData = getExtendedData(id, ['tags']);
+  threads: (): ThreadStartupData => {
 
-      return {
-        id,
-        entityType: EARS.Entity.Thread,
-        topic: attrs.topic || '',
-        timestamp: attrs.timestamp || Date.now(),
-        instructions: attrs.instructions || '',
-        threadType: attrs.threadType || 'work-item',
-        status: attrs.status || 'draft',
-        shortCode: attrs.shortCode,
-        createdAt: attrs.timestamp || Date.now(),
-        updatedAt: attrs.timestamp || Date.now(),
-        ...attrs,
-        ...extendedData,
-      } as ThreadExtended;
-    }).reverse();
-
-    const availableTags = getEntitiesOfType(EARS.Entity.Tag).map(id => {
-      const attrs = getAllAttributes(id);
-      return {
-        id,
-        entityType: EARS.Entity.Tag,
-        name: attrs.name || '--',
-        color: attrs.color || 'purple',
-        createdAt: attrs.timestamp || Date.now(),
-        updatedAt: attrs.timestamp || Date.now(),
-        ...attrs
-      } as TagEntity;
-    });
-    
     return {
-      threads,
-      availableTags,
-    } as ThreadStartupData
-  }
+      threads: qx(EARS.Entity.Thread)
+        .map(id => {
+          // pick core fields
+          const base = qx(id).pickOne([
+            "topic",
+            "timestamp",
+            "instructions",
+            "threadType",
+            "status",
+            "shortCode",
+          ] as const)!;
+
+          // grab tags via relations
+          const tags = qx(id).linkRows(
+            EARS.RelKind.HAS,
+            EARS.Entity.Tag,
+            ["name", "color", "timestamp"] as const,
+          ) as ThreadTagItem[];
+
+          return {
+            id,
+            entityType: EARS.Entity.Thread,
+            topic:        base.topic        || "",
+            timestamp:    base.timestamp    ?? Date.now(),
+            instructions: base.instructions || "",
+            threadType:   base.threadType   || "work-item",
+            status:       base.status       || "draft",
+            shortCode:    base.shortCode,
+            createdAt:    base.timestamp    ?? Date.now(),
+            updatedAt:    base.timestamp    ?? Date.now(),
+            ...base,
+            tags,
+          } as ThreadExtended;
+        })
+        .reverse(),
+      availableTags: qx(EARS.Entity.Tag)
+        .rows(["name", "color", "timestamp"] as const)
+        .map(t => ({
+          entityType:   EARS.Entity.Tag,
+          createdAt:    t.timestamp ?? Date.now(),
+          updatedAt:    t.timestamp ?? Date.now(),
+          ...t,
+        })) as unknown as TagEntity[]
+    };
+  },
 }
 
 export function getStartupData(): StartupData {

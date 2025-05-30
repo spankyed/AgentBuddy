@@ -72,11 +72,11 @@
           </button>
 
           <span
-            v-for="({ thread, relation }, index) in relatedThreads"
+            v-for="({ shortCode, relation }, index) in relatedThreads"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
-            {{ thread.shortCode }}
+            {{ shortCode }}
             <button
               type="button"
               @click="() => actor.send({ type: 'REMOVE_LINK', index })"

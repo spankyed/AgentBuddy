@@ -1,204 +1,141 @@
-// qx.ts – fluent query wrapper around the EARS attribute store
+/*─────────────────────────────────────────────────────────────
+ * qx.ts – fluent *query* wrapper around attribute‑store
+ *─────────────────────────────────────────────────────────────*/
 import {
-	/* entity scopes  */ getAllEntities, getEntitiesOfType,
-	/* attrs / roles  */ getAttribute, getAttributesOfKind, getAllAttributes,
-												getRoles, hasRole,
-	/* relations      */ queryEntitiesByAttribute, queryEntitiesByRole,
-												queryEntitiesInRelationTo, queryEntitiesByRelationTo,
-												getRelation,
+  /* entity scopes */ getAllEntities, getEntitiesOfType,
+  /* attrs / roles */ getAttr, getAttrs, getAll, getRoles,
+  /* look‑ups      */ queryEntitiesByAttribute,
+                     queryEntitiesInRelationTo,
+                     queryEntitiesByRelationTo,
 } from "@/shared/ears/attribute-storage";
-import { EARS } from "@/shared/ears/types";
-import { relationIndex } from "../relation-index";
 
-/*─────────────────────────────────────────────────────────────
- * internal helpers
- *─────────────────────────────────────────────────────────────*/
-const isEntityType = (v: unknown): v is EARS.Entity =>
-	Object.values(EARS.Entity).includes(v as EARS.Entity);
+import { relationIndex } from "@/shared/ears/relation-index";
+import { EARS }          from "@/shared/ears/types";
 
-const isOfType = (type: EARS.Entity) => (id: EARS.EntityId) =>
-	id.startsWith(`${type}-`);
+/*──────── helpers ────────*/
+const isEntity  = (v: unknown): v is EARS.Entity =>
+  Object.values(EARS.Entity).includes(v as EARS.Entity);
 
-/*─────────────────────────────────────────────────────────────
- * qx – entry point
- *─────────────────────────────────────────────────────────────*/
-export const qx = (
-	seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[],
-) => {
-	let ids: EARS.EntityId[] =
-		seed === undefined          ? getAllEntities()                         :
-		Array.isArray(seed)         ? [...seed]                                :
-		isEntityType(seed)          ? getEntitiesOfType(seed)                  :
-																	[seed as EARS.EntityId];
+const hasPrefix = (t: EARS.Entity) => (id: EARS.EntityId) =>
+  id.startsWith(`${t}-`);
 
-	const self = {
-		/*──────────── filters ────────────*/
-		ofType(type: EARS.Entity) {
-			ids = ids.filter(isOfType(type));
-			return self;
-		},
-		inIds(sub: EARS.EntityId[]) {
-			const set = new Set(sub);
-			ids = ids.filter(id => set.has(id));
-			return self;
-		},
-		withAttr(kind: EARS.AttrKind, crit?: EARS.AttributeValue) {
-			ids = crit === undefined
-				? ids.filter(id => getAttributesOfKind(id, kind).length)
-				: ids.filter(id =>
-					queryEntitiesByAttribute(kind, crit).includes(id),
-				);
-			return self;
-		},
-		withRole(role: string) {
-			ids = ids.filter(id => hasRole(id, role));
-			return self;
-		},
-		relatedTo(target: EARS.EntityId) {
-			const hits = new Set(queryEntitiesInRelationTo(target));
-			ids = ids.filter(id => hits.has(id));
-			return self;
-		},
-		related(relKind: string, other: EARS.EntityId, asSource = false) {
-			const hits = new Set(
-				queryEntitiesByRelationTo(relKind, other, asSource),
-			);
-			ids = ids.filter(id => hits.has(id));
-			return self;
-		},
+const liftOne = <F extends (...args: any[]) => any>(many: F) =>
+  (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
 
-		/*──────────── graph helper ────────────*/
-		links<
-			K extends string
-		>(
-			relKinds: K | readonly K[],
-			targetType: EARS.Entity,
-			asSource = true,
-		): Array<{ relation: K; id: EARS.EntityId }> {
-			const kinds   = Array.isArray(relKinds) ? relKinds : [relKinds];
-			const out: Array<{ relation: K; id: EARS.EntityId }> = [];
+/*──────── entry ────────*/
+export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
+  let ids: EARS.EntityId[] =
+    seed === undefined  ? getAllEntities()
+  : Array.isArray(seed) ? [...seed]
+  : isEntity(seed)      ? getEntitiesOfType(seed)
+                        : [seed as EARS.EntityId];
 
-			for (const src of ids) {
-				for (const rel of kinds) {
-					const targets = queryEntitiesByRelationTo(
-						EARS.RelKind.Custom(rel as string),
-						src,
-						asSource,
-					).filter(isOfType(targetType));
+  const self = {
+    /*─ filters ─*/
+    ofType  : (t: EARS.Entity) => (ids = ids.filter(hasPrefix(t)), self),
+    inIds   : (sub: EARS.EntityId[]) =>
+      (ids = ids.filter(i => sub.includes(i)), self),
 
-					for (const t of targets) out.push({ relation: rel, id: t });
-				}
-			}
-			return out;
-		},
+    withAttr: (k: EARS.AttrKind, v?: unknown) =>
+      (ids = v === undefined
+        ? ids.filter(i => getAttrs(i, k).length)
+        : ids.filter(i =>
+            queryEntitiesByAttribute(k, v).includes(i),
+          ), self),
 
-		/*─────────────────────────────────────────────────────────────
-		*  relation‑detail extractors  (insert just after links())
-		*─────────────────────────────────────────────────────────────*/
-		edgeIds(
-			relationKinds?: string | readonly string[],
-			asSource       = true,
-		): EARS.EntityId[] {
-			const kinds = relationKinds
-				? (Array.isArray(relationKinds) ? relationKinds : [relationKinds])
-				: Object.keys(relationIndex);
+    withRole: (r: string) =>
+      (ids = ids.filter(i => getRoles(i).includes(r)), self),
 
-			const out: EARS.EntityId[] = [];
-			for (const id of ids) {
-				for (const k of kinds) {
-					const dir = relationIndex[k];
-					if (!dir) continue;
-					out.push(...(asSource ? dir.bySource[id] : dir.byTarget[id]) ?? []);
-				}
-			}
-			return [...new Set(out)]; // dedupe
-		},
+    relatedTo: (target: EARS.EntityId) =>
+      (ids = ids.filter(i => queryEntitiesInRelationTo(target).includes(i)), self),
 
-		edge<
-			K extends string | readonly string[]
-		>(
-			relationKinds?: K,
-			asSource       = true,
-		): Array<{ relId: EARS.EntityId; detail: EARS.RelationDetail }> {
-			return this.edgeIds(relationKinds as any, asSource).map(relId => ({
-				relId,
-				detail: getRelation(relId)!,
-			}));
-		},
+    related: (kind: string, other: EARS.EntityId, asSrc = false) =>
+      (ids = ids.filter(i =>
+        queryEntitiesByRelationTo(kind, other, asSrc).includes(i)), self),
 
-		edgeOne(
-			relationKinds?: string | readonly string[],
-			asSource       = true,
-		): { relId: EARS.EntityId; detail: EARS.RelationDetail } | null {
-			const [relId] = this.edgeIds(relationKinds, asSource);
-			return relId ? { relId, detail: getRelation(relId)! } : null;
-		},
+    /*─ graph traversal retains qx cursor ─*/
+    linksTo: (
+      relKinds: string | readonly string[],
+      tgtType : EARS.Entity,
+      asSrc   = true,
+    ) => {
+      const kinds = Array.isArray(relKinds) ? relKinds : [relKinds];
+      const nxt   = new Set<EARS.EntityId>();
+      for (const src of ids) for (const k of kinds)
+        queryEntitiesByRelationTo(k, src, asSrc)
+          .filter(hasPrefix(tgtType))
+          .forEach(i => nxt.add(i));
+      return qx([...nxt]);
+    },
 
-		/*──────────── data extractors ────────────*/
-		ids: () => [...ids],
-		count: () => ids.length,
-		first: () => ids[0] ?? null,
-		second: () => ids[1] ?? null,
-		last: () => (ids.length ? ids[ids.length - 1] : null),
-		exists: () => ids.length > 0,
+    /*─ low‑level links array ─*/
+    links: <K extends string>(
+      relKinds: K | readonly K[],
+      tgtType : EARS.Entity,
+      asSrc   = true,
+    ): Array<{ relation: K; id: EARS.EntityId }> => {
+      const kinds = Array.isArray(relKinds) ? relKinds : [relKinds];
+      const out  : Array<{ relation: K; id: EARS.EntityId }> = [];
+      for (const src of ids) for (const k of kinds)
+        queryEntitiesByRelationTo(k, src, asSrc)
+          .filter(hasPrefix(tgtType))
+          .forEach(id => out.push({ relation: k as K, id }));
+      return out;
+    },
 
-		/* single attribute value – list vs one */
-		value(kind: EARS.AttrKind, idx = 0) {
-			return ids.map(id => getAttribute(id, kind, idx));
-		},
-		valueOne(kind: EARS.AttrKind, idx = 0) {
-			return ids.length ? getAttribute(ids[0], kind, idx) : null;
-		},
+    /*─ relation detail helpers ─*/
+    edgeIds: (
+      kinds?: string | readonly string[],
+      asSrc = true,
+    ): EARS.EntityId[] => {
+      const ks = kinds ? (Array.isArray(kinds) ? kinds : [kinds])
+                       : Object.keys(relationIndex);
+      const out = new Set<EARS.EntityId>();
+      for (const i of ids) for (const k of ks) {
+        const dir = relationIndex[k];
+        if (!dir) continue;
+        (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
+      }
+      return [...out];
+    },
 
-		/* all values for a kind */
-		values(kind: EARS.AttrKind) {
-			return ids.map(id => getAttributesOfKind(id, kind));
-		},
-		valuesOne(kind: EARS.AttrKind) {
-			return ids.length ? getAttributesOfKind(ids[0], kind) : [];
-		},
+    /*─ projections ─*/
+    pick: <A extends readonly string[]>(f: A) =>
+      ids.map(i => {
+        const o: any = { id: i };
+        f.forEach(k => o[k] = getAttr(i, EARS.AttrKind.Custom(k)));
+        return o as { id: EARS.EntityId } & { [K in A[number]]: unknown };
+      }),
+    pickOne: liftOne(function <A extends readonly string[]>(f: A) {
+      return self.pick(f);
+    }),
+    rows   : <A extends readonly string[]>(f: A) => self.pick(f),
 
-		/* field projection helpers */
-		pick<const A extends readonly string[]>(fields: A):
-			Array<{ [F in A[number]]: unknown }> {
-			return ids.map(id => {
-				const obj = {} as { [F in A[number]]: unknown };
-				for (const f of fields)
-					obj[f as keyof typeof obj] = getAttribute(id, EARS.AttrKind.Custom(f));
-				return obj;
-			});
-		},
-		pickOne<const A extends readonly string[]>(fields: A):
-			{ [F in A[number]]: unknown } | null {
-			if (!ids.length) return null;
-			const id0 = ids[0];
-			const obj = {} as { [F in A[number]]: unknown };
-			for (const f of fields) {
-				obj[f as keyof typeof obj] = getAttribute(id0, EARS.AttrKind.Custom(f));
-			}
-			return obj;
-		},
+    /*─ traverse + project in one call ─*/
+    linkRows: <K extends string, A extends readonly string[]>(
+      relKinds: K | readonly K[],
+      tgtType : EARS.Entity,
+      fields  : A,
+    ) => {
+      const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
+      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
+        ...(manyKinds ? { relation } : null),
+        ...qx(id).pickOne(fields)!,
+      }));
+    },
 
-		/* full record dump */
-		record() {
-			return ids.map(id => [id, getAllAttributes(id)] as const);
-		},
-		recordOne() {
-			return ids.length ? getAllAttributes(ids[0]) : null;
-		},
+    /*─ misc extractors ─*/
+    ids   : () => [...ids],
+    count : () => ids.length,
+    first : () => ids[0] ?? null,
+    last  : () => ids.length ? ids[ids.length - 1] : null,
+    exists: () => ids.length > 0,
 
-		/*──────────── functional helpers ────────────*/
-		map<T>(fn: (id: EARS.EntityId) => T): T[] {
-			return ids.map(fn);
-		},
-		forEach(fn: (id: EARS.EntityId) => void) {
-			ids.forEach(fn);
-			return self;
-		},
-		reduce<T>(fn: (acc: T, id: EARS.EntityId) => T, init: T) {
-			return ids.reduce(fn, init);
-		},
-	};
+    /*─ functional helpers ─*/
+    map   : <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
+    forEach: (fn: (i: EARS.EntityId) => void) => (ids.forEach(fn), self),
+    reduce : <T>(fn:(a:T,i:EARS.EntityId)=>T, init:T)=>ids.reduce(fn,init),
+  };
 
-	return self;
+  return self;
 };

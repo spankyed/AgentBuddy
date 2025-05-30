@@ -1,74 +1,48 @@
-/* ----------------------------------------------------------------------- */
-/* 1 ▸ helpers for relation juggling                                       */
-
-import { tx } from "@/shared/ears";
+import { tx } from "@/shared/ears/helpers/transaction";
 import { EARS } from "@/shared/ears/types";
-import { ThreadTagItem, ThreadLinkItem, ThreadEditFields } from "../types";
-import { getRelatedThreads, getThreadTags } from "./index";
-import { ThreadEntity } from "@/shared/types";
+import { ThreadTagItem, ThreadLinkItem, ThreadEditFields, ThreadRelations } from "../types";
 
-
-/* ----------------------------------------------------------------------- */
-/* 1 ▸ concrete handlers                                                   */
-/* ----------------------------------------------------------------------- */
-function handleTags(threadId: EARS.EntityId, tags: ThreadTagItem[]) {
-  // Remove all existing tag relations
-  const existingTags = getThreadTags(threadId);
-  for (const tag of existingTags) {
-    tx(threadId).delRel(tag.id);
+/** ── Relation handlers ─────────────────────────────────────────────── */
+const handleTags = (threadId: EARS.EntityId, tags: ThreadTagItem[]) => {
+  // nuke all existing HAS edges
+  tx(threadId).unlinkIf(EARS.RelKind.HAS);
+  // add exactly the new set
+  for (const { id: tagId } of tags) {
+    tx(threadId).linkOne(EARS.RelKind.HAS, tagId);
   }
+};
 
-  // Add new tag relations
-  const newTags = tags;
-  for (const tag of newTags) {
-    tx(threadId).rel(EARS.RelKind.HAS, tag.id);
+const handleRelatedThreads = (threadId: EARS.EntityId, links: ThreadLinkItem[]) => {
+  // nuke all outgoing edges for every supported relation kind
+  for (const rel of ThreadRelations) {
+    tx(threadId).unlinkIf(EARS.RelKind.Custom(rel));
   }
-  // ! somethings wrong, tags not being removed properly
-}
+  // add the new ones
+  for (const { id, relation } of links) {
+    tx(threadId).linkOne(EARS.RelKind.Custom(relation), id);
+  }
+};
 
-function handleRelatedThreads(
-  threadId: EARS.EntityId,
-  links: ThreadLinkItem[]
-) {
-  // Remove all existing thread relations
-  const existingThreads = getRelatedThreads(threadId);
-  for (const { thread, relation } of existingThreads) {
-    tx(threadId).delRel(thread.id);
-  }
-  // Add new thread relations
-  // ! need to confirm we send all relations
-  const newThreads = links;
-  for (const { thread, relation } of newThreads) {
-    tx(threadId).rel(EARS.RelKind.Custom(relation), thread.id);
-  }
-}
-
-/* ----------------------------------------------------------------------- */
-/* 2 ▸ single source‑of‑truth map (type‑safe at declaration)               */
-/* ----------------------------------------------------------------------- */
 const relationHandlers = {
-  tags: handleTags,
+  tags:           handleTags,
   relatedThreads: handleRelatedThreads,
-} as const; //  <-- “as const” preserves the literal keys
+} as const;
 
 type RelationKey = keyof typeof relationHandlers;
 
-/* ----------------------------------------------------------------------- */
-/* 3 ▸ public API                                                          */
-/* ----------------------------------------------------------------------- */
-export function updateThreadField<
-  K extends keyof ThreadEditFields
->(
+/** ── Public update function ───────────────────────────────────────── */
+export function updateThreadField<K extends keyof ThreadEditFields>(
   threadId: EARS.EntityId,
   key: K,
   value: K extends RelationKey
-    ? Parameters<(typeof relationHandlers)[K]>[1]  // ← derive from handler
-    : ThreadEditFields[K]                          // ← plain scalar/enum/etc.
+  ? Parameters<(typeof relationHandlers)[K]>[1]
+  : ThreadEditFields[K],
 ): void {
-  if ((key as string) in relationHandlers) {
-    // same key typed two ways, so cast the lookup to make TS happy
-    (relationHandlers as Record<string, any>)[key](threadId, value);
+  if (key in relationHandlers) {
+    // @ts-expect-error safe dispatch
+    relationHandlers[key](threadId, value);
   } else {
-    tx(threadId).update(key as keyof ThreadEntity, value as ThreadEntity[keyof ThreadEntity]);
+    // scalar/enum/etc → simple attr update
+    tx(threadId).merge(key as string, value as any);
   }
 }
