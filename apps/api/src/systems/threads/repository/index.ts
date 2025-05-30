@@ -1,10 +1,11 @@
 import { tx } from '@/shared/ears/helpers/transaction';                      // path to the helper file
 import { EARS } from '@/shared/ears/types';
 import type { MessageEntity, TagEntity, ThreadEntity } from '@/shared/types';
-import { ThreadRelations } from '../types';
+import { ThreadRelations, ThreadEditFields } from '../types';
 import type { ThreadLinkRelation, ThreadCreateData, ThreadExtendedData, ThreadTypeCodes, ThreadTypeShortCode, ThreadLinkItem, ThreadTagItem } from '../types';
 import { getRelatedEntities } from '@/shared/ears/helpers/get-related-attributes';
 import { getEntitiesOfType } from '@/shared/ears';
+import { updateThreadField } from './update';
 
 export function createTag(name: string) {
   const tagId = tx(EARS.Entity.Tag)
@@ -70,7 +71,7 @@ const getThreadMessages = (threadId: EARS.EntityId) =>
     }
   );
 
-const getThreadTags = (threadId: EARS.EntityId) =>
+export const getThreadTags = (threadId: EARS.EntityId) =>
   getRelatedEntities<Partial<TagEntity>>(
     threadId,
     EARS.RelKind.HAS,
@@ -102,41 +103,6 @@ export const getRelatedThreads = (threadId: EARS.EntityId) =>
       }))
     );
 
-export function updateThreadField(threadId: EARS.EntityId, key: string, value: unknown) {
-  // Special handling for tags and relatedThreads
-  if (key === 'tags') {
-    console.log('Updating tags for', threadId, 'with value:', value);
-    // Remove all existing tag relations
-    const existingTags = getThreadTags(threadId);
-    for (const tag of existingTags) {
-      tx(threadId).delRel(tag.id);
-    }
-    // Add new tag relations
-    const newTags = value as ThreadTagItem[];
-    for (const tag of newTags) {
-      tx(threadId).rel(EARS.RelKind.HAS, tag.id);
-    }
-    // ! somethings wrong, tags not being removed properly
-  } else if (key === 'relatedThreads') {
-    console.log('Updating related threads for', threadId, 'with value:', value);
-    // Remove all existing thread relations
-    const existingThreads = getRelatedThreads(threadId);
-    for (const { thread, relation } of existingThreads) {
-      tx(threadId).delRel(thread.id);
-    }
-    // Add new thread relations
-    // ! need to confirm we send all relations
-    const newThreads = value as ThreadLinkItem[];
-    for (const { thread, relation } of newThreads) {
-      tx(threadId).rel(EARS.RelKind.Custom(relation), thread.id);
-    }
-  } else {
-    // Regular attribute update
-    tx(threadId)
-      .update(key, value)
-  }
-}
-
 type Include = keyof ThreadExtendedData;
 export function getExtendedData(threadId: EARS.EntityId, include?: Include | Include[]): ThreadExtendedData {
   const extendedData = {} as ThreadExtendedData;
@@ -154,4 +120,11 @@ export function getExtendedData(threadId: EARS.EntityId, include?: Include | Inc
   }
 
   return extendedData;
+}
+
+/* ----------------------------------------------------------------------- */
+/* 1 ▸ helpers for relation juggling                                       */
+/* ----------------------------------------------------------------------- */
+export {
+  updateThreadField
 }
