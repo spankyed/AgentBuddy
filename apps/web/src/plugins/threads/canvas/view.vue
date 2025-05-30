@@ -10,7 +10,7 @@
             @click="startEditingTopic"
             class="w-full px-3 py-2 text-xl rounded bg-neutral-800/40 text-neutral-200 cursor-text"
           >
-            {{ topic || 'Thread Topic' }}
+            {{ topic || 'Untitled' }}
           </div>
           <input
             ref="topicInput"
@@ -45,7 +45,7 @@
           @click="startEditingInstructions"
           class="px-3 py-2 border rounded-lg bg-neutral-800 border-neutral-700 cursor-text h-[8rem] overflow-y-auto"
         >
-          <p class="text-sm text-neutral-300">{{ instructions || 'Enter instructions for the agent' }}</p>
+          <p class="text-sm text-neutral-300">{{ instructions || 'No agent instructions' }}</p>
         </div>
         <textarea
           ref="instructionsInput"
