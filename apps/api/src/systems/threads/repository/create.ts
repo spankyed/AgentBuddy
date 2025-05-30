@@ -37,10 +37,10 @@ export function createThread(thread: ThreadCreateData) {
     .id();
 
   for (const tag of thread.tags ?? []) {
-    tx(id).linkOne(EARS.RelKind.HAS, tag.id);
+    tx(id).link(EARS.RelKind.HAS, tag.id);
   }
   for (const rel of thread.relatedThreads ?? []) {
-    tx(id).linkOne(EARS.RelKind.Custom(rel.relation), rel.id);
+    tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
   }
 
   return { id, shortCode, timestamp: ts };
