@@ -11,11 +11,16 @@
         New Thread
       </button>
       <div class="flex justify-end flex-1 gap-1 text-sm">
+        <!-- count of hidden threads -->
+
         <!-- <button type="button" class="text-primary-400 hover:underline">Advanced Search</button> -->
         <Button
           type="button"
           variant="transparent"
         >
+        <span v-if="5 > 0" class="content-center text-neutral-500">
+          ({{ 5 }} hidden)
+        </span>
           Clear filters
         </Button>
         <Button
