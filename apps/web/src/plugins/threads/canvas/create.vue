@@ -18,7 +18,7 @@
           <select
             :value="threadType"
             @input="e => updateField('threadType', e.target as HTMLSelectElement)"
-            class="w-full px-3 py-2 text-sm rounded bg-neutral-900 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+            class="w-full px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
             <option value="project">Project</option>
