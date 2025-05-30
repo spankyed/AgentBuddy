@@ -58,11 +58,6 @@ export function createThread(thread: ThreadCreateData) {
   return { id: newThreadId, shortCode, timestamp };
 }
 
-export function updateAttribute(threadId: EARS.EntityId, attr: EARS.AttrKind | string, value: unknown) {
-  tx(threadId)
-    .set(attr, value);
-}
-
 const getThreadMessages = (threadId: EARS.EntityId) =>
   getRelatedEntities<Partial<MessageEntity>>(
     threadId,
@@ -98,7 +93,7 @@ const getRelatedThread = (threadId: EARS.EntityId, relation: ThreadLinkRelation)
       status: EARS.AttrKind.Custom('status'),
     }
   );
-const getRelatedThreads = (threadId: EARS.EntityId) =>
+export const getRelatedThreads = (threadId: EARS.EntityId) =>
   ThreadRelations
     .flatMap(rel => 
       getRelatedThread(threadId, rel).map(thread => ({
@@ -106,6 +101,41 @@ const getRelatedThreads = (threadId: EARS.EntityId) =>
         relation: rel,
       }))
     );
+
+export function updateThreadField(threadId: EARS.EntityId, key: string, value: unknown) {
+  // Special handling for tags and relatedThreads
+  if (key === 'tags') {
+    console.log('Updating tags for', threadId, 'with value:', value);
+    // Remove all existing tag relations
+    const existingTags = getThreadTags(threadId);
+    for (const tag of existingTags) {
+      tx(threadId).delRel(tag.id);
+    }
+    // Add new tag relations
+    const newTags = value as ThreadTagItem[];
+    for (const tag of newTags) {
+      tx(threadId).rel(EARS.RelKind.HAS, tag.id);
+    }
+    // ! somethings wrong, tags not being removed properly
+  } else if (key === 'relatedThreads') {
+    console.log('Updating related threads for', threadId, 'with value:', value);
+    // Remove all existing thread relations
+    const existingThreads = getRelatedThreads(threadId);
+    for (const { thread, relation } of existingThreads) {
+      tx(threadId).delRel(thread.id);
+    }
+    // Add new thread relations
+    // ! need to confirm we send all relations
+    const newThreads = value as ThreadLinkItem[];
+    for (const { thread, relation } of newThreads) {
+      tx(threadId).rel(EARS.RelKind.Custom(relation), thread.id);
+    }
+  } else {
+    // Regular attribute update
+    tx(threadId)
+      .update(key, value)
+  }
+}
 
 type Include = keyof ThreadExtendedData;
 export function getExtendedData(threadId: EARS.EntityId, include?: Include | Include[]): ThreadExtendedData {

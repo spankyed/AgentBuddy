@@ -193,6 +193,16 @@ const threadsState = setup({
         )
       };
     }),
+    sendUpdateThreadField: ({ event, context }) => {
+      const { key, value } = typeOf('UPDATE_THREAD_FIELD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId: context.view.id,
+        key,
+        value,
+      });
+    },
   },
   guards: {
     targetIs
@@ -275,7 +285,7 @@ const threadsState = setup({
       on: {
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {
-          actions: ['updateThreadData', 'updateThreadInThreads'],
+          actions: ['updateThreadData', 'updateThreadInThreads', 'sendUpdateThreadField'],
         },
         LINK_THREAD: {
           actions: 'addChildThread',

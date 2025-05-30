@@ -5,8 +5,8 @@ import { bus } from '@/systems/_bus/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { createThread, getExtendedData } from './repository';
-import type { ThreadEntity, ThreadLinkItem } from '@/types';
+import { createThread, getExtendedData, updateThreadField } from './repository';
+import type { ThreadEditFields, ThreadEntity, ThreadLinkItem } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
 import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
 
@@ -45,6 +45,11 @@ export const IncomingThreadsEvents = [
     relatedThreads: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
+  busEvent('UPDATE_THREAD_FIELD', {
+    threadId: z.string(),
+    key: z.string(),
+    value: z.any(),
+  }),
 ] as const
 
 export type ThreadsInternalEvents = 
@@ -99,6 +104,14 @@ export const threadsSystem = setup({
         data: getExtendedData(threadId),
       }));
     },
+    updateThreadField: ({ event }) => {
+      const { key, value, threadId } = typeOf('UPDATE_THREAD_FIELD', event);
+      updateThreadField(
+        threadId as EARS.EntityId,
+        key as keyof ThreadEditFields,
+        value as ThreadEditFields[keyof ThreadEditFields],
+      );
+    },
   },
 }).createMachine(
   {
@@ -117,6 +130,9 @@ export const threadsSystem = setup({
           },
           VIEW_THREAD: {
             actions: 'sendViewData',
+          },
+          UPDATE_THREAD_FIELD: {
+            actions: 'updateThreadField',
           },
         },
       },
