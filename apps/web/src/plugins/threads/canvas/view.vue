@@ -16,7 +16,7 @@
             ref="topicInput"
             v-show="isEditingTopic"
             :value="topic"
-            @input="e => updateField('topic', e.target as HTMLInputElement)"
+            @input="e => updateField('topic', e.target.value)"
             @blur="isEditingTopic = false"
             @keydown.enter="isEditingTopic = false"
             type="text"
@@ -28,7 +28,7 @@
           <!-- <Label>Type</Label> -->
           <select
             :value="type"
-            @input="e => updateField('threadType', e.target as HTMLSelectElement)"
+            @input="e => updateField('threadType', e.target.value)"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
@@ -51,7 +51,7 @@
           ref="instructionsInput"
           v-show="isEditingInstructions"
           :value="instructions"
-          @input="e => updateField('instructions', e.target as HTMLTextAreaElement)"
+          @input="e => updateField('instructions', e.target.value)"
           @blur.passive="isEditingInstructions = false"
           placeholder="Enter instructions for the agent"
           class="h-[8rem] w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 resize-y"
@@ -90,7 +90,7 @@
         <TagInput 
           v-model="tagNames"
           :available-tags="availableTags"
-          @update:modelValue="updateTags"
+          @update:modelValue="(newTags) => updateField('tags', newTags)"
         />
       </div>
 
@@ -155,6 +155,12 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
+
+const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields]) => {
+  console.log('updateField', key, value);
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
+}
+
 const isMessagesOpen = ref(false);
 const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
@@ -194,21 +200,6 @@ watch(isMessagesOpen, async (isOpen) => {
     }
   }
 })
-
-const updateTags = (newTags: ThreadTagItem[]) => {
-  actor.send({ 
-    type: 'UPDATE_THREAD_FIELD',
-    state: 'view',
-    key: 'tags',
-    value: newTags,
-  });
-};
-
-const updateField = (key: keyof ThreadEditFields, element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
-  const value = element.value;
-  console.log('updateField', key, value);
-  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
-}
 </script>
 
 <style scoped>
