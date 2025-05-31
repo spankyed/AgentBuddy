@@ -6,7 +6,7 @@ import { rows } from '../brain/mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
-import { bus } from '@/systems/_bus/backend';
+import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
