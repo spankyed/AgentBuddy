@@ -39,7 +39,7 @@ export function createThread(thread: ThreadCreateData) {
   for (const tag of thread.tags ?? []) {
     tx(id).link(EARS.RelKind.HAS, tag.id);
   }
-  for (const rel of thread.relatedThreads ?? []) {
+  for (const rel of thread.linkedThreads ?? []) {
     tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
   }
 

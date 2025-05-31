@@ -40,7 +40,7 @@ const relatedThreadsSchema = z.array(z.object({
 export const IncomingThreadsEvents = [
   busEvent('CREATE_THREAD', {
     ...threadSchema,
-    relatedThreads: relatedThreadsSchema.optional(),
+    linkedThreads: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
   busEvent('UPDATE_THREAD_FIELD', {
@@ -81,7 +81,7 @@ export const threadsSystem = setup({
           threadType: thread.threadType as ThreadEntity['threadType'],
           instructions: thread.instructions,
           tags: thread.tags as ThreadTagItem[],
-          relatedThreads: thread.relatedThreads as ThreadLinkItem[],
+          linkedThreads: thread.linkedThreads as ThreadLinkItem[],
         },
       );
 

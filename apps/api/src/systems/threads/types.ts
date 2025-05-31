@@ -22,7 +22,7 @@ export type ThreadEditFields = Simplify<
 >;
 export type ThreadListFields = {
   tags?: ThreadTagItem[];
-  relatedThreads?: ThreadLinkItem[];
+  linkedThreads?: ThreadLinkItem[];
 }
 
 export type ThreadCreateData = Simplify<ThreadEditFields>;

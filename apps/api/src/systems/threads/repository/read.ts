@@ -31,7 +31,7 @@ export const getRelatedThread = (
       threadCols
     );
 
-export const getRelatedThreads = (threadId: EARS.EntityId) =>
+export const getLinkedThreads = (threadId: EARS.EntityId) =>
   qx(threadId)
     .linkRows(
       ThreadRelations,
@@ -57,6 +57,6 @@ export function getExtendedData(
   return {
     messages: want("messages") ? getThreadMessages(threadId) as Partial<MessageEntity>[] : [],
     tags: want("tags") ? getThreadTags(threadId) as ThreadTagItem[] : [],
-    relatedThreads: want("relatedThreads") ? getRelatedThreads(threadId) : [],
+    linkedThreads: want("linkedThreads") ? getLinkedThreads(threadId) : [],
   };
 }

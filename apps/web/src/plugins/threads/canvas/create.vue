@@ -51,7 +51,7 @@
           </button>
 
           <span
-            v-for="(thread, index) in relatedThreads"
+            v-for="(thread, index) in linkedThreads"
             :key="index"
             class="inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-700 text-neutral-200 rounded"
           >
@@ -125,7 +125,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 const topic = useSelector(actor, (state) => state.context.create.topic);
 const instructions = useSelector(actor, (state) => state.context.create.instructions);
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
-const relatedThreads = useSelector(actor, (state) => state.context.create.relatedThreads);
+const linkedThreads = useSelector(actor, (state) => state.context.create.linkedThreads);
 const tags = useSelector(actor, (state) => state.context.create.tags);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 

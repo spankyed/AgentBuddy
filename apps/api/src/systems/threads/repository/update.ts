@@ -12,7 +12,7 @@ const handleTags = (threadId: EARS.EntityId, tags: ThreadTagItem[]) => {
   }
 };
 
-const handleRelatedThreads = (threadId: EARS.EntityId, links: ThreadLinkItem[]) => {
+const handleLinkedThreads = (threadId: EARS.EntityId, links: ThreadLinkItem[]) => {
   // nuke all outgoing edges for every supported relation kind
   for (const rel of ThreadRelations) {
     tx(threadId).unlinkIf(EARS.RelKind.Custom(rel));
@@ -25,7 +25,7 @@ const handleRelatedThreads = (threadId: EARS.EntityId, links: ThreadLinkItem[]) 
 
 const relationHandlers = {
   tags:           handleTags,
-  relatedThreads: handleRelatedThreads,
+  linkedThreads: handleLinkedThreads,
 } as const;
 
 type RelationKey = keyof typeof relationHandlers;

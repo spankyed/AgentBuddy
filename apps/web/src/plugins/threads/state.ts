@@ -16,7 +16,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
   threadType: 'work-item',
   instructions: '',
   tags: [],
-  relatedThreads: [],
+  linkedThreads: [],
 }
 
 type SystemEvent =
@@ -78,7 +78,7 @@ const threadsState = setup({
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      const { tags, relatedThreads, ...thread} = context.create;
+      const { tags, linkedThreads, ...thread} = context.create;
       const newThread = {
         ...thread,
         id: typedEvent.id,
@@ -157,7 +157,7 @@ const threadsState = setup({
     updateThreadInThreads: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
 
-      const { messages, relatedThreads, ...rest } = context.view;
+      const { messages, linkedThreads, ...rest } = context.view;
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       rest[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;

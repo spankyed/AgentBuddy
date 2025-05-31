@@ -72,7 +72,7 @@
           </button>
 
           <span
-            v-for="({ shortCode, relation }, index) in relatedThreads"
+            v-for="({ shortCode, relation }, index) in linkedThreads"
             :key="index"
             class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
           >
@@ -150,7 +150,7 @@ import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 const actor: ThreadsState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const relatedThreads = useSelector(actor, (state) => state.context.view.relatedThreads || []);
+const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThreads || []);
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
