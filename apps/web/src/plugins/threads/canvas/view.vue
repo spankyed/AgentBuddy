@@ -60,13 +60,6 @@
 
       <!-- Tags & Related Threads -->
       <div class="flex flex-wrap gap-2">
-        <!-- Related Threads -->
-        <ThreadLinkInput
-          v-model="linkedThreads"
-          :available-threads="threadsList"
-          @update:modelValue="(links) => updateField('linkedThreads', links)"
-          class="flex-1"
-        />
         <!-- Tags -->
         <TagInput 
           v-model="tagNames"
@@ -78,7 +71,6 @@
       <!-- Messages Container -->
       <div class="mt-5">
         <div class="flex gap-2 pb-2">
-
           <button
             v-if="messages.length > 0"
             @click="isMessagesOpen = !isMessagesOpen"
@@ -111,6 +103,14 @@
         </div>
         <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
       </div>
+
+      <!-- Related Threads -->
+      <ThreadLinkInput
+        v-model="linkedThreads"
+        :available-threads="threadsList"
+        @update:modelValue="(links) => updateField('linkedThreads', links)"
+        class="flex-1"
+        />
     </div>
   </div>
 </template>
