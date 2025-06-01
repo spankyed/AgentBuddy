@@ -4,6 +4,8 @@ import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
 import type { ThreadTagItem } from '@abuddy/api';
 
+const isOpen = ref(false)
+
 const props = defineProps<{
   modelValue: ThreadTagItem[];
   availableTags: ThreadTagItem[];
@@ -39,10 +41,12 @@ const filteredOptions = computed(() =>
     ignore-filter
     class="relative w-1/2"
     v-model="values"
+    :open="isOpen"
+    @update:open="isOpen = $event"
   >
     <ComboboxAnchor class="w-full">
       <ComboboxTrigger as-child>
-        <div class="inline-flex items-center justify-between rounded-lg p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200 shadow-[0_2px_10px] shadow-black/10 focus:shadow-[0_0_0_2px] focus:shadow-black data-[placeholder]:text-neutral-400 outline-none w-full">
+        <div class="inline-flex items-center justify-between rounded-lg data-[open=true]:rounded-b-none p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200 shadow-[0_2px_10px] shadow-black/10 data-[placeholder]:text-neutral-400 outline-none w-full" :data-open="isOpen">
           <TagsInputRoot
             delimiter=""
             class="flex flex-wrap items-center gap-2 rounded-lg"
