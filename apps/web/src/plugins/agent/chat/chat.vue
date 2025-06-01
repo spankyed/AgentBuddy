@@ -1,7 +1,10 @@
 <template>
   <!-- Agent Chat Content -->
   <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-    <div class="w-9/12 pt-2 mx-auto space-y-2">
+    <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
+      <p class="text-gray-500">Start a conversation for this thread</p>
+    </div>
+    <div v-else class="w-9/12 pt-2 mx-auto space-y-2">
       <ChatMessage 
         v-for="message in messages" 
         :key="message.id" 
