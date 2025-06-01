@@ -126,7 +126,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import MessageList from './message-list.vue'
 import TagInput from './tag-input.vue'
-import ThreadLinkInput from '../link-thread-input.vue'
+import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
 import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
