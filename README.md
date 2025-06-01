@@ -26,7 +26,7 @@ Current AI agent platforms provide inconsistent experiences and struggle to scal
 └─────────────────────────┘░                                                            
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░                                                            
 ```
-Systems provide the foundation for a unified agent. Need more capabilities? Add more systems.
+Systems provide the foundation for a unified agent. Want to add a new feature or integration? Add a new system.
 
 Systems should primarily be used to provide integrations for external services or to make available custom functionality that isn't currently supported by the core framework like video generation.
 
