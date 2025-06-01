@@ -31,7 +31,8 @@
         @panel-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'panel' })"
         :label="`${toggles.panel ? defaultPlugin.label : activePlugin.label} Inspection`">
         <component v-if="toggles.panel" :is="defaultPlugin.panel" />
-        <component v-else :is="activePlugin.panel" />
+        <component v-else-if="activePlugin.panel" :is="activePlugin.panel" />
+        <component v-else :is="defaultPlugin.panel" />
     </InspectionPanel>
     </div>
 </div>

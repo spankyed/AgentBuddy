@@ -16,6 +16,7 @@ import {
 export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
   return {
     ...Blank,
+    panel: undefined,
     isPinned: false,
     ...overrides,
   };
