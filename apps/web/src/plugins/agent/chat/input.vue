@@ -65,8 +65,8 @@
           >
           <option value="working">Working</option>
           <option value="planning">Planning</option>
+          <option value="chat">Chatting</option>
           <option value="note-taking">Note Taking</option>
-          <option value="chat">Chat</option>
           </select>
         </div>
       </div>
