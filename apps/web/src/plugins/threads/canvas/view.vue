@@ -106,7 +106,7 @@
             variant="secondary"
           >
           Chat About {{ topic.slice(0, 10) }}
-          <MessageCircleMore :size="16" class=""/>
+          <Headset :size="16" class=""/>
           </Button>
         </div>
         <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
@@ -117,7 +117,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
-import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
+import { X, ChevronDown, Headset, ArrowLeft } from 'lucide-vue-next'
 import { applicationState } from '@/app'
 import Label from '@/core/design/label.vue'
 import type { Ref } from 'vue'

@@ -5,12 +5,12 @@ import workload from '@/plugins/agent/canvas/workload.vue';
 // import workload from './canvas/workload.vue';
 import panel from '@/plugins/agent/panel/panel.vue';
 import chat from '@/plugins/agent/chat/chat.vue';
-import { MessageCircleMore } from "lucide-vue-next";
+import { Headset } from "lucide-vue-next";
 
 const agentPlugin: Plugin = {
   id,
   label: 'Agent',
-  icon: MessageCircleMore,
+  icon: Headset,
   state,
   canvas: {
     content,
