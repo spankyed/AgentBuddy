@@ -18,17 +18,18 @@
           type="button"
           variant="transparent"
         >
-        <span v-if="5 > 0" class="content-center text-neutral-500">
-          ({{ 5 }} hidden)
-        </span>
-          Clear filters
+          Filter
         </Button>
         <Button
           type="button"
           variant="transparent"
         >
-          Filter
+        Clear filters
+        <span v-if="5 > 0" class="content-center text-neutral-500">
+          ({{ 5 }} hidden)
+        </span>
         </Button>
+
       </div>
       <div class="flex justify-end">
         <!-- Search input -->
