@@ -58,14 +58,28 @@
         ></textarea>
       </div>
 
-      <!-- Tags & Related Threads -->
-      <div class="flex flex-wrap gap-2">
+      <!-- Tags & Status -->
+      <div class="flex items-center gap-2">
         <!-- Tags -->
         <TagInput 
           v-model="tagNames"
           :available-tags="availableTags"
           @update:modelValue="(newTags) => updateField('tags', newTags)"
+          class="flex-1"
         />
+        <!-- Status -->
+        <div class="flex justify-end w-1/2">
+          <select
+            :value="status"
+            @input="e => updateField('status', e.target.value)"
+            class="w-32 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+          >
+            <option value="draft">Draft</option>
+            <option value="queued">Queued</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       <!-- Messages Container -->
@@ -136,6 +150,7 @@ const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThr
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
+const status = useSelector(actor, (state) => state.context.view.status || 'draft');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 
