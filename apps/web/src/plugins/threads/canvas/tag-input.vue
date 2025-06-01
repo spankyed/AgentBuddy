@@ -40,44 +40,46 @@ const filteredOptions = computed(() =>
     class="relative w-1/2"
     v-model="values"
   >
-    <ComboboxAnchor class="w-full inline-flex items-center justify-between rounded-lg p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200 shadow-[0_2px_10px] shadow-black/10 focus:shadow-[0_0_0_2px] focus:shadow-black data-[placeholder]:text-neutral-400 outline-none">
-      <TagsInputRoot
-        delimiter=""
-        class="flex flex-wrap items-center gap-2 rounded-lg"
-      >
-        <TagsInputItem
-          v-for="item in values"
-          :key="item.id"
-          :value="item"
-          class="flex items-center justify-center gap-2 text-neutral-200  bg-purple-900/60 aria-[current=true]:bg-neutral-700 rounded px-2 py-1"
-        >
-          <TagsInputItemText class="text-sm">
-            {{ item.name }}
-          </TagsInputItemText>
-          <TagsInputItemDelete
-            @click="values = values.filter((v) => v.id !== item.id)"
+    <ComboboxAnchor class="w-full">
+      <ComboboxTrigger as-child>
+        <div class="inline-flex items-center justify-between rounded-lg p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200 shadow-[0_2px_10px] shadow-black/10 focus:shadow-[0_0_0_2px] focus:shadow-black data-[placeholder]:text-neutral-400 outline-none w-full">
+          <TagsInputRoot
+            delimiter=""
+            class="flex flex-wrap items-center gap-2 rounded-lg"
           >
-            <X :size="16" />
-          </TagsInputItemDelete>
-        </TagsInputItem>
+            <TagsInputItem
+              v-for="item in values"
+              :key="item.id"
+              :value="item"
+              class="flex items-center justify-center gap-2 text-neutral-200  bg-purple-900/60 aria-[current=true]:bg-neutral-700 rounded px-2 py-1"
+            >
+              <TagsInputItemText class="text-sm">
+                {{ item.name }}
+              </TagsInputItemText>
+              <TagsInputItemDelete
+                @click="values = values.filter((v) => v.id !== item.id)"
+              >
+                <X :size="16" />
+              </TagsInputItemDelete>
+            </TagsInputItem>
 
-        <ComboboxInput
-          v-model="query"
-          as-child
-        >
-          <TagsInputInput
-            placeholder="Add tag..."
-            class="focus:outline-none flex-1 rounded !bg-transparent placeholder:text-neutral-500 p-1"
-            @keydown.enter.prevent
+            <ComboboxInput
+              v-model="query"
+              as-child
+            >
+              <TagsInputInput
+                placeholder="Add tag..."
+                class="focus:outline-none flex-1 rounded !bg-transparent placeholder:text-neutral-500 p-1"
+                @keydown.enter.prevent
+              />
+            </ComboboxInput>
+          </TagsInputRoot>
+
+          <ChevronDown
+            :size="16"
+            class="text-neutral-400"
           />
-        </ComboboxInput>
-      </TagsInputRoot>
-
-      <ComboboxTrigger>
-        <ChevronDown
-          :size="16"
-          class="text-neutral-400"
-        />
+        </div>
       </ComboboxTrigger>
     </ComboboxAnchor>
 
