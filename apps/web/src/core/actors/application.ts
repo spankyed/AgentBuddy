@@ -127,7 +127,7 @@ export const createApplicationState = () => setup({
       }))
     }),
     spawnPluginActors: enqueueActions(({ enqueue, context }) => {
-      enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
+      // enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
 
       for (const plugin of context.plugins) {
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });

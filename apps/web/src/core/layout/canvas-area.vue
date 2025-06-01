@@ -27,14 +27,14 @@
         </div>
       </nav>
 
-      <!-- ▸ Canvas‑toggle button (right) -->
-      <div class="ml-auto" >
+      <!-- ▸ Canvas‑toggle button (right) (disabled 6/1/25)-->
+      <!-- <div class="ml-auto" >
         <ToggleButton
           @toggle="$emit('canvas-toggle')"
         >
           {{ label }}
         </ToggleButton>
-      </div>
+      </div> -->
     </div>
 
     <!-- MAIN SCROLL AREA -->

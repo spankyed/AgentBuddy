@@ -33,6 +33,7 @@ const mockPlugins = [
 ];
 
 export default [
+  Agent,
   Threads,
   ...mockPlugins,
   Blank,
