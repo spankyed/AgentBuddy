@@ -64,7 +64,7 @@ function removeLink(id: string) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 w-full">
+  <div class="flex flex-col w-full gap-2">
     <!-- Existing links -->
     <div v-if="values.length" class="flex flex-wrap gap-2">
       <span
@@ -95,9 +95,9 @@ function removeLink(id: string) {
         <Plus :size="16" class="text-neutral-300" />
       </button>
 
-      <div v-else class="flex items-center gap-2 w-full">
+      <div v-else class="flex items-center w-full gap-2">
         <ComboboxRoot v-model="query" class="relative flex-1">
-          <ComboboxAnchor class="flex-1 inline-flex items-center gap-2 rounded p-2 text-sm bg-neutral-900/60 text-neutral-200 focus:outline-none">
+          <ComboboxAnchor class="inline-flex items-center flex-1 gap-2 p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
             <LinkIcon :size="16" class="text-neutral-400" />
             <ComboboxInput
               placeholder="Search thread short code..."
@@ -105,14 +105,14 @@ function removeLink(id: string) {
             />
           </ComboboxAnchor>
 
-          <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-0 bg-neutral-800 overflow-hidden rounded shadow-lg">
-            <ComboboxViewport class="p-2 max-h-60 overflow-y-auto">
+          <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-800">
+            <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
               <ComboboxGroup>
                 <ComboboxItem
                   v-for="thread in filteredOptions"
                   :key="thread.id"
                   :value="thread.shortCode"
-                  class="flex items-center gap-2 px-2 py-1 text-sm text-neutral-200 rounded hover:bg-purple-900/40 cursor-pointer"
+                  class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-purple-900/40"
                   @click="linkThread(thread)"
                 >
                   {{ thread.shortCode }} - {{ thread.topic }}
