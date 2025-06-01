@@ -60,33 +60,14 @@
 
       <!-- Tags & Related Threads -->
       <div class="flex flex-wrap gap-2">
-        <!-- <Label>Related Threads</Label> -->
-        <div class="flex flex-wrap flex-1 gap-2">
-          <button
-            type="button"
-            @click="() => actor.send({ type: 'LINK_THREAD' })"
-            class="flex items-center gap-2 px-4 py-2 mr-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
-          >
-            Link Thread
-            <Plus :size="16" class="text-neutral-300" />
-          </button>
-
-          <span
-            v-for="({ shortCode, relation }, index) in linkedThreads"
-            :key="index"
-            class="cursor-pointer inline-flex items-center pl-3 py-0.5 text-sm bg-neutral-900/60 text-neutral-200 rounded"
-          >
-            {{ shortCode }}
-            <button
-              type="button"
-              @click="() => actor.send({ type: 'REMOVE_LINK', index })"
-              class="p-1 ml-1 rounded focus:outline-none"
-            >
-              <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
-            </button>
-          </span>
-        </div>
-        <!-- <Label>Tags</Label> -->
+        <!-- Related Threads -->
+        <ThreadLinkInput
+          v-model="linkedThreads"
+          :available-threads="threadsList"
+          @update:modelValue="(links) => updateField('linkedThreads', links)"
+          class="flex-1"
+        />
+        <!-- Tags -->
         <TagInput 
           v-model="tagNames"
           :available-tags="availableTags"
@@ -145,6 +126,7 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import MessageList from './message-list.vue'
 import TagInput from './tag-input.vue'
+import ThreadLinkInput from '../link-thread-input.vue'
 import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
@@ -155,6 +137,7 @@ const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
+const threadsList = useSelector(actor, (state) => state.context.threads || []);
 
 const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields]) => {
   console.log('updateField', key, value);
