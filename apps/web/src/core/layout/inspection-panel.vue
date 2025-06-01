@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col h-full border-l w-[30rem] bg-neutral-900 border-neutral-800">
     <div class="flex items-center p-4 border-b border-neutral-800">
-      <button
+      <!-- <button
         @click="$emit('panel-back')"
         class="flex gap-1 px-2 py-1 text-xs tracking-wider uppercase transition-colors rounded-lg items hover:bg-neutral-700 text-neutral-500 hover:text-white"
       >
         <ChevronLeft :size="18" />
         Back
-      </button>
+      </button> -->
 
       <!-- ▸ Inspection‑toggle button (right) (disabled 6/1/25) -->
       <!-- <button 
