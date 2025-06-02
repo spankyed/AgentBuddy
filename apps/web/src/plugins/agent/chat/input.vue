@@ -103,7 +103,6 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'open-thread-chat', threadId: string): void
   (e: 'view-thread', threadId: string): void
-  (e: 'view-current-thread'): void
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
