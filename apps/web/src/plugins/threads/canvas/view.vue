@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-5xl px-10 py-8 mx-auto root-container">
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- Topic & Status -->
       <div class="flex flex-col items-center gap-4 md:flex-row">
         <div class="flex-1">
