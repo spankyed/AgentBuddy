@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-5xl px-6 py-4 mx-auto space-y-6 root-container">
-    <div class="p-4 space-y-6">
+  <div class="max-w-5xl px-10 py-8 mx-auto root-container">
+    <div class="space-y-6">
       <!-- Topic & Status -->
       <div class="flex flex-col items-center gap-4 md:flex-row">
         <div class="flex-1">
@@ -59,16 +59,9 @@
       </div>
 
       <!-- Tags & Status -->
-      <div class="flex items-center gap-2">
-        <!-- Tags -->
-        <TagInput 
-          v-model="tagNames"
-          :available-tags="availableTags"
-          @update:modelValue="(newTags) => updateField('tags', newTags)"
-          class="flex-1"
-        />
+      <div class="flex items-start gap-2">
         <!-- Status -->
-        <div class="flex justify-end w-1/2">
+        <div class="flex justify-start w-1/2">
           <select
             :value="status"
             @input="e => updateField('status', e.target.value)"
@@ -80,6 +73,14 @@
             <option value="inactive">Inactive</option>
           </select>
         </div>
+        <!-- Tags -->
+        <TagInput 
+          v-model="tagNames"
+          :available-tags="availableTags"
+          @update:modelValue="(newTags) => updateField('tags', newTags)"
+          class="flex-1"
+        />
+
       </div>
 
       <!-- Messages Container -->
@@ -117,14 +118,15 @@
         </div>
         <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
       </div>
+    </div>
 
+    <div class="mt-4">
       <!-- Related Threads -->
       <ThreadLinkInput
         v-model="linkedThreads"
-        :available-threads="threadsList"
-        @update:modelValue="(links) => updateField('linkedThreads', links)"
-        class="flex-1"
-        />
+            :available-threads="threadsList"
+            @update:modelValue="(links) => updateField('linkedThreads', links)"
+            />
     </div>
   </div>
 </template>
