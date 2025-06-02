@@ -1,68 +1,3 @@
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import {
-  ComboboxAnchor,
-  ComboboxContent,
-  ComboboxGroup,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxItemIndicator,
-  ComboboxLabel,
-  ComboboxRoot,
-  ComboboxTrigger,
-  ComboboxViewport,
-} from 'reka-ui'
-import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
-import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended } from '@abuddy/api'
-
-const props = defineProps<{
-  modelValue: ThreadLinkItem[]
-  availableThreads: ThreadExtended[]
-}>()
-const emit = defineEmits<(e: 'update:modelValue', value: ThreadLinkItem[]) => void>()
-
-const isInputVisible = ref(false)
-const query = ref('')
-const relation: { value: ThreadLinkRelation } = ref('blocks' as ThreadLinkRelation)
-
-const values = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
-})
-
-const filteredOptions = computed(() =>
-  props.availableThreads.filter((thread) => {
-    return (
-      thread.shortCode.toLowerCase().includes(query.value.toLowerCase()) &&
-      !values.value.find((item) => item.id === thread.id)
-    )
-  })
-)
-
-function toggleInput() {
-  isInputVisible.value = !isInputVisible.value
-  query.value = ''
-}
-
-function linkThread(thread: ThreadExtended) {
-  const newLink: ThreadLinkItem = {
-    id: thread.id,
-    shortCode: thread.shortCode,
-    status: thread.status,
-    timestamp: thread.timestamp,
-    topic: thread.topic,
-    threadType: thread.threadType,
-    relation: relation.value,
-  }
-  values.value = [...values.value, newLink]
-  toggleInput()
-}
-
-function removeLink(id: string) {
-  values.value = values.value.filter((v) => v.id !== id)
-}
-</script>
-
 <template>
   <div class="flex flex-col w-full gap-2">
     <!-- Existing links -->
@@ -140,3 +75,68 @@ function removeLink(id: string) {
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import {
+  ComboboxAnchor,
+  ComboboxContent,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxLabel,
+  ComboboxRoot,
+  ComboboxTrigger,
+  ComboboxViewport,
+} from 'reka-ui'
+import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
+import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended } from '@abuddy/api'
+
+const props = defineProps<{
+  modelValue: ThreadLinkItem[]
+  availableThreads: ThreadExtended[]
+}>()
+const emit = defineEmits<(e: 'update:modelValue', value: ThreadLinkItem[]) => void>()
+
+const isInputVisible = ref(false)
+const query = ref('')
+const relation: { value: ThreadLinkRelation } = ref('blocks' as ThreadLinkRelation)
+
+const values = computed({
+  get: () => props.modelValue,
+  set: (val) => emit('update:modelValue', val),
+})
+
+const filteredOptions = computed(() =>
+  props.availableThreads.filter((thread) => {
+    return (
+      thread.shortCode.toLowerCase().includes(query.value.toLowerCase()) &&
+      !values.value.find((item) => item.id === thread.id)
+    )
+  })
+)
+
+function toggleInput() {
+  isInputVisible.value = !isInputVisible.value
+  query.value = ''
+}
+
+function linkThread(thread: ThreadExtended) {
+  const newLink: ThreadLinkItem = {
+    id: thread.id,
+    shortCode: thread.shortCode,
+    status: thread.status,
+    timestamp: thread.timestamp,
+    topic: thread.topic,
+    threadType: thread.threadType,
+    relation: relation.value,
+  }
+  values.value = [...values.value, newLink]
+  toggleInput()
+}
+
+function removeLink(id: string) {
+  values.value = values.value.filter((v) => v.id !== id)
+}
+</script>
