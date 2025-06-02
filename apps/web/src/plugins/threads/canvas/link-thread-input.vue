@@ -16,13 +16,7 @@
 
       <div v-else class="w-full gap-2 mt-2">
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            @click="toggleInput"
-            class="p-1 rounded focus:outline-none"
-          >
-            <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
-          </button>
+
 
           <select v-model="relation" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
             <option value="parent_of">parent_of</option>
@@ -52,7 +46,7 @@
                     v-for="thread in filteredOptions"
                     :key="thread.id"
                     :value="thread.id"
-                    class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-purple-900/40"
+                    class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-neutral-700/40"
                   >
                     <div class="flex items-center flex-1 space-x-2">
                       <span class="w-20 px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -71,11 +65,18 @@
           <button
             type="button"
             @click="linkThread"
-            class="flex items-center gap-2 px-3 py-1 text-sm rounded bg-neutral-700 text-neutral-200"
+            class="flex items-center px-3 py-1 ml-2 text-sm bg-blue-600 rounded text-neutral-200 hover:bg-blue-700"
           >
-            <Plus :size="16" class="text-neutral-300" />
             Link
           </button>
+          <button
+            type="button"
+            @click="toggleInput"
+            class="flex items-center px-3 py-1 text-sm rounded text-neutral-200 hover:bg-neutral-600"
+          >
+            Cancel
+          </button>
+
         </div>
       </div>
     </div>
