@@ -115,8 +115,8 @@
             type="button"
             variant="secondary"
           >
-          Chat About {{ topic.slice(0, 10) }}
-          <Headset :size="16" class=""/>
+            Chat About {{ topic.slice(0, 10) }}
+            <Headset :size="16" class=""/>
           </Button>
         </div>
         <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
