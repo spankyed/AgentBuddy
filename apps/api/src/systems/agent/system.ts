@@ -10,6 +10,8 @@ import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
+import { getExtendedData } from '../threads/repository';
+import { ThreadExtendedData } from '@/types';
 
 export const agent = 'agent' as const;
 
@@ -17,6 +19,7 @@ const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string() }),
+  busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('CANCEL'),
 ] as const
 
@@ -26,7 +29,8 @@ export type AgentInternalEvents =
   | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
 
-export type OutgoingAgentEvents = 
+export type OutgoingAgentEvents =
+  | { type: 'CHAT_THREAD', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
@@ -54,6 +58,15 @@ export const agentSystem = setup({
   actions: {
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       console.error('Chat stream error:', event.error);
+    },
+    sendThreadChatData: ({ system, event }) => {
+      const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
+
+      system.get(bus).send(emit(agent, { 
+        type: 'CHAT_THREAD',
+        id: threadId,
+        data: getExtendedData(threadId),
+      }));
     },
     sendToken: ({ system, event }) => {
       system.get(bus).send(emit(agent, { 
@@ -91,6 +104,9 @@ export const agentSystem = setup({
       userPrompt: undefined,
     }),
     on: {
+      OPEN_THREAD_CHAT: {
+        actions: 'sendThreadChatData',
+      },
       TOKEN_STREAM: {
         actions: 'sendToken',
       },

@@ -14,6 +14,7 @@
   </div>
   <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
   <ChatInput
+    @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
     @new-thread="actor.send({ type: 'CLEAR_MESSAGES' })"
   />

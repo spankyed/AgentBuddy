@@ -12,17 +12,18 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 interface AgentContext {
+  currentThreadId: string | null;
   messages: MessageEntity[];
   contextItems: ContextItemEntity[];
   canvasContent: CanvasContentEntity;
   threads: ThreadEntity[];
-  currentThreadId: string | null;
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
 }
 
 type AgentEvent =
+  | { type: 'OPEN_THREAD_CHAT'; id: string }
   | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_MESSAGES' }
@@ -45,6 +46,14 @@ const agentState = setup({
     })
   },
   actions: {
+    requestThreadChatData: ({ event }) => {
+      const threadId = typeOf('OPEN_THREAD_CHAT', event).id;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'OPEN_THREAD_CHAT',
+        threadId,
+      });
+    },
     setStatusColor: assign((_, params?: { color: StatusColor}) => {
       if (params?.color) {
         return { statusColor: params.color };
@@ -146,6 +155,9 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
   }),
   on: {
+    OPEN_THREAD_CHAT: {
+      actions: 'requestThreadChatData'
+    },
     STARTUP: {
       actions: 'setPluginData'
     },

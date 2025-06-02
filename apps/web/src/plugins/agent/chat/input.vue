@@ -74,8 +74,8 @@
 
     <Threads
       :threads="threads"
-      @select-thread="handleSelectThread"
-      @new-thread="handleNewThread"
+      @select-thread="(id: string) => emit('open-thread-chat', id)"
+      @new-thread="emit('new-thread')"
     />
   </div>
 </template>
@@ -94,8 +94,8 @@ import StatusIndicator from './status-indicator.vue'
 
 // Define emits including new button actions
 const emit = defineEmits<{
+  (e: 'open-thread-chat', threadId: string): void
   (e: 'send-message', message: string): void
-  (e: 'select-thread', id: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
@@ -189,18 +189,6 @@ const handleSubmit = () => {
     }
     messageContent.value = ''
   }
-}
-
-const handleNewThread = () => {
-  emit('new-thread')
-}
-
-const handleSelectThread = (id: string) => {
-  emit('select-thread', id)
-}
-
-const handleStop = () => {
-  emit('stop')
 }
 </script>
 

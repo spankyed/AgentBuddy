@@ -6,6 +6,7 @@ import type { ActorRefFrom } from 'xstate';
 import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
+import { application } from '@/core/actors/application';
 
 export const id = 'threads' as const;
 
@@ -23,6 +24,7 @@ type SystemEvent =
   | { type: 'STARTUP'; pluginData: ThreadStartupData }
   | OutgoingThreadsEvents
 type UIEvent =
+  | { type: 'OPEN_THREAD_CHAT'; id: string }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
@@ -68,6 +70,11 @@ const threadsState = setup({
     })
   },
   actions: {
+    openAgentChat: ({ system, event  }) => {
+      const threadId = typeOf('OPEN_THREAD_CHAT', event).id;
+      system.get('agent').send({ type: 'OPEN_THREAD_CHAT', id: threadId });
+      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
+    },
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
 
@@ -224,6 +231,9 @@ const threadsState = setup({
     availableTags: [],
   }),
   on: {
+    OPEN_THREAD_CHAT: {
+      actions: 'openAgentChat'
+    },
     CLEAR_NEW_THREAD_FLAG: {
       actions: 'clearNewThreadFlag'
     },
