@@ -120,14 +120,12 @@
       </div>
     </div>
 
-    <div class="mt-4">
-      <!-- Related Threads -->
-      <ThreadLinkInput
-        v-model="linkedThreads"
-        :available-threads="threadsList"
-        @update:modelValue="(links) => updateField('linkedThreads', links)"
-        />
-    </div>
+    <!-- Related Threads -->
+    <ThreadLinkInput
+      v-model="linkedThreads"
+      :available-threads="threadsList"
+      @update:modelValue="(links) => updateField('linkedThreads', links)"
+      />
   </div>
 </template>
 
