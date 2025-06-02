@@ -15,7 +15,6 @@
       </button>
 
       <div v-else class="w-full gap-2 mt-2">
-
         <div class="flex items-center gap-2">
           <button
             type="button"
@@ -25,7 +24,7 @@
             <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
           </button>
 
-          <select v-model="relation.value" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
+          <select v-model="relation" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
             <option value="parent_of">parent_of</option>
             <option value="blocks">blocks</option>
             <option value="blocked_by">blocked_by</option>
@@ -137,7 +136,7 @@ const emit = defineEmits<(e: 'update:modelValue', value: ThreadLinkItem[]) => vo
 const isInputVisible = ref(false)
 const isOpen = ref(false)
 const query = ref('')
-const relation: { value: ThreadLinkRelation } = ref('parent_of' as ThreadLinkRelation)
+const relation = ref<ThreadLinkRelation>('parent_of')
 
 const values = computed({
   get: () => props.modelValue,
