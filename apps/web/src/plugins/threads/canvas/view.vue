@@ -113,6 +113,7 @@
           <Button 
             type="button"
             variant="secondary"
+            @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
           >
             Chat About {{ topic.slice(0, 10) }}
             <Headset :size="16" class=""/>
@@ -146,6 +147,7 @@ import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
 import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@abuddy/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
+const threadId = useSelector(actor, (state) => state.context.view.id);
 const messages = useSelector(actor, (state) => state.context.view.messages || []);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThreads || []);
