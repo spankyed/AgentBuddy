@@ -53,7 +53,7 @@
             class="h-full ml-2 text-sm text-neutral-500 hover:text-neutral-200"
             @click.stop="handleViewThread(thread.id)"
           >
-            View
+            View Details
           </button>
         </div>
       </div>
