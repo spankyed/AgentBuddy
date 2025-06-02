@@ -60,8 +60,15 @@
 
       <!-- Tags & Status -->
       <div class="flex items-start gap-2">
+                <!-- Tags -->
+        <TagInput 
+          v-model="tagNames"
+          :available-tags="availableTags"
+          @update:modelValue="(newTags) => updateField('tags', newTags)"
+          class="flex-1"
+        />
         <!-- Status -->
-        <div class="flex justify-start w-1/2">
+        <div class="flex justify-end w-1/2">
           <select
             :value="status"
             @input="e => updateField('status', e.target.value)"
@@ -73,13 +80,7 @@
             <option value="inactive">Inactive</option>
           </select>
         </div>
-        <!-- Tags -->
-        <TagInput 
-          v-model="tagNames"
-          :available-tags="availableTags"
-          @update:modelValue="(newTags) => updateField('tags', newTags)"
-          class="flex-1"
-        />
+
 
       </div>
 
