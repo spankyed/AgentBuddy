@@ -260,16 +260,16 @@ const threadsState = setup({
       ['.create', 'create'],
       ['.view', 'view'],
     ]),
+    SELECT_THREAD: {
+      target: '.view',
+      actions: ['setSelectedThread', 'sendViewThread'],
+    },
   },
   states: {
     'list': {
       meta: { ...breadcrumb('list', 'Threads', true) },
       on: {
         SHOW_CREATE_FORM: 'create',
-        SELECT_THREAD: {
-          target: 'view',
-          actions: ['setSelectedThread', 'sendViewThread'],
-        },
         UPDATE_THREAD_STATUS: {
           actions: 'updateThreadStatus',
         },

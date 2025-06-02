@@ -94,8 +94,9 @@
           :lite="lite"
           :key="item.id"
           :thread="item"
-          @select="actor.send({ type: 'SELECT_THREAD', id: item.id })"
-          @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
+          @chat-click="emit('chat-click', item.id)"
+          @select="emit('select', item.id)"
+          @status-change="(id, status) => emit('status-change', id, status)"
         />
 
       </div>
@@ -140,7 +141,12 @@ const props = defineProps<{
   modelValue: ThreadLinkItem[]
   availableThreads: ThreadExtended[]
 }>()
-const emit = defineEmits<(e: 'update:modelValue', value: ThreadLinkItem[]) => void>()
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: ThreadLinkItem[]): void
+  (e: 'chat-click', id: string): void
+  (e: 'select', id: string): void
+  (e: 'status-change', id: string, status: ThreadEntity['status']): void
+}>()
 
 const isInputVisible = ref(false)
 const isOpen = ref(false)
