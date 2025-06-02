@@ -81,7 +81,7 @@
     </div>
 
     <!-- Existing links -->
-    <div v-if="values.length" class="flex flex-wrap gap-2">
+    <div v-if="values.length" class="flex flex-wrap gap-2 mt-2">
       <div v-for="item in values" class="flex items-center w-full gap-2">
         <button
           type="button"
@@ -90,7 +90,7 @@
         >
           <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
         </button>
-        <span class="p-3 text-sm rounded bg-neutral-900/60 text-neutral-200">{{ item.relation }}</span>
+        <span class="w-24 h-10 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200">{{ item.relation }}</span>
         <Thread
           :key="item.id"
           :thread="item"
@@ -147,18 +147,35 @@ const query = ref('')
 const relation = ref<ThreadLinkRelation>('parent_of')
 
 const values = computed({
-  get: () => props.modelValue,
+  get: () => {
+    const relationOrder = {
+      blocked_by: 0,
+      blocks: 1,
+      parent_of: 2,
+      duplicates: 3
+    }
+    return [...props.modelValue].sort((a, b) => relationOrder[a.relation] - relationOrder[b.relation])
+  },
   set: (val) => emit('update:modelValue', val),
 })
 
-const filteredOptions = computed(() =>
-  props.availableThreads.filter((thread) => {
-    return (
-      thread.shortCode.toLowerCase().includes(query.value.toLowerCase()) &&
-      !values.value.find((item) => item.id === thread.id)
-    )
-  })
-)
+const filteredOptions = computed(() => {
+  const relationOrder = {
+    blocked_by: 0,
+    blocks: 1,
+    parent_of: 2,
+    duplicates: 3
+  }
+  
+  return props.availableThreads
+    .filter((thread) => {
+      return (
+        thread.shortCode.toLowerCase().includes(query.value.toLowerCase()) &&
+        !values.value.find((item) => item.id === thread.id)
+      )
+    })
+    .sort((a, b) => relationOrder[relation.value] - relationOrder[relation.value])
+})
 
 function toggleInput() {
   isInputVisible.value = !isInputVisible.value
