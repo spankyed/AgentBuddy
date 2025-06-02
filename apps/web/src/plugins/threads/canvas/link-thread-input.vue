@@ -37,6 +37,7 @@
                 placeholder="Search for threads"
                 class="flex-1 w-full px-4 bg-transparent focus:outline-none placeholder:text-neutral-500"
                 @click="isOpen = true"
+                :display-value="displayThread"
                 @keydown.backspace="query = ''"
               />
             </ComboboxAnchor>
@@ -53,7 +54,14 @@
                     :value="thread.id"
                     class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-purple-900/40"
                   >
-                    {{ thread.shortCode }} - {{ thread.topic }}
+                    <div class="flex items-center flex-1 space-x-2">
+                      <span class="w-20 px-2 py-1 text-xs font-semibold text-neutral-500">
+                        {{ thread.shortCode }}
+                      </span>
+                      <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
+                        {{ thread.topic || 'Untitled thread...' }}
+                      </span>
+                    </div>
                   </ComboboxItem>
                 </ComboboxGroup>
               </ComboboxViewport>
@@ -155,6 +163,13 @@ const filteredOptions = computed(() =>
 function toggleInput() {
   isInputVisible.value = !isInputVisible.value
   query.value = ''
+}
+
+
+const displayThread = (id?: string) => {
+  if (!id) return ''
+  const t = props.availableThreads.find(th => th.id === id)
+  return t ? `${t.shortCode}   ${t.topic}` : id          // fallback if not found
 }
 
 function linkThread() {
