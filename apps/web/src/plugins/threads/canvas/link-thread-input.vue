@@ -32,21 +32,25 @@
             <option value="duplicates">duplicates</option>
           </select>
 
-          <ComboboxRoot v-model="query" class="relative flex-grow">
+          <ComboboxRoot v-model="query" :open="isOpen" @update:open="isOpen = $event" class="relative flex-grow">
             <ComboboxAnchor class="inline-flex items-center flex-1 w-full gap-2 p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
               <ComboboxInput
                 placeholder="Search for threads"
                 class="flex-1 w-full px-4 bg-transparent focus:outline-none placeholder:text-neutral-500"
+                @click="isOpen = true"
               />
             </ComboboxAnchor>
   
-            <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-800">
+            <ComboboxContent
+              v-if="filteredOptions.length"
+              class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-900"
+            >
               <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
                 <ComboboxGroup>
                   <ComboboxItem
                     v-for="thread in filteredOptions"
                     :key="thread.id"
-                    :value="thread.shortCode"
+                    :value="thread.id"
                     class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-purple-900/40"
                   >
                     {{ thread.shortCode }} - {{ thread.topic }}
@@ -130,6 +134,7 @@ const props = defineProps<{
 const emit = defineEmits<(e: 'update:modelValue', value: ThreadLinkItem[]) => void>()
 
 const isInputVisible = ref(false)
+const isOpen = ref(false)
 const query = ref('')
 const relation: { value: ThreadLinkRelation } = ref('parent_of' as ThreadLinkRelation)
 
