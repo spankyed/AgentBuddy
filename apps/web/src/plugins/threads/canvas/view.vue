@@ -124,9 +124,9 @@
       <!-- Related Threads -->
       <ThreadLinkInput
         v-model="linkedThreads"
-            :available-threads="threadsList"
-            @update:modelValue="(links) => updateField('linkedThreads', links)"
-            />
+        :available-threads="threadsList"
+        @update:modelValue="(links) => updateField('linkedThreads', links)"
+        />
     </div>
   </div>
 </template>
