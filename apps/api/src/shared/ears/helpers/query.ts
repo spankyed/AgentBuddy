@@ -124,6 +124,34 @@ export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
       }));
     },
 
+    /*─ list shaping helpers ─*/
+    orderBy : (
+      field: string,
+      dir: "asc" | "desc" = "asc",
+    ) => {
+      // treat every plain string as a Custom attribute‑kind
+      // (keeps call‑site terse: .orderBy("timestamp"))
+      const kind = EARS.AttrKind.Custom(field);
+
+      // generic compare that works for numbers or strings
+      const cmp = (a: unknown, b: unknown) => {
+        if (a === b)            return 0;
+        if (a === undefined)    return 1;          // push blanks last
+        if (b === undefined)    return -1;
+        if (typeof a === "number" && typeof b === "number")
+          return a - b;
+        return String(a).localeCompare(String(b));
+      };
+
+      ids.sort((aId, bId) => {
+        const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
+        return dir === "asc" ? res : -res;
+      });
+      return self;                                  // keep the chain alive
+    },
+    limit : (n: number) =>
+      (ids = ids.slice(0, n), self),
+
     /*─ misc extractors ─*/
     ids   : () => [...ids],
     count : () => ids.length,
