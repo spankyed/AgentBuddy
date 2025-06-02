@@ -1,11 +1,18 @@
 <template>
   <div
     :class="[
-      'flex w-full items-center justify-between overflow-hidden rounded-md cursor-pointer bg-neutral-900/80',
-      { 'animate-highlight': thread.isNew }
+      'flex w-full items-center justify-between overflow-hidden rounded-md bg-neutral-900/80',
+      { 'cursor-pointer': !lite },
+      { 'animate-highlight': !lite && thread.isNew },
     ]"
   >
-    <div class="flex items-center flex-1 h-full px-4 py-2 hover:bg-blue-800/20" @click="$emit('select', thread.id)">
+    <div
+      :class="[
+        'flex items-center flex-1 h-full px-4 py-2',
+        { 'hover:bg-blue-800/20 cursor-pointer': !lite }
+      ]"
+      @click="$emit('select', thread.id)"
+    >
       <!-- ID badge and truncated topic -->
       <div class="flex items-center flex-1 space-x-2">
         <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-500">
@@ -16,7 +23,7 @@
         </span>
       </div>
       <!-- Status selector and tags -->
-      <div class="flex items-center space-x-3">
+      <div v-if="!lite" class="flex items-center space-x-3">
         <select
           @click.stop
           :value="thread.status"
@@ -42,6 +49,7 @@
     </div>
 
     <button
+      v-if="!lite"
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
       class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-blue-800/30"
@@ -58,6 +66,7 @@ import type { ThreadListItem } from '@/plugins/threads/state';
 import type { ThreadEntity } from '@abuddy/api';
 
 defineProps<{
+  lite?: boolean;
   thread: ThreadListItem
 }>();
 
