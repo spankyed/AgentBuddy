@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full gap-2">
     <!-- horizontal rule -->
-    <div class="w-full h-px my-2 bg-neutral-700"></div>
+    <div class="w-full h-px my-2 bg-neutral-700/40"></div>
     <!-- Link Thread Button / Input -->
     <div>
       <button
