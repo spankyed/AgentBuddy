@@ -13,10 +13,10 @@ type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 interface AgentContext {
   currentThreadId: string | null;
-  messages: MessageEntity[];
+  messages: Partial<MessageEntity>[];
   contextItems: ContextItemEntity[];
   canvasContent: CanvasContentEntity;
-  threads: ThreadEntity[];
+  threads: Partial<ThreadEntity>[];
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
@@ -124,11 +124,12 @@ const agentState = setup({
     // })),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
+      console.log('typedEvent.pluginData.threads', typedEvent.pluginData);
       return {
         messages: typedEvent.pluginData.messages,
         contextItems: typedEvent.pluginData.contextItems,
         canvasContent: typedEvent.pluginData.canvasContent,
-        threads: typedEvent.pluginData.threads,
+        threads: typedEvent.pluginData.threads as ThreadEntity[],
       };
     }),
   },
