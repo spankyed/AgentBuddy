@@ -87,9 +87,12 @@
       <div class="mt-5">
         <div class="flex gap-2 pb-2">
           <button
-            v-if="messages.length > 0"
+            :disabled="messages.length === 0"
             @click="isMessagesOpen = !isMessagesOpen"
-            class="flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+            :class="[
+              'flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700',
+              { 'opacity-50': messages.length === 0 }
+            ]"
           >
             <span>View Messages ({{ messages.length }})</span>
             <ChevronDown 
