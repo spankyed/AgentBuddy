@@ -4,6 +4,7 @@ import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
+import { application } from '@/core/actors/application';
 
 export const id = 'agent' as const;
 
@@ -21,6 +22,7 @@ interface AgentContext {
 
 type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
+  | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_MESSAGES' }
@@ -146,6 +148,11 @@ const agentState = setup({
         threads: typedEvent.pluginData.threads as ThreadEntity[],
       };
     }),
+    sendOpenThreadView: ({ system, event }) => {
+      const threadId = typeOf('VIEW_THREAD', event).threadId;
+      system.get('threads').send({ type: 'SELECT_THREAD', id: threadId });
+      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+    },
   },
   guards: {
     targetIs,
@@ -177,6 +184,9 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
   }),
   on: {
+    VIEW_THREAD: {
+      actions: 'sendOpenThreadView'
+    },
     LOAD_CHAT_THREAD: {
       actions: 'setThreadChatData'
     },

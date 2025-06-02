@@ -75,6 +75,7 @@
     <Threads
       :current-thread="currentThread"
       :threads="threads"
+      @view-thread="(threadId: string) => emit('view-thread', threadId)"
       @view-current-thread="emit('view-current-thread')"
       @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
       @new-thread="emit('new-thread')"
@@ -101,8 +102,9 @@ defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'view-current-thread'): void
   (e: 'open-thread-chat', threadId: string): void
+  (e: 'view-thread', threadId: string): void
+  (e: 'view-current-thread'): void
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void

@@ -15,7 +15,8 @@
   <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
   <ChatInput
     :current-thread="currentThread"
-    @view-current-thread="actor.send({ type: 'VIEW_CURRENT_THREAD' })"
+    @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
+    @view-current-thread="actor.send({ type: 'VIEW_THREAD', threadId: currentThread.id })"
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
     @new-thread="actor.send({ type: 'CLEAR_MESSAGES' })"

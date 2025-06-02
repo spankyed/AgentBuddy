@@ -36,17 +36,26 @@
       v-if="isOpen"
       class="px-2 pt-1 border-t border-neutral-800 bg-neutral-900 animate-slide-down"
     >
-        <button
+        <div
           v-for="thread in threads"
           :key="thread.id"
-          class="w-full p-3 px-4 text-left transition-colors rounded-lg hover:bg-neutral-800 group"
+          class="flex items-center w-full p-3 px-4 text-left transition-colors rounded-lg group hover:bg-neutral-800 hover:cursor-pointer"
           @click="handleSelectThread(thread.id)"
         >
-          <div class="flex items-center justify-between">
+          <div
+            class="flex items-center justify-start flex-grow"
+          >
+          <span class="mr-2 text-xs text-neutral-500">{{ formatTime(thread.timestamp) }}</span>
             <span class="text-sm text-neutral-200">{{ thread.topic }}</span>
-            <span class="text-xs text-neutral-500">{{ formatTime(thread.timestamp) }}</span>
           </div>
-        </button>
+          <button
+            type="button"
+            class="h-full ml-2 text-sm text-neutral-500 hover:text-neutral-200"
+            @click.stop="$emit('view-thread', thread.id)"
+          >
+            View
+          </button>
+        </div>
       </div>
   </div>
 </template>
@@ -56,6 +65,7 @@ import { ref } from 'vue'
 import { History, ChevronUp, Plus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@abuddy/api';
 import type { AgentThreadData } from '@abuddy/api'
+import Button from '@/core/design/button.vue'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData
@@ -66,7 +76,7 @@ const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 
 const emit = defineEmits<{
-  (e: 'view-thread'): void
+  (e: 'view-thread', threadId: string): void
   (e: 'view-current-thread'): void
   (e: 'open-thread-chat', threadId: string): void
   (e: 'new-thread'): void
