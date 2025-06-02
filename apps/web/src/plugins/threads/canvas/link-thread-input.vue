@@ -15,23 +15,16 @@
       </button>
 
       <div v-else class="w-full gap-2 mt-2">
-        <div class="flex justify-start mb-2">
-          <button
-            type="button"
-            @click="linkThread"
-            class="px-3 py-1 text-sm rounded bg-neutral-700 text-neutral-200"
-          >
-            Link
-          </button>
+
+        <div class="flex items-center gap-2">
           <button
             type="button"
             @click="toggleInput"
-            class="px-3 py-1 text-sm rounded text-neutral-200"
+            class="p-1 rounded focus:outline-none"
           >
-            Cancel
+            <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
           </button>
-        </div>
-        <div class="flex items-center gap-2">
+
           <select v-model="relation.value" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
             <option value="parent_of">parent_of</option>
             <option value="blocks">blocks</option>
@@ -62,6 +55,15 @@
               </ComboboxViewport>
             </ComboboxContent>
           </ComboboxRoot>
+
+          <button
+            type="button"
+            @click="linkThread"
+            class="flex items-center gap-2 px-3 py-1 text-sm rounded bg-neutral-700 text-neutral-200"
+          >
+            <Plus :size="16" class="text-neutral-300" />
+            Link
+          </button>
         </div>
       </div>
     </div>
@@ -69,7 +71,7 @@
     <!-- Existing links -->
     <div v-if="values.length" class="flex flex-wrap gap-2">
       <div v-for="item in values" class="flex items-center w-full gap-2">
-                <button
+        <button
           type="button"
           @click="removeLink(item.id)"
           class="p-1 rounded focus:outline-none"
