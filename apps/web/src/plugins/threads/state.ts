@@ -24,7 +24,7 @@ type SystemEvent =
   | { type: 'STARTUP'; pluginData: ThreadStartupData }
   | OutgoingThreadsEvents
 type UIEvent =
-  | { type: 'OPEN_THREAD_CHAT'; id: string }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
@@ -71,8 +71,8 @@ const threadsState = setup({
   },
   actions: {
     openAgentChat: ({ system, event  }) => {
-      const threadId = typeOf('OPEN_THREAD_CHAT', event).id;
-      system.get('agent').send({ type: 'OPEN_THREAD_CHAT', id: threadId });
+      const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId;
+      system.get('agent').send({ type: 'OPEN_THREAD_CHAT', threadId });
       system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
     },
     setPluginData: assign(({ event }) => {

@@ -58,7 +58,7 @@
         <template v-if="!isPlaceholderThread(thread)">
           <Thread
             :thread="thread"
-            @chat-click="actor.send({ type: 'OPEN_THREAD_CHAT', id: thread.id })"
+            @chat-click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId: thread.id })"
             @select="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
             @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
           />
