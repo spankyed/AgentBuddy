@@ -91,7 +91,7 @@
         </button>
         <span class="w-24 h-10 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200">{{ item.relation }}</span>
         <Thread
-          :lite="true"
+          :lite="lite"
           :key="item.id"
           :thread="item"
           @select="actor.send({ type: 'SELECT_THREAD', id: item.id })"
@@ -136,6 +136,7 @@ import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended } from '@abuddy
 import Thread from './list/thread.vue'
 
 const props = defineProps<{
+  lite?: boolean
   modelValue: ThreadLinkItem[]
   availableThreads: ThreadExtended[]
 }>()

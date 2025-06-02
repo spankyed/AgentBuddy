@@ -95,6 +95,7 @@
 
     <!-- Related Threads -->
     <ThreadLinkInput
+      :lite="true"
       v-model="linkedThreads"
       :available-threads="threadsList"
       @update:modelValue="(links) => updateField('linkedThreads', links)"
