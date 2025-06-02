@@ -11,11 +11,14 @@
         <ChevronUp v-else :size="16" class="ml-2" />
       </button>
 
-      <div class="flex-grow px-12 pb-2 text-sm text-center">
+      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:text-neutral-200 hover:cursor-pointer">
         <span
-          @click.stop="$emit('new-thread')"
-          class="text-center text-neutral-500 hover:text-neutral-200 hover:cursor-pointer">
-          This is a list of your recent threads. Click on a thread to view its content.
+          @click.stop="$emit('view-current-thread')"
+          class="text-center">
+          {{ currentThread.topic }}
+          <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
+            {{ currentThread.shortCode }}
+          </span>
         </span>
       </div>
 
@@ -52,8 +55,10 @@
 import { ref } from 'vue'
 import { History, ChevronUp, Plus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@abuddy/api';
+import type { AgentThreadData } from '@abuddy/api'
 
 export interface ThreadsProps {
+  currentThread: AgentThreadData
   threads: ThreadEntity[]
 }
 
@@ -61,12 +66,14 @@ const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 
 const emit = defineEmits<{
-  (e: 'select-thread', id: string): void
+  (e: 'view-thread'): void
+  (e: 'view-current-thread'): void
+  (e: 'open-thread-chat', threadId: string): void
   (e: 'new-thread'): void
 }>()
 
 const handleSelectThread = (id: string) => {
-  emit('select-thread', id)
+  emit('open-thread-chat', id)
   isOpen.value = false
 }
 

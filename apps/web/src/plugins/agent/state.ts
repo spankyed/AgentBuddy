@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, StartupData } from '@abuddy/api';
+import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, StartupData, AgentThreadData } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -12,10 +12,7 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 interface AgentContext {
-  currentThreadId: string | null;
-  messages: Partial<MessageEntity>[];
-  contextItems: ContextItemEntity[];
-  canvasContent: CanvasContentEntity;
+  currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
   messageInput: string;
   pendingActionId?: string;
@@ -23,11 +20,10 @@ interface AgentContext {
 }
 
 type AgentEvent =
-  | { type: 'OPEN_THREAD_CHAT'; id: string }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_MESSAGES' }
-  | { type: 'SELECT_THREAD'; threadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
@@ -47,7 +43,7 @@ const agentState = setup({
   },
   actions: {
     requestThreadChatData: ({ event }) => {
-      const threadId = typeOf('OPEN_THREAD_CHAT', event).id;
+      const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId;
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_THREAD_CHAT',
@@ -68,51 +64,65 @@ const agentState = setup({
       });
     },
     addMessage: assign(({ context, event }) => ({
-      messages: [...context.messages, { 
-        id: Date.now().toString(),
-        entityType: 'Message' as const,
-        createdAt: Date.now(),
-        text: typeOf('SEND_MESSAGE', event).text,
-        sender: 'user' as const,
-        timestamp: Date.now()
-      } as MessageEntity]
+      currentThread: {
+        ...context.currentThread!,
+        messages: [...(context.currentThread?.messages || []), { 
+          id: Date.now().toString(),
+          entityType: 'Message' as const,
+          createdAt: Date.now(),
+          text: typeOf('SEND_MESSAGE', event).text,
+          sender: 'user' as const,
+          timestamp: Date.now()
+        } as MessageEntity]
+      }
     })),
     addAssistantMessage: assign(({ context, event }) => ({
-      messages: [...context.messages, {
-        id: Date.now().toString(),
-        entityType: 'Message' as const,
-        createdAt: Date.now(),
-        text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
-        sender: 'assistant' as const,
-        timestamp: Date.now(),
-      } as MessageEntity]
+      currentThread: {
+        ...context.currentThread!,
+        messages: [...(context.currentThread?.messages || []), {
+          id: Date.now().toString(),
+          entityType: 'Message' as const,
+          createdAt: Date.now(),
+          text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
+          sender: 'assistant' as const,
+          timestamp: Date.now(),
+        } as MessageEntity]
+      }
     })),
-    setCurrentThread: assign(({ event }) => ({
-      currentThreadId: typeOf('SELECT_THREAD', event).threadId
-    })),
-    clearMessages: assign(() => ({
-      messages: []
+    clearMessages: assign(({ context }) => ({
+      currentThread: {
+        ...context.currentThread!,
+        messages: []
+      }
     })),
 
     handleTokenStream: assign(({ context, event }) => {
       const token = typeOf('TOKEN_STREAM', event).token;
-      const { messages, pendingActionId } = context;
+      const { currentThread, pendingActionId } = context;
+      const messages = currentThread?.messages || [];
+      
       if (pendingActionId) {
         return {
-          messages: messages.map(m => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
+          currentThread: {
+            ...currentThread!,
+            messages: messages.map(m => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
+          }
         };
       }
 
       const newId = Date.now().toString();
       return {
-        messages: [...messages, {
-          id: newId,
-          entityType: 'Message' as const,
-          text: token,
-          sender: 'assistant' as const,
-          timestamp: Date.now(),
-          createdAt: Date.now()
-        } as MessageEntity],
+        currentThread: {
+          ...currentThread!,
+          messages: [...messages, {
+            id: newId,
+            entityType: 'Message' as const,
+            text: token,
+            sender: 'assistant' as const,
+            timestamp: Date.now(),
+            createdAt: Date.now()
+          } as MessageEntity]
+        },
         pendingActionId: newId,
       };
     }),
@@ -126,9 +136,7 @@ const agentState = setup({
       const typedEvent = typeOf('STARTUP', event);
       console.log('typedEvent.pluginData.threads', typedEvent.pluginData);
       return {
-        messages: typedEvent.pluginData.messages,
-        contextItems: typedEvent.pluginData.contextItems,
-        canvasContent: typedEvent.pluginData.canvasContent,
+        currentThread: typedEvent.pluginData.currentThread,
         threads: typedEvent.pluginData.threads as ThreadEntity[],
       };
     }),
@@ -140,17 +148,24 @@ const agentState = setup({
   id,
   initial: 'canvas',
   context: ({ input }) => ({
-    messages: [],
-    contextItems: [],
-    canvasContent: { 
-      id: 'CanvasItem-0', 
-      entityType: 'CanvasItem', 
-      contentType: 'text', 
-      content: 'Waiting for data...', 
-      createdAt: Date.now() 
-    } as CanvasContentEntity,
+    currentThread: {
+      id: `Thread-${Date.now()}`,
+      shortCode: '',
+      topic: '',
+      instructions: '',
+      status: 'draft',
+      timestamp: Date.now(),
+      messages: [],
+      contextItems: [],
+      canvasContent: { 
+        id: 'CanvasItem-0', 
+        entityType: 'CanvasItem', 
+        contentType: 'text', 
+        content: 'Waiting for data...', 
+        createdAt: Date.now() 
+      } as CanvasContentEntity,
+    } as AgentThreadData,
     threads: [],
-    currentThreadId: null,
     messageInput: "",
     pendingActionId: undefined,
     statusColor: 'bg-zinc-500' as StatusColor,
@@ -181,9 +196,6 @@ const agentState = setup({
     },
     ADD_ASSISTANT_MESSAGE: {
       actions: 'addAssistantMessage'
-    },
-    SELECT_THREAD: {
-      actions: 'setCurrentThread'
     },
     TOKEN_STREAM: {
       actions: 'handleTokenStream'

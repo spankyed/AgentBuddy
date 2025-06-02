@@ -14,6 +14,8 @@
   </div>
   <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
   <ChatInput
+    :current-thread="currentThread"
+    @view-current-thread="actor.send({ type: 'VIEW_CURRENT_THREAD' })"
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
     @new-thread="actor.send({ type: 'CLEAR_MESSAGES' })"
@@ -29,7 +31,8 @@ import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
 const actor: AgentState = applicationState.system.get(id);
-const messages = useSelector(actor, (state) => state.context.messages)
+const messages = useSelector(actor, (state) => state.context.currentThread.messages)
+const currentThread = useSelector(actor, (state) => state.context.currentThread)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 watch(messages, async () => {

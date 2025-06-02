@@ -73,8 +73,10 @@
     </form>
 
     <Threads
+      :current-thread="currentThread"
       :threads="threads"
-      @select-thread="(id: string) => emit('open-thread-chat', id)"
+      @view-current-thread="emit('view-current-thread')"
+      @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
       @new-thread="emit('new-thread')"
     />
   </div>
@@ -91,9 +93,15 @@ import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state'
 import StatusIndicator from './status-indicator.vue'
+import type { AgentThreadData } from '@abuddy/api'
+
+defineProps<{
+  currentThread: AgentThreadData
+}>()
 
 // Define emits including new button actions
 const emit = defineEmits<{
+  (e: 'view-current-thread'): void
   (e: 'open-thread-chat', threadId: string): void
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void

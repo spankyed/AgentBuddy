@@ -16,7 +16,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
 const actor: AgentState = applicationState.system.get(id);
-const items = useSelector(actor, (state) => state.context.contextItems)
+const items = useSelector(actor, (state) => state.context.currentThread.contextItems)
 </script>
 
 <style lang="scss" module>

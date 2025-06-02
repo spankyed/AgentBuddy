@@ -63,7 +63,7 @@ import Button from '@/core/design/button.vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
 const actor: AgentState = applicationState.system.get(id);
-const content = useSelector(actor, (state) => state.context.canvasContent)
+const content = useSelector(actor, (state) => state.context.currentThread.canvasContent)
 // const showAll = ref(false)
 // function toggleShowAll() {
 //   showAll.value = !showAll.value

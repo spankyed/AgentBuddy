@@ -4,6 +4,7 @@ import type { MessageEntity, Rows, TagEntity, ThreadEntity } from '@/shared/type
 import { entries } from '@/shared/utils';
 import type { ThreadExtended, ThreadStartupData, ThreadTagItem } from '@/types';
 import { qx } from '@/shared/ears/helpers/query';
+import { AgentThreadData } from './agent/types';
 
 type Row = Rows['entity'][number]
 function byEntityType<
@@ -26,27 +27,28 @@ const pluginStartupLoaders = {
       .orderBy('timestamp', 'desc')
       .limit(4)
       .rows([
-        "id",
         "shortCode",
         "topic",
-        "timestamp",
         "instructions",
         "status",
+        "timestamp",
       ] as const);
     
-    const mostRecentMessages = qx(fourMostRecentThreads[0].id)
-      .linkRows(
-        EARS.RelKind.CONTAINS,
-        EARS.Entity.Message,
-        ["id", "text", "sender", "timestamp"] as const,
-      ) as Partial<MessageEntity>[];
+    const currentThread = fourMostRecentThreads[0];
 
     return {
+      currentThread: {
+        ...currentThread,
+        messages: qx(currentThread.id)
+          .linkRows(
+            EARS.RelKind.CONTAINS,
+            EARS.Entity.Message,
+            ["id", "text", "sender", "timestamp"] as const,
+          ) ?? [] as Partial<MessageEntity>[],
+        contextItems: rows.entity.filter(byEntityType(EARS.Entity.ContextItem)),
+        canvasContent: rows.entity.filter(byEntityType(EARS.Entity.CanvasItem))[0],
+      } as AgentThreadData,
       threads: fourMostRecentThreads,
-      messages: mostRecentMessages,
-      contextItems: rows.entity.filter(byEntityType(EARS.Entity.ContextItem)),
-      canvasContent: rows.entity.filter(byEntityType(EARS.Entity.CanvasItem))[0],
-      // currentThreadId: rows.entity.filter(byEntityType(EARS.Entity.Thread))[0].id,
     }
   },
   threads: (): ThreadStartupData => {
