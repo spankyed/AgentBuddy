@@ -11,10 +11,10 @@
         <ChevronUp v-else :size="16" class="ml-2" />
       </button>
 
-      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:text-neutral-200 hover:cursor-pointer">
+      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
         <span
           @click.stop="handleViewThread(currentThread.id)"
-          class="text-center">
+          class="text-center hover:text-neutral-200">
           {{ currentThread.topic }}
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
             {{ currentThread.shortCode }}
