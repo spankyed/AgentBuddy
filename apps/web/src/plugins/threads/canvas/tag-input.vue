@@ -47,7 +47,7 @@ const filteredOptions = computed(() =>
     <ComboboxAnchor class="w-full">
       <ComboboxTrigger as-child>
         <!-- <div class="shadow-[0_2px_10px] shadow-black/10"></div> -->
-        <div class="inline-flex items-center justify-between rounded-lg data-[open=true]:rounded-b-none p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200  data-[placeholder]:text-neutral-400 outline-none w-full" :data-open="isOpen">
+        <div class="inline-flex items-center justify-between rounded data-[open=true]:rounded-b-none p-2 text-[13px] leading-none gap-[5px] bg-neutral-900/60 text-neutral-200  data-[placeholder]:text-neutral-400 outline-none w-full" :data-open="isOpen">
           <TagsInputRoot
             delimiter=""
             class="flex flex-wrap items-center gap-2 rounded-lg"
