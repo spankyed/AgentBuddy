@@ -96,7 +96,6 @@ onUnmounted(() => {
 })
 
 onUpdated(() => {
-  console.log('updated')
   checkScroll()
 })
 import { ChevronRight } from 'lucide-vue-next'
