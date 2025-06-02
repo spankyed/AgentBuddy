@@ -132,6 +132,12 @@ const agentState = setup({
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).text
     // })),
+    setThreadChatData: assign(({ event }) => {
+      const typedEvent = typeOf('LOAD_CHAT_THREAD', event);
+      return {
+        currentThread: typedEvent.data,
+      };
+    }),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
       console.log('typedEvent.pluginData.threads', typedEvent.pluginData);
@@ -171,6 +177,9 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
   }),
   on: {
+    LOAD_CHAT_THREAD: {
+      actions: 'setThreadChatData'
+    },
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },

@@ -7,7 +7,7 @@ import { qx } from '@/shared/ears/helpers/query';
 import { AgentThreadData } from './agent/types';
 
 type Row = Rows['entity'][number]
-function byEntityType<
+export function byEntityType<
   K extends Row['entityType']
 >(type: K): (r: Row) => r is Extract<Row, { entityType: K }> {
   return (r): r is Extract<Row, { entityType: K }> => r.entityType === type

@@ -10,8 +10,8 @@ import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
-import { getExtendedData } from '../threads/repository';
-import { ThreadExtendedData } from '@/types';
+import { AgentThreadData, ThreadExtendedData } from '@/types';
+import { getThreadChatData } from './repository/read';
 
 export const agent = 'agent' as const;
 
@@ -30,7 +30,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents =
-  | { type: 'CHAT_THREAD', id: EARS.EntityId, data: ThreadExtendedData }
+  | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'LLM_DONE' }
   | { type: 'LLM_ABORTED' }
@@ -63,9 +63,8 @@ export const agentSystem = setup({
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
       system.get(bus).send(emit(agent, { 
-        type: 'CHAT_THREAD',
-        id: threadId,
-        data: getExtendedData(threadId),
+        type: 'LOAD_CHAT_THREAD',
+        data: getThreadChatData(threadId),
       }));
     },
     sendToken: ({ system, event }) => {
