@@ -8,7 +8,7 @@
         v-if="!isInputVisible"
         type="button"
         @click="toggleInput"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
+        class="flex items-center gap-2 px-4 py-4 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
       >
         Link Thread
         <Plus :size="16" class="text-neutral-300" />
@@ -16,8 +16,6 @@
 
       <div v-else class="w-full gap-2 mt-2">
         <div class="flex items-center gap-2">
-
-
           <select v-model="relation" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
             <option value="parent_of">parent_of</option>
             <option value="blocks">blocks</option>
