@@ -13,7 +13,7 @@
 
       <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:text-neutral-200 hover:cursor-pointer">
         <span
-          @click.stop="$emit('view-current-thread')"
+          @click.stop="handleViewThread(currentThread.id)"
           class="text-center">
           {{ currentThread.topic }}
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
@@ -51,7 +51,7 @@
           <button
             type="button"
             class="h-full ml-2 text-sm text-neutral-500 hover:text-neutral-200"
-            @click.stop="$emit('view-thread', thread.id)"
+            @click.stop="handleViewThread(thread.id)"
           >
             View
           </button>
@@ -77,10 +77,14 @@ const isOpen = ref(false)
 
 const emit = defineEmits<{
   (e: 'view-thread', threadId: string): void
-  (e: 'view-current-thread'): void
   (e: 'open-thread-chat', threadId: string): void
   (e: 'new-thread'): void
 }>()
+
+const handleViewThread = (id: string) => {
+  emit('view-thread', id)
+  isOpen.value = false
+}
 
 const handleSelectThread = (id: string) => {
   emit('open-thread-chat', id)

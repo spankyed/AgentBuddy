@@ -76,7 +76,6 @@
       :current-thread="currentThread"
       :threads="threads"
       @view-thread="(threadId: string) => emit('view-thread', threadId)"
-      @view-current-thread="emit('view-current-thread')"
       @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
       @new-thread="emit('new-thread')"
     />
