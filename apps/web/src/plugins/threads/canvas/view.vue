@@ -60,7 +60,7 @@
 
       <!-- Tags & Status -->
       <div class="flex items-start gap-2">
-                <!-- Tags -->
+        <!-- Tags -->
         <TagInput 
           v-model="tagNames"
           :available-tags="availableTags"
@@ -80,8 +80,6 @@
             <option value="inactive">Inactive</option>
           </select>
         </div>
-
-
       </div>
 
       <!-- Messages Container -->
