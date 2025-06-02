@@ -69,6 +69,13 @@
     <!-- Existing links -->
     <div v-if="values.length" class="flex flex-wrap gap-2">
       <div v-for="item in values" class="flex items-center w-full gap-2">
+                <button
+          type="button"
+          @click="removeLink(item.id)"
+          class="p-1 rounded focus:outline-none"
+        >
+          <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
+        </button>
         <span class="p-3 text-sm rounded bg-neutral-900/60 text-neutral-200">{{ item.relation }}</span>
         <Thread
           :key="item.id"
@@ -76,13 +83,7 @@
           @select="actor.send({ type: 'SELECT_THREAD', id: item.id })"
           @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
         />
-        <button
-          type="button"
-          @click="removeLink(item.id)"
-          class="p-1 rounded focus:outline-none"
-        >
-          <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
-        </button>
+
       </div>
       <!-- <span
         v-for="item in values"
