@@ -38,12 +38,13 @@
                 placeholder="Search for threads"
                 class="flex-1 w-full px-4 bg-transparent focus:outline-none placeholder:text-neutral-500"
                 @click="isOpen = true"
+                @keydown.backspace="query = ''"
               />
             </ComboboxAnchor>
   
             <ComboboxContent
               v-if="filteredOptions.length"
-              class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-900"
+              class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-950"
             >
               <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
                 <ComboboxGroup>
@@ -158,7 +159,7 @@ function toggleInput() {
 }
 
 function linkThread() {
-  const thread = filteredOptions.value.find((thread) => thread.shortCode === query.value)
+  const thread = props.availableThreads.find((t) => t.id === query.value)
   if (!thread) return
   const newLink: ThreadLinkItem = {
     id: thread.id,
