@@ -151,3 +151,36 @@ export function lowestCommonAncestor(
   const B = new Set(pathToRoot(b));
   return A.find(node => B.has(node)) ?? null;
 }
+
+// import {
+//   wouldCreateCycle,
+//   topoSort,
+//   shortestPath,
+//   leaves,
+//   lowestCommonAncestor,
+// } from "@/shared/ears/graph";
+
+// /* 1 ▸ guard before linking */
+// if (wouldCreateCycle(srcId, tgtId, [
+//       EARS.RelKind.BLOCKS,
+//       EARS.RelKind.DEPENDS_ON,
+//     ])) throw new Error("cycle!");
+
+
+// /* 2 ▸ produce build order */
+// const ordered = topoSort([rootId], EARS.RelKind.DEPENDS_ON);
+
+
+// /* 3 ▸ explain why A blocks Z */
+// const why = shortestPath(A, Z, [
+//   EARS.RelKind.BLOCKS,
+//   EARS.RelKind.DEPENDS_ON,
+// ]);
+
+
+// /* 4 ▸ tasks with no subtasks */
+// const endLeaves = leaves(EARS.RelKind.CONTAINS);
+
+
+// /* 5 ▸ common folder */
+// const lca = lowestCommonAncestor(doc1, doc2);
