@@ -79,32 +79,47 @@ export function topoSort(
 /*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 3 ▸ Shortest path (unweighted) over multiple kinds
  *━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
-export function shortestPath(
-  src: EARS.EntityId,
-  tgt: EARS.EntityId,
-  kinds: readonly EARS.RelKind[],
-): EARS.EntityId[] | null {
-  const queue: EARS.EntityId[] = [src];
-  const prev  = new Map<EARS.EntityId, EARS.EntityId>();
+export function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS.RelKind[]): EARS.EntityId[] | null {
+  if (src === tgt) return [src];
 
-  while (queue.length) {
-    const n = queue.shift()!;
-    if (n === tgt) break;
-    for (const nb of neighbours(n, kinds)) {
-      if (!prev.has(nb) && nb !== src) {
-        prev.set(nb, n);
-        queue.push(nb);
-      }
+  const front = new Map<EARS.EntityId, EARS.EntityId>(); front.set(src, src);
+  const back = new Map<EARS.EntityId, EARS.EntityId>(); back.set(tgt, tgt);
+  const nbrs = (id: EARS.EntityId) => neighbours(id, kinds);
+
+  let layer = [src], revLayer = [tgt];
+
+  while (layer.length && revLayer.length) {
+    // expand smaller frontier
+    if (layer.length <= revLayer.length) {
+      const next: EARS.EntityId[] = [];
+      for (const v of layer)
+        for (const n of nbrs(v))
+          if (!front.has(n)) {
+            front.set(n, v);
+            if (back.has(n)) return join(n);
+            next.push(n);
+          }
+      layer = next;
+    } else {
+      const next: EARS.EntityId[] = [];
+      for (const v of revLayer)
+        for (const n of nbrs(v))
+          if (!back.has(n)) {
+            back.set(n, v);
+            if (front.has(n)) return join(n);
+            next.push(n);
+          }
+      revLayer = next;
     }
   }
-  if (!prev.has(tgt)) return null;
+  return null;
 
-  const path = [tgt];
-  for (let at = tgt; prev.has(at); ) {
-    at = prev.get(at)!;
-    path.push(at);
+  function join(meet: EARS.EntityId): EARS.EntityId[] {
+    const path = [meet];
+    for (let v = meet; v !== src; v = front.get(v)!) path.unshift(front.get(v)!);
+    for (let v = meet; v !== tgt; v = back.get(v)!)  path.push(back.get(v)!);
+    return path;
   }
-  return path.reverse();
 }
 
 /*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
