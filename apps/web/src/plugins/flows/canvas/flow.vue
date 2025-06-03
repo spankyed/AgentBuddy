@@ -64,6 +64,7 @@ import {
   type Connection,
   type Edge,
   type Node,
+  type NodeMouseEvent,
   Position,
 } from "@vue-flow/core";
 import { Background } from '@vue-flow/background'
@@ -147,8 +148,8 @@ function onDragStart(e: DragEvent, nodeType: string) {
 }
 
 /* canvas events --------------------------------------------------- */
-function onNodeClick(e: Node) {
-  selected.value = e;
+function onNodeClick(e: NodeMouseEvent) {
+  selected.value = e.node;
 }
 
 function onConnect(params: Connection) {
