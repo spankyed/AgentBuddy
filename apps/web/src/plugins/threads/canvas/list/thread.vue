@@ -55,13 +55,13 @@
       class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-blue-700/40"
     >
       Chat
-      <Headset :size="16" class="ml-1.5"/>
+      <MessageCircleMore :size="16" class="ml-1.5"/>
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Headset } from 'lucide-vue-next'
+import { MessageCircleMore } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/plugins/threads/state';
 import type { ThreadEntity } from '@abuddy/api';
 
