@@ -9,7 +9,7 @@
     <div
       :class="[
         'flex items-center flex-1 h-full px-4 py-2',
-        { 'hover:bg-blue-800/20 cursor-pointer': !lite }
+        { 'hover:bg-blue-700/30 cursor-pointer': !lite }
       ]"
       @click="$emit('select', thread.id)"
     >
@@ -52,7 +52,7 @@
       v-if="!lite"
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
-      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-blue-800/30"
+      class="flex items-center justify-center h-full px-4 py-2 text-neutral-500 hover:text-neutral-100 hover:bg-blue-700/40"
     >
       Chat
       <Headset :size="16" class="ml-1.5"/>
