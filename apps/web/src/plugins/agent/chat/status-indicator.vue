@@ -28,7 +28,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 
 const actor: AgentState = applicationState.system.get(id);
-const messages = useSelector(actor, (state) => state.context.messages)
+const messages = useSelector(actor, (state) => state.context.currentThread?.messages || []);
 
 // const statusColorClass = computed(() => {
 //   switch (status.value) {

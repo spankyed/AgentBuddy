@@ -93,7 +93,7 @@
         <Thread
           :lite="lite"
           :key="item.id"
-          :thread="item"
+          :thread="threadAsListItem(item)"
           @chat-click="emit('chat-click', item.id)"
           @select="emit('select', item.id)"
           @status-change="(id, status) => emit('status-change', id, status)"
@@ -133,13 +133,15 @@ import {
   ComboboxViewport,
 } from 'reka-ui'
 import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
-import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended } from '@abuddy/api'
+import { EARS } from '@abuddy/api'
+import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended, ThreadEntity } from '@abuddy/api'
 import Thread from './list/thread.vue'
+import type { ThreadListItem } from '../state'
 
 const props = defineProps<{
   lite?: boolean
   modelValue: ThreadLinkItem[]
-  availableThreads: ThreadExtended[]
+  availableThreads: Omit<ThreadLinkItem, 'relation'>[]
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: ThreadLinkItem[]): void
@@ -166,6 +168,15 @@ const values = computed({
   set: (val) => emit('update:modelValue', val),
 })
 
+const threadAsListItem = (thread: ThreadLinkItem) => {
+  return {
+    entityType: EARS.Entity.Thread,
+    instructions: '', // Default empty instructions since it's not available in ThreadLinkItem
+    createdAt: thread.timestamp, // Use timestamp as createdAt since it's not available in ThreadLinkItem
+    ...thread,
+  } as ThreadListItem
+}
+
 const filteredOptions = computed(() => {
   const relationOrder = {
     blocked_by: 0,
@@ -177,7 +188,7 @@ const filteredOptions = computed(() => {
   return props.availableThreads
     .filter((thread) => {
       return (
-        thread.shortCode.toLowerCase().includes(query.value.toLowerCase()) &&
+        thread.shortCode?.toLowerCase().includes(query.value.toLowerCase()) &&
         !values.value.find((item) => item.id === thread.id)
       )
     })
@@ -206,7 +217,7 @@ function linkThread() {
     timestamp: thread.timestamp,
     topic: thread.topic,
     threadType: thread.threadType,
-    relation: relation.value,
+    relation: relation.value
   }
   values.value = [...values.value, newLink]
   toggleInput()

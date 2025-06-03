@@ -93,7 +93,7 @@ import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData } from '@abuddy/api'
+import type { AgentThreadData, ThreadEntity } from '@abuddy/api'
 
 defineProps<{
   currentThread: AgentThreadData
@@ -144,7 +144,7 @@ const leftButtons: ActionButton[] = [
 
 // Get threads data from the state
 const actor: AgentState = applicationState.system.get(id);
-const threads = useSelector(actor, (state) => state.context.threads)
+const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[]);
 
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')

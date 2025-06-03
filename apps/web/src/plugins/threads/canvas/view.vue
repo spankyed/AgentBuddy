@@ -16,7 +16,7 @@
             ref="topicInput"
             v-show="isEditingTopic"
             :value="topic"
-            @input="e => updateField('topic', e.target.value)"
+            @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
             @blur="isEditingTopic = false"
             @keydown.enter="isEditingTopic = false"
             type="text"
@@ -28,7 +28,7 @@
           <!-- <Label>Type</Label> -->
           <select
             :value="type"
-            @input="e => updateField('threadType', e.target.value)"
+            @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
@@ -51,7 +51,7 @@
           ref="instructionsInput"
           v-show="isEditingInstructions"
           :value="instructions"
-          @input="e => updateField('instructions', e.target.value)"
+          @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
           @blur.passive="isEditingInstructions = false"
           placeholder="Enter instructions for the agent"
           class="h-[8rem] w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 resize-y"
@@ -71,7 +71,7 @@
         <div class="flex justify-end w-1/2">
           <select
             :value="status"
-            @input="e => updateField('status', e.target.value)"
+            @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
             class="w-32 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="draft">Draft</option>
@@ -161,7 +161,7 @@ const status = useSelector(actor, (state) => state.context.view.status || 'draft
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 
-const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields]) => {
+const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields] | undefined) => {
   console.log('updateField', key, value);
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
 }

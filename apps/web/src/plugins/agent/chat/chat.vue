@@ -29,10 +29,11 @@ import ChatInput from './input.vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
+import type { AgentThreadData, MessageEntity } from '@abuddy/api'
 
 const actor: AgentState = applicationState.system.get(id);
-const messages = useSelector(actor, (state) => state.context.currentThread.messages)
-const currentThread = useSelector(actor, (state) => state.context.currentThread)
+const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
+const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 watch(messages, async () => {

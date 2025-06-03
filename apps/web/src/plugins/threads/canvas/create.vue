@@ -7,7 +7,7 @@
           <!-- <Label>Topic</Label> -->
           <input
             :value="topic"
-            @input="e => updateField('topic', e.target.value)"
+            @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
             type="text"
             placeholder="Thread Topic"
             class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
@@ -17,7 +17,7 @@
           <!-- <Label>Type</Label> -->
           <select
             :value="threadType"
-            @input="e => updateField('threadType', e.target.value)"
+            @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
             class="w-full px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
           >
             <option value="work-item">Work Item</option>
@@ -31,7 +31,7 @@
         <!-- <Label>Instructions</Label> -->
         <textarea
           :value="instructions"
-          @input="e => updateField('instructions', e.target.value)"
+          @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
           rows="4"
           placeholder="Enter instructions for the agent"
           class="h-[8rem] w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 resize-y"
@@ -121,7 +121,7 @@ const instructions = useSelector(actor, (state) => state.context.create.instruct
 const threadType = useSelector(actor, (state) => state.context.create.threadType);
 const tags = useSelector(actor, (state) => state.context.create.tags);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const linkedThreads = useSelector(actor, (state) => state.context.create.linkedThreads);
+const linkedThreads = useSelector(actor, (state) => state.context.create.linkedThreads || []);
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 
 const isSaving = ref(false)
