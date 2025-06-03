@@ -1,5 +1,6 @@
 import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
+import Flows from './flows/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
@@ -24,7 +25,7 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
-  mockPlugin({ id: 'dialog', label: 'Dialog', icon: Workflow, }),
+  // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
@@ -36,6 +37,7 @@ const mockPlugins = [
 export default [
   Agent,
   Threads,
+  Flows,
   ...mockPlugins,
   Blank,
 ];
