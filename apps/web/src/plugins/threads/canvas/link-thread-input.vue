@@ -133,7 +133,7 @@ import {
   ComboboxViewport,
 } from 'reka-ui'
 import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
-import { EARS } from '@abuddy/api'
+import type { EARS } from '@abuddy/api'
 import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended, ThreadEntity } from '@abuddy/api'
 import Thread from './list/thread.vue'
 import type { ThreadListItem } from '../state'
@@ -170,7 +170,7 @@ const values = computed({
 
 const threadAsListItem = (thread: ThreadLinkItem) => {
   return {
-    entityType: EARS.Entity.Thread,
+    entityType: 'Thread' as EARS.Entity.Thread,
     instructions: '', // Default empty instructions since it's not available in ThreadLinkItem
     createdAt: thread.timestamp, // Use timestamp as createdAt since it's not available in ThreadLinkItem
     ...thread,
