@@ -142,7 +142,6 @@ const agentState = setup({
     }),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('STARTUP', event);
-      console.log('typedEvent.pluginData.threads', typedEvent.pluginData);
       return {
         currentThread: typedEvent.pluginData.currentThread,
         threads: typedEvent.pluginData.threads as ThreadEntity[],
