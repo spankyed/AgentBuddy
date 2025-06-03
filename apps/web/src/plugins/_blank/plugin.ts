@@ -10,7 +10,7 @@ const blankPlugin: Plugin = {
   icon: Box,
   state,
   canvas,
-  panel,
+  // panel,
   isPinned: true
 };
 

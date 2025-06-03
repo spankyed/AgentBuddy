@@ -4,7 +4,6 @@ import state, { id } from './state.ts';
 import list from './canvas/list/list.vue';
 import create from './canvas/create.vue';
 import view from './canvas/view.vue';
-import panel from './panel.vue';
 
 const threadsPlugin: Plugin = {
   id,
@@ -16,7 +15,6 @@ const threadsPlugin: Plugin = {
     create,
     view,
   },
-  panel,
 };
 
 export default threadsPlugin;
