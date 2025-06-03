@@ -18,7 +18,7 @@
       v-model="elements"
       class="graph"
       :fit-view-on-init="true"
-      :connection-line-type="'smoothstep'"
+      :connection-line-type="ConnectionLineType.SmoothStep"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       @node-click="onNodeClick"
       @connect="onConnect"
@@ -31,20 +31,20 @@
     </VueFlow>
 
     <!-- ▸ Inspector (right) -->
-    <section class="inspector" v-if="selected">
+    <section class="p-4 bg-neutral-800" v-if="selected">
       <h3>{{ selected.data.label }}</h3>
-      <label class="field">
+      <label class="block mb-2 text-sm font-medium text-neutral-200">
         Name
-        <input v-model="selected.data.label" />
+        <input v-model="selected.data.label" class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600" />
       </label>
 
       <!-- show prompt only on LLM nodes -->
       <label
         v-if="selected.data.nodeType === 'llm'"
-        class="field"
+        class="block mb-2 text-sm font-medium text-neutral-200"
       >
         Prompt
-        <textarea v-model="selected.data.prompt" rows="5" />
+        <textarea v-model="selected.data.prompt" rows="5" class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600" />
       </label>
     </section>
   </div>
@@ -61,11 +61,11 @@ import {
   VueFlow,
   MarkerType,
   addEdge,
+  ConnectionLineType,
   type Connection,
   type Edge,
   type Node,
   type NodeMouseEvent,
-  Position,
 } from "@vue-flow/core";
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
