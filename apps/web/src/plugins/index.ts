@@ -24,7 +24,6 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 }
 
 const mockPlugins = [
-  mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
@@ -36,6 +35,7 @@ const mockPlugins = [
 
 export default [
   Agent,
+  mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
   Threads,
   Flows,
   ...mockPlugins,
