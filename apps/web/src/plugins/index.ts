@@ -34,9 +34,9 @@ const mockPlugins = [
 ];
 
 export default [
+  Threads,
   Agent,
   mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
-  Threads,
   Flows,
   ...mockPlugins,
   Blank,
