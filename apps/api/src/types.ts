@@ -10,3 +10,6 @@ export type * from './systems/agent/types';
 
 export type { OutgoingThreadsEvents } from './systems/threads/system';
 export type * from './systems/threads/types';
+
+export type { OutgoingFlowsEvents } from './systems/flows/system';
+export type * from './systems/flows/types';
