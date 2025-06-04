@@ -63,10 +63,10 @@
           <select
             class="absolute bottom-0 px-2 py-1 mb-2 text-right transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
           >
-          <option value="working">Working</option>
-          <option value="planning">Planning</option>
-          <option value="chat">Chatting</option>
-          <option value="note-taking">Note Taking</option>
+          <option value="working">Work</option>
+          <option value="planning">Plan</option>
+          <option value="chat">Chat</option>
+          <option value="note-taking">Take Notes</option>
           </select>
         </div>
       </div>
