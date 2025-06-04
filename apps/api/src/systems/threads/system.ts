@@ -1,7 +1,7 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
-import { bus } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
@@ -53,6 +53,8 @@ export const IncomingThreadsEvents = [
 
 export type ThreadsInternalEvents = 
   | { type: 'CLIENT_CONNECTED' }
+  | SystemEvents
+  
 
 export type OutgoingThreadsEvents = 
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
@@ -127,6 +129,9 @@ export const threadsSystem = setup({
       threadsId: input,
     }),
     on: {
+      CLIENT_CONNECTED: {
+        actions: 'sendThreadsStartupData',
+      },
     },
     states: {
       idle: {

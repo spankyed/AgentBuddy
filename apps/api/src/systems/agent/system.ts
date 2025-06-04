@@ -6,7 +6,7 @@ import { rows } from '../_backend/mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
-import { bus } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
@@ -29,6 +29,7 @@ export type AgentInternalEvents =
   | { type: 'LLM_ABORTED' }
   | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
+  | SystemEvents
 
 export type OutgoingAgentEvents =
   | { type: 'AGENT_STARTUP'; data: AgentStartupData }

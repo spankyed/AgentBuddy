@@ -7,9 +7,15 @@ import { EARS } from '@/shared/ears/types';
 import { createEntity } from '@/shared/ears';
 
 export type BusEvent = 
-  | { type: 'CLIENT_CONNECTED'; }
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents }
+
+export type SystemEvents =
+  | { type: 'CLIENT_CONNECTED'; }
+
+export type BackendEvents =
+  | BusEvent
+  | SystemEvents
 
 export interface BusContext {
   threads: string[];
@@ -17,12 +23,12 @@ export interface BusContext {
 
 export const bus = 'bus' as const;
 
-const typeOf = safeEvents<BusEvent>();
+const typeOf = safeEvents<BackendEvents>();
 export const backendSystem = setup({
   types: {
     context: {} as BusContext,
-    events: {} as BusEvent,
-    emitted: {} as Extract<BusEvent, { type: 'OUTGOING' }>,
+    events: {} as BackendEvents,
+    emitted: {} as Extract<BackendEvents, { type: 'OUTGOING' }>,
   },
   actions: {
     routeIncoming: ({ event: incoming, system, }) => {
