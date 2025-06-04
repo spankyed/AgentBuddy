@@ -30,7 +30,7 @@ const mockPlugins = [
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
   mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
   mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
-  mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, }),
+  mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
 ];
 
 export default [
