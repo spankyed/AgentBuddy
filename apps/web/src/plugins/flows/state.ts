@@ -1,4 +1,4 @@
-import { assign, setup } from 'xstate';
+import { assign, setup, type ActorRefFrom } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import {
@@ -8,8 +8,9 @@ import {
 } from '@/core/actors/route-trailer';
 import type { FlowsStartupData, OutgoingFlowsEvents } from '@abuddy/api';
 
-
 export const id = 'flows';
+
+export type FlowsState = ActorRefFrom<typeof flowsState>;
 
 // biome-ignore lint/suspicious/noEmptyInterface: <explanation>
 export interface FlowsContext {

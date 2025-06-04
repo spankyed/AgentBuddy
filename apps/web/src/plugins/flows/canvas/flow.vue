@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
   VueFlow,
   MarkerType,
@@ -74,7 +74,23 @@ import { MiniMap } from '@vue-flow/minimap'
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
 
-import { dialogRows } from "./mock-flow";
+import { applicationState } from '@/app'
+import { id, type FlowsState } from '@/plugins/flows/state.ts';
+import Flow from './flow.vue';
+import { useSelector } from "@xstate/vue";
+
+const actor: FlowsState = applicationState.system.get(id);
+const entity = useSelector(actor, (state) => state.context.entity);
+const relation = useSelector(actor, (state) => state.context.relation);
+const role = useSelector(actor, (state) => state.context.role);
+
+const dialogRows = computed(() => {
+  return {
+    entity: entity.value,
+    relation: relation.value,
+    role: role.value,
+  };
+});
 
 type Element = Node | Edge;
 
@@ -82,19 +98,22 @@ type Element = Node | Edge;
 /* helpers                                                            */
 /* ------------------------------------------------------------------ */
 const colorForType = (t: string) =>
-  ({ input: "#00bcd4", transform: "#9c27b0", llm: "#607d8b", output: "#4caf50" }[
+  ({ 'event-listener': "#00bcd4", transform: "#9c27b0", llm: "#607d8b", response: "#4caf50" }[
     t as keyof any
   ] ?? "#888");
 
-function rowsToElements(rows: typeof dialogRows): Element[] {
+function rowsToElements(rows: typeof dialogRows['value']): Element[] {
+  if (!rows || !rows.entity || !rows.relation) {
+    return [];
+  }
   const nodes: Node[] = rows.entity
-    .filter((e) => e.entityType === "Node")
+    .filter((e) => e.entityType === "Step")
     .map((n) => ({
       id: n.id,
       position: { x: n.x, y: n.y },
       data: { ...n },
       style: {
-        border: `2px solid ${colorForType(n.nodeType)}`,
+        border: `2px solid ${colorForType(n.stepType)}`,
         color: "#fff",
         padding: "6px 14px",
         "border-radius": "8px",
@@ -104,7 +123,7 @@ function rowsToElements(rows: typeof dialogRows): Element[] {
     }));
 
   const edges: Edge[] = rows.relation.map((r) => {
-    const dashed = r.kind !== "FLOW";
+    const dashed = r.kind !== "transitions_to";
     return {
       id: `${r.srcId}-${r.tgtId}`,
       source: r.srcId,
@@ -129,7 +148,7 @@ function rowsToElements(rows: typeof dialogRows): Element[] {
 /* ------------------------------------------------------------------ */
 /* component state                                                    */
 /* ------------------------------------------------------------------ */
-const elements = ref<Element[]>(rowsToElements(dialogRows));
+const elements = ref<Element[]>(rowsToElements(dialogRows.value));
 const selected = ref<Node | null>(null);
 const logs = ref<{ id: number; text: string }[]>([]);
 
