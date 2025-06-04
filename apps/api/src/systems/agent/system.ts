@@ -2,7 +2,7 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
-import { rows } from '../brain/mock-data';
+import { rows } from '../_backend/mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
@@ -10,8 +10,9 @@ import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
-import { AgentThreadData, ThreadExtendedData } from '@/types';
+import { AgentStartupData, AgentThreadData, ThreadExtendedData } from '@/types';
 import { getThreadChatData } from './repository/read';
+import agentStartupData from './repository/startup';
 
 export const agent = 'agent' as const;
 
@@ -30,6 +31,7 @@ export type AgentInternalEvents =
   | { type: 'TOKEN_STREAM'; token: string }
 
 export type OutgoingAgentEvents =
+  | { type: 'AGENT_STARTUP'; data: AgentStartupData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'LLM_DONE' }
@@ -56,6 +58,12 @@ export const agentSystem = setup({
     chatStream
   },
   actions: {
+    sendAgentStartupData: ({ system }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'AGENT_STARTUP',
+        data: agentStartupData()
+      }));
+    },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       console.error('Chat stream error:', event.error);
     },
@@ -103,6 +111,9 @@ export const agentSystem = setup({
       userPrompt: undefined,
     }),
     on: {
+      CLIENT_CONNECTED: {
+        actions: 'sendAgentStartupData',
+      },
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',
       },

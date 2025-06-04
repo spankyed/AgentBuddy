@@ -5,7 +5,6 @@ import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import type { EARS } from '@/shared/ears/types';
-import { getStartupData } from '../startup-data';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -21,7 +20,7 @@ export type BrainInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingBrainEvents =
-  | { type: 'STARTUP'; startupData: ReturnType<typeof getStartupData> }
+  | { type: 'UNKNOWN'; }
 
 export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
@@ -36,12 +35,6 @@ export const brainSystem = setup({
     input: {} as EARS.EntityId,
   },
   actions: {
-    sendFEStartup: ({ system }) => {
-      system.get(bus).send(emit('application', { 
-        type: 'STARTUP',
-        startupData: getStartupData()
-      }));
-    },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       console.error('Chat stream error:', event.error);
     },
@@ -59,7 +52,7 @@ export const brainSystem = setup({
       idle: {
         on: {
           CLIENT_CONNECTED: {
-            actions: 'sendFEStartup',
+            // actions: 'sendFEStartup',
           },
         },
       },

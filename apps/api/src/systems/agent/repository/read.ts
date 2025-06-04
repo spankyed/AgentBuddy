@@ -1,8 +1,8 @@
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
 import { AgentThreadData } from "../types";
-import { rows } from "@/systems/brain/mock-data";
-import { byEntityType } from "@/systems/startup-data";
+import { rows } from "@/systems/_backend/mock-data";
+import { byEntityType } from '../types';
 import { MessageEntity } from "@/types";
 
 export function getThreadChatData(

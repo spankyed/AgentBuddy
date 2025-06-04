@@ -6,9 +6,10 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import { createThread, getExtendedData, updateThreadField } from './repository';
-import type { ThreadEditFields, ThreadEntity, ThreadLinkItem } from '@/types';
+import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
 import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
+import threadStartupData from './repository/startup';
 
 export const threads = 'threads' as const;
 
@@ -54,6 +55,7 @@ export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingThreadsEvents = 
+  | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number }
 
@@ -72,6 +74,12 @@ export const threadsSystem = setup({
     input: {} as EARS.EntityId,
   },
   actions: {
+    sendThreadsStartupData: ({ system }) => {
+      system.get(bus).send(emit(threads, { 
+        type: 'THREAD_STARTUP',
+        data: threadStartupData()
+      }));
+    },
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
 

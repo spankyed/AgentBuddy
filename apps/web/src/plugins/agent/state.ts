@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, StartupData, AgentThreadData } from '@abuddy/api';
+import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -29,7 +29,6 @@ type AgentEvent =
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
-  | { type: 'STARTUP'; pluginData: StartupData[typeof id] }
   | OutgoingAgentEvents
   | TrailClickEvent;
 
@@ -141,10 +140,10 @@ const agentState = setup({
       };
     }),
     setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('STARTUP', event);
+      const typedEvent = typeOf('AGENT_STARTUP', event);
       return {
-        currentThread: typedEvent.pluginData.currentThread,
-        threads: typedEvent.pluginData.threads as ThreadEntity[],
+        currentThread: typedEvent.data.currentThread,
+        threads: typedEvent.data.threads as ThreadEntity[],
       };
     }),
     sendOpenThreadView: ({ system, event }) => {
@@ -192,7 +191,7 @@ const agentState = setup({
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
-    STARTUP: {
+    AGENT_STARTUP: {
       actions: 'setPluginData'
     },
     ...TRAIL_CLICK([

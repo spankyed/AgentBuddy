@@ -21,7 +21,6 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 }
 
 type SystemEvent =
-  | { type: 'STARTUP'; pluginData: ThreadStartupData }
   | OutgoingThreadsEvents
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
@@ -76,11 +75,11 @@ const threadsState = setup({
       system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
     },
     setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('STARTUP', event);
+      const typedEvent = typeOf('THREAD_STARTUP', event);
 
       return {
-        threads: typedEvent.pluginData.threads,
-        availableTags: typedEvent.pluginData.availableTags,
+        threads: typedEvent.data.threads,
+        availableTags: typedEvent.data.availableTags,
       };
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
@@ -248,7 +247,7 @@ const threadsState = setup({
         })
       ]
     },
-    STARTUP: {
+    THREAD_STARTUP: {
       actions: 'setPluginData'
     },
     SET_VIEW_DATA: {

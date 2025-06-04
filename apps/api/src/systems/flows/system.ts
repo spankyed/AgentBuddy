@@ -5,7 +5,6 @@ import { bus } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import type { EARS } from '@/shared/ears/types';
-import { getStartupData } from '../startup-data';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -21,7 +20,7 @@ export type FlowsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
 
 export type OutgoingFlowsEvents =
-  | { type: 'STARTUP'; startupData: ReturnType<typeof getStartupData> }
+  | { type: 'FLOWS_STARTUP'; startupData: unknown }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
