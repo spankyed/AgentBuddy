@@ -69,7 +69,7 @@ export const flowRows = {
   ],
 
   /*──────────────────────────────────────────*
-   * Role assignments (UI state)              *
+   * Role assignments (fake UI states)        *
    *──────────────────────────────────────────*/
   role: [
     {
