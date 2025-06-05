@@ -15,7 +15,8 @@
 
     <!-- ▸ VueFlow canvas (center) -->
     <VueFlow
-      v-model="elements"
+      :nodes="vueNodes"
+      :edges="vueEdges"
       class="graph"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
@@ -64,8 +65,10 @@ import { computed } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
+  MarkerType,
   type Connection,
   type NodeMouseEvent,
+  type Edge,
 } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -80,7 +83,7 @@ import {
   type FlowsState,
 } from '@/plugins/flows/state'
 import { useSelector } from '@xstate/vue'
-import { buildElements } from '../graph'
+import { colorForType } from '../graph'
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
@@ -94,8 +97,41 @@ const edges   = useSelector(actor, (s) => s.context.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
 const selected = useSelector(actor, (s) => s.context.nodes[s.context.selectedNodeId ?? ''])
 
-/* Build Vue‑Flow elements on‑the‑fly so machine stays skinny */
-const elements = computed(() => buildElements(nodes.value, events.value, edges.value))
+/* Transform nodes and edges for Vue-Flow */
+const vueNodes = computed(() => [
+  ...Object.values(nodes.value).map((n) => ({
+    id: n.id,
+    position: { x: n.x, y: n.y },
+    data: n,
+    style: {
+      border: `2px solid ${colorForType(n.stepType)}`,
+      'border-radius': '8px',
+      'background-color': 'transparent',
+      padding: '6px 14px',
+      color: '#fff',
+    },
+    label: n.label,
+  })),
+  ...Object.values(events.value).map((e) => ({
+    id: e.id,
+    position: { x: 0, y: 0 },
+    data: e,
+  }))
+])
+
+const vueEdges = computed(() => 
+  Object.values(edges.value).map((e) => {
+    const dashed = e.kind !== 'transitions_to'
+    return {
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      type: dashed ? 'straight' : 'smoothstep',
+      style: dashed ? { 'stroke-dasharray': '4 4', stroke: '#b084f5' } : undefined,
+      markerEnd: { type: MarkerType.ArrowClosed, color: dashed ? '#b084f5' : '#999' },
+    }
+  })
+)
 
 /* ------------------------------------------------------------ */
 /*  palette + drag helpers                                      */

@@ -10,7 +10,7 @@ import type {
   FlowsStartupData,
   OutgoingFlowsEvents,
 } from '@abuddy/api'
-import { type UiNode, type UiEvent, type UiEdge, startupToUiGraph, buildElements } from './graph'
+import { type UiNode, type UiEvent, type UiEdge, startupToUiGraph } from './graph'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
