@@ -65,7 +65,7 @@ export interface StepEntity extends BaseEntity {
 
 export interface FlowEventEntity extends BaseEntity {
   entityType: EARS.Entity.FlowEvent;
-  eventName: string;
+  label: string;
   description?: string;
   color?: string;
 }

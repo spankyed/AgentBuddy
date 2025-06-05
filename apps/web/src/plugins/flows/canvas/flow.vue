@@ -7,7 +7,7 @@
         v-for="t in nodeTypes"
         :key="t.type"
         draggable="true"
-        @dragstart="onDragStart($event, t.type)"
+        @dragstart="(e) => onDragStart(e, t.type)"
       >
         {{ t.label }}
       </button>
@@ -22,6 +22,8 @@
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       @node-click="onNodeClick"
       @connect="onConnect"
+      @drop="onDrop"
+      @dragover.prevent
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -35,148 +37,99 @@
       <h3>{{ selected.data.label }}</h3>
       <label class="block mb-2 text-sm font-medium text-neutral-200">
         Name
-        <input v-model="selected.data.label" class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600" />
+        <input
+          v-model="selected.data.label"
+          class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        />
       </label>
 
       <!-- show prompt only on LLM nodes -->
       <label
-        v-if="selected.data.nodeType === 'llm'"
+        v-if="selected.data.stepType === 'llm'"
         class="block mb-2 text-sm font-medium text-neutral-200"
       >
         Prompt
-        <textarea v-model="selected.data.prompt" rows="5" class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600" />
+        <textarea
+          v-model="selected.data.prompt"
+          rows="5"
+          class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        />
       </label>
     </section>
   </div>
-
-  <!-- ▸ Console (bottom) -->
-  <!-- <footer class="console">
-    <div v-for="log in logs" :key="log.id">{{ log.text }}</div>
-  </footer> -->
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from 'vue'
 import {
   VueFlow,
-  MarkerType,
-  addEdge,
   ConnectionLineType,
   type Connection,
-  type Edge,
-  type Node,
   type NodeMouseEvent,
-} from "@vue-flow/core";
+} from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 
-import "@vue-flow/core/dist/style.css";
-import "@vue-flow/core/dist/theme-default.css";
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
 
 import { applicationState } from '@/app'
-import { id, type FlowsState } from '@/plugins/flows/state.ts';
-import Flow from './flow.vue';
-import { useSelector } from "@xstate/vue";
+import {
+  id,
+  type FlowsState,
+  elementsSelector,
+  selectedSelector,
+  logsSelector,
+} from '@/plugins/flows/state'
+import { useSelector } from '@xstate/vue'
 
-const actor: FlowsState = applicationState.system.get(id);
-const entity = useSelector(actor, (state) => state.context.entity);
-const relation = useSelector(actor, (state) => state.context.relation);
-const role = useSelector(actor, (state) => state.context.role);
+/* ------------------------------------------------------------ */
+/*  reactive state from the actor                               */
+/* ------------------------------------------------------------ */
+const actor: FlowsState = applicationState.system.get(id)
 
-const dialogRows = computed(() => {
-  return {
-    entity: entity.value,
-    relation: relation.value,
-    role: role.value,
-  };
-});
+const elements = useSelector(actor, elementsSelector)
+const selected = useSelector(actor, selectedSelector)
+const logs     = useSelector(actor, logsSelector) // not rendered yet but handy
 
-type Element = Node | Edge;
-
-/* ------------------------------------------------------------------ */
-/* helpers                                                            */
-/* ------------------------------------------------------------------ */
-const colorForType = (t: string) =>
-  ({ 'event-listener': "#00bcd4", transform: "#9c27b0", llm: "#607d8b", response: "#4caf50" }[
-    t as keyof any
-  ] ?? "#888");
-
-function rowsToElements(rows: typeof dialogRows['value']): Element[] {
-  if (!rows || !rows.entity || !rows.relation) {
-    return [];
-  }
-  const nodes: Node[] = rows.entity
-    .filter((e) => e.entityType === "Step")
-    .map((n) => ({
-      id: n.id,
-      position: { x: n.x, y: n.y },
-      data: { ...n },
-      style: {
-        border: `2px solid ${colorForType(n.stepType)}`,
-        color: "#fff",
-        padding: "6px 14px",
-        "border-radius": "8px",
-        "background-color": "transparent",
-      },
-      label: n.label,
-    }));
-
-  const edges: Edge[] = rows.relation.map((r) => {
-    const dashed = r.kind !== "transitions_to";
-    return {
-      id: `${r.srcId}-${r.tgtId}`,
-      source: r.srcId,
-      target: r.tgtId,
-      animated: false,
-      style: dashed
-        ? { "stroke-dasharray": "4 4", stroke: "#b084f5" }
-        : undefined,
-      type: dashed ? "straight" : "smoothstep",
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 16,
-        height: 16,
-        color: dashed ? "#b084f5" : "#999",
-      },
-    };
-  });
-
-  return [...nodes, ...edges];
-}
-
-/* ------------------------------------------------------------------ */
-/* component state                                                    */
-/* ------------------------------------------------------------------ */
-const elements = ref<Element[]>(rowsToElements(dialogRows.value));
-const selected = ref<Node | null>(null);
-const logs = ref<{ id: number; text: string }[]>([]);
-
-/* palette drag-and-drop ------------------------------------------- */
+/* ------------------------------------------------------------ */
+/*  palette + drag helpers                                      */
+/* ------------------------------------------------------------ */
 const nodeTypes = [
-  { type: "input", label: "Input" },
-  { type: "llm", label: "LLM" },
-  { type: "transform", label: "Transform" },
-  { type: "decision", label: "Decision" },
-  { type: "output", label: "Output" },
-];
+  { type: 'input', label: 'Input' },
+  { type: 'llm', label: 'LLM' },
+  { type: 'transform', label: 'Transform' },
+  { type: 'decision', label: 'Decision' },
+  { type: 'output', label: 'Output' },
+]
 
-function onDragStart(e: DragEvent, nodeType: string) {
-  e.dataTransfer?.setData("application/vueflow", nodeType);
-  e.dataTransfer!.effectAllowed = "move";
+function onDragStart (e: DragEvent, nodeType: string) {
+  e.dataTransfer?.setData('application/vueflow', nodeType)
+  e.dataTransfer!.effectAllowed = 'move'
 }
 
-/* canvas events --------------------------------------------------- */
-function onNodeClick(e: NodeMouseEvent) {
-  selected.value = e.node;
+function onDrop (e: DragEvent) {
+  const nodeType = e.dataTransfer?.getData('application/vueflow')
+  if (!nodeType) return
+  const bounds = (e.target as HTMLElement).getBoundingClientRect()
+  actor.send({
+    type: 'NODE.DRAG_CREATE',
+    stepType: nodeType,
+    x: e.clientX - bounds.left,
+    y: e.clientY - bounds.top,
+  })
 }
 
-function onConnect(params: Connection) {
-  elements.value = addEdge(params, elements.value);
-  logs.value.unshift({
-    id: Date.now(),
-    text: `${params.source} → ${params.target} connected`,
-  });
+/* ------------------------------------------------------------ */
+/*  canvas event handlers                                       */
+/* ------------------------------------------------------------ */
+function onNodeClick (e: NodeMouseEvent) {
+  actor.send({ type: 'NODE.CLICK', nodeId: e.node.id })
+}
+
+function onConnect (params: Connection) {
+  actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
 }
 </script>
 
@@ -212,47 +165,16 @@ function onConnect(params: Connection) {
   text-align: left;
 }
 
-/* graph canvas (centre) */
+/* graph canvas */
 .graph {
   flex: 1;
   background: #111;
 }
 
-/* inspector (right) */
-.inspector {
+/* inspector */
+.p-4 {
   width: 260px;
-  background: #ffffff;
-  padding: 1rem;
   overflow: auto;
-  border-left: 1px solid #eee;
-}
-.inspector h3 {
-  margin-top: 0;
-}
-.field {
-  display: block;
-  font-size: 12px;
-  margin: 0.75rem 0;
-}
-.field input,
-.field textarea {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: vertical;
-}
-
-/* console (bottom) */
-.console {
-  height: 110px;
-  background: #000;
-  color: #0f0;
-  padding: 0.5rem 1rem;
-  overflow-y: auto;
-  font-family: monospace;
-  font-size: 11px;
-  border-top: 1px solid #333;
+  border-left: 1px solid #333;
 }
 </style>
