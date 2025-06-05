@@ -1,4 +1,3 @@
-// flows/state.ts – clean rewrite w/ correct context initialisation
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@/core/breadcrumb'
 import { safeEvents } from '@/core/types/safe-events'
@@ -13,10 +12,6 @@ import type {
 } from '@abuddy/api'
 import { type UiNode, type UiEvent, type UiEdge, startupToUiGraph, buildElements } from './graph'
 
-/* ─────────────────────────────────────────────────────────── */
-/* Helpers                                                     */
-/* ─────────────────────────────────────────────────────────── */
-/** Short random id (~6 chars, base‑36). */
 const randId = () => Math.random().toString(36).slice(2, 8)
 
 /* ─────────────────────────────────────────────────────────── */
@@ -29,7 +24,6 @@ export interface FlowsContext {
   nodes: Record<string, UiNode>
   events: Record<string, UiEvent>
   edges: Record<string, UiEdge>
-  elements: ReturnType<typeof buildElements>
   selectedNodeId?: string
   logs: { id: number; text: string }[]
 }
@@ -44,9 +38,6 @@ type UIEvent =
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
 
-/* ─────────────────────────────────────────────────────────── */
-/* Machine Definition                                          */
-/* ─────────────────────────────────────────────────────────── */
 const flowsState = setup({
   types: {
     context: {} as FlowsContext,
@@ -67,9 +58,8 @@ const flowsState = setup({
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
       context.edges[id] = { id, from: ev.src, to: ev.tgt, kind: 'transitions_to' }
-      context.elements = buildElements(context.nodes, context.events, context.edges)
       context.logs.unshift({ id: Date.now(), text: `${ev.src}→${ev.tgt}` })
-      return { edges: context.edges, elements: context.elements, logs: context.logs }
+      return { edges: context.edges, logs: context.logs }
     }),
 
     createNode: assign(({ context, event }) => {
@@ -83,44 +73,41 @@ const flowsState = setup({
         y: ev.y,
       }
       context.selectedNodeId = id
-      context.elements = buildElements(context.nodes, context.events, context.edges)
-      return { nodes: context.nodes, selectedNodeId: id, elements: context.elements }
+      return { nodes: context.nodes, selectedNodeId: id }
     }),
   },
   guards: { targetIs },
 }).createMachine({
   id,
-  initial: 'display',
-  /**  ✅  correct initial context */
+  initial: 'view',
   context: {
     nodes: {},
     events: {},
     edges: {},
-    elements: [],
     logs: [],
   },
+  on: {
+    FLOWS_STARTUP: { actions: 'setPluginData' },
+    ...TRAIL_CLICK([['.view', 'view']]),
+  },
   states: {
-    display: {
-      meta: breadcrumb('display', 'Display', true),
+    list: {
+
+    },
+    view: {
+      initial: 'details',
+      meta: breadcrumb('view', 'View', true),
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
         'NODE.DRAG_CREATE': { actions: 'createNode' },
       },
+      states: {
+        overview: {},
+        details: {},
+      }
     },
-  },
-  on: {
-    FLOWS_STARTUP: { actions: 'setPluginData' },
-    ...TRAIL_CLICK([['.display', 'display']]),
   },
 })
 
 export default flowsState
-
-/* ─────────────────────────────────────────────────────────── */
-/* Selectors                                                   */
-/* ─────────────────────────────────────────────────────────── */
-export const elementsSelector = (s: any) => s.context.elements
-export const logsSelector = (s: any) => s.context.logs
-export const selectedSelector = (s: any) =>
-  s.context.nodes[s.context.selectedNodeId ?? '']

@@ -63,7 +63,7 @@ export const flowRows = {
       id: "FlowEvent-1",
       entityType: EARS.Entity.FlowEvent,
       createdAt: nowMs - 750,
-      label: "orderPlaced",
+      label: "client_connected",
       color: "purple",
     },
   ],

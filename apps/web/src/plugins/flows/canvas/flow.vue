@@ -78,20 +78,24 @@ import { applicationState } from '@/app'
 import {
   id,
   type FlowsState,
-  elementsSelector,
-  selectedSelector,
-  logsSelector,
 } from '@/plugins/flows/state'
 import { useSelector } from '@xstate/vue'
+import { buildElements } from '../graph'
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
 /* ------------------------------------------------------------ */
 const actor: FlowsState = applicationState.system.get(id)
 
-const elements = useSelector(actor, elementsSelector)
-const selected = useSelector(actor, selectedSelector)
-const logs     = useSelector(actor, logsSelector) // not rendered yet but handy
+
+const nodes   = useSelector(actor, (s) => s.context.nodes)
+const events  = useSelector(actor, (s) => s.context.events)
+const edges   = useSelector(actor, (s) => s.context.edges)
+const logs    = useSelector(actor, (s) => s.context.logs)
+const selected = useSelector(actor, (s) => s.context.nodes[s.context.selectedNodeId ?? ''])
+
+/* Build Vue‑Flow elements on‑the‑fly so machine stays skinny */
+const elements = computed(() => buildElements(nodes.value, events.value, edges.value))
 
 /* ------------------------------------------------------------ */
 /*  palette + drag helpers                                      */
