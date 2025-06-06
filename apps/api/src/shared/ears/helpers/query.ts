@@ -190,7 +190,6 @@ export const qx = (
     /*─ paging, distinct, grouping ─*/
     
     page: (size: number, cursor?: string | null) => {
-
       const start       = cursor ? b64Decode(cursor) : 0;
       const end         = start + size;
       const sliceIds    = ids.slice(start, end);
