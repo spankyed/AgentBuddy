@@ -1,8 +1,71 @@
 import { EARS } from '@/shared/ears/types';
-import type { MessageEntity, Rows, TagEntity, ThreadEntity } from '@/shared/types';
-import type { AgentStartupData, AgentThreadData } from '@/types';
-import { flowRows } from './mock-data';
+import { qx } from '@/shared/ears/helpers/query';
+import { getRootFlow } from './read';
+import { FlowsStartupData, EdgeEntity, StepEntity, FlowEntity } from '../types';
+import { edgeStore } from '@/shared/ears/helpers/edge-store';
 
-export default function flowsStartupData() {
-  return flowRows
+
+export default function flowsStartupData(): FlowsStartupData {
+  const flowCols = ["id", "label", "flowType", "status", "createdAt"] as const;
+
+  const flows = qx(EARS.Entity.Flow)
+    .orderBy('timestamp', 'desc')
+    .pick(flowCols) as Partial<FlowEntity>[];
+
+  const rootFlow = qx(getRootFlow())
+    .pick(flowCols) as Partial<FlowEntity> | undefined;
+
+  const stepNodes = qx(rootFlow?.id ?? 'Flow-1')
+    .linkRows(
+      EARS.RelKind.CONTAINS,
+      [EARS.Entity.Step, EARS.Entity.FlowEvent],          // we only want the step‑like children
+      [
+        'label',
+        'stepType',
+        'createdAt',
+        'x',
+        'y',
+      ] as const,
+  ) as Partial<StepEntity>[];
+
+  const stepIds = stepNodes.map(n => n.id!).filter(Boolean);
+
+  const seen = new Set<string>();
+  const edges: EdgeEntity[] = [];
+  const edgeKinds = [
+    EARS.RelKind.TRANSITIONS_TO,
+    EARS.RelKind.EMITS,
+    EARS.RelKind.CONSUMED_BY,
+  ]
+
+  for (const srcId of stepIds) {
+    qx(srcId)
+      .links(edgeKinds, [EARS.Entity.Step, EARS.Entity.FlowEvent]) // ! need to combine with FlowEvent
+      .forEach(({ relation, id: tgtId }) => {
+        const relId = edgeStore.relIds({
+          sourceEntity: srcId,
+          relationType: relation,
+          targetEntity: tgtId,
+        })[0];
+
+        if (seen.has(relId)) return;
+        seen.add(relId);
+        edges.push({
+          id: relId,
+          kind: relation,
+          source: srcId,
+          target: tgtId,
+          info: {},
+        });
+      });
+  }
+
+  return {
+    graph: {
+      nodes: stepNodes,
+      edges,
+    },
+    flows,
+    rootFlow,
+  };
 }

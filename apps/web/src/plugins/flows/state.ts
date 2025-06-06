@@ -7,10 +7,12 @@ import {
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
 import type {
-  FlowsStartupData,
+  FlowEntity,
   OutgoingFlowsEvents,
+  StepEntity,
+  EARS,
+  EdgeEntity,
 } from '@abuddy/api'
-import { type UiNode, type UiEvent, type UiEdge, startupToUiGraph } from './graph'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -21,11 +23,14 @@ export const id = 'flows'
 export type FlowsState = ActorRefFrom<typeof flowsState>
 
 export interface FlowsContext {
-  nodes: Record<string, UiNode>
-  events: Record<string, UiEvent>
-  edges: Record<string, UiEdge>
-  selectedNodeId?: string
-  logs: { id: number; text: string }[]
+  selectedNodeId?: EARS.EntityId;
+  graph: {
+    nodes: Partial<StepEntity>[];
+    edges: EdgeEntity[];
+  };
+  flows: Partial<FlowEntity>[];
+  rootFlow?: Partial<FlowEntity>;
+  logs: { id: number; text: string }[];
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -46,34 +51,43 @@ const flowsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
-      const ev = typeOf('FLOWS_STARTUP', event)
-      const ui = startupToUiGraph(ev.data)
-      return { ...ui, logs: [] }
+      const ev = typeOf('FLOWS_STARTUP', event);
+      return { ...ev.data, logs: [] }
     }),
 
     /* ── UI interactions ───────────────────────────────── */
-    selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId }),
-
+    selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
-      context.edges[id] = { id, from: ev.src, to: ev.tgt, kind: 'transitions_to' }
+      context.graph.edges[id] = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' }
       context.logs.unshift({ id: Date.now(), text: `${ev.src}→${ev.tgt}` })
-      return { edges: context.edges, logs: context.logs }
+      return { 
+        graph: {
+          ...context.graph,
+          edges: context.graph.edges,
+        },
+        logs: context.logs,
+      }
     }),
 
     createNode: assign(({ context, event }) => {
       const id = `Step-${randId()}`
       const ev = typeOf('NODE.DRAG_CREATE', event)
-      context.nodes[id] = {
+      context.graph.nodes[id] = {
         id,
         stepType: ev.stepType,
         label: `New ${ev.stepType}`,
         x: ev.x,
         y: ev.y,
       }
-      context.selectedNodeId = id
-      return { nodes: context.nodes, selectedNodeId: id }
+      return { 
+        graph: {
+          ...context.graph,
+          nodes: context.graph.nodes,
+        },
+        selectedNodeId: id as EARS.EntityId,
+      }
     }),
   },
   guards: { targetIs },
@@ -81,10 +95,13 @@ const flowsState = setup({
   id,
   initial: 'view',
   context: {
-    nodes: {},
-    events: {},
-    edges: {},
-    logs: [],
+    graph: {
+      nodes: {} as Partial<StepEntity>[],
+      edges: {} as EdgeEntity[],
+    },
+    flows: {} as Partial<FlowEntity>[],
+    rootFlow: undefined as Partial<FlowEntity> | undefined,
+    logs: [] as { id: number; text: string }[],
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
@@ -95,12 +112,15 @@ const flowsState = setup({
 
     },
     view: {
-      initial: 'details',
+      initial: 'overview',
       meta: breadcrumb('view', 'View', true),
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
-        'NODE.DRAG_CREATE': { actions: 'createNode' },
+        'NODE.DRAG_CREATE': {
+          actions: 'createNode',
+          target: '.details',
+        },
       },
       states: {
         overview: {},

@@ -27,6 +27,7 @@ export const flowRows = {
       label: "User Input",
       x: 120,
       y: 80,
+      color: "blue",
     },
     {
       id: "Step-2",
@@ -74,7 +75,7 @@ export const flowRows = {
   role: [
     {
       entityId: "Flow-1",
-      role: EARS.RoleKind.Custom("open_graph"),
+      role: EARS.RoleKind.Custom("root_flow"),
     },
     {
       entityId: "Step-2",
@@ -91,19 +92,19 @@ export const flowRows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Graph containment */
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-1", info: "{}" },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-2", info: "{}" },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-3", info: "{}" },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-4", info: "{}" },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "FlowEvent-1", info: "{}" },
+    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-1", info: {} },
+    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-2", info: {} },
+    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-3", info: {} },
+    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-4", info: {} },
+    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "FlowEvent-1", info: {} },
 
     /* Solid data-flow edges */
-    { srcId: "Step-1", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-2", info: "{}" },
-    { srcId: "Step-2", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-3", info: "{}" },
-    { srcId: "Step-3", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-4", info: "{}" },
+    { srcId: "Step-1", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-2", info: {} },
+    { srcId: "Step-2", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-3", info: {} },
+    { srcId: "Step-3", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-4", info: {} },
 
     /* Event wiring (dashed) */
-    { srcId: "Step-2", kind: EARS.RelKind.EMITS, tgtId: "FlowEvent-1", info: "{}" },
-    { srcId: "FlowEvent-1", kind: EARS.RelKind.CONSUMED_BY, tgtId: "Step-3", info: "{}" },
+    { srcId: "Step-2", kind: EARS.RelKind.EMITS, tgtId: "FlowEvent-1", info: {} },
+    { srcId: "FlowEvent-1", kind: EARS.RelKind.CONSUMED_BY, tgtId: "Step-3", info: {} },
   ],
 } as const;

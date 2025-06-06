@@ -15,8 +15,8 @@
 
     <!-- ▸ VueFlow canvas (center) -->
     <VueFlow
-      :nodes="vueNodes"
-      :edges="vueEdges"
+      :nodes="plainNodes"
+      :edges="plainEdges"
       class="graph"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
@@ -83,7 +83,13 @@ import {
   type FlowsState,
 } from '@/plugins/flows/state'
 import { useSelector } from '@xstate/vue'
-import { colorForType } from '../graph'
+
+function colorForType(type: string) {
+  return ({ input: '#00bcd4', transform: '#9c27b0', llm: '#607d8b', output: '#4caf50' }[
+    type as keyof any
+  ] ?? '#888')
+}
+
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
@@ -91,46 +97,30 @@ import { colorForType } from '../graph'
 const actor: FlowsState = applicationState.system.get(id)
 
 
-const nodes   = useSelector(actor, (s) => s.context.nodes)
-const events  = useSelector(actor, (s) => s.context.events)
-const edges   = useSelector(actor, (s) => s.context.edges)
+const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
+const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
-const selected = useSelector(actor, (s) => s.context.nodes[s.context.selectedNodeId ?? ''])
+const selected = useSelector(actor, (s) => s.context.graph.nodes[s.context.selectedNodeId ?? ''])
 
 /* Transform nodes and edges for Vue-Flow */
-const vueNodes = computed(() => [
-  ...Object.values(nodes.value).map((n) => ({
-    id: n.id,
-    position: { x: n.x, y: n.y },
-    data: n,
-    style: {
-      border: `2px solid ${colorForType(n.stepType)}`,
-      'border-radius': '8px',
-      'background-color': 'transparent',
-      padding: '6px 14px',
-      color: '#fff',
-    },
-    label: n.label,
+const plainNodes = computed(() =>
+  Object.values(nodes.value).map((n) => ({
+    /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
+    id       : n.id!,
+    type     : n.entityType === 'Step' ? 'step' : 'event',
+    position : { x: n.x ?? 0, y: n.y ?? 0 },
+    data     : n,
   })),
-  ...Object.values(events.value).map((e) => ({
-    id: e.id,
-    position: { x: 0, y: 0 },
-    data: e,
-  }))
-])
+)
 
-const vueEdges = computed(() => 
-  Object.values(edges.value).map((e) => {
-    const dashed = e.kind !== 'transitions_to'
-    return {
-      id: e.id,
-      source: e.from,
-      target: e.to,
-      type: dashed ? 'straight' : 'smoothstep',
-      style: dashed ? { 'stroke-dasharray': '4 4', stroke: '#b084f5' } : undefined,
-      markerEnd: { type: MarkerType.ArrowClosed, color: dashed ? '#b084f5' : '#999' },
-    }
-  })
+const plainEdges = computed(() =>
+  Object.values(edges.value).map((e) => ({
+    id     : e.id,
+    source : e.source,
+    target : e.target,
+    type   : 'generic',      // handled by slot above
+    data   : { kind: e.kind },
+  })),
 )
 
 /* ------------------------------------------------------------ */
