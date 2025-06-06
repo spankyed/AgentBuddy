@@ -45,6 +45,11 @@ export const tx = (typeOrId: EARS.Entity | EARS.EntityId) => {
     unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => (edgeStore.unlink({
       sourceEntity: id, relationType: k, targetEntity: t
     }), self),
+    unlinkWhere: (c?: { kind?: EARS.RelKind, target?: EARS.EntityId }) => (edgeStore.unlink({
+      sourceEntity: id,
+      targetEntity: c?.target,
+      relationType: c?.kind,
+    }), self),
 
     destroy: () => (destroyEntity(id), undefined as never),
     id: () => id,
