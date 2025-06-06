@@ -36,7 +36,7 @@ export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
     inIds   : (sub: EARS.EntityId[]) =>
       (ids = ids.filter(i => sub.includes(i)), self),
 
-    withAttr: (k: EARS.AttrKind, v?: unknown) =>
+    where: (k: EARS.AttrKind, v?: unknown) =>
       (ids = v === undefined
         ? ids.filter(i => getAttrs(i, k).length)
         : ids.filter(i =>

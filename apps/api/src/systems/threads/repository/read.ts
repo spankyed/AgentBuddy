@@ -20,17 +20,6 @@ export const getThreadTags = (threadId: EARS.EntityId) =>
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
     .rows(tagCols);
 
-export const getRelatedThread = (
-  threadId: EARS.EntityId,
-  relation: ThreadLinkRelation
-) =>
-  qx(threadId)
-    .linkRows(
-      EARS.RelKind.Custom(relation),
-      EARS.Entity.Thread,
-      threadCols
-    );
-
 export const getLinkedThreads = (threadId: EARS.EntityId) =>
   qx(threadId)
     .linkRows(
