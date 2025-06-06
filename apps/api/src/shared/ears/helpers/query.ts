@@ -1,9 +1,9 @@
 /*─────────────────────────────────────────────────────────────
- * qx.ts – fluent *query* wrapper around attribute‑store (v2)
+ * qx.ts – fluent *query* wrapper around attribute‑store (v4)
  *─────────────────────────────────────────────────────────────*/
 import {
   /* entity scopes */ getAllEntities, getEntitiesOfType,
-  /* attrs / roles */ getAttr, getAttrs, getAll, getRoles,
+  /* attrs / roles */ getAttr, getAttrs, getRoles,
   /* look‑ups      */ queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
@@ -32,35 +32,46 @@ export const qx = (
     | readonly EARS.Entity[]
     | readonly EARS.EntityId[],
 ) => {
-  /* resolve initial id list (immutable) */
-  const ids: EARS.EntityId[] = (() => {
-    if (seed === undefined) return getAllEntities();
+  let ids: readonly EARS.EntityId[];
 
-    if (Array.isArray(seed)) {
-      return (seed as readonly unknown[]).every(isEntity)
-        ? (seed as readonly EARS.Entity[]).flatMap(getEntitiesOfType)
-        : [...(seed as readonly EARS.EntityId[])];
-    }
+  if (seed === undefined) {
+    ids = getAllEntities();
+  } else if (Array.isArray(seed)) {
+    const allEntities = (seed as readonly unknown[]).every(isEntity);
+    ids = allEntities
+      ? (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t))
+      : [...(seed as readonly EARS.EntityId[])];
+  } else if (isEntity(seed)) {
+    ids = getEntitiesOfType(seed);
+  } else {
+    ids = [seed as EARS.EntityId];
+  }
 
-    return isEntity(seed) ? getEntitiesOfType(seed) : [seed as EARS.EntityId];
-  })();
-
-  /* handy creator for new cursors */
-  const nxt = (list: EARS.EntityId[]) => qx(list);
+  /* create a new immutable cursor */
+  const next = (newIds: readonly EARS.EntityId[]) => qx(newIds);
 
   const self = {
-    /*─ filters (all immutable) ─*/
-    ofType: (t: EARS.Entity) => nxt(ids.filter(hasPrefix(t))),
-    inIds: (sub: EARS.EntityId[]) => nxt(ids.filter(i => sub.includes(i))),
-    where: (k: EARS.AttrKind, v?: unknown) => nxt(v === undefined
-      ? ids.filter(i => getAttrs(i, k).length)
-      : ids.filter(i => queryEntitiesByAttribute(k, v).includes(i))),
-    withRole: (r: string) => nxt(ids.filter(i => getRoles(i).includes(r))),
-    relatedTo: (target: EARS.EntityId) => nxt(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
-    related: (kind: string, other: EARS.EntityId, asSrc = false) =>
-      nxt(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
+    /*─ filters ─*/
+    ofType: (t: EARS.Entity) => next(ids.filter(hasPrefix(t))),
 
-    /*─ graph traversal retains immutability ─*/
+    inIds: (sub: readonly EARS.EntityId[]) => next(ids.filter(i => sub.includes(i))),
+
+    where: (k: EARS.AttrKind, v?: unknown) => {
+      const picked = v === undefined
+        ? ids.filter(i => getAttrs(i, k).length)
+        : ids.filter(i => queryEntitiesByAttribute(k, v).includes(i));
+      return next(picked);
+    },
+
+    withRole: (r: string) => next(ids.filter(i => getRoles(i).includes(r))),
+
+    relatedTo: (target: EARS.EntityId) =>
+      next(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
+
+    related: (kind: string, other: EARS.EntityId, asSrc = false) =>
+      next(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
+
+    /*─ graph traversal ─*/
     linksTo: (
       relKinds: string | readonly string[],
       tgtType: EARS.Entity | readonly EARS.Entity[],
@@ -74,7 +85,9 @@ export const qx = (
       for (const src of ids) for (const k of kinds)
         queryEntitiesByRelationTo(k, src, asSrc)
           .filter(matches)
-          .forEach(id => out.add(id));
+          .forEach(i => {
+            if (i !== src) out.add(i);           /* ➌ guard reflexive links */
+          });
 
       return qx([...out]);
     },
@@ -103,30 +116,32 @@ export const qx = (
       kinds?: string | readonly string[],
       asSrc = true,
     ): EARS.EntityId[] => {
-      const ks = kinds ? asArr(kinds) : Object.keys(relationIndex);
+      const ksInput = kinds ? asArr(kinds) : (Object.keys(relationIndex) as readonly string[]);
+      const ks = ksInput.filter(k => relationIndex[k] !== undefined); /* ➊ validate once */
       const out = new Set<EARS.EntityId>();
       for (const i of ids) for (const k of ks) {
-        const dir = relationIndex[k];
-        if (!dir) continue;
+        const dir = relationIndex[k]!;           // safe: ks filtered above
         (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
       }
       return [...out];
     },
 
     /*─ projections ─*/
-    pick: <A extends readonly string[]>(fields: A) =>
-      ids.map(id => {
-        const o: any = { id };
-        fields.forEach(k => {
+    pick: <A extends readonly string[]>(f: A) =>
+      ids.map(i => {
+        const o: any = { id: i };
+        f.forEach(k => {
           if (k === "id") return;
-          o[k] = getAttr(id, EARS.AttrKind.Custom(k));
+          o[k] = getAttr(i, EARS.AttrKind.Custom(k));
         });
         return o as { id: EARS.EntityId } & { [K in A[number]]: unknown };
       }),
-    pickOne: liftOne(<A extends readonly string[]>(f: A) => self.pick(f)),
+    pickOne: liftOne(function <A extends readonly string[]>(f: A) {
+      return self.pick(f);
+    }),
     rows: <A extends readonly string[]>(f: A) => self.pick(f),
 
-    /*─ traverse + project in one call ─*/
+    /*─ traverse + project ─*/
     linkRows: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
       tgtType: EARS.Entity | readonly EARS.Entity[],
@@ -149,31 +164,30 @@ export const qx = (
         if (a === b) return 0;
         if (a === undefined) return 1;
         if (b === undefined) return -1;
-        return typeof a === "number" && typeof b === "number"
-          ? a - b
-          : String(a).localeCompare(String(b));
+        if (typeof a === "number" && typeof b === "number") return a - b;
+        return String(a).localeCompare(String(b));
       };
       const sorted = [...ids].sort((aId, bId) => {
         const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
         return dir === "asc" ? res : -res;
       });
-      return qx(sorted);
+      return next(sorted);
     },
 
-    limit: (n: number) => nxt(ids.slice(0, n)),
+    limit: (n: number) => next(ids.slice(0, n)),
 
     /*─ misc extractors ─*/
     ids: () => [...ids],
     count: () => ids.length,
     first: () => ids[0] ?? null,
-    last: () => ids.at(-1) ?? null,
+    last: () => ids.length ? ids[ids.length - 1] : null,
     exists: () => ids.length > 0,
 
-    /*─ functional helpers (leave mutable variations intact) ─*/
+    /*─ functional helpers ─*/
     map: <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
-    forEach: (fn: (i: EARS.EntityId) => void) => (ids.forEach(fn), self),
+    forEach: (fn: (i: EARS.EntityId) => void) => { ids.forEach(fn); return self; },
     reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => ids.reduce(fn, init),
-  };
+  } as const;
 
   return self;
 };
