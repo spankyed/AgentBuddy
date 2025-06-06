@@ -13,16 +13,16 @@ const threadCols = ["shortCode", "topic", "threadType", "status"]  as const;
 export const getThreadMessages = (threadId: EARS.EntityId) =>
   qx(threadId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
-    .rows(msgCols);
+    .pick(msgCols);
 
 export const getThreadTags = (threadId: EARS.EntityId) =>
   qx(threadId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-    .rows(tagCols);
+    .pick(tagCols);
 
 export const getLinkedThreads = (threadId: EARS.EntityId) =>
   qx(threadId)
-    .linkRows(
+    .linksPick(
       ThreadRelations,
       EARS.Entity.Thread,
       threadCols

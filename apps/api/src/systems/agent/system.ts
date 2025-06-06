@@ -2,7 +2,6 @@ import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActor
 import { v4 as uuid } from 'uuid';
 import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
-import { rows } from '../_backend/mock-data';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';

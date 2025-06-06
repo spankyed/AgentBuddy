@@ -276,11 +276,11 @@
 // 		.then((r) => Number(r[0]?.c || 0));
 // 	if (cnt) return;
 // 	await db.transaction(async (tx) => {
-// 		await tx.insert(entity).values(mock.rows.entity as any);
-// 		await tx.insert(attrText).values(mock.rows.attrText as any);
-// 		await tx.insert(attrTime).values(mock.rows.attrTime as any);
-// 		await tx.insert(role).values(mock.rows.role as any);
-// 		await tx.insert(relation).values(mock.rows.relation as any);
+// 		await tx.insert(entity).values(mock.pick.entity as any);
+// 		await tx.insert(attrText).values(mock.pick.attrText as any);
+// 		await tx.insert(attrTime).values(mock.pick.attrTime as any);
+// 		await tx.insert(role).values(mock.pick.role as any);
+// 		await tx.insert(relation).values(mock.pick.relation as any);
 // 	});
 // }
 

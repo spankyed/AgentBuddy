@@ -9,7 +9,7 @@ export default function agentStartupData(): AgentStartupData {
   const fourMostRecentThreads = qx(EARS.Entity.Thread)
     .orderBy('timestamp', 'desc')
     .limit(4)
-    .rows([
+    .pick([
       "shortCode",
       "topic",
       "instructions",
@@ -23,7 +23,7 @@ export default function agentStartupData(): AgentStartupData {
     currentThread: {
       ...currentThread,
       messages: qx(currentThread.id)
-        .linkRows(
+        .linksPick(
           EARS.RelKind.CONTAINS,
           EARS.Entity.Message,
           ["id", "text", "sender", "timestamp"] as const,

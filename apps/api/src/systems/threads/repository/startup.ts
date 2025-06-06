@@ -18,7 +18,7 @@ export default function threadStartupData(): ThreadStartupData {
         ] as const)!;
 
         // grab tags via relations
-        const tags = qx(id).linkRows(
+        const tags = qx(id).linksPick(
           EARS.RelKind.HAS,
           EARS.Entity.Tag,
           ["name", "color", "timestamp"] as const,
@@ -41,7 +41,7 @@ export default function threadStartupData(): ThreadStartupData {
       })
       .reverse(),
     availableTags: qx(EARS.Entity.Tag)
-      .rows(["name", "color", "timestamp"] as const)
+      .pick(["name", "color", "timestamp"] as const)
       .map(t => ({
         entityType: EARS.Entity.Tag,
         createdAt: t.timestamp ?? Date.now(),

@@ -27,7 +27,7 @@ export const getRootFlow = (): EARS.EntityId | undefined =>
 
 export const getFlowSteps = (threadId: EARS.EntityId) =>
   qx(threadId)
-    .linkRows(
+    .linksPick(
       EARS.RelKind.CONTAINS,
       EARS.Entity.Step,
       fields

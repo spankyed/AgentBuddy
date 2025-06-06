@@ -80,8 +80,8 @@ describe('qx – fluent query DSL', () => {
     ).toEqual(['Step-3']);
   });
 
-  it('linkRows() projects linked nodes with selected fields', () => {
-    const rows = qx('Step-1').linkRows(
+  it('linksPick() projects linked nodes with selected fields', () => {
+    const rows = qx('Step-1').linksPick(
       EARS.RelKind.TRANSITIONS_TO,
       EARS.Entity.Step,
       ['label', 'stepType'],
@@ -119,7 +119,7 @@ describe('qx – fluent query DSL', () => {
       // Both Step-1 & Step-2 share the same stepType = 'transform'
       const rows = qx(EARS.Entity.Step)
         .distinct('stepType')
-        .rows(['stepType']);
+        .pick(['stepType']);
       const stepTypes = rows.map(r => r.stepType);
       expect(stepTypes).toEqual(['event-listener', 'transform', 'llm', 'response']); // unique list
     });

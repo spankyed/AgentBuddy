@@ -11,7 +11,7 @@ export function getThreadChatData(
   const thread = qx(threadId)
     .orderBy('timestamp', 'desc')
     .limit(4)
-    .rows([
+    .pick([
       "shortCode",
       "topic",
       "instructions",
@@ -21,7 +21,7 @@ export function getThreadChatData(
   return {
     ...thread[0] as AgentThreadData,
     messages: qx(threadId)
-      .linkRows(
+      .linksPick(
         EARS.RelKind.CONTAINS,
         EARS.Entity.Message,
         ["id", "text", "sender", "timestamp"] as const,

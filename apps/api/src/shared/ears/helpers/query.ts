@@ -148,10 +148,9 @@ export const qx = (
     pickOne: liftOne(function <A extends readonly string[]>(f: A) {
       return self.pick(f);
     }),
-    rows: <A extends readonly string[]>(f: A) => self.pick(f),
 
     /*─ traverse + project in one call ─*/
-    linkRows: <K extends string, A extends readonly string[]>(
+    linksPick: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
       tgtType: MaybeArr<EARS.Entity>,
       fields: A,

@@ -16,7 +16,7 @@ export default function flowsStartupData(): FlowsStartupData {
     .pick(flowCols) as Partial<FlowEntity> | undefined;
 
   const stepNodes = qx(rootFlow?.id ?? 'Flow-1')
-    .linkRows(
+    .linksPick(
       EARS.RelKind.CONTAINS,
       [EARS.Entity.Step, EARS.Entity.FlowEvent],          // we only want the step‑like children
       [

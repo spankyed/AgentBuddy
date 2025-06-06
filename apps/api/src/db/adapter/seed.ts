@@ -12,13 +12,13 @@
 //   if (cnt > 0) return;
 
 //   await db.transaction(async (tx) => {
-//     await tx.insert('entity').values(mock.rows.entity as any);
-//     await tx.insert('attribute_text').values(mock.rows.attrText as any);
+//     await tx.insert('entity').values(mock.pick.entity as any);
+//     await tx.insert('attribute_text').values(mock.pick.attrText as any);
 //     await tx.insert('attribute_timestamp').values(
-//       mock.rows.attrTime.map((r) => ({ ...r, value: r.value as number }))
+//       mock.pick.attrTime.map((r) => ({ ...r, value: r.value as number }))
 //     );
-//     await tx.insert('role').values(mock.rows.role as any);
-//     await tx.insert('relation').values(mock.rows.relation as any);
+//     await tx.insert('role').values(mock.pick.role as any);
+//     await tx.insert('relation').values(mock.pick.relation as any);
 //   });
 // }
 
