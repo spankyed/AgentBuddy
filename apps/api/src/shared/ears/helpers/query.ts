@@ -89,7 +89,7 @@ export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
       asSrc = true,
     ): EARS.EntityId[] => {
       const ks = kinds ? (Array.isArray(kinds) ? kinds : [kinds])
-                       : Object.keys(relationIndex);
+                      : Object.keys(relationIndex);
       const out = new Set<EARS.EntityId>();
       for (const i of ids) for (const k of ks) {
         const dir = relationIndex[k];
@@ -103,7 +103,10 @@ export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
     pick: <A extends readonly string[]>(f: A) =>
       ids.map(i => {
         const o: any = { id: i };
-        f.forEach(k => o[k] = getAttr(i, EARS.AttrKind.Custom(k)));
+        f.forEach(k => {
+          if (k === 'id') return;               // <── don’t clobber it
+          o[k] = getAttr(i, EARS.AttrKind.Custom(k));
+        });
         return o as { id: EARS.EntityId } & { [K in A[number]]: unknown };
       }),
     pickOne: liftOne(function <A extends readonly string[]>(f: A) {
