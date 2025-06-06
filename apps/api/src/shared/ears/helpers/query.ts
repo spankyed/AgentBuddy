@@ -5,8 +5,8 @@ import {
   /* entity scopes */ getAllEntities, getEntitiesOfType,
   /* attrs / roles */ getAttr, getAttrs, getAll, getRoles,
   /* look‑ups      */ queryEntitiesByAttribute,
-                     queryEntitiesInRelationTo,
-                     queryEntitiesByRelationTo,
+                    queryEntitiesInRelationTo,
+                    queryEntitiesByRelationTo,
 } from "@/shared/ears/attribute-storage";
 
 import { relationIndex } from "@/shared/ears/relation-index";
@@ -75,17 +75,23 @@ export const qx = (
     /*─ graph traversal retains qx cursor ─*/
     linksTo: (
       relKinds: string | readonly string[],
-      tgtType : EARS.Entity,
+      tgtType : EARS.Entity | readonly EARS.Entity[],   // ← now accepts many
       asSrc   = true,
     ) => {
-      const kinds = Array.isArray(relKinds) ? relKinds : [relKinds];
-      const nxt   = new Set<EARS.EntityId>();
+      const kinds    = Array.isArray(relKinds) ? relKinds : [relKinds];
+      const targets  = Array.isArray(tgtType)  ? tgtType  : [tgtType];
+      const matches  = (id: EARS.EntityId) =>
+        targets.some(t => hasPrefix(t)(id));
+
+      const nxt = new Set<EARS.EntityId>();
       for (const src of ids) for (const k of kinds)
         queryEntitiesByRelationTo(k, src, asSrc)
-          .filter(hasPrefix(tgtType))
+          .filter(matches)                                // ← multi‑type aware
           .forEach(i => nxt.add(i));
+
       return qx([...nxt]);
     },
+
 
     /*─ low‑level links array ─*/
     links: <K extends string>(
@@ -140,14 +146,16 @@ export const qx = (
     /*─ traverse + project in one call ─*/
     linkRows: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
-      tgtType : EARS.Entity,
+      tgtType : EARS.Entity | readonly EARS.Entity[],   // ← now accepts many
       fields  : A,
     ) => {
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
-      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
-        ...(manyKinds ? { relation } : null),
-        ...qx(id).pickOne(fields)!,
-      }));
+
+      return self.links(relKinds, tgtType)              // links() already handles arrays
+        .map(({ relation, id }) => ({
+          ...(manyKinds ? { relation } : null),
+          ...qx(id).pickOne(fields)!,
+        }));
     },
 
     /*─ list shaping helpers ─*/
