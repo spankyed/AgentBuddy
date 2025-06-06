@@ -6,7 +6,9 @@
     "build": "tsc -p . && tsup src/types.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
-    "dev:serve": "nodemon dist/server.js"
+    "dev:serve": "nodemon dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
   },
   "keywords": [],
   "author": "angel santiago",
@@ -27,6 +29,7 @@
     "fastify": "^5.3.2",
     "openai": "^4.100.0",
     "uuid": "^11.1.0",
+    "vitest": "^3.2.2",
     "ws": "^8.18.2",
     "xstate": "^5.19.2",
     "zod": "^3.24.4"
@@ -40,6 +43,7 @@
     "adapters.ws": "link:@trpc/server/adapters.ws",
     "tsup": "^8.4.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

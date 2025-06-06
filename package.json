@@ -8,6 +8,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:be": "pnpm --filter @abuddy/api test",
     "be": "pnpm --filter @abuddy/api build",
     "fe": "pnpm --filter @abuddy/web build"
   },
