@@ -165,7 +165,7 @@ export const queryEntitiesByAttribute = (
         getAttrs(id, k).some(attr => attr === v),
       );
 
-/** id participates in *any* relation with `target` (both directions) */
+/** target id participates in *any* relation with `target` (both directions) */
 export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
   const out = new Set<EARS.EntityId>();
   for (const k of Object.keys(relationIndex)) {
