@@ -5,7 +5,8 @@ export function toArray<T>(arg: T | T[]): T[] {
   return Array.isArray(arg) ? arg : [arg];
 }
 
-export function asArr<T>(v: T | readonly T[]): readonly T[] {
+export type MaybeArr<T> = T | readonly T[];
+export function asArr<T>(v: MaybeArr<T>): readonly T[] {
   // `as readonly T[]` silences the widening TS does on `[v]`
   return (Array.isArray(v) ? v : [v]) as readonly T[];
 }

@@ -1,5 +1,5 @@
 /*─────────────────────────────────────────────────────────────
- * qx.ts – fluent *query* wrapper around attribute‑store (v4)
+ * qx.ts – fluent *query* wrapper around attribute‑store (v5)
  *─────────────────────────────────────────────────────────────*/
 import {
   /* entity scopes */ getAllEntities, getEntitiesOfType,
@@ -11,15 +11,24 @@ import {
 
 import { relationIndex } from "@/shared/ears/relation-index";
 import { EARS } from "@/shared/ears/types";
-import { asArr } from "@/shared/utils";
+import { asArr, MaybeArr } from "@/shared/utils";
 
 /*──────── helpers ────────*/
 const isEntity = (v: unknown): v is EARS.Entity =>
   Object.values(EARS.Entity).includes(v as EARS.Entity);
 
-const hasPrefix = (t: EARS.Entity) => (id: EARS.EntityId) =>
-  id.startsWith(`${t}-`);
-
+// memoised prefix checker – avoids re‑allocating closures
+const prefixCache = new Map<EARS.Entity, (id: EARS.EntityId) => boolean>();
+const hasPrefix = (t: EARS.Entity) => {
+  let fn = prefixCache.get(t);
+  if (!fn) {
+    fn = (id: EARS.EntityId) => id.startsWith(`${t}-`);
+    prefixCache.set(t, fn);
+  }
+  return fn;
+};
+const b64Encode = (n: number) => Buffer.from(String(n), 'utf8').toString('base64');
+const b64Decode = (s: string) => parseInt(Buffer.from(s, 'base64').toString('utf8'), 10);
 
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
@@ -32,49 +41,49 @@ export const qx = (
     | readonly EARS.Entity[]
     | readonly EARS.EntityId[],
 ) => {
-  let ids: readonly EARS.EntityId[];
+  // always clone to keep chains isolated
+  const resolveSeed = (): EARS.EntityId[] => {
+    if (seed === undefined) return [...getAllEntities()];
+    if (Array.isArray(seed)) {
+      return (seed as readonly unknown[]).every(isEntity)
+        ? (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t))
+        : [...(seed as readonly EARS.EntityId[])];
+    }
+    if (isEntity(seed)) return [...getEntitiesOfType(seed)];
+    return [seed as EARS.EntityId];
+  };
 
-  if (seed === undefined) {
-    ids = getAllEntities();
-  } else if (Array.isArray(seed)) {
-    const allEntities = (seed as readonly unknown[]).every(isEntity);
-    ids = allEntities
-      ? (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t))
-      : [...(seed as readonly EARS.EntityId[])];
-  } else if (isEntity(seed)) {
-    ids = getEntitiesOfType(seed);
-  } else {
-    ids = [seed as EARS.EntityId];
-  }
+  let ids: EARS.EntityId[] = resolveSeed();
 
-  /* create a new immutable cursor */
-  const next = (newIds: readonly EARS.EntityId[]) => qx(newIds);
+  /*–––– internal util to return a fresh cursor ––––*/
+  const setIds = (next: EARS.EntityId[]) => qx(next);
 
   const self = {
     /*─ filters ─*/
-    ofType: (t: EARS.Entity) => next(ids.filter(hasPrefix(t))),
+    ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
 
-    inIds: (sub: readonly EARS.EntityId[]) => next(ids.filter(i => sub.includes(i))),
+    inIds: (sub: readonly EARS.EntityId[]) => setIds(ids.filter(i => sub.includes(i))),
 
-    where: (k: EARS.AttrKind, v?: unknown) => {
-      const picked = v === undefined
-        ? ids.filter(i => getAttrs(i, k).length)
-        : ids.filter(i => queryEntitiesByAttribute(k, v).includes(i));
-      return next(picked);
+    where: (k: EARS.AttrKind | string, v?: unknown) => {
+      const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
+      const next = v === undefined
+        ? ids.filter(i => getAttrs(i, kind).length)
+        : ids.filter(i => queryEntitiesByAttribute(kind, v).includes(i));
+      return setIds(next);
     },
 
-    withRole: (r: string) => next(ids.filter(i => getRoles(i).includes(r))),
+    withRole: (r: string) => setIds(ids.filter(i => getRoles(i).includes(r))),
 
     relatedTo: (target: EARS.EntityId) =>
-      next(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
+      setIds(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
 
     related: (kind: string, other: EARS.EntityId, asSrc = false) =>
-      next(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
+      setIds(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
 
-    /*─ graph traversal ─*/
+    /*─ graph traversal retains isolation ─*/
     linksTo: (
-      relKinds: string | readonly string[],
-      tgtType: EARS.Entity | readonly EARS.Entity[],
+      relKinds: MaybeArr<string>,
+      tgtType: MaybeArr<EARS.Entity>,
       asSrc = true,
     ) => {
       const kinds = asArr(relKinds);
@@ -82,20 +91,20 @@ export const qx = (
       const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
 
       const out = new Set<EARS.EntityId>();
-      for (const src of ids) for (const k of kinds)
+      for (const src of ids) for (const k of kinds) {
         queryEntitiesByRelationTo(k, src, asSrc)
           .filter(matches)
           .forEach(i => {
-            if (i !== src) out.add(i);           /* ➌ guard reflexive links */
+            if (i !== src) out.add(i);            // guard reflexive links
           });
-
+      }
       return qx([...out]);
     },
 
     /*─ low‑level links array ─*/
     links: <K extends string>(
       relKinds: K | readonly K[],
-      tgtType: EARS.Entity | readonly EARS.Entity[],
+      tgtType: MaybeArr<EARS.Entity>,
       asSrc = true,
     ): Array<{ relation: K; id: EARS.EntityId }> => {
       const kinds = asArr(relKinds);
@@ -127,10 +136,10 @@ export const qx = (
     },
 
     /*─ projections ─*/
-    pick: <A extends readonly string[]>(f: A) =>
+    pick: <A extends readonly string[]>(fields: A) =>
       ids.map(i => {
         const o: any = { id: i };
-        f.forEach(k => {
+        fields.forEach(k => {
           if (k === "id") return;
           o[k] = getAttr(i, EARS.AttrKind.Custom(k));
         });
@@ -141,14 +150,14 @@ export const qx = (
     }),
     rows: <A extends readonly string[]>(f: A) => self.pick(f),
 
-    /*─ traverse + project ─*/
+    /*─ traverse + project in one call ─*/
     linkRows: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
-      tgtType: EARS.Entity | readonly EARS.Entity[],
+      tgtType: MaybeArr<EARS.Entity>,
       fields: A,
     ) => {
-      const manyKinds = asArr(relKinds).length > 1;
-      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
+      const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
+      return self.links(relKinds, tgtType).map(({ relation, id }: any) => ({
         ...(manyKinds ? { relation } : null),
         ...qx(id).pickOne(fields)!,
       }));
@@ -167,25 +176,65 @@ export const qx = (
         if (typeof a === "number" && typeof b === "number") return a - b;
         return String(a).localeCompare(String(b));
       };
-      const sorted = [...ids].sort((aId, bId) => {
+      const next = [...ids].sort((aId, bId) => {
         const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
         return dir === "asc" ? res : -res;
       });
-      return next(sorted);
+      return setIds(next);
     },
 
-    limit: (n: number) => next(ids.slice(0, n)),
+    reverse: () => setIds([...ids].reverse()),
+
+    limit: (n: number) => setIds(ids.slice(0, n)),
+
+    /*─ paging, distinct, grouping ─*/
+    
+    page: (size: number, cursor?: string | null) => {
+
+      const start       = cursor ? b64Decode(cursor) : 0;
+      const end         = start + size;
+      const sliceIds    = ids.slice(start, end);
+      const nextCursor  = end < ids.length ? b64Encode(end) : null;
+
+      return { items: sliceIds, nextCursor } as const;
+    },
+
+    distinct: (field?: string) => {
+      let next: EARS.EntityId[];
+      if (!field) {
+        next = [...new Set(ids)];
+      } else {
+        const seen = new Set<unknown>();
+        next = ids.filter(id => {
+          const val = getAttr(id, EARS.AttrKind.Custom(field));
+          if (seen.has(val)) return false;
+          seen.add(val);
+          return true;
+        });
+      }
+      return setIds(next);
+    },
+
+    groupBy: (field: string) => {
+      const groups = new Map<unknown, ReturnType<typeof qx>>();
+      ids.forEach(id => {
+        const key = getAttr(id, EARS.AttrKind.Custom(field));
+        const bucket = groups.get(key) ?? qx([]);
+        groups.set(key, qx([...bucket.ids(), id]));
+      });
+      return groups;
+    },
 
     /*─ misc extractors ─*/
     ids: () => [...ids],
     count: () => ids.length,
     first: () => ids[0] ?? null,
-    last: () => ids.length ? ids[ids.length - 1] : null,
+    last: () => (ids.length ? ids[ids.length - 1] : null),
     exists: () => ids.length > 0,
 
     /*─ functional helpers ─*/
     map: <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
-    forEach: (fn: (i: EARS.EntityId) => void) => { ids.forEach(fn); return self; },
+    forEach: (fn: (i: EARS.EntityId) => void) => (ids.forEach(fn), self),
     reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => ids.reduce(fn, init),
   } as const;
 

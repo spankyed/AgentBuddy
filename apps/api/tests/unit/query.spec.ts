@@ -1,5 +1,5 @@
 /**
- * query.spec.ts – unit‑tests for qx.ts using the real attribute‑store.
+ * query.spec.ts – unit-tests for qx.ts using the real attribute-store.
  *
  * Run:  npx vitest
  */
@@ -9,13 +9,11 @@ import { EARS } from '@/shared/ears/types';
 import { flowRows } from '@/systems/flows/repository/mock-data';
 import { loadMockData } from '@/systems/_backend/load-initial-data';
 
-
 /* ──────────────────────────────────────────────────────────────── *
  *  Boot the store ONCE for the whole suite. If you have a helper
  *  to clear/teardown the store, call it here before seeding.
  * ──────────────────────────────────────────────────────────────── */
 beforeAll(() => {
-  // If your attribute‑store exposes a reset/clear utility, call it first.
   //   import { clearStore } from '@/shared/ears/attribute-storage/testing';
   //   clearStore();
   loadMockData();
@@ -24,12 +22,13 @@ beforeAll(() => {
 describe('qx – fluent query DSL', () => {
   /* ───────────── seed handling ───────────── */
   it('returns *all* entities when called with no seed', () => {
-    // expect(qx().count()).toBe(flowRows.entity.length); // ! relations are entities too
-    // expect(qx().count()).toBe(flowRows.entity.length + flowRows.relation.length);
+    const totalEntities =
+      flowRows.entity.length + flowRows.relation.length;
+    // expect(qx().count()).toBe(totalEntities);
   });
 
   it('filters by a single entity type', () => {
-    expect(qx(EARS.Entity.Step).ids()).toEqual([  
+    expect(qx(EARS.Entity.Step).ids()).toEqual([
       'Step-1',
       'Step-2',
       'Step-3',
@@ -101,11 +100,59 @@ describe('qx – fluent query DSL', () => {
     expect(ids).toEqual(['Step-1', 'Step-2']);
   });
 
+  it('reverse() flips the current ordering', () => {
+    const asc  = qx(EARS.Entity.Step).orderBy('createdAt', 'asc').ids();
+    const desc = qx(EARS.Entity.Step).orderBy('createdAt', 'asc').reverse().ids();
+    expect(desc).toEqual([...asc].reverse());
+  });
+
+  /* ──────── new expressiveness helpers ──────── */
+  describe('distinct()', () => {
+    it('removes duplicate IDs', () => {
+      const ids = qx(['Step-1', 'Step-1', 'Step-2'])
+        .distinct()
+        .ids();
+      expect(ids).toEqual(['Step-1', 'Step-2']);
+    });
+
+    it('dedupes by an attribute value', () => {
+      // Both Step-1 & Step-2 share the same stepType = 'transform'
+      const rows = qx(EARS.Entity.Step)
+        .distinct('stepType')
+        .rows(['stepType']);
+      const stepTypes = rows.map(r => r.stepType);
+      expect(stepTypes).toEqual(['event-listener', 'transform', 'llm', 'response']); // unique list
+    });
+  });
+
+  describe('groupBy()', () => {
+    it('splits entities into buckets keyed by attribute', () => {
+      const grouped = qx(EARS.Entity.Step)
+        .groupBy('stepType'); // Map<string, Qx>
+      expect(grouped.get('transform')!.count()).toBe(1);
+      expect(grouped.get('llm')!.count()).toBe(1);
+      expect(grouped.get('response')!.count()).toBe(1);
+      expect(grouped.get('event-listener')!.count()).toBe(1);
+    });
+  });
+
+
+  describe('page()', () => {
+    it('returns chunks of the requested size with a cursor', () => {
+      const page1 = qx(EARS.Entity.Step).orderBy('createdAt').page(2);
+      expect(page1.items).toHaveLength(2);
+      expect(page1.nextCursor).not.toBeNull();
+
+      const page2 = qx(EARS.Entity.Step).orderBy('createdAt').page(2, page1.nextCursor!);
+      expect(page2.items).toHaveLength(2);
+      // ensure no overlap between pages
+      expect(page2.items).toEqual(expect.not.arrayContaining(page1.items));
+    });
+  });
+
   /* ────────── edge identifiers ────────── */
   it('edgeIds() exposes raw relation identifiers', () => {
     const edges = qx('Step-2').edgeIds(EARS.RelKind.TRANSITIONS_TO, true);
-    // We don’t know the exact ID format that tx.link() uses, but we
-    // know there should be exactly one edge and it should mention the kind.
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });
