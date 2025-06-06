@@ -89,7 +89,7 @@
 // 			exec: () =>
 // 				db
 // 					.insert(relation)
-// 					.values({ srcId: src, kind, tgtId: tgt, info: JSON.stringify(info) }),
+// 					.values({ source: src, kind, target: tgt, info: JSON.stringify(info) }),
 // 		});
 // 	},
 
@@ -116,9 +116,9 @@
 // 		}
 // 		for (const r of await db.select().from(relation)) {
 // 			addRelation(
-// 				r.srcId as EARS.EntityId,
+// 				r.source as EARS.EntityId,
 // 				r.kind,
-// 				r.tgtId as EARS.EntityId,
+// 				r.target as EARS.EntityId,
 // 				JSON.parse(r.info),
 // 			);
 // 		}

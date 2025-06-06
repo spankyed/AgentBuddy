@@ -176,7 +176,7 @@ export function lowestCommonAncestor(
 // } from "@/shared/ears/graph";
 
 // /* 1 ▸ guard before linking */
-// if (wouldCreateCycle(srcId, tgtId, [
+// if (wouldCreateCycle(source, target, [
 //       EARS.RelKind.BLOCKS,
 //       EARS.RelKind.DEPENDS_ON,
 //     ])) throw new Error("cycle!");

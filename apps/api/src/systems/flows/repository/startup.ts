@@ -38,14 +38,14 @@ export default function flowsStartupData(): FlowsStartupData {
     EARS.RelKind.CONSUMED_BY,
   ]
 
-  for (const srcId of stepIds) {
-    qx(srcId)
+  for (const source of stepIds) {
+    qx(source)
       .links(edgeKinds, [EARS.Entity.Step, EARS.Entity.FlowEvent]) // ! need to combine with FlowEvent
-      .forEach(({ relation, id: tgtId }) => {
+      .forEach(({ relation, id: target }) => {
         const relId = edgeStore.relIds({
-          sourceEntity: srcId,
+          sourceEntity: source,
           relationType: relation,
-          targetEntity: tgtId,
+          targetEntity: target,
         })[0];
 
         if (seen.has(relId)) return;
@@ -53,8 +53,8 @@ export default function flowsStartupData(): FlowsStartupData {
         edges.push({
           id: relId,
           kind: relation,
-          source: srcId,
-          target: tgtId,
+          source,
+          target,
           info: {},
         });
       });

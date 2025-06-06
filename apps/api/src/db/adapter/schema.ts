@@ -47,14 +47,14 @@
 // export const relation = sqliteTable(
 // 	"relation",
 // 	{
-// 		srcId: text("src_id")
+// 		source: text("src_id")
 // 			.notNull()
 // 			.references(() => entity.id),
 // 		kind: text("kind").notNull(),
-// 		tgtId: text("tgt_id")
+// 		target: text("tgt_id")
 // 			.notNull()
 // 			.references(() => entity.id),
 // 		info: text("info").notNull().default("{}"),
 // 	},
-// 	(t) => ({ pk: [t.srcId, t.kind, t.tgtId] as const }),
+// 	(t) => ({ pk: [t.source, t.kind, t.target] as const }),
 // );

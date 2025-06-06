@@ -92,19 +92,19 @@ export const flowRows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Graph containment */
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-1", info: {} },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-2", info: {} },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-3", info: {} },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "Step-4", info: {} },
-    { srcId: "Flow-1", kind: EARS.RelKind.CONTAINS, tgtId: "FlowEvent-1", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-1", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-2", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-3", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-4", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "FlowEvent-1", info: {} },
 
     /* Solid data-flow edges */
-    { srcId: "Step-1", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-2", info: {} },
-    { srcId: "Step-2", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-3", info: {} },
-    { srcId: "Step-3", kind: EARS.RelKind.TRANSITIONS_TO, tgtId: "Step-4", info: {} },
+    { source: "Step-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-2", info: {} },
+    { source: "Step-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-3", info: {} },
+    { source: "Step-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-4", info: {} },
 
     /* Event wiring (dashed) */
-    { srcId: "Step-2", kind: EARS.RelKind.EMITS, tgtId: "FlowEvent-1", info: {} },
-    { srcId: "FlowEvent-1", kind: EARS.RelKind.CONSUMED_BY, tgtId: "Step-3", info: {} },
+    { source: "Step-2", kind: EARS.RelKind.EMITS, target: "FlowEvent-1", info: {} },
+    { source: "FlowEvent-1", kind: EARS.RelKind.CONSUMED_BY, target: "Step-3", info: {} },
   ],
 } as const;

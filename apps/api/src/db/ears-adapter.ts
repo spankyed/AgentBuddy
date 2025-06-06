@@ -59,12 +59,12 @@
 // export const relation = pgTable(
 // 	"relation",
 // 	{
-// 		srcId: varchar("src_id", { length: 64 }).references(() => entity.id),
+// 		source: varchar("src_id", { length: 64 }).references(() => entity.id),
 // 		kind: text("kind").notNull(),
-// 		tgtId: varchar("tgt_id", { length: 64 }).references(() => entity.id),
+// 		target: varchar("tgt_id", { length: 64 }).references(() => entity.id),
 // 		info: jsonb("info").$type<Record<string, unknown>>().default({}),
 // 	},
-// 	(t) => ({ pk: [t.srcId, t.kind, t.tgtId] }),
+// 	(t) => ({ pk: [t.source, t.kind, t.target] }),
 // );
 
 // //───────────────────────────────────────────────────────────────────────────
@@ -116,21 +116,21 @@
 // 	],
 // 	relation: [
 // 		{
-// 			srcId: "Agent-demo",
+// 			source: "Agent-demo",
 // 			kind: EARS.RelKind.HAS,
-// 			tgtId: "Thread-ui",
+// 			target: "Thread-ui",
 // 			info: {},
 // 		},
 // 		{
-// 			srcId: "Thread-ui",
+// 			source: "Thread-ui",
 // 			kind: EARS.RelKind.CONTAINS,
-// 			tgtId: "Msg-1",
+// 			target: "Msg-1",
 // 			info: {},
 // 		},
 // 		{
-// 			srcId: "Thread-ui",
+// 			source: "Thread-ui",
 // 			kind: EARS.RelKind.CONTAINS,
-// 			tgtId: "Msg-2",
+// 			target: "Msg-2",
 // 			info: {},
 // 		},
 // 	],
@@ -217,7 +217,7 @@
 // 		inMemStore.addRelation(src, kind, tgt, info);
 // 		push({
 // 			exec: () =>
-// 				db.insert(relation).values({ srcId: src, kind, tgtId: tgt, info }),
+// 				db.insert(relation).values({ source: src, kind, target: tgt, info }),
 // 		});
 // 	},
 // 	async addRole(id: EARS.EntityId, r: string) {
@@ -252,9 +252,9 @@
 // 		const rels = await db.select().from(relation);
 // 		for (const r of rels) {
 // 			inMemStore.addRelation(
-// 				r.srcId as EARS.EntityId,
+// 				r.source as EARS.EntityId,
 // 				r.kind,
-// 				r.tgtId as EARS.EntityId,
+// 				r.target as EARS.EntityId,
 // 				r.info,
 // 			);
 // 		}

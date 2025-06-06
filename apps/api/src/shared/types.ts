@@ -59,8 +59,8 @@ interface RoleAssignment {
   role: EARS.RoleKind;
 }
 interface Relation {
-  srcId: string;
+  source: string;
   kind: EARS.RelKind;
-  tgtId: string;
+  target: string;
   info?: { [key: string]: any; }
 }

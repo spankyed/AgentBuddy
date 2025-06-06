@@ -253,33 +253,33 @@ export const threadRows: Rows = {
      * Messages                                                      *
      *───────────────────────────────────────────────────────────────*/
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Message-1',
+      target: 'Message-1',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Message-2',
+      target: 'Message-2',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Message-3',
+      target: 'Message-3',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Message-4',
+      target: 'Message-4',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.CONTAINS,
-      tgtId: 'Message-5',
+      target: 'Message-5',
       info: {},
     },
     
@@ -287,21 +287,21 @@ export const threadRows: Rows = {
      * Context items                                                 *
      *───────────────────────────────────────────────────────────────*/
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'ContextItem-1',
+      target: 'ContextItem-1',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'ContextItem-2',
+      target: 'ContextItem-2',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'ContextItem-3',
+      target: 'ContextItem-3',
       info: {},
     },
     
@@ -309,9 +309,9 @@ export const threadRows: Rows = {
      * Canvas content                                                *
      *───────────────────────────────────────────────────────────────*/
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'CanvasItem-1',
+      target: 'CanvasItem-1',
       info: {},
     },
 
@@ -319,63 +319,63 @@ export const threadRows: Rows = {
      * Thread-tag relationships                                      *
      *───────────────────────────────────────────────────────────────*/
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-1',
+      target: 'Tag-1',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-2',
+      target: 'Tag-2',
       info: {},
     },
     {
-      srcId: 'Thread-1',
+      source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-3',
+      target: 'Tag-3',
       info: {},
     },
     {
-      srcId: 'Thread-2',
+      source: 'Thread-2',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-4',
+      target: 'Tag-4',
       info: {},
     },
     {
-      srcId: 'Thread-2',
+      source: 'Thread-2',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-3',
+      target: 'Tag-3',
       info: {},
     },
     {
-      srcId: 'Thread-3',
+      source: 'Thread-3',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-1',
+      target: 'Tag-1',
       info: {},
     },
     {
-      srcId: 'Thread-3',
+      source: 'Thread-3',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-5',
+      target: 'Tag-5',
       info: {},
     },
     {
-      srcId: 'Thread-3',
+      source: 'Thread-3',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-2',
+      target: 'Tag-2',
       info: {},
     },
     {
-      srcId: 'Thread-4',
+      source: 'Thread-4',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-6',
+      target: 'Tag-6',
       info: {},
     },
     {
-      srcId: 'Thread-4',
+      source: 'Thread-4',
       kind: EARS.RelKind.HAS,
-      tgtId: 'Tag-7',
+      target: 'Tag-7',
       info: {},
     },
 
@@ -383,21 +383,21 @@ export const threadRows: Rows = {
      * Parent-child thread relationships                             *
      *───────────────────────────────────────────────────────────────*/
     {
-      srcId: 'Thread-4',
+      source: 'Thread-4',
       kind: EARS.RelKind.PARENT_OF,
-      tgtId: 'Thread-3',
+      target: 'Thread-3',
       info: {},
     },
     {
-      srcId: 'Thread-4',
+      source: 'Thread-4',
       kind: EARS.RelKind.PARENT_OF,
-      tgtId: 'Thread-2',
+      target: 'Thread-2',
       info: {},
     },
     {
-      srcId: 'Thread-2',
+      source: 'Thread-2',
       kind: EARS.RelKind.PARENT_OF,
-      tgtId: 'Thread-1',
+      target: 'Thread-1',
       info: {},
     },
   ],

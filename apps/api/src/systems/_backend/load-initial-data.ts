@@ -40,8 +40,8 @@ export function loadMockData(): void {
    * 2 ▸ Create relations     *
    *──────────────────────────*/
   for (const rel of relation) {
-    const src = entityIds[rel.srcId];
-    const tgt = entityIds[rel.tgtId];
+    const src = entityIds[rel.source];
+    const tgt = entityIds[rel.target];
     if (src && tgt) {
       tx(src).link(rel.kind, tgt);
     }
