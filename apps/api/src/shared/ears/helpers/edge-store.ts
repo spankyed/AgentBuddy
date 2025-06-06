@@ -41,6 +41,9 @@ const matchIds = (
 };
 
 export const edgeStore = {
+  relIds: (w: Parameters<typeof matchIds>[0]) =>
+    matchIds(w),
+
   /** full RelationDetail objects */
   find: (w: Partial<EARS.RelationDetail>) =>
     matchIds(w).map(
