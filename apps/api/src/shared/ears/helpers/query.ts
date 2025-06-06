@@ -23,12 +23,31 @@ const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
 
 /*──────── entry ────────*/
-export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
-  let ids: EARS.EntityId[] =
-    seed === undefined  ? getAllEntities()
-  : Array.isArray(seed) ? [...seed]
-  : isEntity(seed)      ? getEntitiesOfType(seed)
-                        : [seed as EARS.EntityId];
+export const qx = (
+  seed?:
+    | EARS.EntityId
+    | EARS.Entity
+    | readonly EARS.Entity[]       // ← NEW
+    | readonly EARS.EntityId[],
+) => {
+  let ids: EARS.EntityId[];
+
+  if (seed === undefined) {
+    ids = getAllEntities();
+  } else if (Array.isArray(seed)) {
+    // decide whether the array is a list of entity TYPES or actual IDs
+    const allEntities = (seed as readonly unknown[]).every(isEntity);
+
+    ids = allEntities
+      ? (seed as readonly EARS.Entity[])
+        .flatMap(t => getEntitiesOfType(t))
+      : [...(seed as readonly EARS.EntityId[])];
+
+  } else if (isEntity(seed)) {
+    ids = getEntitiesOfType(seed);
+  } else {
+    ids = [seed as EARS.EntityId];
+  }
 
   const self = {
     /*─ filters ─*/
@@ -71,15 +90,19 @@ export const qx = (seed?: EARS.EntityId | EARS.Entity | EARS.EntityId[]) => {
     /*─ low‑level links array ─*/
     links: <K extends string>(
       relKinds: K | readonly K[],
-      tgtType : EARS.Entity,
-      asSrc   = true,
+      tgtType: EARS.Entity | readonly EARS.Entity[],  // ← accept single or many
+      asSrc = true,
     ): Array<{ relation: K; id: EARS.EntityId }> => {
       const kinds = Array.isArray(relKinds) ? relKinds : [relKinds];
-      const out  : Array<{ relation: K; id: EARS.EntityId }> = [];
+      const targets = Array.isArray(tgtType) ? tgtType : [tgtType];     // ← NEW
+      const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
+
+      const out: Array<{ relation: K; id: EARS.EntityId }> = [];
       for (const src of ids) for (const k of kinds)
         queryEntitiesByRelationTo(k, src, asSrc)
-          .filter(hasPrefix(tgtType))
+          .filter(matches)                                                  // ← NEW
           .forEach(id => out.push({ relation: k as K, id }));
+
       return out;
     },
 
