@@ -5,6 +5,11 @@ export function toArray<T>(arg: T | T[]): T[] {
   return Array.isArray(arg) ? arg : [arg];
 }
 
+export function asArr<T>(v: T | readonly T[]): readonly T[] {
+  // `as readonly T[]` silences the widening TS does on `[v]`
+  return (Array.isArray(v) ? v : [v]) as readonly T[];
+}
+
 export function removeLineBreaks(input: string): string {
   return input.replace(/\r?\n|\r/g, "");
 }

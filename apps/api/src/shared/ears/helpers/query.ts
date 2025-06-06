@@ -1,23 +1,25 @@
 /*─────────────────────────────────────────────────────────────
- * qx.ts – fluent *query* wrapper around attribute‑store
+ * qx.ts – fluent *query* wrapper around attribute‑store (v2)
  *─────────────────────────────────────────────────────────────*/
 import {
   /* entity scopes */ getAllEntities, getEntitiesOfType,
   /* attrs / roles */ getAttr, getAttrs, getAll, getRoles,
   /* look‑ups      */ queryEntitiesByAttribute,
-                    queryEntitiesInRelationTo,
-                    queryEntitiesByRelationTo,
+  queryEntitiesInRelationTo,
+  queryEntitiesByRelationTo,
 } from "@/shared/ears/attribute-storage";
 
 import { relationIndex } from "@/shared/ears/relation-index";
-import { EARS }          from "@/shared/ears/types";
+import { EARS } from "@/shared/ears/types";
+import { asArr } from "@/shared/utils";
 
 /*──────── helpers ────────*/
-const isEntity  = (v: unknown): v is EARS.Entity =>
+const isEntity = (v: unknown): v is EARS.Entity =>
   Object.values(EARS.Entity).includes(v as EARS.Entity);
 
 const hasPrefix = (t: EARS.Entity) => (id: EARS.EntityId) =>
   id.startsWith(`${t}-`);
+
 
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
@@ -27,86 +29,70 @@ export const qx = (
   seed?:
     | EARS.EntityId
     | EARS.Entity
-    | readonly EARS.Entity[]       // ← NEW
+    | readonly EARS.Entity[]
     | readonly EARS.EntityId[],
 ) => {
-  let ids: EARS.EntityId[];
+  /* resolve initial id list (immutable) */
+  const ids: EARS.EntityId[] = (() => {
+    if (seed === undefined) return getAllEntities();
 
-  if (seed === undefined) {
-    ids = getAllEntities();
-  } else if (Array.isArray(seed)) {
-    // decide whether the array is a list of entity TYPES or actual IDs
-    const allEntities = (seed as readonly unknown[]).every(isEntity);
+    if (Array.isArray(seed)) {
+      return (seed as readonly unknown[]).every(isEntity)
+        ? (seed as readonly EARS.Entity[]).flatMap(getEntitiesOfType)
+        : [...(seed as readonly EARS.EntityId[])];
+    }
 
-    ids = allEntities
-      ? (seed as readonly EARS.Entity[])
-        .flatMap(t => getEntitiesOfType(t))
-      : [...(seed as readonly EARS.EntityId[])];
+    return isEntity(seed) ? getEntitiesOfType(seed) : [seed as EARS.EntityId];
+  })();
 
-  } else if (isEntity(seed)) {
-    ids = getEntitiesOfType(seed);
-  } else {
-    ids = [seed as EARS.EntityId];
-  }
+  /* handy creator for new cursors */
+  const nxt = (list: EARS.EntityId[]) => qx(list);
 
   const self = {
-    /*─ filters ─*/
-    ofType  : (t: EARS.Entity) => (ids = ids.filter(hasPrefix(t)), self),
-    inIds   : (sub: EARS.EntityId[]) =>
-      (ids = ids.filter(i => sub.includes(i)), self),
-
-    where: (k: EARS.AttrKind, v?: unknown) =>
-      (ids = v === undefined
-        ? ids.filter(i => getAttrs(i, k).length)
-        : ids.filter(i =>
-            queryEntitiesByAttribute(k, v).includes(i),
-          ), self),
-
-    withRole: (r: string) =>
-      (ids = ids.filter(i => getRoles(i).includes(r)), self),
-
-    relatedTo: (target: EARS.EntityId) =>
-      (ids = ids.filter(i => queryEntitiesInRelationTo(target).includes(i)), self),
-
+    /*─ filters (all immutable) ─*/
+    ofType: (t: EARS.Entity) => nxt(ids.filter(hasPrefix(t))),
+    inIds: (sub: EARS.EntityId[]) => nxt(ids.filter(i => sub.includes(i))),
+    where: (k: EARS.AttrKind, v?: unknown) => nxt(v === undefined
+      ? ids.filter(i => getAttrs(i, k).length)
+      : ids.filter(i => queryEntitiesByAttribute(k, v).includes(i))),
+    withRole: (r: string) => nxt(ids.filter(i => getRoles(i).includes(r))),
+    relatedTo: (target: EARS.EntityId) => nxt(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
     related: (kind: string, other: EARS.EntityId, asSrc = false) =>
-      (ids = ids.filter(i =>
-        queryEntitiesByRelationTo(kind, other, asSrc).includes(i)), self),
+      nxt(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
 
-    /*─ graph traversal retains qx cursor ─*/
+    /*─ graph traversal retains immutability ─*/
     linksTo: (
       relKinds: string | readonly string[],
-      tgtType : EARS.Entity | readonly EARS.Entity[],   // ← now accepts many
-      asSrc   = true,
+      tgtType: EARS.Entity | readonly EARS.Entity[],
+      asSrc = true,
     ) => {
-      const kinds    = Array.isArray(relKinds) ? relKinds : [relKinds];
-      const targets  = Array.isArray(tgtType)  ? tgtType  : [tgtType];
-      const matches  = (id: EARS.EntityId) =>
-        targets.some(t => hasPrefix(t)(id));
+      const kinds = asArr(relKinds);
+      const targets = asArr(tgtType);
+      const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
 
-      const nxt = new Set<EARS.EntityId>();
+      const out = new Set<EARS.EntityId>();
       for (const src of ids) for (const k of kinds)
         queryEntitiesByRelationTo(k, src, asSrc)
-          .filter(matches)                                // ← multi‑type aware
-          .forEach(i => nxt.add(i));
+          .filter(matches)
+          .forEach(id => out.add(id));
 
-      return qx([...nxt]);
+      return qx([...out]);
     },
-
 
     /*─ low‑level links array ─*/
     links: <K extends string>(
       relKinds: K | readonly K[],
-      tgtType: EARS.Entity | readonly EARS.Entity[],  // ← accept single or many
+      tgtType: EARS.Entity | readonly EARS.Entity[],
       asSrc = true,
     ): Array<{ relation: K; id: EARS.EntityId }> => {
-      const kinds = Array.isArray(relKinds) ? relKinds : [relKinds];
-      const targets = Array.isArray(tgtType) ? tgtType : [tgtType];     // ← NEW
+      const kinds = asArr(relKinds);
+      const targets = asArr(tgtType);
       const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
 
       const out: Array<{ relation: K; id: EARS.EntityId }> = [];
       for (const src of ids) for (const k of kinds)
         queryEntitiesByRelationTo(k, src, asSrc)
-          .filter(matches)                                                  // ← NEW
+          .filter(matches)
           .forEach(id => out.push({ relation: k as K, id }));
 
       return out;
@@ -117,8 +103,7 @@ export const qx = (
       kinds?: string | readonly string[],
       asSrc = true,
     ): EARS.EntityId[] => {
-      const ks = kinds ? (Array.isArray(kinds) ? kinds : [kinds])
-                      : Object.keys(relationIndex);
+      const ks = kinds ? asArr(kinds) : Object.keys(relationIndex);
       const out = new Set<EARS.EntityId>();
       for (const i of ids) for (const k of ks) {
         const dir = relationIndex[k];
@@ -129,74 +114,65 @@ export const qx = (
     },
 
     /*─ projections ─*/
-    pick: <A extends readonly string[]>(f: A) =>
-      ids.map(i => {
-        const o: any = { id: i };
-        f.forEach(k => {
-          if (k === 'id') return;               // <── don’t clobber it
-          o[k] = getAttr(i, EARS.AttrKind.Custom(k));
+    pick: <A extends readonly string[]>(fields: A) =>
+      ids.map(id => {
+        const o: any = { id };
+        fields.forEach(k => {
+          if (k === "id") return;
+          o[k] = getAttr(id, EARS.AttrKind.Custom(k));
         });
         return o as { id: EARS.EntityId } & { [K in A[number]]: unknown };
       }),
-    pickOne: liftOne(function <A extends readonly string[]>(f: A) {
-      return self.pick(f);
-    }),
-    rows   : <A extends readonly string[]>(f: A) => self.pick(f),
+    pickOne: liftOne(<A extends readonly string[]>(f: A) => self.pick(f)),
+    rows: <A extends readonly string[]>(f: A) => self.pick(f),
 
     /*─ traverse + project in one call ─*/
     linkRows: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
-      tgtType : EARS.Entity | readonly EARS.Entity[],   // ← now accepts many
-      fields  : A,
+      tgtType: EARS.Entity | readonly EARS.Entity[],
+      fields: A,
     ) => {
-      const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
-
-      return self.links(relKinds, tgtType)              // links() already handles arrays
-        .map(({ relation, id }) => ({
-          ...(manyKinds ? { relation } : null),
-          ...qx(id).pickOne(fields)!,
-        }));
+      const manyKinds = asArr(relKinds).length > 1;
+      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
+        ...(manyKinds ? { relation } : null),
+        ...qx(id).pickOne(fields)!,
+      }));
     },
 
     /*─ list shaping helpers ─*/
-    orderBy : (
+    orderBy: (
       field: string,
       dir: "asc" | "desc" = "asc",
     ) => {
-      // treat every plain string as a Custom attribute‑kind
-      // (keeps call‑site terse: .orderBy("timestamp"))
       const kind = EARS.AttrKind.Custom(field);
-
-      // generic compare that works for numbers or strings
       const cmp = (a: unknown, b: unknown) => {
-        if (a === b)            return 0;
-        if (a === undefined)    return 1;          // push blanks last
-        if (b === undefined)    return -1;
-        if (typeof a === "number" && typeof b === "number")
-          return a - b;
-        return String(a).localeCompare(String(b));
+        if (a === b) return 0;
+        if (a === undefined) return 1;
+        if (b === undefined) return -1;
+        return typeof a === "number" && typeof b === "number"
+          ? a - b
+          : String(a).localeCompare(String(b));
       };
-
-      ids.sort((aId, bId) => {
+      const sorted = [...ids].sort((aId, bId) => {
         const res = cmp(getAttr(aId, kind), getAttr(bId, kind));
         return dir === "asc" ? res : -res;
       });
-      return self;                                  // keep the chain alive
+      return qx(sorted);
     },
-    limit : (n: number) =>
-      (ids = ids.slice(0, n), self),
+
+    limit: (n: number) => nxt(ids.slice(0, n)),
 
     /*─ misc extractors ─*/
-    ids   : () => [...ids],
-    count : () => ids.length,
-    first : () => ids[0] ?? null,
-    last  : () => ids.length ? ids[ids.length - 1] : null,
+    ids: () => [...ids],
+    count: () => ids.length,
+    first: () => ids[0] ?? null,
+    last: () => ids.at(-1) ?? null,
     exists: () => ids.length > 0,
 
-    /*─ functional helpers ─*/
-    map   : <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
+    /*─ functional helpers (leave mutable variations intact) ─*/
+    map: <T>(fn: (i: EARS.EntityId) => T) => ids.map(fn),
     forEach: (fn: (i: EARS.EntityId) => void) => (ids.forEach(fn), self),
-    reduce : <T>(fn:(a:T,i:EARS.EntityId)=>T, init:T)=>ids.reduce(fn,init),
+    reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => ids.reduce(fn, init),
   };
 
   return self;
