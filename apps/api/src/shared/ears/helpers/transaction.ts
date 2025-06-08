@@ -1,5 +1,5 @@
 /*───────────────────────────────────────────────────────────────────────────
- * tx.ts – fluent *mutation* helper (now querying via qx)
+ * tx.ts – fluent *mutation* helper (safe & expressive v2)
  *───────────────────────────────────────────────────────────────────────────*/
 import {
   destroyEntity,
@@ -7,18 +7,24 @@ import {
   grantRole, revokeRole,
   addRelation, updateRelation, removeRelation,
   createEntity,
+  getRoles,               // for no‑op guards
 } from "@/shared/ears/attribute-storage";
 
 import { edgeStore } from "@/shared/ears/helpers/edge-store";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
 
-/** begin mutation session */
-export const tx = (typeOrId: EARS.Entity | EARS.EntityId) => {
+export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
   const isNew = Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
-  const id = isNew ? createEntity(typeOrId as EARS.Entity)
+  const id: EARS.EntityId = isNew
+    ? createEntity(typeOrId as EARS.Entity)
     : (typeOrId as EARS.EntityId);
 
+  const preventSelfLoop = (t: EARS.EntityId) => {
+    if (t === id) throw new Error("tx.link(): source and target cannot be the same");
+  };
+
+  /*──────── core fluent surface ───────────*/
   const self = {
     /*─ attrs ─*/
     put: (k: EARS.AttrKind, v: unknown, i?: number) => (putAttr(id, k, v), self),
@@ -27,33 +33,68 @@ export const tx = (typeOrId: EARS.Entity | EARS.EntityId) => {
     dropIf: (k: EARS.AttrKind, c: unknown) => (dropIf(id, k, c), self),
 
     /*─ roles ─*/
-    grant: (r: string) => (grantRole(id, r), self),
-    revoke: (r: string) => (revokeRole(id, r), self),
-    ensure: (r: string, scope = qx().withRole(r).ids()) =>
-      (scope.forEach(e => revokeRole(e, r)), grantRole(id, r), self),
+    grant: (r: string) => {
+      if (!getRoles(id).includes(r)) grantRole(id, r);
+      return self;
+    },
+    revoke: (r: string) => {
+      if (getRoles(id).includes(r)) revokeRole(id, r);
+      return self;
+    },
+    ensure: (r: string, scope = qx().withRole(r).ids()) => {
+      scope.forEach(e => revokeRole(e, r));
+      grantRole(id, r);
+      return self;
+    },
 
-    /*─ relations by rel‑ID ─*/
-    link: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => (addRelation(id, k, t, i), self),
-    relPatch: (rel: EARS.EntityId, u: { src: EARS.EntityId, tgt: EARS.EntityId, info?: unknown }) => (updateRelation(rel, u.src, u.tgt, u.info), self),
+    /*─ relations (raw) ─*/
+    link: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => {
+      preventSelfLoop(t); // ! this is being reached
+      addRelation(id, k, t, i);
+      return self;
+    },
+    relPatch: (
+      rel: EARS.EntityId,
+      u: { src: EARS.EntityId; tgt: EARS.EntityId; info?: unknown },
+    ) => (updateRelation(rel, u.src, u.tgt, u.info), self),
     unlink: (rel: EARS.EntityId) => (removeRelation(rel), self),
 
-    /*─ criteria‑edges ─*/
-    linkOne: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => (edgeStore.linkOne(id, k, t, i), self),
-    patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: { newTarget: EARS.EntityId, newInfo?: unknown }) => (edgeStore.patchOne(
-      { sourceEntity: id, relationType: k, targetEntity: t },
-      { newTarget: u.newTarget, newInfo: u.newInfo }), self),
-    unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => (edgeStore.unlink({
-      sourceEntity: id, relationType: k, targetEntity: t
-    }), self),
-    unlinkWhere: (c?: { kind?: EARS.RelKind, target?: EARS.EntityId }) => (edgeStore.unlink({
-      sourceEntity: id,
-      targetEntity: c?.target,
-      relationType: c?.kind,
-    }), self),
+    /*─ criteria‑edges (edge‑store) ─*/
+    linkOne: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => {
+      preventSelfLoop(t);
+      edgeStore.linkOne(id, k, t, i);
+      return self;
+    },
+    patchLink: (
+      k: EARS.RelKind,
+      t: EARS.EntityId,
+      u: { newTarget: EARS.EntityId; newInfo?: unknown },
+    ) => {
+      edgeStore.patchOne(
+        { sourceEntity: id, relationType: k, targetEntity: t },
+        { newTarget: u.newTarget, newInfo: u.newInfo },
+      );
+      return self;
+    },
+    unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => (
+      edgeStore.unlink({ sourceEntity: id, relationType: k, targetEntity: t }),
+      self
+    ),
+    unlinkWhere: (c?: { kind?: EARS.RelKind; target?: EARS.EntityId }) => (
+      edgeStore.unlink({
+        sourceEntity: id,
+        targetEntity: c?.target,
+        relationType: c?.kind,
+      }),
+      self
+    ),
 
+    /*─ entity lifecycle ─*/
     destroy: () => (destroyEntity(id), undefined as never),
+
+    /*─ misc ─*/
     id: () => id,
-  };
+  } as const;
 
   return self;
 };
