@@ -1,12 +1,24 @@
 <template>
   <div class="step-node" :style="{ borderColor: data.color || '#888' }">
+    <Handle
+      type="target"
+      :position="Position.Top"
+      :id="`${id}-top`"
+      class="handle"
+    />
     <div class="label">{{ data.label }}</div>
     <div class="type">{{ data.stepType }}</div>
+    <Handle
+      type="source"
+      :position="Position.Bottom"
+      :id="`${id}-bottom`"
+      class="handle"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { Position, type NodeProps } from '@vue-flow/core'
+import { Position, Handle, type NodeProps } from '@vue-flow/core'
 
 interface StepNodeData {
   label: string

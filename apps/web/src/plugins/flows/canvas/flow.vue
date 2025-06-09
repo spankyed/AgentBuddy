@@ -20,7 +20,13 @@
       class="graph"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
+      :default-edge-options="{
+        type: 'generic',
+        style: { strokeWidth: 2 },
+        markerEnd: MarkerType.Arrow
+      }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
+      :connect-on-click="true"
       @node-click="onNodeClick"
       @connect="onConnect"
       @drop="onDrop"
@@ -133,7 +139,9 @@ const plainEdges = computed(() =>
     id     : e.id,
     source : e.source,
     target : e.target,
-    type   : 'generic',      // handled by slot above
+    sourceHandle: `${e.source}-bottom`,  // connect to bottom handle of source node
+    targetHandle: `${e.target}-top`,     // connect to top handle of target node
+    type   : 'generic',                  // handled by slot above
     data   : { kind: e.kind },
   })),
 )
