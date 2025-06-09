@@ -1,16 +1,21 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist",
+    // Let Vitest & editors see its own globals
+    "types": ["vitest/globals", "node"],
+    // Allow sources anywhere – we are *not* emitting
     "rootDir": ".",
-    "declaration": true,          // ← emit types
-    "declarationMap": true,
-    "emitDeclarationOnly": true,   // build‑time type pack
-    "baseUrl": ".",
+    // Turn off declaration emit for speed during testing
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false,
     "paths": {
       "@/*": ["src/*"],
-      "@test/*": ["tests/*"]
+      "@test/*": ["tests/*"],
     }
   },
-  "include": ["src", "tests"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ]
 }
