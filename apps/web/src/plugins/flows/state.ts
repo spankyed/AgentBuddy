@@ -9,7 +9,7 @@ import {
 import type {
   FlowEntity,
   OutgoingFlowsEvents,
-  StepEntity,
+  NodeEntity,
   EARS,
   EdgeEntity,
 } from '@abuddy/api'
@@ -25,7 +25,7 @@ export type FlowsState = ActorRefFrom<typeof flowsState>
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   graph: {
-    nodes: Partial<StepEntity>[];
+    nodes: Partial<NodeEntity>[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];
@@ -38,7 +38,7 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
-  | { type: 'NODE.DRAG_CREATE'; stepType: string; x: number; y: number }
+  | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -72,15 +72,15 @@ const flowsState = setup({
     }),
 
     createNode: assign(({ context, event }) => {
-      const id = `Step-${randId()}`
+      const id = `Node-${randId()}`
       const ev = typeOf('NODE.DRAG_CREATE', event)
       const newNode = {
         id,
-        stepType: ev.stepType,
-        label: `New ${ev.stepType}`,
+        nodeType: ev.nodeType,
+        label: `New ${ev.nodeType}`,
         x: ev.x,
         y: ev.y,
-      } as Partial<StepEntity>
+      } as Partial<NodeEntity>
       return { 
         graph: {
           ...context.graph,
@@ -96,7 +96,7 @@ const flowsState = setup({
   initial: 'view',
   context: {
     graph: {
-      nodes: [] as Partial<StepEntity>[],
+      nodes: [] as Partial<NodeEntity>[],
       edges: [] as EdgeEntity[],
     },
     flows: {} as Partial<FlowEntity>[],

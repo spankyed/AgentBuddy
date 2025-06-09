@@ -20,29 +20,29 @@ export const flowRows = {
 
     /* Steps */
     {
-      id: "Step-1",
-      entityType: EARS.Entity.Step,
+      id: "Node-1",
+      entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
-      stepType: "event-listener",
+      nodeType: "event-listener",
       label: "User Input",
       x: 120,
       y: 80,
       color: "blue",
     },
     {
-      id: "Step-2",
-      entityType: EARS.Entity.Step,
+      id: "Node-2",
+      entityType: EARS.Entity.Node,
       createdAt: nowMs - 800,
-      stepType: "transform",
+      nodeType: "transform",
       label: "Parse Intent",
       x: 320,
       y: 160,
     },
     {
-      id: "Step-3",
-      entityType: EARS.Entity.Step,
+      id: "Node-3",
+      entityType: EARS.Entity.Node,
       createdAt: nowMs - 700,
-      stepType: "llm",
+      nodeType: "llm",
       label: "LLM Call",
       prompt:
         "Generate a helpful response using the parsed intent: {{intent}}",
@@ -50,10 +50,10 @@ export const flowRows = {
       y: 160,
     },
     {
-      id: "Step-4",
-      entityType: EARS.Entity.Step,
+      id: "Node-4",
+      entityType: EARS.Entity.Node,
       createdAt: nowMs - 600,
-      stepType: "response",
+      nodeType: "response",
       label: "Summarize",
       x: 720,
       y: 240,
@@ -61,9 +61,10 @@ export const flowRows = {
 
     /* Event topic */
     {
-      id: "FlowEvent-1",
-      entityType: EARS.Entity.FlowEvent,
+      id: "Node-5",
+      entityType: EARS.Entity.Node,
       createdAt: nowMs - 750,
+      nodeType: "event-listener",
       label: "client_connected",
       color: "purple",
     },
@@ -78,12 +79,12 @@ export const flowRows = {
       role: EARS.RoleKind.Custom("root_flow"),
     },
     {
-      entityId: "Step-2",
-      role: EARS.RoleKind.Custom("selected_Step"),
+      entityId: "Node-2",
+      role: EARS.RoleKind.Custom("selected_node"),
     },
     {
-      entityId: "Step-3",
-      role: EARS.RoleKind.Custom("latest_Step"),
+      entityId: "Node-3",
+      role: EARS.RoleKind.Custom("latest_node"),
     },
   ],
 
@@ -92,19 +93,19 @@ export const flowRows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Graph containment */
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-1", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-2", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-3", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Step-4", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "FlowEvent-1", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-1", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-2", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-3", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-4", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
 
     /* Solid data-flow edges */
-    { source: "Step-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-2", info: {} },
-    { source: "Step-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-3", info: {} },
-    { source: "Step-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Step-4", info: {} },
+    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-2", info: {} },
+    { source: "Node-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-3", info: {} },
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: {} },
 
     /* Event wiring (dashed) */
-    { source: "Step-2", kind: EARS.RelKind.EMITS, target: "FlowEvent-1", info: {} },
-    { source: "FlowEvent-1", kind: EARS.RelKind.CONSUMED_BY, target: "Step-3", info: {} },
+    { source: "Node-2", kind: EARS.RelKind.EMITS, target: "Node-5", info: {} },
+    { source: "Node-5", kind: EARS.RelKind.CONSUMED_BY, target: "Node-3", info: {} },
   ],
 } as const;

@@ -128,7 +128,7 @@ const plainNodes = computed(() =>
   Object.values(nodes.value).map((n) => ({
     /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
     id       : n.id!,
-    type     : n.entityType === 'Step' ? 'step' : 'event',
+    type     : n.nodeType === 'event-listener' ? 'event' : 'step',
     position : { x: n.x ?? 0, y: n.y ?? 0 },
     data     : n,
   })),
@@ -168,7 +168,7 @@ function onDrop (e: DragEvent) {
   const bounds = (e.target as HTMLElement).getBoundingClientRect()
   actor.send({
     type: 'NODE.DRAG_CREATE',
-    stepType: nodeType,
+    nodeType,
     x: e.clientX - bounds.left,
     y: e.clientY - bounds.top,
   })

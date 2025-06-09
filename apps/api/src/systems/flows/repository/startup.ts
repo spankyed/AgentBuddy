@@ -1,7 +1,7 @@
 import { EARS } from '@/shared/ears/types';
 import { qx } from '@/shared/ears/helpers/query';
 import { getRootFlow } from './read';
-import { FlowsStartupData, EdgeEntity, StepEntity, FlowEntity } from '../types';
+import { FlowsStartupData, EdgeEntity, NodeEntity, FlowEntity } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
 
 
@@ -16,20 +16,20 @@ export default function flowsStartupData(): FlowsStartupData {
     .withRole(EARS.RoleKind.Custom("root_flow"))
     .pickOne(flowCols) as Partial<FlowEntity> | undefined;
     
-  const stepNodes = qx(rootFlow?.id ?? 'Flow-1')
+  const nodes = qx(rootFlow?.id ?? 'Flow-1')
     .linksPick(
       EARS.RelKind.CONTAINS,
-      [EARS.Entity.Step, EARS.Entity.FlowEvent],          // we only want the step‑like children
+      [EARS.Entity.Node],          // we only want the node children
       [
         'label',
-        'stepType',
+        'nodeType',
         'createdAt',
         'x',
         'y',
       ] as const,
-  ) as Partial<StepEntity>[];
+  ) as Partial<NodeEntity>[];
 
-  const stepIds = stepNodes.map(n => n.id!).filter(Boolean);
+  const nodeIds = nodes.map(n => n.id!).filter(Boolean);
 
   const seen = new Set<string>();
   const edges: EdgeEntity[] = [];
@@ -39,9 +39,9 @@ export default function flowsStartupData(): FlowsStartupData {
     EARS.RelKind.CONSUMED_BY,
   ]
 
-  for (const source of stepIds) {
+  for (const source of nodeIds) {
     qx(source)
-      .links(edgeKinds, [EARS.Entity.Step, EARS.Entity.FlowEvent]) // ! need to combine with FlowEvent
+      .links(edgeKinds, [EARS.Entity.Node])
       .forEach(({ relation, id: target }) => {
         const relId = edgeStore.relIds({
           sourceEntity: source,
@@ -63,7 +63,7 @@ export default function flowsStartupData(): FlowsStartupData {
 
   return {
     graph: {
-      nodes: stepNodes,
+      nodes,
       edges,
     },
     flows,

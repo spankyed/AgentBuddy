@@ -11,22 +11,16 @@ export interface FlowEntity extends BaseEntity {
   // steps: string[]; // Array of step IDs or names
 }
 
-export interface StepEntity extends BaseEntity {
-  entityType: EARS.Entity.Step;
-  stepType: 'query' | 'variable' | 'action' | 'decision' | 'fire-event' | 'event-listener' | 'response' | 'transform' | 'llm';
-  label: string;
-  prompt?: string;
-  x: number; // X coordinate for visualization
-  y: number; // Y coordinate for visualization
-  color?: string;
-  // config?: any;
-}
-
-export interface FlowEventEntity extends BaseEntity {
-  entityType: EARS.Entity.FlowEvent;
+export interface NodeEntity extends BaseEntity {
+  entityType: EARS.Entity.Node;
+  nodeType: 'query' | 'variable' | 'action' | 'decision' | 'fire-event' | 'event-listener' | 'response' | 'transform' | 'llm';
   label: string;
   description?: string;
+  prompt?: string;
+  x?: number; // X coordinate for visualization
+  y?: number; // Y coordinate for visualization
   color?: string;
+  // config?: any;
 }
 
 // --------------------------------------------------------------------------------
@@ -43,7 +37,7 @@ export type EdgeEntity = {
 };
 export interface FlowsStartupData {
   graph: {
-    nodes: Partial<StepEntity>[];
+    nodes: Partial<NodeEntity>[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];

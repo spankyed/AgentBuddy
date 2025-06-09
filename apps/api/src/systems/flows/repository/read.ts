@@ -1,10 +1,9 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
-import type { FlowEntity, FlowEventEntity, StepEntity } from '../types';
 import { entries } from '@/shared/utils';
 
-const sharedFields = ['id', 'stepType', 'createdAt', 'label', 'x', 'y'] as const;
-const stepFields = {
+const sharedFields = ['id', 'nodeType', 'createdAt', 'label', 'x', 'y'] as const;
+const nodeFields = {
   LLM: ['prompt'] as const,
   EVENT_LISTENER: [] as const,
   TRANSFORM: [] as const,
@@ -17,7 +16,7 @@ const stepFields = {
 
 const fields = [
   ...sharedFields,
-  ...entries(stepFields).map(([_, fields]) => fields).flat()
+  ...entries(nodeFields).map(([_, fields]) => fields).flat()
 ];
 
 const ROOT_FLOW = EARS.RoleKind.Custom("root_flow");
@@ -25,10 +24,10 @@ const ROOT_FLOW = EARS.RoleKind.Custom("root_flow");
 export const getRootFlow = (): EARS.EntityId | undefined =>
   qx().withRole(ROOT_FLOW).first() ?? undefined;
 
-export const getFlowSteps = (threadId: EARS.EntityId) =>
-  qx(threadId)
+export const getFlowNodes = (flowId: EARS.EntityId) =>
+  qx(flowId)
     .linksPick(
       EARS.RelKind.CONTAINS,
-      EARS.Entity.Step,
+      EARS.Entity.Node,
       fields
     );

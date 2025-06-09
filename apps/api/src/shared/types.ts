@@ -1,4 +1,4 @@
-import { FlowEntity, FlowEventEntity, StepEntity } from '@/systems/flows/types';
+import { FlowEntity, NodeEntity } from '@/systems/flows/types';
 import type { EARS } from './ears/types';
 
 export interface BaseEntity {
@@ -48,7 +48,7 @@ export interface TagEntity extends BaseEntity {
 
 // ! remove after move from mock-data
 export type Entity =
-  MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity | FlowEntity | StepEntity | FlowEventEntity;
+  MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity | FlowEntity | NodeEntity;
 export interface Rows {
   entity: Entity[];
   role: RoleAssignment[];

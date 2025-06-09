@@ -16,8 +16,7 @@ export namespace EARS {
     ContextItem  = 'ContextItem',
     CanvasItem = 'CanvasItem',
     Flow = 'Flow',
-    FlowEvent = 'FlowEvent',
-    Step = 'Step',
+    Node = 'Node',
     // Task     = 'Task',
   }
   export type EntityId = `${Entity}-${string}`;
