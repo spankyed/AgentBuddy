@@ -27,7 +27,7 @@ export function loadMockData(): void {
 
     // Add every other attribute
     for (const [key, value] of Object.entries(attrs)) {
-      if (key === "id" || key === "entityType" || key === "createdAt")
+      if (key === "id" || key === "entityType")
         continue;
       builder.put(key, value);
     }
