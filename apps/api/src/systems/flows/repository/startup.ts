@@ -9,12 +9,13 @@ export default function flowsStartupData(): FlowsStartupData {
   const flowCols = ["id", "label", "flowType", "status", "createdAt"] as const;
 
   const flows = qx(EARS.Entity.Flow)
-    .orderBy('timestamp', 'desc')
+    .orderBy('createdAt', 'desc')
     .pick(flowCols) as Partial<FlowEntity>[];
 
-  const rootFlow = qx(getRootFlow())
-    .pick(flowCols) as Partial<FlowEntity> | undefined;
-
+  const rootFlow = qx(EARS.Entity.Flow)
+    .withRole(EARS.RoleKind.Custom("root_flow"))
+    .pickOne(flowCols) as Partial<FlowEntity> | undefined;
+    
   const stepNodes = qx(rootFlow?.id ?? 'Flow-1')
     .linksPick(
       EARS.RelKind.CONTAINS,
