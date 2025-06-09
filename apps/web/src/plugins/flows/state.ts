@@ -60,12 +60,12 @@ const flowsState = setup({
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
-      context.graph.edges[id] = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' }
+      const newEdge = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' } as EdgeEntity
       context.logs.unshift({ id: Date.now(), text: `${ev.src}→${ev.tgt}` })
       return { 
         graph: {
           ...context.graph,
-          edges: context.graph.edges,
+          edges: [...context.graph.edges, newEdge],
         },
         logs: context.logs,
       }
@@ -74,17 +74,17 @@ const flowsState = setup({
     createNode: assign(({ context, event }) => {
       const id = `Step-${randId()}`
       const ev = typeOf('NODE.DRAG_CREATE', event)
-      context.graph.nodes[id] = {
+      const newNode = {
         id,
         stepType: ev.stepType,
         label: `New ${ev.stepType}`,
         x: ev.x,
         y: ev.y,
-      }
+      } as Partial<StepEntity>
       return { 
         graph: {
           ...context.graph,
-          nodes: context.graph.nodes,
+          nodes: [...context.graph.nodes, newNode],
         },
         selectedNodeId: id as EARS.EntityId,
       }
@@ -96,8 +96,8 @@ const flowsState = setup({
   initial: 'view',
   context: {
     graph: {
-      nodes: {} as Partial<StepEntity>[],
-      edges: {} as EdgeEntity[],
+      nodes: [] as Partial<StepEntity>[],
+      edges: [] as EdgeEntity[],
     },
     flows: {} as Partial<FlowEntity>[],
     rootFlow: undefined as Partial<FlowEntity> | undefined,
