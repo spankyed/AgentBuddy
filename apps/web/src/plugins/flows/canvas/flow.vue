@@ -34,6 +34,9 @@
       <template #node-event="nodeProps">
         <EventNode v-bind="nodeProps" />
       </template>
+      <template #edge-generic="edgeProps">
+        <GenericEdge v-bind="edgeProps" />
+      </template>
       <Background variant="dots" />
       <Controls />
       <MiniMap />
@@ -94,6 +97,7 @@ import { useSelector } from '@xstate/vue'
 
 import StepNode from './nodes/StepNode.vue'
 import EventNode from './nodes/EventNode.vue'
+import GenericEdge from './edges/GenericEdge.vue'
 
 const { addNodes } = useVueFlow()
 
