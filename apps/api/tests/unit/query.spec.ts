@@ -51,7 +51,7 @@ describe('qx – fluent query DSL', () => {
   /* ───────────── filters ───────────── */
   it('where() filters on an attribute value', () => {
     const id = qx()
-      .where('stepType' as any, 'llm')
+      .where('stepType', 'llm')
       .first();
     expect(id).toBe('Step-3');
   });
