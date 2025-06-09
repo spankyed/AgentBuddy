@@ -4,7 +4,7 @@
     <aside class="palette">
       <h3>Node&nbsp;Palette</h3>
       <button
-        v-for="t in nodeTypes"
+        v-for="t in paletteItems"
         :key="t.type"
         draggable="true"
         @dragstart="(e) => onDragStart(e, t.type)"
@@ -28,6 +28,12 @@
       :min-zoom="0.2"
       :max-zoom="2"
     >
+      <template #node-step="nodeProps">
+        <StepNode v-bind="nodeProps" />
+      </template>
+      <template #node-event="nodeProps">
+        <EventNode v-bind="nodeProps" />
+      </template>
       <Background variant="dots" />
       <Controls />
       <MiniMap />
@@ -69,6 +75,8 @@ import {
   type Connection,
   type NodeMouseEvent,
   type Edge,
+  type Node,
+  useVueFlow,
 } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -84,18 +92,21 @@ import {
 } from '@/plugins/flows/state'
 import { useSelector } from '@xstate/vue'
 
+import StepNode from './nodes/StepNode.vue'
+import EventNode from './nodes/EventNode.vue'
+
+const { addNodes } = useVueFlow()
+
 function colorForType(type: string) {
   return ({ input: '#00bcd4', transform: '#9c27b0', llm: '#607d8b', output: '#4caf50' }[
     type as keyof any
   ] ?? '#888')
 }
 
-
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
 /* ------------------------------------------------------------ */
 const actor: FlowsState = applicationState.system.get(id)
-
 
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
@@ -126,7 +137,7 @@ const plainEdges = computed(() =>
 /* ------------------------------------------------------------ */
 /*  palette + drag helpers                                      */
 /* ------------------------------------------------------------ */
-const nodeTypes = [
+const paletteItems = [
   { type: 'input', label: 'Input' },
   { type: 'llm', label: 'LLM' },
   { type: 'transform', label: 'Transform' },
