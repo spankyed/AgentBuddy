@@ -48,45 +48,25 @@
       <MiniMap />
     </VueFlow>
 
-    <!-- ▸ Inspector (right) -->
-    <section class="p-4 bg-neutral-800" v-if="selected">
-      <h3>{{ selected.data.label }}</h3>
-      <label class="block mb-2 text-sm font-medium text-neutral-200">
-        Name
-        <input
-          v-model="selected.data.label"
-          class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-        />
-      </label>
-
-      <!-- show prompt only on LLM nodes -->
-      <label
-        v-if="selected.data.stepType === 'flow'"
-        class="block mb-2 text-sm font-medium text-neutral-200"
-      >
-        Prompt
-        <textarea
-          v-model="selected.data.prompt"
-          rows="5"
-          class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-        />
-      </label>
-    </section>
+    <!-- ▸ Node editor (right) -->
+    <component
+      v-if="selected"
+      :is="getFormComponent(selected.nodeType)"
+      :node="selected"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Ref } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
   MarkerType,
-  type Connection,
-  type NodeMouseEvent,
-  type Edge,
-  type Node,
   useVueFlow,
 } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
+import type { NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -105,7 +85,22 @@ import StepNode from './nodes/StepNode.vue'
 import EventNode from './nodes/EventNode.vue'
 import GenericEdge from './edges/GenericEdge.vue'
 
+// Form components
+import BaseForm from './forms/BaseForm.vue'
+import ListenForm from './forms/ListenForm.vue'
+import FireForm from './forms/FireForm.vue'
+import CreateForm from './forms/CreateForm.vue'
+
 const { addNodes } = useVueFlow()
+
+function getFormComponent(nodeType: string) {
+  const formMap: Record<string, any> = {
+    'listen': ListenForm,
+    'fire': FireForm,
+    'create': CreateForm,
+  }
+  return formMap[nodeType] || BaseForm
+}
 
 function colorForType(type: string) {
   return ({ input: '#00bcd4', transform: '#9c27b0', llm: '#607d8b', output: '#4caf50' }[
@@ -121,17 +116,19 @@ const actor: FlowsState = applicationState.system.get(id)
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
-const selected = useSelector(actor, (s) => s.context.graph.nodes[s.context.selectedNodeId ?? ''])
+const selected = useSelector(actor, (s) => 
+  s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
+) as Ref<NodeEntity | undefined>
 
 /* Transform nodes and edges for Vue-Flow */
 const plainNodes = computed(() =>
-  Object.values(nodes.value).map((n) => ({
+  nodes.value.map((n) => ({
     /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
     id       : n.id!,
     type     : n.nodeType === 'listen' ? 'event' : 'step',
     position : { x: n.x ?? 0, y: n.y ?? 0 },
-    data     : n,
-  })),
+    data     : n,  // The node itself is the data
+  })) as VueFlowNode[],
 )
 
 const plainEdges = computed(() =>

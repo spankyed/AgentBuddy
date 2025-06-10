@@ -27,7 +27,9 @@ export const flowRows = {
       label: "User Input",
       x: 120,
       y: 80,
-      color: "blue",
+      color: "#1E88E5", // blue
+      mode: "entry",
+      eventTag: "user.input",
     },
     {
       id: "Node-2",
@@ -37,6 +39,9 @@ export const flowRows = {
       label: "Parse Intent",
       x: 320,
       y: 160,
+      color: "#43A047", // green
+      script: "const intent = parseUserIntent(input); return { intent: intent };",
+      outputType: "json",
     },
     {
       id: "Node-3",
@@ -44,10 +49,11 @@ export const flowRows = {
       createdAt: nowMs - 700,
       nodeType: "flow",
       label: "LLM Call",
-      prompt:
-        "Generate a helpful response using the parsed intent: {{intent}}",
       x: 520,
       y: 160,
+      color: "#3949AB", // purple
+      flowRef: "llm-response-flow",
+      propagateCtx: true,
     },
     {
       id: "Node-4",
@@ -57,6 +63,9 @@ export const flowRows = {
       label: "Summarize",
       x: 720,
       y: 240,
+      color: "#3949AB", // purple
+      flowRef: "summarize-flow",
+      propagateCtx: true,
     },
 
     /* Event topic */
@@ -66,7 +75,10 @@ export const flowRows = {
       createdAt: nowMs - 750,
       nodeType: "listen",
       label: "client_connected",
-      color: "purple",
+      color: "#1E88E5", // blue
+      mode: "internal",
+      eventTag: "client.connected",
+      scope: "local",
     },
   ],
 
