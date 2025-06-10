@@ -111,6 +111,62 @@ export const flowRows: Rows = {
       eventTag: "system.log",
       scope: "local",
     },
+
+    /* Query Node */
+    {
+      id: "Node-8",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 830,
+      nodeType: "query",
+      label: "Get User Intent",
+      x: 300,
+      y: 300,
+      color: "#2196F3", // blue
+      prompt: "What is the user's intent?",
+      resultKey: "intent",
+    },
+
+    /* Transform Node */
+    {
+      id: "Node-9",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 820,
+      nodeType: "transform",
+      label: "Format Response",
+      x: 500,
+      y: 300,
+      color: "#4CAF50", // green
+      script: "return { response: `Intent: ${context.intent}` }",
+      outputType: "json",
+    },
+
+    /* Fire Node (for transform output) */
+    {
+      id: "Node-10",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 810,
+      nodeType: "fire",
+      label: "Log Intent",
+      x: 700,
+      y: 300,
+      color: "#F44336",
+      eventTag: "system.intent",
+      scope: "global",
+    },
+
+    /* Flow Node */
+    {
+      id: "Node-11",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 800,
+      nodeType: "flow",
+      label: "Command Handler",
+      x: 500,
+      y: 200,
+      color: "#9C27B0",
+      flowRef: "command-flow-1",
+      propagateCtx: true,
+    },
   ],
 
   /*──────────────────────────────────────────*
@@ -143,18 +199,30 @@ export const flowRows: Rows = {
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-6", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-7", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-8", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-9", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-10", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-11", info: {} },
 
-    /* Test Listen node with multiple outputs */
+    /* Listen node outputs */
     { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-3", info: {} },
     { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: {} },
+    { source: "Node-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-8", info: {} },
 
-    /* Test Decision node with multiple outputs */
+    /* Decision node outputs */
     { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: { condition: "Question" } },
-    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: { condition: "Command" } },
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-11", info: { condition: "Command" } },
     { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-7", info: { condition: "Unknown" } },
 
-    /* Test Variable node connections */
-    { source: "Node-4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: {} },
-    { source: "Node-5", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-7", info: {} },
+    /* Variable node chain */
+    { source: "Node-4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
+    { source: "Node-5", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: {} },
+
+    /* Query-Transform-Fire chain */
+    { source: "Node-8", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-9", info: {} },
+    { source: "Node-9", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-10", info: {} },
+
+    /* Flow node */
+    { source: "Node-11", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
   ],
 };
