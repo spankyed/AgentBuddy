@@ -34,11 +34,8 @@
       :min-zoom="0.2"
       :max-zoom="2"
     >
-      <template #node-step="nodeProps">
-        <StepNode v-bind="nodeProps" />
-      </template>
-      <template #node-event="nodeProps">
-        <EventNode v-bind="nodeProps" />
+      <template v-for="(_, type) in nodeTypes" :key="type" #[`node-${type}`]="nodeProps">
+        <component :is="nodeTypes[type]" v-bind="nodeProps" />
       </template>
       <template #edge-generic="edgeProps">
         <GenericEdge v-bind="edgeProps" />
@@ -81,9 +78,8 @@ import {
 } from '@/plugins/flows/state'
 import { useSelector } from '@xstate/vue'
 
-import StepNode from './nodes/StepNode.vue'
-import EventNode from './nodes/EventNode.vue'
 import GenericEdge from './edges/GenericEdge.vue'
+import { nodeTypes, nodeConnectionRules } from './nodes'
 
 // Form components
 import BaseForm from './forms/BaseForm.vue'
@@ -125,7 +121,7 @@ const plainNodes = computed(() =>
   nodes.value.map((n) => ({
     /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
     id       : n.id!,
-    type     : n.nodeType === 'listen' ? 'event' : 'step',
+    type     : n.nodeType,
     position : { x: n.x ?? 0, y: n.y ?? 0 },
     data     : n,  // The node itself is the data
   })) as VueFlowNode[],
@@ -183,7 +179,27 @@ function onNodeClick (e: NodeMouseEvent) {
 }
 
 function onConnect (params: Connection) {
-  actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
+  // Get source and target nodes
+  const sourceNode = nodes.value.find(n => n.id === params.source)
+  const targetNode = nodes.value.find(n => n.id === params.target)
+  
+  if (!sourceNode || !targetNode) return
+
+  // Get connection rules for both nodes
+  const sourceRules = nodeConnectionRules[sourceNode.nodeType]
+  const targetRules = nodeConnectionRules[targetNode.nodeType]
+
+  // Count existing connections
+  const sourceOutgoing = edges.value.filter(e => e.source === params.source).length
+  const targetIncoming = edges.value.filter(e => e.target === params.target).length
+
+  // Check if connection is allowed
+  const isSourceAllowed = sourceRules.outputs === -1 || sourceOutgoing < sourceRules.outputs
+  const isTargetAllowed = targetRules.inputs === -1 || targetIncoming < targetRules.inputs
+
+  if (isSourceAllowed && isTargetAllowed) {
+    actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
+  }
 }
 </script>
 
