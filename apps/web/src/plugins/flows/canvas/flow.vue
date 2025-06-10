@@ -154,7 +154,7 @@ const paletteItems = [
   { type: 'llm', label: 'LLM' },
   { type: 'transform', label: 'Transform' },
   { type: 'decision', label: 'Decision' },
-  { type: 'output', label: 'Output' },
+  { type: 'output', label: 'Final' },
 ]
 
 function onDragStart (e: DragEvent, nodeType: string) {
