@@ -13,7 +13,7 @@ export interface FlowEntity extends BaseEntity {
 
 export interface NodeEntity extends BaseEntity {
   entityType: EARS.Entity.Node;
-  nodeType: 'query' | 'variable' | 'action' | 'decision' | 'fire-event' | 'event-listener' | 'response' | 'transform' | 'llm';
+  nodeType: 'query' | 'create' | 'update' | 'action' | 'decision' | 'fire' | 'listen' | 'transform' | 'flow';
   label: string;
   description?: string;
   prompt?: string;

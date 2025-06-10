@@ -61,7 +61,7 @@
 
       <!-- show prompt only on LLM nodes -->
       <label
-        v-if="selected.data.stepType === 'llm'"
+        v-if="selected.data.stepType === 'flow'"
         class="block mb-2 text-sm font-medium text-neutral-200"
       >
         Prompt
@@ -128,7 +128,7 @@ const plainNodes = computed(() =>
   Object.values(nodes.value).map((n) => ({
     /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
     id       : n.id!,
-    type     : n.nodeType === 'event-listener' ? 'event' : 'step',
+    type     : n.nodeType === 'listen' ? 'event' : 'step',
     position : { x: n.x ?? 0, y: n.y ?? 0 },
     data     : n,
   })),
@@ -150,11 +150,15 @@ const plainEdges = computed(() =>
 /*  palette + drag helpers                                      */
 /* ------------------------------------------------------------ */
 const paletteItems = [
-  { type: 'input', label: 'Input' },
-  { type: 'llm', label: 'LLM' },
-  { type: 'transform', label: 'Transform' },
+  { type: 'flow', label: 'Flow' },
+  { type: 'listen', label: 'Listen' },
+  { type: 'fire', label: 'Fire' },
+  { type: 'action', label: 'Action' },
+  { type: 'create', label: 'Create' },
+  { type: 'update', label: 'Update' },
+  { type: 'query', label: 'Query' },
   { type: 'decision', label: 'Decision' },
-  { type: 'output', label: 'Final' },
+  { type: 'transform', label: 'Transform' },
 ]
 
 function onDragStart (e: DragEvent, nodeType: string) {
