@@ -6,6 +6,10 @@
       :position="Position.Top"
       :id="`${id}-in`"
       class="handle"
+      :isValidConnection="({ target }) => {
+        const edges = useVueFlow().edges
+        return edges.value.filter(e => e.target === target).length === 0
+      }"    
     />
     <div class="label">{{ data.label }}</div>
     <div class="type">VARIABLE ({{ data.mode }})</div>
@@ -14,12 +18,16 @@
       :position="Position.Bottom"
       :id="`${id}-out`"
       class="handle"
+      :isValidConnection="({ source }) => {
+        const edges = useVueFlow().edges
+        return edges.value.filter(e => e.source === source).length === 0
+      }"    
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps } from '@vue-flow/core'
+import { Position, Handle, type NodeProps, useVueFlow } from '@vue-flow/core'
 
 interface NodeData {
   label: string

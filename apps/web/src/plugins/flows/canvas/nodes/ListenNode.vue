@@ -3,18 +3,20 @@
     <div class="label">{{ data.label }}</div>
     <div class="type">LISTEN ({{ data.mode }})</div>
     <Handle
-      v-for="i in outputHandles"
-      :key="i"
       type="source"
       :position="Position.Bottom"
-      :id="`${id}-out-${i}`"
+      :id="`${id}-out`"
       class="handle"
+      :isValidConnection="({ source }) => {
+        const edges = useVueFlow().edges
+        return edges.value.filter(e => e.source === source).length < 3
+      }"    
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps } from '@vue-flow/core'
+import { Position, Handle, type NodeProps, useVueFlow } from '@vue-flow/core'
 import type { ListenNode } from '@abuddy/api'
 
 interface NodeData extends Partial<ListenNode> {
@@ -23,9 +25,6 @@ interface NodeData extends Partial<ListenNode> {
 }
 
 defineProps<NodeProps<NodeData>>()
-
-// Listen nodes can have multiple outputs but no inputs
-const outputHandles = 3 // Default to 3 possible outputs
 </script>
 
 <style scoped>

@@ -38,14 +38,12 @@ export interface CreateNode extends NodeBase {
   nodeType: 'create';
   entityTypeTarget: EARS.Entity;      // what kind of entity to mint
   entityId?: string;                  // optional explicit id
-  attributes: Record<string, any>;
   inferLabel?: boolean;               // default true
 }
 
 export interface UpdateNode extends NodeBase {
   nodeType: 'update';
   entityId: string;                   // must exist
-  attributes: Record<string, any>;
   onMissing?: 'fail' | 'ignore' | 'create';
 }
 

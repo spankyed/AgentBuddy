@@ -179,27 +179,7 @@ function onNodeClick (e: NodeMouseEvent) {
 }
 
 function onConnect (params: Connection) {
-  // Get source and target nodes
-  const sourceNode = nodes.value.find(n => n.id === params.source)
-  const targetNode = nodes.value.find(n => n.id === params.target)
-  
-  if (!sourceNode || !targetNode) return
-
-  // Get connection rules for both nodes
-  const sourceRules = nodeConnectionRules[sourceNode.nodeType]
-  const targetRules = nodeConnectionRules[targetNode.nodeType]
-
-  // Count existing connections
-  const sourceOutgoing = edges.value.filter(e => e.source === params.source).length
-  const targetIncoming = edges.value.filter(e => e.target === params.target).length
-
-  // Check if connection is allowed
-  const isSourceAllowed = sourceRules.outputs === -1 || sourceOutgoing < sourceRules.outputs
-  const isTargetAllowed = targetRules.inputs === -1 || targetIncoming < targetRules.inputs
-
-  if (isSourceAllowed && isTargetAllowed) {
-    actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
-  }
+  actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
 }
 </script>
 

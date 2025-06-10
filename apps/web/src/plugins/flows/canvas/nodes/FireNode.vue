@@ -5,6 +5,10 @@
       :position="Position.Top"
       :id="`${id}-in`"
       class="handle"
+      :isValidConnection="({ target }) => {
+        const edges = useVueFlow().edges
+        return edges.value.filter(e => e.target === target).length === 0
+      }"    
     />
     <div class="label">{{ data.label }}</div>
     <div class="type">FIRE</div>
@@ -12,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps } from '@vue-flow/core'
+import { Position, Handle, type NodeProps, useVueFlow } from '@vue-flow/core'
 import type { FireNode } from '@abuddy/api'
 
 interface NodeData extends Partial<FireNode> {

@@ -4,7 +4,7 @@ import type { Rows } from '@/shared/types';
 const nowMs = Date.now();
 
 // export const flowRows: Rows = {
-export const flowRows = {
+export const flowRows: Rows = {
   /*──────────────────────────────────────────*
    * Core entities                            *
    *──────────────────────────────────────────*/
@@ -14,70 +14,101 @@ export const flowRows = {
       id: "Flow-1",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Example Dialog Flow",
+      label: "Chat Flow with Validation",
       flowType: "workflow",
     },
 
-    /* Steps */
+    /* Event Listeners */
     {
       id: "Node-1",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
       nodeType: "listen",
-      label: "User Input",
-      x: 120,
-      y: 80,
+      label: "User Message",
+      x: 100,
+      y: 100,
       color: "#1E88E5", // blue
       mode: "entry",
-      eventTag: "user.input",
+      eventTag: "chat.message",
     },
     {
       id: "Node-2",
       entityType: EARS.Entity.Node,
-      createdAt: nowMs - 800,
-      nodeType: "transform",
-      label: "Parse Intent",
-      x: 320,
-      y: 160,
-      color: "#43A047", // green
-      script: "const intent = parseUserIntent(input); return { intent: intent };",
-      outputType: "json",
+      createdAt: nowMs - 890,
+      nodeType: "listen",
+      label: "System Events",
+      x: 100,
+      y: 300,
+      color: "#1E88E5",
+      mode: "internal",
+      eventTag: "system.*",
     },
+
+    /* Decision Nodes */
     {
       id: "Node-3",
       entityType: EARS.Entity.Node,
-      createdAt: nowMs - 700,
-      nodeType: "flow",
-      label: "LLM Call",
-      x: 520,
-      y: 160,
-      color: "#3949AB", // purple
-      flowRef: "llm-response-flow",
-      propagateCtx: true,
+      createdAt: nowMs - 880,
+      nodeType: "decision",
+      label: "Message Type",
+      x: 300,
+      y: 100,
+      color: "#FF9800", // orange
+      conditions: [
+        { expr: "type === 'question'", label: "Question" },
+        { expr: "type === 'command'", label: "Command" },
+        { expr: "type === 'chat'", label: "Chat" }
+      ],
+      elseLabel: "Unknown"
     },
+
+    /* Variable Nodes */
     {
       id: "Node-4",
       entityType: EARS.Entity.Node,
-      createdAt: nowMs - 600,
-      nodeType: "flow",
-      label: "Summarize",
-      x: 720,
-      y: 240,
-      color: "#3949AB", // purple
-      flowRef: "summarize-flow",
-      propagateCtx: true,
+      createdAt: nowMs - 870,
+      nodeType: "create",
+      label: "Create Context",
+      x: 500,
+      y: 50,
+      color: "#9C27B0", // purple
+      entityTypeTarget: EARS.Entity.Node,
     },
-
-    /* Event topic */
     {
       id: "Node-5",
       entityType: EARS.Entity.Node,
-      createdAt: nowMs - 750,
-      nodeType: "listen",
-      label: "client_connected",
-      color: "#1E88E5", // blue
-      mode: "internal",
-      eventTag: "client.connected",
+      createdAt: nowMs - 860,
+      nodeType: "update",
+      label: "Update Context",
+      x: 500,
+      y: 150,
+      color: "#9C27B0",
+      entityId: "Node-4",
+    },
+
+    /* Fire Events */
+    {
+      id: "Node-6",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 850,
+      nodeType: "fire",
+      label: "Send Response",
+      x: 700,
+      y: 100,
+      color: "#F44336", // red
+      eventTag: "chat.response",
+      scope: "global",
+    },
+    {
+      id: "Node-7",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 840,
+      nodeType: "fire",
+      label: "Log Event",
+      x: 700,
+      y: 200,
+      color: "#F44336",
+      eventTag: "system.log",
       scope: "local",
     },
   ],
@@ -110,14 +141,20 @@ export const flowRows = {
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-3", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-4", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-6", info: {} },
+    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-7", info: {} },
 
-    /* Solid data-flow edges */
-    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-2", info: {} },
-    { source: "Node-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-3", info: {} },
-    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: {} },
+    /* Test Listen node with multiple outputs */
+    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-3", info: {} },
+    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: {} },
 
-    /* Event wiring (dashed) */
-    { source: "Node-2", kind: EARS.RelKind.EMITS, target: "Node-5", info: {} },
-    { source: "Node-5", kind: EARS.RelKind.CONSUMED_BY, target: "Node-3", info: {} },
+    /* Test Decision node with multiple outputs */
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: { condition: "Question" } },
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: { condition: "Command" } },
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-7", info: { condition: "Unknown" } },
+
+    /* Test Variable node connections */
+    { source: "Node-4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: {} },
+    { source: "Node-5", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-7", info: {} },
   ],
-} as const;
+};
