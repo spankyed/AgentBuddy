@@ -31,6 +31,7 @@
       @connect="onConnect"
       @drop="onDrop"
       @dragover.prevent
+      @nodes-initialized="layout()"
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -62,16 +63,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref } from 'vue'
+import { computed, nextTick, type Ref } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
   MarkerType,
   useVueFlow,
-  Position,
 } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
-import dagre from 'dagre'
+import type { Direction } from '@/plugins/flows/canvas/useLayout'
+import { useLayout } from '@/plugins/flows/canvas/useLayout'
 import type { NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -96,7 +97,8 @@ import ListenForm from './forms/ListenForm.vue'
 import FireForm from './forms/FireForm.vue'
 import CreateForm from './forms/CreateForm.vue'
 
-const { addNodes, setNodes } = useVueFlow()
+const { addNodes, fitView } = useVueFlow()
+const { layout } = useLayout()
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
@@ -137,7 +139,7 @@ const plainNodes = computed(() => {
 
   // Run initial layout if nodes exist but no positions are set
   if (mappedNodes.length > 0 && mappedNodes.every(n => n.position.x === 0 && n.position.y === 0)) {
-    setTimeout(onLayout, 50)
+    setTimeout(() => layout('TB'), 50)
   }
 
   return mappedNodes
@@ -186,7 +188,7 @@ function onDrop (e: DragEvent) {
     y: e.clientY - bounds.top,
   })
   // Run layout after a short delay to let the new node render
-  setTimeout(onLayout, 50)
+  setTimeout(() => layout('TB'), 50)
 }
 
 /* ------------------------------------------------------------ */
@@ -201,45 +203,7 @@ function onConnect (params: Connection) {
 }
 
 function onLayout() {
-  const dagreGraph = new dagre.graphlib.Graph()
-  dagreGraph.setDefaultEdgeLabel(() => ({}))
-  
-  // Set layout options
-  const nodeWidth = 180
-  const nodeHeight = 40
-  dagreGraph.setGraph({ rankdir: 'TB', nodesep: 70, ranksep: 70 })
-
-  // Add nodes to dagre
-  const nodes = plainNodes.value
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight })
-  })
-
-  // Add edges to dagre
-  const edges = plainEdges.value
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target)
-  })
-
-  // Calculate layout
-  dagre.layout(dagreGraph)
-
-  // Apply layout to nodes
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id)
-
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-      targetPosition: Position.Top,
-      sourcePosition: Position.Bottom,
-    }
-  })
-
-  setNodes(layoutedNodes)
+  layout('TB')
 }
 </script>
 
