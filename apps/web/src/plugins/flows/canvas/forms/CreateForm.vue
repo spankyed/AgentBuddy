@@ -26,7 +26,7 @@
         v-model="attributesStr"
         rows="4"
         class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-        @input="updateAttributes"
+        @input="()=>{}"
       />
     </label>
     <label class="block mb-2 text-sm font-medium text-neutral-200">
@@ -56,19 +56,4 @@ if (!isNodeKind('create')(props.node)) {
 }
 
 const attributesStr = ref('');
-
-onMounted(() => {
-  // Initialize attributes string from node
-  if (props.node.attributes) {
-    attributesStr.value = JSON.stringify(props.node.attributes, null, 2);
-  }
-});
-
-function updateAttributes() {
-  try {
-    props.node.attributes = JSON.parse(attributesStr.value);
-  } catch (e) {
-    // Invalid JSON - leave the attributes as is
-  }
-}
 </script>
