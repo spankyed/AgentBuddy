@@ -42,6 +42,13 @@
       </template>
       <Background variant="dots" />
       <Controls />
+      <button
+        class="layout-button"
+        @click="onLayout"
+        title="Auto-layout graph"
+      >
+        Layout
+      </button>
       <MiniMap />
     </VueFlow>
 
@@ -61,8 +68,10 @@ import {
   ConnectionLineType,
   MarkerType,
   useVueFlow,
+  Position,
 } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
+import dagre from 'dagre'
 import type { NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -87,7 +96,7 @@ import ListenForm from './forms/ListenForm.vue'
 import FireForm from './forms/FireForm.vue'
 import CreateForm from './forms/CreateForm.vue'
 
-const { addNodes } = useVueFlow()
+const { addNodes, setNodes } = useVueFlow()
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
@@ -117,15 +126,22 @@ const selected = useSelector(actor, (s) =>
 ) as Ref<NodeEntity | undefined>
 
 /* Transform nodes and edges for Vue-Flow */
-const plainNodes = computed(() =>
-  nodes.value.map((n) => ({
+const plainNodes = computed(() => {
+  const mappedNodes = nodes.value.map((n) => ({
     /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
     id       : n.id!,
     type     : n.nodeType,
     position : { x: n.x ?? 0, y: n.y ?? 0 },
     data     : n,  // The node itself is the data
-  })) as VueFlowNode[],
-)
+  })) as VueFlowNode[]
+
+  // Run initial layout if nodes exist but no positions are set
+  if (mappedNodes.length > 0 && mappedNodes.every(n => n.position.x === 0 && n.position.y === 0)) {
+    setTimeout(onLayout, 50)
+  }
+
+  return mappedNodes
+})
 
 const plainEdges = computed(() =>
   Object.values(edges.value).map((e) => ({
@@ -169,6 +185,8 @@ function onDrop (e: DragEvent) {
     x: e.clientX - bounds.left,
     y: e.clientY - bounds.top,
   })
+  // Run layout after a short delay to let the new node render
+  setTimeout(onLayout, 50)
 }
 
 /* ------------------------------------------------------------ */
@@ -180,6 +198,48 @@ function onNodeClick (e: NodeMouseEvent) {
 
 function onConnect (params: Connection) {
   actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
+}
+
+function onLayout() {
+  const dagreGraph = new dagre.graphlib.Graph()
+  dagreGraph.setDefaultEdgeLabel(() => ({}))
+  
+  // Set layout options
+  const nodeWidth = 180
+  const nodeHeight = 40
+  dagreGraph.setGraph({ rankdir: 'TB', nodesep: 70, ranksep: 70 })
+
+  // Add nodes to dagre
+  const nodes = plainNodes.value
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight })
+  })
+
+  // Add edges to dagre
+  const edges = plainEdges.value
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target)
+  })
+
+  // Calculate layout
+  dagre.layout(dagreGraph)
+
+  // Apply layout to nodes
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id)
+
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+    }
+  })
+
+  setNodes(layoutedNodes)
 }
 </script>
 
@@ -219,6 +279,24 @@ function onConnect (params: Connection) {
 .graph {
   flex: 1;
   background: #111;
+}
+
+/* layout button */
+.layout-button {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 4;
+  padding: 8px 12px;
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #eee;
+  cursor: pointer;
+}
+
+.layout-button:hover {
+  background: #333;
 }
 
 /* inspector */
