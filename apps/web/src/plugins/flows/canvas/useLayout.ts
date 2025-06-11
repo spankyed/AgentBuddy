@@ -12,7 +12,7 @@ export type Direction = 'LR' | 'TB'          // horizontal or vertical
 export function useLayout() {
   const { findNode, getNodes, getEdges, setNodes, fitView } = useVueFlow()
 
-  async function layout(dir: Direction = 'TB', updateState?: (node: Node, position: { x: number, y: number }) => void) {
+  async function layout(dir: Direction = 'LR', updateState?: (node: Node, position: { x: number, y: number }) => void) {
     const nodes = unref(getNodes)
     const edges = unref(getEdges)
     const g = new dagre.graphlib.Graph<GraphNode>()

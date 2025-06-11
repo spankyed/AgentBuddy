@@ -45,13 +45,14 @@
       <Controls />
       <button
         class="layout-button"
-        @click="onLayout"
+        @click="() => layout('LR')"
         title="Auto-layout graph"
       >
         Layout
       </button>
-      <MiniMap />
-    </VueFlow>
+      <MiniMap :maskColor="'#26262650'" :maskStrokeColor="'transparent'" />
+
+  </VueFlow>
 
     <!-- ▸ Node editor (right) -->
     <component
@@ -137,11 +138,6 @@ const plainNodes = computed(() => {
     data     : n,  // The node itself is the data
   })) as VueFlowNode[]
 
-  // Run initial layout if nodes exist but no positions are set
-  if (mappedNodes.length > 0 && mappedNodes.every(n => n.position.x === 0 && n.position.y === 0)) {
-    setTimeout(() => layout('TB'), 50)
-  }
-
   return mappedNodes
 })
 
@@ -187,8 +183,6 @@ function onDrop (e: DragEvent) {
     x: e.clientX - bounds.left,
     y: e.clientY - bounds.top,
   })
-  // Run layout after a short delay to let the new node render
-  setTimeout(() => layout('TB'), 50)
 }
 
 /* ------------------------------------------------------------ */
@@ -200,10 +194,6 @@ function onNodeClick (e: NodeMouseEvent) {
 
 function onConnect (params: Connection) {
   actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
-}
-
-function onLayout() {
-  layout('TB')
 }
 </script>
 
@@ -268,5 +258,15 @@ function onLayout() {
   width: 260px;
   overflow: auto;
   border-left: 1px solid #333;
+}
+
+/* minimap */
+:deep(.vue-flow__minimap) {
+  opacity: 0.1;
+  transition: opacity 0.2s;
+}
+
+:deep(.vue-flow__minimap:hover) {
+  opacity: 1;
 }
 </style>
