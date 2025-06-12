@@ -1,12 +1,13 @@
 <template>
-  <div class="event-node" :style="{ borderColor: data.color || '#888' }">
+  <div class="step-node" :style="{ borderColor: data.color || '#888' }">
     <Handle
       type="target"
       :position="Position.Left"
-      :id="`${id}-left`"
+      :id="`${id}-top`"
       class="handle"
     />
     <div class="label">{{ data.label }}</div>
+    <div class="type">{{ data.stepType }}</div>
     <Handle
       type="source"
       :position="Position.Right"
@@ -19,28 +20,32 @@
 <script setup lang="ts">
 import { Position, Handle, type NodeProps } from '@vue-flow/core'
 
-interface EventNodeData {
+interface ActionNodeData {
   label: string
+  stepType: string
   color?: string
 }
 
-defineProps<NodeProps<EventNodeData>>()
+defineProps<NodeProps<ActionNodeData>>()
 </script>
 
 <style scoped>
-.event-node {
+.step-node {
   padding: 10px;
-  border-radius: 20px;
-  width: 150px;
-  font-size: 12px;
-  color: #222;
-  text-align: center;
-  border: 1px solid #1a192b;
-  background-color: white;
+  border-radius: 5px;
+  border: 2px solid;
+  background: #1f1f1f;
+  color: #fff;
+  min-width: 150px;
 }
-
 .label {
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.type {
+  text-align: center;
+  font-size: 10px;
+  opacity: 0.7;
 }
 </style>
