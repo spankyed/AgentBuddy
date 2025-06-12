@@ -27,8 +27,16 @@ const hasPrefix = (t: EARS.Entity) => {
   }
   return fn;
 };
-const b64Encode = (n: number) => Buffer.from(String(n), 'utf8').toString('base64');
-const b64Decode = (s: string) => parseInt(Buffer.from(s, 'base64').toString('utf8'), 10);
+const b64Encode = (n: number) => Buffer.from(String(n)).toString('base64');
+const b64Decode = (s: string) => {
+  try {
+    const decoded = Buffer.from(s, 'base64').toString();
+    const num = parseInt(decoded, 10);
+    return isNaN(num) ? 0 : num;
+  } catch {
+    return 0;
+  }
+};
 
 const liftOne = <F extends (...args: any[]) => any>(many: F) =>
   (...a: Parameters<F>) => (many as any)(...a)[0] ?? null;
@@ -62,20 +70,29 @@ export const qx = (
     /*─ filters ─*/
     ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
 
-    inIds: (sub: readonly EARS.EntityId[]) => setIds(ids.filter(i => sub.includes(i))),
+    inIds: (sub: readonly EARS.EntityId[]) => {
+      const subSet = new Set(sub);
+      return setIds(ids.filter(i => subSet.has(i)));
+    },
 
     where: (k: EARS.AttrKind | string, v?: unknown) => {
       const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
-      const next = v === undefined
-        ? ids.filter(i => getAttrs(i, kind).length)
-        : ids.filter(i => queryEntitiesByAttribute(kind, v).includes(i));
+      if (v === undefined) {
+        const next = ids.filter(i => getAttrs(i, kind).length);
+        return setIds(next);
+      }
+      // Use Set for O(1) lookups instead of includes() which is O(n)
+      const matchingEntities = new Set(queryEntitiesByAttribute(kind, v));
+      const next = ids.filter(i => matchingEntities.has(i));
       return setIds(next);
     },
 
     withRole: (r: string) => setIds(ids.filter(i => getRoles(i).includes(r))),
 
-    relatedTo: (target: EARS.EntityId) =>
-      setIds(ids.filter(i => queryEntitiesInRelationTo(target).includes(i))),
+    relatedTo: (target: EARS.EntityId) => {
+      const related = new Set(queryEntitiesInRelationTo(target));
+      return setIds(ids.filter(i => related.has(i)));
+    },
 
     related: (kind: string, other: EARS.EntityId, asSrc = false) =>
       setIds(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
@@ -138,7 +155,7 @@ export const qx = (
     /*─ projections ─*/
     pick: <A extends readonly string[]>(fields: A) =>
       ids.map(i => {
-        const o: any = { id: i };
+        const o: Record<string, unknown> = { id: i };
         fields.forEach(k => {
           if (k === "id") return;
           o[k] = getAttr(i, EARS.AttrKind.Custom(k));
@@ -156,8 +173,8 @@ export const qx = (
       fields: A,
     ) => {
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
-      return self.links(relKinds, tgtType).map(({ relation, id }: any) => ({
-        ...(manyKinds ? { relation } : null),
+      return self.links(relKinds, tgtType).map(({ relation, id }) => ({
+        ...(manyKinds ? { relation } : {}),
         ...qx(id).pickOne(fields)!,
       }));
     },
@@ -214,13 +231,20 @@ export const qx = (
     },
 
     groupBy: (field: string) => {
-      const groups = new Map<unknown, ReturnType<typeof qx>>();
+      const groups = new Map<unknown, EARS.EntityId[]>();
       ids.forEach(id => {
         const key = getAttr(id, EARS.AttrKind.Custom(field));
-        const bucket = groups.get(key) ?? qx([]);
-        groups.set(key, qx([...bucket.ids(), id]));
+        const bucket = groups.get(key);
+        if (bucket) {
+          bucket.push(id);
+        } else {
+          groups.set(key, [id]);
+        }
       });
-      return groups;
+      // Convert to qx instances only at the end
+      const result = new Map<unknown, ReturnType<typeof qx>>();
+      groups.forEach((ids, key) => result.set(key, qx(ids)));
+      return result;
     },
 
     /*─ misc extractors ─*/

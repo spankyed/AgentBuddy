@@ -19,7 +19,10 @@ const bucket = (k: EARS.AttrKind) => {
   if (!store.has(k)) store.set(k, new Map());
   return store.get(k)!;
 };
-const entType = (id: EARS.EntityId) => id.split("-",1)[0] as EARS.Entity;
+const entType = (id: EARS.EntityId) => {
+  const dash = id.indexOf('-');
+  return dash === -1 ? id as EARS.Entity : id.substring(0, dash) as EARS.Entity;
+};
 
 /*─────────────────────────────────────────────────────────────
  * 1 ▸ generic mutator factory
@@ -34,13 +37,30 @@ function makeMutator() {
   };
 
   const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
-    const list = bucket(kind).get(id) ?? [];
-    while (list.length <= idx) list.push(val as EARS.AttributeValue);
-    const cur = list[idx];
-    list[idx] =
-      cur && isPlainObject(cur) && isPlainObject(val)
-        ? { ...cur, ...val }
-        : (val as EARS.AttributeValue);
+    const b = bucket(kind);
+    let list = b.get(id);
+    if (!list) {
+      list = [];
+      b.set(id, list);
+      // Also ensure entity is in index
+      (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
+        .add(id);
+    }
+    
+    // Fill gaps with null instead of the value
+    while (list.length < idx) list.push(null as any);
+    
+    // Ensure we have an element at idx
+    if (list.length === idx) {
+      list.push(val as EARS.AttributeValue);
+    } else {
+      const cur = list[idx];
+      list[idx] =
+        cur && isPlainObject(cur) && isPlainObject(val)
+          ? { ...cur, ...val }
+          : (val as EARS.AttributeValue);
+    }
+    
     logInternal("AU", false, kind, id, val);
   };
 
@@ -146,8 +166,15 @@ export const getAll = (id: EARS.EntityId) => {
 /*─────────────────────────────────────────────────────────────
  * 4 ▸  convenience *query* shims  (❗added back)
  *─────────────────────────────────────────────────────────────*/
-export const getAllEntities = () =>
-  [...entityIndex.values()].flatMap(set => [...set]);
+export const getAllEntities = () => {
+  const all: EARS.EntityId[] = [];
+  for (const set of entityIndex.values()) {
+    for (const id of set) {
+      all.push(id);
+    }
+  }
+  return all;
+};
 
 export const getEntitiesOfType = (t: EARS.Entity) =>
   [...(entityIndex.get(t) ?? [])];
@@ -225,7 +252,14 @@ export function destroyEntity(id: EARS.EntityId) {
   for (const [k, b] of store) b.delete(id);
 
   /* entity index */
-  entityIndex.get(entType(id))?.delete(id);
+  const entitySet = entityIndex.get(entType(id));
+  if (entitySet) {
+    entitySet.delete(id);
+    // Clean up empty sets to prevent memory leaks
+    if (entitySet.size === 0) {
+      entityIndex.delete(entType(id));
+    }
+  }
 }
 
 /*─────────────────────────────────────────────────────────────

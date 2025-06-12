@@ -41,7 +41,11 @@ const matchIds = (
     } 
     // wildcard - no source or target specified
     else {
-      Object.values(bySource).flat().forEach(id => out.add(id));
+      for (const ids of Object.values(bySource)) {
+        for (const id of ids) {
+          out.add(id);
+        }
+      }
     }
   }
   return [...out];
@@ -73,7 +77,7 @@ export const edgeStore = {
       relationType: kind,
       targetEntity: tgt,
     });
-    addRelation(src, kind, tgt, info);
+    return addRelation(src, kind, tgt, info);
   },
 
   /** patch first edge that matches */
@@ -82,6 +86,10 @@ export const edgeStore = {
     u: { newSource?: EARS.EntityId; newTarget?: EARS.EntityId; newInfo?: unknown },
   ) => {
     const [relId] = matchIds(w);
-    if (relId) updateRelation(relId, u.newSource, u.newTarget, u.newInfo);
+    if (relId) {
+      updateRelation(relId, u.newSource, u.newTarget, u.newInfo);
+      return true;
+    }
+    return false;
   },
 };

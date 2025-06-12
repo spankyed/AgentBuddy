@@ -27,7 +27,11 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
   /*──────── core fluent surface ───────────*/
   const self = {
     /*─ attrs ─*/
-    put: (k: EARS.AttrKind, v: unknown, i?: number) => (putAttr(id, k, v), self),
+    put: (k: EARS.AttrKind | string, v: unknown, i?: number) => {
+      const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
+      putAttr(id, kind, v);
+      return self;
+    },
     merge: (k: EARS.AttrKind, v: unknown, i?: number) => (mergeAttr(id, k, v, i), self),
     drop: (k: EARS.AttrKind, i?: number) => (dropAttr(id, k, i), self),
     dropIf: (k: EARS.AttrKind, c: unknown) => (dropIf(id, k, c), self),
@@ -41,8 +45,10 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
       if (getRoles(id).includes(r)) revokeRole(id, r);
       return self;
     },
-    ensure: (r: string, scope = qx().withRole(r).ids()) => {
-      scope.forEach(e => revokeRole(e, r));
+    ensure: (r: string, scope?: readonly EARS.EntityId[]) => {
+      // Only query if scope not provided
+      const entities = scope ?? qx().withRole(r).ids();
+      entities.forEach(e => revokeRole(e, r));
       grantRole(id, r);
       return self;
     },
@@ -55,8 +61,11 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     },
     relPatch: (
       rel: EARS.EntityId,
-      u: { src: EARS.EntityId; tgt: EARS.EntityId; info?: unknown },
-    ) => (updateRelation(rel, u.src, u.tgt, u.info), self),
+      u: { sourceEntity?: EARS.EntityId; targetEntity?: EARS.EntityId; info?: unknown },
+    ) => {
+      updateRelation(rel, u.sourceEntity, u.targetEntity, u.info);
+      return self;
+    },
     unlink: (rel: EARS.EntityId) => (removeRelation(rel), self),
 
     /*─ criteria‑edges (edge‑store) ─*/
