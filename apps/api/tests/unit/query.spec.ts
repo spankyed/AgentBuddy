@@ -170,4 +170,96 @@ describe('qx – fluent query DSL', () => {
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });
+
+  /* ──────── Additional test coverage ──────── */
+  describe('Additional query tests', () => {
+    it('filters by Flow entity type', () => {
+      const flows = qx(EARS.Entity.Flow).ids();
+      expect(flows).toEqual(['Flow-1']);
+    });
+
+    it('follows TRANSITIONS_TO relationships', () => {
+      const transitions = qx('Node-3')
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
+        .ids()
+        .sort();
+      expect(transitions).toEqual(['Node-11', 'Node-4'].sort());
+    });
+
+    it('follows EMITS relationships', () => {
+      const emits = qx('Node-5')
+        .linksTo(EARS.RelKind.EMITS, EARS.Entity.Node)
+        .ids();
+      expect(emits).toEqual(['Node-6']);
+    });
+
+    it('chains multiple filters', () => {
+      const result = qx(EARS.Entity.Node)
+        .where('nodeType', 'fire')
+        .where('color', '#F44336')
+        .ids()
+        .sort();
+      expect(result).toEqual(['Node-10', 'Node-6'].sort());
+    });
+
+    it('returns empty array for no matches', () => {
+      const result = qx(EARS.Entity.Node)
+        .where('nodeType', 'nonexistent')
+        .ids();
+      expect(result).toEqual([]);
+    });
+
+    it('counts entities correctly', () => {
+      const nodeCount = qx(EARS.Entity.Node).count();
+      expect(nodeCount).toBe(10);
+      
+      const fireNodeCount = qx(EARS.Entity.Node)
+        .where('nodeType', 'fire')
+        .count();
+      expect(fireNodeCount).toBe(2);
+    });
+
+    it('retrieves all roles', () => {
+      const rolesCount = qx()
+        .withRole(EARS.RoleKind.Custom('root_flow'))
+        .count();
+      expect(rolesCount).toBe(1);
+      
+      const entity = qx()
+        .withRole(EARS.RoleKind.Custom('root_flow'))
+        .first();
+      expect(entity).toBe('Flow-1');
+    });
+
+    it('handles multiple withRole filters', () => {
+      const latestNode = qx()
+        .withRole(EARS.RoleKind.Custom('latest_node'))
+        .first();
+      expect(latestNode).toBe('Node-3');
+    });
+
+    it('filters nodes by specific attributes', () => {
+      const entryNodes = qx(EARS.Entity.Node)
+        .where('mode', 'entry')
+        .ids();
+      expect(entryNodes).toEqual(['Node-1']);
+      
+      const internalNodes = qx(EARS.Entity.Node)
+        .where('mode', 'internal')
+        .ids();
+      expect(internalNodes).toEqual(['Node-2']);
+    });
+
+    it('retrieves nodes with specific event tags', () => {
+      const chatNodes = qx(EARS.Entity.Node)
+        .where('eventTag', 'chat.message')
+        .ids();
+      expect(chatNodes).toEqual(['Node-1']);
+      
+      const systemNodes = qx(EARS.Entity.Node)
+        .where('eventTag', 'system.*')
+        .ids();
+      expect(systemNodes).toEqual(['Node-2']);
+    });
+  });
 });
