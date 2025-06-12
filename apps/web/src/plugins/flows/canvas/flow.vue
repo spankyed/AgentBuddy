@@ -54,12 +54,17 @@
 
   </VueFlow>
 
-    <!-- ▸ Node editor (right) -->
-    <component
-      v-if="selected"
-      :is="getFormComponent(selected.nodeType)"
-      :node="selected"
-    />
+    <!-- ▸ Node editor overlay -->
+      <!-- Backdrop overlay -->
+      <div v-if="selected" class="backdrop-overlay" @click="closeNodeEditor" />
+      <!-- Slide-in form -->
+      <div class="slide-in-form" :class="{ 'is-open': selected }">
+        <component
+          v-if="selected"
+          :is="getFormComponent(selected.nodeType)"
+          :node="selected"
+        />
+      </div>
   </div>
 </template>
 
@@ -70,6 +75,7 @@ import {
   ConnectionLineType,
   MarkerType,
   useVueFlow,
+  ConnectionMode,
 } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
@@ -193,6 +199,10 @@ function onNodeClick (e: NodeMouseEvent) {
   actor.send({ type: 'NODE.CLICK', nodeId: e.node.id })
 }
 
+function closeNodeEditor() {
+  actor.send({ type: 'NODE.CLICK', nodeId: '' })
+}
+
 function onConnect (params: Connection) {
   actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
 }
@@ -201,12 +211,16 @@ function onConnect (params: Connection) {
 <style scoped>
 .dialog-editor {
   display: flex;
+  position: relative;
+  overflow: hidden;
   height: 100%;
+  width: 100%;
 }
 
 /* palette (left) */
 .palette {
   width: 210px;
+  overflow-y: scroll;
   background: #1f1f1f;
   color: #fff;
   padding: 1rem;
@@ -254,13 +268,6 @@ function onConnect (params: Connection) {
   background: #333;
 }
 
-/* inspector */
-.p-4 {
-  width: 260px;
-  overflow: auto;
-  border-left: 1px solid #333;
-}
-
 /* minimap */
 :deep(.vue-flow__minimap) {
   opacity: 0.1;
@@ -269,5 +276,37 @@ function onConnect (params: Connection) {
 
 :deep(.vue-flow__minimap:hover) {
   opacity: 1;
+}
+
+/* backdrop overlay */
+.backdrop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 5;
+}
+
+/* slide-in form */
+.slide-in-form {
+  display: flex;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40%;
+  height: 100%;
+  /* background: rgba(0, 0, 0, 0.9); */
+  border-left: 1px solid #333;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 6;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.slide-in-form.is-open {
+  transform: translateX(0);
 }
 </style>
