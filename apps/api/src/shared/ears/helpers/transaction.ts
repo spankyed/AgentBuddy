@@ -32,6 +32,12 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
       putAttr(id, kind, v);
       return self;
     },
+    batchPut: (attrs: Record<string, unknown>) => {
+      for (const [k, v] of Object.entries(attrs)) {
+        putAttr(id, EARS.AttrKind.Custom(k), v);
+      }
+      return self;
+    },
     merge: (k: EARS.AttrKind, v: unknown, i?: number) => (mergeAttr(id, k, v, i), self),
     drop: (k: EARS.AttrKind, i?: number) => (dropAttr(id, k, i), self),
     dropIf: (k: EARS.AttrKind, c: unknown) => (dropIf(id, k, c), self),
