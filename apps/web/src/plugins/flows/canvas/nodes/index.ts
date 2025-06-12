@@ -3,6 +3,7 @@ import ListenNode from './ListenNode.vue'
 import FireNode from './FireNode.vue'
 import DecisionNode from './DecisionNode.vue'
 import VariableNode from './VariableNode.vue'
+import ActionNode from './ActionNode.vue'
 import type { NodeKind } from '@abuddy/api'
 
 // Map node types to their components
@@ -13,7 +14,7 @@ export const nodeTypes: Record<NodeKind, any> = {
   create: VariableNode,
   update: VariableNode,
   query: VariableNode,
-  action: VariableNode,
+  action: ActionNode,
   transform: VariableNode,
   flow: VariableNode,
 }
