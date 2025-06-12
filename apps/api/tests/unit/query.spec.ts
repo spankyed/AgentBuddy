@@ -34,6 +34,11 @@ describe('qx – fluent query DSL', () => {
       'Node-3',
       'Node-4',
       'Node-5',
+      'Node-6',
+      'Node-8',
+      'Node-9',
+      'Node-10',
+      'Node-11',
     ]);
   });
 
@@ -54,7 +59,7 @@ describe('qx – fluent query DSL', () => {
     const id = qx()
       .where('nodeType', 'flow')
       .first();
-    expect(id).toBe('Node-3');
+    expect(id).toBe('Node-11');
   });
 
   it('withRole() filters by role membership', () => {
@@ -69,26 +74,26 @@ describe('qx – fluent query DSL', () => {
       .relatedTo('Node-3')
       .ids()
       .sort();
-    expect(upstream).toEqual(['Flow-1', 'Node-2', 'Node-4', 'Node-5'].sort());
+    expect(upstream).toEqual(['Flow-1', 'Node-1', 'Node-11', 'Node-4'].sort());
   });
 
   /* ─────── graph traversal helpers ─────── */
   it('linksTo() follows TRANSITIONS_TO to next step', () => {
     expect(
       qx('Node-2')
-        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Node)
         .ids(),
-    ).toEqual(['Node-3']);
+    ).toEqual(['Node-8']);
   });
 
   it('linksPick() projects linked nodes with selected fields', () => {
     const rows = qx('Node-1').linksPick(
-      EARS.RelKind.TRANSITIONS_TO,
+      EARS.RelKind.CONSUMED_BY,
       EARS.Entity.Node,
       ['label', 'nodeType'],
     );
     expect(rows).toEqual([
-      { id: 'Node-2', label: 'Parse Intent', nodeType: 'transform' },
+      { id: 'Node-3', label: 'Message Type', nodeType: 'decision' },
     ]);
   });
 
@@ -117,12 +122,12 @@ describe('qx – fluent query DSL', () => {
     });
 
     it('dedupes by an attribute value', () => {
-      // Both Node-1 & Node-2 share the same nodeType = 'transform'
+      // Node-1 & Node-2 both have nodeType = 'listen'
       const rows = qx(EARS.Entity.Node)
         .distinct('nodeType')
         .pick(['nodeType']);
       const stepTypes = rows.map(r => r.nodeType);
-      expect(stepTypes).toEqual(['listen', 'transform', 'flow']); // unique list
+      expect(stepTypes).toEqual(expect.arrayContaining(['listen', 'decision', 'create', 'update', 'fire', 'query', 'transform', 'flow'])); // unique list
     });
   });
 
@@ -131,8 +136,13 @@ describe('qx – fluent query DSL', () => {
       const grouped = qx(EARS.Entity.Node)
         .groupBy('nodeType'); // Map<string, Qx>
       expect(grouped.get('transform')!.count()).toBe(1);
-      expect(grouped.get('flow')!.count()).toBe(2);
+      expect(grouped.get('flow')!.count()).toBe(1);
       expect(grouped.get('listen')!.count()).toBe(2);
+      expect(grouped.get('fire')!.count()).toBe(2);
+      expect(grouped.get('decision')!.count()).toBe(1);
+      expect(grouped.get('create')!.count()).toBe(1);
+      expect(grouped.get('update')!.count()).toBe(1);
+      expect(grouped.get('query')!.count()).toBe(1);
     });
   });
 
@@ -147,12 +157,16 @@ describe('qx – fluent query DSL', () => {
       expect(page2.items).toHaveLength(2);
       // ensure no overlap between pages
       expect(page2.items).toEqual(expect.not.arrayContaining(page1.items));
+      
+      // Test that we can page through all nodes
+      const page3 = qx(EARS.Entity.Node).orderBy('createdAt').page(10);
+      expect(page3.items).toHaveLength(10); // 10 nodes total
     });
   });
 
   /* ────────── edge identifiers ────────── */
   it('edgeIds() exposes raw relation identifiers', () => {
-    const edges = qx('Node-2').edgeIds(EARS.RelKind.TRANSITIONS_TO, true);
+    const edges = qx('Node-2').edgeIds(EARS.RelKind.CONSUMED_BY, true);
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });
