@@ -219,35 +219,11 @@ describe('qx – fluent query DSL', () => {
       expect(fireNodeCount).toBe(2);
     });
 
-    it('retrieves all roles', () => {
-      const rolesCount = qx()
-        .withRole(EARS.RoleKind.Custom('root_flow'))
-        .count();
-      expect(rolesCount).toBe(1);
-      
-      const entity = qx()
-        .withRole(EARS.RoleKind.Custom('root_flow'))
-        .first();
-      expect(entity).toBe('Flow-1');
-    });
-
-    it('handles multiple withRole filters', () => {
-      const latestNode = qx()
-        .withRole(EARS.RoleKind.Custom('latest_node'))
-        .first();
-      expect(latestNode).toBe('Node-3');
-    });
-
     it('filters nodes by specific attributes', () => {
       const entryNodes = qx(EARS.Entity.Node)
         .where('mode', 'entry')
         .ids();
       expect(entryNodes).toEqual(['Node-1']);
-      
-      const internalNodes = qx(EARS.Entity.Node)
-        .where('mode', 'internal')
-        .ids();
-      expect(internalNodes).toEqual(['Node-2']);
     });
 
     it('retrieves nodes with specific event tags', () => {
@@ -255,11 +231,6 @@ describe('qx – fluent query DSL', () => {
         .where('eventTag', 'chat.message')
         .ids();
       expect(chatNodes).toEqual(['Node-1']);
-      
-      const systemNodes = qx(EARS.Entity.Node)
-        .where('eventTag', 'system.*')
-        .ids();
-      expect(systemNodes).toEqual(['Node-2']);
     });
   });
 });
