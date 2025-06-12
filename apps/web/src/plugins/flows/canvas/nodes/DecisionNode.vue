@@ -13,20 +13,26 @@
     <div class="label">{{ data.label }}</div>
     <div class="type">DECISION</div>
     <Handle
+      type="source"
+      :position="Position.Right"
+      :id="`${id}-out`"
+      class="handle"
+    />
+    <!-- <Handle
       v-for="(condition, i) in data.conditions"
       :key="i"
-      type="source"
+      type="target"
       :position="Position.Top"
       :id="`${id}-out-${i}`"
       class="handle"
     />
     <Handle
       v-if="data.elseLabel"
-      type="source"
+      type="target"
       :position="Position.Bottom"
       :id="`${id}-out-else`"
       class="handle"
-    />
+    /> -->
   </div>
 </template>
 
