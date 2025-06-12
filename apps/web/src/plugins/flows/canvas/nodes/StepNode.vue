@@ -2,7 +2,7 @@
   <div class="step-node" :style="{ borderColor: data.color || '#888' }">
     <Handle
       type="target"
-      :position="Position.Top"
+      :position="Position.Left"
       :id="`${id}-top`"
       class="handle"
     />
@@ -10,8 +10,8 @@
     <div class="type">{{ data.stepType }}</div>
     <Handle
       type="source"
-      :position="Position.Bottom"
-      :id="`${id}-bottom`"
+      :position="Position.Right"
+      :id="`${id}-right`"
       class="handle"
     />
   </div>

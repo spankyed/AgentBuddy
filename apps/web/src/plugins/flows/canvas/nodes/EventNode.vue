@@ -2,15 +2,15 @@
   <div class="event-node" :style="{ borderColor: data.color || '#888' }">
     <Handle
       type="target"
-      :position="Position.Top"
-      :id="`${id}-top`"
+      :position="Position.Left"
+      :id="`${id}-left`"
       class="handle"
     />
     <div class="label">{{ data.label }}</div>
     <Handle
       type="source"
-      :position="Position.Bottom"
-      :id="`${id}-bottom`"
+      :position="Position.Right"
+      :id="`${id}-right`"
       class="handle"
     />
   </div>

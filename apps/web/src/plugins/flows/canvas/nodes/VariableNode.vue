@@ -3,7 +3,7 @@
     <Handle
       v-if="data.mode !== 'create'"
       type="target"
-      :position="Position.Top"
+      :position="Position.Left"
       :id="`${id}-in`"
       class="handle"
       :isValidConnection="({ target }) => {
@@ -15,7 +15,7 @@
     <div class="type">VARIABLE ({{ data.mode }})</div>
     <Handle
       type="source"
-      :position="Position.Bottom"
+      :position="Position.Right"
       :id="`${id}-out`"
       class="handle"
       :isValidConnection="({ source }) => {

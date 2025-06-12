@@ -2,7 +2,7 @@
   <div class="node" :style="{ borderColor: data.color || '#888' }">
     <Handle
       type="target"
-      :position="Position.Top"
+      :position="Position.Left"
       :id="`${id}-in`"
       class="handle"
       :isValidConnection="({ target }) => {

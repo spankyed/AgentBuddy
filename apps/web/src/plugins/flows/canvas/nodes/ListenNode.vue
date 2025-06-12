@@ -4,7 +4,7 @@
     <div class="type">LISTEN ({{ data.mode }})</div>
     <Handle
       type="source"
-      :position="Position.Bottom"
+      :position="Position.Right"
       :id="`${id}-out`"
       class="handle"
       :isValidConnection="({ source }) => {

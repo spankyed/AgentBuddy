@@ -2,7 +2,7 @@
   <div class="node" :style="{ borderColor: data.color || '#888' }">
     <Handle
       type="target"
-      :position="Position.Top"
+      :position="Position.Left"
       :id="`${id}-in`"
       class="handle"
       :isValidConnection="({ target }) => {
@@ -16,7 +16,7 @@
       v-for="(condition, i) in data.conditions"
       :key="i"
       type="source"
-      :position="Position.Bottom"
+      :position="Position.Top"
       :id="`${id}-out-${i}`"
       class="handle"
     />

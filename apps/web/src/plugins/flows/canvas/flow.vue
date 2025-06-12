@@ -146,9 +146,9 @@ const plainEdges = computed(() =>
     id     : e.id,
     source : e.source,
     target : e.target,
-    sourceHandle: `${e.source}-bottom`,  // connect to bottom handle of source node
-    targetHandle: `${e.target}-top`,     // connect to top handle of target node
-    type   : 'generic',                  // handled by slot above
+    // sourceHandle: `${e.source}-right`,  // connect to    handle of source node
+    // targetHandle: `${e.target}-top`,     // connect to top handle of target node
+    // type   : 'generic',                  // handled by slot above
     data   : { kind: e.kind },
   })),
 )
