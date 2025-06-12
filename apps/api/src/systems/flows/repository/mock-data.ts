@@ -205,18 +205,18 @@ export const flowRows: Rows = {
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-11", info: {} },
 
     /* Listen node outputs */
-    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-3", info: {} },
-    { source: "Node-1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: {} },
-    { source: "Node-2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-8", info: {} },
+    { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-3", info: {} },
+    { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-4", info: {} },
+    { source: "Node-2", kind: EARS.RelKind.CONSUMED_BY, target: "Node-8", info: {} },
 
     /* Decision node outputs */
     { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: { condition: "Question" } },
     { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-11", info: { condition: "Command" } },
-    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-7", info: { condition: "Unknown" } },
-
+    
     /* Variable node chain */
     { source: "Node-4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
-    { source: "Node-5", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: {} },
+    { source: "Node-5", kind: EARS.RelKind.EMITS, target: "Node-7", info: { condition: "Unknown" } },
+    { source: "Node-5", kind: EARS.RelKind.EMITS, target: "Node-6", info: {} },
 
     /* Query-Transform-Fire chain */
     { source: "Node-8", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-9", info: {} },
