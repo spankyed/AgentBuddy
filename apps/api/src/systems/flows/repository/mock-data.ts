@@ -99,18 +99,6 @@ export const flowRows: Rows = {
       eventTag: "chat.response",
       scope: "global",
     },
-    {
-      id: "Node-7",
-      entityType: EARS.Entity.Node,
-      createdAt: nowMs - 840,
-      nodeType: "fire",
-      label: "Log Event",
-      x: 700,
-      y: 200,
-      color: "#F44336",
-      eventTag: "system.log",
-      scope: "local",
-    },
 
     /* Query Node */
     {
@@ -198,7 +186,6 @@ export const flowRows: Rows = {
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-4", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-6", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-7", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-8", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-9", info: {} },
     { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-10", info: {} },
@@ -206,23 +193,22 @@ export const flowRows: Rows = {
 
     /* Listen node outputs */
     { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-3", info: {} },
-    { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-4", info: {} },
+    // { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-4", info: {} },
     { source: "Node-2", kind: EARS.RelKind.CONSUMED_BY, target: "Node-8", info: {} },
 
     /* Decision node outputs */
-    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-6", info: { condition: "Question" } },
+    { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-4", info: { condition: "Question" } },
     { source: "Node-3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-11", info: { condition: "Command" } },
     
+    /* Flow node */
+    { source: "Node-11", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
     /* Variable node chain */
     { source: "Node-4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
-    { source: "Node-5", kind: EARS.RelKind.EMITS, target: "Node-7", info: { condition: "Unknown" } },
     { source: "Node-5", kind: EARS.RelKind.EMITS, target: "Node-6", info: {} },
 
     /* Query-Transform-Fire chain */
     { source: "Node-8", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-9", info: {} },
     { source: "Node-9", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-10", info: {} },
 
-    /* Flow node */
-    { source: "Node-11", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-5", info: {} },
   ],
 };

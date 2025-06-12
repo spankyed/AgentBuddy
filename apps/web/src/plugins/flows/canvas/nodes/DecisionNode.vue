@@ -8,7 +8,7 @@
       :isValidConnection="({ target }) => {
         const edges = useVueFlow().edges
         return edges.value.filter(e => e.target === target).length === 0
-      }"    
+      }"
     />
     <div class="label">{{ data.label }}</div>
     <div class="type">DECISION</div>

@@ -148,7 +148,8 @@ const plainNodes = computed(() => {
 })
 
 const plainEdges = computed(() =>
-  Object.values(edges.value).map((e) => ({
+  Object.values(edges.value).map((e, idx) => ({
+    // id: `${e.id}-${idx}`,
     id     : e.id,
     source : e.source,
     target : e.target,
