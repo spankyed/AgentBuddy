@@ -13,7 +13,7 @@ export function loadMockData(): void {
     return;
   }
 
-  // Keep track of the real IDs we just “touched”
+  // Keep track of the real IDs we just "touched"
   const entityIds: Record<string, EARS.EntityId> = {};
 
   /*──────────────────────────*
@@ -43,7 +43,7 @@ export function loadMockData(): void {
     const src = entityIds[rel.source];
     const tgt = entityIds[rel.target];
     if (src && tgt) {
-      tx(src).link(rel.kind, tgt);
+      tx(src).link(rel.kind, tgt, rel.info);
     }
   }
 

@@ -22,19 +22,26 @@ const matchIds = (
     const { bySource, byTarget } = relationIndex[k] ?? {};
     if (!bySource) continue;
 
-    // ── source direction
-    if (w.sourceEntity !== undefined) {
-      (bySource[w.sourceEntity] ?? []).forEach(id => out.add(id));
-    } else if (w.targetEntity === undefined) {
-      // wildcard only if *no* other filter
-      Object.values(bySource).flat().forEach(id => out.add(id));
+    // If both source and target are specified, we need the INTERSECTION
+    if (w.sourceEntity !== undefined && w.targetEntity !== undefined) {
+      const fromSource = new Set(bySource[w.sourceEntity] ?? []);
+      const fromTarget = new Set(byTarget[w.targetEntity] ?? []);
+      // Only add IDs that appear in BOTH sets
+      fromSource.forEach(id => {
+        if (fromTarget.has(id)) out.add(id);
+      });
     }
-
-    // ── target direction
-    if (w.targetEntity !== undefined) {
+    // ── source direction only
+    else if (w.sourceEntity !== undefined) {
+      (bySource[w.sourceEntity] ?? []).forEach(id => out.add(id));
+    } 
+    // ── target direction only
+    else if (w.targetEntity !== undefined) {
       (byTarget[w.targetEntity] ?? []).forEach(id => out.add(id));
-    } else if (w.sourceEntity === undefined) {
-      Object.values(byTarget).flat().forEach(id => out.add(id));
+    } 
+    // wildcard - no source or target specified
+    else {
+      Object.values(bySource).flat().forEach(id => out.add(id));
     }
   }
   return [...out];

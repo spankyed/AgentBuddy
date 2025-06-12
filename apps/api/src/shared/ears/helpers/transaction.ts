@@ -48,9 +48,9 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     },
 
     /*─ relations (raw) ─*/
-    link: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => {
+    link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => {
       preventSelfLoop(t); // ! this is being reached
-      addRelation(id, k, t, i);
+      addRelation(id, k, t, info);
       return self;
     },
     relPatch: (
@@ -60,9 +60,9 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     unlink: (rel: EARS.EntityId) => (removeRelation(rel), self),
 
     /*─ criteria‑edges (edge‑store) ─*/
-    linkOne: (k: EARS.RelKind, t: EARS.EntityId, i?: number) => {
+    linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => {
       preventSelfLoop(t);
-      edgeStore.linkOne(id, k, t, i);
+      edgeStore.linkOne(id, k, t, info);
       return self;
     },
     patchLink: (
