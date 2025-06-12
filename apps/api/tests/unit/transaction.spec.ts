@@ -87,8 +87,7 @@ describe('tx – fluent mutation DSL', () => {
 
     it('drop() removes attributes', () => {
       testNode
-        .put('label', 'Test')
-        .put('nodeType', 'fire')
+        .batchPut({ label: 'Test', nodeType: 'fire' })
         .drop(EARS.AttrKind.Custom('label'));
 
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'))).toBeNull();
@@ -97,8 +96,7 @@ describe('tx – fluent mutation DSL', () => {
 
     it('dropIf() conditionally removes attributes', () => {
       testNode
-        .put('status', 'draft')
-        .put('label', 'Test')
+        .batchPut({ status: 'draft', label: 'Test' })
         .dropIf(EARS.AttrKind.Custom('status'), 'draft')
         .dropIf(EARS.AttrKind.Custom('label'), 'NotTest');
 
@@ -117,6 +115,19 @@ describe('tx – fluent mutation DSL', () => {
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('a'))).toBeNull();
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('b'))).toBe(2);
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('c'))).toBe(3);
+    });
+
+    it('batchPut() adds multiple attributes at once', () => {
+      const result = testNode.batchPut({
+        label: 'Batch Test',
+        nodeType: 'decision',
+        x: 100
+      });
+
+      expect(result).toBe(testNode); // chainable
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'))).toBe('Batch Test');
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('nodeType'))).toBe('decision');
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('x'))).toBe(100);
     });
   });
 
@@ -401,9 +412,11 @@ describe('tx – fluent mutation DSL', () => {
       const relatedNode = tx(EARS.Entity.Node).put('label', 'Related');
       
       const complexNode = tx(EARS.Entity.Node)
-        .put('label', 'Complex Node')
-        .put('nodeType', 'transform')
-        .put('status', 'active')
+        .batchPut({
+          label: 'Complex Node',
+          nodeType: 'transform',
+          status: 'active'
+        })
         .merge(EARS.AttrKind.Custom('config'), { timeout: 5000 })
         .grant('primary')
         .grant('selected_node')
