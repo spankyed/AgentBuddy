@@ -602,7 +602,7 @@ function updateFlowLabel() {
 .actions-menu-trigger {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  top: 10px;
   z-index: 4;
   width: 40px;
   height: 40px;
