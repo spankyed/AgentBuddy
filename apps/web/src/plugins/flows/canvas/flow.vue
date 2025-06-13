@@ -1,31 +1,31 @@
 <template>
-  <div class="dialog-editor">
+  <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="palette">
+    <aside class="w-60 overflow-y-auto bg-[#0a0a0a] text-white border-r border-[#1a1a1a]">
       <!-- Flows list view -->
-      <div v-if="inListState" class="flows-list">
+      <div v-if="inListState" class="flex flex-col h-full p-0 overflow-hidden">
         <!-- Root flow section -->
-        <div v-if="rootFlow" class="flow-section root-section">
+        <div v-if="rootFlow" class="flex-shrink-0 px-4 pt-6">
           <!-- <h3 class="section-title">Root Flow</h3> -->
           <button
             class="flow-item root-flow"
             :class="{ active: rootFlow.id === selectedFlowId }"
             @click="onFlowClick(rootFlow)"
           >
-            <div class="flow-header">
-              <ArrowRightFromLine class="flow-icon" :size="16" />
-              <span class="flow-name">{{ rootFlow.label || 'Root Flow' }}</span>
+            <div class="flex items-center gap-2">
+              <ArrowRightFromLine class="flex-shrink-0 text-cyan-400" :size="16" />
+              <span class="text-sm font-medium leading-tight">{{ rootFlow.label || 'Root Flow' }}</span>
             </div>
-            <span v-if="rootFlow.description" class="flow-description">{{ rootFlow.description }}</span>
+            <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ rootFlow.description }}</span>
           </button>
         </div>
 
         <!-- Other flows section -->
-        <div v-if="flows.length > 0" class="flow-section subflows-section">
+        <div v-if="flows.length > 0" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
           <div v-if="rootFlow" class="section-title-container">
             <h3 class="section-title">Sub Flows</h3>
           </div>
-          <div class="flows-grid">
+          <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto flows-grid">
             <button
               v-for="flow in flows"
               :key="flow.id"
@@ -33,35 +33,36 @@
               :class="{ active: flow.id === selectedFlowId }"
               @click="onFlowClick(flow)"
             >
-              <div class="flow-header">
-                <GitBranch class="flow-icon" :size="14" />
-                <span class="flow-name">{{ flow.label || `Flow ${flow.id}` }}</span>
+              <div class="flex items-center gap-2">
+                <GitBranch class="flex-shrink-0 text-cyan-400" :size="14" />
+                <span class="text-sm font-medium leading-tight">{{ flow.label || `Flow ${flow.id}` }}</span>
               </div>
-              <span v-if="flow.description" class="flow-description">{{ flow.description }}</span>
+              <span v-if="flow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ flow.description }}</span>
             </button>
           </div>
         </div>
 
         <!-- Empty state -->
-        <div v-if="!rootFlow && flows.length === 0" class="empty-state">
-          <Workflow class="empty-icon" :size="32" />
-          <p>No flows created yet</p>
+        <div v-if="!rootFlow && flows.length === 0" class="flex flex-col items-center justify-center h-full gap-3 px-4 py-12 text-center">
+          <Workflow class="text-neutral-700" :size="32" />
+          <p class="m-0 text-sm text-neutral-500">No flows created yet</p>
         </div>
 
         <!-- Create new flow button -->
         <div class="create-flow-section">
           <button class="create-flow-button" @click="onCreateFlow">
-            <Plus class="create-icon" :size="18" />
+            <Plus class="flex-shrink-0" :size="18" />
             <span>Create New Flow</span>
           </button>
         </div>
       </div>
 
       <!-- Steps palette view -->
-      <div v-if="inViewState" class="steps-palette">
+      <div v-if="inViewState" class="p-6">
         <button
           v-for="t in paletteItems"
           :key="t.type"
+          class="block w-full mb-2 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-grab text-left text-sm transition-all duration-200 relative hover:bg-[#1a1a1a] hover:border-[#333] hover:translate-x-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] active:cursor-grabbing active:scale-[0.98]"
           draggable="true"
           @dragstart="(e) => onDragStart(e, t.type)"
         >
@@ -74,7 +75,7 @@
     <VueFlow
       :nodes="plainNodes"
       :edges="plainEdges"
-      class="graph"
+      class="flex-1 bg-[#0a0a0a]"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{
@@ -102,25 +103,25 @@
       <Controls />
       <MiniMap :maskColor="'#26262650'" :maskStrokeColor="'transparent'" />
 
-      <!-- Actions menu (bottom left) -->
+      <!-- Actions menu (top left) -->
       <DropdownMenuRoot>
         <DropdownMenuTrigger as-child>
-          <button class="actions-menu-trigger" title="Actions menu">
+          <button class="absolute left-2.5 top-2.5 z-[4] w-10 h-10 flex items-center justify-center bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-pointer transition-all duration-200 hover:bg-[#1a1a1a] hover:border-[#333] hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)]" title="Actions menu">
             <MoreVertical :size="20" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
-          <DropdownMenuContent class="actions-menu-content" :side="'top'" :side-offset="8">
-            <DropdownMenuItem class="actions-menu-item" @select="() => layout('LR')">
-              <Layout :size="16" class="actions-menu-icon" />
+          <DropdownMenuContent class="bg-[#161616] border border-[#262626] rounded-lg p-1 min-w-[180px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)]" :side="'bottom'" :side-offset="8">
+            <DropdownMenuItem class="flex items-center gap-2 px-3 py-2 rounded text-[#e0e0e0] text-sm cursor-pointer outline-none transition-all duration-200 hover:bg-[#262626] focus:bg-[#262626]" @select="() => layout('LR')">
+              <Layout :size="16" class="flex-shrink-0 text-cyan-400" />
               Auto Layout
             </DropdownMenuItem>
             <DropdownMenuItem 
               v-if="selectedFlowId" 
-              class="actions-menu-item" 
+              class="flex items-center gap-2 px-3 py-2 rounded text-[#e0e0e0] text-sm cursor-pointer outline-none transition-all duration-200 hover:bg-[#262626] focus:bg-[#262626]" 
               @select="openLabelDialog"
             >
-              <Edit :size="16" class="actions-menu-icon" />
+              <Edit :size="16" class="flex-shrink-0 text-cyan-400" />
               Edit Label
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -131,7 +132,7 @@
 
     <!-- ▸ Node editor overlay -->
       <!-- Backdrop overlay -->
-      <div v-if="selected" class="backdrop-overlay" @click="closeNodeEditor" />
+      <div v-if="selected" class="absolute top-0 left-0 w-full h-full bg-black/70 z-[5]" @click="closeNodeEditor" />
       <!-- Slide-in form -->
       <div class="slide-in-form" :class="{ 'is-open': selected }">
         <component
@@ -148,11 +149,11 @@
       description="Update the label for the current flow."
       @cancel="labelDialogOpen = false"
     >
-      <form id="label-form" @submit.prevent="updateFlowLabel" class="label-form">
+      <form id="label-form" @submit.prevent="updateFlowLabel" class="flex flex-col gap-4">
         <input
           v-model="newFlowLabel"
           type="text"
-          class="label-input"
+          class="w-full px-3.5 py-2.5 bg-[#0a0a0a] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
           placeholder="Enter flow label"
           autofocus
         />
@@ -356,437 +357,124 @@ function updateFlowLabel() {
 </script>
 
 <style scoped>
-.dialog-editor {
-  display: flex;
-  position: relative;
-  overflow: hidden;
-  height: 100%;
-  width: 100%;
-}
-
-/* palette (left) */
-.palette {
-  width: 240px;
-  overflow-y: auto;
-  background: #0a0a0a;
-  color: #fff;
-  border-right: 1px solid #1a1a1a;
-}
-
-/* flows list */
-.flows-list {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0;
-  overflow: hidden;
-}
-
-/* flow sections */
-.flow-section {
-  padding: 0 1rem;
-}
-
-.root-section {
-  flex-shrink: 0;
-  padding-top: 1.5rem;
-}
-
-.subflows-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-  padding-bottom: 1rem;
-}
-
-.flows-grid {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 4px;
-}
-
+/* Section title with bisecting line */
 .section-title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #666;
-  background: #0a0a0a;
-  padding: 0 12px;
+  @apply m-0 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] px-3;
 }
 
 .section-title-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 1rem 0 1rem 0;
+  @apply relative flex items-center justify-center my-4;
 }
 
 .section-title-container::before {
   content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
+  @apply absolute left-0 right-0 top-1/2 h-px z-0;
   background: linear-gradient(to right, transparent, #333 20%, #333 80%, transparent);
-  z-index: 0;
 }
 
 .section-title-container .section-title {
-  position: relative;
-  z-index: 1;
+  @apply relative z-[1];
 }
 
-/* flow items */
+/* Flow items with gradients */
 .flow-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 12px 14px;
-  background: #161616;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #e0e0e0;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  @apply flex flex-col gap-1.5 w-full mb-2 px-3.5 py-3 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-pointer text-left transition-all duration-200 relative overflow-hidden;
 }
 
 .flow-item::before {
   content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  @apply absolute top-0 left-0 right-0 bottom-0 opacity-0 transition-opacity duration-300;
   background: radial-gradient(circle at top left, rgba(0, 188, 212, 0.05), transparent 50%);
-  opacity: 0;
-  transition: opacity 0.3s;
 }
 
 .flow-item:hover {
-  background: #1a1a1a;
-  border-color: #333;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  @apply bg-[#1a1a1a] border-[#333] -translate-y-px shadow-[0_4px_12px_rgba(0,0,0,0.5)];
 }
 
 .flow-item:hover::before {
-  opacity: 1;
+  @apply opacity-100;
 }
 
-/* root flow special styling */
+/* Root flow styling */
 .flow-item.root-flow {
   background: linear-gradient(135deg, #1a1a1a 0%, #161616 100%);
-  border: 1px solid #2a2a2a;
+  @apply border-[#2a2a2a];
 }
 
 .flow-item.root-flow:hover {
   background: linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%);
-  border-color: #00bcd4;
+  @apply border-cyan-400;
   box-shadow: 0 0 0 1px rgba(0, 188, 212, 0.1), 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 
+/* Active flow styling */
 .flow-item.active {
   background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  border-color: #00bcd4;
-  color: #fff;
+  @apply border-cyan-400 text-white;
   box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2), 0 4px 12px rgba(0, 188, 212, 0.3);
 }
 
-.flow-item.active .flow-icon {
-  color: #fff;
+.flow-item.active .text-cyan-400 {
+  @apply text-white;
 }
 
-.flow-item.active .flow-description {
-  color: rgba(255, 255, 255, 0.8);
+.flow-item.active .text-neutral-500 {
+  @apply text-white/80;
 }
 
-/* flow header */
-.flow-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.flow-icon {
-  color: #00bcd4;
-  flex-shrink: 0;
-}
-
-.flow-name {
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.flow-description {
-  font-size: 12px;
-  color: #666;
-  line-height: 1.4;
-  margin-left: 24px;
-}
-
-/* empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 3rem 1rem;
-  text-align: center;
-  height: 100%;
-}
-
-.empty-icon {
-  color: #333;
-}
-
-.empty-state p {
-  color: #666;
-  font-size: 14px;
-  margin: 0;
-}
-
-/* steps palette */
-.steps-palette {
-  padding: 1.5rem 1rem;
-}
-
-.steps-palette button {
-  display: block;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 10px 14px;
-  background: #161616;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #e0e0e0;
-  cursor: grab;
-  text-align: left;
-  font-size: 14px;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.steps-palette button:hover {
-  background: #1a1a1a;
-  border-color: #333;
-  transform: translateX(2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.steps-palette button:active {
-  cursor: grabbing;
-  transform: scale(0.98);
-}
-
-/* graph canvas */
-.graph {
-  flex: 1;
-  background: #0a0a0a;
-}
-
-/* actions menu */
-.actions-menu-trigger {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 4;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #161616;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #e0e0e0;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.actions-menu-trigger:hover {
-  background: #1a1a1a;
-  border-color: #333;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.actions-menu-content {
-  background: #161616;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  padding: 4px;
-  min-width: 180px;
-  box-shadow: 0 10px 38px -10px rgba(0, 0, 0, 0.75), 0 10px 20px -15px rgba(0, 0, 0, 0.4);
-}
-
-.actions-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  color: #e0e0e0;
-  font-size: 14px;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.actions-menu-item:hover {
-  background: #262626;
-}
-
-.actions-menu-item:focus {
-  background: #262626;
-}
-
-.actions-menu-icon {
-  color: #00bcd4;
-  flex-shrink: 0;
-}
-
-/* minimap */
+/* Minimap styling */
 :deep(.vue-flow__minimap) {
-  opacity: 0.15;
-  transition: opacity 0.2s;
-  background: #0a0a0a;
-  border: 1px solid #1a1a1a;
-  border-radius: 8px;
+  @apply opacity-[0.15] transition-opacity duration-200 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg;
 }
 
 :deep(.vue-flow__minimap:hover) {
-  opacity: 1;
+  @apply opacity-100;
 }
 
-/* backdrop overlay */
-.backdrop-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 5;
-}
-
-/* slide-in form */
+/* Slide-in form */
 .slide-in-form {
-  display: flex;
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40%;
-  height: 100%;
-  /* background: rgba(0, 0, 0, 0.9); */
-  border-left: 1px solid #333;
-  transform: translateX(100%);
-  transition: transform 0.3s ease-in-out;
-  z-index: 6;
-  overflow-y: auto;
-  overflow-x: hidden;
+  @apply flex absolute top-0 right-0 w-2/5 h-full border-l border-[#333] transform translate-x-full transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden;
 }
 
 .slide-in-form.is-open {
-  transform: translateX(0);
+  @apply translate-x-0;
 }
 
 /* Scrollbar styling */
-.palette::-webkit-scrollbar,
-.flows-grid::-webkit-scrollbar {
-  width: 6px;
+*::-webkit-scrollbar {
+  @apply w-1.5;
 }
 
-.palette::-webkit-scrollbar-track,
-.flows-grid::-webkit-scrollbar-track {
-  background: transparent;
+*::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
 
-.palette::-webkit-scrollbar-thumb,
-.flows-grid::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
+*::-webkit-scrollbar-thumb {
+  @apply bg-neutral-700 rounded-[3px];
 }
 
-.palette::-webkit-scrollbar-thumb:hover,
-.flows-grid::-webkit-scrollbar-thumb:hover {
-  background: #444;
+*::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-600;
 }
 
-/* Create new flow button */
+/* Create flow button section */
 .create-flow-section {
-  flex-shrink: 0;
-  padding: 1rem;
-  border-top: 1px solid #1a1a1a;
+  @apply flex-shrink-0 p-4 border-t border-[#1a1a1a];
   background: linear-gradient(to top, #0a0a0a 0%, rgba(10, 10, 10, 0.95) 50%, rgba(10, 10, 10, 0) 100%);
 }
 
 .create-flow-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 12px 20px;
+  @apply flex items-center justify-center w-full px-5 py-3 rounded-lg text-white cursor-pointer text-sm font-medium transition-all duration-200 gap-2;
   background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  border: 1px solid #00bcd4;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  gap: 8px;
+  @apply border border-cyan-400;
 }
 
 .create-flow-button:hover {
   background: linear-gradient(135deg, #00d4e6 0%, #00acc1 100%);
-  border-color: #00d4e6;
-  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
-  transform: translateY(-1px);
+  @apply border-[#00d4e6] shadow-[0_4px_12px_rgba(0,188,212,0.3)] -translate-y-px;
 }
 
 .create-flow-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
-}
-
-.create-icon {
-  flex-shrink: 0;
-}
-
-/* label form styles */
-.label-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.label-input {
-  width: 100%;
-  padding: 10px 14px;
-  background: #0a0a0a;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #e0e0e0;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.label-input:focus {
-  border-color: #00bcd4;
-  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.1);
+  @apply translate-y-0 shadow-[0_2px_8px_rgba(0,188,212,0.3)];
 }
 </style>
