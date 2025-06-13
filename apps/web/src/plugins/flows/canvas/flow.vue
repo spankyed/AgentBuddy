@@ -250,11 +250,9 @@ const selected = useSelector(actor, (s) =>
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
 
-/* Transform nodes and edges for Vue-Flow */
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
     .map((n) => ({
-      /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
       id       : n.id!,
       type     : n.nodeType,
       position : { x: n.x ?? 0, y: n.y ?? 0 },
