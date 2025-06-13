@@ -141,7 +141,6 @@ import ListenForm from './forms/ListenForm.vue'
 import FireForm from './forms/FireForm.vue'
 import CreateForm from './forms/CreateForm.vue'
 
-const { addNodes, fitView } = useVueFlow()
 const { layout } = useLayout()
 
 function getFormComponent(nodeType: string) {
@@ -151,12 +150,6 @@ function getFormComponent(nodeType: string) {
     'create': CreateForm,
   }
   return formMap[nodeType] || BaseForm
-}
-
-function colorForType(type: string) {
-  return ({ input: '#00bcd4', transform: '#9c27b0', llm: '#607d8b', output: '#4caf50' }[
-    type as keyof any
-  ] ?? '#888')
 }
 
 /* ------------------------------------------------------------ */
