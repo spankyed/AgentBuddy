@@ -31,6 +31,7 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
   if (defaultState?.id === crumbs[0]?.id) {
     crumbs = crumbs.slice(1);
 
+    // ? comment out this to show the default breadcrumb
     if (!crumbs.length) {
       return { crumbs: [], target: undefined };
     }
