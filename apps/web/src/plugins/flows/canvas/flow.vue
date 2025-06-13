@@ -23,7 +23,10 @@
         <!-- Other flows section -->
         <div v-if="flows.length > 0" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
           <div v-if="rootFlow" class="section-title-container">
-            <h3 class="section-title">Sub Flows</h3>
+            <span class="flex items-center z-[1] bg-[#0a0a0a]">
+              <GitBranch class="flex-shrink-0 ml-3 text-cyan-400" :size="14" />
+            </span>
+            <h3 class="m-0 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] pl-2 pr-3 z-[1]">Sub Flows</h3>
           </div>
           <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto flows-grid">
             <button
@@ -34,7 +37,6 @@
               @click="onFlowClick(flow)"
             >
               <div class="flex items-center min-w-0 gap-2">
-                <GitBranch class="flex-shrink-0 text-cyan-400" :size="14" />
                 <span class="text-sm font-medium leading-tight truncate">{{ flow.label || `Flow ${flow.id}` }}</span>
               </div>
               <span v-if="flow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ flow.description }}</span>
@@ -358,9 +360,7 @@ function updateFlowLabel() {
 
 <style scoped>
 /* Section title with bisecting line */
-.section-title {
-  @apply m-0 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] px-3;
-}
+
 
 .section-title-container {
   @apply relative flex items-center justify-center my-4;
