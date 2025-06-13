@@ -9,6 +9,7 @@ import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity } from './types';
 import { getExtendedData } from './repository/read';
 import { createFlow } from './repository/create';
+import { updateFlowLabel } from './repository/update';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -20,6 +21,7 @@ const busEvent = systemBus(flows);
 export const IncomingFlowsEvents = [
   busEvent('FLOW_SELECT', { flowId: z.string() }),
   busEvent('CREATE_FLOW', {}),
+  busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -69,6 +71,10 @@ export const flowsSystem = setup({
         flowId: newFlow.id,
       }));
     },
+    updateFlowLabel: ({ event }) => {
+      const ev = typeOf('UPDATE_FLOW_LABEL', event);
+      updateFlowLabel(ev.flowId as EARS.EntityId, ev.label);
+    },
   },
 }).createMachine(
   {
@@ -83,6 +89,9 @@ export const flowsSystem = setup({
       },
       CREATE_FLOW: {
         actions: 'createFlow',
+      },
+      UPDATE_FLOW_LABEL: {
+        actions: 'updateFlowLabel',
       },
     },
     states: {

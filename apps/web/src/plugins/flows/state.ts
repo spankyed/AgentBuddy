@@ -43,6 +43,7 @@ type UIEvent =
   | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
+  | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -86,6 +87,34 @@ const flowsState = setup({
       const ev = typeOf('FLOW.CREATE', event);
       trpc.bus.send.mutate({ systemId: id, type: 'CREATE_FLOW' });
     },
+
+    sendUpdateLabel: ({ event }) => {
+      const ev = typeOf('FLOW.UPDATE_LABEL', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_FLOW_LABEL',
+        flowId: ev.flowId,
+        label: ev.label,
+      });
+    },
+
+    updateFlowLabel: assign(({ context, event }) => {
+      const ev = typeOf('FLOW.UPDATE_LABEL', event);
+      
+      // Update root flow if it's the one being edited
+      if (context.rootFlow?.id === ev.flowId) {
+        return {
+          rootFlow: { ...context.rootFlow, label: ev.label }
+        };
+      }
+      
+      // Otherwise update in flows list
+      return {
+        flows: context.flows.map(flow => 
+          flow.id === ev.flowId ? { ...flow, label: ev.label } : flow
+        )
+      };
+    }),
 
     addCreatedFlow: assign(({ context, event }) => {
       const ev = typeOf('FLOW_CREATED', event);
@@ -170,6 +199,9 @@ const flowsState = setup({
         'FLOW.CREATE': {
           actions: 'sendCreateFlow',
         },
+        'FLOW.UPDATE_LABEL': {
+          actions: ['updateFlowLabel', 'sendUpdateLabel'],
+        },
       }
     },
     view: {
@@ -180,6 +212,9 @@ const flowsState = setup({
         'EDGE.CONNECT': { actions: 'connectEdge' },
         'NODE.DRAG_CREATE': {
           actions: 'createNode',
+        },
+        'FLOW.UPDATE_LABEL': {
+          actions: ['updateFlowLabel', 'sendUpdateLabel'],
         },
       },
     },

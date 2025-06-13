@@ -101,14 +101,32 @@
       </template>
       <Background variant="dots" />
       <Controls />
-      <button
-        class="layout-button"
-        @click="() => layout('LR')"
-        title="Auto-layout graph"
-      >
-        Layout
-      </button>
       <MiniMap :maskColor="'#26262650'" :maskStrokeColor="'transparent'" />
+
+      <!-- Actions menu (bottom left) -->
+      <DropdownMenuRoot>
+        <DropdownMenuTrigger as-child>
+          <button class="actions-menu-trigger" title="Actions menu">
+            <MoreVertical :size="20" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuContent class="actions-menu-content" :side="'top'" :side-offset="8">
+            <DropdownMenuItem class="actions-menu-item" @select="() => layout('LR')">
+              <Layout :size="16" class="actions-menu-icon" />
+              Auto Layout
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              v-if="selectedFlowId" 
+              class="actions-menu-item" 
+              @select="openLabelDialog"
+            >
+              <Edit :size="16" class="actions-menu-icon" />
+              Edit Label
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenuPortal>
+      </DropdownMenuRoot>
 
   </VueFlow>
 
@@ -123,6 +141,33 @@
           :node="selected"
         />
       </div>
+
+    <!-- Label Edit Dialog -->
+    <Dialog
+      v-model="labelDialogOpen"
+      title="Edit Flow Label"
+      description="Update the label for the current flow."
+      @cancel="labelDialogOpen = false"
+    >
+      <form id="label-form" @submit.prevent="updateFlowLabel" class="label-form">
+        <input
+          v-model="newFlowLabel"
+          type="text"
+          class="label-input"
+          placeholder="Enter flow label"
+          autofocus
+        />
+      </form>
+      
+      <template #actions>
+        <button type="button" class="dialog-button cancel" @click="labelDialogOpen = false">
+          Cancel
+        </button>
+        <button type="submit" class="dialog-button submit" form="label-form">
+          Save
+        </button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -141,7 +186,15 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ArrowRightFromLine, GitBranch, Workflow, Plus } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus, Layout, Edit, MoreVertical } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuPortal,
+} from 'reka-ui'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -162,7 +215,14 @@ import ListenForm from './forms/ListenForm.vue'
 import FireForm from './forms/FireForm.vue'
 import CreateForm from './forms/CreateForm.vue'
 
+// Design components
+import Dialog from '@/core/design/dialog.vue'
+
 const { layout } = useLayout()
+
+// Dialog state
+const labelDialogOpen = ref(false)
+const newFlowLabel = ref('')
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
@@ -272,6 +332,28 @@ function onFlowClick(flow: Partial<FlowEntity>) {
 
 function onCreateFlow() {
   actor.send({ type: 'FLOW.CREATE' })
+}
+
+function openLabelDialog() {
+  const currentFlow = rootFlow.value?.id === selectedFlowId.value 
+    ? rootFlow.value 
+    : flows.value.find(f => f.id === selectedFlowId.value)
+  
+  if (currentFlow) {
+    newFlowLabel.value = currentFlow.label || ''
+    labelDialogOpen.value = true
+  }
+}
+
+function updateFlowLabel() {
+  if (selectedFlowId.value && newFlowLabel.value.trim()) {
+    actor.send({
+      type: 'FLOW.UPDATE_LABEL',
+      flowId: selectedFlowId.value,
+      label: newFlowLabel.value.trim()
+    })
+    labelDialogOpen.value = false
+  }
 }
 </script>
 
@@ -499,27 +581,64 @@ function onCreateFlow() {
   background: #0a0a0a;
 }
 
-/* layout button */
-.layout-button {
+/* actions menu */
+.actions-menu-trigger {
   position: absolute;
-  right: 10px;
-  top: 10px;
+  left: 10px;
+  bottom: 10px;
   z-index: 4;
-  padding: 8px 14px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #161616;
   border: 1px solid #262626;
   border-radius: 8px;
   color: #e0e0e0;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
   transition: all 0.2s;
 }
 
-.layout-button:hover {
+.actions-menu-trigger:hover {
   background: #1a1a1a;
   border-color: #333;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.actions-menu-content {
+  background: #161616;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 10px 38px -10px rgba(0, 0, 0, 0.75), 0 10px 20px -15px rgba(0, 0, 0, 0.4);
+}
+
+.actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.actions-menu-item:hover {
+  background: #262626;
+}
+
+.actions-menu-item:focus {
+  background: #262626;
+}
+
+.actions-menu-icon {
+  color: #00bcd4;
+  flex-shrink: 0;
 }
 
 /* minimap */
@@ -628,5 +747,29 @@ function onCreateFlow() {
 
 .create-icon {
   flex-shrink: 0;
+}
+
+/* label form styles */
+.label-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.label-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.label-input:focus {
+  border-color: #00bcd4;
+  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.1);
 }
 </style>
