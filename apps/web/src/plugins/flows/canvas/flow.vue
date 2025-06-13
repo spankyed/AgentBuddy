@@ -12,7 +12,10 @@
             @click="onFlowClick(rootFlow)"
           >
             <div class="flex items-center min-w-0 gap-2">
-              <ArrowRightFromLine class="flex-shrink-0 text-cyan-400" :class="{ 'text-white': rootFlow.id === selectedFlowId }" :size="14" />
+              <span class="text-xs tracking-wider uppercase text-neutral-500" :class="{ 'text-white/70': rootFlow.id === selectedFlowId }">root</span>
+              <div class="flex items-center justify-center flex-shrink-0 w-6 h-6 rounded bg-neutral-800" :class="{ 'bg-white/20': rootFlow.id === selectedFlowId }">
+                <ArrowRightFromLine class="text-cyan-400" :class="{ 'text-white': rootFlow.id === selectedFlowId }" :size="12" />
+              </div>
               <span class="font-medium leading-tight truncate">{{ rootFlow.label || 'Root Flow' }}</span>
             </div>
             <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500" :class="{ 'text-white/80': rootFlow.id === selectedFlowId }">{{ rootFlow.description }}</span>
