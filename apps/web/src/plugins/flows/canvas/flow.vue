@@ -2,25 +2,8 @@
   <div class="dialog-editor">
     <!-- ▸ Node palette (left) -->
     <aside class="palette">
-      <!-- Toggle buttons -->
-      <div class="palette-toggle">
-        <button 
-          :class="{ active: paletteView === 'flows' }"
-          @click="paletteView = 'flows'"
-        >
-          Flows
-        </button>
-        <button 
-          :class="{ active: paletteView === 'steps' }"
-          @click="paletteView = 'steps'"
-        >
-          Steps
-        </button>
-      </div>
-
       <!-- Flows list view -->
-      <div v-if="paletteView === 'flows'" class="flows-list">
-        <h3>Flows</h3>
+      <div v-if="inListState" class="flows-list">
         <div v-if="flows.length === 0" class="empty-state">
           No flows created yet
         </div>
@@ -37,8 +20,7 @@
       </div>
 
       <!-- Steps palette view -->
-      <div v-else class="steps-palette">
-        <h3>Node&nbsp;Palette</h3>
+      <div v-if="inViewState" class="steps-palette">
         <button
           v-for="t in paletteItems"
           :key="t.type"
@@ -157,6 +139,8 @@ function getFormComponent(nodeType: string) {
 /* ------------------------------------------------------------ */
 const actor: FlowsState = applicationState.system.get(id)
 
+const inListState = useSelector(actor, (s) => s.hasTag('list-flows'))
+const inViewState = useSelector(actor, (s) => s.hasTag('view-flow'))
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
@@ -165,9 +149,6 @@ const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
-
-// Palette view state
-const paletteView = ref<'flows' | 'steps'>('steps')
 
 /* Transform nodes and edges for Vue-Flow */
 const plainNodes = computed(() => {
@@ -271,38 +252,6 @@ function onFlowClick(flow: Partial<FlowEntity>) {
   margin: 0 0 0.75rem;
   font-size: 16px;
   font-weight: 600;
-}
-
-/* palette toggle */
-.palette-toggle {
-  display: flex;
-  gap: 4px;
-  margin: 1rem 1rem 0;
-  padding: 4px;
-  background: #2b2b2b;
-  border-radius: 8px;
-}
-
-.palette-toggle button {
-  flex: 1;
-  padding: 6px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: #999;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.palette-toggle button:hover {
-  color: #ddd;
-}
-
-.palette-toggle button.active {
-  background: #444;
-  color: #fff;
 }
 
 /* flows list */
