@@ -481,6 +481,73 @@ describe('tx – fluent mutation DSL', () => {
       expect(getAttr(node1.id(), EARS.AttrKind.Custom('label'))).toBe('Chained');
     });
 
+    it('safeLink() enforces single parent constraint', () => {
+      const parent1 = tx(EARS.Entity.Thread).put('label', 'Parent1');
+      const parent2 = tx(EARS.Entity.Thread).put('label', 'Parent2');
+      const child = tx(EARS.Entity.Thread).put('label', 'Child');
+      
+      const singleParentOptions: SafeLinkOptions = {
+        singleParent: true
+      };
+      
+      // First parent link should work
+      parent1.safeLink(EARS.RelKind.CONTAINS, child.id(), singleParentOptions);
+      
+      // Verify the link exists
+      expect(qx(parent1.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+      
+      // Second parent link should fail
+      expect(() => parent2.safeLink(EARS.RelKind.CONTAINS, child.id(), singleParentOptions))
+        .toThrow('Entity Thread-');
+      expect(() => parent2.safeLink(EARS.RelKind.CONTAINS, child.id(), singleParentOptions))
+        .toThrow('already has a parent of type contains');
+      
+      // Verify only the first parent link exists
+      expect(qx(parent1.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+      expect(qx(parent2.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .not.toContain(child.id());
+    });
+
+    it('safeLink() single parent constraint works with different relation types', () => {
+      const parent1 = tx(EARS.Entity.Thread);
+      const parent2 = tx(EARS.Entity.Thread);
+      const child = tx(EARS.Entity.Thread);
+      
+      const singleParentOptions: SafeLinkOptions = {
+        singleParent: true
+      };
+      
+      // First parent with CONTAINS
+      parent1.safeLink(EARS.RelKind.CONTAINS, child.id(), singleParentOptions);
+      
+      // Different relation type (BLOCKS) should work even with single parent
+      parent2.safeLink(EARS.RelKind.BLOCKS, child.id(), singleParentOptions);
+      
+      // Verify both links exist (different relation types)
+      expect(qx(parent1.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+      expect(qx(parent2.id()).linksTo(EARS.RelKind.BLOCKS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+    });
+
+    it('safeLink() single parent works without the constraint', () => {
+      const parent1 = tx(EARS.Entity.Thread);
+      const parent2 = tx(EARS.Entity.Thread);
+      const child = tx(EARS.Entity.Thread);
+      
+      // Without singleParent option, multiple parents should be allowed
+      parent1.safeLink(EARS.RelKind.CONTAINS, child.id());
+      parent2.safeLink(EARS.RelKind.CONTAINS, child.id());
+      
+      // Both links should exist
+      expect(qx(parent1.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+      expect(qx(parent2.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids())
+        .toContain(child.id());
+    });
+
     it('safeLink() supports various option combinations', () => {
       const node4 = tx(EARS.Entity.Thread);
       const node5 = tx(EARS.Entity.Thread);
@@ -508,6 +575,30 @@ describe('tx – fluent mutation DSL', () => {
         .toContain(node5.id());
       expect(qx(node5.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
         .toContain(node4.id());
+    });
+
+    it('safeLink() combines single parent with cycle detection', () => {
+      const grandparent = tx(EARS.Entity.Thread);
+      const parent = tx(EARS.Entity.Thread);
+      const child = tx(EARS.Entity.Thread);
+      
+      const hierarchyOptions: SafeLinkOptions = {
+        singleParent: true,
+        acyclicGroup: [EARS.RelKind.CONTAINS]
+      };
+      
+      // Create hierarchy
+      grandparent.safeLink(EARS.RelKind.CONTAINS, parent.id(), hierarchyOptions);
+      parent.safeLink(EARS.RelKind.CONTAINS, child.id(), hierarchyOptions);
+      
+      // Try to create cycle - should fail due to cycle detection
+      expect(() => child.safeLink(EARS.RelKind.CONTAINS, grandparent.id(), hierarchyOptions))
+        .toThrow('Cannot create a contains relation that would form a cycle');
+      
+      // Try to add second parent - should fail due to single parent
+      const otherParent = tx(EARS.Entity.Thread);
+      expect(() => otherParent.safeLink(EARS.RelKind.CONTAINS, child.id(), hierarchyOptions))
+        .toThrow('already has a parent of type contains');
     });
   });
 
