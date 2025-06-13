@@ -21,7 +21,7 @@
         </div>
 
         <!-- Other flows section -->
-        <div v-if="flows.length > 0" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
+        <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
           <div v-if="rootFlow" class="section-title-container">
             <span class="flex items-center z-[1] bg-[#0a0a0a]">
               <GitBranch class="flex-shrink-0 ml-3 text-cyan-400" :size="14" />
@@ -30,7 +30,7 @@
           </div>
           <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto flows-grid">
             <button
-              v-for="flow in flows"
+              v-for="flow in filteredFlows"
               :key="flow.id"
               class="flow-item"
               :class="{ active: flow.id === selectedFlowId }"
@@ -41,6 +41,11 @@
               </div>
               <span v-if="flow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ flow.description }}</span>
             </button>
+            <!-- No search results message -->
+            <div v-if="isSearchMode && filteredFlows.length === 0 && searchQuery.trim()" class="flex flex-col items-center justify-center h-32 gap-2 text-center">
+              <Search class="text-neutral-600" :size="24" />
+              <p class="m-0 text-sm text-neutral-500">No flows match "{{ searchQuery }}"</p>
+            </div>
           </div>
         </div>
 
@@ -52,10 +57,31 @@
 
         <!-- Create new flow button -->
         <div class="create-flow-section">
-          <button class="create-flow-button" @click="onCreateFlow">
-            <Plus class="flex-shrink-0" :size="18" />
-            <span>Create New Flow</span>
-          </button>
+          <!-- Default state: Create and Search buttons -->
+          <div v-if="!isSearchMode" class="flex gap-2">
+            <button class="flex-1 create-flow-button" @click="onCreateFlow">
+              <Plus class="flex-shrink-0" :size="18" />
+              <span>Create New Flow</span>
+            </button>
+            <button class="search-button" @click="isSearchMode = true" title="Search flows">
+              <Search :size="18" />
+            </button>
+          </div>
+          
+          <!-- Search mode: Search input and controls -->
+          <div v-else class="flex items-center gap-2">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="flex-1 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200"
+              placeholder="Search flows..."
+              autofocus
+              @keyup.escape="isSearchMode = false; searchQuery = ''"
+            />
+            <button class="cancel-search-button" @click="isSearchMode = false; searchQuery = ''">
+              <X :size="16" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -188,7 +214,7 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ArrowRightFromLine, GitBranch, Workflow, Plus, Layout, Edit, MoreVertical } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus, Layout, Edit, MoreVertical, Search, X } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -225,6 +251,10 @@ const { layout } = useLayout()
 // Dialog state
 const labelDialogOpen = ref(false)
 const newFlowLabel = ref('')
+
+// Search state
+const isSearchMode = ref(false)
+const searchQuery = ref('')
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
@@ -277,6 +307,20 @@ const plainEdges = computed(() =>
     animated: e.kind === 'consumed_by',
   })),
 )
+
+// Filtered flows based on search query
+const filteredFlows = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return flows.value
+  }
+  
+  const query = searchQuery.value.toLowerCase()
+  return flows.value.filter(flow => {
+    const label = flow.label?.toLowerCase() || `flow ${flow.id}`.toLowerCase()
+    const description = flow.description?.toLowerCase() || ''
+    return label.includes(query) || description.includes(query)
+  })
+})
 
 /* ------------------------------------------------------------ */
 /*  palette + drag helpers                                      */
@@ -476,5 +520,35 @@ function updateFlowLabel() {
 
 .create-flow-button:active {
   @apply translate-y-0 shadow-[0_2px_8px_rgba(0,188,212,0.3)];
+}
+
+/* Search button */
+.search-button {
+  @apply flex items-center justify-center w-12 h-12 rounded-lg text-white cursor-pointer transition-all duration-200;
+  background: linear-gradient(135deg, #262626 0%, #1a1a1a 100%);
+  @apply border border-[#333];
+}
+
+.search-button:hover {
+  background: linear-gradient(135deg, #333 0%, #262626 100%);
+  @apply border-[#444] shadow-[0_4px_12px_rgba(0,0,0,0.3)] -translate-y-px;
+}
+
+.search-button:active {
+  @apply translate-y-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)];
+}
+
+/* Search container */
+.search-input:focus {
+  @apply border-cyan-400;
+  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.1);
+}
+
+.search-action-button {
+  @apply flex items-center justify-center w-10 h-10 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
+}
+
+.cancel-search-button {
+  @apply px-4 py-2 rounded-lg text-sm text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
 }
 </style>
