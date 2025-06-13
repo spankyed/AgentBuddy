@@ -215,6 +215,7 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { ArrowRightFromLine, GitBranch, Workflow, Plus, Layout, Edit, MoreVertical, Search, X } from 'lucide-vue-next'
+import uFuzzy from '@leeoniya/ufuzzy'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -255,6 +256,16 @@ const newFlowLabel = ref('')
 // Search state
 const isSearchMode = ref(false)
 const searchQuery = ref('')
+
+// Initialize uFuzzy instance
+const fuzzy = new uFuzzy({
+  intraMode: 1,  // Allows typos within terms
+  interLft: 2,   // Allows fuzziness between terms
+  intraSub: 1,   // Allows substitutions
+  intraTrn: 1,   // Allows transpositions
+  intraDel: 1,   // Allows deletions
+  intraIns: 1    // Allows insertions
+})
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
@@ -314,12 +325,25 @@ const filteredFlows = computed(() => {
     return flows.value
   }
   
-  const query = searchQuery.value.toLowerCase()
-  return flows.value.filter(flow => {
-    const label = flow.label?.toLowerCase() || `flow ${flow.id}`.toLowerCase()
-    const description = flow.description?.toLowerCase() || ''
-    return label.includes(query) || description.includes(query)
+  // Create haystack - array of searchable strings
+  const haystack = flows.value.map(flow => {
+    const label = flow.label || `Flow ${flow.id}`
+    const description = flow.description || ''
+    return `${label} ${description}`.toLowerCase()
   })
+  
+  // Perform fuzzy search
+  const idxs = fuzzy.search(haystack, searchQuery.value.toLowerCase())
+  
+  if (!idxs || idxs.length === 0) {
+    return []
+  }
+  
+  // Get the matched flows
+  const [matchedIndexes, info, order] = idxs
+  
+  // Return flows in the order suggested by uFuzzy
+  return order.map(i => flows.value[matchedIndexes[i]])
 })
 
 /* ------------------------------------------------------------ */
