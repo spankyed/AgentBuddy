@@ -22,8 +22,6 @@ export interface SafeLinkOptions {
   symmetric?: boolean;
   /** If specified, prevents cycles within this group of relation kinds */
   acyclicGroup?: readonly EARS.RelKind[];
-  /** If true, ensures the target entity has at most one parent of this relation type */
-  singleParent?: boolean;
 }
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
@@ -101,15 +99,6 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
       preventSelfLoop(t);
       
       const opts = options || {};
-      
-      // Check single parent constraint if configured
-      if (opts.singleParent) {
-        // Check if target already has any incoming edges of this relation type
-        const existingParents = edgeStore.find({ relationType: k, targetEntity: t });
-        if (existingParents.length > 0) {
-          throw new Error(`Entity ${t} already has a parent of type ${k}. Only one parent allowed.`);
-        }
-      }
       
       // Check for cycles if configured
       if (opts.acyclicGroup && wouldCreateCycle(id, t, opts.acyclicGroup)) {
