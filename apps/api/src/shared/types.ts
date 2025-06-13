@@ -5,6 +5,7 @@ export interface BaseEntity {
   id: EARS.EntityId;
   entityType: EARS.Entity;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface MessageEntity extends BaseEntity {
