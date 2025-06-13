@@ -20,12 +20,11 @@
           </button>
         </div>
 
-        <!-- Divider -->
-        <div v-if="rootFlow && flows.length > 0" class="section-divider"></div>
-
         <!-- Other flows section -->
         <div v-if="flows.length > 0" class="flow-section subflows-section">
-          <h3 class="section-title">Sub Flows</h3>
+          <div v-if="rootFlow" class="section-title-container">
+            <h3 class="section-title">Sub Flows</h3>
+          </div>
           <div class="flows-grid">
             <button
               v-for="flow in flows"
@@ -410,19 +409,38 @@ function updateFlowLabel() {
 }
 
 .section-title {
-  margin: 0 0 0.75rem 0.25rem;
+  margin: 0;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #666;
+  background: #0a0a0a;
+  padding: 0 12px;
 }
 
-.section-divider {
+.section-title-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem 0 1rem 0;
+}
+
+.section-title-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
   height: 1px;
   background: linear-gradient(to right, transparent, #333 20%, #333 80%, transparent);
-  margin: 1rem 1rem;
-  flex-shrink: 0;
+  z-index: 0;
+}
+
+.section-title-container .section-title {
+  position: relative;
+  z-index: 1;
 }
 
 /* flow items */
