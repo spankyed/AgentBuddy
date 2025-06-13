@@ -9,6 +9,9 @@ const flowsPlugin: Plugin = {
   icon: Network,
   state,
   canvas,
+  options: {
+    headerClass: 'bg-neutral-900 border-b border-neutral-600'
+  }
 };
 
 export default flowsPlugin;

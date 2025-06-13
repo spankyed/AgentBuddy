@@ -17,4 +17,9 @@ export interface Plugin {
   panel?: Component;
   chat?: Component;
   isPinned?: boolean;
+  /** Optional plugin configuration */
+  options?: {
+    /** Custom header class for the canvas area */
+    headerClass?: string;
+  };
 }
