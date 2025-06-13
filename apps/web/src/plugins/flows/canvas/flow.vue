@@ -1,49 +1,50 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="w-60 overflow-y-auto bg-[#0a0a0a] text-white border-r border-[#1a1a1a]">
+    <aside class="w-60 overflow-y-auto bg-[#0a0a0a] text-white border-r border-[#1a1a1a] scrollbar-thin">
       <!-- Flows list view -->
       <div v-if="inListState" class="flex flex-col h-full p-0 overflow-hidden">
         <!-- Root flow section -->
-        <div v-if="rootFlow" class="flex-shrink-0 px-4 pt-6">
-          <!-- <h3 class="section-title">Root Flow</h3> -->
+        <div v-if="rootFlow" class="flex-shrink-0 px-4 pt-4">
           <button
-            class="flow-item root-flow"
-            :class="{ active: rootFlow.id === selectedFlowId }"
+            class="w-full flex flex-col gap-1 px-4 py-2 bg-gradient-to-br from-[#1a1a1a] to-[#161616] border border-[#2a2a2a] rounded-lg text-[#e0e0e0] cursor-pointer text-left text-sm transition-all duration-200 hover:from-[#1f1f1f] hover:to-[#1a1a1a] hover:border-cyan-400 hover:shadow-[0_0_0_1px_rgba(0,188,212,0.1),0_6px_16px_rgba(0,0,0,0.6)] active:scale-[0.98]"
+            :class="{ 'bg-gradient-to-br from-cyan-500 to-cyan-600 border-cyan-400 text-white shadow-[0_0_0_2px_rgba(0,188,212,0.2),0_4px_12px_rgba(0,188,212,0.3)]': rootFlow.id === selectedFlowId }"
             @click="onFlowClick(rootFlow)"
           >
             <div class="flex items-center min-w-0 gap-2">
-              <ArrowRightFromLine class="flex-shrink-0 text-cyan-400" :size="16" />
-              <span class="text-sm font-medium leading-tight truncate">{{ rootFlow.label || 'Root Flow' }}</span>
+              <ArrowRightFromLine class="flex-shrink-0 text-cyan-400" :class="{ 'text-white': rootFlow.id === selectedFlowId }" :size="14" />
+              <span class="font-medium leading-tight truncate">{{ rootFlow.label || 'Root Flow' }}</span>
             </div>
-            <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ rootFlow.description }}</span>
+            <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500" :class="{ 'text-white/80': rootFlow.id === selectedFlowId }">{{ rootFlow.description }}</span>
           </button>
         </div>
 
         <!-- Other flows section -->
         <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
-          <div v-if="rootFlow" class="section-title-container">
-            <span class="flex items-center z-[1] bg-[#0a0a0a]">
-              <GitBranch class="flex-shrink-0 ml-3 text-cyan-400" :size="14" />
+          <div v-if="rootFlow" class="relative flex items-center justify-center my-3">
+            <!-- Bisecting line -->
+            <div class="absolute left-0 right-0 top-1/2 h-px bg-gradient-to-r from-transparent via-[#777] to-transparent"></div>
+            <span class="flex items-center z-[1] bg-[#0a0a0a] px-1">
+              <GitBranch class="flex-shrink-0 text-cyan-400" :size="12" />
             </span>
-            <h3 class="m-0 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] pl-2 pr-3 z-[1]">Sub Flows</h3>
+            <h3 class="m-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] pl-2 pr-3 z-[1]">Sub Flows</h3>
           </div>
-          <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto flows-grid">
+          <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto scrollbar-thin">
             <button
               v-for="flow in filteredFlows"
               :key="flow.id"
-              class="flow-item"
-              :class="{ active: flow.id === selectedFlowId }"
+              class="w-full flex flex-col gap-1 mb-1.5 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-pointer text-left text-sm transition-all duration-200 relative overflow-hidden hover:bg-[#1a1a1a] hover:border-[#333] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] active:scale-[0.98]"
+              :class="{ 'bg-gradient-to-br from-cyan-500 to-cyan-600 border-cyan-400 text-white shadow-[0_0_0_2px_rgba(0,188,212,0.2),0_4px_12px_rgba(0,188,212,0.3)]': flow.id === selectedFlowId }"
               @click="onFlowClick(flow)"
             >
               <div class="flex items-center min-w-0 gap-2">
-                <span class="text-sm font-medium leading-tight truncate">{{ flow.label || `Flow ${flow.id}` }}</span>
+                <span class="font-medium leading-tight truncate">{{ flow.label || `Flow ${flow.id}` }}</span>
               </div>
-              <span v-if="flow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ flow.description }}</span>
+              <span v-if="flow.description" class="text-xs leading-relaxed text-neutral-500" :class="{ 'text-white/80': flow.id === selectedFlowId }">{{ flow.description }}</span>
             </button>
             <!-- No search results message -->
             <div v-if="isSearchMode && filteredFlows.length === 0 && searchQuery.trim()" class="flex flex-col items-center justify-center h-32 gap-2 text-center">
-              <Search class="text-neutral-600" :size="24" />
+              <Search class="text-neutral-600" :size="20" />
               <p class="m-0 text-sm text-neutral-500">No flows match "{{ searchQuery }}"</p>
             </div>
           </div>
@@ -51,21 +52,28 @@
 
         <!-- Empty state -->
         <div v-if="!rootFlow && flows.length === 0" class="flex flex-col items-center justify-center h-full gap-3 px-4 py-12 text-center">
-          <Workflow class="text-neutral-700" :size="32" />
+          <Workflow class="text-neutral-700" :size="28" />
           <p class="m-0 text-sm text-neutral-500">No flows created yet</p>
         </div>
 
         <!-- Create new flow button -->
-        <div class="create-flow-section">
+        <div class="flex-shrink-0 p-4 border-t border-[#1a1a1a] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/95 to-transparent">
           <!-- Default state: Create and Search buttons -->
           <div v-if="!isSearchMode" class="flex gap-2">
-            <button class="flex-1 create-flow-button" @click="onCreateFlow">
-              <Plus class="flex-shrink-0" :size="18" />
+            <Button 
+              class="py-4 flex-1 bg-gradient-to-br from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 border border-cyan-400 hover:border-cyan-300 hover:shadow-[0_4px_12px_rgba(0,188,212,0.3)] hover:-translate-y-px active:translate-y-0 active:shadow-[0_2px_8px_rgba(0,188,212,0.3)]"
+              @click="onCreateFlow"
+            >
+              <Plus class="flex-shrink-0" :size="16" />
               <span>New Flow</span>
-            </button>
-            <button class="search-button" @click="isSearchMode = true" title="Search flows">
-              <Search :size="18" />
-            </button>
+            </Button>
+            <Button 
+              class="!px-2.5 !h-auto bg-gradient-to-br from-[#262626] to-[#1a1a1a] hover:from-[#333] hover:to-[#262626] border border-[#333] hover:border-[#444] hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:-translate-y-px active:translate-y-0 active:shadow-[0_2px_8px_rgba(0,0,0,0.3)]" 
+              @click="isSearchMode = true" 
+              title="Search flows"
+            >
+              <Search :size="16" />
+            </Button>
           </div>
           
           <!-- Search mode: Search input and controls -->
@@ -73,24 +81,28 @@
             <input
               v-model="searchQuery"
               type="text"
-              class="w-full min-w-0 px-3.5 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
+              class="w-full min-w-0 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
               placeholder="Search flows..."
               autofocus
               @keyup.escape="isSearchMode = false; searchQuery = ''"
             />
-            <button class="cancel-search-button" @click="isSearchMode = false; searchQuery = ''">
+            <Button 
+              variant="transparent" 
+              class="!p-2 !h-auto !text-sm text-neutral-400 hover:text-white bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333]"
+              @click="isSearchMode = false; searchQuery = ''"
+            >
               <X :size="16" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       <!-- Steps palette view -->
-      <div v-if="inViewState" class="p-6">
+      <div v-if="inViewState" class="p-4">
         <button
           v-for="t in paletteItems"
           :key="t.type"
-          class="block w-full mb-2 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-grab text-left text-sm transition-all duration-200 relative hover:bg-[#1a1a1a] hover:border-[#333] hover:translate-x-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] active:cursor-grabbing active:scale-[0.98]"
+          class="block w-full mb-1.5 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-grab text-left text-sm transition-all duration-200 relative hover:bg-[#1a1a1a] hover:border-[#333] hover:translate-x-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] active:cursor-grabbing active:scale-[0.98]"
           draggable="true"
           @dragstart="(e) => onDragStart(e, t.type)"
         >
@@ -129,7 +141,11 @@
       </template>
       <Background variant="dots" />
       <Controls />
-      <MiniMap :maskColor="'#26262650'" :maskStrokeColor="'transparent'" />
+      <MiniMap 
+        :maskColor="'#26262650'" 
+        :maskStrokeColor="'transparent'" 
+        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg"
+      />
 
       <!-- Actions menu (top left) -->
       <FlowActionsMenu 
@@ -144,7 +160,10 @@
       <!-- Backdrop overlay -->
       <div v-if="selected" class="absolute top-0 left-0 w-full h-full bg-black/70 z-[5]" @click="closeNodeEditor" />
       <!-- Slide-in form -->
-      <div class="slide-in-form" :class="{ 'is-open': selected }">
+      <div 
+        class="flex absolute top-0 right-0 w-2/5 h-full border-l border-[#333] transform transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden scrollbar-thin"
+        :class="selected ? 'translate-x-0' : 'translate-x-full'"
+      >
         <component
           v-if="selected"
           :is="getFormComponent(selected.nodeType)"
@@ -163,19 +182,19 @@
         <input
           v-model="newFlowLabel"
           type="text"
-          class="w-full px-3.5 py-2.5 bg-[#0a0a0a] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
+          class="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
           placeholder="Enter flow label"
           autofocus
         />
       </form>
       
       <template #actions>
-        <button type="button" class="dialog-button cancel" @click="labelDialogOpen = false">
+        <Button variant="secondary" @click="labelDialogOpen = false">
           Cancel
-        </button>
-        <button type="submit" class="dialog-button submit" form="label-form">
+        </Button>
+        <Button type="submit" form="label-form">
           Save
-        </button>
+        </Button>
       </template>
     </Dialog>
   </div>
@@ -221,6 +240,7 @@ import CreateForm from './forms/CreateForm.vue'
 // Design components
 import Dialog from '@/core/design/dialog.vue'
 import FlowActionsMenu from './FlowActionsMenu.vue'
+import Button from '@/core/design/button.vue'
 
 const { layout } = useLayout()
 
@@ -401,144 +421,21 @@ function updateFlowLabel() {
 }
 </script>
 
-<style scoped>
-/* Section title with bisecting line */
-
-
-.section-title-container {
-  @apply relative flex items-center justify-center my-4;
-}
-
-.section-title-container::before {
-  content: '';
-  @apply absolute left-0 right-0 top-1/2 h-px z-0;
-  background: linear-gradient(to right, transparent, #333 20%, #333 80%, transparent);
-}
-
-.section-title-container .section-title {
-  @apply relative z-[1];
-}
-
-/* Flow items with gradients */
-.flow-item {
-  @apply flex flex-col gap-1.5 w-full mb-2 px-3.5 py-3 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-pointer text-left transition-all duration-200 relative overflow-hidden;
-}
-
-.flow-item::before {
-  content: '';
-  @apply absolute top-0 left-0 right-0 bottom-0 opacity-0 transition-opacity duration-300;
-  background: radial-gradient(circle at top left, rgba(0, 188, 212, 0.05), transparent 50%);
-}
-
-.flow-item:hover {
-  @apply bg-[#1a1a1a] border-[#333] -translate-y-px shadow-[0_4px_12px_rgba(0,0,0,0.5)];
-}
-
-.flow-item:hover::before {
-  @apply opacity-100;
-}
-
-/* Root flow styling */
-.flow-item.root-flow {
-  background: linear-gradient(135deg, #1a1a1a 0%, #161616 100%);
-  @apply border-[#2a2a2a];
-}
-
-.flow-item.root-flow:hover {
-  background: linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%);
-  @apply border-cyan-400;
-  box-shadow: 0 0 0 1px rgba(0, 188, 212, 0.1), 0 6px 16px rgba(0, 0, 0, 0.6);
-}
-
-/* Active flow styling */
-.flow-item.active {
-  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  @apply border-cyan-400 text-white;
-  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2), 0 4px 12px rgba(0, 188, 212, 0.3);
-}
-
-.flow-item.active .text-cyan-400 {
-  @apply text-white;
-}
-
-.flow-item.active .text-neutral-500 {
-  @apply text-white/80;
-}
-
-/* Minimap styling */
-:deep(.vue-flow__minimap) {
-  @apply opacity-[0.15] transition-opacity duration-200 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg;
-}
-
-:deep(.vue-flow__minimap:hover) {
-  @apply opacity-100;
-}
-
-/* Slide-in form */
-.slide-in-form {
-  @apply flex absolute top-0 right-0 w-2/5 h-full border-l border-[#333] transform translate-x-full transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden;
-}
-
-.slide-in-form.is-open {
-  @apply translate-x-0;
-}
-
-/* Scrollbar styling */
-*::-webkit-scrollbar {
+<style>
+/* Custom scrollbar styling */
+.scrollbar-thin::-webkit-scrollbar {
   @apply w-1.5;
 }
 
-*::-webkit-scrollbar-track {
+.scrollbar-thin::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 
-*::-webkit-scrollbar-thumb {
-  @apply bg-neutral-700 rounded-[3px];
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-neutral-700 rounded;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
   @apply bg-neutral-600;
-}
-
-/* Create flow button section */
-.create-flow-section {
-  @apply flex-shrink-0 p-4 border-t border-[#1a1a1a];
-  background: linear-gradient(to top, #0a0a0a 0%, rgba(10, 10, 10, 0.95) 50%, rgba(10, 10, 10, 0) 100%);
-}
-
-.create-flow-button {
-  @apply flex items-center justify-center w-full px-5 py-3 rounded-lg text-white cursor-pointer text-sm font-medium transition-all duration-200 gap-2;
-  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
-  @apply border border-cyan-400;
-}
-
-.create-flow-button:hover {
-  background: linear-gradient(135deg, #00d4e6 0%, #00acc1 100%);
-  @apply border-[#00d4e6] shadow-[0_4px_12px_rgba(0,188,212,0.3)] -translate-y-px;
-}
-
-.create-flow-button:active {
-  @apply translate-y-0 shadow-[0_2px_8px_rgba(0,188,212,0.3)];
-}
-
-/* Search button */
-.search-button {
-  @apply flex items-center justify-center w-12 h-12 rounded-lg text-white cursor-pointer transition-all duration-200;
-  background: linear-gradient(135deg, #262626 0%, #1a1a1a 100%);
-  @apply border border-[#333];
-}
-
-.search-button:hover {
-  background: linear-gradient(135deg, #333 0%, #262626 100%);
-  @apply border-[#444] shadow-[0_4px_12px_rgba(0,0,0,0.3)] -translate-y-px;
-}
-
-.search-button:active {
-  @apply translate-y-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)];
-}
-
-/* Cancel search button (icon only) */
-.cancel-search-button {
-  @apply flex items-center justify-center px-2.5 py-2.5 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
 }
 </style>
