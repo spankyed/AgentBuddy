@@ -12,9 +12,9 @@
             :class="{ active: rootFlow.id === selectedFlowId }"
             @click="onFlowClick(rootFlow)"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center min-w-0 gap-2">
               <ArrowRightFromLine class="flex-shrink-0 text-cyan-400" :size="16" />
-              <span class="text-sm font-medium leading-tight">{{ rootFlow.label || 'Root Flow' }}</span>
+              <span class="text-sm font-medium leading-tight truncate">{{ rootFlow.label || 'Root Flow' }}</span>
             </div>
             <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ rootFlow.description }}</span>
           </button>
@@ -33,9 +33,9 @@
               :class="{ active: flow.id === selectedFlowId }"
               @click="onFlowClick(flow)"
             >
-              <div class="flex items-center gap-2">
+              <div class="flex items-center min-w-0 gap-2">
                 <GitBranch class="flex-shrink-0 text-cyan-400" :size="14" />
-                <span class="text-sm font-medium leading-tight">{{ flow.label || `Flow ${flow.id}` }}</span>
+                <span class="text-sm font-medium leading-tight truncate">{{ flow.label || `Flow ${flow.id}` }}</span>
               </div>
               <span v-if="flow.description" class="ml-6 text-xs leading-relaxed text-neutral-500">{{ flow.description }}</span>
             </button>
