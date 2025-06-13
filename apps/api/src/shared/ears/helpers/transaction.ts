@@ -13,6 +13,16 @@ import {
 import { edgeStore } from "@/shared/ears/helpers/edge-store";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
+import { wouldCreateCycle, linkSymmetric } from "@/shared/ears/helpers/graph";
+
+export interface SafeLinkOptions {
+  /** Additional info to store with the relation */
+  info?: unknown;
+  /** If true, creates bidirectional edges automatically */
+  symmetric?: boolean;
+  /** If specified, prevents cycles within this group of relation kinds */
+  acyclicGroup?: readonly EARS.RelKind[];
+}
 
 export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
   const isNew = Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
@@ -84,6 +94,33 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
       preventSelfLoop(t);
       edgeStore.linkOne(id, k, t, info);
       return self;
+    },
+    safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => {
+      preventSelfLoop(t);
+      
+      const opts = options || {};
+      
+      // Check for cycles if configured
+      if (opts.acyclicGroup && wouldCreateCycle(id, t, opts.acyclicGroup)) {
+        // Generate meaningful error message based on context
+        let errorMsg: string;
+        if (opts.acyclicGroup.length === 1) {
+          errorMsg = `Cannot create a ${k} relation that would form a cycle`;
+        } else {
+          const kinds = opts.acyclicGroup.join(', ');
+          errorMsg = `Cannot create a ${k} relation that would form a cycle within [${kinds}]`;
+        }
+        throw new Error(errorMsg);
+      }
+      
+      // Handle symmetric relations
+      if (opts.symmetric) {
+        linkSymmetric(id, t, k, opts.info);
+        return self;
+      }
+      
+      // Default behavior - regular linkOne
+      return self.linkOne(k, t, opts.info);
     },
     patchLink: (
       k: EARS.RelKind,

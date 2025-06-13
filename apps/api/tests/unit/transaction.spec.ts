@@ -4,7 +4,7 @@
  * Run:  npx vitest
  */
 import { beforeAll, describe, expect, it, beforeEach } from 'vitest';
-import { tx } from '@/shared/ears/helpers/transaction';
+import { tx, SafeLinkOptions } from '@/shared/ears/helpers/transaction';
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import { flowRows } from '@/systems/flows/repository/mock-data';
@@ -372,6 +372,142 @@ describe('tx – fluent mutation DSL', () => {
         .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(transitionsTo).toEqual([target2.id()]);
+    });
+  });
+
+  /* ───────────── safeLink operations ───────────── */
+  describe('safeLink operations', () => {
+    let node1: ReturnType<typeof tx>;
+    let node2: ReturnType<typeof tx>;
+    let node3: ReturnType<typeof tx>;
+    
+    beforeEach(() => {
+      node1 = tx(EARS.Entity.Thread);
+      node2 = tx(EARS.Entity.Thread);
+      node3 = tx(EARS.Entity.Thread);
+    });
+
+    it('safeLink() prevents CONTAINS cycles', () => {
+      const containsOptions: SafeLinkOptions = {
+        acyclicGroup: [EARS.RelKind.CONTAINS]
+      };
+      
+      // Create a chain: node1 -> node2 -> node3
+      node1.safeLink(EARS.RelKind.CONTAINS, node2.id(), containsOptions);
+      node2.safeLink(EARS.RelKind.CONTAINS, node3.id(), containsOptions);
+      
+      // Try to create a cycle: node3 -> node1
+      expect(() => node3.safeLink(EARS.RelKind.CONTAINS, node1.id(), containsOptions))
+        .toThrow('Cannot create a contains relation that would form a cycle');
+      
+      // Verify the cycle was not created
+      const node3Links = qx(node3.id()).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids();
+      expect(node3Links).not.toContain(node1.id());
+    });
+
+    it('safeLink() prevents dependency cycles across BLOCKS and DEPENDS_ON', () => {
+      const dependencyOptions: SafeLinkOptions = {
+        acyclicGroup: [EARS.RelKind.BLOCKS, EARS.RelKind.DEPENDS_ON]
+      };
+      
+      // Create a dependency chain
+      node1.safeLink(EARS.RelKind.BLOCKS, node2.id(), dependencyOptions);
+      node2.safeLink(EARS.RelKind.DEPENDS_ON, node3.id(), dependencyOptions);
+      
+      // Try to create a cycle: node3 blocks node1
+      expect(() => node3.safeLink(EARS.RelKind.BLOCKS, node1.id(), dependencyOptions))
+        .toThrow('Cannot create a blocks relation that would form a cycle within [blocks, depends_on]');
+      
+      // Try with DEPENDS_ON too
+      expect(() => node3.safeLink(EARS.RelKind.DEPENDS_ON, node1.id(), dependencyOptions))
+        .toThrow('Cannot create a depends_on relation that would form a cycle within [blocks, depends_on]');
+    });
+
+    it('safeLink() creates symmetric relations for RELATES_TO', () => {
+      node1.safeLink(EARS.RelKind.RELATES_TO, node2.id(), { symmetric: true });
+      
+      // Check both directions
+      expect(qx(node1.id()).linksTo(EARS.RelKind.RELATES_TO, EARS.Entity.Thread).ids())
+        .toContain(node2.id());
+      expect(qx(node2.id()).linksTo(EARS.RelKind.RELATES_TO, EARS.Entity.Thread).ids())
+        .toContain(node1.id());
+    });
+
+    it('safeLink() creates symmetric relations for DUPLICATES', () => {
+      node1.safeLink(EARS.RelKind.DUPLICATES, node2.id(), { symmetric: true });
+      
+      // Check both directions
+      expect(qx(node1.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node2.id());
+      expect(qx(node2.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node1.id());
+    });
+
+    it('safeLink() prevents self-loops', () => {
+      expect(() => node1.safeLink(EARS.RelKind.CONTAINS, node1.id()))
+        .toThrow('source and target cannot be the same');
+    });
+
+    it('safeLink() without options behaves like linkOne', () => {
+      // CONSUMED_BY without options - regular one-way link
+      node1.safeLink(EARS.RelKind.CONSUMED_BY, node2.id());
+      
+      // Check it's only one-way
+      expect(qx(node1.id()).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Thread).ids())
+        .toContain(node2.id());
+      expect(qx(node2.id()).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Thread).ids())
+        .not.toContain(node1.id());
+    });
+
+    it('safeLink() supports combined info and config in options', () => {
+      node1.safeLink(EARS.RelKind.DUPLICATES, node2.id(), {
+        info: { reason: "it's just duplicate content" },
+        symmetric: true
+      });
+      
+      // Verify the link exists in both directions
+      expect(qx(node1.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node2.id());
+      expect(qx(node2.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node1.id());
+    });
+
+    it('safeLink() is chainable', () => {
+      const result = node1
+        .safeLink(EARS.RelKind.CONSUMED_BY, node2.id())
+        .put('label', 'Chained');
+      
+      expect(result).toBe(node1);
+      expect(getAttr(node1.id(), EARS.AttrKind.Custom('label'))).toBe('Chained');
+    });
+
+    it('safeLink() supports various option combinations', () => {
+      const node4 = tx(EARS.Entity.Thread);
+      const node5 = tx(EARS.Entity.Thread);
+      
+      // Case 1: Just symmetric flag
+      node1.safeLink(EARS.RelKind.RELATES_TO, node2.id(), { symmetric: true });
+      expect(qx(node2.id()).linksTo(EARS.RelKind.RELATES_TO, EARS.Entity.Thread).ids())
+        .toContain(node1.id());
+      
+      // Case 2: Just info
+      node3.safeLink(EARS.RelKind.CONSUMED_BY, node4.id(), { 
+        info: { priority: 'high' }
+      });
+      expect(qx(node3.id()).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Thread).ids())
+        .toContain(node4.id());
+      expect(qx(node4.id()).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Thread).ids())
+        .not.toContain(node3.id()); // Not symmetric
+      
+      // Case 3: Both info and symmetric
+      node4.safeLink(EARS.RelKind.DUPLICATES, node5.id(), { 
+        info: { reason: 'test' },
+        symmetric: true 
+      });
+      expect(qx(node4.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node5.id());
+      expect(qx(node5.id()).linksTo(EARS.RelKind.DUPLICATES, EARS.Entity.Thread).ids())
+        .toContain(node4.id());
     });
   });
 

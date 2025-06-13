@@ -34,6 +34,11 @@ export namespace EARS {
     TRANSITIONS_TO: 'transitions_to',
     CONSUMED_BY: 'consumed_by',
     EMITS: 'emits',
+    
+    BLOCKS     : 'blocks',
+    DEPENDS_ON : 'depends_on',
+    RELATES_TO : 'relates_to',
+    DUPLICATES : 'duplicates',
   } as const;
 
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;
