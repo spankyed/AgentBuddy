@@ -29,12 +29,12 @@ describe('AtomicTransaction', () => {
       tx.put(nodeId, 'label', 'Test Node');
       
       // Entity should exist before rollback
-      expect(qx(EARS.Entity.Node).ids()).toContain(nodeId);
+      expect(qx(nodeId).exists()).toBe(true);
 
       tx.rollback();
 
       // Entity should be gone after rollback
-      expect(qx(EARS.Entity.Node).ids()).not.toContain(nodeId);
+      expect(qx(nodeId).exists()).toBe(false);
     });
   });
 

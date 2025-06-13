@@ -53,12 +53,17 @@ export const qx = (
   const resolveSeed = (): EARS.EntityId[] => {
     if (seed === undefined) return [...getAllEntities()];
     if (Array.isArray(seed)) {
-      return (seed as readonly unknown[]).every(isEntity)
-        ? (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t))
-        : [...(seed as readonly EARS.EntityId[])];
+      if ((seed as readonly unknown[]).every(isEntity)) {
+        return (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t));
+      }
+      // Filter entity IDs to only include those that actually exist
+      const allEntities = new Set(getAllEntities());
+      return (seed as readonly EARS.EntityId[]).filter(id => allEntities.has(id));
     }
     if (isEntity(seed)) return [...getEntitiesOfType(seed)];
-    return [seed as EARS.EntityId];
+    // Check if the single entity ID actually exists
+    const allEntities = getAllEntities();
+    return allEntities.includes(seed as EARS.EntityId) ? [seed as EARS.EntityId] : [];
   };
 
   let ids: EARS.EntityId[] = resolveSeed();

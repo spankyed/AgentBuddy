@@ -20,6 +20,11 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     ? createEntity(typeOrId as EARS.Entity)
     : (typeOrId as EARS.EntityId);
 
+  // If creating a new entity, add a timestamp so it exists in the store
+  if (isNew) {
+    putAttr(id, EARS.AttrKind.Custom('createdAt'), Date.now());
+  }
+
   const preventSelfLoop = (t: EARS.EntityId) => {
     if (t === id) throw new Error("tx.link(): source and target cannot be the same");
   };

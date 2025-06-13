@@ -42,6 +42,21 @@ describe('qx – fluent query DSL', () => {
     ]);
   });
 
+  it('exists() returns false for non-existent entity IDs', () => {
+    expect(qx('Node-does-not-exist').exists()).toBe(false);
+    expect(qx('Flow-fake-id-123').exists()).toBe(false);
+  });
+
+  it('exists() returns true for existing entity IDs', () => {
+    expect(qx('Node-1').exists()).toBe(true);
+    expect(qx('Flow-1').exists()).toBe(true);
+  });
+
+  it('filters non-existent IDs from arrays', () => {
+    const ids = qx(['Node-1', 'Node-fake', 'Node-2', 'Node-missing']).ids();
+    expect(ids).toEqual(['Node-1', 'Node-2']);
+  });
+
   // it('accepts an array of entity types', () => {
   //   const ids = qx([EARS.Entity.Node, EARS.Entity.FlowEvent]).ids();
   //   expect(ids.length).toBe(5);
