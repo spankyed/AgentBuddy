@@ -251,8 +251,9 @@ function onConnect (params: Connection) {
 }
 
 function onFlowClick(flow: Partial<FlowEntity>) {
-  // Send event to load the flow's nodes and edges
-  actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
+  if (flow.id) {
+    actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
+  }
 }
 </script>
 
