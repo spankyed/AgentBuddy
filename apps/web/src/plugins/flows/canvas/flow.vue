@@ -243,7 +243,7 @@ const inViewState = useSelector(actor, (s) => s.hasTag('view-flow'))
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
-const flows   = useSelector(actor, (s) => s.context.flows)
+const flows   = useSelector(actor, (s) => s.context.flows.filter((n) => n.id !== s.context.rootFlow?.id))
 const rootFlow = useSelector(actor, (s) => s.context.rootFlow)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
@@ -252,13 +252,14 @@ const selected = useSelector(actor, (s) =>
 
 /* Transform nodes and edges for Vue-Flow */
 const plainNodes = computed(() => {
-  const mappedNodes = nodes.value.map((n) => ({
-    /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
-    id       : n.id!,
-    type     : n.nodeType,
-    position : { x: n.x ?? 0, y: n.y ?? 0 },
-    data     : n,  // The node itself is the data
-  })) as VueFlowNode[]
+  const mappedNodes = nodes.value
+    .map((n) => ({
+      /* 1‑to‑1 mapping – only Vue‑Flow‑required props added */
+      id       : n.id!,
+      type     : n.nodeType,
+      position : { x: n.x ?? 0, y: n.y ?? 0 },
+      data     : n,  // The node itself is the data
+    })) as VueFlowNode[]
 
   return mappedNodes
 })
