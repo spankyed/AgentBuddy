@@ -61,7 +61,7 @@
           <div v-if="!isSearchMode" class="flex gap-2">
             <button class="flex-1 create-flow-button" @click="onCreateFlow">
               <Plus class="flex-shrink-0" :size="18" />
-              <span>Create New Flow</span>
+              <span>New Flow</span>
             </button>
             <button class="search-button" @click="isSearchMode = true" title="Search flows">
               <Search :size="18" />
@@ -73,7 +73,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              class="flex-1 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200"
+              class="w-full min-w-0 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
               placeholder="Search flows..."
               autofocus
               @keyup.escape="isSearchMode = false; searchQuery = ''"
@@ -538,17 +538,8 @@ function updateFlowLabel() {
   @apply translate-y-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)];
 }
 
-/* Search container */
-.search-input:focus {
-  @apply border-cyan-400;
-  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.1);
-}
-
-.search-action-button {
-  @apply flex items-center justify-center w-10 h-10 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
-}
-
+/* Cancel search button (icon only) */
 .cancel-search-button {
-  @apply px-4 py-2 rounded-lg text-sm text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
+  @apply flex items-center justify-center p-2 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
 }
 </style>
