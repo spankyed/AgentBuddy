@@ -73,7 +73,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              class="w-full min-w-0 px-3.5 py-2.5 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
+              class="w-full min-w-0 px-3.5 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
               placeholder="Search flows..."
               autofocus
               @keyup.escape="isSearchMode = false; searchQuery = ''"
@@ -540,6 +540,6 @@ function updateFlowLabel() {
 
 /* Cancel search button (icon only) */
 .cancel-search-button {
-  @apply flex items-center justify-center p-2 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
+  @apply flex items-center justify-center px-2.5 py-2.5 rounded-lg text-neutral-400 hover:text-white cursor-pointer transition-all duration-200 bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333];
 }
 </style>
