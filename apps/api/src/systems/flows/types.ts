@@ -135,3 +135,8 @@ export interface FlowsStartupData {
 //     stepRelations: StepRelation[];
 //     events: FlowEventEntity[];
 // }
+
+export interface FlowExtendedData {
+  nodes: Partial<NodeEntity>[];
+  edges: EdgeEntity[];
+}

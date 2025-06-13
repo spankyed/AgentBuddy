@@ -7,6 +7,8 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import type { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
 import { FlowsStartupData } from './types';
+import { getExtendedData } from './repository/read';
+import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -16,6 +18,7 @@ const busEvent = systemBus(flows);
 
 export const IncomingFlowsEvents = [
   busEvent('EMPTY_FLOWS', {}),
+  busEvent('FLOW_SELECT', { flowId: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -23,6 +26,7 @@ export type FlowsInternalEvents =
 
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
+  | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -44,6 +48,16 @@ export const flowsSystem = setup({
         data: flowsStartupData()
       }));
     },
+    sendFlowData: ({ system, event }) => {
+      const ev = typeOf('FLOW_SELECT', event);
+      const flowData = getExtendedData(ev.flowId as EARS.EntityId);
+      
+      system.get(bus).send(emit(flows, {
+        type: 'FLOW_SELECTED',
+        flowId: ev.flowId as EARS.EntityId,
+        data: flowData
+      }));
+    },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       console.error('Flow error:', event.error);
     },
@@ -56,6 +70,9 @@ export const flowsSystem = setup({
       flowsId: input,
     }),
     on: {
+      FLOW_SELECT: {
+        actions: 'sendFlowData',
+      },
     },
     states: {
       idle: {

@@ -3,6 +3,7 @@ import { qx } from '@/shared/ears/helpers/query';
 import { getRootFlow } from './read';
 import { FlowsStartupData, EdgeEntity, NodeEntity, FlowEntity } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
+import { edgeKinds } from '.';
 
 
 export default function flowsStartupData(): FlowsStartupData {
@@ -33,11 +34,6 @@ export default function flowsStartupData(): FlowsStartupData {
 
   const seen = new Set<string>();
   const edges: EdgeEntity[] = [];
-  const edgeKinds = [
-    EARS.RelKind.TRANSITIONS_TO,
-    EARS.RelKind.EMITS,
-    EARS.RelKind.CONSUMED_BY,
-  ]
 
   for (const source of nodeIds) {
     qx(source)

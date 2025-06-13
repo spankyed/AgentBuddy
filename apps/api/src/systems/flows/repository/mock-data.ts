@@ -14,7 +14,21 @@ export const flowRows: Rows = {
       id: "Flow-1",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Chat Flow with Validation",
+      label: "Chat Flow",
+      flowType: "workflow",
+    },
+    {
+      id: "Flow-2",
+      entityType: EARS.Entity.Flow,
+      createdAt: nowMs - 1_000,
+      label: "Some Flow with Validation",
+      flowType: "workflow",
+    },
+    {
+      id: "Flow-3",
+      entityType: EARS.Entity.Flow,
+      createdAt: nowMs - 1_000,
+      label: "Some Flow",
       flowType: "workflow",
     },
 

@@ -1,6 +1,9 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import { entries } from '@/shared/utils';
+import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../types';
+import { edgeKinds } from './index';
+import { edgeStore } from '@/shared/ears/helpers/edge-store';
 
 const sharedFields = ['id', 'nodeType', 'createdAt', 'label', 'x', 'y'] as const;
 const nodeFields = {
@@ -31,3 +34,60 @@ export const getFlowNodes = (flowId: EARS.EntityId) =>
       EARS.Entity.Node,
       fields
     );
+
+export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
+  // Get all nodes in the flow
+  const nodes = getFlowNodes(flowId);
+  const nodeIds = nodes.map(n => n.id).filter(Boolean) as EARS.EntityId[];
+  
+  const seen = new Set<string>();
+  const edges: EdgeEntity[] = [];
+
+  for (const source of nodeIds) {
+    qx(source)
+      .links(edgeKinds, [EARS.Entity.Node])
+      // Only include edges where target is also in this flow
+      .filter(({ id: targetId }) => nodeIds.includes(targetId))
+      .forEach(({ relation, id: target }) => {
+        const relId = edgeStore.relIds({
+          sourceEntity: source,
+          relationType: relation,
+          targetEntity: target,
+        })[0];
+
+        if (seen.has(relId)) return;
+        seen.add(relId);
+        
+        edges.push({
+          id: relId,
+          kind: relation,
+          source,
+          target,
+          info: {},
+        });
+      });
+  }
+  
+  return edges;
+};
+
+/*─────────────────────────────────────────────────────────────
+ * Extended data convenience
+ *─────────────────────────────────────────────────────────────*/
+type Include = keyof FlowExtendedData;
+export function getExtendedData(
+  flowId: EARS.EntityId,
+  include?: Include | Include[]
+): FlowExtendedData {
+  const want = (k: Include) =>
+    !include
+      ? true
+      : Array.isArray(include)
+        ? include.includes(k)
+        : include === k;
+
+  return {
+    nodes: want("nodes") ? getFlowNodes(flowId) as Partial<NodeEntity>[] : [],
+    edges: want("edges") ? getFlowEdges(flowId) : [],
+  };
+}

@@ -13,6 +13,7 @@ import type {
   EARS,
   EdgeEntity,
 } from '@abuddy/api'
+import { trpc } from '@/core/trpc'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -24,6 +25,7 @@ export type FlowsState = ActorRefFrom<typeof flowsState>
 
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
+  selectedFlowId?: EARS.EntityId;
   graph: {
     nodes: Partial<NodeEntity>[];
     edges: EdgeEntity[];
@@ -39,6 +41,7 @@ type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
+  | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -55,7 +58,30 @@ const flowsState = setup({
       return { ...ev.data, logs: [] }
     }),
 
-    /* ── UI interactions ───────────────────────────────── */
+    /* ── flow interactions ────────────────────────────── */
+    selectFlow: ({ event }) => {
+      const ev = typeOf('FLOW.SELECT', event);
+      // Send event to backend to get flow data
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FLOW_SELECT',
+        flowId: ev.flowId,
+      });
+    },
+
+    loadFlowData: assign(({ event }) => {
+      const ev = typeOf('FLOW_SELECTED', event);
+      return {
+        selectedFlowId: ev.flowId,
+        selectedNodeId: undefined,
+        graph: {
+          nodes: ev.data.nodes,
+          edges: ev.data.edges,
+        },
+      };
+    }),
+
+    /* ── graph interactions ───────────────────────────────── */
     selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
@@ -105,6 +131,7 @@ const flowsState = setup({
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
+    FLOW_SELECTED: { actions: 'loadFlowData' },
     ...TRAIL_CLICK([['.view', 'view']]),
   },
   states: {
@@ -121,6 +148,7 @@ const flowsState = setup({
           actions: 'createNode',
           target: '.details',
         },
+        'FLOW.SELECT': { actions: 'selectFlow' },
       },
       states: {
         overview: {},

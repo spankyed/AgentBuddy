@@ -2,15 +2,52 @@
   <div class="dialog-editor">
     <!-- ▸ Node palette (left) -->
     <aside class="palette">
-      <h3>Node&nbsp;Palette</h3>
-      <button
-        v-for="t in paletteItems"
-        :key="t.type"
-        draggable="true"
-        @dragstart="(e) => onDragStart(e, t.type)"
-      >
-        {{ t.label }}
-      </button>
+      <!-- Toggle buttons -->
+      <div class="palette-toggle">
+        <button 
+          :class="{ active: paletteView === 'flows' }"
+          @click="paletteView = 'flows'"
+        >
+          Flows
+        </button>
+        <button 
+          :class="{ active: paletteView === 'steps' }"
+          @click="paletteView = 'steps'"
+        >
+          Steps
+        </button>
+      </div>
+
+      <!-- Flows list view -->
+      <div v-if="paletteView === 'flows'" class="flows-list">
+        <h3>Flows</h3>
+        <div v-if="flows.length === 0" class="empty-state">
+          No flows created yet
+        </div>
+        <button
+          v-for="flow in flows"
+          :key="flow.id"
+          class="flow-item"
+          :class="{ active: flow.id === selectedFlowId }"
+          @click="onFlowClick(flow)"
+        >
+          <span class="flow-name">{{ flow.label || `Flow ${flow.id}` }}</span>
+          <span v-if="flow.description" class="flow-description">{{ flow.description }}</span>
+        </button>
+      </div>
+
+      <!-- Steps palette view -->
+      <div v-else class="steps-palette">
+        <h3>Node&nbsp;Palette</h3>
+        <button
+          v-for="t in paletteItems"
+          :key="t.type"
+          draggable="true"
+          @dragstart="(e) => onDragStart(e, t.type)"
+        >
+          {{ t.label }}
+        </button>
+      </div>
     </aside>
 
     <!-- ▸ VueFlow canvas (center) -->
@@ -69,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, type Ref } from 'vue'
+import { computed, nextTick, type Ref, ref } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
@@ -80,7 +117,7 @@ import {
 import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
 import { useLayout } from '@/plugins/flows/canvas/useLayout'
-import type { NodeEntity } from '@abuddy/api'
+import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -130,9 +167,14 @@ const actor: FlowsState = applicationState.system.get(id)
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
+const flows   = useSelector(actor, (s) => s.context.flows)
+const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
+
+// Palette view state
+const paletteView = ref<'flows' | 'steps'>('steps')
 
 /* Transform nodes and edges for Vue-Flow */
 const plainNodes = computed(() => {
@@ -207,6 +249,11 @@ function closeNodeEditor() {
 function onConnect (params: Connection) {
   actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
 }
+
+function onFlowClick(flow: Partial<FlowEntity>) {
+  // Send event to load the flow's nodes and edges
+  actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
+}
 </script>
 
 <style scoped>
@@ -224,7 +271,6 @@ function onConnect (params: Connection) {
   overflow-y: scroll;
   background: #1f1f1f;
   color: #fff;
-  padding: 1rem;
   border-right: 1px solid #333;
 }
 .palette h3 {
@@ -232,7 +278,102 @@ function onConnect (params: Connection) {
   font-size: 16px;
   font-weight: 600;
 }
-.palette button {
+
+/* palette toggle */
+.palette-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 1rem 1rem 0;
+  padding: 4px;
+  background: #2b2b2b;
+  border-radius: 8px;
+}
+
+.palette-toggle button {
+  flex: 1;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.palette-toggle button:hover {
+  color: #ddd;
+}
+
+.palette-toggle button.active {
+  background: #444;
+  color: #fff;
+}
+
+/* flows list */
+.flows-list {
+  padding: 1rem;
+}
+
+.flows-list .empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.flow-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin: 6px 0;
+  padding: 10px 14px;
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #eee;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.flow-item:hover {
+  background: #333;
+  border-color: #555;
+}
+
+.flow-item.active {
+  background: #444;
+  border-color: #00bcd4;
+  border-width: 2px;
+}
+
+.flow-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.flow-description {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.4;
+}
+
+/* steps palette */
+.steps-palette {
+  padding: 1rem;
+}
+
+.steps-palette h3 {
+  margin: 0 0 0.75rem;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.steps-palette button {
   display: block;
   width: 100%;
   margin: 6px 0;
@@ -243,6 +384,10 @@ function onConnect (params: Connection) {
   color: #eee;
   cursor: grab;
   text-align: left;
+}
+
+.steps-palette button:hover {
+  background: #333;
 }
 
 /* graph canvas */
