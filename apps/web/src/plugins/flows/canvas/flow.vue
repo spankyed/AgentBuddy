@@ -6,14 +6,14 @@
       <div v-if="inListState" class="flows-list">
         <!-- Root flow section -->
         <div v-if="rootFlow" class="flow-section root-section">
-          <h3 class="section-title">Main Flow</h3>
+          <!-- <h3 class="section-title">Root Flow</h3> -->
           <button
             class="flow-item root-flow"
             :class="{ active: rootFlow.id === selectedFlowId }"
             @click="onFlowClick(rootFlow)"
           >
             <div class="flow-header">
-              <Home class="flow-icon" :size="16" />
+              <ArrowRightFromLine class="flow-icon" :size="16" />
               <span class="flow-name">{{ rootFlow.label || 'Root Flow' }}</span>
             </div>
             <span v-if="rootFlow.description" class="flow-description">{{ rootFlow.description }}</span>
@@ -135,14 +135,13 @@ import {
   useVueFlow,
   ConnectionMode,
 } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Edge, Node as VueFlowNode } from '@vue-flow/core'
-import type { Direction } from '@/plugins/flows/canvas/useLayout'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode } from '@vue-flow/core'
 import { useLayout } from '@/plugins/flows/canvas/useLayout'
 import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { Home, GitBranch, Workflow, Plus } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus } from 'lucide-vue-next'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
