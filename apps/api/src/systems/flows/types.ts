@@ -121,6 +121,7 @@ export type EdgeEntity = {
   info?: { [key: string]: any; } 
 };
 export interface FlowsStartupData {
+  selectedFlowId: EARS.EntityId;
   graph: {
     nodes: Partial<NodeEntity>[];
     edges: EdgeEntity[];

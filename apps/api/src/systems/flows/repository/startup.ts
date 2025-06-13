@@ -57,6 +57,10 @@ export default function flowsStartupData(): FlowsStartupData {
       });
   }
 
+  const selectedFlow = qx(EARS.Entity.Flow)
+    .withRole(EARS.RoleKind.Custom("root_flow"))
+    .pickOne(["id"]) as { id: EARS.EntityId };
+
   return {
     graph: {
       nodes,
@@ -64,5 +68,6 @@ export default function flowsStartupData(): FlowsStartupData {
     },
     flows,
     rootFlow,
+    selectedFlowId: selectedFlow.id,
   };
 }

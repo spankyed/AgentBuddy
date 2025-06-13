@@ -1,5 +1,5 @@
-import { assign, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb from '@/core/breadcrumb'
+import { assign, log, setup, type ActorRefFrom } from 'xstate'
+import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
 import { safeEvents } from '@/core/types/safe-events'
 import {
   targetIs,
@@ -121,6 +121,8 @@ const flowsState = setup({
   id,
   initial: 'view',
   context: {
+    selectedNodeId: undefined,
+    selectedFlowId: undefined,
     graph: {
       nodes: [] as Partial<NodeEntity>[],
       edges: [] as EdgeEntity[],
@@ -132,28 +134,32 @@ const flowsState = setup({
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
-    ...TRAIL_CLICK([['.view', 'view']]),
+    ...TRAIL_CLICK([
+      ['.list', 'list'],
+      ['.view', 'view'],
+    ]),
   },
   states: {
     list: {
-
+      tags: ['list-flows'],
+      meta: { ...breadcrumb('list', 'Flows', true) },
+      on: {
+        'FLOW.SELECT': {
+          actions: 'selectFlow',
+          target: 'view',
+        },
+      }
     },
     view: {
-      initial: 'overview',
-      meta: breadcrumb('view', 'View', true),
+      tags: ['view-flow'],
+      meta: { ...breadcrumbWithParams<FlowsContext>('view', 'Flow', 'selectedFlowId') },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
         'NODE.DRAG_CREATE': {
           actions: 'createNode',
-          target: '.details',
         },
-        'FLOW.SELECT': { actions: 'selectFlow' },
       },
-      states: {
-        overview: {},
-        details: {},
-      }
     },
   },
 })
