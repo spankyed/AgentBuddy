@@ -42,6 +42,7 @@ type UIEvent =
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
+  | { type: 'FLOW.CREATE'; }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -60,7 +61,7 @@ const flowsState = setup({
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event }) => {
-      const ev = typeOf('FLOW.SELECT', event);
+      const ev = typeOf(['FLOW.SELECT', 'FLOW_CREATED'], event);
       // Send event to backend to get flow data
       trpc.bus.send.mutate({
         systemId: id,
@@ -78,6 +79,20 @@ const flowsState = setup({
           nodes: ev.data.nodes,
           edges: ev.data.edges,
         },
+      };
+    }),
+
+    sendCreateFlow: ({ event }) => {
+      const ev = typeOf('FLOW.CREATE', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'CREATE_FLOW' });
+    },
+
+    addCreatedFlow: assign(({ context, event }) => {
+      const ev = typeOf('FLOW_CREATED', event);
+      
+      return {
+        flows: [...context.flows, ev.flow],
+        selectedFlowId: ev.flowId,
       };
     }),
 
@@ -127,13 +142,17 @@ const flowsState = setup({
       nodes: [] as Partial<NodeEntity>[],
       edges: [] as EdgeEntity[],
     },
-    flows: {} as Partial<FlowEntity>[],
+    flows: [] as Partial<FlowEntity>[],
     rootFlow: undefined as Partial<FlowEntity> | undefined,
     logs: [] as { id: number; text: string }[],
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
+    FLOW_CREATED: { 
+      actions: ['addCreatedFlow', 'selectFlow'],
+      target: '.view'
+    },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -147,6 +166,9 @@ const flowsState = setup({
         'FLOW.SELECT': {
           actions: 'selectFlow',
           target: 'view',
+        },
+        'FLOW.CREATE': {
+          actions: 'sendCreateFlow',
         },
       }
     },

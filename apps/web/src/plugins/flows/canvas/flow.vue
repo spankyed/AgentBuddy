@@ -272,9 +272,7 @@ function onFlowClick(flow: Partial<FlowEntity>) {
 }
 
 function onCreateFlow() {
-  // TODO: Implement flow creation logic
-  console.log('Create new flow clicked')
-  // actor.send({ type: 'FLOW.CREATE' })
+  actor.send({ type: 'FLOW.CREATE' })
 }
 </script>
 

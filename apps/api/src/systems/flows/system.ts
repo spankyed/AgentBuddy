@@ -4,10 +4,11 @@ import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
-import type { EARS } from '@/shared/ears/types';
+import { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
-import { FlowsStartupData } from './types';
+import { FlowsStartupData, FlowEntity } from './types';
 import { getExtendedData } from './repository/read';
+import { createFlow } from './repository/create';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -17,8 +18,8 @@ export const flows = 'flows' as const;
 const busEvent = systemBus(flows);
 
 export const IncomingFlowsEvents = [
-  busEvent('EMPTY_FLOWS', {}),
   busEvent('FLOW_SELECT', { flowId: z.string() }),
+  busEvent('CREATE_FLOW', {}),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -27,6 +28,7 @@ export type FlowsInternalEvents =
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
+  | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -50,12 +52,30 @@ export const flowsSystem = setup({
     },
     sendFlowData: ({ system, event }) => {
       const ev = typeOf('FLOW_SELECT', event);
-      const flowData = getExtendedData(ev.flowId as EARS.EntityId);
+      const flow = getExtendedData(ev.flowId as EARS.EntityId);
       
       system.get(bus).send(emit(flows, {
         type: 'FLOW_SELECTED',
         flowId: ev.flowId as EARS.EntityId,
-        data: flowData
+        data: flow
+      }));
+    },
+    createFlow: ({ system }) => {
+      const { id: newFlowId, timestamp, flowNumber } = createFlow();
+
+      const flowData: FlowEntity = {
+        id: newFlowId,
+        entityType: EARS.Entity.Flow,
+        label: `New Flow ${flowNumber}`,
+        description: '',
+        flowType: 'workflow',
+        createdAt: timestamp,
+      };
+
+      system.get(bus).send(emit(flows, {
+        type: 'FLOW_CREATED',
+        flow: flowData,
+        flowId: newFlowId,
       }));
     },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
@@ -72,6 +92,9 @@ export const flowsSystem = setup({
     on: {
       FLOW_SELECT: {
         actions: 'sendFlowData',
+      },
+      CREATE_FLOW: {
+        actions: 'createFlow',
       },
     },
     states: {

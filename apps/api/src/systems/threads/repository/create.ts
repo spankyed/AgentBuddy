@@ -17,7 +17,7 @@ export function createTag(name: string) {
 
 export function createThread(thread: ThreadCreateData) {
   const ts    = Date.now();
-  const count = qx(EARS.Entity.Thread).count();
+  const count = qx(EARS.Entity.Thread).count() + 1;
   const code: Record<ThreadEntity["threadType"], ThreadTypeCodes> = {
     "work-item": "WI",
     "project":   "P",
