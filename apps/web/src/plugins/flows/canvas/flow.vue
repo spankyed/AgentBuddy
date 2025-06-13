@@ -4,19 +4,50 @@
     <aside class="palette">
       <!-- Flows list view -->
       <div v-if="inListState" class="flows-list">
-        <div v-if="flows.length === 0" class="empty-state">
-          No flows created yet
+        <!-- Root flow section -->
+        <div v-if="rootFlow" class="flow-section root-section">
+          <h3 class="section-title">Main Flow</h3>
+          <button
+            class="flow-item root-flow"
+            :class="{ active: rootFlow.id === selectedFlowId }"
+            @click="onFlowClick(rootFlow)"
+          >
+            <div class="flow-header">
+              <Home class="flow-icon" :size="16" />
+              <span class="flow-name">{{ rootFlow.label || 'Root Flow' }}</span>
+            </div>
+            <span v-if="rootFlow.description" class="flow-description">{{ rootFlow.description }}</span>
+          </button>
         </div>
-        <button
-          v-for="flow in flows"
-          :key="flow.id"
-          class="flow-item"
-          :class="{ active: flow.id === selectedFlowId }"
-          @click="onFlowClick(flow)"
-        >
-          <span class="flow-name">{{ flow.label || `Flow ${flow.id}` }}</span>
-          <span v-if="flow.description" class="flow-description">{{ flow.description }}</span>
-        </button>
+
+        <!-- Divider -->
+        <div v-if="rootFlow && flows.length > 0" class="section-divider"></div>
+
+        <!-- Other flows section -->
+        <div v-if="flows.length > 0" class="flow-section">
+          <h3 class="section-title">Sub Flows</h3>
+          <div class="flows-grid">
+            <button
+              v-for="flow in flows"
+              :key="flow.id"
+              class="flow-item"
+              :class="{ active: flow.id === selectedFlowId }"
+              @click="onFlowClick(flow)"
+            >
+              <div class="flow-header">
+                <GitBranch class="flow-icon" :size="14" />
+                <span class="flow-name">{{ flow.label || `Flow ${flow.id}` }}</span>
+              </div>
+              <span v-if="flow.description" class="flow-description">{{ flow.description }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-if="!rootFlow && flows.length === 0" class="empty-state">
+          <Workflow class="empty-icon" :size="32" />
+          <p>No flows created yet</p>
+        </div>
       </div>
 
       <!-- Steps palette view -->
@@ -103,6 +134,7 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
+import { Home, GitBranch, Workflow } from 'lucide-vue-next'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -145,6 +177,7 @@ const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const logs    = useSelector(actor, (s) => s.context.logs)
 const flows   = useSelector(actor, (s) => s.context.flows)
+const rootFlow = useSelector(actor, (s) => s.context.rootFlow)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
@@ -242,101 +275,190 @@ function onFlowClick(flow: Partial<FlowEntity>) {
 
 /* palette (left) */
 .palette {
-  width: 210px;
-  overflow-y: scroll;
-  background: #1f1f1f;
+  width: 240px;
+  overflow-y: auto;
+  background: #0a0a0a;
   color: #fff;
-  border-right: 1px solid #333;
-}
-.palette h3 {
-  margin: 0 0 0.75rem;
-  font-size: 16px;
-  font-weight: 600;
+  border-right: 1px solid #1a1a1a;
 }
 
 /* flows list */
 .flows-list {
-  padding: 1rem;
+  padding: 1.5rem 1rem;
 }
 
-.flows-list .empty-state {
-  padding: 20px;
-  text-align: center;
+/* flow sections */
+.flow-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  margin: 0 0 0.75rem 0.25rem;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: #666;
-  font-size: 14px;
 }
 
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #333 20%, #333 80%, transparent);
+  margin: 1.5rem 0;
+}
+
+/* flow items */
 .flow-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
-  margin: 6px 0;
-  padding: 10px 14px;
-  background: #2b2b2b;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  background: #161616;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  color: #e0e0e0;
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at top left, rgba(0, 188, 212, 0.05), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .flow-item:hover {
-  background: #333;
-  border-color: #555;
+  background: #1a1a1a;
+  border-color: #333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.flow-item:hover::before {
+  opacity: 1;
+}
+
+/* root flow special styling */
+.flow-item.root-flow {
+  background: linear-gradient(135deg, #1a1a1a 0%, #161616 100%);
+  border: 1px solid #2a2a2a;
+}
+
+.flow-item.root-flow:hover {
+  background: linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%);
+  border-color: #00bcd4;
+  box-shadow: 0 0 0 1px rgba(0, 188, 212, 0.1), 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 
 .flow-item.active {
-  background: #444;
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
   border-color: #00bcd4;
-  border-width: 2px;
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2), 0 4px 12px rgba(0, 188, 212, 0.3);
+}
+
+.flow-item.active .flow-icon {
+  color: #fff;
+}
+
+.flow-item.active .flow-description {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* flow header */
+.flow-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-icon {
+  color: #00bcd4;
+  flex-shrink: 0;
 }
 
 .flow-name {
   font-weight: 500;
   font-size: 14px;
+  line-height: 1.2;
 }
 
 .flow-description {
   font-size: 12px;
-  color: #999;
+  color: #666;
   line-height: 1.4;
+  margin-left: 24px;
+}
+
+/* empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.empty-icon {
+  color: #333;
+}
+
+.empty-state p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* steps palette */
 .steps-palette {
-  padding: 1rem;
-}
-
-.steps-palette h3 {
-  margin: 0 0 0.75rem;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 1.5rem 1rem;
 }
 
 .steps-palette button {
   display: block;
   width: 100%;
-  margin: 6px 0;
-  padding: 8px 12px;
-  background: #2b2b2b;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: #161616;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  color: #e0e0e0;
   cursor: grab;
   text-align: left;
+  font-size: 14px;
+  transition: all 0.2s;
+  position: relative;
 }
 
 .steps-palette button:hover {
-  background: #333;
+  background: #1a1a1a;
+  border-color: #333;
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.steps-palette button:active {
+  cursor: grabbing;
+  transform: scale(0.98);
 }
 
 /* graph canvas */
 .graph {
   flex: 1;
-  background: #111;
+  background: #0a0a0a;
 }
 
 /* layout button */
@@ -345,22 +467,30 @@ function onFlowClick(flow: Partial<FlowEntity>) {
   right: 10px;
   top: 10px;
   z-index: 4;
-  padding: 8px 12px;
-  background: #2b2b2b;
-  border: 1px solid #444;
-  border-radius: 6px;
-  color: #eee;
+  padding: 8px 14px;
+  background: #161616;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  color: #e0e0e0;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .layout-button:hover {
-  background: #333;
+  background: #1a1a1a;
+  border-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* minimap */
 :deep(.vue-flow__minimap) {
-  opacity: 0.1;
+  opacity: 0.15;
   transition: opacity 0.2s;
+  background: #0a0a0a;
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
 }
 
 :deep(.vue-flow__minimap:hover) {
@@ -397,5 +527,23 @@ function onFlowClick(flow: Partial<FlowEntity>) {
 
 .slide-in-form.is-open {
   transform: translateX(0);
+}
+
+/* Scrollbar styling */
+.palette::-webkit-scrollbar {
+  width: 6px;
+}
+
+.palette::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.palette::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.palette::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
 </style>
