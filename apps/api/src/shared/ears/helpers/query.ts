@@ -7,6 +7,7 @@ import {
   /* look‑ups      */ queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
+  getAll,
 } from "@/shared/ears/attribute-storage";
 
 import { relationIndex } from "@/shared/ears/relation-index";
@@ -170,6 +171,14 @@ export const qx = (
     pickOne: liftOne(function <A extends readonly string[]>(f: A) {
       return self.pick(f);
     }),
+
+    pickAll: () => {
+      return ids.map(i => {
+        const o: Record<string, unknown> = { id: i };
+        Object.assign(o, getAll(i));
+        return o as { id: EARS.EntityId } & { [K in string]: unknown };
+      });
+    },
 
     /*─ traverse + project in one call ─*/
     linksPick: <K extends string, A extends readonly string[]>(
