@@ -5,73 +5,100 @@
       <!-- Flows list view -->
       <div v-if="inListState" class="flex flex-col h-full p-0 overflow-hidden">
         <!-- Root flow section -->
-        <div v-if="rootFlow" class="flex-shrink-0 px-4 pt-4">
+        <div v-if="rootFlow" class="flex-shrink-0 px-3 pt-5">
           <button
-            class="w-full flex flex-col gap-1 px-4 py-2 bg-gradient-to-br from-[#1a1a1a] to-[#161616] border border-[#2a2a2a] rounded-lg text-[#e0e0e0] cursor-pointer text-left text-sm transition-all duration-200 hover:from-[#1f1f1f] hover:to-[#1a1a1a] hover:border-cyan-400 hover:shadow-[0_0_0_1px_rgba(0,188,212,0.1),0_6px_16px_rgba(0,0,0,0.6)] active:scale-[0.98]"
-            :class="{ 'bg-gradient-to-br from-cyan-500 to-cyan-600 border-cyan-400 text-white shadow-[0_0_0_2px_rgba(0,188,212,0.2),0_4px_12px_rgba(0,188,212,0.3)]': rootFlow.id === selectedFlowId }"
+            class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#e0e0e0] cursor-pointer text-sm transition-all duration-200 hover:bg-[#1a1a1a] active:scale-[0.98]"
+            :class="{ 
+              'bg-primary-500/10 text-primary-400 border border-primary-500/30 hover:bg-primary-500/20': rootFlow.id === selectedFlowId,
+              'hover:bg-[#1a1a1a]': rootFlow.id !== selectedFlowId
+            }"
             @click="onFlowClick(rootFlow)"
           >
-            <div class="flex items-center min-w-0 gap-2">
-              <span class="text-xs tracking-wider uppercase text-neutral-500" :class="{ 'text-white/70': rootFlow.id === selectedFlowId }">root</span>
-              <div class="flex items-center justify-center flex-shrink-0 w-6 h-6 rounded bg-neutral-800" :class="{ 'bg-white/20': rootFlow.id === selectedFlowId }">
-                <ArrowRightFromLine class="text-cyan-400" :class="{ 'text-white': rootFlow.id === selectedFlowId }" :size="12" />
-              </div>
-              <span class="font-medium leading-tight truncate">{{ rootFlow.label || 'Root Flow' }}</span>
+            <div class="flex-shrink-0">
+              <ArrowRightFromLine 
+                class="transition-colors text-neutral-400 group-hover:text-primary-400" 
+                :class="{ 'text-primary-400': rootFlow.id === selectedFlowId }" 
+                :size="16" 
+              />
             </div>
-            <span v-if="rootFlow.description" class="ml-6 text-xs leading-relaxed text-neutral-500" :class="{ 'text-white/80': rootFlow.id === selectedFlowId }">{{ rootFlow.description }}</span>
+            <div class="flex-1 min-w-0 text-left">
+              <div class="font-medium truncate">{{ rootFlow.label || 'Main Flow' }}</div>
+              <div v-if="rootFlow.description" class="text-xs text-neutral-500 truncate mt-0.5" :class="{ 'text-primary-300/70': rootFlow.id === selectedFlowId }">
+                {{ rootFlow.description }}
+              </div>
+            </div>
           </button>
         </div>
 
-        <!-- Other flows section -->
-        <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-4 pb-4 overflow-hidden">
-          <div v-if="rootFlow" class="relative flex items-center justify-center my-3">
-            <!-- Bisecting line -->
-            <div class="absolute left-0 right-0 top-1/2 h-px bg-gradient-to-r from-transparent via-[#777] to-transparent"></div>
-            <span class="flex items-center z-[1] bg-[#0a0a0a] px-1">
-              <GitBranch class="flex-shrink-0 text-cyan-400" :size="12" />
-            </span>
-            <h3 class="m-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 bg-[#0a0a0a] pl-2 pr-3 z-[1]">Sub Flows</h3>
+        <!-- Sub flows section -->
+        <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-3 pb-3 overflow-hidden">
+          <!-- Section divider -->
+          <div v-if="rootFlow" class="flex items-center gap-2 my-4">
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent to-[#2a2a2a]"></div>
+            <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-600 px-2">Sub Flows</span>
+            <div class="h-px flex-1 bg-gradient-to-l from-transparent to-[#2a2a2a]"></div>
           </div>
-          <div class="flex-1 pr-1 overflow-x-hidden overflow-y-auto scrollbar-thin">
+          
+          <!-- Sub flows list -->
+          <div class="flex-1 px-1 -mx-1 overflow-x-hidden overflow-y-auto scrollbar-thin">
             <button
               v-for="flow in filteredFlows"
               :key="flow.id"
-              class="w-full flex flex-col gap-1 mb-1.5 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-pointer text-left text-sm transition-all duration-200 relative overflow-hidden hover:bg-[#1a1a1a] hover:border-[#333] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,0,0,0.5)] active:scale-[0.98]"
-              :class="{ 'bg-gradient-to-br from-cyan-500 to-cyan-600 border-cyan-400 text-white shadow-[0_0_0_2px_rgba(0,188,212,0.2),0_4px_12px_rgba(0,188,212,0.3)]': flow.id === selectedFlowId }"
+              class="w-full group flex items-center gap-3 mb-1 px-3 py-2 rounded-lg text-[#e0e0e0] cursor-pointer text-sm transition-all duration-200 hover:bg-[#1a1a1a] active:scale-[0.98]"
+              :class="{ 
+                'bg-primary-500/10 text-primary-400 border border-primary-500/30 hover:bg-primary-500/20': flow.id === selectedFlowId,
+                'hover:bg-[#1a1a1a]': flow.id !== selectedFlowId
+              }"
               @click="onFlowClick(flow)"
             >
-              <div class="flex items-center min-w-0 gap-2">
-                <span class="font-medium leading-tight truncate">{{ flow.label || `Flow ${flow.id}` }}</span>
+              <div class="flex-shrink-0">
+                <ChevronRight 
+                  class="transition-colors text-neutral-400 group-hover:text-primary-400" 
+                  :class="{ 'text-primary-400': flow.id === selectedFlowId }" 
+                  :size="16" 
+                />
               </div>
-              <span v-if="flow.description" class="text-xs leading-relaxed text-neutral-500" :class="{ 'text-white/80': flow.id === selectedFlowId }">{{ flow.description }}</span>
+              <div class="flex-1 min-w-0 text-left">
+                <div class="font-medium truncate">{{ flow.label || `Flow ${flow.id}` }}</div>
+                <div v-if="flow.description" class="text-xs text-neutral-500 truncate mt-0.5" :class="{ 'text-primary-300/70': flow.id === selectedFlowId }">
+                  {{ flow.description }}
+                </div>
+              </div>
             </button>
+            
             <!-- No search results message -->
-            <div v-if="isSearchMode && filteredFlows.length === 0 && searchQuery.trim()" class="flex flex-col items-center justify-center h-32 gap-2 text-center">
+            <div v-if="isSearchMode && filteredFlows.length === 0 && searchQuery.trim()" class="flex flex-col items-center justify-center h-32 gap-2 py-8 text-center">
               <Search class="text-neutral-600" :size="20" />
-              <p class="m-0 text-sm text-neutral-500">No flows match "{{ searchQuery }}"</p>
+              <p class="m-0 text-xs text-neutral-500">No flows match "{{ searchQuery }}"</p>
             </div>
           </div>
         </div>
 
         <!-- Empty state -->
-        <div v-if="!rootFlow && flows.length === 0" class="flex flex-col items-center justify-center h-full gap-3 px-4 py-12 text-center">
-          <Workflow class="text-neutral-700" :size="28" />
-          <p class="m-0 text-sm text-neutral-500">No flows created yet</p>
+        <div v-if="!rootFlow && flows.length === 0" class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
+          <div class="flex items-center justify-center w-12 h-12 rounded-full bg-neutral-900">
+            <Workflow class="text-neutral-600" :size="24" />
+          </div>
+          <div>
+            <p class="m-0 text-sm font-medium text-neutral-400">No flows yet</p>
+            <p class="m-0 mt-1 text-xs text-neutral-600">Create your first flow to get started</p>
+          </div>
         </div>
 
-        <!-- Create new flow button -->
-        <div class="flex-shrink-0 p-4 border-t border-[#1a1a1a] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/95 to-transparent">
+        <!-- Create new flow section -->
+        <div class="flex-shrink-0 p-3 border-t border-[#1a1a1a]">
           <!-- Default state: Create and Search buttons -->
           <div v-if="!isSearchMode" class="flex gap-2">
             <Button 
-              class="py-4 flex-1 bg-gradient-to-br from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 border border-cyan-400 hover:border-cyan-300 hover:shadow-[0_4px_12px_rgba(0,188,212,0.3)] hover:-translate-y-px active:translate-y-0 active:shadow-[0_2px_8px_rgba(0,188,212,0.3)]"
+              class="flex-1 !text-sm !font-medium"
               @click="onCreateFlow"
             >
-              <Plus class="flex-shrink-0" :size="16" />
+              <Plus :size="16" />
               <span>New Flow</span>
             </Button>
             <Button 
-              class="!px-2.5 !h-auto bg-gradient-to-br from-[#262626] to-[#1a1a1a] hover:from-[#333] hover:to-[#262626] border border-[#333] hover:border-[#444] hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:-translate-y-px active:translate-y-0 active:shadow-[0_2px_8px_rgba(0,0,0,0.3)]" 
+              variant="transparent"
+              class="!px-2.5 !h-auto text-neutral-400 hover:text-white" 
               @click="isSearchMode = true" 
               title="Search flows"
             >
@@ -79,19 +106,22 @@
             </Button>
           </div>
           
-          <!-- Search mode: Search input and controls -->
+          <!-- Search mode -->
           <div v-else class="flex items-center gap-2">
-            <input
-              v-model="searchQuery"
-              type="text"
-              class="w-full min-w-0 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
-              placeholder="Search flows..."
-              autofocus
-              @keyup.escape="isSearchMode = false; searchQuery = ''"
-            />
+            <div class="relative flex-1">
+              <Search class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" :size="14" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                class="w-full pl-9 pr-3 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-primary-400/50 focus:bg-[#1a1a1a]"
+                placeholder="Search flows..."
+                autofocus
+                @keyup.escape="isSearchMode = false; searchQuery = ''"
+              />
+            </div>
             <Button 
               variant="transparent" 
-              class="!p-2 !h-auto !text-sm text-neutral-400 hover:text-white bg-[#161616] border border-[#262626] hover:bg-[#1a1a1a] hover:border-[#333]"
+              class="!p-2 !h-auto text-neutral-400 hover:text-white"
               @click="isSearchMode = false; searchQuery = ''"
             >
               <X :size="16" />
@@ -101,16 +131,22 @@
       </div>
 
       <!-- Steps palette view -->
-      <div v-if="inViewState" class="p-4">
-        <button
-          v-for="t in paletteItems"
-          :key="t.type"
-          class="block w-full mb-1.5 px-4 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-grab text-left text-sm transition-all duration-200 relative hover:bg-[#1a1a1a] hover:border-[#333] hover:translate-x-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] active:cursor-grabbing active:scale-[0.98]"
-          draggable="true"
-          @dragstart="(e) => onDragStart(e, t.type)"
-        >
-          {{ t.label }}
-        </button>
+      <div v-if="inViewState" class="p-3">
+        <div class="mb-3">
+          <h3 class="text-xs font-medium tracking-wider uppercase text-neutral-500">Components</h3>
+        </div>
+        <div class="space-y-1">
+          <button
+            v-for="t in paletteItems"
+            :key="t.type"
+            class="w-full flex items-center gap-3 px-3 py-2 bg-[#161616] border border-[#262626] rounded-lg text-[#e0e0e0] cursor-grab text-sm transition-all duration-200 hover:bg-[#1a1a1a] hover:border-[#333] hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
+            draggable="true"
+            @dragstart="(e) => onDragStart(e, t.type)"
+          >
+            <div class="w-1 h-1 rounded-full bg-neutral-600"></div>
+            <span>{{ t.label }}</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -185,7 +221,7 @@
         <input
           v-model="newFlowLabel"
           type="text"
-          class="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-cyan-400 focus:shadow-[0_0_0_2px_rgba(0,188,212,0.1)]"
+          class="w-full px-4 py-2 bg-[#0a0a0a] border border-[#262626] rounded-lg text-[#e0e0e0] text-sm outline-none transition-all duration-200 focus:border-primary-400 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
           placeholder="Enter flow label"
           autofocus
         />
@@ -218,7 +254,7 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X, ChevronRight } from 'lucide-vue-next'
 import uFuzzy from '@leeoniya/ufuzzy'
 
 import '@vue-flow/core/dist/style.css'
