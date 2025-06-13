@@ -5,10 +5,11 @@ import { flowRows } from './repository/mock-data';
 
 export interface FlowEntity extends BaseEntity {
   entityType: EARS.Entity.Flow;
+  shortCode: string;
   label: string;
   description?: string;
   flowType: 'workflow' | 'integration';
-  // steps: string[]; // Array of step IDs or names
+  createdAt: number;
 }
 
 /*─────────────────────────────────────────────────────────────────

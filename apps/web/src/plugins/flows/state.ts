@@ -134,7 +134,7 @@ const flowsState = setup({
   guards: { targetIs },
 }).createMachine({
   id,
-  initial: 'view',
+  initial: 'list',
   context: {
     selectedNodeId: undefined,
     selectedFlowId: undefined,

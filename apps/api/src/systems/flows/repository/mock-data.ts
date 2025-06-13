@@ -12,6 +12,7 @@ export const flowRows: Rows = {
     /* Graph container */
     {
       id: "Flow-1",
+      shortCode: "F-1",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
       label: "Chat Flow",
@@ -19,6 +20,7 @@ export const flowRows: Rows = {
     },
     {
       id: "Flow-2",
+      shortCode: "F-2",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
       label: "Some Flow with Validation",
@@ -26,6 +28,7 @@ export const flowRows: Rows = {
     },
     {
       id: "Flow-3",
+      shortCode: "F-3",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
       label: "Some Flow",

@@ -1,4 +1,4 @@
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
+import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
@@ -61,25 +61,13 @@ export const flowsSystem = setup({
       }));
     },
     createFlow: ({ system }) => {
-      const { id: newFlowId, timestamp, flowNumber } = createFlow();
-
-      const flowData: FlowEntity = {
-        id: newFlowId,
-        entityType: EARS.Entity.Flow,
-        label: `New Flow ${flowNumber}`,
-        description: '',
-        flowType: 'workflow',
-        createdAt: timestamp,
-      };
+      const newFlow = createFlow();
 
       system.get(bus).send(emit(flows, {
         type: 'FLOW_CREATED',
-        flow: flowData,
-        flowId: newFlowId,
+        flow: newFlow,
+        flowId: newFlow.id,
       }));
-    },
-    logError: (_, event: ErrorActorEvent<unknown, string>) => {
-      console.error('Flow error:', event.error);
     },
   },
 }).createMachine(
