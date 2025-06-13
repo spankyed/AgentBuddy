@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-900 border-neutral-700 scrollbar-thin">
+    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-800 border-neutral-700 scrollbar-thin">
       <!-- Flows list view -->
       <div v-if="inListState" class="flex flex-col h-full p-0 overflow-hidden">
         <!-- Root flow section -->
@@ -154,7 +154,7 @@
     <VueFlow
       :nodes="plainNodes"
       :edges="plainEdges"
-      class="flex-1 bg-[#0a0a0a]"
+      class="flex-1 bg-neutral-900"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{
@@ -183,7 +183,7 @@
       <MiniMap 
         :maskColor="'#26262650'" 
         :maskStrokeColor="'transparent'" 
-        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg"
+        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-800 rounded-lg"
       />
 
       <!-- Actions menu (top left) -->
