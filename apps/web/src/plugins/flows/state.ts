@@ -44,6 +44,7 @@ type UIEvent =
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
+  | { type: 'GO.BACK' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -215,6 +216,9 @@ const flowsState = setup({
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
+        },
+        'GO.BACK': {
+          target: 'list',
         },
       },
     },

@@ -183,12 +183,25 @@
           class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
         />
 
-        <!-- Actions menu (top left) -->
-        <FlowActionsMenu 
-          :selected-flow-id="selectedFlowId"
-          @layout="(direction) => layout(direction)"
-          @edit-label="openLabelDialog"
-        />
+        <!-- Back button and Actions menu (top left) -->
+        <div class="absolute z-10 flex gap-2 top-4 left-4">
+          <!-- Back button -->
+          <Button
+            variant="secondary"
+            class="!px-3 !py-2 !h-auto bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-50"
+            @click="goBack"
+            title="Back to flows list"
+          >
+            <ChevronLeft :size="18" />
+          </Button>
+          
+          <!-- Actions menu -->
+          <FlowActionsMenu 
+            :selected-flow-id="selectedFlowId"
+            @layout="(direction) => layout(direction)"
+            @edit-label="openLabelDialog"
+          />
+        </div>
 
       </VueFlow>
       
@@ -259,7 +272,7 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X, ChevronRight } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X, ChevronRight, ChevronLeft } from 'lucide-vue-next'
 import uFuzzy from '@leeoniya/ufuzzy'
 
 import '@vue-flow/core/dist/style.css'
@@ -468,6 +481,10 @@ function selectCurrentFlow() {
   if (selectedFlowId.value) {
     actor.send({ type: 'FLOW.SELECT', flowId: selectedFlowId.value })
   }
+}
+
+function goBack() {
+  actor.send({ type: 'GO.BACK' })
 }
 </script>
 

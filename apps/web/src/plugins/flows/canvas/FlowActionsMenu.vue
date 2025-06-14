@@ -2,7 +2,7 @@
   <DropdownMenuRoot>
     <DropdownMenuTrigger as-child>
       <button 
-        class="absolute left-2.5 top-2.5 z-[4] w-10 h-10 flex items-center justify-center bg-neutral-800 border border-[#262626] rounded-md text-[#e0e0e0] cursor-pointer transition-all duration-200 hover:bg-neutral-700 hover:border-[#333] hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)]" 
+        class="z-[4] px-2 rounded flex items-center justify-center bg-neutral-800 border border-[#262626] text-[#e0e0e0] cursor-pointer transition-all duration-200 hover:bg-neutral-700 hover:border-[#333] hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)]" 
         title="Actions menu"
       >
         <MoreVertical :size="20" />
