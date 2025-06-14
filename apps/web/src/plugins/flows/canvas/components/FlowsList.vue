@@ -4,10 +4,6 @@
     <div v-if="rootFlow" class="flex flex-shrink-0 px-3 pt-5">
       <div class="flex items-center flex-shrink-0 mr-3 text-neutral-500">
         <span class="text-[10px] font-medium uppercase tracking-wider pl-2 mr-1">Root</span>
-        <ArrowRightFromLine 
-          class="transition-colors group-hover:text-primary-4300" 
-          :size="13" 
-        />
       </div>
       <button
         class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg text-neutral-100 cursor-pointer text-sm transition-all duration-200 hover:bg-neutral-700 active:scale-[0.98]"
@@ -17,11 +13,15 @@
         }"
         @click="$emit('flow-click', rootFlow)"
       >
+      <ArrowRightFromLine 
+        class="transition-colors group-hover:text-primary-4300" 
+        :size="13" 
+      />
         <div class="flex-1 min-w-0 text-left">
           <div class="font-medium truncate">{{ rootFlow.label || 'Main Flow' }}</div>
-          <div v-if="rootFlow.description" class="text-xs text-neutral-400 truncate mt-0.5" :class="{ 'text-primary-200/70': rootFlow.id === selectedFlowId }">
+          <!-- <div v-if="rootFlow.description" class="text-xs text-neutral-400 truncate mt-0.5" :class="{ 'text-primary-200/70': rootFlow.id === selectedFlowId }">
             {{ rootFlow.description }}
-          </div>
+          </div> -->
         </div>
       </button>
     </div>
