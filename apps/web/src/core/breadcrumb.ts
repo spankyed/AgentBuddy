@@ -9,16 +9,34 @@ export default function breadcrumb(
 }
 
 
-export function breadcrumbWithParams<C>(
-  target: string,
-  labelPrefix: string,
-  paramName: keyof C,
-) {
+export function breadcrumbWithParams<C>({
+  target,
+  getLabel,
+  prefix,
+  paramName,
+}: {
+  target: string;
+} & (
+  | { getLabel: (ctx: C) => string; prefix?: never; paramName?: never }
+  | { getLabel?: never; prefix?: string; paramName: keyof C }
+)) {
   return {
-    breadcrumb: (ctx: C) => ({
-      label: ctx[paramName] ? `${labelPrefix} ${ctx[paramName]}` : labelPrefix,
-      target
-    }),
+    breadcrumb: (ctx: C) => {
+      let label: string;
+      
+      if (getLabel) {
+        label = getLabel(ctx);
+      } else {
+        const paramValue = ctx[paramName!];
+        if (prefix && paramValue) {
+          label = `${prefix} ${paramValue}`;
+        } else {
+          label = String(paramValue || '');
+        }
+      }
+      
+      return { label, target };
+    },
   } as const;
 }
 // equivalent to something like:

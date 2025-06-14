@@ -207,7 +207,13 @@ const flowsState = setup({
     },
     view: {
       tags: ['view-flow'],
-      meta: { ...breadcrumbWithParams<FlowsContext>('view', 'Flow', 'selectedFlowId') },
+      meta: {
+        ...breadcrumbWithParams<FlowsContext>({
+          target: 'view',
+          // prefix: 'Flow',
+          paramName: 'selectedFlowId'
+        })
+      },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
