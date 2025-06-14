@@ -94,7 +94,7 @@
         <Button 
           variant="transparent"
           class="!px-2.5 !h-auto text-neutral-300 hover:text-white hover:bg-neutral-700" 
-          @click="isSearchMode = true" 
+          @click="handleSearchClick" 
           title="Search flows"
         >
           <Search :size="16" />
@@ -106,11 +106,11 @@
         <div class="relative flex-1">
           <Search class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-400" :size="14" />
           <input
+            ref="searchInput"
             v-model="searchQuery"
             type="text"
             class="w-full py-2 pr-3 text-sm transition-all duration-200 border rounded-lg outline-none pl-9 bg-neutral-800 text-neutral-100 focus:border-primary-400/50 focus:bg-neutral-900"
             placeholder="Search flows..."
-            autofocus
             @keyup.escape="isSearchMode = false; searchQuery = ''"
           />
         </div>
@@ -127,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { ArrowRightFromLine, ArrowRight, Search, Workflow, Plus, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@abuddy/api'
 import Button from '@/core/design/button.vue'
@@ -149,6 +149,7 @@ defineEmits<{
 // Search state
 const isSearchMode = ref(false)
 const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
 
 // Initialize uFuzzy instance
 const fuzzy = new uFuzzy({
@@ -158,6 +159,23 @@ const fuzzy = new uFuzzy({
   intraTrn: 1,
   intraDel: 1,
   intraIns: 1
+})
+
+// Handle search button click
+const handleSearchClick = () => {
+  isSearchMode.value = true
+  nextTick(() => {
+    searchInput.value?.focus()
+  })
+}
+
+// Watch for search mode changes to ensure focus
+watch(isSearchMode, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      searchInput.value?.focus()
+    })
+  }
 })
 
 // Filtered flows based on search query
