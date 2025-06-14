@@ -4,7 +4,7 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 py-4 min-h-[3.25rem]" :class="headerClass">
+    <div class="flex items-center w-full px-3 pt-4 pb-3" :class="headerClass">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs?.length"
