@@ -197,6 +197,94 @@ describe('computeCrumbs', () => {
       { label: 'TestMachine', target: 'idle' },
     ]);
   });
+
+  it('should handle array of breadcrumbs', () => {
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('flow', [
+        { label: 'Flow A', target: 'view', info: 'A' },
+        { label: 'Flow B', target: 'view', info: 'B' },
+        { label: 'Flow C', target: 'view', info: 'C' },
+      ]),
+    ];
+    const state = createMockState(nodes);
+    
+    const result = computeCrumbs(state);
+    
+    expect(result.crumbs).toEqual([
+      { label: 'Flow A', target: 'view', info: 'A' },
+      { label: 'Flow B', target: 'view', info: 'B' },
+      { label: 'Flow C', target: 'view', info: 'C' },
+    ]);
+    expect(result.target).toBe('view');
+  });
+
+  it('should handle function returning array of breadcrumbs', () => {
+    const breadcrumbFn = vi.fn((ctx) => [
+      { label: `${ctx.entity} List`, target: 'list' },
+      { label: `${ctx.entity} ${ctx.id}`, target: 'detail', info: ctx.id },
+    ]);
+    
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('entity', breadcrumbFn),
+    ];
+    const context = { entity: 'User', id: '123' };
+    const state = createMockState(nodes, context);
+    
+    const result = computeCrumbs(state);
+    
+    expect(breadcrumbFn).toHaveBeenCalledWith(context);
+    expect(result.crumbs).toEqual([
+      { label: 'User List', target: 'list' },
+      { label: 'User 123', target: 'detail', info: '123' },
+    ]);
+  });
+
+  it('should handle mixed single and array breadcrumbs', () => {
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('home', { label: 'Home', target: 'home' }),
+      createMockNode('nested', [
+        { label: 'Section A', target: 'sectionA' },
+        { label: 'Section B', target: 'sectionB' },
+      ]),
+      createMockNode('page', { label: 'Final Page', target: 'final' }),
+    ];
+    const state = createMockState(nodes);
+    
+    const result = computeCrumbs(state);
+    
+    expect(result.crumbs).toEqual([
+      { label: 'Home', target: 'home' },
+      { label: 'Section A', target: 'sectionA' },
+      { label: 'Section B', target: 'sectionB' },
+      { label: 'Final Page', target: 'final' },
+    ]);
+    expect(result.target).toBe('final');
+  });
+
+  it('should handle breadcrumbs with info property', () => {
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('item', { 
+        label: 'Item Details', 
+        target: 'itemView',
+        info: { id: 'item-123', type: 'product' }
+      }),
+    ];
+    const state = createMockState(nodes);
+    
+    const result = computeCrumbs(state);
+    
+    expect(result.crumbs).toEqual([
+      { 
+        label: 'Item Details', 
+        target: 'itemView',
+        info: { id: 'item-123', type: 'product' }
+      },
+    ]);
+  });
 });
 
 describe('trailActor', () => {

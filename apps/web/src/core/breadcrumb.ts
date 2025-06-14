@@ -44,3 +44,33 @@ export function breadcrumbWithParams<C>({
 //   label: ctx.selectedThreadCode ? `Thread ${ctx.selectedThreadCode}` : 'Thread',
 //   target: 'view'
 // })
+
+export function breadcrumbList<C>(
+  getCrumbs: (ctx: C) => Array<{ label: string; target: string; info?: any }>
+) {
+  return {
+    breadcrumb: getCrumbs,
+  } as const;
+}
+
+// Example usage:
+// breadcrumbList((ctx: MyContext) => [
+//   { label: 'Products', target: 'products' },
+//   { label: ctx.category, target: 'category', info: ctx.categoryId },
+//   { label: ctx.productName, target: 'detail', info: ctx.productId }
+// ])
+
+export function staticBreadcrumbList(
+  crumbs: Array<{ label: string; target: string; info?: any }>
+) {
+  return {
+    breadcrumb: crumbs,
+  } as const;
+}
+
+// Example usage:
+// staticBreadcrumbList([
+//   { label: 'Flow A', target: 'view', info: 'A' },
+//   { label: 'Flow B', target: 'view', info: 'B' },
+//   { label: 'Flow C', target: 'view', info: 'C' }
+// ])
