@@ -11,30 +11,47 @@
       >
         <div class="w-1 h-1 transition-colors rounded-full bg-neutral-500 group-hover:bg-green-500"></div>
         <span>{{ item.label }}</span>
+        <component
+          :is="item.icon"
+          class="w-4 h-4 ml-auto text-neutral-500 group-hover:text-neutral-300"
+        />
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import {
+  Workflow,
+  Radio,
+  Zap,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Split,
+  Shuffle
+} from 'lucide-vue-next'
+
 interface PaletteItem {
   type: string
   label: string
+  icon: any
 }
 
 const props = withDefaults(defineProps<{
   paletteItems?: PaletteItem[]
 }>(), {
   paletteItems: () => [
-    { type: 'flow', label: 'Flow' },
-    { type: 'listen', label: 'Listen' },
-    { type: 'fire', label: 'Fire' },
-    { type: 'action', label: 'Action' },
-    { type: 'create', label: 'Create' },
-    { type: 'update', label: 'Update' },
-    { type: 'query', label: 'Query' },
-    { type: 'decision', label: 'Decision' },
-    { type: 'transform', label: 'Transform' },
+    { type: 'flow', label: 'Flow', icon: Workflow },
+    { type: 'listen', label: 'Listen', icon: Radio },
+    { type: 'fire', label: 'Fire', icon: Zap },
+    { type: 'action', label: 'Action', icon: Play },
+    { type: 'create', label: 'Create', icon: Plus },
+    { type: 'update', label: 'Update', icon: RefreshCw },
+    { type: 'query', label: 'Query', icon: Search },
+    { type: 'decision', label: 'Decision', icon: Split },
+    { type: 'transform', label: 'Transform', icon: Shuffle },
   ]
 })
 
