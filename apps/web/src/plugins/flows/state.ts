@@ -213,8 +213,18 @@ const flowsState = setup({
       meta: {
         ...breadcrumbWithParams<FlowsContext>({
           target: 'view',
-          // prefix: 'Flow',
-          paramName: 'selectedFlowId'
+          getLabel: (ctx) => {
+            if (!ctx.selectedFlowId) return 'Flow';
+            
+            // Check if it's the root flow
+            if (ctx.rootFlow?.id === ctx.selectedFlowId) {
+              return ctx.rootFlow.label || 'Root Flow';
+            }
+            
+            // Find in flows array
+            const flow = ctx.flows.find(f => f.id === ctx.selectedFlowId);
+            return flow?.label || ctx.selectedFlowId;
+          }
         })
       },
       on: {
