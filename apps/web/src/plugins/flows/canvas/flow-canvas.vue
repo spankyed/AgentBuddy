@@ -73,7 +73,7 @@ import { useSelector } from '@xstate/vue'
 import FlowsList from './components/FlowsList.vue'
 import NodePalette from './components/NodePalette.vue'
 import FlowCanvas from './components/FlowEditor.vue'
-import NodeEditor from './components/NodeEditorForm.vue'
+import NodeEditor from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
