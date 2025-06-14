@@ -23,10 +23,6 @@
       <template v-else-if="content.contentType === 'image'">
         <img :src="content.content" alt="Canvas content" class="h-auto max-w-full" />
       </template>
-      
-      <template v-else>
-        <div class="py-8 text-center text-neutral-500">No content to display</div>
-      </template>
     </div>
     
     <div v-if="content.contentType === 'code'" class="p-4 mt-4 border rounded-lg border-neutral-300 bg-neutral-800">

@@ -1,5 +1,9 @@
 <template>
-  <div class="py-8 text-center text-neutral-500">No content to display</div>
+  <div class="text-center text-neutral-500">
+    <span class="mt-8">
+      No content to display
+    </span>
+  </div>
 </template>
 
 <script setup lang="ts">
