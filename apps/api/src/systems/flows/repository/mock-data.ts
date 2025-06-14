@@ -15,7 +15,7 @@ export const flowRows: Rows = {
       shortCode: "F-1",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Chat Flow",
+      label: "Run Agent",
       flowType: "workflow",
     },
     {
@@ -23,7 +23,7 @@ export const flowRows: Rows = {
       shortCode: "F-2",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Some Flow with Validation",
+      label: "Chat Flow",
       flowType: "workflow",
     },
     {
@@ -31,7 +31,7 @@ export const flowRows: Rows = {
       shortCode: "F-3",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Some Flow",
+      label: "Some flow with validation",
       flowType: "workflow",
     },
 
@@ -169,7 +169,7 @@ export const flowRows: Rows = {
       x: 500,
       y: 200,
       color: "#9C27B0",
-      flowRef: "command-flow-1",
+      flowRef: "command-flow-3",
       propagateCtx: true,
     },
   ],
@@ -197,16 +197,16 @@ export const flowRows: Rows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Graph containment */
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-1", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-2", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-3", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-4", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-6", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-8", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-9", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-10", info: {} },
-    { source: "Flow-1", kind: EARS.RelKind.CONTAINS, target: "Node-11", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-1", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-2", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-3", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-4", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-5", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-6", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-8", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-9", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-10", info: {} },
+    { source: "Flow-2", kind: EARS.RelKind.CONTAINS, target: "Node-11", info: {} },
 
     /* Listen node outputs */
     { source: "Node-1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-3", info: {} },
