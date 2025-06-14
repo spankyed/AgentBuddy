@@ -5,7 +5,10 @@ import { capitalizeFirstLetter } from "../utils";
 export interface BreadcrumbItem {
   label: string;
   target: string;
+  info?: any; // Optional info property for additional data
 }
+
+export type BreadcrumbMeta = BreadcrumbItem | BreadcrumbItem[] | ((context: any) => BreadcrumbItem | BreadcrumbItem[]);
 
 export type UpdateData = {
   crumbs: BreadcrumbItem[];
@@ -13,37 +16,48 @@ export type UpdateData = {
 }
 
 export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
-  let crumbs = state._nodes.slice(1).map((node) => {
-    const breadcrumb = node.meta?.breadcrumb;
-    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
-    return {
-      id: node.id,
-      label: breadcrumbItem?.label,
-      target: breadcrumbItem?.target,
-    };
+  const allCrumbs: BreadcrumbItem[] = [];
+  
+  // Process nodes starting from index 1 (skip root) (top level states only)
+  state._nodes.slice(1).forEach((node) => {
+    const breadcrumbMeta = node.meta?.breadcrumb as BreadcrumbMeta | undefined;
+    if (!breadcrumbMeta) {
+      // Keep the existing behavior of including undefined items
+      allCrumbs.push({ label: undefined as any, target: undefined as any });
+      return;
+    }
+    
+    // Resolve breadcrumb (could be function or value)
+    const breadcrumbResult = typeof breadcrumbMeta === 'function' 
+      ? breadcrumbMeta(state.context) 
+      : breadcrumbMeta;
+    
+    // Handle both single items and arrays
+    if (Array.isArray(breadcrumbResult)) {
+      allCrumbs.push(...breadcrumbResult);
+    } else {
+      allCrumbs.push(breadcrumbResult);
+    }
   });
 
+  // Handle default state when no crumbs
   const defaultState = Object.values(state.machine.states).find((s) => {
     const breadcrumb = s.meta?.breadcrumb;
     const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
-    return breadcrumbItem?.default;
+    // Check if it's a single item with default property
+    return !Array.isArray(breadcrumbItem) && breadcrumbItem?.default;
   });
 
-  if (!crumbs.length) {
-    crumbs = [{
-      id: state.machine.id,
+  if (!allCrumbs.length) {
+    allCrumbs.push({
       label: capitalizeFirstLetter(state.machine.id),
-      target: state.machine.config.initial,
-    }];
+      target: state.machine.config.initial as string,
+    });
   }
 
-  const breadcrumbs = [
-    ...crumbs,
-  ].map(({ label, target }) => ({ label, target }));
+  const lastTarget = allCrumbs[allCrumbs.length - 1]?.target;
 
-  const target = breadcrumbs[breadcrumbs.length - 1]?.target;
-
-  return { crumbs: breadcrumbs, target };
+  return { crumbs: allCrumbs, target: lastTarget };
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
