@@ -214,7 +214,7 @@ const flowsState = setup({
         ...breadcrumbWithParams<FlowsContext>({
           target: 'view',
           getLabel: (ctx) => {
-            if (!ctx.selectedFlowId) return 'Flow';
+            if (!ctx.selectedFlowId) return '';
             
             // Check if it's the root flow
             if (ctx.rootFlow?.id === ctx.selectedFlowId) {
