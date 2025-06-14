@@ -39,44 +39,165 @@ const createMockState = (
 } as AnyMachineSnapshot);
 
 describe('computeCrumbs', () => {
+  describe('breadcrumb processing', () => {
+    it.each([
+      {
+        name: 'static breadcrumb',
+        breadcrumb: { label: 'Page 1', target: 'view1' },
+        context: {},
+        expected: [{ label: 'Page 1', target: 'view1' }],
+        expectedTarget: 'view1',
+      },
+      {
+        name: 'breadcrumb with undefined label',
+        breadcrumb: { label: undefined, target: 'view1' },
+        context: {},
+        expected: [{ label: undefined, target: 'view1' }],
+        expectedTarget: 'view1',
+      },
+      {
+        name: 'breadcrumb with info property',
+        breadcrumb: { label: 'Item Details', target: 'itemView', info: { id: 'item-123', type: 'product' } },
+        context: {},
+        expected: [{ label: 'Item Details', target: 'itemView', info: { id: 'item-123', type: 'product' } }],
+        expectedTarget: 'itemView',
+      },
+    ])('should handle $name', ({ breadcrumb, context, expected, expectedTarget }) => {
+      const nodes = [
+        createMockNode('root'),
+        createMockNode('node1', breadcrumb),
+      ];
+      const state = createMockState(nodes, context);
+      
+      const result = computeCrumbs(state);
+      
+      expect(result.crumbs).toEqual(expected);
+      expect(result.target).toBe(expectedTarget);
+    });
+
+    it.each([
+      {
+        name: 'simple function',
+        breadcrumbFn: (ctx: any) => ({ label: `Thread ${ctx.threadId}`, target: 'threadView' }),
+        context: { threadId: '123' },
+        expected: [{ label: 'Thread 123', target: 'threadView' }],
+      },
+      {
+        name: 'function returning array',
+        breadcrumbFn: (ctx: any) => [
+          { label: `${ctx.entity} List`, target: 'list' },
+          { label: `${ctx.entity} ${ctx.id}`, target: 'detail', info: ctx.id },
+        ],
+        context: { entity: 'User', id: '123' },
+        expected: [
+          { label: 'User List', target: 'list' },
+          { label: 'User 123', target: 'detail', info: '123' },
+        ],
+      },
+    ])('should handle $name breadcrumb', ({ breadcrumbFn, context, expected }) => {
+      const mockFn = vi.fn(breadcrumbFn);
+      const nodes = [
+        createMockNode('root'),
+        createMockNode('node1', mockFn),
+      ];
+      const state = createMockState(nodes, context);
+      
+      const result = computeCrumbs(state);
+      
+      expect(mockFn).toHaveBeenCalledWith(context);
+      expect(result.crumbs).toEqual(expected);
+    });
+
+    it('should handle array of breadcrumbs', () => {
+      const breadcrumbs = [
+        { label: 'Flow A', target: 'view', info: 'A' },
+        { label: 'Flow B', target: 'view', info: 'B' },
+        { label: 'Flow C', target: 'view', info: 'C' },
+      ];
+      const nodes = [
+        createMockNode('root'),
+        createMockNode('flow', breadcrumbs),
+      ];
+      const state = createMockState(nodes);
+      
+      const result = computeCrumbs(state);
+      
+      expect(result.crumbs).toEqual(breadcrumbs);
+      expect(result.target).toBe('view');
+    });
+  });
+
+  describe('fallback behavior', () => {
+    it.each([
+      {
+        name: 'only root node',
+        nodes: [createMockNode('root')],
+      },
+      {
+        name: 'first active node without breadcrumb',
+        nodes: [createMockNode('root'), createMockNode('noBreadcrumb')],
+      },
+    ])('should fallback to machine id when $name', ({ nodes }) => {
+      const state = createMockState(nodes);
+      const result = computeCrumbs(state);
+      
+      expect(result.crumbs).toEqual([
+        { label: 'TestMachine', target: 'idle' },
+      ]);
+    });
+  });
+
+  describe('default breadcrumb handling', () => {
+    const createDefaultTestConfig = (currentState: string, hasDefaultBreadcrumb: boolean = true) => {
+      const defaultBreadcrumb = { label: 'Home', target: 'homeView', default: true };
+      const machineConfig = {
+        states: {
+          home: {
+            key: 'home',
+            meta: hasDefaultBreadcrumb ? { breadcrumb: defaultBreadcrumb } : {}
+          },
+          profile: {
+            key: 'profile',
+            meta: { breadcrumb: { label: 'Profile', target: 'profileView' } }
+          },
+        },
+      };
+      
+      return { machineConfig, defaultBreadcrumb };
+    };
+
+    it.each([
+      {
+        name: 'prepend default when not in default state',
+        currentState: 'profile',
+        shouldPrependDefault: true,
+      },
+      {
+        name: 'not prepend default when in default state',
+        currentState: 'home',
+        shouldPrependDefault: false,
+      },
+    ])('should $name', ({ currentState, shouldPrependDefault }) => {
+      const { machineConfig, defaultBreadcrumb } = createDefaultTestConfig(currentState);
+      const activeBreadcrumb = { label: 'Active Page', target: 'activeView' };
+      
+      const nodes = [
+        createMockNode('root'),
+        createMockNode('active', activeBreadcrumb),
+      ];
+      const state = createMockState(nodes, {}, { value: currentState, machineConfig });
+      
+      const result = computeCrumbs(state);
+      
+      const expectedCrumbs = shouldPrependDefault
+        ? [defaultBreadcrumb, activeBreadcrumb]
+        : [activeBreadcrumb];
+      
+      expect(result.crumbs).toEqual(expectedCrumbs);
+    });
+  });
+
   it('should process only the first active state node', () => {
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('page1', { label: 'Page 1', target: 'view1' }),
-    ];
-    const state = createMockState(nodes);
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      { label: 'Page 1', target: 'view1' },
-    ]);
-    expect(result.target).toBe('view1');
-  });
-
-  it('should handle function-based breadcrumbs', () => {
-    const breadcrumbFn = vi.fn((ctx) => ({
-      label: `Thread ${ctx.threadId}`,
-      target: 'threadView',
-    }));
-    
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('thread', breadcrumbFn),
-    ];
-    const context = { threadId: '123' };
-    const state = createMockState(nodes, context);
-    
-    const result = computeCrumbs(state);
-    
-    expect(breadcrumbFn).toHaveBeenCalledWith(context);
-    expect(result.crumbs).toEqual([
-      { label: 'Thread 123', target: 'threadView' },
-    ]);
-    expect(result.target).toBe('threadView');
-  });
-
-  it('should only process first node even with multiple nodes', () => {
     const nodes = [
       createMockNode('root'),
       createMockNode('first', { label: 'First', target: 'firstView' }),
@@ -89,94 +210,6 @@ describe('computeCrumbs', () => {
     
     expect(result.crumbs).toEqual([
       { label: 'First', target: 'firstView' },
-    ]);
-  });
-
-  it('should fallback to machine id when no active state has breadcrumb', () => {
-    // Case 1: Only root node
-    const state1 = createMockState([createMockNode('root')]);
-    const result1 = computeCrumbs(state1);
-    
-    expect(result1.crumbs).toEqual([
-      { label: 'TestMachine', target: 'idle' },
-    ]);
-    
-    // Case 2: First active node has no breadcrumb
-    const state2 = createMockState([
-      createMockNode('root'),
-      createMockNode('noBreadcrumb'),
-    ]);
-    const result2 = computeCrumbs(state2);
-    
-    expect(result2.crumbs).toEqual([
-      { label: 'TestMachine', target: 'idle' },
-    ]);
-  });
-
-  it('should handle breadcrumbs with undefined values', () => {
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('page1', { label: undefined, target: 'view1' }),
-    ];
-    const state = createMockState(nodes);
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      { label: undefined, target: 'view1' },
-    ]);
-    expect(result.target).toBe('view1');
-  });
-
-  it('should prepend default breadcrumb when not in default state', () => {
-    const defaultBreadcrumb = { label: 'Home', target: 'homeView', default: true };
-    const machineConfig = {
-      states: {
-        home: {
-          key: 'home',
-          meta: { breadcrumb: defaultBreadcrumb }
-        },
-        profile: {
-          key: 'profile',
-          meta: { breadcrumb: { label: 'Profile', target: 'profileView' } }
-        },
-      },
-    };
-    
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('page1', { label: 'Page 1', target: 'view1' }),
-    ];
-    const state = createMockState(nodes, {}, { value: 'profile', machineConfig });
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      defaultBreadcrumb,
-      { label: 'Page 1', target: 'view1' },
-    ]);
-  });
-
-  it('should not prepend default breadcrumb when in default state', () => {
-    const machineConfig = {
-      states: {
-        home: {
-          key: 'home',
-          meta: { breadcrumb: { label: 'Home', target: 'homeView', default: true } }
-        },
-      },
-    };
-    
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('home', { label: 'Home Page', target: 'homeView' }),
-    ];
-    const state = createMockState(nodes, {}, { value: 'home', machineConfig });
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      { label: 'Home Page', target: 'homeView' },
     ]);
   });
 
@@ -210,71 +243,6 @@ describe('computeCrumbs', () => {
     // No nodes have breadcrumbs, so falls back to machine id
     expect(result.crumbs).toEqual([
       { label: 'TestMachine', target: 'idle' },
-    ]);
-  });
-
-  it('should handle array of breadcrumbs', () => {
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('flow', [
-        { label: 'Flow A', target: 'view', info: 'A' },
-        { label: 'Flow B', target: 'view', info: 'B' },
-        { label: 'Flow C', target: 'view', info: 'C' },
-      ]),
-    ];
-    const state = createMockState(nodes);
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      { label: 'Flow A', target: 'view', info: 'A' },
-      { label: 'Flow B', target: 'view', info: 'B' },
-      { label: 'Flow C', target: 'view', info: 'C' },
-    ]);
-    expect(result.target).toBe('view');
-  });
-
-  it('should handle function returning array of breadcrumbs', () => {
-    const breadcrumbFn = vi.fn((ctx) => [
-      { label: `${ctx.entity} List`, target: 'list' },
-      { label: `${ctx.entity} ${ctx.id}`, target: 'detail', info: ctx.id },
-    ]);
-    
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('entity', breadcrumbFn),
-    ];
-    const context = { entity: 'User', id: '123' };
-    const state = createMockState(nodes, context);
-    
-    const result = computeCrumbs(state);
-    
-    expect(breadcrumbFn).toHaveBeenCalledWith(context);
-    expect(result.crumbs).toEqual([
-      { label: 'User List', target: 'list' },
-      { label: 'User 123', target: 'detail', info: '123' },
-    ]);
-  });
-
-  it('should handle breadcrumbs with info property', () => {
-    const nodes = [
-      createMockNode('root'),
-      createMockNode('item', { 
-        label: 'Item Details', 
-        target: 'itemView',
-        info: { id: 'item-123', type: 'product' }
-      }),
-    ];
-    const state = createMockState(nodes);
-    
-    const result = computeCrumbs(state);
-    
-    expect(result.crumbs).toEqual([
-      { 
-        label: 'Item Details', 
-        target: 'itemView',
-        info: { id: 'item-123', type: 'product' }
-      },
     ]);
   });
 });
@@ -362,93 +330,81 @@ describe('trailActor', () => {
 });
 
 describe('targetIs', () => {
-  it('should return true when event target matches view param', () => {
-    const context = {
+  it.each([
+    {
+      name: 'matching target',
       event: { type: 'TRAIL_CLICK', target: 'homeView' } as TrailClickEvent,
-    };
-    const params = { view: 'homeView' };
-
-    expect(targetIs(context, params)).toBe(true);
+      view: 'homeView',
+      expected: true,
+    },
+    {
+      name: 'non-matching target',
+      event: { type: 'TRAIL_CLICK', target: 'homeView' } as TrailClickEvent,
+      view: 'differentView',
+      expected: false,
+    },
+  ])('should return $expected for $name', ({ event, view, expected }) => {
+    const context = { event };
+    const params = { view };
+    
+    expect(targetIs(context, params)).toBe(expected);
   });
 
-  it('should return false when event target does not match view param', () => {
-    const context = {
-      event: { type: 'TRAIL_CLICK', target: 'homeView' } as TrailClickEvent,
-    };
-    const params = { view: 'differentView' };
-
-    expect(targetIs(context, params)).toBe(false);
-  });
-
-  it('should handle non-TRAIL_CLICK events', () => {
-    const context = {
+  it.each([
+    {
+      name: 'non-TRAIL_CLICK event',
       event: { type: 'OTHER_EVENT' },
-    };
-    const params = { view: 'homeView' };
-
-    // safeEvents will throw an error for non-TRAIL_CLICK events
-    expect(() => targetIs(context, params)).toThrow('Expected type TRAIL_CLICK, got OTHER_EVENT');
-  });
-
-  it('should handle missing event properties', () => {
-    const context = {
+      view: 'homeView',
+      errorMessage: 'Expected type TRAIL_CLICK, got OTHER_EVENT',
+    },
+    {
+      name: 'missing event type',
       event: {},
-    };
-    const params = { view: 'homeView' };
-
-    // safeEvents will throw an error when type is undefined
-    expect(() => targetIs(context, params)).toThrow('Expected type TRAIL_CLICK, got undefined');
+      view: 'homeView',
+      errorMessage: 'Expected type TRAIL_CLICK, got undefined',
+    },
+  ])('should throw error for $name', ({ event, view, errorMessage }) => {
+    const context = { event };
+    const params = { view };
+    
+    expect(() => targetIs(context, params)).toThrow(errorMessage);
   });
 });
 
 describe('TRAIL_CLICK', () => {
-  it('should generate transition config for single route', () => {
-    const routes: [string, string][] = [['#home', 'homeView']];
-    
-    const result = TRAIL_CLICK(routes);
-
-    expect(result).toEqual({
-      TRAIL_CLICK: [{
-        guard: { type: 'targetIs', params: { view: 'homeView' } },
-        target: '#home',
-      }],
-    });
-  });
-
-  it('should generate transition config for multiple routes', () => {
-    const routes: [string, string][] = [
-      ['#home', 'homeView'],
-      ['#profile', 'profileView'],
-      ['#settings', 'settingsView'],
-    ];
-    
-    const result = TRAIL_CLICK(routes);
-
-    expect(result).toEqual({
-      TRAIL_CLICK: [
-        {
+  it.each([
+    {
+      name: 'single route',
+      routes: [['#home', 'homeView']] as [string, string][],
+      expected: {
+        TRAIL_CLICK: [{
           guard: { type: 'targetIs', params: { view: 'homeView' } },
           target: '#home',
-        },
-        {
-          guard: { type: 'targetIs', params: { view: 'profileView' } },
-          target: '#profile',
-        },
-        {
-          guard: { type: 'targetIs', params: { view: 'settingsView' } },
-          target: '#settings',
-        },
-      ],
-    });
-  });
-
-  it('should handle empty routes array', () => {
-    const routes: [string, string][] = [];
-    
+        }],
+      },
+    },
+    {
+      name: 'multiple routes',
+      routes: [
+        ['#home', 'homeView'],
+        ['#profile', 'profileView'],
+        ['#settings', 'settingsView'],
+      ] as [string, string][],
+      expected: {
+        TRAIL_CLICK: [
+          { guard: { type: 'targetIs', params: { view: 'homeView' } }, target: '#home' },
+          { guard: { type: 'targetIs', params: { view: 'profileView' } }, target: '#profile' },
+          { guard: { type: 'targetIs', params: { view: 'settingsView' } }, target: '#settings' },
+        ],
+      },
+    },
+    {
+      name: 'empty routes',
+      routes: [] as [string, string][],
+      expected: { TRAIL_CLICK: [] },
+    },
+  ])('should generate transition config for $name', ({ routes, expected }) => {
     const result = TRAIL_CLICK(routes);
-
-    expect(result).toEqual({
-      TRAIL_CLICK: [],
-    });
+    expect(result).toEqual(expected);
   });
 }); 
