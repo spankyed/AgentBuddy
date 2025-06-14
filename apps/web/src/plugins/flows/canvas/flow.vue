@@ -131,14 +131,11 @@
 
       <!-- Steps palette view -->
       <div v-if="inViewState" class="p-3">
-        <div class="mb-3">
-          <h3 class="text-xs font-medium tracking-wider uppercase text-neutral-400">Components</h3>
-        </div>
-        <div class="space-y-1">
+        <div class="mt-3 space-y-1">
           <button
             v-for="t in paletteItems"
             :key="t.type"
-            class="w-full flex items-center gap-3 px-3 py-2 bg-neutral-900 border  rounded-lg text-neutral-100 cursor-grab text-sm transition-all duration-200 hover:bg-neutral-700 hover:border-neutral-600 hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
+            class="w-full flex items-center gap-3 px-3 py-2 bg-neutral-900 rounded-lg text-neutral-100 cursor-grab text-sm transition-all duration-200 hover:bg-neutral-700 hover:border-neutral-600 hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
             draggable="true"
             @dragstart="(e) => onDragStart(e, t.type)"
           >
