@@ -138,6 +138,7 @@
             class="w-full flex items-center gap-3 px-3 py-2 bg-neutral-900 rounded-lg text-neutral-100 cursor-grab text-sm transition-all duration-200 hover:bg-neutral-700 hover:border-neutral-600 hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
             draggable="true"
             @dragstart="(e) => onDragStart(e, t.type)"
+            @click="onPaletteClick(t.type)"
           >
             <div class="w-1 h-1 rounded-full bg-neutral-500"></div>
             <span>{{ t.label }}</span>
@@ -300,6 +301,7 @@ import FlowActionsMenu from './FlowActionsMenu.vue'
 import Button from '@/core/design/button.vue'
 
 const { layout } = useLayout()
+const { getViewport, project } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -427,6 +429,15 @@ function onDrop (e: DragEvent) {
     nodeType,
     x: e.clientX - bounds.left,
     y: e.clientY - bounds.top,
+  })
+}
+
+function onPaletteClick(nodeType: string) {
+  actor.send({
+    type: 'NODE.DRAG_CREATE',
+    nodeType,
+    x: 0,
+    y: 0,
   })
 }
 
