@@ -147,49 +147,58 @@
     </aside>
 
     <!-- ▸ VueFlow canvas (center) -->
-    <VueFlow
-      :nodes="plainNodes"
-      :edges="plainEdges"
-      class="flex-1 bg-neutral-900"
-      :fit-view-on-init="true"
-      :connection-line-type="ConnectionLineType.SmoothStep"
-      :default-edge-options="{
-        type: 'generic',
-        style: { strokeWidth: 2 },
-        markerEnd: MarkerType.Arrow
-      }"
-      :default-viewport="{ x: 0, y: 0, zoom: 1 }"
-      :connect-on-click="true"
-      @node-click="onNodeClick"
-      @connect="onConnect"
-      @drop="onDrop"
-      @dragover.prevent
-      @nodes-initialized="layout()"
-      :min-zoom="0.2"
-      :max-zoom="2"
-    >
-      <template v-for="(_, type) in nodeTypes" #[`node-${type}`]="nodeProps">
-        <component :is="nodeTypes[type]" v-bind="nodeProps" :key="type" />
-      </template>
-      <template #edge-generic="edgeProps">
-        <GenericEdge v-bind="edgeProps" />
-      </template>
-      <Background variant="dots" />
-      <Controls />
-      <MiniMap 
-        :maskColor="'#26262650'" 
-        :maskStrokeColor="'transparent'" 
-        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
-      />
+    <div class="relative flex-1">
+      <VueFlow
+        :nodes="plainNodes"
+        :edges="plainEdges"
+        class="w-full h-full bg-neutral-900"
+        :fit-view-on-init="true"
+        :connection-line-type="ConnectionLineType.SmoothStep"
+        :default-edge-options="{
+          type: 'generic',
+          style: { strokeWidth: 2 },
+          markerEnd: MarkerType.Arrow
+        }"
+        :default-viewport="{ x: 0, y: 0, zoom: 1 }"
+        :connect-on-click="true"
+        @node-click="onNodeClick"
+        @connect="onConnect"
+        @drop="onDrop"
+        @dragover.prevent
+        @nodes-initialized="layout()"
+        :min-zoom="0.2"
+        :max-zoom="2"
+      >
+        <template v-for="(_, type) in nodeTypes" #[`node-${type}`]="nodeProps">
+          <component :is="nodeTypes[type]" v-bind="nodeProps" :key="type" />
+        </template>
+        <template #edge-generic="edgeProps">
+          <GenericEdge v-bind="edgeProps" />
+        </template>
+        <Background variant="dots" />
+        <Controls />
+        <MiniMap 
+          :maskColor="'#26262650'" 
+          :maskStrokeColor="'transparent'" 
+          class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
+        />
 
-      <!-- Actions menu (top left) -->
-      <FlowActionsMenu 
-        :selected-flow-id="selectedFlowId"
-        @layout="(direction) => layout(direction)"
-        @edit-label="openLabelDialog"
-      />
+        <!-- Actions menu (top left) -->
+        <FlowActionsMenu 
+          :selected-flow-id="selectedFlowId"
+          @layout="(direction) => layout(direction)"
+          @edit-label="openLabelDialog"
+        />
 
-    </VueFlow>
+      </VueFlow>
+      
+      <!-- Backdrop overlay when in list state -->
+      <div 
+        v-if="inListState" 
+        class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/50"
+        @click="selectCurrentFlow"
+      />
+    </div>
 
     <!-- ▸ Node editor overlay -->
       <!-- Backdrop overlay -->
@@ -452,6 +461,12 @@ function updateFlowLabel() {
       label: newFlowLabel.value.trim()
     })
     labelDialogOpen.value = false
+  }
+}
+
+function selectCurrentFlow() {
+  if (selectedFlowId.value) {
+    actor.send({ type: 'FLOW.SELECT', flowId: selectedFlowId.value })
   }
 }
 </script>
