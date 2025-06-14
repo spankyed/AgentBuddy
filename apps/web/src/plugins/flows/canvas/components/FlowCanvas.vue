@@ -82,7 +82,7 @@ import { nodeTypes } from '../nodes'
 
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
 import Button from '@/core/design/button.vue'
-import FlowActionsMenu from '../FlowActionsMenu.vue'
+import FlowActionsMenu from './FlowActionsMenu.vue'
 
 interface Props {
   nodes: VueFlowNode[]
