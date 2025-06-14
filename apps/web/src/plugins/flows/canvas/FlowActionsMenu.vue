@@ -43,13 +43,14 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
+import type { Direction } from '@/plugins/flows/canvas/useLayout'
 
 interface Props {
   selectedFlowId?: string | null
 }
 
 interface Emits {
-  (e: 'layout', direction: string): void
+  (e: 'layout', direction: Direction): void
   (e: 'edit-label'): void
 }
 

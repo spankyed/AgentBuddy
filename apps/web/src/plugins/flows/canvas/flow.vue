@@ -1,11 +1,18 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-800 border-neutral-700 scrollbar-thin">
+    <aside class="overflow-y-auto text-white w-60 bg-neutral-800 scrollbar-thin">
       <!-- Flows list view -->
       <div v-if="inListState" class="flex flex-col h-full p-0 overflow-hidden">
         <!-- Root flow section -->
-        <div v-if="rootFlow" class="flex-shrink-0 px-3 pt-5">
+        <div v-if="rootFlow" class="flex flex-shrink-0 px-3 pt-5">
+          <div class="flex items-center flex-shrink-0 mr-3 text-neutral-500">
+            <span class="text-[10px] font-medium uppercase tracking-wider pl-2 mr-1">Root</span>
+            <ArrowRightFromLine 
+              class="transition-colors group-hover:text-primary-4300" 
+              :size="13" 
+            />
+          </div>
           <button
             class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg text-neutral-100 cursor-pointer text-sm transition-all duration-200 hover:bg-neutral-700 active:scale-[0.98]"
             :class="{ 
@@ -14,13 +21,6 @@
             }"
             @click="onFlowClick(rootFlow)"
           >
-            <div class="flex-shrink-0">
-              <ArrowRightFromLine 
-                class="transition-colors text-neutral-300 group-hover:text-primary-400" 
-                :class="{ 'text-primary-400': rootFlow.id === selectedFlowId }" 
-                :size="16" 
-              />
-            </div>
             <div class="flex-1 min-w-0 text-left">
               <div class="font-medium truncate">{{ rootFlow.label || 'Main Flow' }}</div>
               <div v-if="rootFlow.description" class="text-xs text-neutral-400 truncate mt-0.5" :class="{ 'text-primary-200/70': rootFlow.id === selectedFlowId }">
@@ -33,9 +33,8 @@
         <!-- Sub flows section -->
         <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-3 pb-3 overflow-hidden">
           <!-- Section divider -->
-          <div v-if="rootFlow" class="flex items-center gap-2 my-4">
-            <div class="flex-1 h-px bg-gradient-to-r from-transparent to-neutral-600"></div>
-            <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 px-2">Sub Flows</span>
+          <div v-if="rootFlow" class="flex items-center gap-2 mt-3 mb-4">
+            <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 px-2">Sub-Flows</span>
             <div class="flex-1 h-px bg-gradient-to-l from-transparent to-neutral-600"></div>
           </div>
           
@@ -86,7 +85,7 @@
         </div>
 
         <!-- Create new flow section -->
-        <div class="flex-shrink-0 p-3 border-t border-neutral-700">
+        <div class="flex-shrink-0 p-3">
           <!-- Default state: Create and Search buttons -->
           <div v-if="!isSearchMode" class="flex gap-2">
             <Button 
@@ -113,7 +112,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                class="w-full py-2 pr-3 text-sm transition-all duration-200 border rounded-lg outline-none pl-9 bg-neutral-800 border-neutral-700 text-neutral-100 focus:border-primary-400/50 focus:bg-neutral-900"
+                class="w-full py-2 pr-3 text-sm transition-all duration-200 border rounded-lg outline-none pl-9 bg-neutral-800 text-neutral-100 focus:border-primary-400/50 focus:bg-neutral-900"
                 placeholder="Search flows..."
                 autofocus
                 @keyup.escape="isSearchMode = false; searchQuery = ''"
@@ -139,7 +138,7 @@
           <button
             v-for="t in paletteItems"
             :key="t.type"
-            class="w-full flex items-center gap-3 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-neutral-100 cursor-grab text-sm transition-all duration-200 hover:bg-neutral-700 hover:border-neutral-600 hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
+            class="w-full flex items-center gap-3 px-3 py-2 bg-neutral-900 border  rounded-lg text-neutral-100 cursor-grab text-sm transition-all duration-200 hover:bg-neutral-700 hover:border-neutral-600 hover:shadow-sm active:cursor-grabbing active:scale-[0.98]"
             draggable="true"
             @dragstart="(e) => onDragStart(e, t.type)"
           >
@@ -183,7 +182,7 @@
       <MiniMap 
         :maskColor="'#26262650'" 
         :maskStrokeColor="'transparent'" 
-        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-800 rounded-lg"
+        class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
       />
 
       <!-- Actions menu (top left) -->
@@ -200,7 +199,7 @@
       <div v-if="selected" class="absolute top-0 left-0 w-full h-full bg-black/70 z-[5]" @click="closeNodeEditor" />
       <!-- Slide-in form -->
       <div 
-        class="flex absolute top-0 right-0 w-2/5 h-full border-l border-[#333] transform transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden scrollbar-thin"
+        class="flex absolute top-0 right-0 w-2/5 h-full transform transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden scrollbar-thin"
         :class="selected ? 'translate-x-0' : 'translate-x-full'"
       >
         <component
