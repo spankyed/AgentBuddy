@@ -1,6 +1,7 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
 import { safeEvents } from "@/core/types/safe-events";
 import { capitalizeFirstLetter } from "../utils";
+import Label from '@/core/design/label.vue';
 
 export interface BreadcrumbItem {
   label: string;
@@ -19,14 +20,9 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
   const allCrumbs: BreadcrumbItem[] = [];
   
   // Process nodes starting from index 1 (skip root) (top level states only)
-  state._nodes.slice(1).forEach((node) => {
-    const breadcrumbMeta = node.meta?.breadcrumb as BreadcrumbMeta | undefined;
-    if (!breadcrumbMeta) {
-      // Keep the existing behavior of including undefined items
-      allCrumbs.push({ label: undefined as any, target: undefined as any });
-      return;
-    }
-    
+  const activeState = state._nodes.slice(1)?.[0];
+  const breadcrumbMeta = activeState?.meta?.breadcrumb as BreadcrumbMeta | undefined;
+  if (breadcrumbMeta) {
     // Resolve breadcrumb (could be function or value)
     const breadcrumbResult = typeof breadcrumbMeta === 'function' 
       ? breadcrumbMeta(state.context) 
@@ -38,7 +34,7 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
     } else {
       allCrumbs.push(breadcrumbResult);
     }
-  });
+  }
 
   // Handle default state when no crumbs
   const defaultState = Object.values(state.machine.states).find((s) => {
@@ -48,7 +44,9 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
     return !Array.isArray(breadcrumbItem) && breadcrumbItem?.default;
   });
 
-  if (!allCrumbs.length) {
+  if (defaultState && defaultState?.key !== state.value) {
+    allCrumbs.unshift(defaultState?.meta?.breadcrumb as BreadcrumbItem);
+  } else if (!allCrumbs.length) {
     allCrumbs.push({
       label: capitalizeFirstLetter(state.machine.id),
       target: state.machine.config.initial as string,

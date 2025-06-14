@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AnyMachineSnapshot } from 'xstate';
 import trailActor, { computeCrumbs, targetIs, TRAIL_CLICK, type UpdateData, type TrailClickEvent } from '@/core/actors/route-trailer';
 
+// Mock console.log to avoid noise in tests
+global.console.log = vi.fn();
+
 // Mock factories
 const createMockNode = (id: string, breadcrumb?: any) => ({
   id,
@@ -11,6 +14,7 @@ const createMockNode = (id: string, breadcrumb?: any) => ({
 const createMockState = (nodes: any[], context: any = {}, machineConfig?: any): AnyMachineSnapshot => ({
   _nodes: nodes,
   context,
+  value: undefined,
   machine: {
     id: 'testMachine',
     config: {
@@ -32,11 +36,11 @@ describe('computeCrumbs', () => {
     
     const result = computeCrumbs(state);
     
+    // Only the first node after root is processed now
     expect(result.crumbs).toEqual([
       { label: 'Page 1', target: 'view1' },
-      { label: 'Page 2', target: 'view2' },
     ]);
-    expect(result.target).toBe('view2');
+    expect(result.target).toBe('view1');
   });
 
   it('should handle function-based breadcrumbs', () => {
@@ -77,9 +81,9 @@ describe('computeCrumbs', () => {
     
     const result = computeCrumbs(state);
     
+    // Only first node after root is processed
     expect(result.crumbs).toEqual([
       { label: 'Home', target: 'homeView' },
-      { label: 'User: Alice', target: 'userView' },
     ]);
   });
 
@@ -105,11 +109,25 @@ describe('computeCrumbs', () => {
     
     const result = computeCrumbs(state);
     
-    // Nodes without breadcrumb meta are included with undefined values
+    // Only first node is processed, and it has breadcrumb
     expect(result.crumbs).toEqual([
       { label: 'Page 1', target: 'view1' },
-      { label: undefined, target: undefined },
-      { label: 'Page 2', target: 'view2' },
+    ]);
+  });
+
+  it('should handle node without breadcrumb meta as first active state', () => {
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('invisible'), // No breadcrumb
+      createMockNode('page2', { label: 'Page 2', target: 'view2' }),
+    ];
+    const state = createMockState(nodes);
+    
+    const result = computeCrumbs(state);
+    
+    // When first active node has no breadcrumb, should fall back to machine id
+    expect(result.crumbs).toEqual([
+      { label: 'TestMachine', target: 'idle' },
     ]);
   });
 
@@ -123,11 +141,11 @@ describe('computeCrumbs', () => {
     
     const result = computeCrumbs(state);
     
+    // Only first node is processed
     expect(result.crumbs).toEqual([
       { label: undefined, target: 'view1' },
-      { label: 'Page 2', target: undefined },
     ]);
-    expect(result.target).toBeUndefined();
+    expect(result.target).toBe('view1');
   });
 
   it('should handle states with default breadcrumb', () => {
@@ -137,11 +155,13 @@ describe('computeCrumbs', () => {
       },
       states: {
         home: {
+          key: 'home',
           meta: {
             breadcrumb: { label: 'Home', target: 'homeView', default: true }
           }
         },
         profile: {
+          key: 'profile',
           meta: {
             breadcrumb: { label: 'Profile', target: 'profileView' }
           }
@@ -153,13 +173,46 @@ describe('computeCrumbs', () => {
       createMockNode('root'),
       createMockNode('page1', { label: 'Page 1', target: 'view1' }),
     ];
+    // Set state.value to something different from default state
     const state = createMockState(nodes, {}, machineConfig);
+    state.value = 'profile'; // Not the default 'home'
     
     const result = computeCrumbs(state);
     
-    // The function finds default state but doesn't seem to use it in the current implementation
+    // Default state is prepended when it's not the current state
     expect(result.crumbs).toEqual([
+      { label: 'Home', target: 'homeView', default: true },
       { label: 'Page 1', target: 'view1' },
+    ]);
+  });
+
+  it('should not prepend default breadcrumb when it is the current state', () => {
+    const machineConfig = {
+      config: {
+        initial: 'idle',
+      },
+      states: {
+        home: {
+          key: 'home',
+          meta: {
+            breadcrumb: { label: 'Home', target: 'homeView', default: true }
+          }
+        },
+      },
+    };
+    
+    const nodes = [
+      createMockNode('root'),
+      createMockNode('home', { label: 'Home', target: 'homeView' }),
+    ];
+    const state = createMockState(nodes, {}, machineConfig);
+    state.value = 'home'; // Same as default state
+    
+    const result = computeCrumbs(state);
+    
+    // Default is not prepended when it's the current state
+    expect(result.crumbs).toEqual([
+      { label: 'Home', target: 'homeView' },
     ]);
   });
 
@@ -255,13 +308,11 @@ describe('computeCrumbs', () => {
     
     const result = computeCrumbs(state);
     
+    // Only first node after root is processed
     expect(result.crumbs).toEqual([
       { label: 'Home', target: 'home' },
-      { label: 'Section A', target: 'sectionA' },
-      { label: 'Section B', target: 'sectionB' },
-      { label: 'Final Page', target: 'final' },
     ]);
-    expect(result.target).toBe('final');
+    expect(result.target).toBe('home');
   });
 
   it('should handle breadcrumbs with info property', () => {
