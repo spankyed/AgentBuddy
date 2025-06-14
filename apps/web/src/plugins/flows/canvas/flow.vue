@@ -188,7 +188,7 @@
           <!-- Back button -->
           <Button
             variant="secondary"
-            class="!px-3 !py-2 !h-auto bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-50"
+            class="!p-2 !h-auto bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-50"
             @click="goBack"
             title="Back to flows list"
           >
