@@ -1,5 +1,6 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
 import { safeEvents } from "@/core/types/safe-events";
+import { capitalizeFirstLetter } from "../utils";
 
 export interface BreadcrumbItem {
   label: string;
@@ -28,17 +29,15 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
     return breadcrumbItem?.default;
   });
 
-  if (defaultState?.id === crumbs[0]?.id) {
-    crumbs = crumbs.slice(1);
-
-    // ? comment out this to show the default breadcrumb
-    if (!crumbs.length) {
-      return { crumbs: [], target: undefined };
-    }
+  if (!crumbs.length) {
+    crumbs = [{
+      id: state.machine.id,
+      label: capitalizeFirstLetter(state.machine.id),
+      target: state.machine.config.initial,
+    }];
   }
 
   const breadcrumbs = [
-    defaultState?.meta?.breadcrumb,
     ...crumbs,
   ].map(({ label, target }) => ({ label, target }));
 
