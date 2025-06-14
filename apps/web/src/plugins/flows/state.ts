@@ -62,8 +62,11 @@ const flowsState = setup({
     }),
 
     /* ── flow interactions ────────────────────────────── */
-    selectFlow: ({ event }) => {
+    selectFlow: ({ event, context }) => {
       const ev = typeOf(['FLOW.SELECT', 'FLOW_CREATED'], event);
+      if (context.selectedFlowId === ev.flowId) {
+        return
+      }
       // Send event to backend to get flow data
       trpc.bus.send.mutate({
         systemId: id,
