@@ -51,7 +51,7 @@
               @click="onFlowClick(flow)"
             >
               <div class="flex-shrink-0">
-                <ChevronRight 
+                <ArrowRight 
                   class="transition-colors text-neutral-300 group-hover:text-primary-400" 
                   :class="{ 'text-primary-400': flow.id === selectedFlowId }" 
                   :size="16" 
@@ -273,7 +273,7 @@ import type { FlowEntity, NodeEntity } from '@abuddy/api'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X, ChevronRight, ChevronLeft } from 'lucide-vue-next'
+import { ArrowRightFromLine, GitBranch, Workflow, Plus, Search, X, ArrowRight, ChevronLeft } from 'lucide-vue-next'
 import uFuzzy from '@leeoniya/ufuzzy'
 
 import '@vue-flow/core/dist/style.css'
