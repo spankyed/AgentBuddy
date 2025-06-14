@@ -180,6 +180,10 @@ const filteredFlows = computed(() => {
   
   const [matchedIndexes, info, order] = idxs
   
+  if (!order || !matchedIndexes) {
+    return []
+  }
+  
   return order.map(i => props.flows[matchedIndexes[i]])
 })
 </script>
