@@ -45,9 +45,9 @@
             class="w-3 h-3 mr-2"
           />
           <span>{{ child.label }}</span>
-          <span v-if="child.description" class="ml-2 text-xs text-gray-500">
+          <!-- <span v-if="child.description" class="ml-2 text-xs text-gray-500">
             {{ child.description }}
-          </span>
+          </span> -->
         </div>
       </div>
     </div>
