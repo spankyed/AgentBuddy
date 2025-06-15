@@ -1,17 +1,66 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold">Graph Explorer</h3>
+      <h3 class="text-sm font-semibold">Results Explorer</h3>
       <div class="text-xs text-gray-500">
         {{ queryResult.nodes.length }} nodes, {{ queryResult.edges.length }} edges
       </div>
     </div>
     
-    <div ref="graphContainer" class="relative flex-1">
+    <div class="relative flex-1 overflow-auto">
       <div v-if="queryResult.nodes.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-500">
         <div class="text-center">
           <Database class="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p class="text-sm">Run a query to see results</p>
+        </div>
+      </div>
+      
+      <!-- Simple table view as fallback -->
+      <div v-else class="p-4 space-y-6">
+        <!-- Nodes -->
+        <div v-if="queryResult.nodes.length > 0">
+          <h4 class="mb-2 text-sm font-semibold">Nodes ({{ queryResult.nodes.length }})</h4>
+          <div class="space-y-2">
+            <div
+              v-for="node in queryResult.nodes"
+              :key="node.id"
+              class="p-3 border border-gray-200 rounded-lg dark:border-gray-700"
+              :style="{ borderLeftColor: entityColors[node.type] || '#6B7280', borderLeftWidth: '4px' }"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="font-medium">{{ node.id }}</span>
+                  <span class="ml-2 text-xs text-gray-500">{{ node.type }}</span>
+                </div>
+              </div>
+              <div v-if="Object.keys(node.data).length > 0" class="mt-2 space-y-1 text-xs">
+                <div v-for="(value, key) in node.data" :key="key" class="flex">
+                  <span class="w-24 text-gray-500">{{ key }}:</span>
+                  <span class="text-gray-700 dark:text-gray-300">{{ value }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Edges -->
+        <div v-if="queryResult.edges.length > 0">
+          <h4 class="mb-2 text-sm font-semibold">Relationships ({{ queryResult.edges.length }})</h4>
+          <div class="space-y-2">
+            <div
+              v-for="edge in queryResult.edges"
+              :key="edge.id"
+              class="flex items-center justify-between p-3 border border-gray-200 rounded-lg dark:border-gray-700"
+            >
+              <div class="flex items-center space-x-2 text-sm">
+                <span class="font-medium">{{ edge.source }}</span>
+                <span class="text-gray-500">→</span>
+                <span class="px-2 py-1 text-xs bg-gray-100 rounded dark:bg-gray-800">{{ edge.type }}</span>
+                <span class="text-gray-500">→</span>
+                <span class="font-medium">{{ edge.target }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -19,9 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { Database } from 'lucide-vue-next';
-import { Graph } from '@antv/g6';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/app'
@@ -29,8 +76,6 @@ import { applicationState } from '@/app'
 const actor: DatabaseState = applicationState.system.get(id)
 
 const queryResult = useSelector(actor, (state) => state.context.queryResult);
-const graphContainer = ref<HTMLElement>();
-let graph: any = null;
 
 const entityColors: Record<string, string> = {
   Agent: '#3B82F6',    // blue
@@ -44,121 +89,4 @@ const entityColors: Record<string, string> = {
   Flow: '#EC4899',        // pink
   Node: '#6366F1',        // indigo
 };
-
-onMounted(async () => {
-  await nextTick();
-  
-  if (!graphContainer.value) return;
-  
-  // Ensure container has dimensions
-  const width = graphContainer.value.offsetWidth || 600;
-  const height = graphContainer.value.offsetHeight || 400;
-  
-  try {
-    // Try to create graph with basic configuration
-    const graphConfig: any = {
-      container: graphContainer.value,
-      width,
-      height,
-    };
-    
-    // Try to instantiate
-    graph = new Graph(graphConfig);
-    
-    // Add layout if supported
-    if (graph.updateLayout) {
-      graph.updateLayout({
-        type: 'force',
-      });
-    }
-    
-    // Check available methods
-    console.log('Graph methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(graph)).filter(m => typeof graph[m] === 'function'));
-    
-    // Try to set initial data
-    if (graph.data && graph.render) {
-      graph.data({ nodes: [], edges: [] });
-      graph.render();
-    } else if (graph.read) {
-      graph.read({ nodes: [], edges: [] });
-    }
-    
-    // Update with actual data if available
-    if (queryResult.value.nodes.length > 0) {
-      updateGraph();
-    }
-  } catch (error) {
-    console.error('Failed to initialize G6 graph:', error);
-  }
-});
-
-onUnmounted(() => {
-  if (graph) {
-    try {
-      graph.destroy();
-    } catch (e) {
-      console.warn('Failed to destroy graph:', e);
-    }
-  }
-});
-
-// Simple resize handler
-let resizeTimeout: any;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimeout);
-  resizeTimeout = setTimeout(() => {
-    if (graph && graphContainer.value) {
-      const width = graphContainer.value.offsetWidth || 600;
-      const height = graphContainer.value.offsetHeight || 400;
-      try {
-        graph.changeSize(width, height);
-      } catch (e) {
-        console.warn('Failed to resize graph:', e);
-      }
-    }
-  }, 300);
-});
-
-watch(queryResult, () => {
-  updateGraph();
-}, { deep: true });
-
-function updateGraph() {
-  if (!graph) return;
-  
-  try {
-    const nodes = queryResult.value.nodes.map(node => ({
-      id: node.id,
-      label: node.id.split('-')[1] || node.id,
-      style: {
-        fill: entityColors[node.type] || '#6B7280',
-      },
-    }));
-    
-    const edges = queryResult.value.edges.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      label: edge.type,
-    }));
-    
-    // Clear and update
-    graph.clear();
-    graph.data({ nodes, edges });
-    graph.render();
-    
-    // Fit view if there are nodes
-    if (nodes.length > 0) {
-      setTimeout(() => {
-        try {
-          graph.fitView();
-        } catch (e) {
-          console.warn('Failed to fit view:', e);
-        }
-      }, 100);
-    }
-  } catch (error) {
-    console.error('Failed to update graph:', error);
-  }
-}
 </script> 
