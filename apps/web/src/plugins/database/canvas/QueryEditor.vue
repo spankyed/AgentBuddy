@@ -1,16 +1,14 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full border-r border-gray-200 dark:border-gray-700">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
       <div class="flex items-center gap-4">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Query Editor</h3>
-        
         <!-- Mode Tabs -->
-        <div class="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-lg dark:bg-gray-800">
           <button
             v-for="mode in ['query', 'examples']"
             :key="mode"
-            @click="activeMode = mode"
+            @click="activeMode = (mode as 'query' | 'examples')"
             :class="[
               'px-3 py-1 text-xs font-medium rounded transition-all',
               activeMode === mode
@@ -26,7 +24,7 @@
       <!-- Actions -->
       <div class="flex items-center gap-2">
         <!-- Keyboard shortcuts hint -->
-        <div class="hidden sm:flex items-center gap-1 mr-2 text-xs text-gray-500 dark:text-gray-400">
+        <div class="items-center hidden gap-1 mr-2 text-xs text-gray-500 sm:flex dark:text-gray-400">
           <Keyboard class="w-3 h-3" />
           <span>Cmd+Enter to run</span>
         </div>
@@ -34,11 +32,11 @@
         <!-- Error/Success Message -->
         <Transition
           enter-active-class="transition-all duration-200 ease-out"
-          enter-from-class="opacity-0 scale-95"
-          enter-to-class="opacity-100 scale-100"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
           leave-active-class="transition-all duration-200 ease-in"
-          leave-from-class="opacity-100 scale-100"
-          leave-to-class="opacity-0 scale-95"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
         >
           <div v-if="error || successMessage" class="flex items-center gap-2 mr-2">
             <div v-if="error" class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
@@ -86,26 +84,26 @@
     <div v-if="activeMode === 'query'" ref="editorContainer" class="flex-1"></div>
     
     <!-- Examples Panel -->
-    <div v-else class="flex-1 overflow-y-auto p-4">
+    <div v-else class="flex-1 p-4 overflow-y-auto">
       <div class="space-y-3">
         <div
           v-for="(example, index) in queryExamples"
           :key="index"
-          class="group relative p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          class="relative p-3 transition-colors rounded-lg cursor-pointer group bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
           @click="useExample(example)"
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+              <h4 class="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
                 {{ example.title }}
               </h4>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+              <p class="mb-2 text-xs text-gray-600 dark:text-gray-400">
                 {{ example.description }}
               </p>
-              <pre class="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">{{ example.query }}</pre>
+              <pre class="p-2 font-mono text-xs text-gray-700 bg-gray-100 rounded dark:text-gray-300 dark:bg-gray-900">{{ example.query }}</pre>
             </div>
             <button
-              class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-all"
+              class="p-1 transition-all rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600"
               title="Use this example"
             >
               <ArrowRight class="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -116,7 +114,7 @@
     </div>
     
     <!-- Status Bar -->
-    <div class="flex items-center justify-between px-4 py-2 text-xs bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+    <div class="flex items-center justify-between px-4 py-2 text-xs border-t border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700">
       <div class="flex items-center gap-4">
         <span class="text-gray-500 dark:text-gray-400">
           Line {{ cursorLine }}, Col {{ cursorCol }}
