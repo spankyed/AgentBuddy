@@ -65,6 +65,7 @@ const graphContainer = ref<HTMLElement>();
 const graph = ref<any>(null);
 const filteredEdgeCount = ref(0);
 const displayedEdgeCount = ref(0);
+let resizeObserver: ResizeObserver | null = null;
 
 const entityColors: Record<string, string> = {
   Agent: '#3B82F6',    // blue
@@ -136,6 +137,25 @@ onMounted(async () => {
       //   },
       // },
     });
+    
+    // Set up resize observer
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (graph.value && width > 0 && height > 0) {
+          console.log('Container resized to:', width, 'x', height);
+          graph.value.changeSize(width, height);
+          // Optionally fit view after resize
+          if (queryResult.value.nodes.length > 0) {
+            setTimeout(() => {
+              graph.value.fitView(20);
+            }, 100);
+          }
+        }
+      }
+    });
+    
+    resizeObserver.observe(container);
     
     // Initialize with data if available
     if (queryResult.value.nodes.length > 0) {
@@ -242,6 +262,11 @@ watch(queryResult, () => {
 
 // Cleanup
 onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  
   if (graph.value) {
     graph.value.destroy();
     graph.value = null;
