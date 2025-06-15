@@ -85,8 +85,6 @@ onMounted(async () => {
       container,
       width,
       height,
-      fitView: true,
-      fitViewPadding: 20,
       layout: {
         type: 'force',
         preventOverlap: true,
@@ -94,19 +92,22 @@ onMounted(async () => {
         linkDistance: 120,
       },
       behaviors: ['drag-canvas', 'drag-node', 'zoom-canvas'],
-      defaultNode: {
-        size: 40,
+      node: {
+        // size: 40,
         style: {
           fill: '#5B8FF9',
           stroke: '#5B8FF9',
         },
       },
-      defaultEdge: {
+      edge: {
         style: {
           stroke: '#e2e2e2',
         },
       },
     });
+    
+    // Fit view after initialization
+    graph.value.fitView(20);
     
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
