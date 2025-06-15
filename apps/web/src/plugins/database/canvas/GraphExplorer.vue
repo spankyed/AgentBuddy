@@ -1,50 +1,21 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="graph-explorer flex flex-col h-full">
     <!-- Header with Controls -->
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-      <div class="flex items-center gap-4">
-        <!-- Layout Selector -->
-        <LayoutSelector 
-          v-model="currentLayout" 
-          :layouts="AVAILABLE_LAYOUTS"
-          :disabled="!hasData"
-          @change="handleLayoutChange"
-        />
-      </div>
-      
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2">
-        <!-- Node Count -->
-        <GraphStats :nodes="nodeCount" :edges="edgeCount" />
-        
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-        
-        <!-- Zoom Controls -->
-        <ZoomControls 
-          :zoom-level="zoomLevel"
-          :disabled="!graphInstance"
-          @zoom-in="handleZoomIn"
-          @zoom-out="handleZoomOut"
-          @fit-view="handleFitView"
-        />
-        
-        <ActionButton
-          icon="maximize"
-          title="Toggle fullscreen"
-          :active="isFullscreen"
-          @click="toggleFullscreen"
-        />
-        
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-        
-        <ActionButton
-          icon="download"
-          title="Export graph"
-          :disabled="!graphInstance"
-          @click="handleExport"
-        />
-      </div>
-    </div>
+    <GraphToolbar
+      v-model:current-layout="currentLayout"
+      :layouts="AVAILABLE_LAYOUTS"
+      :has-data="hasData"
+      :has-graph-instance="!!graphInstance"
+      :node-count="nodeCount"
+      :edge-count="edgeCount"
+      :zoom-level="zoomLevel"
+      :is-fullscreen="isFullscreen"
+      @layout-change="handleLayoutChange"
+      @zoom-in="handleZoomIn"
+      @zoom-out="handleZoomOut"
+      @fit-view="handleFitView"
+      @toggle-fullscreen="toggleFullscreen"
+    />
     
     <!-- Graph Container -->
     <div class="relative flex-1 overflow-hidden">
@@ -81,14 +52,11 @@ import type { GraphData, NodeData, EdgeData } from '@antv/g6';
 import { useGraphInstance } from './composables/useGraphInstance';
 import { useGraphInteractions } from './composables/useGraphInteractions';
 import { ENTITY_COLORS, AVAILABLE_LAYOUTS } from './constants';
-import LayoutSelector from './components/LayoutSelector.vue';
-import ZoomControls from './components/ZoomControls.vue';
-import ActionButton from './components/ActionButton.vue';
-import GraphStats from './components/GraphStats.vue';
 import EmptyState from './components/EmptyState.vue';
 import LoadingState from './components/LoadingState.vue';
 import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
+import GraphToolbar from './components/GraphToolbar.vue';
 import { id } from '../state';
 import { applicationState } from '@/app';
 
@@ -227,24 +195,37 @@ async function handleFitView() {
 }
 
 function toggleFullscreen() {
-  isFullscreen.value = !isFullscreen.value;
-  // Implement fullscreen logic here
+  if (!document.fullscreenElement) {
+    const elem = graphContainer.value?.closest('.graph-explorer') || document.documentElement;
+    elem.requestFullscreen();
+    isFullscreen.value = true;
+  } else {
+    document.exitFullscreen();
+    isFullscreen.value = false;
+  }
 }
 
-async function handleExport() {
-  if (!graphInstance.value || !graphContainer.value) return;
-  
-  try {
-    const canvas = graphContainer.value.querySelector('canvas') as HTMLCanvasElement;
-    if (!canvas) throw new Error('Canvas not found');
-    
-    const dataURL = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `graph-export-${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
-  } catch (error) {
-    console.error('Failed to export graph:', error);
+// Keyboard shortcuts
+function handleKeyboard(e: KeyboardEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    switch (e.key) {
+      case '=':
+      case '+':
+        e.preventDefault();
+        handleZoomIn();
+        break;
+      case '-':
+        e.preventDefault();
+        handleZoomOut();
+        break;
+      case '0':
+        e.preventDefault();
+        handleFitView();
+        break;
+    }
+  } else if (e.key === 'F11') {
+    e.preventDefault();
+    toggleFullscreen();
   }
 }
 
@@ -265,10 +246,34 @@ watch(queryResult, async () => {
 
 // Lifecycle
 onMounted(() => {
-  // Component mounted
+  document.addEventListener('keydown', handleKeyboard);
+  
+  // Listen for fullscreen changes
+  document.addEventListener('fullscreenchange', () => {
+    isFullscreen.value = !!document.fullscreenElement;
+  });
 });
 
 onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyboard);
+  document.removeEventListener('fullscreenchange', () => {});
   destroyGraph();
 });
-</script> 
+</script>
+
+<style scoped>
+/* Fullscreen mode adjustments */
+:global(:fullscreen) .graph-explorer {
+  background: theme('colors.gray.900');
+}
+
+:global(:fullscreen) .graph-explorer .legend-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+
+</style> 
