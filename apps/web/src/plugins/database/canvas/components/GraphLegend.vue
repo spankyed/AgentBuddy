@@ -1,8 +1,6 @@
 <template>
   <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-    <div class="flex items-center gap-4 text-xs overflow-x-auto scrollbar-thin">
-      <span class="flex-shrink-0 font-medium text-gray-700 dark:text-gray-300">Legend:</span>
-      
+    <div class="flex items-center gap-4 overflow-x-auto text-xs scrollbar-thin">
       <TransitionGroup
         name="legend"
         tag="div"
