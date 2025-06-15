@@ -1,5 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
+    <div ref="editorContainer" class="flex-1"></div>
+    
     <div class="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
       <h3 class="text-sm font-semibold">Query Editor</h3>
       <div class="flex items-center gap-2">
@@ -16,8 +18,6 @@
         </button>
       </div>
     </div>
-    
-    <div ref="editorContainer" class="flex-1"></div>
   </div>
 </template>
 
