@@ -2,21 +2,43 @@
   <div class="flex flex-col h-full">
     <div class="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
       <h3 class="text-sm font-semibold">Graph Explorer</h3>
-      <div class="text-xs text-gray-500">
-        <span v-if="filteredEdgeCount > 0" class="text-amber-500">
-          {{ queryResult.nodes.length }} nodes, {{ displayedEdgeCount }}/{{ queryResult.edges.length }} edges
-          ({{ filteredEdgeCount }} filtered)
-        </span>
-        <span v-else>
-          {{ queryResult.nodes.length }} nodes, {{ queryResult.edges.length }} edges
-        </span>
+      <div class="flex items-center gap-2">
+        <button
+          @click="fitView"
+          class="p-1 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          title="Fit to view"
+        >
+          <Maximize2 class="w-4 h-4" />
+        </button>
+        <button
+          @click="zoomIn"
+          class="p-1 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          title="Zoom in"
+        >
+          <ZoomIn class="w-4 h-4" />
+        </button>
+        <button
+          @click="zoomOut"
+          class="p-1 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          title="Zoom out"
+        >
+          <ZoomOut class="w-4 h-4" />
+        </button>
+        <div class="text-xs text-gray-500">
+          <span v-if="filteredEdgeCount > 0" class="text-amber-500">
+            {{ queryResult.nodes.length }} nodes, {{ displayedEdgeCount }}/{{ queryResult.edges.length }} edges
+            ({{ filteredEdgeCount }} filtered)
+          </span>
+          <span v-else>
+            {{ queryResult.nodes.length }} nodes, {{ queryResult.edges.length }} edges
+          </span>
+        </div>
       </div>
     </div>
     
     <div 
       ref="graphContainer" 
-      class="relative flex-1" 
-      style="min-height: 400px;"
+      class="relative flex-1 overflow-hidden"
     >
       <div v-if="queryResult.nodes.length === 0 && !graph" class="absolute inset-0 flex items-center justify-center text-gray-500">
         <div class="text-center">
@@ -30,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { Database } from 'lucide-vue-next';
+import { Database, ZoomIn, ZoomOut, Maximize2 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/app'
@@ -71,32 +93,49 @@ onMounted(async () => {
     
     console.log('Initializing G6 with dimensions:', width, 'x', height);
     
-    // Create graph instance
+    // Create graph instance with G6 v5 API
     graph.value = new Graph({
       container,
       width,
       height,
+      // fitView: true,
+      // fitViewPadding: 20,
       layout: {
         type: 'force',
         preventOverlap: true,
-        nodeSize: 30,
-        linkDistance: 100,
+        nodeSize: 50,
+        linkDistance: 120,
+        nodeStrength: -30,
+        edgeStrength: 0.1,
       },
-      modes: {
-        default: ['drag-canvas', 'drag-node', 'zoom-canvas'],
-      },
-      defaultNode: {
-        size: 30,
-        style: {
-          fill: '#5B8FF9',
-          stroke: '#5B8FF9',
-        },
-      },
-      defaultEdge: {
-        style: {
-          stroke: '#e2e2e2',
-        },
-      },
+      behaviors: ['drag-canvas', 'drag-node', 'zoom-canvas', 'click-select'],
+      // defaultNode: {
+      //   size: 40,
+      //   style: {
+      //     fill: '#5B8FF9',
+      //     stroke: '#5B8FF9',
+      //     lineWidth: 2,
+      //   },
+      //   labelCfg: {
+      //     style: {
+      //       fontSize: 12,
+      //       fill: '#000',
+      //     },
+      //   },
+      // },
+      // defaultEdge: {
+      //   style: {
+      //     stroke: '#e2e2e2',
+      //     lineWidth: 1,
+      //   },
+      //   labelCfg: {
+      //     autoRotate: true,
+      //     style: {
+      //       fontSize: 10,
+      //       fill: '#666',
+      //     },
+      //   },
+      // },
     });
     
     // Initialize with data if available
@@ -131,6 +170,7 @@ function updateGraph() {
       label: node.id.split('-')[1] || node.id,
       style: {
         fill: entityColors[node.type] || '#6B7280',
+        stroke: entityColors[node.type] || '#6B7280',
       },
     }));
     
@@ -165,8 +205,34 @@ function updateGraph() {
     graph.value.setData(data);
     graph.value.render();
     
+    // Fit the graph to view after rendering
+    // setTimeout(() => {
+    //   graph.value.fitView(20);
+    // }, 100);
+    
   } catch (error) {
     console.error('Failed to update graph:', error);
+  }
+}
+
+// Zoom controls
+function zoomIn() {
+  if (graph.value) {
+    const currentZoom = graph.value.getZoom();
+    graph.value.zoomTo(currentZoom * 1.2);
+  }
+}
+
+function zoomOut() {
+  if (graph.value) {
+    const currentZoom = graph.value.getZoom();
+    graph.value.zoomTo(currentZoom * 0.8);
+  }
+}
+
+function fitView() {
+  if (graph.value) {
+    graph.value.fitView(20);
   }
 }
 
