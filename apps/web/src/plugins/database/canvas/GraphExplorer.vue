@@ -47,7 +47,7 @@
     </div>
     
     <!-- Graph Container -->
-    <div class="relative flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div class="relative flex-1 overflow-hidden">
       <div 
         ref="graphContainer" 
         class="absolute inset-0 bg-white dark:bg-gray-800"
