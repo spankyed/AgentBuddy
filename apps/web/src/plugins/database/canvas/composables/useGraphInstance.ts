@@ -169,10 +169,8 @@ export function useGraphInstance(
     if (!graphInstance.value || graphInstance.value.destroyed) return;
     const oldData = graphInstance.value.getData()
 
-    graphInstance.value.removeData({
-      nodes: oldData.nodes.map((node) => node.id),
-      // edges: oldData.edges.map((edge) => edge.id),
-    });
+    graphInstance.value.clear();
+
     try {
       graphInstance.value.addData(data);
       graphInstance.value.fitView();
