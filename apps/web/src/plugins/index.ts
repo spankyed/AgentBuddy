@@ -1,6 +1,7 @@
 import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
+import Database from './database/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
@@ -38,6 +39,7 @@ export default [
   Agent,
   mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
   Flows,
+  Database,
   ...mockPlugins,
   Blank,
 ];
