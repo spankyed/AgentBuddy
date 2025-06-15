@@ -100,8 +100,8 @@ const databaseState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setStartupData: assign(({ event }) => {
       const ev = typeOf('DATABASE_STARTUP', event);
-      return { 
-        schema: ev.data.schema 
+      return {
+        schema: ev.data.schema
       }
     }),
 
@@ -146,7 +146,7 @@ const databaseState = setup({
     selectSchemaItem: assign(({ event, context }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
       const query = generateQueryForSchemaItem(ev.itemType, ev.value);
-      
+
       return {
         selectedSchemaItem: {
           type: ev.itemType,
