@@ -3,8 +3,6 @@
     <!-- Header with Controls -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
       <div class="flex items-center gap-4">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Graph Explorer</h3>
-        
         <!-- Layout Selector -->
         <LayoutSelector 
           v-model="currentLayout" 
