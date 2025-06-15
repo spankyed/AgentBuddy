@@ -56,6 +56,7 @@ import { Database, ZoomIn, ZoomOut, Maximize2 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/app'
+import { Graph } from '@antv/g6';
 
 const actor: DatabaseState = applicationState.system.get(id)
 const queryResult = useSelector(actor, (state) => state.context.queryResult);
@@ -85,8 +86,6 @@ onMounted(async () => {
   if (!graphContainer.value) return;
   
   try {
-    const { Graph } = await import('@antv/g6');
-    
     const container = graphContainer.value;
     const width = container.scrollWidth || container.offsetWidth || 800;
     const height = container.scrollHeight || container.offsetHeight || 600;
