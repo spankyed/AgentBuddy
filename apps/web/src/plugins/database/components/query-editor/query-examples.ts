@@ -7,34 +7,39 @@ export interface QueryExample {
 export const queryExamples: QueryExample[] = [
   // Basic Entity Queries
   {
-    title: 'Query All Threads',
-    description: 'Retrieve all threads with a limit of 10',
-    query: `return qx(EARS.Entity.Thread).limit(10).pick(['id', 'topic', 'status', 'threadType', 'timestamp']);`
+    title: 'Get All Entity Attributes',
+    description: 'Retrieve all attributes of a specific entity by ID',
+    query: `return qx('Thread-1').pickAll();`
   },
   {
-    title: 'Filter Active Agents',
-    description: 'Get all agents with active status',
-    query: `return qx(EARS.Entity.Agent).where('status', 'active').pickAll();`
+    title: 'Recent Messages',
+    description: 'Get recent messages in reverse order',
+    query: `return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'content', 'timestamp']);`
   },
   {
-    title: 'Query Any Entity Type',
-    description: 'Query entities by label with limit',
-    query: `return qx().where('label').limit(20).pick(['id', 'label']);`
+    title: 'Active Threads Query',
+    description: 'Get active threads ordered by timestamp',
+    query: `return qx(EARS.Entity.Thread).where('status', 'active').orderBy('timestamp', 'desc').limit(5).pickAll();`
   },
   {
     title: 'Ordered Tags Query',
     description: 'Get tags ordered by name',
     query: `return qx(EARS.Entity.Tag).orderBy('name').pick(['id', 'name', 'color']);`
   },
+  // {
+  //   title: 'Query All Threads',
+  //   description: 'Retrieve all threads with a limit of 10',
+  //   query: `return qx(EARS.Entity.Thread).limit(10).pick(['id', 'topic', 'status', 'threadType', 'timestamp']);`
+  // },
+  // {
+  //   title: 'Filter Active Agents',
+  //   description: 'Get all agents with active status',
+  //   query: `return qx(EARS.Entity.Agent).where('status', 'active').pickAll();`
+  // },
   {
-    title: 'Pending Threads Query',
-    description: 'Get pending threads ordered by timestamp',
-    query: `return qx(EARS.Entity.Thread).where('status', 'pending').orderBy('timestamp', 'desc').limit(5).pickAll();`
-  },
-  {
-    title: 'Recent Messages',
-    description: 'Get recent messages in reverse order',
-    query: `return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'content', 'timestamp']);`
+    title: 'Query Any Attribute Type',
+    description: 'Query entities by label with limit',
+    query: `return qx().where('label').limit(20).pick(['id', 'label']);`
   },
   {
     title: 'Distinct Flow Roles',
@@ -147,7 +152,7 @@ return qx().where('status').limit(20).pick(['id', 'status']);
     description: 'Find entities with specific relation types',
     query: `// Find all entities with outgoing CONTAINS relations
 const results = [];
-const allEntities = getAllEntities();
+const allEntities = qx().ids();
 
 for (const entityId of allEntities) {
   const targets = qx(entityId).linksTo('CONTAINS', Object.values(EARS.Entity)).ids();
@@ -180,7 +185,7 @@ return results.slice(0, 20);`
     description: 'Discover what relation types exist in the database',
     query: `// Get all unique relation types in the system
 const allRelations = new Set();
-const allEntities = getAllEntities();
+const allEntities = qx().ids();
 
 for (const entityId of allEntities) {
   // Check common relation types
