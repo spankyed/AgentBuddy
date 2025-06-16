@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { 
   Play, 
   Loader2, 
@@ -313,6 +313,28 @@ watch(successMessage, (msg) => {
   }
 });
 
+// Watch for mode changes to reinitialize editor
+watch(activeMode, async (newMode) => {
+  if (newMode === 'query') {
+    await nextTick();
+    
+    // Destroy existing editor if any
+    if (editorView) {
+      editorView.destroy();
+      editorView = null;
+    }
+    
+    // Create new editor
+    if (editorContainer.value) {
+      editorView = new EditorView({
+        doc: currentQuery.value,
+        extensions: createExtensions(),
+        parent: editorContainer.value,
+      });
+    }
+  }
+});
+
 function handleExecute() {
   if (!isLoading.value && editorView && currentQuery.value.trim()) {
     const startTime = Date.now();
@@ -364,10 +386,13 @@ function formatQuery() {
 }
 
 function useExample(example: { query: string }) {
-  activeMode.value = 'query';
+  // First update the query in the state
   actor.send({
     type: 'QUERY.UPDATE',
     code: example.query
   });
+  
+  // Then switch to query mode
+  activeMode.value = 'query';
 }
 </script> 
