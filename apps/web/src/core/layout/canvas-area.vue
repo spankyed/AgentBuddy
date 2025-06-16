@@ -4,7 +4,7 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 my-4 min-h-5">
+    <div class="flex items-center w-full px-3 pt-4 pb-3" :class="headerClass">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs?.length"
@@ -104,6 +104,7 @@ import ToggleButton from '@/core/design/toggle-button.vue'
 interface Props {
   label: string
   breadcrumbs?: { label: string; target?: string }[]
+  headerClass?: string
 }
 defineProps<Props>()
 defineEmits<{

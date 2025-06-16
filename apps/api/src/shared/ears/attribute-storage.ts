@@ -265,3 +265,20 @@ export function destroyEntity(id: EARS.EntityId) {
 /*─────────────────────────────────────────────────────────────
  * 6 ▸ exports list
  *─────────────────────────────────────────────────────────────*/
+
+/*─────────────────────────────────────────────────────────────
+ * 7 ▸ Schema discovery helpers
+ *─────────────────────────────────────────────────────────────*/
+
+export const getAllAttributeKinds = (): EARS.AttrKind[] => Array.from(store.keys());
+
+export const getAllRelationKinds = (): string[] => Object.keys(relationIndex);
+
+export const getAttributeStats = (kind: EARS.AttrKind) => {
+  const b = bucket(kind);
+  let totalValues = 0;
+  for (const values of b.values()) {
+    totalValues += values.length;
+  }
+  return { entityCount: b.size, totalValues };
+};

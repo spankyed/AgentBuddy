@@ -290,7 +290,13 @@ const threadsState = setup({
     },
 
     'view': {
-      meta: { ...breadcrumbWithParams<ThreadsContext>('view', 'Thread', 'selectedThreadCode') },
+      meta: {
+        ...breadcrumbWithParams<ThreadsContext>({
+          target: 'view',
+          prefix: 'Thread',
+          paramName: 'selectedThreadCode'
+        })
+      },
       on: {
         GO_BACK: { target: 'list' },
         UPDATE_THREAD_FIELD: {

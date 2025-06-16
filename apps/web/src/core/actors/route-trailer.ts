@@ -1,10 +1,15 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
 import { safeEvents } from "@/core/types/safe-events";
+import { capitalizeFirstLetter } from "../utils";
+import Label from '@/core/design/label.vue';
 
 export interface BreadcrumbItem {
   label: string;
   target: string;
+  info?: any; // Optional info property for additional data
 }
+
+export type BreadcrumbMeta = BreadcrumbItem | BreadcrumbItem[] | ((context: any) => BreadcrumbItem | BreadcrumbItem[]);
 
 export type UpdateData = {
   crumbs: BreadcrumbItem[];
@@ -12,39 +17,45 @@ export type UpdateData = {
 }
 
 export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
-  let crumbs = state._nodes.slice(1).map((node) => {
-    const breadcrumb = node.meta?.breadcrumb;
-    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
-    return {
-      id: node.id,
-      label: breadcrumbItem?.label,
-      target: breadcrumbItem?.target,
-    };
-  });
-
-  const defaultState = Object.values(state.machine.states).find((s) => {
-    const breadcrumb = s.meta?.breadcrumb;
-    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
-    return breadcrumbItem?.default;
-  });
-
-  if (defaultState?.id === crumbs[0]?.id) {
-    crumbs = crumbs.slice(1);
-
-    // ? comment out this to show the default breadcrumb
-    if (!crumbs.length) {
-      return { crumbs: [], target: undefined };
+  const allCrumbs: BreadcrumbItem[] = [];
+  
+  // Process nodes starting from index 1 (skip root) (top level states only)
+  const activeState = state._nodes.slice(1)?.[0];
+  const breadcrumbMeta = activeState?.meta?.breadcrumb as BreadcrumbMeta | undefined;
+  if (breadcrumbMeta) {
+    // Resolve breadcrumb (could be function or value)
+    const breadcrumbResult = typeof breadcrumbMeta === 'function' 
+      ? breadcrumbMeta(state.context) 
+      : breadcrumbMeta;
+    
+    // Handle both single items and arrays
+    if (Array.isArray(breadcrumbResult)) {
+      allCrumbs.push(...breadcrumbResult);
+    } else {
+      allCrumbs.push(breadcrumbResult);
     }
   }
 
-  const breadcrumbs = [
-    defaultState?.meta?.breadcrumb,
-    ...crumbs,
-  ].map(({ label, target }) => ({ label, target }));
+  // Handle default state when no crumbs
+  const defaultState = Object.values(state.machine.states).find((s) => {
+    const breadcrumb = s.meta?.breadcrumb;
+    const breadcrumbItem = typeof breadcrumb === 'function' ? breadcrumb(state.context) : breadcrumb;
+    // Check if it's a single item with default property
+    return !Array.isArray(breadcrumbItem) && breadcrumbItem?.default;
+  });
 
-  const target = breadcrumbs[breadcrumbs.length - 1]?.target;
+  if (defaultState && defaultState?.key !== state.value) {
+    allCrumbs.unshift(defaultState?.meta?.breadcrumb as BreadcrumbItem);
+  } else if (!allCrumbs.length) {
+    allCrumbs.push({
+      label: capitalizeFirstLetter(state.machine.id),
+      target: state.machine.config.initial as string,
+    });
+  }
 
-  return { crumbs: breadcrumbs, target };
+  const lastTarget = allCrumbs[allCrumbs.length - 1]?.target;
+
+  return { crumbs: allCrumbs, target: lastTarget };
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>

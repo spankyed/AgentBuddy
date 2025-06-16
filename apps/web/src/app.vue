@@ -15,7 +15,8 @@
         @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
         @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
         :breadcrumbs="breadcrumbs"
-        :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`">
+        :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
+        :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
         <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
         <Router v-else :views="activePlugin.canvas" :target="targetView" />
         </CanvasArea>
