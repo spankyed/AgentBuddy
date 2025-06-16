@@ -62,6 +62,7 @@ export function useGraphInstance(
         height: element.offsetHeight,
         data: config.data,
         layout: config.layout || { type: 'd3-force' },
+        zoomRange: [0.5, 5],
         node: {
           style: {
             size: 32,
@@ -155,7 +156,7 @@ export function useGraphInstance(
           // Ensure we maintain the fit with proper padding
           requestAnimationFrame(() => {
             if (graph && !graph.destroyed) {
-              graph.fitView({ padding: 20 });
+              graph.fitView();
             }
           });
         }
