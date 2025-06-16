@@ -1,5 +1,6 @@
 import { setup } from 'xstate';
 import { z } from 'zod';
+import { performance } from 'node:perf_hooks';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
@@ -68,9 +69,9 @@ export const databaseSystem = setup({
       const { code } = typeOf('EXECUTE_QUERY', event);
       
       try {
-        const startTime = Date.now();
+        const startTime = performance.now();
         const result = await executeQuery(code);
-        const executionTime = Date.now() - startTime;
+        const executionTime = performance.now() - startTime;
         
         system.get(bus).send(emit(database, { 
           type: 'QUERY_RESULT',

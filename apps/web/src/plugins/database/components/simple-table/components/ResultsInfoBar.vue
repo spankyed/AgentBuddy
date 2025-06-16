@@ -41,9 +41,11 @@ interface Props {
 defineProps<Props>();
 
 function formatExecutionTime(time: number): string {
-  if (time < 1000) {
-    return `${time}ms`;
+  if (time < 1) {
+    return `${time.toFixed(3)}ms`;
+  } else if (time < 1000) {
+    return `${time.toFixed(2)}ms`;
   }
-  return `${(time / 1000).toFixed(2)}s`;
+  return `${(time / 1000).toFixed(3)}s`;
 }
 </script> 
