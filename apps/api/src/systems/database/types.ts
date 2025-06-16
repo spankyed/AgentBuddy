@@ -18,16 +18,16 @@ export interface DatabaseQueryResult {
 export interface DatabaseSchemaInfo {
   entities: Array<{
     type: EARS.Entity;
-    description?: string;
+    // description?: string;
   }>;
   attributes: Array<{
     kind: string;
-    description?: string;
+    // description?: string;
     entityTypes?: EARS.Entity[];
   }>;
   relations: Array<{
     kind: EARS.RelKind;
-    description?: string;
+    // description?: string;
     sourceTypes?: EARS.Entity[];
     targetTypes?: EARS.Entity[];
   }>;
