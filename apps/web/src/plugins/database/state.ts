@@ -9,6 +9,7 @@ import type {
   EARS,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
+import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -41,53 +42,11 @@ const typeOf = safeEvents<DatabaseEvents>()
 const generateQueryForSchemaItem = (type: 'entity' | 'attribute' | 'relation', value: string): string => {
   switch (type) {
     case 'entity':
-      return `// Query all ${value} entities\nreturn qx(EARS.Entity.${value}).limit(20);`;
+      return entityQueryTemplate(value);
     case 'attribute':
-      return `// Query entities with ${value} attribute\nreturn qx().where('${value}').limit(20);`;
+      return attributeQueryTemplate(value);
     case 'relation':
-      return `// Query ${value} relations
-const allIds = getAllEntities();
-const nodes = [];
-const edges = [];
-const nodeSet = new Set();
-
-// Find all relations of type '${value}'
-for (const sourceId of allIds) {
-  const targets = qx(sourceId).related('${value}', sourceId, true).ids();
-  
-  if (targets.length > 0) {
-    // Add source node if not already added
-    if (!nodeSet.has(sourceId)) {
-      nodeSet.add(sourceId);
-      nodes.push({
-        id: sourceId,
-        type: sourceId.split('-')[0],
-        data: getAll(sourceId)
-      });
-    }
-    
-    // Add target nodes and edges
-    for (const targetId of targets) {
-      if (!nodeSet.has(targetId)) {
-        nodeSet.add(targetId);
-        nodes.push({
-          id: targetId,
-          type: targetId.split('-')[0],
-          data: getAll(targetId)
-        });
-      }
-      
-      edges.push({
-        id: \`\${sourceId}-${value}-\${targetId}\`,
-        source: sourceId,
-        target: targetId,
-        type: '${value}'
-      });
-    }
-  }
-}
-
-return { nodes: nodes.slice(0, 50), edges: edges.slice(0, 100) };`;
+      return relationQueryTemplate(value);
   }
 }
 
@@ -165,15 +124,7 @@ const databaseState = setup({
       attributes: [],
       relations: [],
     },
-    currentQuery: `// Example queries - modify and run to explore the database
-
-// Query all threads (limit 10)
-return qx(EARS.Entity.Thread).limit(10);
-
-// Or try these examples:
-// return qx(EARS.Entity.Agent).where('status', 'active');
-// return qx().where('label').limit(20);
-// return qx(EARS.Entity.Flow).linksTo('contains', EARS.Entity.Node);`,
+    currentQuery: exampleQuery,
     queryResult: { nodes: [], edges: [] },
     isLoading: false,
     error: null,

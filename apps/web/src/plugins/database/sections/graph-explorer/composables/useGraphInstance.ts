@@ -1,7 +1,7 @@
 import { ref, type Ref, type ShallowRef } from 'vue';
 import { Graph } from '@antv/g6';
 import type { GraphData, GraphOptions } from '@antv/g6';
-import { ENTITY_COLORS } from '../constants';
+import { ENTITY_COLORS } from '../../../constants';
 
 interface GraphConfig {
   data: GraphData;
