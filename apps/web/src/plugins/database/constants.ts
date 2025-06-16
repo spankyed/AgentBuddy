@@ -18,6 +18,11 @@ return qx(EARS.Entity.Thread).limit(10).pick(['id', 'topic', 'status', 'threadTy
 // return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'content', 'timestamp']);
 // return qx(EARS.Entity.User).distinct('role').pick(['id', 'name', 'role']);
 
+// Relation queries (using actual relations from the data):
+// return qx('Thread-1').linksTo('CONTAINS', EARS.Entity.Message).pick(['id', 'text', 'sender']);
+// return qx(EARS.Entity.Thread).linksTo('HAS', EARS.Entity.Tag).pick(['id', 'name', 'color']);
+// return qx('Thread-4').linksTo('PARENT_OF', EARS.Entity.Thread).pick(['id', 'topic', 'status']);
+
 // Advanced examples:
 // Pagination: const { items, nextCursor } = qx(EARS.Entity.Thread).page(10);
 // Single result: return qx(EARS.Entity.User).where('email', 'user@example.com').pickOne(['id', 'name']);
@@ -45,29 +50,77 @@ return qx().where('${value}').limit(20).pick(['id', '${value}']);
 
 export const relationQueryTemplate = (value: string) =>
 `// Query entities with ${value} relations
-// Method 1: Manual traversal (shows relation details)
-const sources = [];
-const allIds = getAllEntities();
+// This shows all entities that have outgoing ${value} relations
 
-for (const sourceId of allIds) {
-  const targets = qx(sourceId).related('${value}', sourceId, true).ids();
+// Method 1: Get all source entities with their targets
+const results = [];
+
+// Get all entities
+const allEntities = getAllEntities();
+
+for (const entityId of allEntities) {
+  // Find all entities this one relates to via ${value}
+  const targets = qx(entityId).linksTo('${value}', Object.values(EARS.Entity)).ids();
+  
   if (targets.length > 0) {
-    const sourceData = getAll(sourceId);
-    sources.push({
-      id: sourceId,
-      type: sourceId.split('-')[0],
-      targetCount: targets.length,
-      targets: targets.slice(0, 3), // Show first 3 targets
-      ...sourceData
+    // Get full data for the source entity
+    const entityData = qx(entityId).pickOne(['id']);
+    const allData = getAll(entityId);
+    
+    results.push({
+      ...entityData,
+      ...allData,
+      _relationInfo: {
+        relationType: '${value}',
+        targetCount: targets.length,
+        targets: targets.slice(0, 5).map(targetId => ({
+          id: targetId,
+          type: targetId.split('-')[0]
+        }))
+      }
     });
   }
 }
 
-return sources.slice(0, 20);
+// If no results, provide helpful feedback
+if (results.length === 0) {
+  // Get all unique relation types in the system
+  const allRelations = new Set();
+  for (const entityId of allEntities) {
+    // Check common relation types
+    ['CONTAINS', 'HAS', 'PARENT_OF', 'RELATED_TO', 'REFERENCES'].forEach(relType => {
+      if (qx(entityId).linksTo(relType, Object.values(EARS.Entity)).count() > 0) {
+        allRelations.add(relType);
+      }
+    });
+  }
+  
+  return [{
+    message: 'No entities found with "${value}" relations',
+    hint: 'Available relation types in the database:',
+    availableRelations: Array.from(allRelations),
+    example: allRelations.size > 0 
+      ? 'Try querying for: ' + Array.from(allRelations)[0]
+      : 'No relations found in the database'
+  }];
+}
 
-// Method 2: Using linksTo for traversal (cleaner but less detail)
-// return qx(EARS.Entity.Thread).linksTo('${value}', EARS.Entity.Agent).limit(10).pickAll();
+return results.slice(0, 20);
 
-// Method 3: Get all entities related to a specific target
-// const targetId = 'agent-123'; // Replace with actual ID
-// return qx().relatedTo(targetId).limit(20).pick(['id', 'type']);`
+// Method 2: Simple list of sources and targets
+// const pairs = [];
+// for (const source of getAllEntities()) {
+//   const targets = qx(source).linksTo('${value}', Object.values(EARS.Entity)).ids();
+//   targets.forEach(target => {
+//     pairs.push({ source, target, relation: '${value}' });
+//   });
+// }
+// return pairs.slice(0, 50);
+
+// Method 3: Using edgeIds to find relation entities
+// const relationIds = [];
+// for (const entityId of getAllEntities()) {
+//   const edges = qx(entityId).edgeIds(['${value}'], true);
+//   edges.forEach(edgeId => relationIds.push(edgeId));
+// }
+// return qx(relationIds).distinct().limit(20).pick(['source', 'target', 'kind']);`
