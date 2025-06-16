@@ -125,7 +125,7 @@ async function setupGraph() {
     
     if (graph) {
       graphInstance.value = graph;
-      await graph.fitView({ padding: 20 });
+      await graph.fitView();
     }
   } catch (error) {
     console.error('Failed to setup graph:', error);
@@ -172,8 +172,8 @@ async function handleLayoutChange(newLayout: string) {
   currentLayout.value = newLayout;
   
   try {
-    await graphInstance.value.updateLayout({ type: newLayout });
-    await graphInstance.value.fitView({ padding: 20 });
+    await graphInstance.value.layout({ type: newLayout });
+    await graphInstance.value.fitView();
   } catch (error) {
     console.error('Failed to change layout:', error);
   }
@@ -193,7 +193,7 @@ function handleZoomOut() {
 
 async function handleFitView() {
   if (!graphInstance.value) return;
-  await graphInstance.value.fitView({ padding: 20, duration: 200 });
+  await graphInstance.value.fitView();
 }
 
 function toggleFullscreen() {

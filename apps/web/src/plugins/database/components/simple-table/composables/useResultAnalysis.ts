@@ -1,4 +1,4 @@
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 
 export type ResultType = 'array' | 'object' | 'primitive' | null;
 
@@ -10,7 +10,7 @@ export interface ResultAnalysis {
   tableData: ComputedRef<Record<string, any>[]>;
 }
 
-export function useResultAnalysis(queryResult: ComputedRef<any>): ResultAnalysis {
+export function useResultAnalysis(queryResult: Ref<any>): ResultAnalysis {
   const resultType = computed<ResultType>(() => {
     if (!queryResult.value) return null;
     if (Array.isArray(queryResult.value)) return 'array';
