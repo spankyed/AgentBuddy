@@ -15,6 +15,9 @@ export function createEditorTheme() {
       overflow: 'auto',
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
       backgroundColor: '#282c34',
+      /* Firefox scrollbar */
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'rgba(155, 155, 155, 0.3) transparent',
     },
     '.cm-content': {
       padding: '16px',
@@ -56,10 +59,6 @@ export function createEditorTheme() {
     '.cm-scroller::-webkit-scrollbar-corner': {
       backgroundColor: 'transparent',
     },
-    /* Firefox scrollbar */
-    '.cm-scroller': {
-      scrollbarWidth: 'thin',
-      scrollbarColor: 'rgba(155, 155, 155, 0.3) transparent',
-    },
+
   });
 } 
