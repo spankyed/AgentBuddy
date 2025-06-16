@@ -57,7 +57,7 @@ import LoadingState from './components/LoadingState.vue';
 import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
-import { id } from '../../state';
+import { id } from '../../../state';
 import { applicationState } from '@/app';
 
 // Props & Emits

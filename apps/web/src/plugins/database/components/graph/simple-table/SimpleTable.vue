@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id } from '../../state';
+import { id } from '../../../state';
 import { applicationState } from '@/app';
 
 // State Management

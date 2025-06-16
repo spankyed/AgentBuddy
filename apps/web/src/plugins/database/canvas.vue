@@ -48,7 +48,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
-import SimpleTable from './graph/simple-table/SimpleTable.vue'
+import SimpleTable from './components/graph/simple-table/SimpleTable.vue'
 
 // Panel sizing
 const schemaPanelWidth = ref(280)
