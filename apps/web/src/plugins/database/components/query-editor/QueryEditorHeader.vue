@@ -1,0 +1,47 @@
+<template>
+  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+    <ModeTabs
+      :active-mode="activeMode"
+      @update:active-mode="$emit('update:activeMode', $event)"
+    />
+    
+    <div class="flex items-center gap-2">
+      <KeyboardHint />
+      
+      <QueryEditorMessages
+        :error="error"
+        :success-message="successMessage"
+      />
+      
+      <QueryEditorActions
+        :is-loading="isLoading"
+        :is-disabled="!currentQuery.trim()"
+        @execute="$emit('execute')"
+        @clear="$emit('clear')"
+        @format="$emit('format')"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import ModeTabs from './ModeTabs.vue';
+import KeyboardHint from './KeyboardHint.vue';
+import QueryEditorMessages from './QueryEditorMessages.vue';
+import QueryEditorActions from './QueryEditorActions.vue';
+
+defineProps<{
+  activeMode: 'query' | 'examples';
+  isLoading: boolean;
+  currentQuery: string;
+  error: string | null;
+  successMessage: string;
+}>();
+
+defineEmits<{
+  'update:activeMode': [mode: 'query' | 'examples'];
+  execute: [];
+  clear: [];
+  format: [];
+}>();
+</script> 
