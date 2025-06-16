@@ -3,7 +3,7 @@
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
-      class="relative flex-shrink-0 overflow-hidden bg-white border-r shadow-sm dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+      class="relative flex-shrink-0 overflow-hidden bg-white border-r border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700"
       :style="{ width: schemaPanelWidth + 'px' }"
     >
       <SchemaPanel />
@@ -46,9 +46,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import SchemaPanel from './SchemaPanel.vue'
-import QueryEditor from './QueryEditor.vue'
-import GraphExplorer from './graph-explorer/GraphExplorer.vue'
+import SchemaPanel from './sections/SchemaPanel.vue'
+import QueryEditor from './sections/QueryEditor.vue'
+import GraphExplorer from './sections/graph-explorer/GraphExplorer.vue'
 
 // Panel sizing
 const schemaPanelWidth = ref(280)
