@@ -33,6 +33,32 @@ const createExtensions = () => [
     {
       key: 'Mod-Enter',
       run: () => {
+        console.log('Mod-Enter pressed! Emitting execute event');
+        emit('execute');
+        return true;
+      }
+    },
+    {
+      key: 'Cmd-Enter',
+      mac: 'Cmd-Enter',
+      run: () => {
+        console.log('Cmd-Enter pressed! Emitting execute event');
+        emit('execute');
+        return true;
+      }
+    },
+    {
+      key: 'Ctrl-Enter',
+      run: () => {
+        console.log('Ctrl-Enter pressed! Emitting execute event');
+        emit('execute');
+        return true;
+      }
+    },
+    {
+      key: 'F5',
+      run: () => {
+        console.log('F5 pressed! Emitting execute event');
         emit('execute');
         return true;
       }
