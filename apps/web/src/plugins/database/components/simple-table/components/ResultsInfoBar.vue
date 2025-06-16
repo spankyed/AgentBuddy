@@ -1,26 +1,44 @@
 <template>
-  <div class="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-    <div class="flex items-center justify-between">
-      <div class="text-sm text-gray-600 dark:text-gray-400">
-        <template v-if="!queryResult">
-          No results
-        </template>
-        <template v-else-if="resultType === 'array'">
-          {{ resultCount }} {{ resultCount === 1 ? 'result' : 'results' }}
-        </template>
-        <template v-else-if="resultType === 'object'">
-          Object result
-        </template>
-        <template v-else-if="resultType === 'primitive'">
-          Primitive value
-        </template>
-      </div>
-      <div class="flex items-center gap-4 text-xs text-gray-500">
-        <span v-if="executionTime !== null" class="text-gray-500 dark:text-gray-400">
-          Executed in {{ formatExecutionTime(executionTime) }}
-        </span>
-        <span v-if="queryResult">
+  <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+    <div class="px-4 py-1.5 flex items-center justify-between">
+      <!-- Left side - Primary information -->
+      <div class="flex items-center gap-4 text-sm">
+        <!-- Result count with small icon -->
+        <div class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <template v-if="!queryResult">
+            <span class="text-gray-500 dark:text-gray-400">No results</span>
+          </template>
+          <template v-else-if="resultType === 'array'">
+            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ resultCount.toLocaleString() }}</span>
+            <span class="text-gray-500 dark:text-gray-400">{{ resultCount === 1 ? 'result' : 'results' }}</span>
+          </template>
+          <template v-else-if="resultType === 'object'">
+            <span class="text-gray-700 dark:text-gray-300">Object result</span>
+          </template>
+          <template v-else-if="resultType === 'primitive'">
+            <span class="text-gray-700 dark:text-gray-300">Primitive value</span>
+          </template>
+        </div>
+
+        <!-- Data type indicator - more subtle -->
+        <div v-if="queryResult" class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+          <svg class="w-3 h-3 mr-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
           {{ resultType }}{{ isArrayOfPrimitives ? ' (primitives)' : '' }}
+        </div>
+      </div>
+
+      <!-- Right side - Performance metric -->
+      <div v-if="executionTime !== null" class="flex items-center gap-1.5 text-sm">
+        <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="font-medium" :class="getExecutionTimeClass(executionTime)">
+          {{ formatExecutionTime(executionTime) }}
         </span>
       </div>
     </div>
@@ -47,5 +65,14 @@ function formatExecutionTime(time: number): string {
     return `${time.toFixed(2)}ms`;
   }
   return `${(time / 1000).toFixed(3)}s`;
+}
+
+function getExecutionTimeClass(time: number): string {
+  if (time < 100) {
+    return 'text-green-600 dark:text-green-400'; // Fast
+  } else if (time < 1000) {
+    return 'text-yellow-600 dark:text-yellow-400'; // Medium
+  }
+  return 'text-red-600 dark:text-red-400'; // Slow
 }
 </script> 
