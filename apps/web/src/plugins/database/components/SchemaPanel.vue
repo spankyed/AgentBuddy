@@ -175,7 +175,6 @@ const treeCategories = computed<TreeCategory[]>(() => [
     children: schema.value.entities.map(entity => ({
       id: `entity:${entity.type}`,
       label: entity.type,
-      description: entity.description,
       type: 'entity' as const,
       value: entity.type
     }))
@@ -186,7 +185,6 @@ const treeCategories = computed<TreeCategory[]>(() => [
     children: schema.value.attributes.map(attr => ({
       id: `attribute:${attr.kind}`,
       label: attr.kind,
-      description: attr.description,
       type: 'attribute' as const,
       value: attr.kind
     }))
@@ -197,7 +195,6 @@ const treeCategories = computed<TreeCategory[]>(() => [
     children: schema.value.relations.map(rel => ({
       id: `relation:${rel.kind}`,
       label: rel.kind,
-      description: rel.description,
       type: 'relation' as const,
       value: rel.kind
     }))
