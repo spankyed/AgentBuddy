@@ -45,10 +45,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
+
+import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
-import SimpleTable from './components/simple-table/SimpleTable.vue'
 
 // Panel sizing
 const schemaPanelWidth = ref(280)
