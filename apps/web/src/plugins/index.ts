@@ -2,12 +2,12 @@ import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
+import Brain from './brain/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
   Code, 
   AtSign, 
-  Brain,
   Sparkle,
   Workflow,
   Bird,
@@ -37,7 +37,7 @@ const mockPlugins = [
 export default [
   Threads,
   Agent,
-  mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
+  Brain,
   Flows,
   Database,
   ...mockPlugins,
