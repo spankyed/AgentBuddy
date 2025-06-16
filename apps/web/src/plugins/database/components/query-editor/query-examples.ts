@@ -14,7 +14,7 @@ export const queryExamples: QueryExample[] = [
   {
     title: 'Recent Messages',
     description: 'Get recent messages in reverse order',
-    query: `return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'content', 'timestamp']);`
+    query: `return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'text', 'timestamp']);`
   },
   {
     title: 'Active Threads Query',
