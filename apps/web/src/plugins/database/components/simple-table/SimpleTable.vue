@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Results Info Bar -->
-    <div class="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <div class="px-4 py-2 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-600 dark:text-gray-400">
           <template v-if="!queryResult">
@@ -32,9 +32,9 @@
 
       <!-- Error State -->
       <div v-else-if="error" class="flex items-center justify-center h-full p-4">
-        <div class="text-red-500 text-center">
+        <div class="text-center text-red-500">
           <div class="font-semibold">Query Error</div>
-          <div class="text-sm mt-1">{{ error }}</div>
+          <div class="mt-1 text-sm">{{ error }}</div>
         </div>
       </div>
 
@@ -46,14 +46,14 @@
       <!-- Array of Primitives Results (Simple List) -->
       <div v-else-if="isArrayOfPrimitives && resultCount > 0" class="min-w-full">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+          <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">
                 Value
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
             <tr
               v-for="(value, index) in queryResult"
               :key="index"
@@ -72,18 +72,18 @@
       <!-- Array of Objects Results (Table) -->
       <div v-else-if="resultType === 'array' && !isArrayOfPrimitives && resultCount > 0" class="min-w-full">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+          <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
             <tr>
               <th
                 v-for="header in tableHeaders"
                 :key="header"
-                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                class="px-4 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400"
               >
                 {{ header }}
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
             <tr
               v-for="(row, index) in tableData"
               :key="index"
@@ -94,7 +94,7 @@
                 :key="header"
                 class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100"
               >
-                <div class="truncate max-w-xs" :title="formatCellValue(row[header])">
+                <div class="max-w-xs truncate" :title="formatCellValue(row[header])">
                   {{ formatCellValue(row[header]) }}
                 </div>
               </td>
@@ -110,12 +110,12 @@
 
       <!-- Object Result -->
       <div v-else-if="resultType === 'object'" class="p-4">
-        <pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-auto text-sm">{{ JSON.stringify(queryResult, null, 2) }}</pre>
+        <pre class="p-4 overflow-auto text-sm bg-gray-100 rounded-md dark:bg-gray-800">{{ JSON.stringify(queryResult, null, 2) }}</pre>
       </div>
 
       <!-- Primitive Result -->
       <div v-else class="p-4">
-        <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md">
+        <div class="p-4 bg-gray-100 rounded-md dark:bg-gray-800">
           {{ queryResult }}
         </div>
       </div>
@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id } from '../../../state';
+import { id } from '../../state';
 import { applicationState } from '@/app';
 
 // State Management
