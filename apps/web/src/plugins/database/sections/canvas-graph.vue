@@ -36,9 +36,9 @@
         </div>
       </div>
       
-      <!-- Results Table -->
+      <!-- Graph Explorer -->
       <div class="flex-1 overflow-hidden bg-white shadow-sm dark:bg-gray-800">
-        <SimpleTable />
+        <GraphExplorer />
       </div>
     </div>
   </div>
@@ -46,9 +46,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import SchemaPanel from './sections/SchemaPanel.vue'
-import QueryEditor from './sections/QueryEditor.vue'
-import SimpleTable from './sections/simple-table/SimpleTable.vue'
+import SchemaPanel from './SchemaPanel.vue'
+import QueryEditor from './QueryEditor.vue'
+import GraphExplorer from './graph-explorer/GraphExplorer.vue'
 
 // Panel sizing
 const schemaPanelWidth = ref(280)

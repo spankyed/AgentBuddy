@@ -1,64 +1,41 @@
 export const exampleQuery =
 `// Example queries - modify and run to explore the database
 
-// Query all threads (limit 10)
-return qx(EARS.Entity.Thread).limit(10);
+// Query all threads with their data
+return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'threadType', 'timestamp']).limit(10);
 
 // Or try these examples:
-// return qx(EARS.Entity.Agent).where('status', 'active');
-// return qx().where('label').limit(20);
-// return qx(EARS.Entity.Flow).linksTo('contains', EARS.Entity.Node);`
+// return qx(EARS.Entity.Agent).where('status', 'active').pickAll();
+// return qx().where('label').pick(['id', 'label']).limit(20);
+// return qx(EARS.Entity.Tag).pick(['id', 'name', 'color']).orderBy('name');`
 
 export const entityQueryTemplate = (value: string) =>
-  `// Query all ${value} entities\nreturn qx(EARS.Entity.${value}).limit(20);`
+  `// Query all ${value} entities\nreturn qx(EARS.Entity.${value}).pickAll().limit(20);`
 
 export const attributeQueryTemplate = (value: string) =>
-  `// Query entities with ${value} attribute\nreturn qx().where('${value}').limit(20);`
+  `// Query entities with ${value} attribute\nreturn qx().where('${value}').pick(['id', '${value}']).limit(20);`
 
 export const relationQueryTemplate = (value: string) =>
-`// Query ${value} relations
+`// Query entities with ${value} relations
+// This returns the source entities that have the specified relation type
+const sources = [];
 const allIds = getAllEntities();
-const nodes = [];
-const edges = [];
-const nodeSet = new Set();
 
-// Find all relations of type '${value}'
 for (const sourceId of allIds) {
   const targets = qx(sourceId).related('${value}', sourceId, true).ids();
-  
   if (targets.length > 0) {
-    // Add source node if not already added
-    if (!nodeSet.has(sourceId)) {
-      nodeSet.add(sourceId);
-      nodes.push({
-        id: sourceId,
-        type: sourceId.split('-')[0],
-        data: getAll(sourceId)
-      });
-    }
-    
-    // Add target nodes and edges
-    for (const targetId of targets) {
-      if (!nodeSet.has(targetId)) {
-        nodeSet.add(targetId);
-        nodes.push({
-          id: targetId,
-          type: targetId.split('-')[0],
-          data: getAll(targetId)
-        });
-      }
-      
-      edges.push({
-        id: \`\${sourceId}-${value}-\${targetId}\`,
-        source: sourceId,
-        target: targetId,
-        type: '${value}'
-      });
-    }
+    const sourceData = getAll(sourceId);
+    sources.push({
+      id: sourceId,
+      type: sourceId.split('-')[0],
+      targetCount: targets.length,
+      targets: targets.slice(0, 3), // Show first 3 targets
+      ...sourceData
+    });
   }
 }
 
-return { nodes: nodes.slice(0, 50), edges: edges.slice(0, 100) };`
+return sources.slice(0, 20);`
 
 
 

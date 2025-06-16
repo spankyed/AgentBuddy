@@ -6,7 +6,7 @@ import { emit, safeEvents } from '@/shared/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { EARS } from '@/shared/ears/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
-import type { DatabaseQueryResult, DatabaseSchemaInfo, DatabaseStartupData } from './types';
+import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './query-executor';
 
 export const database = 'database' as const;
@@ -25,7 +25,7 @@ export type DatabaseInternalEvents =
 
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
-  | { type: 'QUERY_RESULT'; result: DatabaseQueryResult; error?: string }
+  | { type: 'QUERY_RESULT'; result: any }
   | { type: 'QUERY_ERROR'; error: string };
 
 export interface DatabaseContext {
@@ -73,10 +73,12 @@ export const databaseSystem = setup({
           type: 'QUERY_RESULT',
           result
         }));
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Query execution failed:', errorMessage);
         system.get(bus).send(emit(database, { 
           type: 'QUERY_ERROR',
-          error: error instanceof Error ? error.message : String(error)
+          error: errorMessage
         }));
       }
     },

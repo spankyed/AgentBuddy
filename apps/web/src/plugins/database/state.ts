@@ -2,7 +2,6 @@ import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@/core/breadcrumb'
 import { safeEvents } from '@/core/types/safe-events'
 import type {
-  DatabaseQueryResult,
   DatabaseSchemaInfo,
   DatabaseStartupData,
   OutgoingDatabaseEvents,
@@ -20,7 +19,7 @@ export type DatabaseState = ActorRefFrom<typeof databaseState>
 export interface DatabaseContext {
   schema: DatabaseSchemaInfo;
   currentQuery: string;
-  queryResult: DatabaseQueryResult;
+  queryResult: any;
   isLoading: boolean;
   error: string | null;
   selectedSchemaItem: {
@@ -125,7 +124,7 @@ const databaseState = setup({
       relations: [],
     },
     currentQuery: exampleQuery,
-    queryResult: { nodes: [], edges: [] },
+    queryResult: null,
     isLoading: false,
     error: null,
     selectedSchemaItem: null,
