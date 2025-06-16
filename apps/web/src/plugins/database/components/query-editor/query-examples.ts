@@ -51,17 +51,17 @@ export const queryExamples: QueryExample[] = [
   {
     title: 'Thread Messages',
     description: 'Get messages contained in a specific thread',
-    query: `return qx('Thread-1').linksTo('CONTAINS', EARS.Entity.Message).pick(['id', 'text', 'sender']);`
+    query: `return qx('Thread-1').linksTo('contains', EARS.Entity.Message).pick(['id', 'text', 'sender']);`
   },
   {
     title: 'Thread Tags',
     description: 'Get tags associated with threads',
-    query: `return qx(EARS.Entity.Thread).linksTo('HAS', EARS.Entity.Tag).pick(['id', 'name', 'color']);`
+    query: `return qx(EARS.Entity.Thread).linksTo('has', EARS.Entity.Tag).pick(['id', 'name', 'color']);`
   },
   {
     title: 'Thread Hierarchy',
     description: 'Get child threads of a parent thread',
-    query: `return qx('Thread-4').linksTo('PARENT_OF', EARS.Entity.Thread).pick(['id', 'topic', 'status']);`
+    query: `return qx('Thread-4').linksTo('parent_of', EARS.Entity.Thread).pick(['id', 'topic', 'status']);`
   },
 
   // Advanced Queries
@@ -150,12 +150,12 @@ return qx().where('status').limit(20).pick(['id', 'status']);
   {
     title: 'Explore Relations',
     description: 'Find entities with specific relation types',
-    query: `// Find all entities with outgoing CONTAINS relations
+    query: `// Find all entities with outgoing contains relations
 const results = [];
 const allEntities = qx().ids();
 
 for (const entityId of allEntities) {
-  const targets = qx(entityId).linksTo('CONTAINS', Object.values(EARS.Entity)).ids();
+  const targets = qx(entityId).linksTo('contains', Object.values(EARS.Entity)).ids();
   
   if (targets.length > 0) {
     const entityData = qx(entityId).pickOne(['id']);
@@ -165,7 +165,7 @@ for (const entityId of allEntities) {
       ...entityData,
       ...allData,
       _relationInfo: {
-        relationType: 'CONTAINS',
+        relationType: 'contains',
         targetCount: targets.length,
         targets: targets.slice(0, 5).map(targetId => ({
           id: targetId,
@@ -189,7 +189,7 @@ const allEntities = qx().ids();
 
 for (const entityId of allEntities) {
   // Check common relation types
-  ['CONTAINS', 'HAS', 'PARENT_OF', 'RELATED_TO', 'REFERENCES'].forEach(relType => {
+  ['contains', 'has', 'parent_of', 'blocked_by'].forEach(relType => {
     if (qx(entityId).linksTo(relType, Object.values(EARS.Entity)).count() > 0) {
       allRelations.add(relType);
     }
