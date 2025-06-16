@@ -4,9 +4,6 @@
       <span class="text-gray-500 dark:text-gray-400">
         Line {{ cursorLine }}, Col {{ cursorCol }}
       </span>
-      <span v-if="executionTime" class="text-gray-500 dark:text-gray-400">
-        Last run: {{ formatExecutionTime(executionTime) }}
-      </span>
     </div>
     <div class="flex items-center gap-2">
       <span class="text-gray-500 dark:text-gray-400">JavaScript</span>
@@ -18,13 +15,5 @@
 defineProps<{
   cursorLine: number;
   cursorCol: number;
-  executionTime: number | null;
 }>();
-
-function formatExecutionTime(time: number): string {
-  if (time < 1000) {
-    return `${time}ms`;
-  }
-  return `${(time / 1000).toFixed(2)}s`;
-}
 </script> 

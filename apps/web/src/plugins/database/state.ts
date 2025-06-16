@@ -22,6 +22,7 @@ export interface DatabaseContext {
   queryResult: any;
   isLoading: boolean;
   error: string | null;
+  executionTime: number | null;
   selectedSchemaItem: {
     type: 'entity' | 'attribute' | 'relation';
     value: string;
@@ -82,6 +83,7 @@ const databaseState = setup({
       const ev = typeOf('QUERY_RESULT', event);
       return {
         queryResult: ev.result,
+        executionTime: ev.executionTime,
         isLoading: false,
         error: null,
       };
@@ -127,6 +129,7 @@ const databaseState = setup({
     queryResult: null,
     isLoading: false,
     error: null,
+    executionTime: null,
     selectedSchemaItem: null,
   },
   on: {

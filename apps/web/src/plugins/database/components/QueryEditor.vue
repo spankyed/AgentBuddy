@@ -28,7 +28,6 @@
     <QueryEditorStatusBar
       :cursor-line="cursorLine"
       :cursor-col="cursorCol"
-      :execution-time="lastExecutionTime"
     />
   </div>
 </template>
@@ -51,7 +50,6 @@ const error = useSelector(actor, (state) => state.context.error);
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');
 const successMessage = ref('');
-const lastExecutionTime = ref<number | null>(null);
 const cursorLine = ref(1);
 const cursorCol = ref(1);
 const editorQuery = ref(currentQuery.value);
@@ -79,17 +77,14 @@ watch(successMessage, (msg) => {
 
 function handleExecute() {
   if (!isLoading.value && editorQuery.value.trim()) {
-    const startTime = Date.now();
-    
     actor.send({
       type: 'QUERY.EXECUTE',
       code: editorQuery.value
     });
     
-    // Track execution time
+    // Show success message after a delay if no error
     setTimeout(() => {
       if (!error.value) {
-        lastExecutionTime.value = Date.now() - startTime;
         successMessage.value = 'Query executed successfully';
       }
     }, 100);

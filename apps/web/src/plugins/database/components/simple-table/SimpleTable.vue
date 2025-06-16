@@ -6,6 +6,7 @@
       :result-type="resultType"
       :result-count="resultCount"
       :is-array-of-primitives="isArrayOfPrimitives"
+      :execution-time="executionTime"
     />
 
     <!-- Table Container -->
@@ -66,6 +67,7 @@ const actor = applicationState.system.get(id);
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
 const error = useSelector(actor, (state: any) => state.context.error);
+const executionTime = useSelector(actor, (state: any) => state.context.executionTime);
 
 // Result Analysis
 const { 

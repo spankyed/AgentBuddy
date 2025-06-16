@@ -25,7 +25,7 @@ export type DatabaseInternalEvents =
 
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
-  | { type: 'QUERY_RESULT'; result: any }
+  | { type: 'QUERY_RESULT'; result: any; executionTime: number }
   | { type: 'QUERY_ERROR'; error: string };
 
 export interface DatabaseContext {
@@ -68,10 +68,14 @@ export const databaseSystem = setup({
       const { code } = typeOf('EXECUTE_QUERY', event);
       
       try {
+        const startTime = Date.now();
         const result = await executeQuery(code);
+        const executionTime = Date.now() - startTime;
+        
         system.get(bus).send(emit(database, { 
           type: 'QUERY_RESULT',
-          result
+          result,
+          executionTime
         }));
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);

@@ -15,8 +15,13 @@
           Primitive value
         </template>
       </div>
-      <div v-if="queryResult" class="text-xs text-gray-500">
-        {{ resultType }}{{ isArrayOfPrimitives ? ' (primitives)' : '' }}
+      <div class="flex items-center gap-4 text-xs text-gray-500">
+        <span v-if="executionTime !== null" class="text-gray-500 dark:text-gray-400">
+          Executed in {{ formatExecutionTime(executionTime) }}
+        </span>
+        <span v-if="queryResult">
+          {{ resultType }}{{ isArrayOfPrimitives ? ' (primitives)' : '' }}
+        </span>
       </div>
     </div>
   </div>
@@ -30,7 +35,15 @@ interface Props {
   resultType: ResultType;
   resultCount: number;
   isArrayOfPrimitives: boolean;
+  executionTime: number | null;
 }
 
 defineProps<Props>();
+
+function formatExecutionTime(time: number): string {
+  if (time < 1000) {
+    return `${time}ms`;
+  }
+  return `${(time / 1000).toFixed(2)}s`;
+}
 </script> 
