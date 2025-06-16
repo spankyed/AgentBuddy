@@ -1,10 +1,11 @@
 import { setup } from 'xstate';
+import { z } from 'zod';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
+import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { EARS } from '@/shared/ears/types';
-import { z } from 'zod';
+import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
 import type { DatabaseQueryResult, DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './query-executor';
 
@@ -35,16 +36,18 @@ export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingD
 type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
 const typeOf = safeEvents<ReceivableEvents>();
 
-// Generate schema information from the EARS types
 function generateSchemaInfo(): DatabaseSchemaInfo {
-  // Get all entity types from the enum
-  const entities = Object.values(EARS.Entity).map(type => ({
-    type,
+  const entities = Object.values(EARS.Entity).map(type => ({ type }));
+  
+  const attributes = getAllAttributeKinds().map(kind => ({
+    kind: typeof kind === 'string' ? kind : String(kind),
+  }));
+  
+  const relations = getAllRelationKinds().map(kind => ({
+    kind: kind as EARS.RelKind,
   }));
 
-  // Get common attributes from the code
-
-  return { entities, attributes: [], relations: [] };
+  return { entities, attributes, relations };
 }
 
 export const databaseSystem = setup({
@@ -78,26 +81,24 @@ export const databaseSystem = setup({
       }
     },
   },
-}).createMachine(
-  {
-    id: database,
-    initial: 'idle',
-    context: ({ input }) => ({
-      databaseId: input,
-    }),
-    on: {
-      CLIENT_CONNECTED: {
-        actions: 'sendDatabaseStartupData',
-      },
+}).createMachine({
+  id: database,
+  initial: 'idle',
+  context: ({ input }) => ({
+    databaseId: input,
+  }),
+  on: {
+    CLIENT_CONNECTED: {
+      actions: 'sendDatabaseStartupData',
     },
-    states: {
-      idle: {
-        on: {
-          EXECUTE_QUERY: {
-            actions: 'executeQuery',
-          },
+  },
+  states: {
+    idle: {
+      on: {
+        EXECUTE_QUERY: {
+          actions: 'executeQuery',
         },
       },
     },
-  }
-); 
+  },
+}); 
