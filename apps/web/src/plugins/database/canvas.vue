@@ -4,7 +4,7 @@
     <div 
       ref="schemaPanel"
       class="relative flex-shrink-0 overflow-hidden bg-white border-r border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700"
-      :style="{ width: schemaPanelWidth + 'px' }"
+      :style="{ width: schemaPanelWidth + 'rem' }"
     >
       <SchemaPanel />
       
@@ -52,7 +52,7 @@ import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
 
 // Panel sizing
-const schemaPanelWidth = ref(280)
+const schemaPanelWidth = ref(15)
 const queryPanelHeight = ref(50) // percentage
 const minSchemaPanelWidth = 200
 const maxSchemaPanelWidth = 400
