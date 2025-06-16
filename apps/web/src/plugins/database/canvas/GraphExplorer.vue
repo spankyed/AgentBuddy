@@ -169,6 +169,8 @@ function extractLabel(id: string): string {
 async function handleLayoutChange(newLayout: string) {
   if (!graphInstance.value) return;
   
+  currentLayout.value = newLayout;
+  
   try {
     await graphInstance.value.updateLayout({ type: newLayout });
     await graphInstance.value.fitView({ padding: 20 });

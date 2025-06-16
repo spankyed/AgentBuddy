@@ -152,10 +152,10 @@ export function useGraphInstance(
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
           // G6 v5 handles resizing with autoResize: true
-          // Just ensure we maintain the fit
+          // Ensure we maintain the fit with proper padding
           requestAnimationFrame(() => {
             if (graph && !graph.destroyed) {
-              graph.fitView();
+              graph.fitView({ padding: 20 });
             }
           });
         }
@@ -167,18 +167,28 @@ export function useGraphInstance(
 
   async function updateGraphData(data: GraphData): Promise<void> {
     if (!graphInstance.value || graphInstance.value.destroyed) return;
-    const oldData = graphInstance.value.getData()
-
-    graphInstance.value.clear();
-
+    
     try {
+      // Store current layout type
+      const currentLayout = graphInstance.value.getLayout();
+      
+      // Clear existing data
+      graphInstance.value.clear();
+      
+      // Add new data
       graphInstance.value.addData(data);
+      
+      // Re-apply layout to properly position new nodes
+      graphInstance.value.layout(currentLayout);
+      
+      // Fit view to show all nodes
       graphInstance.value.fitView();
+      
+      // Render the updates
+      graphInstance.value.draw();
     } catch (error) {
       console.error('Failed to update graph data:', error);
     }
-
-    await graphInstance.value.draw();
   }
 
   function destroyGraph(): void {
