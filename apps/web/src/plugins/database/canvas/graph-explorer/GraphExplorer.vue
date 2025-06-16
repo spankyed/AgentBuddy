@@ -1,5 +1,5 @@
 <template>
-  <div class="graph-explorer flex flex-col h-full">
+  <div class="flex flex-col h-full graph-explorer">
     <!-- Header with Controls -->
     <GraphToolbar
       v-model:current-layout="currentLayout"
@@ -57,7 +57,7 @@ import LoadingState from './components/LoadingState.vue';
 import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
-import { id } from '../state';
+import { id } from '../../state';
 import { applicationState } from '@/app';
 
 // Props & Emits
