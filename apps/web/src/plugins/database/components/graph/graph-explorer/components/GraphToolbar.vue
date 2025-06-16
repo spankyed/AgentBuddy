@@ -93,10 +93,11 @@ import {
   Minimize2
 } from 'lucide-vue-next';
 import LayoutSelector from './LayoutSelector.vue';
+import type { Layout } from './LayoutSelector.vue';
 
 interface Props {
   currentLayout: string;
-  layouts: Array<{ value: string; label: string; icon?: any }>;
+  layouts: Layout[];
   hasData: boolean;
   hasGraphInstance: boolean;
   nodeCount: number;

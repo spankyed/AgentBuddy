@@ -46,8 +46,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import SchemaPanel from '../components/SchemaPanel.vue'
-import QueryEditor from '../components/QueryEditor.vue'
+import SchemaPanel from '../SchemaPanel.vue'
+import QueryEditor from '../QueryEditor.vue'
 import GraphExplorer from './graph-explorer/GraphExplorer.vue'
 
 // Panel sizing

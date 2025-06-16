@@ -73,7 +73,7 @@ export const AVAILABLE_LAYOUTS = [
     name: 'Radial', 
     description: 'Radial layout for hierarchical visualization' 
   }
-] as const;
+];
 
 export const GRAPH_LIMITS = {
   minZoom: 0.3,

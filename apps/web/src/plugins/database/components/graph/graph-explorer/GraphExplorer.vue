@@ -3,7 +3,7 @@
     <!-- Header with Controls -->
     <GraphToolbar
       v-model:current-layout="currentLayout"
-      :layouts="AVAILABLE_LAYOUTS"
+      :layouts="[...AVAILABLE_LAYOUTS]"
       :has-data="hasData"
       :has-graph-instance="!!graphInstance"
       :node-count="nodeCount"

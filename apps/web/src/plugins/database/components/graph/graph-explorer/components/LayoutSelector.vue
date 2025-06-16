@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-interface Layout {
+export interface Layout {
   type: string;
   name: string;
   description: string;
