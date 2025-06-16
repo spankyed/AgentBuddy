@@ -25,10 +25,10 @@
       />
     </div>
     
-    <QueryEditorStatusBar
+    <!-- <QueryEditorStatusBar
       :cursor-line="cursorLine"
       :cursor-col="cursorCol"
-    />
+    /> -->
   </div>
 </template>
 
@@ -40,7 +40,7 @@ import { applicationState } from '@/app';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import CodeMirrorEditor from './query-editor/CodeMirrorEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
-import QueryEditorStatusBar from './query-editor/QueryEditorStatusBar.vue';
+// import QueryEditorStatusBar from './query-editor/QueryEditorStatusBar.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
@@ -50,8 +50,8 @@ const error = useSelector(actor, (state) => state.context.error);
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');
 const successMessage = ref('');
-const cursorLine = ref(1);
-const cursorCol = ref(1);
+// const cursorLine = ref(1);
+// const cursorCol = ref(1);
 const editorQuery = ref(currentQuery.value);
 
 // Sync editor query with state
@@ -109,7 +109,7 @@ function handleExampleSelect(query: string) {
 }
 
 function updateCursorPosition({ line, col }: { line: number; col: number }) {
-  cursorLine.value = line;
-  cursorCol.value = col;
+  // cursorLine.value = line;
+  // cursorCol.value = col;
 }
 </script> 
