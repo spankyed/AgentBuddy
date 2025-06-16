@@ -13,18 +13,18 @@ export const queryExamples: QueryExample[] = [
   },
   {
     title: 'Recent Messages',
-    description: 'Get recent messages in reverse order',
-    query: `return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'text', 'timestamp']);`
+    description: 'Get messages ordered by timestamp',
+    query: `return qx(EARS.Entity.Message).orderBy('timestamp', 'desc').limit(10).pick(['id', 'text', 'timestamp']);`
   },
   {
     title: 'Active Threads Query',
     description: 'Get active threads ordered by timestamp',
-    query: `return qx(EARS.Entity.Thread).where('status', 'active').orderBy('timestamp', 'desc').limit(5).pickAll();`
+    query: `return qx(EARS.Entity.Thread).where('status', 'active').limit(5).pickAll();`
   },
   {
     title: 'Ordered Tags Query',
-    description: 'Get tags ordered by name',
-    query: `return qx(EARS.Entity.Tag).orderBy('name').pick(['id', 'name', 'color']);`
+    description: 'Using ofType, get tags ordered by name',
+    query: `return qx().ofType(EARS.Entity.Tag).orderBy('name').pick(['id', 'name', 'color']);`
   },
   // {
   //   title: 'Query All Threads',
