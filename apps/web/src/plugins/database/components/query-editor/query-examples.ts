@@ -93,8 +93,8 @@ return Array.from(grouped.entries()).map(([status, items]) => ({
   },
   {
     title: 'Get Entity IDs Only',
-    description: 'Retrieve just the IDs of active agents',
-    query: `return qx(EARS.Entity.Agent).where('active', true).ids();`
+    description: 'Retrieve just the IDs of active threads',
+    query: `return qx(EARS.Entity.Thread).where('active', true).ids();`
   },
 
   // Method Chaining Order
