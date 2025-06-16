@@ -6,12 +6,12 @@
     />
     
     <div class="flex items-center gap-2">
-      <KeyboardHint />
-      
       <QueryEditorMessages
         :error="error"
         :success-message="successMessage"
       />
+      <KeyboardHint />
+      
       
       <QueryEditorActions
         :is-loading="isLoading"
