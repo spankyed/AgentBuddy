@@ -9,7 +9,7 @@
     />
 
     <!-- Table Container -->
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto custom-scrollbar">
       <!-- State displays -->
       <ResultStates 
         v-if="currentState !== 'data'"
@@ -84,4 +84,48 @@ const currentState = computed(() => {
   if (resultType.value === 'array' && resultCount.value === 0) return 'empty-array';
   return 'data';
 });
-</script> 
+</script>
+
+<style scoped>
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.3);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(155, 155, 155, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 155, 155, 0.3) transparent;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+}
+</style> 
