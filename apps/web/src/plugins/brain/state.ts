@@ -1,7 +1,7 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import type {
-  OutgoingDatabaseEvents,
+  OutgoingBrainEvents,
 } from '@abuddy/api'
 
 export const id = 'brain';
@@ -10,12 +10,10 @@ export type BrainState = ActorRefFrom<typeof brainState>
 // biome-ignore lint/suspicious/noEmptyInterface: <explanation>
 export interface BrainContext {}
 
-type SystemEvent = OutgoingDatabaseEvents
+type SystemEvent = OutgoingBrainEvents
 
 type UIEvent =
-  | { type: 'QUERY.EXECUTE'; code: string }
-  | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
-  | { type: 'QUERY.UPDATE'; code: string }
+  | { type: 'TRACK.CLICK'; id: string }
 
 export type BrainEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<BrainEvents>()
