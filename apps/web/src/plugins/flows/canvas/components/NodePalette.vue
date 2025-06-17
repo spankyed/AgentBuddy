@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import {
+  Activity,
   Workflow,
   Radio,
   Zap,
@@ -52,6 +53,7 @@ const props = withDefaults(defineProps<{
     { type: 'query', label: 'Query', icon: Search },
     { type: 'decision', label: 'Decision', icon: Split },
     { type: 'transform', label: 'Transform', icon: Shuffle },
+    { type: 'keep-alive', label: 'Keep Alive', icon: Activity },
   ]
 })
 
