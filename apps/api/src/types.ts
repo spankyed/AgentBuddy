@@ -6,6 +6,9 @@ export type * from '@/shared/types';
 export type { OutgoingAgentEvents } from './systems/agent/system';
 export type * from './systems/agent/types';
 
+export type { OutgoingBrainEvents } from './systems/brain/system';
+export type * from './systems/brain/types';
+
 export type { OutgoingThreadsEvents } from './systems/threads/system';
 export type * from './systems/threads/types';
 

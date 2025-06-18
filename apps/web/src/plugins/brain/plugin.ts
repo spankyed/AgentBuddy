@@ -1,6 +1,6 @@
-import type { Plugin } from "@/core/types/index.ts";
+import type { Plugin } from "@/core/types";
 import { Brain } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state, { id } from './state';
 import canvas from './canvas.vue';
 // import panel from './panel.vue';
 
