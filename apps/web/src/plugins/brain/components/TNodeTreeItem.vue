@@ -22,7 +22,7 @@
       
       <!-- Node Type Icon -->
       <div
-        class="w-3 h-3 rounded-full"
+        class="w-0.5 h-4 rounded-sm transition-all duration-200 group-hover:h-5"
         :class="nodeTypeColor"
       />
       
