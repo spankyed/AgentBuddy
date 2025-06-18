@@ -2,17 +2,18 @@ import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
+import Brain from './brain/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
   Code, 
   AtSign, 
-  Brain,
   Sparkle,
   Workflow,
   Bird,
   ListTodo,
-  NotebookText
+  NotebookText,
+  LandPlot
 } from 'lucide-vue-next';
 
 export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
@@ -26,6 +27,7 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
+  mockPlugin({ id: 'actions', label: 'Actions', icon: LandPlot, }),
   mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
@@ -37,7 +39,7 @@ const mockPlugins = [
 export default [
   Threads,
   Agent,
-  mockPlugin({ id: 'brain', label: 'Brain', icon: Brain, }),
+  Brain,
   Flows,
   Database,
   ...mockPlugins,
