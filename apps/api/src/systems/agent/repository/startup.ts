@@ -25,8 +25,8 @@ export default function agentStartupData(): AgentStartupData {
       messages: qx(currentThread.id)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          EARS.Entity.Message,
           ["id", "text", "sender", "timestamp"] as const,
+          EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
       contextItems: rows.entity.filter(byEntityType(EARS.Entity.ContextItem)),
       canvasContent: rows.entity.filter(byEntityType(EARS.Entity.CanvasItem))[0],

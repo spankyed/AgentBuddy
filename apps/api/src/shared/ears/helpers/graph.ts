@@ -11,7 +11,7 @@ const neighbours = (
   asSource = true,
 ): EARS.EntityId[] =>
   kinds.flatMap(k =>
-    qx(id).linksTo(k, EARS.Entity.Thread, asSource).ids(),
+    qx(id).linksTo(k, undefined, asSource).ids(),
   );
 
 /*━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -26,7 +26,7 @@ export function descendants(
 
   while (stack.length) {
     const node = stack.pop()!;
-    for (const child of qx(node).linksTo(relKind, EARS.Entity.Thread).ids()) {
+    for (const child of qx(node).linksTo(relKind).ids()) {
       if (!seen.has(child)) {
         seen.add(child);
         stack.push(child);
@@ -47,7 +47,7 @@ export function ancestors(
   while (stack.length) {
     const node = stack.pop()!;
     for (const parent of qx(node)
-      .linksTo(relKind, EARS.Entity.Thread, /* asSource = */ false)
+      .linksTo(relKind, undefined, /* asSource = */ false)
       .ids()) {
       if (!seen.has(parent)) {
         seen.add(parent);
@@ -70,7 +70,7 @@ export function rootParent(
   // walk up until we can't
   while (true) {
     const parent = qx(cur)
-      .linksTo(relKind, EARS.Entity.Thread, /* asSource = */ false)
+      .linksTo(relKind, undefined, /* asSource = */ false)
       .first();
     if (!parent) break;
     cur = parent;
@@ -212,11 +212,9 @@ export function shortestPath(src: EARS.EntityId, tgt: EARS.EntityId, kinds: EARS
  *━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━*/
 export function leaves(
   kind: EARS.RelKind,
-  filterType: EARS.Entity = EARS.Entity.Thread,
+  filterType?: EARS.Entity,
 ): EARS.EntityId[] {
-  const all = new Set<EARS.EntityId>(
-    qx(filterType).ids(),
-  );
+  const all = new Set<EARS.EntityId>(qx(filterType).ids());
   const hasOut = new Set<EARS.EntityId>();
 
   for (const id of all) {
@@ -241,7 +239,7 @@ export function lowestCommonAncestor(
     while (cur) {
       path.push(cur);
       cur = qx(cur)
-        .linksTo(treeKind, EARS.Entity.Thread, false)
+        .linksTo(treeKind, undefined, false)
         .first();
     }
     return path;

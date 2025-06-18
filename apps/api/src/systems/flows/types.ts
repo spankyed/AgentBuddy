@@ -1,5 +1,4 @@
-import type { BaseEntity } from '@/shared/types';
-import { EARS } from '@/shared/ears/types';
+import { BaseEntity, EARS } from '@/shared/ears/types';
 import { flowRows } from './repository/mock-data';
 
 

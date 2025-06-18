@@ -20,8 +20,8 @@ export default function threadStartupData(): ThreadStartupData {
         // grab tags via relations
         const tags = qx(id).linksPick(
           EARS.RelKind.HAS,
-          EARS.Entity.Tag,
           ["name", "color", "timestamp"] as const,
+          EARS.Entity.Tag,
         ) as ThreadTagItem[];
 
         return {

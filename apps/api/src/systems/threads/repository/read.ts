@@ -24,8 +24,8 @@ export const getLinkedThreads = (threadId: EARS.EntityId) =>
   qx(threadId)
     .linksPick(
       ThreadRelations,
+      threadCols,
       EARS.Entity.Thread,
-      threadCols
     );
 
 /*─────────────────────────────────────────────────────────────

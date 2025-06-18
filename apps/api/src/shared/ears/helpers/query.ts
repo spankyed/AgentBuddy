@@ -106,12 +106,12 @@ export const qx = (
     /*─ graph traversal retains isolation ─*/
     linksTo: (
       relKinds: MaybeArr<string>,
-      tgtType: MaybeArr<EARS.Entity>,
+      tgtType?: MaybeArr<EARS.Entity>,
       asSrc = true,
     ) => {
       const kinds = asArr(relKinds);
-      const targets = asArr(tgtType);
-      const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
+      const targets = tgtType ? asArr(tgtType) : [];
+      const matches = (id: EARS.EntityId) => !targets.length || targets.some(t => hasPrefix(t)(id));
 
       const out = new Set<EARS.EntityId>();
       for (const src of ids) for (const k of kinds) {
@@ -127,12 +127,12 @@ export const qx = (
     /*─ low‑level links array ─*/
     links: <K extends string>(
       relKinds: K | readonly K[],
-      tgtType: MaybeArr<EARS.Entity>,
+      tgtType?: MaybeArr<EARS.Entity>,
       asSrc = true,
     ): Array<{ relation: K; id: EARS.EntityId }> => {
       const kinds = asArr(relKinds);
-      const targets = asArr(tgtType);
-      const matches = (id: EARS.EntityId) => targets.some(t => hasPrefix(t)(id));
+      const targets = tgtType ? asArr(tgtType) : [];
+      const matches = (id: EARS.EntityId) => !targets.length || targets.some(t => hasPrefix(t)(id));
 
       const out: Array<{ relation: K; id: EARS.EntityId }> = [];
       for (const src of ids) for (const k of kinds)
@@ -183,8 +183,8 @@ export const qx = (
     /*─ traverse + project in one call ─*/
     linksPick: <K extends string, A extends readonly string[]>(
       relKinds: K | readonly K[],
-      tgtType: MaybeArr<EARS.Entity>,
       fields: A,
+      tgtType?: MaybeArr<EARS.Entity>,
     ) => {
       const manyKinds = Array.isArray(relKinds) && relKinds.length > 1;
       return self.links(relKinds, tgtType).map(({ relation, id }) => ({

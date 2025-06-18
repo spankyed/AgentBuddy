@@ -31,8 +31,8 @@ export const getFlowNodes = (flowId: EARS.EntityId) =>
   qx(flowId)
     .linksPick(
       EARS.RelKind.CONTAINS,
+      fields,
       EARS.Entity.Node,
-      fields
     );
 
 export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {

@@ -20,7 +20,6 @@ export default function flowsStartupData(): FlowsStartupData {
   const nodes = qx(rootFlow?.id ?? 'Flow-1')
     .linksPick(
       EARS.RelKind.CONTAINS,
-      [EARS.Entity.Node],          // we only want the node children
       [
         'label',
         'nodeType',
@@ -28,6 +27,7 @@ export default function flowsStartupData(): FlowsStartupData {
         'x',
         'y',
       ] as const,
+      [EARS.Entity.Node],          // we only want the node children
   ) as Partial<NodeEntity>[];
 
   const nodeIds = nodes.map(n => n.id!).filter(Boolean);
