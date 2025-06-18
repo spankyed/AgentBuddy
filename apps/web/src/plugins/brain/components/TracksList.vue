@@ -1,9 +1,9 @@
 <template>
-  <div class="overflow-y-auto h-full">
+  <div class="h-full overflow-y-auto">
     <div 
       v-for="track in tracks" 
       :key="track.id"
-      class="group cursor-pointer hover:bg-neutral-700/30 transition-colors duration-150"
+      class="transition-colors duration-150 cursor-pointer group hover:bg-neutral-700/30"
       @click="$emit('track-click', track.id)"
     >
       <div class="px-4 py-3 border-b border-neutral-700/50">
