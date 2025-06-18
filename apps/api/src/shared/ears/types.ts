@@ -2,7 +2,7 @@
  * types.ts – EARS entities, relations, roles & attributes (rev‑4)
  *───────────────────────────────────────────────────────────────────────────*/
 
-import { FlowEntity, NodeEntity, TrackEntity } from "@/types";
+import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
 import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "../types";
 
 export namespace EARS {
@@ -20,8 +20,7 @@ export namespace EARS {
     CanvasItem = 'CanvasItem',
     Flow = 'Flow',
     Node = 'Node',
-    Track = 'Track',
-    // Task     = 'Task',
+    TNode = 'TNode',
   }
   export type EntityId = `${Entity}-${string}`;
 
@@ -31,7 +30,6 @@ export namespace EARS {
   const RelKindValues = {
     PARENT_OF   : 'parent_of',
     CONTAINS   : 'contains',
-    SPAWNED    : 'spawned',
     REPLIED_TO : 'replied_to',
     HAS: 'has',
     
@@ -42,7 +40,10 @@ export namespace EARS {
     BLOCKS     : 'blocks',
     DEPENDS_ON : 'depends_on',
     RELATES_TO : 'relates_to',
-    DUPLICATES : 'duplicates',
+    DUPLICATES: 'duplicates',
+
+    SPAWNED    : 'spawned',
+    TRACKED    : 'tracked',
   } as const;
 
   const _relCustom = <T extends string>(k: T) => k as T & RelKind;
@@ -137,4 +138,4 @@ export type Entity =
   | TagEntity
   | FlowEntity
   | NodeEntity
-  | TrackEntity
+  | TNodeEntity

@@ -104,8 +104,8 @@ describe('qx – fluent query DSL', () => {
   it('linksPick() projects linked nodes with selected fields', () => {
     const rows = qx('Node-1').linksPick(
       EARS.RelKind.CONSUMED_BY,
-      EARS.Entity.Node,
       ['label', 'nodeType'],
+      EARS.Entity.Node,
     );
     expect(rows).toEqual([
       { id: 'Node-3', label: 'Message Type', nodeType: 'decision' },
