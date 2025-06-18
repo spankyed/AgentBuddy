@@ -263,6 +263,7 @@ export const qx = (
 
     /*─ misc extractors ─*/
     ids: () => [...ids],
+    id: () => ids[0] ?? null,
     count: () => ids.length,
     first: () => ids[0] ?? null,
     last: () => (ids.length ? ids[ids.length - 1] : null),
