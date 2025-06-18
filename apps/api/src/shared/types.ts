@@ -1,12 +1,4 @@
-import { FlowEntity, NodeEntity } from '@/systems/flows/types';
-import type { EARS } from './ears/types';
-
-export interface BaseEntity {
-  id: EARS.EntityId;
-  entityType: EARS.Entity;
-  createdAt: number;
-  updatedAt?: number;
-}
+import type { BaseEntity, EARS, Entity } from './ears/types';
 
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
@@ -46,10 +38,6 @@ export interface TagEntity extends BaseEntity {
   color?: string;
 }
 
-
-// ! remove after move from mock-data
-export type Entity =
-  MessageEntity | ThreadEntity | ContextItemEntity | CanvasContentEntity | TagEntity | FlowEntity | NodeEntity;
 export interface Rows {
   entity: Entity[];
   role: RoleAssignment[];

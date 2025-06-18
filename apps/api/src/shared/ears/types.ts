@@ -2,6 +2,9 @@
  * types.ts – EARS entities, relations, roles & attributes (rev‑4)
  *───────────────────────────────────────────────────────────────────────────*/
 
+import { FlowEntity, NodeEntity, TrackEntity } from "@/types";
+import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "../types";
+
 export namespace EARS {
   /*-------------------------------------------------------------------------*\
   | 1 ▸ Entity identifiers                                                   |
@@ -117,3 +120,21 @@ export namespace EARS {
     rels?  : { kind: EARS.RelKind; target: Blueprint | EARS.EntityId; info?: unknown }[];
   };
 }
+
+export interface BaseEntity {
+  id: EARS.EntityId;
+  entityType: EARS.Entity;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// ! remove after move from mock-data
+export type Entity =
+  MessageEntity
+  | ThreadEntity
+  | ContextItemEntity
+  | CanvasContentEntity
+  | TagEntity
+  | FlowEntity
+  | NodeEntity
+  | TrackEntity
