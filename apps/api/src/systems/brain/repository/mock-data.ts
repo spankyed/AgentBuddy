@@ -65,7 +65,7 @@ export const brainRows: Rows = {
       id: 'TNode-6',
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
-      label: 'Listen: User Message',
+      label: 'User Message',
       stepNodeId: 'Node-1', // ! Should use INSTANCE_OF relation instead
       stepNodeType: 'listen',
       status: 'completed',
@@ -76,7 +76,7 @@ export const brainRows: Rows = {
       id: 'TNode-7',
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
-      label: 'Decision: Message Type',
+      label: 'Message Type',
       stepNodeId: 'Node-3',
       stepNodeType: 'decision',
       status: 'completed',
