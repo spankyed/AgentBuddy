@@ -29,7 +29,8 @@ export interface NodeConfig {
 }
 
 // Complete node configuration mapping
-export const nodeConfigs: Record<NodeKind, NodeConfig> = {
+// Using partial record to handle all possible NodeKind values
+export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   flow: {
     type: 'flow',
     label: 'Flow',
@@ -140,14 +141,14 @@ export const nodeConfigs: Record<NodeKind, NodeConfig> = {
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
   }
-}
+} as const
 
 // Canvas-specific styling for node types
-export const getNodeCanvasClasses = (nodeType: NodeKind, stepNodeType?: string): string => {
+export const getNodeCanvasClasses = (nodeType: NodeKind | string, stepNodeType?: string): string => {
   const base = 'px-4 py-2 rounded-md border relative transition-all'
-  const config = nodeConfigs[stepNodeType as NodeKind] || nodeConfigs[nodeType]
+  const type = (stepNodeType || nodeType) as string
   
-  switch (nodeType) {
+  switch (type) {
     case 'flow':
       return `${base} bg-purple-500/20 border-purple-500/50 text-purple-200`
     case 'listen':
@@ -171,10 +172,10 @@ export const getNodeCanvasClasses = (nodeType: NodeKind, stepNodeType?: string):
 }
 
 // Helper to get icon background for dots/circles
-export const getNodeIconDotClasses = (nodeType: NodeKind, stepNodeType?: string): string => {
-  const config = nodeConfigs[stepNodeType as NodeKind] || nodeConfigs[nodeType]
+export const getNodeIconDotClasses = (nodeType: NodeKind | string, stepNodeType?: string): string => {
+  const type = (stepNodeType || nodeType) as string
   
-  switch (nodeType) {
+  switch (type) {
     case 'flow':
       return 'bg-purple-500'
     case 'listen':
@@ -198,8 +199,8 @@ export const getNodeIconDotClasses = (nodeType: NodeKind, stepNodeType?: string)
 }
 
 // Export helper functions for easy access
-export const getNodeConfig = (nodeType: NodeKind): NodeConfig => {
-  return nodeConfigs[nodeType]
+export const getNodeConfig = (nodeType: NodeKind | string): NodeConfig | undefined => {
+  return nodeConfigs[nodeType as NodeKind]
 }
 
 export const getAllNodeTypes = (): NodeKind[] => {
@@ -207,9 +208,9 @@ export const getAllNodeTypes = (): NodeKind[] => {
 }
 
 export const getPaletteItems = () => {
-  return Object.values(nodeConfigs).map(config => ({
-    type: config.type,
-    label: config.label,
-    icon: config.icon
+  return Object.values(nodeConfigs).filter(Boolean).map(config => ({
+    type: config!.type,
+    label: config!.label,
+    icon: config!.icon
   }))
 } 

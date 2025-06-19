@@ -17,15 +17,19 @@ const componentMap = {
 }
 
 export const nodeTypes = Object.entries(nodeConfigs).reduce((acc, [nodeType, config]) => {
-  const componentName = config.component
-  if (componentName && componentMap[componentName as keyof typeof componentMap]) {
-    acc[nodeType as NodeKind] = componentMap[componentName as keyof typeof componentMap]
+  if (config) {
+    const componentName = config.component
+    if (componentName && componentMap[componentName as keyof typeof componentMap]) {
+      acc[nodeType as NodeKind] = componentMap[componentName as keyof typeof componentMap]
+    }
   }
   return acc
 }, {} as Record<NodeKind, any>)
 
 // Define connection rules for each node type - now pulled from config
 export const nodeConnectionRules = Object.entries(nodeConfigs).reduce((acc, [nodeType, config]) => {
-  acc[nodeType as NodeKind] = config.connectionRules
+  if (config) {
+    acc[nodeType as NodeKind] = config.connectionRules
+  }
   return acc
 }, {} as Record<NodeKind, { inputs: number; outputs: number }>)
