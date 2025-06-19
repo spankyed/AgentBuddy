@@ -1,5 +1,6 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import type { NodeEntity, EdgeEntity, FlowEntity } from '@/systems/flows/types';
+import type { NodeEntity, EdgeEntity, FlowEntity, ListenNode, FlowNode } from '@/systems/flows/types';
+import type { ActorRefFrom } from 'xstate';
 
 export interface TNodeEntity extends BaseEntity {
   entityType: EARS.Entity.TNode;
@@ -44,4 +45,49 @@ export interface EventReceived {
   eventType: string;
   parentTNodeId: EARS.EntityId;
   payload?: any;
+}
+
+// Brain Runner Types
+export interface ExecutionContext {
+  [key: string]: any;
+  eventPayload?: any;
+  previousResults?: any[];
+}
+
+export interface BrainRunnerContext {
+  rootFlow: FlowEntity;
+  eventNodes: ListenNode[];
+  currentTNode?: TNodeEntity;
+  systemActor?: any;
+}
+
+export interface FlowMachineContext {
+  flowId: EARS.EntityId;
+  parentTNodeId?: EARS.EntityId;
+  eventNodes: ListenNode[];
+  executionContext: ExecutionContext;
+  systemActor?: any;
+  activeChildren: Map<string, ActorRefFrom<any>>;
+}
+
+export interface StepMachineContext {
+  node: NodeEntity;
+  parentTNodeId?: EARS.EntityId;
+  tNodeId?: EARS.EntityId;
+  executionContext: ExecutionContext;
+  systemActor?: any;
+}
+
+export interface ChildCompletedEvent {
+  type: 'CHILD_COMPLETED';
+  childId: EARS.EntityId;
+  result?: any;
+  nextNode?: NodeEntity;
+  parentTNodeId: EARS.EntityId;
+}
+
+export interface StepEvent {
+  type: 'EXECUTE' | 'COMPLETE' | 'ERROR';
+  result?: any;
+  error?: any;
 } 
