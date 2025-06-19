@@ -167,7 +167,7 @@ export const chatFlow: Rows = {
     },
     {
       entityId: "Node-b3",
-      role: EARS.RoleKind.Custom("latest_node"),
+      role: EARS.RoleKind.Custom("final_node"),
     },
   ],
 
@@ -186,6 +186,9 @@ export const chatFlow: Rows = {
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b9", info: {} },
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b10", info: {} },
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b11", info: {} },
+
+    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b1", info: {} },
+    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b2", info: {} },
 
     /* Listen node outputs */
     { source: "Node-b1", kind: EARS.RelKind.RESPONDER, target: "Node-b3", info: {} },

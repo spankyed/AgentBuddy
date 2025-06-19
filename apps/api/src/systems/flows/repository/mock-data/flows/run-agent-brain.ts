@@ -1,22 +1,93 @@
 import { EARS } from '@/shared/ears/types';
 import type { Rows } from '@/shared/types';
+import { FlowEntity } from '@/types';
 
 const nowMs = Date.now();
+
+const flow = {
+  id: "Flow-a",
+  shortCode: "F-a",
+  entityType: EARS.Entity.Flow,
+  createdAt: nowMs - 1_000,
+  label: "Run Agent Brain",
+  flowType: "workflow",
+} as FlowEntity;
 
 export const runAgentBrainFlow: Rows = {
   /*──────────────────────────────────────────*
    * Core entities                            *
    *──────────────────────────────────────────*/
   entity: [
-    /* Graph container */
+    flow,
+    /* Event Listeners */
     {
-      id: "Flow-a",
-      shortCode: "F-a",
-      entityType: EARS.Entity.Flow,
-      createdAt: nowMs - 1_000,
-      label: "Run Agent Brain",
-      flowType: "workflow",
+      id: "Node-a1",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "listen",
+      label: "Flow Entry",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+      mode: "entry",
+      eventType: "flow.entry",
     },
+    {
+      id: "Node-a2",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "listen",
+      label: "User Message",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+      mode: "entry",
+      eventType: "user.message",
+    },
+    {
+      id: "Node-a3",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "listen",
+      label: "Database Query Prompt",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+      mode: "entry",
+      eventType: "database.query.prompt",
+    },
+    {
+      id: "Node-a4",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "keep_alive",
+      label: "Keep Alive",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+    },
+    {
+      id: "Node-a5",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "action",
+      label: "save to db",
+      actionName: "save_entity",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+    },
+    {
+      id: "Node-a6",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "llm",
+      label: "run agent brain",
+      prompt: "Respond with a query like `return qx(EARS.Entity.Thread).limit(10).pickAll();`",
+      x: 100,
+      y: 100,
+      color: "#1E88E5", // blue
+    }
   ],
 
   /*──────────────────────────────────────────*
@@ -32,5 +103,20 @@ export const runAgentBrainFlow: Rows = {
   /*──────────────────────────────────────────*
    * Relationships                            *
    *──────────────────────────────────────────*/
-  relation: [],
+  relation: [
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a1", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a2", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a3", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a4", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a5", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a6", info: {} },
+
+    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a1", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a3", info: {} },
+
+    { source: "Node-a1", kind: EARS.RelKind.RESPONDER, target: "Node-a4", info: {} },
+    { source: "Node-a2", kind: EARS.RelKind.RESPONDER, target: "Node-a5", info: {} },
+    { source: "Node-a3", kind: EARS.RelKind.RESPONDER, target: "Node-a6", info: {} },
+  ],
 }; 
