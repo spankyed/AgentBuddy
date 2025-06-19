@@ -21,18 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Activity,
-  Workflow,
-  Radio,
-  Zap,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Split,
-  Shuffle
-} from 'lucide-vue-next'
+import { getPaletteItems } from '../../config/node-config'
 
 interface PaletteItem {
   type: string
@@ -43,18 +32,7 @@ interface PaletteItem {
 const props = withDefaults(defineProps<{
   paletteItems?: PaletteItem[]
 }>(), {
-  paletteItems: () => [
-    { type: 'flow', label: 'Flow', icon: Workflow },
-    { type: 'listen', label: 'Listen', icon: Radio },
-    { type: 'fire', label: 'Fire', icon: Zap },
-    { type: 'action', label: 'Action', icon: Play },
-    { type: 'create', label: 'Create', icon: Plus },
-    { type: 'update', label: 'Update', icon: RefreshCw },
-    { type: 'query', label: 'Query', icon: Search },
-    { type: 'decision', label: 'Decision', icon: Split },
-    { type: 'transform', label: 'Transform', icon: Shuffle },
-    { type: 'keep-alive', label: 'Keep Alive', icon: Activity },
-  ]
+  paletteItems: () => getPaletteItems()
 })
 
 const emit = defineEmits<{

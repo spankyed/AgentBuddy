@@ -62,6 +62,8 @@ export default {
 import { computed } from 'vue';
 import { Handle, Position } from '@vue-flow/core';
 import StatusIndicator from './StatusIndicator.vue';
+import { getNodeCanvasClasses, getNodeIconDotClasses } from '../../flows/config/node-config';
+import type { NodeKind } from '@abuddy/api';
 
 interface Props {
   data: {
@@ -76,68 +78,21 @@ interface Props {
 const props = defineProps<Props>();
 
 const nodeClasses = computed(() => {
-  const base = 'px-4 py-2 rounded-md border relative transition-all';
-  
-  switch (props.data.nodeType) {
-    case 'flow':
-      return `${base} bg-purple-500/20 border-purple-500/50 text-purple-200`;
-    case 'event':
-      return `${base} bg-blue-500/20 border-blue-500/50 text-blue-200`;
-    case 'step':
-      // Color based on step type
-      switch (props.data.stepNodeType) {
-        case 'listen':
-          return `${base} bg-blue-500/20 border-blue-500/50 text-blue-200`;
-        case 'query':
-          return `${base} bg-cyan-500/20 border-cyan-500/50 text-cyan-200`;
-        case 'create':
-        case 'update':
-          return `${base} bg-purple-500/20 border-purple-500/50 text-purple-200`;
-        case 'fire':
-          return `${base} bg-red-500/20 border-red-500/50 text-red-200`;
-        case 'decision':
-          return `${base} bg-orange-500/20 border-orange-500/50 text-orange-200`;
-        case 'transform':
-          return `${base} bg-green-500/20 border-green-500/50 text-green-200`;
-        case 'flow':
-          return `${base} bg-purple-500/20 border-purple-500/50 text-purple-200`;
-        default:
-          return `${base} bg-neutral-700 border-neutral-600 text-neutral-300`;
-      }
-    default:
-      return `${base} bg-neutral-700 border-neutral-600 text-neutral-300`;
+  if (props.data.nodeType === 'event') {
+    return 'px-4 py-2 rounded-md border relative transition-all bg-blue-500/20 border-blue-500/50 text-blue-200';
   }
+  
+  const nodeType = (props.data.nodeType === 'step' ? props.data.stepNodeType : props.data.nodeType) as NodeKind;
+  return getNodeCanvasClasses(nodeType);
 });
 
 const iconClasses = computed(() => {
-  switch (props.data.nodeType) {
-    case 'flow':
-      return 'bg-purple-500';
-    case 'event':
-      return 'bg-blue-500';
-    case 'step':
-      switch (props.data.stepNodeType) {
-        case 'listen':
-          return 'bg-blue-500';
-        case 'query':
-          return 'bg-cyan-500';
-        case 'create':
-        case 'update':
-          return 'bg-purple-500';
-        case 'fire':
-          return 'bg-red-500';
-        case 'decision':
-          return 'bg-orange-500';
-        case 'transform':
-          return 'bg-green-500';
-        case 'flow':
-          return 'bg-purple-500';
-        default:
-          return 'bg-neutral-500';
-      }
-    default:
-      return 'bg-neutral-500';
+  if (props.data.nodeType === 'event') {
+    return 'bg-blue-500';
   }
+  
+  const nodeType = (props.data.nodeType === 'step' ? props.data.stepNodeType : props.data.nodeType) as NodeKind;
+  return getNodeIconDotClasses(nodeType);
 });
 </script>
 
