@@ -120,7 +120,7 @@
     <div class="p-3 border-t border-neutral-200 dark:border-neutral-700">
       <button
         @click="collapseAll"
-        class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+        class="w-full px-1 py-2 text-sm transition-colors rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
       >
         <FoldVertical class="inline-block w-4 h-4 mr-2" />
         Collapse All
