@@ -41,7 +41,7 @@ export const runAgentBrainFlow: Rows = {
       x: 100,
       y: 100,
       color: "#1E88E5", // blue
-      mode: "entry",
+      mode: "internal",
       eventType: "user.message",
     },
     {
@@ -53,7 +53,7 @@ export const runAgentBrainFlow: Rows = {
       x: 100,
       y: 100,
       color: "#1E88E5", // blue
-      mode: "entry",
+      mode: "internal",
       eventType: "database.query.prompt",
     },
     {
@@ -98,6 +98,10 @@ export const runAgentBrainFlow: Rows = {
     {
       entityId: "Flow-a",
       role: EARS.RoleKind.Custom("root_flow"),
+    },
+    {
+      entityId: "Node-a1",
+      role: EARS.RoleKind.Custom("entry_event"),
     },
   ],
 
