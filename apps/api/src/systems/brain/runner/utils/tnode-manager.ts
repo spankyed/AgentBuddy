@@ -3,8 +3,24 @@ import { tx } from '@/shared/ears/helpers/transaction';
 import { emit } from '@/shared/utils/actor-helpers';
 import { bus } from '@/systems/_backend/backend';
 import { brain } from '@/systems/brain/system';
-import type { TNodeEntity, EventReceived } from '@/systems/brain/types';
-import type { ListenNode } from '@/systems/flows/types';
+import type { TNodeEntity } from '@/systems/brain/types';
+import type { ListenNode, NodeEntity } from '@/systems/flows/types';
+
+/**
+ * Emit a TNode event
+ */
+function emitTNodeEvent(
+  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
+  data: any,
+  systemActor?: any
+) {
+  if (!systemActor) return;
+  
+  systemActor.system.get(bus).send(emit(brain, {
+    type: eventType,
+    ...data
+  }));
+}
 
 /**
  * Create an event TNode and persist it
@@ -14,39 +30,35 @@ export function createEventTNode(
   parentTNodeId?: EARS.EntityId, 
   systemActor?: any
 ): TNodeEntity {
+  const now = Date.now();
+  const tNodeId = tx(EARS.Entity.TNode)
+    .batchPut({
+      nodeType: 'event',
+      label: eventNode.label,
+      eventType: eventNode.eventType!,
+      status: 'active',
+      startedAt: now,
+    })
+    .id();
+  
+  // Create TRACKED relationship from parent flow
+  if (parentTNodeId) {
+    tx(parentTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
+  }
+  
   const eventTNode: TNodeEntity = {
-    id: `TNode-Event-${Date.now()}` as EARS.EntityId,
+    id: tNodeId,
     entityType: EARS.Entity.TNode,
     nodeType: 'event',
     label: eventNode.label,
     eventType: eventNode.eventType,
     status: 'active',
-    startedAt: Date.now(),
-    createdAt: Date.now(),
+    startedAt: now,
+    createdAt: now,
   };
   
-  // Create TNode in database
-  tx(eventTNode.id)
-    .put('entityType', EARS.Entity.TNode)
-    .put('nodeType', eventTNode.nodeType)
-    .put('label', eventTNode.label)
-    .put('eventType', eventTNode.eventType!)
-    .put('status', eventTNode.status)
-    .put('startedAt', eventTNode.startedAt)
-    .put('createdAt', eventTNode.createdAt);
-  
-  // Create TRACKED relationship from parent flow
-  if (parentTNodeId) {
-    tx(parentTNodeId).link(EARS.RelKind.TRACKED, eventTNode.id);
-  }
-  
-  // Emit event about spawned event TNode
-  if (systemActor) {
-    systemActor.system.get(bus).send(emit(brain, {
-      type: 'EVENT_TNODE_SPAWNED',
-      tNode: eventTNode,
-    }));
-  }
+  // Emit event
+  emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: eventTNode }, systemActor);
   
   return eventTNode;
 }
@@ -60,38 +72,33 @@ export function createFlowTNode(
   parentTNodeId?: EARS.EntityId,
   systemActor?: any
 ): TNodeEntity {
-  const flowTNode: TNodeEntity = {
-    id: `TNode-Flow-${Date.now()}` as EARS.EntityId,
-    entityType: EARS.Entity.TNode,
-    nodeType: 'flow',
-    label,
-    status: 'active',
-    startedAt: Date.now(),
-    createdAt: Date.now(),
-  };
-  
-  // Create TNode in database
-  tx(flowTNode.id)
-    .put('entityType', EARS.Entity.TNode)
-    .put('nodeType', flowTNode.nodeType)
-    .put('label', flowTNode.label)
-    .put('status', flowTNode.status)
-    .put('startedAt', flowTNode.startedAt)
-    .put('createdAt', flowTNode.createdAt)
+  const now = Date.now();
+  const transaction = tx(EARS.Entity.TNode)
+    .batchPut({
+      nodeType: 'flow',
+      label: label,
+      status: 'active',
+      startedAt: now,
+    })
     .link(EARS.RelKind.INSTANCE_OF, flowId);
   
   // Create SPAWNED relationship from parent
   if (parentTNodeId) {
-    tx(parentTNodeId).link(EARS.RelKind.SPAWNED, flowTNode.id);
+    tx(parentTNodeId).link(EARS.RelKind.SPAWNED, transaction.id());
   }
   
-  // Emit event about spawned flow
-  if (systemActor) {
-    systemActor.system.get(bus).send(emit(brain, {
-      type: 'EVENT_TNODE_SPAWNED',
-      tNode: flowTNode,
-    }));
-  }
+  const flowTNode: TNodeEntity = {
+    id: transaction.id(),
+    entityType: EARS.Entity.TNode,
+    nodeType: 'flow',
+    label,
+    status: 'active',
+    startedAt: now,
+    createdAt: now,
+  };
+  
+  // Emit event
+  emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: flowTNode }, systemActor);
   
   return flowTNode;
 }
@@ -100,43 +107,39 @@ export function createFlowTNode(
  * Create a step TNode and persist it
  */
 export function createStepTNode(
-  node: any,
+  node: NodeEntity,
   parentTNodeId: EARS.EntityId,
   systemActor?: any
 ): TNodeEntity {
+  const now = Date.now();
+  const tNodeId = tx(EARS.Entity.TNode)
+    .batchPut({
+      nodeType: 'step',
+      label: node.label,
+      status: 'active',
+      startedAt: now,
+      stepNodeId: node.id!,
+      stepNodeType: node.nodeType,
+    })
+    .id();
+  
+  // Create SPAWNED relationship from parent
+  tx(parentTNodeId).link(EARS.RelKind.SPAWNED, tNodeId);
+  
   const stepTNode: TNodeEntity = {
-    id: `TNode-Step-${Date.now()}` as EARS.EntityId,
+    id: tNodeId,
     entityType: EARS.Entity.TNode,
     nodeType: 'step',
     label: node.label,
     status: 'active',
-    startedAt: Date.now(),
-    createdAt: Date.now(),
+    startedAt: now,
+    createdAt: now,
     stepNodeId: node.id,
     stepNodeType: node.nodeType,
   };
   
-  // Create TNode in database
-  tx(stepTNode.id)
-    .put('entityType', EARS.Entity.TNode)
-    .put('nodeType', stepTNode.nodeType)
-    .put('label', stepTNode.label)
-    .put('status', stepTNode.status)
-    .put('startedAt', stepTNode.startedAt)
-    .put('createdAt', stepTNode.createdAt)
-    .put('stepNodeId', stepTNode.stepNodeId!)
-    .put('stepNodeType', stepTNode.stepNodeType!);
-  
-  // Create SPAWNED relationship from parent
-  tx(parentTNodeId).link(EARS.RelKind.SPAWNED, stepTNode.id);
-  
-  // Emit event about spawned step
-  if (systemActor) {
-    systemActor.system.get(bus).send(emit(brain, {
-      type: 'EVENT_TNODE_SPAWNED',
-      tNode: stepTNode,
-    }));
-  }
+  // Emit event
+  emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: stepTNode }, systemActor);
   
   return stepTNode;
 }
@@ -149,32 +152,34 @@ export function createRootFlowTNode(
   label: string,
   systemActor: any
 ): TNodeEntity {
+  const now = Date.now();
+  // For root, we use a specific ID for consistency
+  const rootId = 'TNode-1' as EARS.EntityId;
+  
+  tx(rootId)
+    .batchPut({
+      entityType: EARS.Entity.TNode,
+      nodeType: 'flow',
+      label: label,
+      status: 'active',
+      startedAt: now,
+      createdAt: now,
+    })
+    .link(EARS.RelKind.INSTANCE_OF, flowId)
+    .grant(EARS.RoleKind.Custom("root_trace_node"));
+  
   const rootFlowTNode: TNodeEntity = {
-    id: `TNode-1` as EARS.EntityId, // Use consistent ID for root
+    id: rootId,
     entityType: EARS.Entity.TNode,
     nodeType: 'flow',
     label,
     status: 'active',
-    startedAt: Date.now(),
-    createdAt: Date.now(),
+    startedAt: now,
+    createdAt: now,
   };
   
-  // Create root TNode in database
-  tx(rootFlowTNode.id)
-    .put('entityType', EARS.Entity.TNode)
-    .put('nodeType', rootFlowTNode.nodeType)
-    .put('label', rootFlowTNode.label)
-    .put('status', rootFlowTNode.status)
-    .put('startedAt', rootFlowTNode.startedAt)
-    .put('createdAt', rootFlowTNode.createdAt)
-    .link(EARS.RelKind.INSTANCE_OF, flowId)
-    .grant(EARS.RoleKind.Custom("root_trace_node"));
-  
-  // Emit event about root TNode
-  systemActor.system.get(bus).send(emit(brain, {
-    type: 'EVENT_TNODE_SPAWNED',
-    tNode: rootFlowTNode,
-  }));
+  // Emit event
+  emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: rootFlowTNode }, systemActor);
   
   return rootFlowTNode;
 }
@@ -186,13 +191,8 @@ export function updateTNodeStatus(
   tNodeId: EARS.EntityId, 
   status: TNodeEntity['status'], 
   systemActor?: any
-) {
+): void {
   tx(tNodeId).put('status', status);
   
-  if (systemActor) {
-    systemActor.system.get(bus).send(emit(brain, {
-      type: 'TNODE_UPDATED',
-      data: { tNodeId, status },
-    }));
-  }
+  emitTNodeEvent('TNODE_UPDATED', { data: { tNodeId, status } }, systemActor);
 } 

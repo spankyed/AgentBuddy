@@ -64,7 +64,6 @@ export const brainSystem = setup({
         type: 'BRAIN_STARTUP',
         data
       }));
-
     },
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
