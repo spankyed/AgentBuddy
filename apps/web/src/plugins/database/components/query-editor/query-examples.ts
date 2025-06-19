@@ -164,14 +164,12 @@ for (const entityId of allEntities) {
     results.push({
       ...entityData,
       ...allData,
-      _relationInfo: {
-        relationType: 'contains',
-        targetCount: targets.length,
-        targets: targets.slice(0, 5).map(targetId => ({
-          id: targetId,
-          type: targetId.split('-')[0]
-        }))
-      }
+      relationType: 'contains',
+      targetCount: targets.length,
+      targets: targets.slice(0, 5).map(targetId => ({
+        id: targetId,
+        type: targetId.split('-')[0]
+      }))
     });
   }
 }

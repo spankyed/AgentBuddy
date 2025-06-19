@@ -40,11 +40,9 @@ for (const entityId of allEntities) {
     results.push({
       ...entityData,
       ...allData,
-      _relationInfo: {
-        relationType: '${value}',
-        targetCount: targets.length,
-        targets: targets.slice(0, 5)
-      }
+      relationType: '${value}',
+      targetCount: targets.length,
+      targets: targets.slice(0, 5)
     });
   }
 }
