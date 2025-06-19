@@ -96,14 +96,14 @@ describe('qx – fluent query DSL', () => {
   it('linksTo() follows TRANSITIONS_TO to next step', () => {
     expect(
       qx('Node-b2')
-        .linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
         .ids(),
     ).toEqual(['Node-b8']);
   });
 
   it('linksPick() projects linked nodes with selected fields', () => {
     const rows = qx('Node-b1').linksPick(
-      EARS.RelKind.CONSUMED_BY,
+      EARS.RelKind.RESPONDER,
       ['label', 'nodeType'],
       EARS.Entity.Node,
     );
@@ -181,7 +181,7 @@ describe('qx – fluent query DSL', () => {
 
   /* ────────── edge identifiers ────────── */
   it('edgeIds() exposes raw relation identifiers', () => {
-    const edges = qx('Node-b2').edgeIds(EARS.RelKind.CONSUMED_BY, true);
+    const edges = qx('Node-b2').edgeIds(EARS.RelKind.RESPONDER, true);
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });

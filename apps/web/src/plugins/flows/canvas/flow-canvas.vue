@@ -115,7 +115,7 @@ const plainEdges = computed(() =>
     source : e.source,
     target : e.target,
     data: { kind: e.kind },
-    animated: e.kind === 'consumed_by',
+    animated: e.kind === 'responder',
   })),
 )
 

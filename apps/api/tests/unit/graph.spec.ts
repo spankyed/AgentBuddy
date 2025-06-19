@@ -333,11 +333,11 @@ describe("graph.ts - comprehensive test suite", () => {
       const file1 = tx(EARS.Entity.Thread).put("label", "File1");
       const file2 = tx(EARS.Entity.Thread).put("label", "File2");
       
-      // Use CONSUMED_BY as tree structure
-      folder.linkOne(EARS.RelKind.CONSUMED_BY, file1.id());
-      folder.linkOne(EARS.RelKind.CONSUMED_BY, file2.id());
+      // Use RESPONDER as tree structure
+      folder.linkOne(EARS.RelKind.RESPONDER, file1.id());
+      folder.linkOne(EARS.RelKind.RESPONDER, file2.id());
       
-      expect(lowestCommonAncestor(file1.id(), file2.id(), EARS.RelKind.CONSUMED_BY))
+      expect(lowestCommonAncestor(file1.id(), file2.id(), EARS.RelKind.RESPONDER))
         .toBe(folder.id());
     });
   });

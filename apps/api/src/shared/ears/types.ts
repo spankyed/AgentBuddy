@@ -32,16 +32,14 @@ export namespace EARS {
     CONTAINS   : 'contains',
     REPLIED_TO : 'replied_to',
     HAS: 'has',
-    
-    TRANSITIONS_TO: 'transitions_to',
-    CONSUMED_BY: 'consumed_by',
-    EMITS: 'emits',
-    
     BLOCKS     : 'blocks',
     DEPENDS_ON : 'depends_on',
     RELATES_TO : 'relates_to',
     DUPLICATES: 'duplicates',
 
+    TRANSITIONS_TO: 'transitions_to',
+    RESPONDER: 'responder',
+    EMITS: 'emits',
     INSTANCE_OF    : 'instance_of',
     SPAWNED    : 'spawned',
     TRACKED    : 'tracked',

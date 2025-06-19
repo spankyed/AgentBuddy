@@ -188,9 +188,9 @@ export const chatFlow: Rows = {
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b11", info: {} },
 
     /* Listen node outputs */
-    { source: "Node-b1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-b3", info: {} },
-    // { source: "Node-b1", kind: EARS.RelKind.CONSUMED_BY, target: "Node-b4", info: {} },
-    { source: "Node-b2", kind: EARS.RelKind.CONSUMED_BY, target: "Node-b8", info: {} },
+    { source: "Node-b1", kind: EARS.RelKind.RESPONDER, target: "Node-b3", info: {} },
+    // { source: "Node-b1", kind: EARS.RelKind.RESPONDER, target: "Node-b4", info: {} },
+    { source: "Node-b2", kind: EARS.RelKind.RESPONDER, target: "Node-b8", info: {} },
 
     /* Decision node outputs */
     { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: { condition: "Question" } },

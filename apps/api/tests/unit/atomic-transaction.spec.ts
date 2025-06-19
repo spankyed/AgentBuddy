@@ -150,15 +150,15 @@ describe('AtomicTransaction', () => {
     });
 
     it('link() creates relations on commit', () => {
-      tx.link(src, EARS.RelKind.CONSUMED_BY, tgt);
+      tx.link(src, EARS.RelKind.RESPONDER, tgt);
       
       tx.commit();
       
-      expect(qx(src).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Node).ids()).toContain(tgt);
+      expect(qx(src).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node).ids()).toContain(tgt);
     });
 
     it('link() prevents self-loops', () => {
-      expect(() => tx.link(src, EARS.RelKind.CONSUMED_BY, src)).toThrow('source and target cannot be the same');
+      expect(() => tx.link(src, EARS.RelKind.RESPONDER, src)).toThrow('source and target cannot be the same');
     });
 
     it('linkOne() creates idempotent relations', () => {
@@ -174,17 +174,17 @@ describe('AtomicTransaction', () => {
     });
 
     it('unlink() removes relations', () => {
-      tx.link(src, EARS.RelKind.CONSUMED_BY, tgt);
+      tx.link(src, EARS.RelKind.RESPONDER, tgt);
       tx.commit();
       
-      const relIds = qx(src).edgeIds(EARS.RelKind.CONSUMED_BY, true);
+      const relIds = qx(src).edgeIds(EARS.RelKind.RESPONDER, true);
       expect(relIds).toHaveLength(1);
       
       const tx2 = atomicTx();
       tx2.unlink(relIds[0]);
       tx2.commit();
       
-      expect(qx(src).linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Node).ids()).toEqual([]);
+      expect(qx(src).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node).ids()).toEqual([]);
     });
   });
 

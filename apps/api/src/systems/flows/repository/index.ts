@@ -1,7 +1,7 @@
 import { EARS } from "@/shared/ears/types";
 
 export const edgeKinds = [
-  EARS.RelKind.CONSUMED_BY,
+  EARS.RelKind.RESPONDER,
   EARS.RelKind.EMITS,
   EARS.RelKind.TRANSITIONS_TO,
 ] as EARS.RelKind[];
