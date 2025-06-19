@@ -1,4 +1,4 @@
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
+import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
@@ -8,6 +8,7 @@ import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getStartupData, { getExtendedTNodeData } from './repository/startup';
+import { startBrainRunner } from './runner';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -23,6 +24,7 @@ export const IncomingBrainEvents = [
 export type BrainInternalEvents = 
   | SystemEvents
   | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
+  | { type: 'BRAIN_RUNNER_STARTED'; runner: ActorRefFrom<any> }
 
 export type OutgoingBrainEvents =
   | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
@@ -38,6 +40,7 @@ export const brainSystem = setup({
   types: {
     context: {} as {
       brainId: EARS.EntityId;
+      brainRunner?: ActorRefFrom<any>;
     },
     events: {} as ReceivableEvents,
     input: {} as EARS.EntityId,
@@ -46,13 +49,22 @@ export const brainSystem = setup({
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       console.error('Brain system error:', event.error);
     },
-    sendFlowTNodeData: ({ system, context }) => {
+    startBrain: ({ system, context, self }) => {
+      try {
+        const runner = startBrainRunner(self);
+        self.send({ type: 'BRAIN_RUNNER_STARTED', runner });
+      } catch (error) {
+        console.error('Failed to start brain runner:', error);
+      }
+    },
+    sendFlowTNodeData: ({ system, context, self }) => {
       const data = getStartupData();
       
       system.get(bus).send(emit(brain, { 
         type: 'BRAIN_STARTUP',
         data
       }));
+
     },
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
@@ -82,24 +94,18 @@ export const brainSystem = setup({
           eventType: event.data.eventType
         }));
         
-        // Auto-spawn event TNode
-        const newTNode: TNodeEntity = {
-          id: `TNode-Event-${Date.now()}` as EARS.EntityId,
-          entityType: EARS.Entity.TNode,
-          nodeType: 'event',
-          label: event.data.eventType,
-          eventType: event.data.eventType,
-          status: 'active',
-          startedAt: Date.now(),
-          createdAt: Date.now(),
-        };
-        
-        system.get(bus).send(emit(brain, {
-          type: 'EVENT_TNODE_SPAWNED',
-          tNode: newTNode
-        }));
+        // Forward event to brain runner
+        if (context.brainRunner) {
+          context.brainRunner.send({ 
+            type: event.data.eventType, 
+            payload: event.data.payload 
+          });
+        }
       }
-    }
+    },
+    storeBrainRunner: assign({
+      brainRunner: (_, event: any) => event.runner
+    })
   },
 }).createMachine(
   {
@@ -117,13 +123,16 @@ export const brainSystem = setup({
       },
       TRACE_EVENT_RECEIVED: {
         actions: 'handleEventReceived',
+      },
+      BRAIN_RUNNER_STARTED: {
+        actions: 'storeBrainRunner',
       }
     },
     states: {
       idle: {
         on: {
           CLIENT_CONNECTED: {
-            actions: 'sendFlowTNodeData',
+            actions: ['sendFlowTNodeData', 'startBrain'],
           },
         },
       },
