@@ -44,7 +44,7 @@
     </div>
 
     <!-- Threads list section -->
-    <div class="threads min-h-[16.5rem] py-4 pt-5">
+    <div class="threads min-h-[16.5rem] py-4">
       <div
         v-for="thread in paginatedThreads"
         :key="thread.id"
