@@ -1,7 +1,7 @@
 import type { Rows } from '@/shared/types';
-import { runAgentBrainFlow } from './mock-data/run-agent-brain';
-import { chatFlow } from './mock-data/chat-flow';
-import { someFlowWithValidation } from './mock-data/some-flow-with-validation';
+import { runAgentBrainFlow } from './flows/run-agent-brain';
+import { chatFlow } from './flows/chat-flow';
+import { someFlowWithValidation } from './flows/some-flow-with-validation';
 
 // Combine all flow data
 export const flowRows: Rows = {
