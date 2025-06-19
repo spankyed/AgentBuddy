@@ -66,6 +66,6 @@ export async function executeQuery(code: string): Promise<any> {
     // Return whatever the query produces
     return result;
   } catch (error) {
-    throw new Error(`Query execution failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`${error instanceof Error ? error.message : String(error)}`);
   }
 } 

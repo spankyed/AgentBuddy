@@ -1,14 +1,5 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
-    <!-- Results Info Bar -->
-    <ResultsInfoBar
-      :query-result="queryResult"
-      :result-type="resultType"
-      :result-count="resultCount"
-      :is-array-of-primitives="isArrayOfPrimitives"
-      :execution-time="executionTime"
-    />
-
     <!-- Table Container -->
     <div class="flex-1 overflow-auto custom-scrollbar">
       <!-- State displays -->
@@ -46,6 +37,15 @@
         />
       </template>
     </div>
+
+    <!-- Results Info Bar -->
+    <ResultsInfoBar
+      :query-result="queryResult"
+      :result-type="resultType"
+      :result-count="resultCount"
+      :is-array-of-primitives="isArrayOfPrimitives"
+      :execution-time="executionTime"
+    />
   </div>
 </template>
 

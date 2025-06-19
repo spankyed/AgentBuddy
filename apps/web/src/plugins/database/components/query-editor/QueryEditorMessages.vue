@@ -10,7 +10,7 @@
     <div v-if="error || successMessage" class="flex items-center gap-2 mr-2">
       <div v-if="error" class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
         <AlertCircle class="w-3.5 h-3.5" />
-        <span>{{ error }}</span>
+        <span>Query execution failed</span>
       </div>
       <div v-if="successMessage && !error" class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
         <CheckCircle2 class="w-3.5 h-3.5" />
