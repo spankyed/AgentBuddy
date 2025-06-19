@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <pre class="bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-auto text-sm">{{ formattedJson }}</pre>
+    <pre class="p-4 overflow-auto text-sm rounded-md bg-neutral-100 dark:bg-neutral-800">{{ formattedJson }}</pre>
   </div>
 </template>
 

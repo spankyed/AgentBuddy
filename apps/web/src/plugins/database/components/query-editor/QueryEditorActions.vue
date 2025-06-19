@@ -2,7 +2,7 @@
   <div class="flex items-center gap-2">
     <button
       @click="$emit('clear')"
-      class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+      class="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
       title="Clear query"
     >
       <FileX class="w-4 h-4" />
@@ -10,13 +10,13 @@
     
     <button
       @click="$emit('format')"
-      class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+      class="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
       title="Format query"
     >
       <Wand2 class="w-4 h-4" />
     </button>
     
-    <div class="w-px h-5 bg-gray-200 dark:bg-gray-700"></div>
+    <div class="w-px h-5 bg-neutral-200 dark:bg-neutral-700"></div>
     
     <button
       @click="$emit('execute')"

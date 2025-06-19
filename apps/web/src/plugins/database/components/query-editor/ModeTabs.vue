@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-lg dark:bg-gray-800">
+  <div class="flex items-center gap-1 p-1 rounded-lg bg-neutral-100 dark:bg-neutral-800">
     <button
       v-for="mode in modes"
       :key="mode.value"
@@ -7,8 +7,8 @@
       :class="[
         'px-3 py-1 text-xs font-medium rounded transition-all',
         activeMode === mode.value
-          ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm'
+          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
       ]"
     >
       {{ mode.label }}
