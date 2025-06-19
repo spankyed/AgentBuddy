@@ -4,20 +4,19 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 pt-4 pb-3" :class="headerClass">
+    <div class="absolute top-0 left-0 flex items-center w-full px-3 pt-3 pb-3 pointer-events-none" :class="headerClass">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-400"
+        class="flex items-center gap-1 ml-2 text-sm pointer-events-auto text-neutral-400"
       >
-        <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
-          <span
-            class="transition-colors cursor-pointer hover:text-white"
-            @click="$emit('crumb-click', crumb.target || '')"
-          >
+        <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="z-50 flex items-center">
+          <h2
+          class="text-xs font-medium tracking-wider uppercase cursor-pointer text-neutral-500 hover:text-white"
+          @click="$emit('crumb-click', crumb.target || '')">
             {{ crumb.label }}
-          </span>
+          </h2>
           <!-- separator, skip after last -->
           <ChevronRight
             v-if="idx < breadcrumbs?.length - 1"

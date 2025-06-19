@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header with Search -->
-    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="p-4 mt-8 border-b border-gray-200 dark:border-gray-700">
       <!-- Search Input -->
       <div class="relative">
         <Search class="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />

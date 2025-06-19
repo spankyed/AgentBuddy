@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-5xl px-6 py-4 mx-auto">
+  <div class="max-w-5xl px-6 py-4 mx-auto mt-8">
     <div class="space-y-4">
       <!-- Topic & Status -->
       <div class="flex flex-col items-center gap-4 md:flex-row">

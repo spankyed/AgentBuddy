@@ -1,6 +1,9 @@
 <template>
   <div class="flex flex-col h-full p-0 overflow-hidden">
     <!-- Root flow section -->
+    <div v-if="rootFlow" class="flex flex-shrink-0 px-3 pt-4 mt-8">
+      <div class="flex items-center flex-shrink-0 mr-2 text-neutral-500">
+        <span class="text-[0.625rem] font-medium uppercase tracking-wider pl-2">Root</span>
     <div v-if="rootFlow" class="flex flex-shrink-0 px-3 pt-5">
       <div class="flex items-center flex-shrink-0 mr-3 text-neutral-500">
         <span class="text-[10px] font-medium uppercase tracking-wider pl-2 mr-1">Root</span>
