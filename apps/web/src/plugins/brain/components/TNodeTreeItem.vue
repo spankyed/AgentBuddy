@@ -22,7 +22,7 @@
       
       <!-- Node Type Vertical Bar - Clean and minimal -->
       <div 
-        class="w-0.5 h-4 mr-2.5 transition-opacity duration-150"
+        class="w-0.5 h-4 ml-2 mr-2.5 transition-opacity duration-150"
         :class="[nodeTypeColor, { 'opacity-100': true, 'group-hover:opacity-90': true }]"
       />
       
