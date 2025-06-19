@@ -1,59 +1,53 @@
 <template>
-  <div class="max-w-5xl px-6 py-4 mx-auto">
+  <div class="max-w-6xl px-5 py-4 mx-auto">
     <!-- Search & Create row -->
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-      <button
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+      <Button
         @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
         type="button"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded h-7 bg-primary-600 hover:bg-primary-500"
+        class="flex items-center gap-2 px-4 py-2 text-[0.8125rem] font-medium transition-all duration-200 rounded-md bg-primary-600 hover:bg-primary-500 active:scale-[0.98] shadow-sm"
       >
-        <Plus :size="16" class="" />
+      <Plus :size="16" class="" />
         New Thread
-      </button>
-      <div class="flex justify-end flex-1 gap-1 text-sm">
-        <!-- count of hidden threads -->
-
-        <!-- <button type="button" class="text-primary-400 hover:underline">Advanced Search</button> -->
+      </Button>
+      <div class="flex justify-end flex-1 gap-2 text-[0.8125rem]">
         <Button
           type="button"
           variant="transparent"
+          class="!text-[0.8125rem] !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
         >
           Filter
         </Button>
         <Button
           type="button"
           variant="transparent"
+          class="!text-[0.8125rem] !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
         >
-        Clear filters
-        <span v-if="5 > 0" class="content-center text-neutral-500">
-          ({{ 5 }} hidden)
-        </span>
+          Clear filters
+          <span v-if="5 > 0" class="ml-1.5 text-neutral-500">
+            ({{ 5 }} hidden)
+          </span>
         </Button>
-
       </div>
       <div class="flex justify-end">
         <!-- Search input -->
-        <input
-          v-model="searchKeyword"
-          type="text"
-          placeholder="Search"
-          class="px-4 py-2 text-sm rounded-tl rounded-bl w-96 bg-neutral-900 placeholder-neutral-500 focus:outline-none"
-        />
-        <button
-          type="button"
-          class="px-4 py-2 text-sm font-medium rounded-tr rounded-br text-neutral-500 bg-neutral-700 hover:bg-neutral-600 hover:text-neutral-100"
-        >
-          <Search :size="16" />
-        </button>
+        <div class="relative">
+          <Search class="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="Search threads..."
+            class="w-[22rem] pl-10 pr-4 py-2 text-[0.8125rem] rounded-md bg-neutral-900 border border-neutral-800 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-950 transition-all duration-200"
+          />
+        </div>
       </div>
     </div>
 
     <!-- Threads list section -->
-    <div class="threads min-h-[16.5rem] py-4 pt-5">
+    <div class="threads min-h-[16.5rem] py-4 pt-5 space-y-1">
       <div
         v-for="thread in paginatedThreads"
         :key="thread.id"
-        class="flex items-center justify-between overflow-hidden m-0.5 rounded-md bg-neutral-900/80 border-neutral-800"
       >
         <template v-if="!isPlaceholderThread(thread)">
           <Thread
@@ -65,7 +59,7 @@
         </template>
         <template v-else>
           <div
-            class="flex h-[2.5rem] w-full items-center justify-between overflow-hidden rounded-md bg-neutral-800/80"
+            class="flex h-[2.75rem] w-full items-center justify-between overflow-hidden rounded-md bg-neutral-900/10 border border-neutral-900/20"
           ></div>
         </template>
       </div>
@@ -112,7 +106,6 @@ const paginatedThreads = computed(() => {
 
 const searchKeyword = ref('');
 
-
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder: boolean } {
   return thread.isPlaceholder === true;
@@ -122,16 +115,16 @@ function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder
 <style lang="scss">
 @keyframes highlight {
   0% {
-    background-color: rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.5);
+    background-color: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
   }
   100% {
-    background-color: rgba(23, 23, 23, 0.8);
-    border-color: rgb(38, 38, 38);
+    background-color: transparent;
+    box-shadow: none;
   }
 }
 
 .animate-highlight {
-  animation: highlight 1s ease-out forwards;
+  animation: highlight 1.5s ease-out forwards;
 }
 </style>
