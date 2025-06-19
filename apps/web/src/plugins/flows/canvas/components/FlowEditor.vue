@@ -40,7 +40,7 @@
         <!-- Back button -->
         <Button
           variant="secondary"
-          class="!p-2 !h-auto bg-neutral-800 hover:bg-neutral-700 text-neutral-50"
+          class="!p-2 !h-auto border border-neutral-800 hover:bg-neutral-800 text-neutral-50 bg-neutral-900/90"
           @click="$emit('go-back')"
           title="Back to flows list"
         >
