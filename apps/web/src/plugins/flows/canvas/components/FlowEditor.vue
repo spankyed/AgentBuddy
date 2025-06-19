@@ -59,7 +59,7 @@
     <!-- Backdrop overlay when in list state -->
     <div 
       v-if="showOverlay" 
-      class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/50"
+      class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/30"
       @click="$emit('overlay-click')"
     />
   </div>
