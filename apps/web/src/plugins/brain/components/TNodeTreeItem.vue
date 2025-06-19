@@ -1,9 +1,8 @@
 <template>
   <div>
     <div
-      class="flex items-center px-2 py-1 transition-all duration-200 rounded-md cursor-pointer group hover:bg-white/[0.03]"
+      class="flex items-center transition-all duration-200 cursor-pointer group"
       :style="{ paddingLeft: `${depth * 1.25 + 0.5}rem` }"
-      @click="$emit('tnode-click', tnode.id)"
     >
       <!-- Expand/Collapse Icon -->
       <div class="flex items-center justify-center w-4 h-4 mr-1">
@@ -20,7 +19,12 @@
         </svg>
       </div>
       
-      <!-- Node Type Icon with subtle background -->
+      <!-- Main content area with hover effect -->
+      <div 
+        class="flex flex-1 items-center px-2 py-1 rounded-md hover:bg-white/[0.03]"
+        @click="$emit('tnode-click', tnode.id)"
+      >
+        <!-- Node Type Icon with subtle background -->
       <div class="relative flex items-center justify-center flex-shrink-0 w-6 h-6 mr-2 transition-all duration-200 rounded"
            :class="nodeIconBgColor">
         <component 
@@ -38,6 +42,7 @@
       <!-- Status Indicator - Always visible -->
       <div class="flex-shrink-0 pl-2 ml-auto">
         <StatusIndicator :status="tnode.status" />
+      </div>
       </div>
     </div>
     

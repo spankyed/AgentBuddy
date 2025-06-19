@@ -1,6 +1,6 @@
 <template>
   <div class="h-full overflow-y-auto">
-    <div v-if="tnodeTree && tnodeTree.length > 0" class="py-2">
+    <div v-if="tnodeTree && tnodeTree.length > 0" class="px-3 py-2">
       <TNodeTreeItem
         v-for="node in tnodeTree"
         :key="node.id"
