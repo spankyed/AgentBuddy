@@ -149,8 +149,8 @@ export const brainRows: Rows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Flow TNodes are instances of Flow blueprints */
-    { source: 'TNode-1', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-2', info: {} },
-    { source: 'TNode-2', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-3', info: {} },
+    { source: 'TNode-1', kind: EARS.RelKind.INSTANCE_OF, target: 'Flow-2', info: {} },
+    { source: 'TNode-2', kind: EARS.RelKind.INSTANCE_OF, target: 'Flow-3', info: {} },
     
     /* Flow TNodes contain Event TNodes */
     { source: 'TNode-1', kind: EARS.RelKind.TRACKED, target: 'TNode-2', info: {} },

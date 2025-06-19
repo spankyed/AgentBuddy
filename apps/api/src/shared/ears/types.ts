@@ -42,6 +42,7 @@ export namespace EARS {
     RELATES_TO : 'relates_to',
     DUPLICATES: 'duplicates',
 
+    INSTANCE_OF    : 'instance_of',
     SPAWNED    : 'spawned',
     TRACKED    : 'tracked',
   } as const;

@@ -62,7 +62,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   
   // Get the flow blueprint this TNode is an instance of through INSTANCE_OF relation
   const flowLinks = qx(tNodeId)
-    .links(EARS.RelKind.Custom('INSTANCE_OF'), [EARS.Entity.Flow]);
+    .links(EARS.RelKind.INSTANCE_OF, [EARS.Entity.Flow]);
   
   if (flowLinks.length === 0) {
     throw new Error(`Flow TNode ${tNodeId} has no INSTANCE_OF relation to a flow blueprint`);
