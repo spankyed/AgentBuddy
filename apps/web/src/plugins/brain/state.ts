@@ -13,7 +13,7 @@ export interface BrainContext {
   flowTNodeId?: string;
   tNodeTree?: TrackEntity[];
   possibleEvents: EventListenerEntity[];
-  pulsingEventTag?: string;
+  pulsingEventType?: string;
 }
 
 type SystemEvent = OutgoingBrainEvents
@@ -21,7 +21,7 @@ type SystemEvent = OutgoingBrainEvents
 type UIEvent =
   | { type: 'TNODE.CLICK'; tNodeId: string }
   | { type: 'BACK.CLICK' }
-  | { type: 'EVENT.CLICK'; eventTag: string }
+  | { type: 'EVENT.CLICK'; eventType: string }
 
 export type BrainEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<BrainEvents>()
@@ -62,11 +62,11 @@ const brainState = setup({
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
       return {
-        pulsingEventTag: event.eventTag
+        pulsingEventType: event.eventType
       };
     }),
     clearPulse: assign({
-      pulsingEventTag: undefined
+      pulsingEventType: undefined
     }),
     openTNode: ({ event }) => {
       let tNodeId: string;

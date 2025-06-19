@@ -4,7 +4,7 @@ import type { FlowTNodeData, TNodeEntity, TrackEntity,  } from '../types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 export default function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
-  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventTag", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
   
   // Get the TNode
   const tNode = qx(tNodeId)

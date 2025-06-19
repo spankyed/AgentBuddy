@@ -9,7 +9,7 @@ export interface TNodeEntity extends BaseEntity {
   startedAt: number;
   
   // For event nodes pulsing
-  eventTag?: string;
+  eventType?: string;
   
   // For step nodes
   stepNodeId?: EARS.EntityId; // Reference to the Flow Node being executed
@@ -23,7 +23,7 @@ export interface TrackEntity extends TNodeEntity {
 export interface EventListenerEntity {
   id: EARS.EntityId;
   nodeId: EARS.EntityId;
-  eventTag: string;
+  eventType: string;
   label: string;
   mode: 'entry' | 'internal';
 }
@@ -41,7 +41,7 @@ export interface TNodeUpdate {
 }
 
 export interface EventReceived {
-  eventTag: string;
+  eventType: string;
   parentTNodeId: EARS.EntityId;
   payload?: any;
 } 

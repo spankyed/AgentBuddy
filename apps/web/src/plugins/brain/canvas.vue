@@ -36,7 +36,7 @@
       <div class="flex-1 overflow-y-auto">
         <EventsList
           :events="possibleEvents"
-          :pulsing-event-tag="pulsingEventTag"
+          :pulsing-event-type="pulsingEventType"
           @event-click="handleEventClick"
         />
       </div>
@@ -58,7 +58,7 @@ const actor: BrainState = applicationState.system.get(id);
 const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
 const possibleEvents = useSelector(actor, (state) => state.context.possibleEvents);
 const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
-const pulsingEventTag = useSelector(actor, (state) => state.context.pulsingEventTag);
+const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
 // const canGoBack = useSelector(actor, (state) => state.context.tNodeStack.length > 1);
 const canGoBack = true;
 
@@ -71,7 +71,7 @@ const handleBackClick = () => {
   actor.send({ type: 'BACK.CLICK' });
 };
 
-const handleEventClick = (eventTag: string) => {
-  actor.send({ type: 'EVENT.CLICK', eventTag });
+const handleEventClick = (eventType: string) => {
+  actor.send({ type: 'EVENT.CLICK', eventType });
 };
 </script> 

@@ -1,14 +1,14 @@
 <template>
-  <div class="overflow-y-auto h-full">
+  <div class="h-full overflow-y-auto">
     <div 
       v-for="event in events" 
       :key="event.id"
       class="group cursor-pointer hover:bg-white/[0.03] transition-all duration-200"
       :class="{ 
-        'animate-pulse-event': pulsingEventTag === event.eventTag,
-        'opacity-50': pulsingEventTag && pulsingEventTag !== event.eventTag
+        'animate-pulse-event': pulsingEventType === event.eventType,
+        'opacity-50': pulsingEventType && pulsingEventType !== event.eventType
       }"
-      @click="$emit('event-click', event.eventTag)"
+      @click="$emit('event-click', event.eventType)"
     >
       <div class="px-3 py-2.5 border-b border-neutral-800/50">
         <div class="flex items-center justify-between gap-3">
@@ -17,12 +17,12 @@
               {{ event.label }}
             </div>
             <div class="flex items-center gap-2 text-xs text-neutral-500">
-              <span class="font-mono">{{ event.eventTag }}</span>
+              <span class="font-mono">{{ event.eventType }}</span>
               <span class="text-neutral-600">•</span>
               <span class="capitalize">{{ event.mode }}</span>
             </div>
           </div>
-          <div class="flex-shrink-0 w-5 h-5 rounded bg-purple-500/10 flex items-center justify-center transition-all duration-200 group-hover:bg-purple-500/15">
+          <div class="flex items-center justify-center flex-shrink-0 w-5 h-5 transition-all duration-200 rounded bg-purple-500/10 group-hover:bg-purple-500/15">
             <svg 
               class="w-3.5 h-3.5 text-purple-400 transition-colors"
               fill="none" 
@@ -52,24 +52,18 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'EventsList'
-}
-</script>
-
 <script setup lang="ts">
-import type { EventListenerEntity } from '@abuddy/api/systems/brain/types';
+import type { EventListenerEntity } from '@abuddy/api';
 
 interface Props {
   events: EventListenerEntity[];
-  pulsingEventTag?: string;
+  pulsingEventType?: string;
 }
 
 defineProps<Props>();
 
 defineEmits<{
-  'event-click': [eventTag: string];
+  'event-click': [eventType: string];
 }>();
 </script>
 

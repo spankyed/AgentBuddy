@@ -243,7 +243,7 @@ describe('qx – fluent query DSL', () => {
 
     it('retrieves nodes with specific event tags', () => {
       const chatNodes = qx(EARS.Entity.Node)
-        .where('eventTag', 'chat.message')
+        .where('eventType', 'chat.message')
         .ids();
       expect(chatNodes).toEqual(['Node-1']);
     });

@@ -5,7 +5,7 @@ import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
-  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventTag", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
   
   // Get the flow TNode
   const flowTNode = qx(tNodeId)
@@ -83,7 +83,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
         'id',
         'label',
         'nodeType',
-        'eventTag',
+        'eventType',
         'mode',
       ] as const,
       [EARS.Entity.Node]
@@ -94,7 +94,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   const possibleEvents: EventListenerEntity[] = listenerNodes.map(node => ({
     id: `Event-${node.id}` as EARS.EntityId,
     nodeId: node.id!,
-    eventTag: node.eventTag,
+    eventType: node.eventType,
     label: node.label,
     mode: node.mode
   }));

@@ -15,7 +15,7 @@ export const flowRows: Rows = {
       shortCode: "F-1",
       entityType: EARS.Entity.Flow,
       createdAt: nowMs - 1_000,
-      label: "Run Agent",
+      label: "Run Agent Brain",
       flowType: "workflow",
     },
     {
@@ -46,7 +46,7 @@ export const flowRows: Rows = {
       y: 100,
       color: "#1E88E5", // blue
       mode: "entry",
-      eventTag: "chat.message",
+      eventType: "chat.message",
     },
     {
       id: "Node-2",
@@ -58,7 +58,7 @@ export const flowRows: Rows = {
       y: 300,
       color: "#1E88E5",
       mode: "internal",
-      eventTag: "system.*",
+      eventType: "system.*",
     },
 
     /* Decision Nodes */
@@ -113,7 +113,7 @@ export const flowRows: Rows = {
       x: 700,
       y: 100,
       color: "#F44336", // red
-      eventTag: "chat.response",
+      eventType: "chat.response",
       scope: "global",
     },
 
@@ -155,7 +155,7 @@ export const flowRows: Rows = {
       x: 700,
       y: 300,
       color: "#F44336",
-      eventTag: "system.intent",
+      eventType: "system.intent",
       scope: "global",
     },
 

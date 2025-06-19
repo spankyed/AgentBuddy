@@ -61,7 +61,7 @@ export interface DecisionNode extends NodeBase {
 
 export interface FireNode extends NodeBase {
   nodeType: 'fire';
-  eventTag: string;                   // '#THREAD.CREATE'
+  eventType: string;                   // '#THREAD.CREATE'
   payload?: unknown;
   scope?: 'local' | 'global';         // default 'local'
 }
@@ -69,7 +69,7 @@ export interface FireNode extends NodeBase {
 export interface ListenNode extends NodeBase {
   nodeType: 'listen';
   mode: 'entry' | 'internal';
-  eventTag: string;
+  eventType: string;
   debounceMs?: number;                // entry only
   scope?: 'local' | 'global';         // internal only
 }

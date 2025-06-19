@@ -29,7 +29,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
   | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'EVENT_PULSE'; eventTag: string }
+  | { type: 'EVENT_PULSE'; eventType: string }
 
 export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
@@ -79,7 +79,7 @@ export const brainSystem = setup({
         // Pulse the event in UI
         system.get(bus).send(emit(brain, {
           type: 'EVENT_PULSE',
-          eventTag: event.data.eventTag
+          eventType: event.data.eventType
         }));
         
         // Auto-spawn event TNode
@@ -87,8 +87,8 @@ export const brainSystem = setup({
           id: `TNode-Event-${Date.now()}` as EARS.EntityId,
           entityType: EARS.Entity.TNode,
           nodeType: 'event',
-          label: event.data.eventTag,
-          eventTag: event.data.eventTag,
+          label: event.data.eventType,
+          eventType: event.data.eventType,
           status: 'active',
           startedAt: Date.now(),
           createdAt: Date.now(),

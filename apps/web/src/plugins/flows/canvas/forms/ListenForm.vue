@@ -13,7 +13,7 @@
     <label class="block mb-2 text-sm font-medium text-neutral-200">
       Event Tag
       <input
-        v-model="node.eventTag"
+        v-model="node.eventType"
         class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
       />
     </label>
