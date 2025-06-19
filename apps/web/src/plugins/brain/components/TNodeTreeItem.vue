@@ -2,10 +2,10 @@
   <div>
     <div
       class="flex items-center transition-all duration-200 cursor-pointer group"
-      :style="{ paddingLeft: `${depth * 1.25 + 0.5}rem` }"
+      :style="{ paddingLeft: `${depth * 1 + 0.5}rem` }"
     >
       <!-- Expand/Collapse Icon -->
-      <div class="flex items-center justify-center w-4 h-4 mr-1">
+      <div class="flex items-center justify-center w-4 h-full mr-1" @click.stop="expanded = !expanded">
         <svg
           v-if="tnode.children.length > 0"
           class="w-3.5 h-3.5 transition-all duration-200 text-neutral-600 hover:text-neutral-400"
@@ -13,7 +13,6 @@
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
-          @click.stop="expanded = !expanded"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>

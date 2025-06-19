@@ -3,7 +3,7 @@
     <VueFlow
       :nodes="nodes"
       :edges="edges"
-      class="w-full h-full bg-neutral-950"
+      class="w-full h-full bg-neutral-900"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{
@@ -42,7 +42,7 @@
       
       <!-- Current TNode label (top center) -->
       <div v-if="flowTNodeId" class="absolute z-10 transform -translate-x-1/2 left-1/2 top-4">
-        <div class="px-4 py-2 rounded-md bg-neutral-900/90 border border-neutral-800 backdrop-blur-sm">
+        <div class="px-4 py-2 border rounded-md bg-neutral-900/90 border-neutral-800 backdrop-blur-sm">
           <span class="text-sm text-neutral-100">{{ flowTNodeId }}</span>
         </div>
       </div>
