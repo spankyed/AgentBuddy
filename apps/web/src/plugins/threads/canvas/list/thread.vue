@@ -8,7 +8,7 @@
   >
     <div
       :class="[
-        'flex items-center flex-1 h-full px-4 py-2.5 gap-4',
+        'flex items-center flex-1 h-full px-4 py-1 gap-4',
         { 'cursor-pointer': !lite }
       ]"
       @click="$emit('select', thread.id)"
@@ -18,7 +18,7 @@
         <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider min-w-[3.5rem]">
           {{ thread.shortCode }}
         </span>
-        <span class="text-sm font-medium truncate max-w-md text-neutral-100">
+        <span class="max-w-md text-sm font-medium truncate text-neutral-100">
           {{ thread.topic || 'Untitled thread' }}
         </span>
       </div>
@@ -28,7 +28,7 @@
           @click.stop
           :value="thread.status"
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
-          class="px-3 py-1 text-xs rounded-md bg-neutral-800 border border-neutral-700 text-neutral-300 focus:outline-none focus:border-neutral-600 transition-all duration-200 cursor-pointer"
+          class="px-3 py-1 text-xs transition-all duration-200 border rounded-md cursor-pointer bg-neutral-800 border-neutral-700 text-neutral-300 focus:outline-none focus:border-neutral-600"
         >
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
