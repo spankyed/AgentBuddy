@@ -1,38 +1,38 @@
 <template>
-  <div class="flex h-full bg-neutral-900">
-    <!-- Left Panel: Ongoing Tracks -->
-    <div class="flex flex-col w-64 border-r border-neutral-700 bg-neutral-800/50">
-      <div class="flex-shrink-0 p-4 border-b border-neutral-700">
-        <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-300">
-          Ongoing Flows
-        </h2>
-      </div>
+  <div class="flex h-full bg-neutral-800">
+    <!-- Left Panel: TNode Tree -->
+    <div class="flex flex-col border-r w-72 border-neutral-800/50 bg-neutral-800">
+              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+            Event Trace
+          </h2>
+        </div>
       <div class="flex-1 overflow-y-auto">
-        <TracksList 
-          :tracks="tracks"
-          @track-click="handleTrackClick"
+        <TNodeTree 
+          :tnode-tree="tNodeTree"
+          @tnode-click="handleTNodeClick"
         />
       </div>
     </div>
 
-    <!-- Center: Timeline Graph -->
-    <div class="relative flex-1 overflow-hidden">
-      <TimelineGraph
-        :tracks="tracks"
-        :current-flow-id="currentFlowId"
+    <!-- Center: TNode Graph -->
+    <div class="relative flex-1 overflow-hidden bg-neutral-800">
+      <TNodeGraph
+        :tnode-tree="tNodeTree"
+        :flow-tnode-id="flowTNodeId"
         :can-go-back="canGoBack"
-        @flow-node-click="handleFlowNodeClick"
+        @tnode-click="handleTNodeClick"
         @back-click="handleBackClick"
       />
     </div>
 
     <!-- Right Panel: Possible Events -->
-    <div class="flex flex-col w-64 border-l border-neutral-700 bg-neutral-800/50">
-      <div class="flex-shrink-0 p-4 border-b border-neutral-700">
-        <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-300">
-          Possible Events
-        </h2>
-      </div>
+    <div class="flex flex-col border-l w-72 border-neutral-800/50 bg-neutral-800">
+              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+            Watched Events
+          </h2>
+        </div>
       <div class="flex-1 overflow-y-auto">
         <EventsList
           :events="possibleEvents"
@@ -48,26 +48,23 @@
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type BrainState } from '@/plugins/brain/state.ts';
-import TracksList from './components/TracksList.vue';
-import TimelineGraph from './components/TimelineGraph.vue';
+import TNodeTree from './components/TNodeTree.vue';
+import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 
 const actor: BrainState = applicationState.system.get(id);
 
 // Selectors for state
-const tracks = useSelector(actor, (state) => state.context.tracks);
+const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
 const possibleEvents = useSelector(actor, (state) => state.context.possibleEvents);
-const currentFlowId = useSelector(actor, (state) => state.context.currentFlowId);
+const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
 const pulsingEventTag = useSelector(actor, (state) => state.context.pulsingEventTag);
-const canGoBack = useSelector(actor, (state) => state.context.flowStack.length > 1);
+// const canGoBack = useSelector(actor, (state) => state.context.tNodeStack.length > 1);
+const canGoBack = true;
 
 // Event handlers
-const handleTrackClick = (trackId: string) => {
-  actor.send({ type: 'TRACK.CLICK', trackId });
-};
-
-const handleFlowNodeClick = (flowId: string) => {
-  actor.send({ type: 'FLOW_NODE.CLICK', flowId });
+const handleTNodeClick = (tNodeId: string) => {
+  actor.send({ type: 'TNODE.CLICK', tNodeId });
 };
 
 const handleBackClick = () => {

@@ -1,84 +1,84 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
-import type { BrainStartupData, TrackEntity, EventListenerEntity } from '../types';
+import type { FlowTNodeData, TNodeEntity, TrackEntity, EventListenerEntity } from '../types';
 import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
+import { descendants } from '@/shared/ears/helpers/graph';
 
-// Mock data for now - in production this would come from actual state
-const mockTracks: TrackEntity[] = [
-  {
-    id: 'Track-A182C3' as EARS.EntityId,
-    entityType: EARS.Entity.Track,
-    flowId: 'Flow-2' as EARS.EntityId,
-    eventTag: 'chat.message',
-    eventLabel: 'User Message',
-    status: 'active',
-    createdAt: Date.now() - 30000,
-    startedAt: Date.now() - 30000,
-    currentNodeId: 'Node-6' as EARS.EntityId,
-    nodes: ['Node-1', 'Node-3', 'Node-4', 'Node-5', 'Node-6'] as EARS.EntityId[]
-  },
-  {
-    id: 'Track-D4E5F6' as EARS.EntityId,
-    entityType: EARS.Entity.Track,
-    flowId: 'Flow-2' as EARS.EntityId,
-    eventTag: 'system.startup',
-    eventLabel: 'System Event',
-    status: 'completed',
-    createdAt: Date.now() - 120000,
-    startedAt: Date.now() - 120000,
-    currentNodeId: 'Node-10' as EARS.EntityId,
-    nodes: ['Node-2', 'Node-8', 'Node-9', 'Node-10'] as EARS.EntityId[]
-  },
-  {
-    id: 'Track-G7H8I9' as EARS.EntityId,
-    entityType: EARS.Entity.Track,
-    flowId: 'Flow-2' as EARS.EntityId,
-    eventTag: 'chat.command',
-    eventLabel: 'User Message',
-    status: 'paused',
-    createdAt: Date.now() - 60000,
-    startedAt: Date.now() - 60000,
-    currentNodeId: 'Node-11' as EARS.EntityId,
-    nodes: ['Node-1', 'Node-3', 'Node-11'] as EARS.EntityId[]
-  },
-  {
-    id: 'Track-J1X2L3' as EARS.EntityId,
-    entityType: EARS.Entity.Track,
-    flowId: 'Flow-2' as EARS.EntityId,
-    eventTag: 'chat.message',
-    eventLabel: 'User Message',
-    status: 'failed',
-    createdAt: Date.now() - 45000,
-    startedAt: Date.now() - 45000,
-    currentNodeId: 'Node-3' as EARS.EntityId,
-    nodes: ['Node-1', 'Node-3'] as EARS.EntityId[]
-  },
-  {
-    id: 'Track-M4N506' as EARS.EntityId,
-    entityType: EARS.Entity.Track,
-    flowId: 'Flow-2' as EARS.EntityId,
-    eventTag: 'system.error',
-    eventLabel: 'System Event',
-    status: 'completed',
-    createdAt: Date.now() - 90000,
-    startedAt: Date.now() - 90000,
-    currentNodeId: 'Node-9' as EARS.EntityId,
-    nodes: ['Node-2', 'Node-8', 'Node-9'] as EARS.EntityId[]
+function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
+  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventTag", "stepNodeId", "stepNodeType"] as const;
+  
+  // Get the flow TNode
+  const flowTNode = qx(tNodeId)
+    .pickOne(nodeCols) as TNodeEntity;
+  
+  if (!flowTNode || flowTNode.nodeType !== 'flow') {
+    throw new Error(`Invalid flow TNode: ${tNodeId}`);
   }
-];
+  
+  // Get all event TNodes tracked by this flow
+  const eventTNodes = qx(tNodeId)
+    .linksPick(EARS.RelKind.TRACKED, nodeCols, [EARS.Entity.TNode]) as TNodeEntity[];
+  
+  // For each event, get all its spawned descendants (full chain)
+  const eventTracks = eventTNodes.map(eventTNode => {
+    // Get all descendant IDs using the graph helper
+    const descendantIds = descendants(eventTNode.id!, EARS.RelKind.SPAWNED);
+    
+    // Query for full details of all descendants
+    const descendantTNodes = qx(descendantIds)
+      .pick(nodeCols) as TNodeEntity[];
+    
+    return {
+      ...eventTNode,
+      children: descendantTNodes.map(child => ({ ...child, children: [] }))
+    };
+  });
+  
+  // Return the flow TNode with its event children
+  return eventTracks;
+}
 
-export default function brainStartupData(flowId: EARS.EntityId): BrainStartupData {
-  const flowCols = ["id", "label", "flowType", "status", "createdAt"] as const;
+export default function getStartupData(): FlowTNodeData {
+  const rootFlowTNode = qx(EARS.Entity.TNode)
+    .withRole(EARS.RoleKind.Custom("root_trace_node"))
+    .first();
+  
+  if (!rootFlowTNode) {
+    throw new Error("No root flow TNode found");
+  }
+  return getExtendedTNodeData(rootFlowTNode);
+}
 
+export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
+  // const flowCols = ["id", "label", "flowType", "status", "createdAt"] as const;
+  
+  // Get the TNode and ensure it's a flow node
+  const tNode = qx(tNodeId)
+    .pickOne(["nodeType"]) as Pick<TNodeEntity, 'nodeType'> | null;
+  
+  if (!tNode || tNode.nodeType !== 'flow') {
+    throw new Error(`Invalid flow TNode: ${tNodeId}`);
+  }
+  
+  // Get the flow blueprint this TNode is an instance of through INSTANCE_OF relation
+  const flowLinks = qx(tNodeId)
+    .links(EARS.RelKind.Custom('INSTANCE_OF'), [EARS.Entity.Flow]);
+  
+  if (flowLinks.length === 0) {
+    throw new Error(`Flow TNode ${tNodeId} has no INSTANCE_OF relation to a flow blueprint`);
+  }
+
+  
+  const flowId = flowLinks[0].id;
+  
   // Get the flow
-  const flow = qx(flowId)
-    .pickOne(flowCols) as Partial<FlowEntity>;
-
-  // Get all listener nodes in the flow
+  // const flow = qx(flowId)
+  //   .pickOne(flowCols) as Partial<FlowEntity>;
+  
+  // Get all listener nodes in the flow blueprint
   const listenerNodes = qx(flowId)
     .linksPick(
       EARS.RelKind.CONTAINS,
-      [EARS.Entity.Node],
       [
         'id',
         'label',
@@ -86,9 +86,10 @@ export default function brainStartupData(flowId: EARS.EntityId): BrainStartupDat
         'eventTag',
         'mode',
       ] as const,
+      [EARS.Entity.Node]
     )
     .filter((node: any) => node.nodeType === 'listen') as ListenNode[];
-
+  
   // Convert to EventListenerEntity format
   const possibleEvents: EventListenerEntity[] = listenerNodes.map(node => ({
     id: `Event-${node.id}` as EARS.EntityId,
@@ -97,21 +98,14 @@ export default function brainStartupData(flowId: EARS.EntityId): BrainStartupDat
     label: node.label,
     mode: node.mode
   }));
-
-  // Filter tracks for current flow
-  const flowTracks = mockTracks.filter(track => track.flowId === flowId);
-
-  // Get root flow
-  const rootFlow = qx(EARS.Entity.Flow)
-    .withRole(EARS.RoleKind.Custom("root_flow"))
-    .pickOne(flowCols) as Partial<FlowEntity> | undefined;
-
+  
+  // Build the TNode tree starting from the current flow TNode
+  const tNodeTree = buildEventTracks(tNodeId);
+  console.log('tNodeTree: ', tNodeTree);
+  
   return {
-    rootFlowId: rootFlow?.id || 'Flow-2' as EARS.EntityId,
-    currentFlowId: flowId,
-    rootFlow: rootFlow || flow,
-    tracks: flowTracks,
+    flowTNodeId: tNodeId,
+    tNodeTree,
     possibleEvents,
-    flowStack: [rootFlow?.id || 'Flow-2' as EARS.EntityId]
   };
 } 

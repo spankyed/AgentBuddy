@@ -3,27 +3,23 @@ import { safeEvents } from '@/core/types/safe-events';
 import type {
   OutgoingBrainEvents,
 } from '@abuddy/api'
-import type { TrackEntity, EventListenerEntity, BrainStartupData } from '@abuddy/api';
+import type { TNodeEntity, EventListenerEntity, FlowTNodeData, TrackEntity } from '@abuddy/api';
 import { trpc } from '@/core/trpc';
 
 export const id = 'brain';
 export type BrainState = ActorRefFrom<typeof brainState>
 
 export interface BrainContext {
-  rootFlowId?: string;
-  currentFlowId?: string;
-  flowStack: string[];
-  tracks: TrackEntity[];
+  flowTNodeId?: string;
+  tNodeTree?: TrackEntity[];
   possibleEvents: EventListenerEntity[];
-  flowLabel?: string;
   pulsingEventTag?: string;
 }
 
 type SystemEvent = OutgoingBrainEvents
 
 type UIEvent =
-  | { type: 'TRACK.CLICK'; trackId: string }
-  | { type: 'FLOW_NODE.CLICK'; flowId: string }
+  | { type: 'TNODE.CLICK'; tNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventTag: string }
 
@@ -40,38 +36,28 @@ const brainState = setup({
     setBrainData: assign(({ event }) => {
       if (event.type !== 'BRAIN_STARTUP') return {};
       return {
-        rootFlowId: event.data.rootFlowId,
-        currentFlowId: event.data.currentFlowId,
-        flowStack: event.data.flowStack,
-        tracks: event.data.tracks,
-        possibleEvents: event.data.possibleEvents,
-        flowLabel: event.data.rootFlow?.label
-      };
-    }),
-    setSubFlowData: assign(({ event }) => {
-      if (event.type !== 'SUB_FLOW_OPENED') return {};
-      return {
-        currentFlowId: event.data.currentFlowId,
-        flowStack: event.data.flowStack,
-        tracks: event.data.tracks,
+        flowTNodeId: event.data.flowTNodeId,
+        tNodeTree: event.data.tNodeTree,
         possibleEvents: event.data.possibleEvents,
       };
     }),
-    addTrack: assign(({ context, event }) => {
-      if (event.type !== 'TRACK_SPAWNED') return {};
+    setTNodeData: assign(({ event }) => {
+      if (event.type !== 'TNODE_OPENED') return {};
       return {
-        tracks: [...context.tracks, event.track]
+        flowTNodeId: event.data.flowTNodeId,
+        tNodeTree: event.data.tNodeTree,
+        possibleEvents: event.data.possibleEvents,
       };
     }),
-    updateTrack: assign(({ context, event }) => {
-      if (event.type !== 'TRACK_UPDATED') return {};
-      return {
-        tracks: context.tracks.map(track =>
-          track.id === event.data.trackId
-            ? { ...track, currentNodeId: event.data.nodeId, status: event.data.status }
-            : track
-        )
-      };
+    addEventTNode: assign(({ context, event }) => {
+      if (event.type !== 'EVENT_TNODE_SPAWNED') return {};
+      // TODO: Update tNodeTree to include new event node
+      return {};
+    }),
+    updateTNode: assign(({ context, event }) => {
+      if (event.type !== 'TNODE_UPDATED') return {};
+      // TODO: Update tNodeTree with new status
+      return {};
     }),
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
@@ -82,54 +68,36 @@ const brainState = setup({
     clearPulse: assign({
       pulsingEventTag: undefined
     }),
-    openSubFlow: ({ event }) => {
-      let flowId: string;
+    openTNode: ({ event }) => {
+      let tNodeId: string;
       
-      if (event.type === 'TRACK.CLICK') {
-        flowId = event.trackId; // In real impl, get flowId from track
-      } else if (event.type === 'FLOW_NODE.CLICK') {
-        flowId = event.flowId;
+      if (event.type === 'TNODE.CLICK') {
+        tNodeId = event.tNodeId;
       } else {
         return;
       }
       
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'OPEN_SUB_FLOW',
-        flowId
+        type: 'OPEN_TNODE',
+        tNodeId
       });
     },
     goBack: () => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'GO_BACK_FLOW'
-      });
-    },
-    spawnTrack: ({ event, context }) => {
-      const ev = typeOf('EVENT.CLICK', event);
-      
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'SPAWN_TRACK',
-        eventTag: ev.eventTag,
-        flowId: context.currentFlowId!
+        type: 'GO_BACK_TNODE'
       });
     },
   },
   guards: {
-    hasFlowInTrack: ({ event }) => {
-      // In real implementation, check if track has a flow node
-      return event.type === 'TRACK.CLICK' && event.trackId === 'Track-G7H8I9';
-    },
     canGoBack: ({ context }) => {
-      return context.flowStack.length > 1;
+      return true;
     }
   },
 }).createMachine({
   id,
   context: {
-    flowStack: [],
-    tracks: [],
     possibleEvents: [],
   },
   initial: 'loading',
@@ -144,28 +112,23 @@ const brainState = setup({
     },
     ready: {
       on: {
-        'TRACK.CLICK': {
-          guard: 'hasFlowInTrack',
-          actions: 'openSubFlow'
-        },
-        'FLOW_NODE.CLICK': {
-          actions: 'openSubFlow'
+        'TNODE.CLICK': {
+          actions: 'openTNode'
         },
         'BACK.CLICK': {
           guard: 'canGoBack',
           actions: 'goBack'
         },
         'EVENT.CLICK': {
-          actions: 'spawnTrack'
         },
-        SUB_FLOW_OPENED: {
-          actions: 'setSubFlowData'
+        TNODE_OPENED: {
+          actions: 'setTNodeData'
         },
-        TRACK_SPAWNED: {
-          actions: 'addTrack'
+        EVENT_TNODE_SPAWNED: {
+          actions: 'addEventTNode'
         },
-        TRACK_UPDATED: {
-          actions: 'updateTrack'
+        TNODE_UPDATED: {
+          actions: 'updateTNode'
         },
         EVENT_PULSE: {
           actions: ['pulseEvent', ({ system }) => {

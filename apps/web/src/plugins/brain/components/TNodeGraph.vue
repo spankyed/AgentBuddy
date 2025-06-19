@@ -1,0 +1,176 @@
+<template>
+  <div class="relative w-full h-full">
+    <VueFlow
+      :nodes="nodes"
+      :edges="edges"
+      class="w-full h-full bg-neutral-900"
+      :fit-view-on-init="true"
+      :connection-line-type="ConnectionLineType.SmoothStep"
+      :default-edge-options="{
+        type: 'smoothstep',
+        style: { strokeWidth: 2 },
+        markerEnd: MarkerType.Arrow
+      }"
+      :nodes-draggable="false"
+      :nodes-connectable="false"
+      :zoom-on-scroll="true"
+      :pan-on-scroll="false"
+      :zoom-on-double-click="false"
+      :min-zoom="0.5"
+      :max-zoom="2"
+      @node-click="handleNodeClick"
+    >
+      <template #node-tnode="nodeProps">
+        <TNodeGraphNode v-bind="nodeProps" />
+      </template>
+      <Background variant="dots" />
+      <Controls />
+      
+      <!-- Back button (top left) -->
+      <div class="absolute z-10 top-4 left-4">
+        <button
+          v-if="canGoBack"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
+          @click="$emit('back-click')"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      </div>
+      
+      <!-- Current TNode label (top center) -->
+      <div v-if="flowTNodeId" class="absolute z-10 transform -translate-x-1/2 left-1/2 top-4">
+        <div class="px-4 py-2 border rounded-md bg-neutral-900/90 border-neutral-800 backdrop-blur-sm">
+          <span class="text-sm text-neutral-100">{{ flowTNodeId }}</span>
+        </div>
+      </div>
+    </VueFlow>
+  </div>
+</template>
+
+<script lang="ts">
+export default {
+  name: 'TNodeGraph'
+}
+</script>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import {
+  VueFlow,
+  ConnectionLineType,
+  MarkerType,
+  type Node as VueFlowNode,
+  type Edge,
+  type NodeMouseEvent,
+} from '@vue-flow/core';
+import { Background } from '@vue-flow/background';
+import { Controls } from '@vue-flow/controls';
+import type { TrackEntity } from '@abuddy/api'
+import TNodeGraphNode from './TNodeGraphNode.vue';
+
+interface Props {
+  tnodeTree?: TrackEntity[];
+  flowTNodeId?: string;
+  canGoBack: boolean;
+}
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  'tnode-click': [tNodeId: string];
+  'back-click': [];
+}>();
+
+// Convert TNode tree to VueFlow nodes and edges
+const nodes = computed<VueFlowNode[]>(() => {
+  if (!props.tnodeTree) return [];
+  
+  const result: VueFlowNode[] = [];
+  let yOffset = 100;
+  
+  // Helper to recursively build nodes
+  const buildNodes = (tnode: TrackEntity, x: number, y: number, parentId?: string) => {
+    result.push({
+      id: tnode.id,
+      type: 'tnode',
+      position: { x, y },
+      data: {
+        label: tnode.label,
+        nodeType: tnode.nodeType,
+        stepNodeType: tnode.stepNodeType,
+        status: tnode.status,
+        hasChildren: tnode.children.length > 0,
+      },
+    });
+    
+    // Process children horizontally
+    let childX = x;
+    tnode.children.forEach((child, index) => {
+      // Simple horizontal layout - just go straight right
+      childX += 200;
+      buildNodes(child, childX, y, tnode.id);
+    });
+  };
+  
+  // Process each track entity
+  if (props.tnodeTree) {
+    props.tnodeTree.forEach((track, index) => {
+      // Stack root nodes vertically since children flow horizontally
+      buildNodes(track, 100, 100 + (index * 100));
+    });
+  }
+  
+  return result;
+});
+
+const edges = computed<Edge[]>(() => {
+  if (!props.tnodeTree) return [];
+  
+  const result: Edge[] = [];
+  
+  // Helper to recursively build edges
+  const buildEdges = (tnode: TrackEntity) => {
+    // For children, create a chain: parent -> first child -> second child -> ...
+    tnode.children.forEach((child, index) => {
+      if (index === 0) {
+        // First child connects to parent
+        result.push({
+          id: `${tnode.id}-to-${child.id}`,
+          source: tnode.id,
+          target: child.id,
+          type: 'smoothstep',
+          animated: tnode.status === 'active',
+        });
+      } else {
+        // Subsequent children connect to previous child
+        const previousChild = tnode.children[index - 1];
+        result.push({
+          id: `${previousChild.id}-to-${child.id}`,
+          source: previousChild.id,
+          target: child.id,
+          type: 'smoothstep',
+          animated: previousChild.status === 'active',
+        });
+      }
+      // Recursively process each child's children
+      buildEdges(child);
+    });
+  };
+  
+  // Process edges for each track entity
+  if (props.tnodeTree) {
+    props.tnodeTree.forEach(track => {
+      buildEdges(track);
+    });
+  }
+  
+  return result;
+});
+
+const handleNodeClick = (event: NodeMouseEvent) => {
+  emit('tnode-click', event.node.id);
+};
+</script> 
