@@ -1,15 +1,15 @@
 <template>
   <div>
     <div
-      class="flex items-center gap-2 px-2 py-1 transition-colors rounded cursor-pointer hover:bg-neutral-700/30"
-      :style="{ paddingLeft: `${depth * 16 + 8}px` }"
+      class="flex items-center px-2 transition-colors duration-100 rounded cursor-pointer group h-7 hover:bg-neutral-800/40"
+      :style="{ paddingLeft: `${depth * 20 + 12}px` }"
       @click="$emit('tnode-click', tnode.id)"
     >
       <!-- Expand/Collapse Icon -->
-      <div class="flex items-center justify-center w-4 h-4">
+      <div class="flex items-center justify-center w-4 h-4 -ml-1">
         <svg
           v-if="tnode.children.length > 0"
-          class="w-3 h-3 transition-transform"
+          class="w-3 h-3 transition-transform duration-150 text-neutral-500"
           :class="{ 'rotate-90': expanded }"
           fill="none"
           stroke="currentColor"
@@ -20,17 +20,21 @@
         </svg>
       </div>
       
-      <!-- Node Type Icon -->
-      <div
-        class="w-0.5 h-4 rounded-sm transition-all duration-200 group-hover:h-5"
-        :class="nodeTypeColor"
+      <!-- Node Type Vertical Bar - Clean and minimal -->
+      <div 
+        class="w-0.5 h-4 mr-2.5 transition-opacity duration-150"
+        :class="[nodeTypeColor, { 'opacity-100': true, 'group-hover:opacity-90': true }]"
       />
       
-      <!-- Label -->
-      <span class="text-sm text-neutral-200">{{ tnode.label }}</span>
+      <!-- Label - Consistent spacing -->
+      <span class="text-sm leading-none select-none text-neutral-300">
+        {{ tnode.label }}
+      </span>
       
-      <!-- Status -->
-      <StatusIndicator :status="tnode.status" />
+      <!-- Status - Auto margin left -->
+      <div class="ml-auto">
+        <StatusIndicator :status="tnode.status" />
+      </div>
     </div>
     
     <!-- Children -->
@@ -65,6 +69,7 @@ defineEmits<{
 const expanded = ref(true);
 
 const nodeTypeColor = computed(() => {
+  // Clean, vibrant colors without opacity
   switch (props.tnode.nodeType) {
     case 'flow':
       return 'bg-purple-500';
@@ -88,10 +93,10 @@ const nodeTypeColor = computed(() => {
         case 'flow':
           return 'bg-purple-500';
         default:
-          return 'bg-neutral-500';
+          return 'bg-neutral-400';
       }
     default:
-      return 'bg-neutral-500';
+      return 'bg-neutral-400';
   }
 });
 </script> 
