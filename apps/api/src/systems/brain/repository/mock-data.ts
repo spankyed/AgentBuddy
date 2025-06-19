@@ -146,7 +146,7 @@ export const brainRows: Rows = {
 
   /*──────────────────────────────────────────*
    * Relationships                            *
-   *──────────────────────────────────────────────────────*/
+   *──────────────────────────────────────────*/
   relation: [
     /* Flow TNodes are instances of Flow blueprints */
     { source: 'TNode-1', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-2', info: {} },
