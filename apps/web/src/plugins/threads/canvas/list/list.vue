@@ -5,23 +5,23 @@
       <Button
         @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
         type="button"
-        class="flex items-center gap-2 px-4 py-2 text-[0.8125rem] font-medium transition-all duration-200 rounded-md bg-primary-600 hover:bg-primary-500 active:scale-[0.98] shadow-sm"
+                  class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md bg-primary-600 hover:bg-primary-500 active:scale-[0.98] shadow-sm"
       >
       <Plus :size="16" class="" />
         New Thread
       </Button>
-      <div class="flex justify-end flex-1 gap-2 text-[0.8125rem]">
-        <Button
-          type="button"
-          variant="transparent"
-          class="!text-[0.8125rem] !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
-        >
-          Filter
-        </Button>
-        <Button
-          type="button"
-          variant="transparent"
-          class="!text-[0.8125rem] !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
+              <div class="flex justify-end flex-1 gap-2 text-sm">
+          <Button
+            type="button"
+            variant="transparent"
+            class="!text-sm !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
+          >
+            Filter
+          </Button>
+          <Button
+            type="button"
+            variant="transparent"
+            class="!text-sm !text-neutral-400 hover:!text-neutral-200 !transition-colors !duration-200"
         >
           Clear filters
           <span v-if="5 > 0" class="ml-1.5 text-neutral-500">
@@ -37,7 +37,7 @@
             v-model="searchKeyword"
             type="text"
             placeholder="Search threads..."
-            class="w-[22rem] pl-10 pr-4 py-2 text-[0.8125rem] rounded-md bg-neutral-900 border border-neutral-800 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-950 transition-all duration-200"
+            class="w-[22rem] pl-10 pr-4 py-2 text-sm rounded-md bg-neutral-900 border border-neutral-800 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-950 transition-all duration-200"
           />
         </div>
       </div>

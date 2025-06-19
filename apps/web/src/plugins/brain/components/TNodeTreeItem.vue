@@ -31,7 +31,7 @@
       </div>
       
       <!-- Label with better typography -->
-      <span class="text-[0.8125rem] font-medium leading-none select-none text-neutral-100 group-hover:text-white transition-colors duration-200 truncate">
+      <span class="text-sm font-medium leading-none truncate transition-colors duration-200 select-none text-neutral-100 group-hover:text-white">
         {{ tnode.label }}
       </span>
       

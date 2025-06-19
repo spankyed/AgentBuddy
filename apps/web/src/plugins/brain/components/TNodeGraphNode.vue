@@ -52,6 +52,12 @@
   </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'TNodeGraphNode'
+}
+</script>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Handle, Position } from '@vue-flow/core';

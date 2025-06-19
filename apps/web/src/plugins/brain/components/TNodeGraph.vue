@@ -3,7 +3,7 @@
     <VueFlow
       :nodes="nodes"
       :edges="edges"
-      class="w-full h-full bg-neutral-900"
+      class="w-full h-full bg-neutral-950"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{
@@ -30,10 +30,10 @@
       <div class="absolute z-10 top-4 left-4">
         <button
           v-if="canGoBack"
-          class="flex items-center gap-2 px-3 py-2 transition-colors rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-50"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
           @click="$emit('back-click')"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
           Back
@@ -42,13 +42,19 @@
       
       <!-- Current TNode label (top center) -->
       <div v-if="flowTNodeId" class="absolute z-10 transform -translate-x-1/2 left-1/2 top-4">
-        <div class="px-4 py-2 rounded-md bg-neutral-800">
-          <span class="text-sm text-neutral-300">{{ flowTNodeId }}</span>
+        <div class="px-4 py-2 rounded-md bg-neutral-900/90 border border-neutral-800 backdrop-blur-sm">
+          <span class="text-sm text-neutral-100">{{ flowTNodeId }}</span>
         </div>
       </div>
     </VueFlow>
   </div>
 </template>
+
+<script lang="ts">
+export default {
+  name: 'TNodeGraph'
+}
+</script>
 
 <script setup lang="ts">
 import { computed } from 'vue';

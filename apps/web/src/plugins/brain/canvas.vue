@@ -1,22 +1,22 @@
 <template>
-  <div class="flex h-full bg-neutral-900">
+  <div class="flex h-full bg-neutral-800">
     <!-- Left Panel: TNode Tree -->
-    <div class="flex flex-col w-64 border-r border-neutral-700 bg-neutral-800/50">
+    <div class="flex flex-col border-r w-72 border-neutral-800/50 bg-neutral-800">
+              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+            Event Trace
+          </h2>
+        </div>
       <div class="flex-1 overflow-y-auto">
         <TNodeTree 
           :tnode-tree="tNodeTree"
           @tnode-click="handleTNodeClick"
         />
       </div>
-      <div class="flex-shrink-0 p-4 border-t border-neutral-700">
-        <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-300">
-          Event Trace
-        </h2>
-      </div>
     </div>
 
     <!-- Center: TNode Graph -->
-    <div class="relative flex-1 overflow-hidden">
+    <div class="relative flex-1 overflow-hidden bg-neutral-800">
       <TNodeGraph
         :tnode-tree="tNodeTree"
         :flow-tnode-id="flowTNodeId"
@@ -27,18 +27,18 @@
     </div>
 
     <!-- Right Panel: Possible Events -->
-    <div class="flex flex-col w-64 border-l border-neutral-700 bg-neutral-800/50">
+    <div class="flex flex-col border-l w-72 border-neutral-800/50 bg-neutral-800">
+              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+            Watched Events
+          </h2>
+        </div>
       <div class="flex-1 overflow-y-auto">
         <EventsList
           :events="possibleEvents"
           :pulsing-event-tag="pulsingEventTag"
           @event-click="handleEventClick"
         />
-      </div>
-      <div class="flex-shrink-0 p-4 border-t border-neutral-700">
-        <h2 class="text-sm font-semibold tracking-wider uppercase text-neutral-300">
-          Watched Events
-        </h2>
       </div>
     </div>
   </div>

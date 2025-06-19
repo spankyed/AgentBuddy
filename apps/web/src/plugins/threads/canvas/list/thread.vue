@@ -15,10 +15,10 @@
     >
       <!-- ID badge and truncated topic -->
       <div class="flex items-center flex-1 gap-3">
-        <span class="text-[0.75rem] font-medium text-neutral-500 uppercase tracking-wider min-w-[3.5rem]">
+        <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider min-w-[3.5rem]">
           {{ thread.shortCode }}
         </span>
-        <span class="text-[0.875rem] font-medium truncate max-w-md text-neutral-100">
+        <span class="text-sm font-medium truncate max-w-md text-neutral-100">
           {{ thread.topic || 'Untitled thread' }}
         </span>
       </div>
@@ -28,7 +28,7 @@
           @click.stop
           :value="thread.status"
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
-          class="px-3 py-1 text-[0.75rem] rounded-md bg-neutral-800 border border-neutral-700 text-neutral-300 focus:outline-none focus:border-neutral-600 transition-all duration-200 cursor-pointer"
+          class="px-3 py-1 text-xs rounded-md bg-neutral-800 border border-neutral-700 text-neutral-300 focus:outline-none focus:border-neutral-600 transition-all duration-200 cursor-pointer"
         >
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
@@ -40,7 +40,7 @@
             @click.stop
             v-for="tag in thread.tags"
             :key="tag.id"
-            class="px-2 py-0.5 text-[0.6875rem] text-purple-300 rounded bg-purple-900/30 transition-colors duration-200 truncate"
+            class="px-2 py-0.5 text-xs text-purple-300 rounded bg-purple-900/30 transition-colors duration-200 truncate"
           >
             {{ tag.name }}
           </span>
@@ -52,7 +52,7 @@
       v-if="!lite"
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
-      class="flex items-center justify-center h-full px-4 py-2.5 text-[0.8125rem] font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 transition-all duration-200 border-l border-neutral-800"
+      class="flex items-center justify-center h-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 transition-all duration-200 border-l border-neutral-800"
     >
       Chat
       <MessageCircleMore class="w-4 h-4 ml-1.5"/>
