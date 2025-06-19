@@ -66,7 +66,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'User Message',
-      stepNodeId: 'Node-1', // ! Should use INSTANCE_OF relation instead
+      stepNodeId: 'Node-b1', // ! Should use INSTANCE_OF relation instead
       stepNodeType: 'listen',
       status: 'completed',
       createdAt: nowMs - 30000,
@@ -77,7 +77,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'Message Type',
-      stepNodeId: 'Node-3',
+      stepNodeId: 'Node-b3',
       stepNodeType: 'decision',
       status: 'completed',
       createdAt: nowMs - 29000,
@@ -88,7 +88,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'Create Context',
-      stepNodeId: 'Node-4',
+      stepNodeId: 'Node-b4',
       stepNodeType: 'create',
       status: 'completed',
       createdAt: nowMs - 28000,
@@ -99,7 +99,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'Update Context',
-      stepNodeId: 'Node-5',
+      stepNodeId: 'Node-b5',
       stepNodeType: 'update',
       status: 'completed',
       createdAt: nowMs - 27000,
@@ -110,7 +110,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'Send Response',
-      stepNodeId: 'Node-6',
+      stepNodeId: 'Node-b6',
       stepNodeType: 'fire',
       status: 'active',
       createdAt: nowMs - 26000,
@@ -121,7 +121,7 @@ export const brainRows: Rows = {
       entityType: EARS.Entity.TNode,
       nodeType: 'step',
       label: 'Command Handler',
-      stepNodeId: 'Node-11',
+      stepNodeId: 'Node-b11',
       stepNodeType: 'flow',
       status: 'paused',
       createdAt: nowMs - 59000,
@@ -149,8 +149,8 @@ export const brainRows: Rows = {
    *──────────────────────────────────────────*/
   relation: [
     /* Flow TNodes are instances of Flow blueprints */
-    { source: 'TNode-1', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-2', info: {} },
-    { source: 'TNode-2', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-3', info: {} },
+    { source: 'TNode-1', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-a', info: {} },
+    { source: 'TNode-3', kind: EARS.RelKind.Custom('INSTANCE_OF'), target: 'Flow-b', info: {} },
     
     /* Flow TNodes contain Event TNodes */
     { source: 'TNode-1', kind: EARS.RelKind.TRACKED, target: 'TNode-2', info: {} },

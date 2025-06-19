@@ -29,16 +29,16 @@ describe('qx – fluent query DSL', () => {
 
   it('filters by a single entity type', () => {
     expect(qx(EARS.Entity.Node).ids()).toEqual([
-      'Node-1',
-      'Node-2',
-      'Node-3',
-      'Node-4',
-      'Node-5',
-      'Node-6',
-      'Node-8',
-      'Node-9',
-      'Node-10',
-      'Node-11',
+      'Node-b1',
+      'Node-b2',
+      'Node-b3',
+      'Node-b4',
+      'Node-b5',
+      'Node-b6',
+      'Node-b8',
+      'Node-b9',
+      'Node-b10',
+      'Node-b11',
     ]);
   });
 
@@ -48,13 +48,13 @@ describe('qx – fluent query DSL', () => {
   });
 
   it('exists() returns true for existing entity IDs', () => {
-    expect(qx('Node-1').exists()).toBe(true);
-    expect(qx('Flow-1').exists()).toBe(true);
+    expect(qx('Node-b1').exists()).toBe(true);
+    expect(qx('Flow-a').exists()).toBe(true);
   });
 
   it('filters non-existent IDs from arrays', () => {
-    const ids = qx(['Node-1', 'Node-fake', 'Node-2', 'Node-missing']).ids();
-    expect(ids).toEqual(['Node-1', 'Node-2']);
+    const ids = qx(['Node-b1', 'Node-fake', 'Node-b2', 'Node-missing']).ids();
+    expect(ids).toEqual(['Node-b1', 'Node-b2']);
   });
 
   // it('accepts an array of entity types', () => {
@@ -66,7 +66,7 @@ describe('qx – fluent query DSL', () => {
   // });
 
   it('accepts an explicit list of ids', () => {
-    expect(qx(['Node-2', 'Node-4']).ids()).toEqual(['Node-2', 'Node-4']);
+    expect(qx(['Node-b2', 'Node-b4']).ids()).toEqual(['Node-b2', 'Node-b4']);
   });
 
   /* ───────────── filters ───────────── */
@@ -74,41 +74,41 @@ describe('qx – fluent query DSL', () => {
     const id = qx()
       .where('nodeType', 'flow')
       .first();
-    expect(id).toBe('Node-11');
+    expect(id).toBe('Node-b11');
   });
 
   it('withRole() filters by role membership', () => {
     const id = qx()
       .withRole(EARS.RoleKind.Custom('selected_node'))
       .first();
-    expect(id).toBe('Node-2');
+    expect(id).toBe('Node-b2');
   });
 
   it('relatedTo() returns all sources that point to the target', () => {
     const upstream = qx()
-      .relatedTo('Node-3')
+      .relatedTo('Node-b3')
       .ids()
       .sort();
-    expect(upstream).toEqual(['Flow-1', 'Node-1', 'Node-11', 'Node-4'].sort());
+    expect(upstream).toEqual(['Flow-b', 'Node-b1', 'Node-b11', 'Node-b4'].sort());
   });
 
   /* ─────── graph traversal helpers ─────── */
   it('linksTo() follows TRANSITIONS_TO to next step', () => {
     expect(
-      qx('Node-2')
+      qx('Node-b2')
         .linksTo(EARS.RelKind.CONSUMED_BY, EARS.Entity.Node)
         .ids(),
-    ).toEqual(['Node-8']);
+    ).toEqual(['Node-b8']);
   });
 
   it('linksPick() projects linked nodes with selected fields', () => {
-    const rows = qx('Node-1').linksPick(
+    const rows = qx('Node-b1').linksPick(
       EARS.RelKind.CONSUMED_BY,
       ['label', 'nodeType'],
       EARS.Entity.Node,
     );
     expect(rows).toEqual([
-      { id: 'Node-3', label: 'Message Type', nodeType: 'decision' },
+      { id: 'Node-b3', label: 'Message Type', nodeType: 'decision' },
     ]);
   });
 
@@ -118,7 +118,7 @@ describe('qx – fluent query DSL', () => {
       .orderBy('createdAt', 'asc')
       .limit(2)
       .ids();
-    expect(ids).toEqual(['Node-1', 'Node-2']);
+    expect(ids).toEqual(['Node-b1', 'Node-b2']);
   });
 
   it('reverse() flips the current ordering', () => {
@@ -130,14 +130,14 @@ describe('qx – fluent query DSL', () => {
   /* ──────── new expressiveness helpers ──────── */
   describe('distinct()', () => {
     it('removes duplicate IDs', () => {
-      const ids = qx(['Node-1', 'Node-1', 'Node-2'])
+      const ids = qx(['Node-b1', 'Node-b1', 'Node-b2'])
         .distinct()
         .ids();
-      expect(ids).toEqual(['Node-1', 'Node-2']);
+      expect(ids).toEqual(['Node-b1', 'Node-b2']);
     });
 
     it('dedupes by an attribute value', () => {
-      // Node-1 & Node-2 both have nodeType = 'listen'
+      // Node-b1 & Node-b2 both have nodeType = 'listen'
       const rows = qx(EARS.Entity.Node)
         .distinct('nodeType')
         .pick(['nodeType']);
@@ -181,7 +181,7 @@ describe('qx – fluent query DSL', () => {
 
   /* ────────── edge identifiers ────────── */
   it('edgeIds() exposes raw relation identifiers', () => {
-    const edges = qx('Node-2').edgeIds(EARS.RelKind.CONSUMED_BY, true);
+    const edges = qx('Node-b2').edgeIds(EARS.RelKind.CONSUMED_BY, true);
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });
@@ -189,23 +189,23 @@ describe('qx – fluent query DSL', () => {
   /* ──────── Additional test coverage ──────── */
   describe('Additional query tests', () => {
     it('filters by Flow entity type', () => {
-      const flows = qx(EARS.Entity.Flow).ids();
-      expect(flows).toEqual(['Flow-1']);
+      const flows = qx(EARS.Entity.Flow).ids().sort();
+      expect(flows).toEqual(['Flow-a', 'Flow-b', 'Flow-c']);
     });
 
     it('follows TRANSITIONS_TO relationships', () => {
-      const transitions = qx('Node-3')
+      const transitions = qx('Node-b3')
         .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids()
         .sort();
-      expect(transitions).toEqual(['Node-11', 'Node-4'].sort());
+      expect(transitions).toEqual(['Node-b11', 'Node-b4'].sort());
     });
 
     it('follows EMITS relationships', () => {
-      const emits = qx('Node-5')
+      const emits = qx('Node-b5')
         .linksTo(EARS.RelKind.EMITS, EARS.Entity.Node)
         .ids();
-      expect(emits).toEqual(['Node-6']);
+      expect(emits).toEqual(['Node-b6']);
     });
 
     it('chains multiple filters', () => {
@@ -214,7 +214,7 @@ describe('qx – fluent query DSL', () => {
         .where('color', '#F44336')
         .ids()
         .sort();
-      expect(result).toEqual(['Node-10', 'Node-6'].sort());
+      expect(result).toEqual(['Node-b10', 'Node-b6'].sort());
     });
 
     it('returns empty array for no matches', () => {
@@ -238,14 +238,14 @@ describe('qx – fluent query DSL', () => {
       const entryNodes = qx(EARS.Entity.Node)
         .where('mode', 'entry')
         .ids();
-      expect(entryNodes).toEqual(['Node-1']);
+      expect(entryNodes).toEqual(['Node-b1']);
     });
 
     it('retrieves nodes with specific event tags', () => {
       const chatNodes = qx(EARS.Entity.Node)
         .where('eventType', 'chat.message')
         .ids();
-      expect(chatNodes).toEqual(['Node-1']);
+      expect(chatNodes).toEqual(['Node-b1']);
     });
   });
 });
