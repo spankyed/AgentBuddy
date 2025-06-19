@@ -4,7 +4,7 @@ import type { FlowTNodeData, TNodeEntity, TrackEntity, EventListenerEntity } fro
 import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
-function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
+function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
   const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventTag", "stepNodeId", "stepNodeType"] as const;
   
   // Get the flow TNode
@@ -20,7 +20,7 @@ function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
     .linksPick(EARS.RelKind.TRACKED, nodeCols, [EARS.Entity.TNode]) as TNodeEntity[];
   
   // For each event, get all its spawned descendants (full chain)
-  const eventTNodesWithChildren = eventTNodes.map(eventTNode => {
+  const eventTracks = eventTNodes.map(eventTNode => {
     // Get all descendant IDs using the graph helper
     const descendantIds = descendants(eventTNode.id!, EARS.RelKind.SPAWNED);
     
@@ -34,10 +34,8 @@ function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
     };
   });
   
-  return {
-    ...flowTNode,
-    children: eventTNodesWithChildren
-  };
+  // Return the flow TNode with its event children
+  return eventTracks;
 }
 
 export default function getStartupData(): FlowTNodeData {
@@ -102,7 +100,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   }));
   
   // Build the TNode tree starting from the current flow TNode
-  const tNodeTree = buildTNodeTree(tNodeId);
+  const tNodeTree = buildEventTracks(tNodeId);
   console.log('tNodeTree: ', tNodeTree);
   
   return {

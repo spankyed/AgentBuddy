@@ -30,7 +30,7 @@ export interface EventListenerEntity {
 
 export interface FlowTNodeData {
   flowTNodeId: EARS.EntityId;
-  tNodeTree: TrackEntity;
+  tNodeTree: TrackEntity[];
   possibleEvents: EventListenerEntity[];
 }
 

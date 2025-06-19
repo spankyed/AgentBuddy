@@ -11,7 +11,7 @@ export type BrainState = ActorRefFrom<typeof brainState>
 
 export interface BrainContext {
   flowTNodeId?: string;
-  tNodeTree?: TrackEntity;
+  tNodeTree?: TrackEntity[];
   possibleEvents: EventListenerEntity[];
   pulsingEventTag?: string;
 }

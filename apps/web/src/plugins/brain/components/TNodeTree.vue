@@ -1,8 +1,10 @@
 <template>
   <div class="h-full p-4 overflow-y-auto">
-    <div v-if="tnodeTree">
+    <div v-if="tnodeTree && tnodeTree.length > 0">
       <TNodeTreeItem
-        :tnode="tnodeTree"
+        v-for="node in tnodeTree"
+        :key="node.id"
+        :tnode="node"
         :depth="0"
         @tnode-click="$emit('tnode-click', $event)"
       />
@@ -19,7 +21,7 @@ import type { TrackEntity } from '@abuddy/api'
 import TNodeTreeItem from './TNodeTreeItem.vue';
 
 interface Props {
-  tnodeTree?: TrackEntity;
+  tnodeTree?: TrackEntity[];
 }
 
 defineProps<Props>();

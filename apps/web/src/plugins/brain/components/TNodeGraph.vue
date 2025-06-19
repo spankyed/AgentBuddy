@@ -66,7 +66,7 @@ import type { TrackEntity } from '@abuddy/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
 
 interface Props {
-  tnodeTree?: TrackEntity;
+  tnodeTree?: TrackEntity[];
   flowTNodeId?: string;
   canGoBack: boolean;
 }
@@ -100,15 +100,22 @@ const nodes = computed<VueFlowNode[]>(() => {
       },
     });
     
-    // Process children
+    // Process children horizontally
     let childX = x;
     tnode.children.forEach((child, index) => {
-      buildNodes(child, childX, y + 150, tnode.id);
-      childX += 250;
+      // Simple horizontal layout - just go straight right
+      childX += 200;
+      buildNodes(child, childX, y, tnode.id);
     });
   };
   
-  buildNodes(props.tnodeTree, 100, 100);
+  // Process each track entity
+  if (props.tnodeTree) {
+    props.tnodeTree.forEach((track, index) => {
+      // Stack root nodes vertically since children flow horizontally
+      buildNodes(track, 100, 100 + (index * 100));
+    });
+  }
   
   return result;
 });
@@ -120,19 +127,39 @@ const edges = computed<Edge[]>(() => {
   
   // Helper to recursively build edges
   const buildEdges = (tnode: TrackEntity) => {
-    tnode.children.forEach((child) => {
-      result.push({
-        id: `${tnode.id}-to-${child.id}`,
-        source: tnode.id,
-        target: child.id,
-        type: 'smoothstep',
-        animated: tnode.status === 'active',
-      });
+    // For children, create a chain: parent -> first child -> second child -> ...
+    tnode.children.forEach((child, index) => {
+      if (index === 0) {
+        // First child connects to parent
+        result.push({
+          id: `${tnode.id}-to-${child.id}`,
+          source: tnode.id,
+          target: child.id,
+          type: 'smoothstep',
+          animated: tnode.status === 'active',
+        });
+      } else {
+        // Subsequent children connect to previous child
+        const previousChild = tnode.children[index - 1];
+        result.push({
+          id: `${previousChild.id}-to-${child.id}`,
+          source: previousChild.id,
+          target: child.id,
+          type: 'smoothstep',
+          animated: previousChild.status === 'active',
+        });
+      }
+      // Recursively process each child's children
       buildEdges(child);
     });
   };
   
-  buildEdges(props.tnodeTree);
+  // Process edges for each track entity
+  if (props.tnodeTree) {
+    props.tnodeTree.forEach(track => {
+      buildEdges(track);
+    });
+  }
   
   return result;
 });
