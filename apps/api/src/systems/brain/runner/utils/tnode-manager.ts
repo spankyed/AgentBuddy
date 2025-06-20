@@ -155,8 +155,7 @@ export function createRootFlowTNode(
   systemActor: any
 ): TNodeEntity {
   const now = Date.now();
-  // For root, we use a specific ID for consistency
-  const rootId = 'TNode-1' as EARS.EntityId;
+  const rootId = 'TNode-Root' as EARS.EntityId; // For the root flow, we specify an ID for consistency
   
   tx(rootId)
     .batchPut({

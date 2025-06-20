@@ -1,10 +1,9 @@
 import { setup, sendParent, assign } from 'xstate';
 import type { FlowMachineContext, ChildCompletedEvent } from '@/systems/brain/types';
 import type { ListenNode } from '@/systems/flows/types';
-import { createEventTNode } from '../utils/tnode-manager';
+import { createEventTNode, updateTNodeStatus } from '../utils/tnode-manager';
 import { getEventResponderNode } from '../utils/flow-data';
-import { spawnExecutionChain } from '../utils/execution-chain';
-import { updateTNodeStatus } from '../utils/tnode-manager';
+import { spawnChildMachine } from '../utils/spawn-child';
 
 /**
  * Create a dynamic state machine for a flow that listens to its events
@@ -47,7 +46,7 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
             currentEvent: eventType,
           };
           
-          spawnExecutionChain(responderNode, eventTNode.id, updatedContext, self, context.systemActor);
+          spawnChildMachine(responderNode, eventTNode.id, updatedContext, self, context.systemActor);
         }
       },
       
@@ -77,7 +76,7 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
           console.log(`Flow ${context.flowId} completing`);
           self.send({ type: 'COMPLETE_FLOW' });
         } else if (event.nextNode && event.parentTNodeId) {
-          spawnExecutionChain(event.nextNode, event.parentTNodeId, context.executionContext, self, context.systemActor);
+          spawnChildMachine(event.nextNode, event.parentTNodeId, context.executionContext, self, context.systemActor);
         }
       },
       

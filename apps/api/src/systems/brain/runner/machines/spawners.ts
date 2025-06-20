@@ -7,7 +7,6 @@ import { createFlowMachine } from './flow-machine';
 import { createStepMachine } from './step-machine';
 import { createFlowTNode } from '../utils/tnode-manager';
 import { getFlowEventNodes } from '../utils/flow-data';
-import { setSpawners } from '../utils/execution-chain';
 
 /**
  * Spawn a state machine for a flow node
@@ -90,7 +89,4 @@ export function spawnStepMachine(
   });
   
   return actor;
-}
-
-// Initialize the execution chain with these spawners
-setSpawners(spawnFlowMachine, spawnStepMachine); 
+} 

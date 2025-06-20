@@ -20,7 +20,7 @@ brain/
 └── utils/             # Utility functions
     ├── tnode-manager.ts   # TNode creation and management
     ├── flow-data.ts       # Flow and node data queries
-    └── execution-chain.ts # Execution chain spawning
+    └── spawn-child.ts     # Child machine spawning
 ```
 
 ## Key Components
@@ -64,7 +64,7 @@ Blueprint nodes can be marked as `final: true` in the flow definition to trigger
 - Queries flow and node relationships
 - Gets event nodes, responders, and transitions
 
-#### Execution Chain
+#### Child Spawning
 - Spawns appropriate machines (flow or step)
 - Handles spawn errors
 

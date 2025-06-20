@@ -46,8 +46,8 @@ export const brainSystem = setup({
     input: {} as EARS.EntityId,
   },
   actions: {
-    logError: (_, event: ErrorActorEvent<unknown, string>) => {
-      console.error('Brain system error:', event.error);
+    logError: ({ event }) => {
+      // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: ({ system, context, self }) => {
       try {
@@ -103,7 +103,7 @@ export const brainSystem = setup({
       }
     },
     storeBrainRunner: assign({
-      brainRunner: (_, event: any) => event.runner
+      brainRunner: ({ event }) => typeOf('BRAIN_RUNNER_STARTED', event).runner
     })
   },
 }).createMachine(
