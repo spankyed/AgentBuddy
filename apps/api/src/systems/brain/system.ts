@@ -25,7 +25,6 @@ export const IncomingBrainEvents = [
 export type BrainInternalEvents = 
   | SystemEvents
   | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
-  | { type: 'BRAIN_RUNNER_STARTED'; runner: ActorRefFrom<any> }
 
 export type OutgoingBrainEvents =
   | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
@@ -41,7 +40,6 @@ export const brainSystem = setup({
   types: {
     context: {} as {
       brainId: EARS.EntityId;
-      brainRunner?: ActorRefFrom<any>;
     },
     events: {} as ReceivableEvents,
     input: {} as EARS.EntityId,
@@ -56,6 +54,7 @@ export const brainSystem = setup({
 
       const rootFlowMachine = createFlowMachine(rootFlow.id, eventNodes)
       enqueue.spawnChild(rootFlowMachine, {
+        systemId: 'brain-runner',
         input: {
           flowId: rootFlow.id,
           parentTNodeId: rootFlowTNode.id,
@@ -102,17 +101,12 @@ export const brainSystem = setup({
         }));
         
         // Forward event to brain runner
-        if (context.brainRunner) {
-          context.brainRunner.send({ 
-            type: event.data.eventType, 
-            payload: event.data.payload 
-          });
-        }
+        system.get('brain-runner').send({ 
+          type: event.data.eventType, 
+          payload: event.data.payload 
+        });
       }
     },
-    storeBrainRunner: assign({
-      brainRunner: ({ event }) => typeOf('BRAIN_RUNNER_STARTED', event).runner
-    })
   },
 }).createMachine(
   {
