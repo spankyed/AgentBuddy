@@ -1,4 +1,4 @@
-import { setup, sendParent } from 'xstate';
+import { setup, sendParent, assign } from 'xstate';
 import type { FlowMachineContext, ChildCompletedEvent } from '@/systems/brain/types';
 import type { ListenNode } from '@/systems/flows/types';
 import { createEventTNode } from '../utils/tnode-manager';
@@ -10,18 +10,18 @@ import { updateTNodeStatus } from '../utils/tnode-manager';
  * Create a dynamic state machine for a flow that listens to its events
  */
 export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
-  // Build event handlers dynamically
   const eventHandlers: Record<string, any> = {};
   
+  // Add event listeners
   eventNodes.forEach(node => {
     eventHandlers[node.eventType] = {
-      actions: 'handleFlowEvent',
+      actions: ['handleFlowEvent', 'incrementChildCount'],
     };
   });
 
   // Add child completion handler
   eventHandlers['CHILD_COMPLETED'] = {
-    actions: 'handleChildCompletion',
+    actions: ['processChildCompletion', 'checkFlowCompletion'],
   };
 
   return setup({
@@ -38,49 +38,45 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
         
         console.log(`Flow ${context.flowId} received event: ${eventType}`);
         
-        // Get the responder node for this event
         const responderNode = getEventResponderNode(eventNode.id!);
-        
         if (responderNode) {
-          // Create event TNode first
           const eventTNode = createEventTNode(eventNode, context.parentTNodeId, context.systemActor);
-          
-          // Update execution context with event payload
           const updatedContext = {
             ...context.executionContext,
             eventPayload: event.payload,
             currentEvent: eventType,
           };
           
-          // Spawn execution chain starting from responder
           spawnExecutionChain(responderNode, eventTNode.id, updatedContext, self, context.systemActor);
         }
       },
       
-      handleChildCompletion: ({ context, event, self }: { context: FlowMachineContext, event: ChildCompletedEvent, self: any }) => {
+      incrementChildCount: assign({
+        activeChildrenCount: ({ context, event }) => {
+          const eventNode = context.eventNodes.find(n => n.eventType === event.type);
+          const responderNode = eventNode ? getEventResponderNode(eventNode.id!) : null;
+          return responderNode ? context.activeChildrenCount + 1 : context.activeChildrenCount;
+        }
+      }),
+      
+      processChildCompletion: assign({
+        activeChildrenCount: ({ context, event }: { context: FlowMachineContext, event: ChildCompletedEvent }) => {
+          // Decrement for completed child, increment if there's a next node
+          const decremented = Math.max(0, context.activeChildrenCount - 1);
+          return event.nextNode ? decremented + 1 : decremented;
+        },
+        executionContext: ({ context, event }: { context: FlowMachineContext, event: ChildCompletedEvent }) => 
+          event.result ? { ...context.executionContext, ...event.result } : context.executionContext
+      }),
+      
+      checkFlowCompletion: ({ context, event, self }: { context: FlowMachineContext, event: ChildCompletedEvent, self: any }) => {
         console.log(`Child completed in flow ${context.flowId}:`, event);
-        // Remove completed child from active children
-        if (event.childId) {
-          context.activeChildren.delete(event.childId);
-        }
         
-        // Update execution context with child results
-        if (event.result) {
-          context.executionContext = { ...context.executionContext, ...event.result };
-        }
-        
-        // Check if we should complete this flow
-        const shouldComplete = 
-          // Child has final flag
-          event.result?.final === true ||
-          // No next node and no other active children (natural end of execution)
-          (!event.nextNode && context.activeChildren.size === 0);
-        
-        if (shouldComplete) {
-          console.log(`Flow ${context.flowId} completing due to ${event.result?.final ? 'final flag' : 'end of execution'}`);
+        // Complete flow if: has final flag OR no next node and no active children
+        if (event.result?.final || (!event.nextNode && context.activeChildrenCount === 0)) {
+          console.log(`Flow ${context.flowId} completing`);
           self.send({ type: 'COMPLETE_FLOW' });
         } else if (event.nextNode && event.parentTNodeId) {
-          // Spawn next step
           spawnExecutionChain(event.nextNode, event.parentTNodeId, context.executionContext, self, context.systemActor);
         }
       },
@@ -91,17 +87,12 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
         }
       },
       
-      notifyParentOfCompletion: ({ context }) => {
-        // Only send to parent if there's a parent actor (non-root flows)
-        if (context.parentActor) {
-          context.parentActor.send({
-            type: 'CHILD_COMPLETED',
-            childId: context.flowId,
-            result: context.executionContext,
-            parentTNodeId: context.parentTNodeId,
-          });
-        }
-      },
+      notifyParentOfCompletion: sendParent(({ context }) => ({
+        type: 'CHILD_COMPLETED',
+        childId: context.flowId,
+        result: context.executionContext,
+        parentTNodeId: context.parentTNodeId,
+      })),
     },
   }).createMachine({
     id: `flow-${flowId}`,
@@ -112,17 +103,13 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
       eventNodes: input.eventNodes,
       executionContext: input.executionContext || {},
       systemActor: input.systemActor,
-      activeChildren: new Map(),
-      isRootFlow: input.isRootFlow,
-      parentActor: input.parentActor,
+      activeChildrenCount: 0,
     }),
     on: eventHandlers,
     states: {
       active: {
         on: {
-          COMPLETE_FLOW: {
-            target: 'completed',
-          },
+          COMPLETE_FLOW: 'completed',
         },
       },
       completed: {

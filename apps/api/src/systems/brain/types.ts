@@ -70,9 +70,7 @@ export interface FlowMachineContext {
   eventNodes: ListenNode[];
   executionContext: ExecutionContext;
   systemActor?: any;
-  activeChildren: Map<string, ActorRefFrom<any>>;
-  isRootFlow?: boolean;
-  parentActor?: any;
+  activeChildrenCount: number;
 }
 
 export interface StepMachineContext {

@@ -56,8 +56,6 @@ export function spawnFlowMachine(
       eventNodes,
       executionContext,
       systemActor,
-      parentActor,
-      isRootFlow: false, // Child flows are not root
     },
   });
   

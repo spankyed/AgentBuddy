@@ -27,19 +27,12 @@ export function spawnExecutionChain(
 ) {
   try {
     if (startNode.nodeType === 'flow') {
-      const flowActor = spawnFlowMachine(startNode.id!, parentTNodeId, executionContext, parentActor, systemActor);
-      if (parentActor.context && parentActor.context.activeChildren) {
-        parentActor.context.activeChildren.set(startNode.id!, flowActor);
-      }
+      spawnFlowMachine(startNode.id!, parentTNodeId, executionContext, parentActor, systemActor);
     } else {
-      const stepActor = spawnStepMachine(startNode, parentTNodeId, executionContext, parentActor, systemActor);
-      if (parentActor.context && parentActor.context.activeChildren) {
-        parentActor.context.activeChildren.set(startNode.id!, stepActor);
-      }
+      spawnStepMachine(startNode, parentTNodeId, executionContext, parentActor, systemActor);
     }
   } catch (error) {
     console.error(`Failed to spawn execution chain for node ${startNode.id}:`, error);
-    // Update parent TNode status to failed
     updateTNodeStatus(parentTNodeId, 'failed', systemActor);
   }
 } 

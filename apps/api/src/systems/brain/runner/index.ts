@@ -34,8 +34,6 @@ export function startBrainRunner(systemActor: any) {
         eventNodes,
         executionContext: {},
         systemActor,
-        isRootFlow: true,
-        parentActor: null, // Root flow has no parent
       },
     });
     
