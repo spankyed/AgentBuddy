@@ -39,13 +39,13 @@ function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
 }
 
 export default function getStartupData(): FlowTNodeData {
-  const rootFlowTNode = qx(EARS.Entity.TNode)
-    .withRole(EARS.RoleKind.Custom("root_trace_node"))
-    .first();
+  // const rootFlowTNode = qx(EARS.Entity.TNode)
+  //   .withRole(EARS.RoleKind.Custom("root_trace_node"))
+  //   .first();
   
-  if (!rootFlowTNode) {
-    throw new Error("No root flow TNode found");
-  }
+  // if (!rootFlowTNode) {
+  //   throw new Error("No root flow TNode found");
+  // }
 
   return {
     flowTNodeId: 'Flow-Root' as EARS.EntityId,
