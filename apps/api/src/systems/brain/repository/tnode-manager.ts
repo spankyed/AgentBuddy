@@ -46,8 +46,8 @@ export function getNextNodes(nodeId: EARS.EntityId): NodeEntity[] {
     qx(link.id).pickOne(["id", "nodeType", "label"]) as NodeEntity
   );
 } 
-// --------------------------------------------------------------------------------------------------
 
+// --------------------------------------------------------------------------------------------------
 
 /**
  * Emit a TNode event

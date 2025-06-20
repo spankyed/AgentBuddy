@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { createStepTNode, getNextNodes, updateTNodeStatus } from '../utils/tnode-manager';
+import { createStepTNode, getNextNodes, updateTNodeStatus } from '../../repository/tnode-manager';
 import { executeNode } from '../nodes/node-executor';
 import { NodeEntity, EARS, ExecutionContext } from '@/types';
 

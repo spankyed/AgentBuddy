@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getStartupData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
-import { createRootFlowTNode } from './runner/utils/tnode-manager';
+import { createRootFlowTNode } from './repository/tnode-manager';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -50,7 +50,7 @@ export const brainSystem = setup({
     logError: ({ event }) => {
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
-    startBrain: enqueueActions(({ system, context, enqueue }) => {
+    startBrain: enqueueActions(({ system, context, enqueue, self }) => {
       const { rootFlow, rootFlowTNode, eventNodes } = createRootFlowTNode();
       // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: rootFlowTNode }, systemActor);
 

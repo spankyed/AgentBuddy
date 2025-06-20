@@ -1,7 +1,7 @@
 import { setup, sendParent, assign, enqueueActions } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/types';
-import { createEventTNode, createFlowTNode, updateTNodeStatus } from '../utils/tnode-manager';
-import { getEventResponderNode } from '../utils/tnode-manager';
+import { createEventTNode, createFlowTNode, updateTNodeStatus } from '../../repository/tnode-manager';
+import { getEventResponderNode } from '../../repository/tnode-manager';
 import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
@@ -211,7 +211,7 @@ export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[
       ...eventHandlers,
       CHILD_COMPLETED: [
         {
-          target: 'completed',
+          target: '.completed',
           guard: 'flowCompleted',
         },
         {
