@@ -52,7 +52,11 @@ export function createStepMachine() {
         return {
           type: 'CHILD_COMPLETED',
           childId: context.node.id,
-          result: context.executionContext,
+          result: {
+            ...context.executionContext,
+            // Include the node's final flag if it exists
+            ...(context.node.final && { final: true })
+          },
           nextNode,
           parentTNodeId: context.parentTNodeId,
         };

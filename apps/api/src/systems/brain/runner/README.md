@@ -51,6 +51,8 @@ Each node type has its own handler:
 - **Keep-Alive Node**: Maintains flow active state
 - **LLM Node**: Handles LLM API calls
 
+Blueprint nodes can be marked as `final: true` in the flow definition to trigger parent flow completion when they complete.
+
 ### Utilities (`utils/`)
 
 #### TNode Manager
@@ -76,7 +78,12 @@ export function myNodeHandler(
   actor: any
 ) {
   // Implementation
-  actor.send({ type: 'COMPLETE', result: {...} });
+  actor.send({ 
+    type: 'COMPLETE', 
+    result: {
+      // Your result data
+    }
+  });
 }
 ```
 
@@ -89,6 +96,16 @@ case 'my_node':
 
 3. Define any specific node interface in `types.ts` if needed
 
+4. To make a node trigger flow completion, set `final: true` in the blueprint node definition:
+```typescript
+const exitNode: NodeEntity = {
+  nodeType: 'fire',
+  label: 'Exit Flow',
+  final: true,  // This node will trigger parent flow completion
+  // ... other properties
+};
+```
+
 ## Execution Flow
 
 1. **Root Flow Start**: The runner creates a root flow machine
@@ -98,6 +115,18 @@ case 'my_node':
 5. **Step Execution**: Each step creates its TNode and executes
 6. **Completion**: Steps notify parents, which spawn next steps
 7. **Flow Persistence**: Flows with keep-alive nodes remain active
+8. **Flow Completion**: Flows complete when:
+   - Any child completes with no next nodes and no other active children
+   - Any child completes that has `final: true` in its blueprint definition
+
+### Flow Completion Logic
+
+Flows complete in two ways:
+
+1. **Natural completion**: When a step completes with no next nodes and no other children are active
+2. **Explicit completion**: When a step marked with `final: true` completes
+
+This simple mechanism allows flows to end naturally or be explicitly terminated at any point.
 
 ## TNode Hierarchy
 
@@ -113,4 +142,5 @@ TNodes form a trace tree:
 - Add more node types (webhook, database, etc.)
 - Implement error recovery strategies
 - Add execution context persistence
-- Support parallel execution branches 
+- Support parallel execution branches
+- Handle flow completion for nested flows

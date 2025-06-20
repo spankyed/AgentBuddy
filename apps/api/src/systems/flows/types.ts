@@ -23,10 +23,12 @@ interface NodeBase extends BaseEntity {
   x?: number;
   y?: number;
   color?: string;
+  /** When true, completing this node will trigger parent flow completion */
+  final?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
- * 2 ▸ Per‑kind specialisations
+ * 2 ▸ Per‑kind specializations
  *─────────────────────────────────────────────────────────────────*/
 export interface QueryNode extends NodeBase {
   nodeType: 'query';

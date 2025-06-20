@@ -32,7 +32,10 @@ export function fireNodeHandler(
       type: 'COMPLETE', 
       result: { 
         eventFired: fireNode.eventType,
-        eventScope: fireNode.eventScope || 'local'
+        eventScope: fireNode.eventScope || 'local',
+        // The final flag is set at the blueprint node level, not here
+        // If this node is marked as final in the flow definition,
+        // it will automatically trigger parent flow completion
       } 
     });
   }, 100);

@@ -1,9 +1,10 @@
-import { setup } from 'xstate';
+import { setup, sendParent } from 'xstate';
 import type { FlowMachineContext, ChildCompletedEvent } from '@/systems/brain/types';
 import type { ListenNode } from '@/systems/flows/types';
 import { createEventTNode } from '../utils/tnode-manager';
 import { getEventResponderNode } from '../utils/flow-data';
 import { spawnExecutionChain } from '../utils/execution-chain';
+import { updateTNodeStatus } from '../utils/tnode-manager';
 
 /**
  * Create a dynamic state machine for a flow that listens to its events
@@ -56,7 +57,7 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
         }
       },
       
-      handleChildCompletion: ({ context, event }: { context: FlowMachineContext, event: ChildCompletedEvent, self: any }) => {
+      handleChildCompletion: ({ context, event, self }: { context: FlowMachineContext, event: ChildCompletedEvent, self: any }) => {
         console.log(`Child completed in flow ${context.flowId}:`, event);
         // Remove completed child from active children
         if (event.childId) {
@@ -68,9 +69,37 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
           context.executionContext = { ...context.executionContext, ...event.result };
         }
         
-        // Spawn next step if there is one
-        if (event.nextNode && event.parentTNodeId) {
-          spawnExecutionChain(event.nextNode, event.parentTNodeId, context.executionContext, arguments[0].self, context.systemActor);
+        // Check if we should complete this flow
+        const shouldComplete = 
+          // Child has final flag
+          event.result?.final === true ||
+          // No next node and no other active children (natural end of execution)
+          (!event.nextNode && context.activeChildren.size === 0);
+        
+        if (shouldComplete) {
+          console.log(`Flow ${context.flowId} completing due to ${event.result?.final ? 'final flag' : 'end of execution'}`);
+          self.send({ type: 'COMPLETE_FLOW' });
+        } else if (event.nextNode && event.parentTNodeId) {
+          // Spawn next step
+          spawnExecutionChain(event.nextNode, event.parentTNodeId, context.executionContext, self, context.systemActor);
+        }
+      },
+      
+      markFlowCompleted: ({ context }) => {
+        if (context.parentTNodeId) {
+          updateTNodeStatus(context.parentTNodeId, 'completed', context.systemActor);
+        }
+      },
+      
+      notifyParentOfCompletion: ({ context }) => {
+        // Only send to parent if there's a parent actor (non-root flows)
+        if (context.parentActor) {
+          context.parentActor.send({
+            type: 'CHILD_COMPLETED',
+            childId: context.flowId,
+            result: context.executionContext,
+            parentTNodeId: context.parentTNodeId,
+          });
         }
       },
     },
@@ -84,11 +113,21 @@ export function createFlowMachine(flowId: string, eventNodes: ListenNode[]) {
       executionContext: input.executionContext || {},
       systemActor: input.systemActor,
       activeChildren: new Map(),
+      isRootFlow: input.isRootFlow,
+      parentActor: input.parentActor,
     }),
     on: eventHandlers,
     states: {
       active: {
-        // Flow is actively listening for events
+        on: {
+          COMPLETE_FLOW: {
+            target: 'completed',
+          },
+        },
+      },
+      completed: {
+        entry: ['markFlowCompleted', 'notifyParentOfCompletion'],
+        type: 'final',
       },
     },
   });

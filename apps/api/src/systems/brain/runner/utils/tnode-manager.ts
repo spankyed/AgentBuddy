@@ -120,6 +120,7 @@ export function createStepTNode(
       startedAt: now,
       stepNodeId: node.id!,
       stepNodeType: node.nodeType,
+      ...(node.final && { final: true }),
     })
     .id();
   
@@ -136,6 +137,7 @@ export function createStepTNode(
     createdAt: now,
     stepNodeId: node.id,
     stepNodeType: node.nodeType,
+    ...(node.final && { final: true }),
   };
   
   // Emit event

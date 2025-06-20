@@ -15,6 +15,9 @@ export interface TNodeEntity extends BaseEntity {
   // For step nodes
   stepNodeId?: EARS.EntityId; // Reference to the Flow Node being executed
   stepNodeType?: string; // Type of the node being executed
+  
+  // Copied from blueprint node - triggers flow completion when this step completes
+  final?: boolean;
 }
 
 export interface TrackEntity extends TNodeEntity {
@@ -68,6 +71,8 @@ export interface FlowMachineContext {
   executionContext: ExecutionContext;
   systemActor?: any;
   activeChildren: Map<string, ActorRefFrom<any>>;
+  isRootFlow?: boolean;
+  parentActor?: any;
 }
 
 export interface StepMachineContext {
