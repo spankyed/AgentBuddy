@@ -1,8 +1,30 @@
 import { setup, assign, sendParent } from 'xstate';
-import type { StepMachineContext, StepEvent } from '@/systems/brain/types';
-import { createStepTNode, updateTNodeStatus } from '../utils/tnode-manager';
-import { getNextNodes } from '../utils/flow-data';
+import { createStepTNode, getNextNodes, updateTNodeStatus } from '../utils/tnode-manager';
 import { executeNode } from '../nodes/node-executor';
+import { NodeEntity, EARS, ExecutionContext } from '@/types';
+
+type StepMachineContext = {
+  node: NodeEntity;
+  parentTNodeId?: EARS.EntityId;
+  tNodeId?: EARS.EntityId;
+  executionContext: ExecutionContext;
+  systemActor?: any;
+}
+
+type StepEvent = 
+  | {
+    type: 'EXECUTE' | 'COMPLETE' | 'ERROR';
+    result?: any;
+    error?: any;
+  }
+
+
+type StepMachineInput = {
+  node: any; // Replace with actual node type
+  parentTNodeId: string;
+  executionContext: any; // Replace with actual execution context type
+  systemActor?: any; // Replace with actual system actor type
+};
 
 /**
  * Create a step execution machine
@@ -12,15 +34,18 @@ export function createStepMachine() {
     types: {
       context: {} as StepMachineContext,
       events: {} as StepEvent,
+      input: {} as StepMachineInput,
     },
     actions: {
       createStepTNode: assign({
-        tNodeId: ({ context }) => {
+        tNodeId: ({ context, system }) => {
           const stepTNode = createStepTNode(
             context.node,
             context.parentTNodeId!,
-            context.systemActor
           );
+
+          // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: stepTNode }, system);
+          
           return stepTNode.id;
         }
       }),

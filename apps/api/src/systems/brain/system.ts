@@ -1,4 +1,4 @@
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom } from 'xstate';
+import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom, enqueueActions } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
@@ -8,7 +8,8 @@ import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getStartupData, { getExtendedTNodeData } from './repository/startup';
-import { startBrainRunner } from './runner';
+import { createFlowMachine } from './runner/machines/flow-machine';
+import { createRootFlowTNode } from './runner/utils/tnode-manager';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -49,14 +50,21 @@ export const brainSystem = setup({
     logError: ({ event }) => {
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
-    startBrain: ({ system, context, self }) => {
-      try {
-        const runner = startBrainRunner(self);
-        self.send({ type: 'BRAIN_RUNNER_STARTED', runner });
-      } catch (error) {
-        console.error('Failed to start brain runner:', error);
-      }
-    },
+    startBrain: enqueueActions(({ system, context, enqueue }) => {
+      const { rootFlow, rootFlowTNode, eventNodes } = createRootFlowTNode();
+      // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: rootFlowTNode }, systemActor);
+
+      const rootFlowMachine = createFlowMachine(rootFlow.id, eventNodes)
+      enqueue.spawnChild(rootFlowMachine, {
+        input: {
+          flowId: rootFlow.id,
+          parentTNodeId: rootFlowTNode.id,
+          eventNodes,
+          executionContext: {},
+          systemActor: self,
+        }
+      });
+    }),
     sendFlowTNodeData: ({ system, context, self }) => {
       const data = getStartupData();
       
