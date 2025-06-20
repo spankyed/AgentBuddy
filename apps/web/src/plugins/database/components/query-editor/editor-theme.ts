@@ -5,16 +5,16 @@ export function createEditorTheme() {
     '&': {
       height: '100%',
       fontSize: '14px',
-      backgroundColor: '#282c34',
+      backgroundColor: '#171717',
     },
     '.cm-editor': {
-      backgroundColor: '#282c34',
+      backgroundColor: '#171717',
       height: '100%',
     },
     '.cm-scroller': {
       overflow: 'auto',
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-      backgroundColor: '#282c34',
+      backgroundColor: '#171717',
       /* Firefox scrollbar */
       scrollbarWidth: 'thin',
       scrollbarColor: 'rgba(155, 155, 155, 0.3) transparent',
