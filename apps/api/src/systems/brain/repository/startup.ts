@@ -46,7 +46,13 @@ export default function getStartupData(): FlowTNodeData {
   if (!rootFlowTNode) {
     throw new Error("No root flow TNode found");
   }
-  return getExtendedTNodeData(rootFlowTNode);
+
+  return {
+    flowTNodeId: 'Flow-Root' as EARS.EntityId,
+    tNodeTree: [],
+    possibleEvents: [],
+  }
+  // return getExtendedTNodeData(rootFlowTNode);
 }
 
 export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
@@ -101,7 +107,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   
   // Build the TNode tree starting from the current flow TNode
   const tNodeTree = buildEventTracks(tNodeId);
-  console.log('tNodeTree: ', tNodeTree);
+  // console.log('tNodeTree: ', tNodeTree);
   
   return {
     flowTNodeId: tNodeId,
