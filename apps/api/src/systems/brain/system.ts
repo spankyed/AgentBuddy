@@ -9,7 +9,6 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getStartupData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
-import { createRootFlowTNode } from './repository/tnode-manager';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -49,16 +48,10 @@ export const brainSystem = setup({
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const { rootFlow, rootFlowTNode, eventNodes } = createRootFlowTNode();
-      // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: rootFlowTNode }, systemActor);
-
-      const rootFlowMachine = createFlowMachine(rootFlow.id, eventNodes)
+      const rootFlowMachine = createFlowMachine()
       enqueue.spawnChild(rootFlowMachine, {
         systemId: 'brain-runner',
         input: {
-          flowId: rootFlow.id,
-          parentTNodeId: rootFlowTNode.id,
-          eventNodes,
           executionContext: {},
           systemActor: self,
         }
@@ -115,28 +108,36 @@ export const brainSystem = setup({
     context: ({ input }) => ({
       brainId: input,
     }),
-    on: {
-      OPEN_TNODE: {
-        actions: ['openTNode'],
-      },
-      GO_BACK_TNODE: {
-        actions: ['goBackTNode'],
-      },
-      TRACE_EVENT_RECEIVED: {
-        actions: 'handleEventReceived',
-      },
-      BRAIN_RUNNER_STARTED: {
-        actions: 'storeBrainRunner',
-      }
-    },
+    on: {},
     states: {
       idle: {
         on: {
           CLIENT_CONNECTED: {
-            actions: ['sendFlowTNodeData', 'startBrain'],
+            actions: ['sendFlowTNodeData'],
+            target: 'running',
           },
         },
       },
+      running: {
+        entry: ['startBrain'],
+        on: {
+          CLIENT_CONNECTED: {
+            actions: 'sendFlowTNodeData',
+          },
+          ERROR: {
+            actions: 'logError',
+          },
+          OPEN_TNODE: {
+            actions: 'openTNode',
+          },
+          GO_BACK_TNODE: {
+            actions: 'goBackTNode',
+          },
+          TRACE_EVENT_RECEIVED: {
+            actions: 'handleEventReceived',
+          },
+        },
+      }
     },
   }
 );

@@ -231,7 +231,6 @@ export function createRootFlowTNode(
     throw new Error("No entry event node found");
   }
 
-
   tx(rootId)
     .batchPut({
       entityType: EARS.Entity.TNode,

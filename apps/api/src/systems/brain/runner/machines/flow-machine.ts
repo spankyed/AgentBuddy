@@ -1,6 +1,6 @@
-import { setup, sendParent, assign, enqueueActions } from 'xstate';
+import { setup, sendParent, assign, enqueueActions, log } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/types';
-import { createEventTNode, createFlowTNode, updateTNodeStatus } from '../../repository/tnode-manager';
+import { createEventTNode, createFlowTNode, updateTNodeStatus, createRootFlowTNode } from '../../repository/tnode-manager';
 import { getEventResponderNode } from '../../repository/tnode-manager';
 import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
@@ -26,12 +26,8 @@ type ChildCompletedEvent =
   }
 
 type TNodeFlowMachineInput = {
-  flowId: EARS.EntityId;
-  parentTNodeId?: EARS.EntityId;
-  eventNodes: ListenNode[];
   executionContext: ExecutionContext;
   systemActor?: any;
-  activeChildrenCount: number;
 }
 
 const typeOf = safeEvents<ChildCompletedEvent>();
@@ -39,7 +35,26 @@ const typeOf = safeEvents<ChildCompletedEvent>();
 /**
  * Create a dynamic state machine for a flow that listens to its events
  */
-export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[]) {
+export function createFlowMachine(flowId?: EARS.EntityId, parentTNodeId?: EARS.EntityId) {
+  // Handle TNode creation
+  let actualFlowId: EARS.EntityId;
+  let flowTNodeId: EARS.EntityId;
+  let eventNodes: ListenNode[];
+
+  if (!flowId) {
+    // Create root flow TNode
+    const { rootFlow, rootFlowTNode, eventNodes: rootEventNodes } = createRootFlowTNode();
+    actualFlowId = rootFlow.id;
+    flowTNodeId = rootFlowTNode.id;
+    eventNodes = rootEventNodes;
+  } else {
+    // Create regular flow TNode
+    const { flowTNode, eventNodes: flowEventNodes } = createFlowTNode(flowId, parentTNodeId);
+    actualFlowId = flowId;
+    flowTNodeId = flowTNode.id;
+    eventNodes = flowEventNodes;
+  }
+
   const eventHandlers: Record<string, any> = {};
 
   // Add event listeners
@@ -84,27 +99,16 @@ export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[
           if (responderNode.nodeType === 'flow') {
             const systemId = `flow-${responderNode.id}-${context.parentTNodeId}`
 
-            const { flowTNode, eventNodes } = createFlowTNode(responderNode.id, context.parentTNodeId);
-            // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: flowTNode }, systemActor);
-
             enqueue.spawnChild(
-              createFlowMachine(responderNode.id, eventNodes),
+              createFlowMachine(responderNode.id, eventTNode.id),
               {
                 systemId,
                 input: {
-                  flowId: responderNode.flowRef!,
-                  parentTNodeId: flowTNode.id,
-                  eventNodes,
-                  executionContext: context.executionContext,
+                  executionContext: updatedContext,
                   systemActor: context.systemActor,
                 },
               }
             );
-
-            // const entryEvent = eventNodes.find(n => n.mode === 'entry');
-            // if (entryEvent) {
-            //   system.get(systemId).send({ type: entryEvent.eventType });
-            // }
           } else {
             enqueue.spawnChild(createStepMachine(), {
               systemId: `step-${responderNode.id}`,
@@ -125,32 +129,18 @@ export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[
 
         if (typedEv.nextNode && typedEv.parentTNodeId) {
           if (typedEv.nextNode.nodeType === 'flow') {
-            // const systemId = `flow-${typedEv.nextNode.id}-${flowTNode.id}`
             const systemId = `flow-${typedEv.nextNode.id}-${context.parentTNodeId}`
 
-            const { flowTNode, eventNodes } = createFlowTNode(typedEv.nextNode.id, self._parent?.id as any);
-            console.log('Flow TNode parentid:', self._parent?.id);
-            // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: flowTNode }, systemActor);
-
             enqueue.spawnChild(
-              createFlowMachine(typedEv.nextNode.id, eventNodes),
+              createFlowMachine(typedEv.nextNode.id, typedEv.parentTNodeId),
               {
                 systemId,
                 input: {
-                  flowId: typedEv.nextNode.id!,
-                  parentTNodeId: flowTNode.id,
-                  eventNodes,
                   executionContext: context.executionContext,
                   systemActor: context.systemActor,
                 },
               }
             );
-
-            const entryEvent = eventNodes.find(n => n.mode === 'entry');
-            if (entryEvent) {
-              system.get(systemId).send({ type: entryEvent.eventType });
-            }
-
           } else {
             enqueue.spawnChild(createStepMachine(), {
               systemId: `step-${typedEv.nextNode.id}`,
@@ -196,13 +186,12 @@ export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[
       flowCompleted: ({ event, context }) => event.result?.final || (!event.nextNode && context.activeChildrenCount === 0)
     }
   }).createMachine({
-    id: `flow-${flowId}`,
+    id: `flow-${actualFlowId}`,
     initial: 'active',
     context: ({ input }: any) => ({
-      flowId,
-      // flowId: input.flowId,
-      parentTNodeId: input.parentTNodeId,
-      eventNodes: input.eventNodes,
+      flowId: actualFlowId,
+      parentTNodeId: flowTNodeId,
+      eventNodes: eventNodes,
       executionContext: input.executionContext || {},
       systemActor: input.systemActor,
       activeChildrenCount: 0,
@@ -221,6 +210,7 @@ export function createFlowMachine(flowId: EARS.EntityId, eventNodes: ListenNode[
     },
     states: {
       active: {
+        entry: log('Flow machine active'),
         on: {
           COMPLETE_FLOW: 'completed',
         },
