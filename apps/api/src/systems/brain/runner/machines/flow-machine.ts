@@ -33,6 +33,43 @@ type TNodeFlowMachineInput = {
 const typeOf = safeEvents<ChildCompletedEvent>();
 
 /**
+ * Helper function to spawn a child node (flow or step)
+ */
+function spawnChildNode(
+  node: NodeEntity,
+  parentTNodeId: EARS.EntityId,
+  executionContext: ExecutionContext,
+  systemActor: any,
+  contextParentTNodeId: EARS.EntityId | undefined,
+  enqueue: any
+) {
+  if (node.nodeType === 'flow') {
+    const systemId = `flow-${node.id}-${contextParentTNodeId}`;
+    
+    enqueue.spawnChild(
+      createFlowMachine(node.id, parentTNodeId),
+      {
+        systemId,
+        input: {
+          executionContext,
+          systemActor,
+        },
+      }
+    );
+  } else {
+    enqueue.spawnChild(createStepMachine(), {
+      systemId: `step-${node.id}`,
+      input: {
+        node,
+        parentTNodeId,
+        executionContext,
+        systemActor,
+      }
+    });
+  }
+}
+
+/**
  * Create a dynamic state machine for a flow that listens to its events
  */
 export function createFlowMachine(flowId?: EARS.EntityId, parentTNodeId?: EARS.EntityId) {
@@ -96,30 +133,14 @@ export function createFlowMachine(flowId?: EARS.EntityId, parentTNodeId?: EARS.E
           };
 
           // Spawn child based on node type
-          if (responderNode.nodeType === 'flow') {
-            const systemId = `flow-${responderNode.id}-${context.parentTNodeId}`
-
-            enqueue.spawnChild(
-              createFlowMachine(responderNode.id, eventTNode.id),
-              {
-                systemId,
-                input: {
-                  executionContext: updatedContext,
-                  systemActor: context.systemActor,
-                },
-              }
-            );
-          } else {
-            enqueue.spawnChild(createStepMachine(), {
-              systemId: `step-${responderNode.id}`,
-              input: {
-                node: responderNode,
-                parentTNodeId: eventTNode.id,
-                executionContext: updatedContext,
-                systemActor: context.systemActor,
-              }
-            });
-          }
+          spawnChildNode(
+            responderNode, 
+            eventTNode.id, 
+            updatedContext, 
+            context.systemActor, 
+            context.parentTNodeId, 
+            enqueue
+          );
         }
       }),
       spawnNextNode: enqueueActions(({ context, event, self, enqueue, system }) => {
@@ -128,30 +149,14 @@ export function createFlowMachine(flowId?: EARS.EntityId, parentTNodeId?: EARS.E
         const typedEv = typeOf('CHILD_COMPLETED', event as any);
 
         if (typedEv.nextNode && typedEv.parentTNodeId) {
-          if (typedEv.nextNode.nodeType === 'flow') {
-            const systemId = `flow-${typedEv.nextNode.id}-${context.parentTNodeId}`
-
-            enqueue.spawnChild(
-              createFlowMachine(typedEv.nextNode.id, typedEv.parentTNodeId),
-              {
-                systemId,
-                input: {
-                  executionContext: context.executionContext,
-                  systemActor: context.systemActor,
-                },
-              }
-            );
-          } else {
-            enqueue.spawnChild(createStepMachine(), {
-              systemId: `step-${typedEv.nextNode.id}`,
-              input: {
-                node: typedEv.nextNode,
-                parentTNodeId: typedEv.parentTNodeId,
-                executionContext: context.executionContext,
-                systemActor: context.systemActor,
-              }
-            });
-          }
+          spawnChildNode(
+            typedEv.nextNode,
+            typedEv.parentTNodeId,
+            context.executionContext,
+            context.systemActor,
+            context.parentTNodeId,
+            enqueue
+          );
         }
       }),
       incrementChildCount: assign({
