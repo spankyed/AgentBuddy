@@ -1,8 +1,5 @@
 import { EARS } from '@/shared/ears/types';
 import { tx } from '@/shared/ears/helpers/transaction';
-import { emit } from '@/shared/utils/actor-helpers';
-import { bus } from '@/systems/_backend/backend';
-import { brain } from '@/systems/brain/system';
 import type { TNodeEntity } from '@/systems/brain/types';
 import type { FlowEntity, FlowNode, ListenNode, NodeEntity } from '@/systems/flows/types';
 import { qx } from '@/shared/ears/helpers/query';
@@ -50,22 +47,6 @@ export function getNextNodes(nodeId: EARS.EntityId): NodeEntity[] {
 // --------------------------------------------------------------------------------------------------
 
 /**
- * Emit a TNode event
- */
-function emitTNodeEvent(
-  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
-  data: any,
-  systemActor?: any
-) {
-  if (!systemActor) return;
-  
-  systemActor.system.get(bus).send(emit(brain, {
-    type: eventType,
-    ...data
-  }));
-}
-
-/**
  * Create an event TNode and persist it
  */
 export function createEventTNode(
@@ -105,8 +86,7 @@ export function createEventTNode(
  */
 export function createFlowTNode(
   flowStepId: EARS.EntityId,
-  eventTrackId?: EARS.EntityId,
-  // systemActor?: any
+  eventTrackId?: EARS.EntityId
 ){
   // Get the flow reference from the flow node
   const flowStepNode = qx(flowStepId)
@@ -151,9 +131,6 @@ export function createFlowTNode(
     startedAt: now,
     createdAt: now,
   };
-  
-  // Emit event
-  // emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: flowTNode }, systemActor);
   
   return {
     flowTNode,
@@ -268,10 +245,7 @@ export function createRootFlowTNode(
  */
 export function updateTNodeStatus(
   tNodeId: EARS.EntityId, 
-  status: TNodeEntity['status'], 
-  systemActor?: any
+  status: TNodeEntity['status']
 ): void {
   tx(tNodeId).put('status', status);
-  
-  emitTNodeEvent('TNODE_UPDATED', { data: { tNodeId, status } }, systemActor);
 } 

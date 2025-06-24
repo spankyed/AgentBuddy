@@ -52,10 +52,7 @@ export const brainSystem = setup({
       const { machine, tNodeId } = createFlowMachine()
       enqueue.spawnChild(machine, {
         systemId: brainBus,
-        input: {
-          executionContext: {},
-          systemActor: self,
-        }
+        input: {}
       });
     }),
     sendFlowTNodeData: ({ system, context, self }) => {

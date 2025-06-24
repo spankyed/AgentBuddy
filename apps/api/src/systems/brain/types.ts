@@ -1,6 +1,4 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import type { NodeEntity, EdgeEntity, FlowEntity, ListenNode, FlowNode } from '@/systems/flows/types';
-import type { ActorRefFrom } from 'xstate';
 
 export interface TNodeEntity extends BaseEntity {
   entityType: EARS.Entity.TNode;
@@ -15,7 +13,7 @@ export interface TNodeEntity extends BaseEntity {
   // For step nodes
   stepNodeId?: EARS.EntityId; // Reference to the Flow Node being executed
   stepNodeType?: string; // Type of the node being executed
-  
+
   // Copied from blueprint node - triggers flow completion when this step completes
   final?: boolean;
 }
@@ -51,7 +49,18 @@ export interface EventReceived {
 
 // Brain Runner Types
 export interface ExecutionContext {
+  // Event track data
+  eventType: string;          // The event that triggered this track
+  eventPayload?: any;        // The payload of the triggering event
+  
+  // Results from previous steps in this track
+  previousResults: Array<{
+    stepId: string;
+    stepLabel: string;
+    result: any;
+    timestamp: number;
+  }>;
+  
+  // Allow additional properties
   [key: string]: any;
-  eventPayload?: any;
-  previousResults?: any[];
 }

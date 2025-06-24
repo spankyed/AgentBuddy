@@ -1,32 +1,35 @@
 import { setup, assign, sendParent } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext } from '@/types';
 import { executeNode } from '../nodes/node-executor';
-import { createStepTNode, updateTNodeStatus } from '../../repository/tnode-manager';
+import {
+  createStepTNode,
+  updateTNodeStatus,
+} from '../../repository/tnode-manager';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
   step: NodeEntity;
   eventTNodeId?: EARS.EntityId;
   executionContext: ExecutionContext;
-  systemActor?: any;
-}
+};
 
-type StepEvent =
-  | {
-    type: 'EXECUTE' | 'COMPLETE' | 'ERROR';
-    result?: any;
-    error?: any;
-  }
+type StepEvent = {
+  type: 'CANCEL' | 'COMPLETE' | 'ERROR';
+  result?: any;
+  error?: any;
+};
 
 type StepMachineInput = {
   executionContext: ExecutionContext; // Replace with actual execution context type
-  systemActor?: any; // Replace with actual system actor type
 };
 
 /**
  * Create a step execution machine
  */
-export function createStepMachine(stepId: EARS.EntityId, eventTNodeId: EARS.EntityId) {
+export function createStepMachine(
+  stepId: EARS.EntityId,
+  eventTNodeId: EARS.EntityId,
+) {
   const { tNode, step } = createStepTNode(stepId, eventTNodeId);
   return {
     tNodeId: tNode.id,
@@ -38,54 +41,41 @@ export function createStepMachine(stepId: EARS.EntityId, eventTNodeId: EARS.Enti
       },
       actions: {
         executeStep: ({ context, self }) => {
-          console.log(`Executing step: ${context.step.label} (${context.step.nodeType})`);
-        
+          console.log(
+            `Executing step: ${context.step.label} (${context.step.nodeType})`,
+          );
+
           // Delegate to step executor
           executeNode(context.step, context.executionContext, self);
         },
-      
         markCompleted: ({ context }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'completed', context.systemActor);
+            updateTNodeStatus(context.tNodeId, 'completed');
           }
         },
-      
         markFailed: ({ context }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'failed', context.systemActor);
+            updateTNodeStatus(context.tNodeId, 'failed');
           }
         },
-
-        appendResult: assign({
-          executionContext: ({ context, event }) => ({
-            ...context.executionContext,
-            [`${context.step.id}_result`]: event.result,
-          }),
-        }),
-      
-        notifyParent: sendParent(({ context }) => {
-          return {
-            type: 'CHILD_COMPLETED',
-            stepId: context.step.id,
-            tNodeId: context.tNodeId,
-            result: {
-              ...context.executionContext,
-              // Include the step's final flag if it exists
-              ...(context.step.final && { final: true })
-            },
-            eventTNodeId: context.eventTNodeId,
-          };
-        }),
+        notifyComplete: sendParent(({ context, event }) => ({
+          type: 'CHILD_COMPLETED',
+          stepId: context.step.id,
+          stepLabel: context.step.label,
+          tNodeId: context.tNodeId,
+          result: event.result,
+          final: context.step.final || false,
+          eventTNodeId: context.eventTNodeId,
+        })),
       },
     }).createMachine({
       id: `step-machine`,
       initial: 'executing',
       context: ({ input }) => ({
-        tNodeId: tNode.id, // Will be set in preparing state
+        tNodeId: tNode.id,
         step: step,
         eventTNodeId: eventTNodeId,
-        executionContext: input.executionContext || {} as ExecutionContext,
-        systemActor: input.systemActor,
+        executionContext: input.executionContext || ({} as ExecutionContext),
       }),
       states: {
         executing: {
@@ -93,7 +83,7 @@ export function createStepMachine(stepId: EARS.EntityId, eventTNodeId: EARS.Enti
           on: {
             COMPLETE: {
               target: 'completed',
-              actions: 'appendResult',
+              actions: 'notifyComplete',
             },
             ERROR: {
               target: 'failed',
@@ -101,11 +91,11 @@ export function createStepMachine(stepId: EARS.EntityId, eventTNodeId: EARS.Enti
           },
         },
         completed: {
-          entry: ['markCompleted', 'notifyParent'],
+          entry: ['markCompleted'],
           type: 'final',
         },
         failed: {
-          entry: ['markFailed', 'notifyParent'],
+          entry: ['markFailed'],
           type: 'final',
         },
       },
