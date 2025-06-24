@@ -90,10 +90,24 @@ export const createApplicationState = () => setup({
     sendRouteClick: sendTo(({ system, context }) => 
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
-    setActivePlugin: assign(({ context, event }) => ({
-      defaultToggles: { ...context.defaultToggles, canvas: false },
-      activePlugin: context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin
-    })),
+    setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
+      const previousPlugin = context.activePlugin;
+      const newPlugin = context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin;
+      
+      // Send deactivation event to previous plugin
+      if (previousPlugin && previousPlugin.id !== newPlugin.id) {
+        system.get(previousPlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
+      }
+      
+      // Send activation event to new plugin
+      system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
+      
+      // Update context
+      enqueue.assign({
+        defaultToggles: { ...context.defaultToggles, canvas: false },
+        activePlugin: newPlugin
+      });
+    }),
     handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
       defaultToggles: {
         ...context.defaultToggles,

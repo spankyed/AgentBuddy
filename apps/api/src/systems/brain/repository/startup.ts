@@ -38,21 +38,21 @@ function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
   return eventTracks;
 }
 
-export default function getStartupData(): FlowTNodeData {
-  // const rootFlowTNode = qx(EARS.Entity.TNode)
-  //   .withRole(EARS.RoleKind.Custom("root_trace_node"))
-  //   .first();
+export default function getRootData(): FlowTNodeData {
+  const rootFlowTNode = qx(EARS.Entity.TNode)
+    .withRole(EARS.RoleKind.Custom("root_trace_node"))
+    .first();
   
-  // if (!rootFlowTNode) {
-  //   throw new Error("No root flow TNode found");
-  // }
-
-  return {
-    flowTNodeId: 'Flow-Root' as EARS.EntityId,
-    tNodeTree: [],
-    possibleEvents: [],
+  if (!rootFlowTNode) {
+    // throw new Error("No root flow TNode found");
+    return {
+      flowTNodeId: rootFlowTNode ?? '',
+      tNodeTree: [],
+      possibleEvents: [],
+    }
   }
-  // return getExtendedTNodeData(rootFlowTNode);
+
+  return getExtendedTNodeData(rootFlowTNode);
 }
 
 export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {

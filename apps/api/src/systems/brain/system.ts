@@ -7,7 +7,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
-import getStartupData, { getExtendedTNodeData } from './repository/startup';
+import getRootData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -20,6 +20,7 @@ const busEvent = systemBus(brain);
 export const IncomingBrainEvents = [
   busEvent('OPEN_TNODE', { tNodeId: z.string() }),
   busEvent('GO_BACK_TNODE', {}),
+  busEvent('REQUEST_PLUGIN_DATA', {}),
 ] as const
 
 export type BrainInternalEvents = 
@@ -27,7 +28,8 @@ export type BrainInternalEvents =
   | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
 
 export type OutgoingBrainEvents =
-  | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
+  | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
+  // | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
   | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
@@ -55,11 +57,11 @@ export const brainSystem = setup({
         input: {}
       });
     }),
-    sendFlowTNodeData: ({ system, context, self }) => {
-      const data = getStartupData();
+    sendPluginData: ({ system, context, self }) => {
+      const data = getRootData();
       
       system.get(bus).send(emit(brain, { 
-        type: 'BRAIN_STARTUP',
+        type: 'RECEIVE_PLUGIN_DATA',
         data
       }));
     },
@@ -75,7 +77,7 @@ export const brainSystem = setup({
       }));
     },
     goBackTNode: ({ system, context }) => {
-      const data = getStartupData();
+      const data = getRootData();
       
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
@@ -111,7 +113,7 @@ export const brainSystem = setup({
       idle: {
         on: {
           CLIENT_CONNECTED: {
-            actions: ['sendFlowTNodeData'],
+            actions: ['sendPluginData'],
             target: 'running',
           },
         },
@@ -120,7 +122,10 @@ export const brainSystem = setup({
         entry: ['startBrain'],
         on: {
           CLIENT_CONNECTED: {
-            actions: 'sendFlowTNodeData',
+            actions: 'sendPluginData',
+          },
+          REQUEST_PLUGIN_DATA: {
+            actions: 'sendPluginData',
           },
           ERROR: {
             actions: 'logError',
