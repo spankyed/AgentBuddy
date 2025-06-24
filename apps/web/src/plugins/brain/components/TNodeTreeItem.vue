@@ -84,32 +84,32 @@ defineEmits<{
 const expanded = ref(true);
 
 const nodeIcon = computed(() => {
-  if (props.tnode.nodeType === 'event') {
+  if (props.tnode.tNodeType === 'event') {
     return Calendar;
   }
   
-  const nodeType = (props.tnode.nodeType === 'step' ? props.tnode.stepNodeType : props.tnode.nodeType) as NodeKind;
-  const config = getNodeConfig(nodeType);
+  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
+  const config = getNodeConfig(tNodeType);
   return config?.icon || Calendar;
 });
 
 const nodeIconColor = computed(() => {
-  if (props.tnode.nodeType === 'event') {
+  if (props.tnode.tNodeType === 'event') {
     return 'text-blue-400';
   }
   
-  const nodeType = (props.tnode.nodeType === 'step' ? props.tnode.stepNodeType : props.tnode.nodeType) as NodeKind;
-  const config = getNodeConfig(nodeType);
+  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
+  const config = getNodeConfig(tNodeType);
   return config?.color || 'text-neutral-400';
 });
 
 const nodeIconBgColor = computed(() => {
-  if (props.tnode.nodeType === 'event') {
+  if (props.tnode.tNodeType === 'event') {
     return 'bg-blue-500/10 group-hover:bg-blue-500/15';
   }
   
-  const nodeType = (props.tnode.nodeType === 'step' ? props.tnode.stepNodeType : props.tnode.nodeType) as NodeKind;
-  const config = getNodeConfig(nodeType);
+  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
+  const config = getNodeConfig(tNodeType);
   return config ? `${config.bgColor} ${config.hoverBgColor}` : 'bg-neutral-500/10 group-hover:bg-neutral-500/15';
 });
 </script> 

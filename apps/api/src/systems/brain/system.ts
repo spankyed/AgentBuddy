@@ -13,6 +13,7 @@ import { createFlowMachine } from './runner/machines/flow-machine';
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const brain = 'brain' as const;
+export const brainBus = 'brain-bus' as const;
 
 const busEvent = systemBus(brain);
 
@@ -48,9 +49,9 @@ export const brainSystem = setup({
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const rootFlowMachine = createFlowMachine()
-      enqueue.spawnChild(rootFlowMachine, {
-        systemId: 'brain-runner',
+      const { machine, tNodeId } = createFlowMachine()
+      enqueue.spawnChild(machine, {
+        systemId: brainBus,
         input: {
           executionContext: {},
           systemActor: self,
@@ -94,7 +95,7 @@ export const brainSystem = setup({
         }));
         
         // Forward event to brain runner
-        system.get('brain-runner').send({ 
+        system.get(brainBus).send({ 
           type: event.data.eventType, 
           payload: event.data.payload 
         });

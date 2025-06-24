@@ -12,7 +12,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-1',
       entityType: EARS.Entity.TNode,
-      nodeType: 'flow',
+      tNodeType: 'flow',
       label: 'Run Brain',
       status: 'active',
       createdAt: nowMs - 120000,
@@ -21,7 +21,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-3',
       entityType: EARS.Entity.TNode,
-      nodeType: 'flow',
+      tNodeType: 'flow',
       label: 'Chat Flow 2',
       status: 'completed',
       createdAt: nowMs - 240000,
@@ -32,7 +32,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-2',
       entityType: EARS.Entity.TNode,
-      nodeType: 'event',
+      tNodeType: 'event',
       label: 'User Message',
       eventType: 'chat.message',
       status: 'active',
@@ -42,7 +42,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-4',
       entityType: EARS.Entity.TNode,
-      nodeType: 'event',
+      tNodeType: 'event',
       label: 'System Startup',
       eventType: 'system.startup',
       status: 'completed',
@@ -52,7 +52,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-5',
       entityType: EARS.Entity.TNode,
-      nodeType: 'event',
+      tNodeType: 'event',
       label: 'User Command',
       eventType: 'chat.command',
       status: 'paused',
@@ -64,7 +64,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-6',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'User Message',
       stepNodeId: 'Node-b1', // ! Should use INSTANCE_OF relation instead
       stepNodeType: 'listen',
@@ -75,7 +75,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-7',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'Message Type',
       stepNodeId: 'Node-b3',
       stepNodeType: 'decision',
@@ -86,7 +86,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-8',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'Create Context',
       stepNodeId: 'Node-b4',
       stepNodeType: 'create',
@@ -97,7 +97,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-9',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'Update Context',
       stepNodeId: 'Node-b5',
       stepNodeType: 'update',
@@ -108,7 +108,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-10',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'Send Response',
       stepNodeId: 'Node-b6',
       stepNodeType: 'fire',
@@ -119,7 +119,7 @@ export const brainRows: Rows = {
     {
       id: 'TNode-11',
       entityType: EARS.Entity.TNode,
-      nodeType: 'step',
+      tNodeType: 'step',
       label: 'Command Handler',
       stepNodeId: 'Node-b11',
       stepNodeType: 'flow',

@@ -20,14 +20,14 @@
     <!-- Show node type badge -->
     <div class="mt-1">
       <span class="text-[10px] text-neutral-400 capitalize">
-        {{ data.nodeType }}
+        {{ data.tNodeType }}
         <span v-if="data.stepNodeType">({{ data.stepNodeType }})</span>
       </span>
     </div>
     
     <!-- Has children indicator -->
     <div v-if="data.hasChildren" class="absolute -top-2 -right-2">
-      <div class="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center">
+      <div class="flex items-center justify-center w-4 h-4 bg-purple-600 rounded-full">
         <svg class="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
@@ -68,7 +68,7 @@ import type { NodeKind } from '@abuddy/api';
 interface Props {
   data: {
     label: string;
-    nodeType: 'flow' | 'event' | 'step';
+    tNodeType: 'flow' | 'event' | 'step';
     stepNodeType?: string;
     status: 'active' | 'paused' | 'completed' | 'failed';
     hasChildren: boolean;
@@ -78,21 +78,21 @@ interface Props {
 const props = defineProps<Props>();
 
 const nodeClasses = computed(() => {
-  if (props.data.nodeType === 'event') {
+  if (props.data.tNodeType === 'event') {
     return 'px-4 py-2 rounded-md border relative transition-all bg-blue-500/20 border-blue-500/50 text-blue-200';
   }
   
-  const nodeType = (props.data.nodeType === 'step' ? props.data.stepNodeType : props.data.nodeType) as NodeKind;
-  return getNodeCanvasClasses(nodeType);
+  const tNodeType = (props.data.tNodeType === 'step' ? props.data.stepNodeType : props.data.tNodeType) as NodeKind;
+  return getNodeCanvasClasses(tNodeType);
 });
 
 const iconClasses = computed(() => {
-  if (props.data.nodeType === 'event') {
+  if (props.data.tNodeType === 'event') {
     return 'bg-blue-500';
   }
   
-  const nodeType = (props.data.nodeType === 'step' ? props.data.stepNodeType : props.data.nodeType) as NodeKind;
-  return getNodeIconDotClasses(nodeType);
+  const tNodeType = (props.data.tNodeType === 'step' ? props.data.stepNodeType : props.data.tNodeType) as NodeKind;
+  return getNodeIconDotClasses(tNodeType);
 });
 </script>
 

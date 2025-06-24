@@ -99,7 +99,7 @@ const nodes = computed<VueFlowNode[]>(() => {
       position: { x, y },
       data: {
         label: tnode.label,
-        nodeType: tnode.nodeType,
+        tNodeType: tnode.tNodeType,
         stepNodeType: tnode.stepNodeType,
         status: tnode.status,
         hasChildren: tnode.children.length > 0,

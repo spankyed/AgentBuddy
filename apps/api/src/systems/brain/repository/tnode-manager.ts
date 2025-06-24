@@ -70,12 +70,12 @@ function emitTNodeEvent(
  */
 export function createEventTNode(
   eventNode: ListenNode, 
-  parentTNodeId?: EARS.EntityId
+  flowTNodeId: EARS.EntityId
 ): TNodeEntity {
   const now = Date.now();
   const tNodeId = tx(EARS.Entity.TNode)
     .batchPut({
-      nodeType: 'event',
+      tNodeType: 'event',
       label: eventNode.label,
       eventType: eventNode.eventType!,
       status: 'active',
@@ -84,14 +84,12 @@ export function createEventTNode(
     .id();
   
   // Create TRACKED relationship from parent flow
-  if (parentTNodeId) {
-    tx(parentTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
-  }
+  tx(flowTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
   
   const eventTNode: TNodeEntity = {
     id: tNodeId,
     entityType: EARS.Entity.TNode,
-    nodeType: 'event',
+    tNodeType: 'event',
     label: eventNode.label,
     eventType: eventNode.eventType,
     status: 'active',
@@ -106,38 +104,38 @@ export function createEventTNode(
  * Create a flow TNode and persist it
  */
 export function createFlowTNode(
-  flowId: EARS.EntityId,
+  flowStepId: EARS.EntityId,
   eventTrackId?: EARS.EntityId,
   // systemActor?: any
 ){
   // Get the flow reference from the flow node
-  const flowNode = qx(flowId)
+  const flowStepNode = qx(flowStepId)
     .pickOne(["id", "nodeType", "flowRef", "label"]) as Partial<FlowNode> | undefined;
   
-  if (!flowNode || flowNode.nodeType !== 'flow') {
-    throw new Error(`Flow node ${flowId} not found or not a flow type`);
+  if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
+    throw new Error(`Flow node ${flowStepId} not found or not a flow type`);
   }
 
   // Get the referenced flow
-  const flow = qx(flowNode.flowRef as EARS.EntityId)
+  const flow = qx(flowStepNode.flowRef as EARS.EntityId)
     .pickOne(["id", "label"]) as Partial<FlowEntity> | undefined;
   
   if (!flow) {
-    throw new Error(`Referenced flow ${flowNode.flowRef} not found`);
+    throw new Error(`Referenced flow ${flowStepNode.flowRef} not found`);
   }
 
   // Get event nodes for this flow
-  const eventNodes = getFlowEventNodes(flowId);
+  const eventNodes = getFlowEventNodes(flowStepId);
 
   const now = Date.now();
   const transaction = tx(EARS.Entity.TNode)
     .batchPut({
-      nodeType: 'flow',
+      tNodeType: 'flow',
       label: flow.label!,
       status: 'active',
       startedAt: now,
     })
-    .link(EARS.RelKind.INSTANCE_OF, flowId);
+    .link(EARS.RelKind.INSTANCE_OF, flowStepId);
   
   // Create SPAWNED relationship from parent
   if (eventTrackId) {
@@ -147,7 +145,7 @@ export function createFlowTNode(
   const flowTNode: TNodeEntity = {
     id: transaction.id(),
     entityType: EARS.Entity.TNode,
-    nodeType: 'flow',
+    tNodeType: 'flow',
     label: flow.label!,
     status: 'active',
     startedAt: now,
@@ -167,41 +165,45 @@ export function createFlowTNode(
  * Create a step TNode and persist it
  */
 export function createStepTNode(
-  node: NodeEntity,
+  stepId: EARS.EntityId,
   eventTrackId: EARS.EntityId,
-): TNodeEntity {
+) {
+  const step = qx(stepId)
+    .pickAll() as Partial<NodeEntity> | undefined;
+
+  if (!step) {
+    throw new Error(`Flow node ${stepId} not found or not a flow type`);
+  }
+
   const now = Date.now();
+
+  const stepTNode: Partial<TNodeEntity> = {
+    tNodeType: 'step',
+    label: step.label ?? '',
+    status: 'active',
+    startedAt: now,
+    stepNodeId: step.id,
+    stepNodeType: step.nodeType,
+    ...(step.final && { final: true }),
+  };
+
   const tNodeId = tx(EARS.Entity.TNode)
-    .batchPut({
-      nodeType: 'step',
-      label: node.label,
-      status: 'active',
-      startedAt: now,
-      stepNodeId: node.id!,
-      stepNodeType: node.nodeType,
-      ...(node.final && { final: true }),
-    })
+    .batchPut(stepTNode)
     .id();
   
   // Create SPAWNED relationship from parent
   tx(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
   
-  const stepTNode: TNodeEntity = {
-    id: tNodeId,
-    entityType: EARS.Entity.TNode,
-    nodeType: 'step',
-    label: node.label,
-    status: 'active',
-    startedAt: now,
-    createdAt: now,
-    stepNodeId: node.id,
-    stepNodeType: node.nodeType,
-    ...(node.final && { final: true }),
-  };
-  
   // Emit event
-  
-  return stepTNode;
+  return {
+    tNode: {
+      id: tNodeId,
+      entityType: EARS.Entity.TNode,
+      createdAt: now,
+      ...stepTNode
+    } as TNodeEntity,
+    step: step as NodeEntity,
+  };
 }
 
 /**
@@ -234,7 +236,7 @@ export function createRootFlowTNode(
   tx(rootId)
     .batchPut({
       entityType: EARS.Entity.TNode,
-      nodeType: 'flow',
+      tNodeType: 'flow',
       label: rootFlow.label!,
       status: 'active',
       startedAt: now,
@@ -246,7 +248,7 @@ export function createRootFlowTNode(
   const rootFlowTNode: TNodeEntity = {
     id: rootId,
     entityType: EARS.Entity.TNode,
-    nodeType: 'flow',
+    tNodeType: 'flow',
     label: rootFlow.label!,
     status: 'active',
     startedAt: now,

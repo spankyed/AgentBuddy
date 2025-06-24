@@ -5,13 +5,13 @@ import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
-  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "tNodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
   
   // Get the flow TNode
   const flowTNode = qx(tNodeId)
     .pickOne(nodeCols) as TNodeEntity;
   
-  if (!flowTNode || flowTNode.nodeType !== 'flow') {
+  if (!flowTNode || flowTNode.tNodeType !== 'flow') {
     throw new Error(`Invalid flow TNode: ${tNodeId}`);
   }
   
@@ -60,9 +60,9 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   
   // Get the TNode and ensure it's a flow node
   const tNode = qx(tNodeId)
-    .pickOne(["nodeType"]) as Pick<TNodeEntity, 'nodeType'> | null;
+    .pickOne(["tNodeType"]) as Pick<TNodeEntity, 'tNodeType'> | null;
   
-  if (!tNode || tNode.nodeType !== 'flow') {
+  if (!tNode || tNode.tNodeType !== 'flow') {
     throw new Error(`Invalid flow TNode: ${tNodeId}`);
   }
   

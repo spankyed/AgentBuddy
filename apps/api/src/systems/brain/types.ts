@@ -4,7 +4,7 @@ import type { ActorRefFrom } from 'xstate';
 
 export interface TNodeEntity extends BaseEntity {
   entityType: EARS.Entity.TNode;
-  nodeType: 'flow' | 'event' | 'step';
+  tNodeType: 'flow' | 'event' | 'step';
   label: string;
   status: 'active' | 'paused' | 'completed' | 'failed';
   startedAt: number;
@@ -46,7 +46,6 @@ export interface TNodeUpdate {
 
 export interface EventReceived {
   eventType: string;
-  parentTNodeId: EARS.EntityId;
   payload?: any;
 }
 
