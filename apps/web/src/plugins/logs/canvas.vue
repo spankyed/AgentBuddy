@@ -57,75 +57,100 @@
     </div>
     
     <!-- Logs Content -->
-    <div ref="logsContent" class="px-6 py-4">
-      <TransitionGroup name="log-fade" tag="div" class="space-y-2">
-        <div 
-          v-for="log in filteredLogs" 
-          :key="log.id"
-          class="overflow-hidden transition-colors rounded-lg bg-neutral-800 hover:bg-neutral-750"
-        >
-          <div class="px-4 py-3">
-            <!-- Log Header -->
-            <div class="flex items-center gap-3 mb-2">
-              <span class="font-mono text-xs text-neutral-500">{{ formatTime(log.timestamp) }}</span>
+    <div ref="logsContent" class="px-3 py-2">
+      <div class="space-y-0.5">
+        <TransitionGroup name="log-fade">
+          <div 
+            v-for="log in filteredLogs" 
+            :key="log.id"
+            class="group"
+          >
+            <div class="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-800/50 transition-colors rounded">
+              <!-- Timestamp -->
+              <span class="font-mono text-[11px] text-neutral-500 w-20 flex-shrink-0">
+                {{ formatTime(log.timestamp) }}
+              </span>
               
-              <span :class="[
-                'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded',
+              <!-- Level Badge -->
+              <div :class="[
+                'flex items-center justify-center w-12 h-5 rounded text-[10px] font-semibold flex-shrink-0',
                 {
-                  'bg-neutral-700 text-neutral-400': log.level === 'debug',
-                  'bg-blue-900/30 text-blue-400': log.level === 'info',
-                  'bg-yellow-900/30 text-yellow-400': log.level === 'warn',
-                  'bg-red-900/30 text-red-400': log.level === 'error'
+                  'bg-neutral-700/50 text-neutral-400': log.level === 'debug',
+                  'bg-blue-500/20 text-blue-400': log.level === 'info',
+                  'bg-yellow-500/20 text-yellow-400': log.level === 'warn',
+                  'bg-red-500/20 text-red-400': log.level === 'error'
                 }
               ]">
                 <component :is="getLevelIcon(log.level)" :size="12" />
-                {{ log.level.toUpperCase() }}
-              </span>
+              </div>
               
-              <span v-if="log.source" class="px-2 py-0.5 bg-neutral-700 text-neutral-400 text-xs font-mono rounded">
+              <!-- Source Badge -->
+              <span 
+                v-if="log.source" 
+                class="px-2 h-5 flex items-center bg-neutral-800 text-neutral-400 text-[11px] font-mono rounded flex-shrink-0 min-w-[72px] justify-center"
+              >
                 {{ log.source }}
               </span>
+              <span v-else class="w-[72px] flex-shrink-0"></span>
+              
+              <!-- Message -->
+              <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">{{ log.message }}</p>
+              
+              <!-- Action Icons -->
+              <div class="flex items-center gap-0.5 flex-shrink-0 mr-1">
+                <button 
+                  v-if="log.meta && Object.keys(log.meta).length > 0"
+                  @click="toggleMeta(log.id)"
+                  :class="[
+                    'p-1 rounded transition-all',
+                    expandedMeta.has(log.id) 
+                      ? 'bg-blue-500/20 text-blue-400' 
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
+                  ]"
+                  title="View metadata"
+                >
+                  <Code2 :size="14" />
+                </button>
+                
+                <button 
+                  v-if="log.stack"
+                  @click="toggleStack(log.id)"
+                  :class="[
+                    'p-1 rounded transition-all',
+                    expandedStacks.has(log.id)
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
+                  ]"
+                  title="View stack trace"
+                >
+                  <FileWarning :size="14" />
+                </button>
+              </div>
             </div>
             
-            <!-- Log Message -->
-            <p class="text-sm leading-relaxed text-neutral-200">{{ log.message }}</p>
-            
-            <!-- Metadata -->
-            <div v-if="log.meta && Object.keys(log.meta).length > 0" class="mt-3">
-              <button 
-                @click="toggleMeta(log.id)"
-                class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-neutral-400 bg-neutral-700 rounded hover:bg-neutral-600 transition-colors"
-              >
-                <ChevronRight :class="['transition-transform', expandedMeta.has(log.id) && 'rotate-90']" :size="14" />
-                Metadata
-              </button>
-              
-              <Transition name="slide-fade">
-                <div v-if="expandedMeta.has(log.id)" class="p-3 mt-2 rounded-md bg-neutral-900">
+            <!-- Expandable Content -->
+            <Transition name="expand-fade">
+              <div v-if="expandedMeta.has(log.id) || expandedStacks.has(log.id)" class="border-l-2 border-neutral-800 ml-[23px] mb-1">
+                <div v-if="expandedMeta.has(log.id)" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
+                  <div class="flex items-center gap-1.5 mb-1.5">
+                    <Code2 :size="12" class="text-blue-400" />
+                    <span class="text-[11px] font-medium text-blue-400">Metadata</span>
+                  </div>
                   <DataRenderer :data="log.meta" />
                 </div>
-              </Transition>
-            </div>
-            
-            <!-- Stack Trace -->
-            <div v-if="log.stack" class="mt-3">
-              <button 
-                @click="toggleStack(log.id)"
-                class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 bg-red-900/20 rounded hover:bg-red-900/30 transition-colors"
-              >
-                <AlertCircle :class="['transition-transform', expandedStacks.has(log.id) && 'rotate-90']" :size="14" />
-                Stack Trace
-              </button>
-              
-              <Transition name="slide-fade">
-                <div v-if="expandedStacks.has(log.id)" class="p-3 mt-2 rounded-md bg-neutral-900">
-                  <pre class="font-mono text-xs text-red-400 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
+                
+                <div v-if="expandedStacks.has(log.id)" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
+                  <div class="flex items-center gap-1.5 mb-1.5">
+                    <FileWarning :size="12" class="text-red-400" />
+                    <span class="text-[11px] font-medium text-red-400">Stack Trace</span>
+                  </div>
+                  <pre class="font-mono text-[11px] text-red-400/90 leading-4 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
                 </div>
-              </Transition>
-            </div>
+              </div>
+            </Transition>
           </div>
-        </div>
-      </TransitionGroup>
+        </TransitionGroup>
+      </div>
       
       <!-- Empty State -->
       <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
@@ -152,7 +177,9 @@ import {
   Info,
   AlertTriangle,
   Bug,
-  FileX
+  FileX,
+  Code2,
+  FileWarning
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -374,27 +401,22 @@ const getLevelIcon = (level: string) => {
 <style scoped>
 /* Vue Transitions */
 .log-fade-enter-active {
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .log-fade-enter-from {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateX(-20px);
 }
 
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.2s ease;
+.expand-fade-enter-active,
+.expand-fade-leave-active {
+  transition: all 0.15s ease;
 }
 
-.slide-fade-enter-from,
-.slide-fade-leave-to {
+.expand-fade-enter-from,
+.expand-fade-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
-}
-
-/* Custom hover state for log items */
-.hover\:bg-neutral-750:hover {
-  background-color: rgb(38 38 38 / 0.5);
+  transform: translateY(-4px) scale(0.98);
 }
 </style> 
