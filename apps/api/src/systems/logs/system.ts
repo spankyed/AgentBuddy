@@ -5,7 +5,7 @@ import { emit } from '@/shared/utils/actor-helpers';
 import type { EARS } from '@/shared/ears/types';
 import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
-import { globalLogs, clearLogs, initializeMockLogs } from './logger';
+import { globalLogs, clearLogs, initializeMockLogs, setLogAddedCallback } from './logger';
 
 export const logs = 'logs' as const;
 
@@ -19,12 +19,14 @@ export const IncomingLogEvents = [
 export type LogsInternalEvents = 
   | SystemEvents
   | { type: 'REQUEST_LOGS_UPDATE' }
+  | { type: 'NEW_LOG_ADDED'; log: LogEntry }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingLogEvents, LogsInternalEvents>;
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
   | { type: 'LOGS_UPDATE'; logs: typeof globalLogs }
+  | { type: 'LOG_ADDED'; log: LogEntry }
   | { type: 'LOGS_CLEARED' };
 
 export interface LogsContext {
@@ -40,13 +42,24 @@ export const logsSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    initializeLogs: () => {
+    initializeLogs: ({ self }) => {
+      // Set up the callback to receive new logs
+      setLogAddedCallback((log: LogEntry) => {
+        self.send({ type: 'NEW_LOG_ADDED', log });
+      });
       // initializeMockLogs();
     },
     sendLogsStartup: ({ system }) => {
       system.get(bus).send(emit(logs, {
         type: 'LOGS_STARTUP',
         logs: globalLogs,
+      }));
+    },
+    broadcastNewLog: ({ system, event }) => {
+      const { log } = event as { type: 'NEW_LOG_ADDED'; log: LogEntry };
+      system.get(bus).send(emit(logs, {
+        type: 'LOG_ADDED',
+        log,
       }));
     },
     clearLogsAction: () => {
@@ -70,14 +83,18 @@ export const logsSystem = setup({
   context: ({ input }) => ({
     systemId: input,
   }),
+  entry: 'initializeLogs',
   on: {
     CLIENT_CONNECTED: {
-      actions: ['initializeLogs', 'sendLogsStartup'],
+      actions: ['sendLogsStartup'],
     },
   },
   states: {
     active: {
       on: {
+        NEW_LOG_ADDED: {
+          actions: 'broadcastNewLog',
+        },
         CLEAR_LOGS: {
           actions: ['clearLogsAction', 'broadcastLogsCleared'],
         },

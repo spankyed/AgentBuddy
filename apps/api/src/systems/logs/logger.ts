@@ -5,6 +5,14 @@ import type { LogLevel, LogEntry } from './types';
 export const globalLogs: LogEntry[] = [];
 const MAX_LOGS = 1000;
 
+// Callback for when new logs are added
+let logAddedCallback: ((log: LogEntry) => void) | null = null;
+
+// Set the callback for new log notifications
+export function setLogAddedCallback(callback: (log: LogEntry) => void) {
+  logAddedCallback = callback;
+}
+
 // Safely stringify objects that might contain circular references
 function safeStringify(obj: any): any {
   const seen = new WeakSet();
@@ -178,6 +186,11 @@ class Logger {
     // Log to console
     const prefix = this.source ? `[${this.source}]` : '';
     console[level](prefix, message, meta);
+
+    // Notify callback if it exists
+    if (logAddedCallback) {
+      logAddedCallback(logEntry);
+    }
   }
 
   debug(message: string, meta?: Record<string, any>) {
