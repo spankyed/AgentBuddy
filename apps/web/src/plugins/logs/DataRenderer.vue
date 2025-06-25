@@ -1,38 +1,38 @@
 <template>
-  <div class="data-renderer">
-    <div v-if="isPrimitive(data)" class="primitive-value">
-      <span class="value-type">{{ getType(data) }}</span>
-      <span class="value-content">{{ formatPrimitive(data) }}</span>
+  <div class="font-mono text-xs">
+    <div v-if="isPrimitive(data)" class="inline-flex items-center gap-2">
+      <span class="text-[10px] text-neutral-500 uppercase tracking-wider">{{ getType(data) }}</span>
+      <span :class="getPrimitiveClass(data)">{{ formatPrimitive(data) }}</span>
     </div>
     
-    <div v-else-if="Array.isArray(data)" class="array-value">
-      <div class="array-header">
-        <button @click="toggleExpanded" class="expand-toggle">
-          <ChevronRight :class="['chevron', { expanded }]" :size="12" />
-          Array[{{ data.length }}]
+    <div v-else-if="Array.isArray(data)" class="my-0.5">
+      <div class="mb-1">
+        <button @click="toggleExpanded" class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded transition-colors">
+          <ChevronRight :class="['transition-transform', expanded && 'rotate-90']" :size="12" />
+          <span class="text-blue-400">Array</span>[{{ data.length }}]
         </button>
       </div>
       <Transition name="expand">
-        <div v-if="expanded" class="array-items">
-          <div v-for="(item, index) in data" :key="index" class="array-item">
-            <span class="item-index">{{ index }}:</span>
+        <div v-if="expanded" class="ml-4 pl-3 border-l border-neutral-700">
+          <div v-for="(item, index) in data" :key="index" class="flex items-start gap-2 my-1">
+            <span class="text-neutral-500 min-w-[20px]">{{ index }}:</span>
             <DataRenderer :data="item" />
           </div>
         </div>
       </Transition>
     </div>
     
-    <div v-else-if="isObject(data)" class="object-value">
-      <div class="object-header">
-        <button @click="toggleExpanded" class="expand-toggle">
-          <ChevronRight :class="['chevron', { expanded }]" :size="12" />
-          {{ getObjectPreview(data) }}
+    <div v-else-if="isObject(data)" class="my-0.5">
+      <div class="mb-1">
+        <button @click="toggleExpanded" class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded transition-colors">
+          <ChevronRight :class="['transition-transform', expanded && 'rotate-90']" :size="12" />
+          <span class="text-purple-400">{{ getObjectPreview(data) }}</span>
         </button>
       </div>
       <Transition name="expand">
-        <div v-if="expanded" class="object-properties">
-          <div v-for="[key, value] in Object.entries(data)" :key="key" class="object-property">
-            <span class="property-key">{{ key }}:</span>
+        <div v-if="expanded" class="ml-4 pl-3 border-l border-neutral-700">
+          <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-2 my-1">
+            <span class="text-purple-400 min-w-fit">{{ key }}:</span>
             <DataRenderer :data="value" />
           </div>
         </div>
@@ -89,139 +89,18 @@ const getObjectPreview = (obj: any): string => {
   const suffix = keys.length > 3 ? ', ...' : '';
   return `{ ${preview}${suffix} }`;
 };
+
+const getPrimitiveClass = (value: any): string => {
+  if (value === null || value === undefined) return 'text-neutral-500 opacity-60';
+  if (typeof value === 'string') return 'text-green-400';
+  if (typeof value === 'number') return 'text-orange-400';
+  if (typeof value === 'boolean') return 'text-cyan-400';
+  return 'text-neutral-200';
+};
 </script>
 
 <style scoped>
-.data-renderer {
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-/* Primitive Values */
-.primitive-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.value-type {
-  color: #666;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.value-content {
-  color: #e1e1e1;
-}
-
-/* String values */
-.primitive-value:has(.value-type:contains("string")) .value-content {
-  color: #98c379;
-}
-
-/* Number values */
-.primitive-value:has(.value-type:contains("number")) .value-content {
-  color: #d19a66;
-}
-
-/* Boolean values */
-.primitive-value:has(.value-type:contains("boolean")) .value-content {
-  color: #56b6c2;
-}
-
-/* Null/undefined */
-.primitive-value:has(.value-type:contains("null")),
-.primitive-value:has(.value-type:contains("undefined")) {
-  opacity: 0.6;
-}
-
-/* Arrays and Objects */
-.array-value,
-.object-value {
-  margin: 2px 0;
-}
-
-.array-header,
-.object-header {
-  margin-bottom: 4px;
-}
-
-.expand-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  background: transparent;
-  border: none;
-  color: #999;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.2s;
-  border-radius: 4px;
-}
-
-.expand-toggle:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e1e1e1;
-}
-
-.chevron {
-  transition: transform 0.2s;
-}
-
-.chevron.expanded {
-  transform: rotate(90deg);
-}
-
-/* Array Items */
-.array-items {
-  margin-left: 20px;
-  padding-left: 12px;
-  border-left: 1px solid #262626;
-}
-
-.array-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 4px 0;
-}
-
-.item-index {
-  color: #666;
-  min-width: 30px;
-  font-size: 11px;
-}
-
-/* Object Properties */
-.object-properties {
-  margin-left: 20px;
-  padding-left: 12px;
-  border-left: 1px solid #262626;
-}
-
-.object-property {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 4px 0;
-}
-
-.property-key {
-  color: #c678dd;
-  min-width: fit-content;
-  font-size: 12px;
-}
-
-/* Nested structures */
-.data-renderer .data-renderer {
-  display: inline-block;
-}
-
-/* Animations */
+/* Vue Transitions */
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.2s ease;

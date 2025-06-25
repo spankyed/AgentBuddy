@@ -1,14 +1,14 @@
 <template>
-  <div class="logs-container">
-    <!-- Enhanced Header -->
-    <div class="logs-header">
-      <div class="header-left">
-        <div class="filter-group">
-          <Filter :size="14" class="filter-icon" />
+  <div class="bg-neutral-900">
+    <!-- Header -->
+    <div class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-neutral-800 border-neutral-700">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 rounded-md">
+          <Filter :size="14" class="text-neutral-400" />
           <select 
             :value="filterLevel" 
             @change="setFilterLevel"
-            class="level-filter"
+            class="text-sm font-medium bg-transparent outline-none cursor-pointer text-neutral-200"
           >
             <option value="all">All Levels</option>
             <option value="debug">Debug</option>
@@ -18,109 +18,108 @@
           </select>
         </div>
         
-        <div class="search-wrapper">
-          <Search :size="14" class="search-icon" />
+        <div class="relative flex items-center">
+          <Search :size="14" class="absolute left-3 text-neutral-400" />
           <input
             :value="searchTerm"
             @input="setSearch"
             type="text"
             placeholder="Search logs, sources, or metadata..."
-            class="search-input"
+            class="pl-9 pr-4 py-1.5 w-72 bg-neutral-700 border border-neutral-600 rounded-md text-sm text-neutral-200 placeholder-neutral-400 outline-none focus:border-neutral-500 focus:bg-neutral-600 transition-colors"
           />
         </div>
       </div>
       
-      <div class="header-right">
-        <div class="stats-group">
-          <div class="stat-item">
-            <span class="stat-value">{{ logs.length }}</span>
-            <span class="stat-label">Total</span>
+      <div class="flex items-center gap-6">
+        <div class="flex gap-4">
+          <div class="flex flex-col items-center">
+            <span class="text-lg font-semibold text-neutral-200">{{ logs.length }}</span>
+            <span class="text-xs tracking-wider uppercase text-neutral-500">Total</span>
           </div>
-          <div class="stat-item error" v-if="errorCount > 0">
-            <span class="stat-value">{{ errorCount }}</span>
-            <span class="stat-label">Errors</span>
+          <div v-if="errorCount > 0" class="flex flex-col items-center">
+            <span class="text-lg font-semibold text-red-400">{{ errorCount }}</span>
+            <span class="text-xs tracking-wider uppercase text-neutral-500">Errors</span>
           </div>
-          <div class="stat-item warn" v-if="warnCount > 0">
-            <span class="stat-value">{{ warnCount }}</span>
-            <span class="stat-label">Warnings</span>
+          <div v-if="warnCount > 0" class="flex flex-col items-center">
+            <span class="text-lg font-semibold text-yellow-400">{{ warnCount }}</span>
+            <span class="text-xs tracking-wider uppercase text-neutral-500">Warnings</span>
           </div>
         </div>
         
-        <div class="action-buttons">
-          <button 
-            @click="toggleAutoScroll"
-            :class="['icon-btn', { active: autoScroll }]"
-            title="Auto-scroll to new logs"
-          >
-            <ArrowDownToLine v-if="autoScroll" :size="16" />
-            <ArrowDown v-else :size="16" />
-          </button>
-          
-          <button 
-            @click="clearLogs"
-            class="icon-btn danger"
-            title="Clear all logs"
-          >
-            <Trash2 :size="16" />
-          </button>
-        </div>
+        <button 
+          @click="clearLogs"
+          class="p-2 transition-colors rounded-md bg-neutral-700 text-neutral-400 hover:bg-red-600 hover:text-white"
+          title="Clear all logs"
+        >
+          <Eraser :size="16" />
+        </button>
       </div>
     </div>
     
-    <!-- Enhanced Logs Display -->
-    <div ref="logsContent" class="logs-viewport">
-      <TransitionGroup name="log-fade" tag="div" class="logs-list">
+    <!-- Logs Content -->
+    <div ref="logsContent" class="px-6 py-4">
+      <TransitionGroup name="log-fade" tag="div" class="space-y-2">
         <div 
           v-for="log in filteredLogs" 
           :key="log.id"
-          :class="['log-item', `level-${log.level}`]"
+          class="overflow-hidden transition-colors rounded-lg bg-neutral-800 hover:bg-neutral-750"
         >
-          <!-- Log Header -->
-          <div class="log-header">
-            <div class="log-meta-info">
-              <span class="log-time">{{ formatTime(log.timestamp) }}</span>
-              <span :class="['log-badge', `badge-${log.level}`]">
+          <div class="px-4 py-3">
+            <!-- Log Header -->
+            <div class="flex items-center gap-3 mb-2">
+              <span class="font-mono text-xs text-neutral-500">{{ formatTime(log.timestamp) }}</span>
+              
+              <span :class="[
+                'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded',
+                {
+                  'bg-neutral-700 text-neutral-400': log.level === 'debug',
+                  'bg-blue-900/30 text-blue-400': log.level === 'info',
+                  'bg-yellow-900/30 text-yellow-400': log.level === 'warn',
+                  'bg-red-900/30 text-red-400': log.level === 'error'
+                }
+              ]">
                 <component :is="getLevelIcon(log.level)" :size="12" />
-                {{ log.level }}
+                {{ log.level.toUpperCase() }}
               </span>
-              <span v-if="log.source" class="log-source">{{ log.source }}</span>
+              
+              <span v-if="log.source" class="px-2 py-0.5 bg-neutral-700 text-neutral-400 text-xs font-mono rounded">
+                {{ log.source }}
+              </span>
             </div>
-          </div>
-          
-          <!-- Log Message -->
-          <div class="log-body">
-            <p class="log-message">{{ log.message }}</p>
             
-            <!-- Enhanced Metadata Display -->
-            <div v-if="log.meta && Object.keys(log.meta).length > 0" class="log-metadata">
+            <!-- Log Message -->
+            <p class="text-sm leading-relaxed text-neutral-200">{{ log.message }}</p>
+            
+            <!-- Metadata -->
+            <div v-if="log.meta && Object.keys(log.meta).length > 0" class="mt-3">
               <button 
                 @click="toggleMeta(log.id)"
-                class="expand-btn"
+                class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-neutral-400 bg-neutral-700 rounded hover:bg-neutral-600 transition-colors"
               >
-                <ChevronRight :class="['expand-icon', { expanded: expandedMeta.has(log.id) }]" :size="14" />
+                <ChevronRight :class="['transition-transform', expandedMeta.has(log.id) && 'rotate-90']" :size="14" />
                 Metadata
               </button>
               
               <Transition name="slide-fade">
-                <div v-if="expandedMeta.has(log.id)" class="metadata-content">
+                <div v-if="expandedMeta.has(log.id)" class="p-3 mt-2 rounded-md bg-neutral-900">
                   <DataRenderer :data="log.meta" />
                 </div>
               </Transition>
             </div>
             
-            <!-- Enhanced Stack Trace Display -->
-            <div v-if="log.stack" class="log-stacktrace">
+            <!-- Stack Trace -->
+            <div v-if="log.stack" class="mt-3">
               <button 
                 @click="toggleStack(log.id)"
-                class="expand-btn error"
+                class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 bg-red-900/20 rounded hover:bg-red-900/30 transition-colors"
               >
-                <AlertCircle :class="['expand-icon', { expanded: expandedStacks.has(log.id) }]" :size="14" />
+                <AlertCircle :class="['transition-transform', expandedStacks.has(log.id) && 'rotate-90']" :size="14" />
                 Stack Trace
               </button>
               
               <Transition name="slide-fade">
-                <div v-if="expandedStacks.has(log.id)" class="stacktrace-content">
-                  <pre class="stack-pre">{{ formatStackTrace(log.stack) }}</pre>
+                <div v-if="expandedStacks.has(log.id)" class="p-3 mt-2 rounded-md bg-neutral-900">
+                  <pre class="font-mono text-xs text-red-400 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
                 </div>
               </Transition>
             </div>
@@ -129,19 +128,23 @@
       </TransitionGroup>
       
       <!-- Empty State -->
-      <div v-if="filteredLogs.length === 0" class="empty-state">
-        <FileX :size="48" class="empty-icon" />
-        <h3>{{ logs.length === 0 ? 'No logs recorded yet' : 'No logs match your filters' }}</h3>
-        <p>{{ logs.length === 0 ? 'Logs will appear here as they are generated' : 'Try adjusting your filters or search query' }}</p>
+      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+        <FileX :size="48" class="mb-4 text-neutral-600" />
+        <h3 class="mb-2 text-lg font-semibold text-neutral-400">
+          {{ logs.length === 0 ? 'No logs recorded yet' : 'No logs match your filters' }}
+        </h3>
+        <p class="text-sm text-neutral-500">
+          {{ logs.length === 0 ? 'Logs will appear here as they are generated' : 'Try adjusting your filters or search query' }}
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, reactive } from 'vue';
+import { computed, ref, reactive } from 'vue';
 import { 
-  Trash2, 
+  Eraser, 
   Search, 
   Filter,
   ChevronRight,
@@ -149,9 +152,7 @@ import {
   Info,
   AlertTriangle,
   Bug,
-  FileX,
-  ArrowDown,
-  ArrowDownToLine
+  FileX
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -285,7 +286,6 @@ const logs = computed(() => {
 
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
-const autoScroll = useSelector(actor, (s) => (s as any).context.autoScroll);
 
 const filteredLogs = computed(() => {
   let filtered = logs.value;
@@ -319,10 +319,6 @@ const setFilterLevel = (e: Event) => {
 const setSearch = (e: Event) => {
   const target = e.target as HTMLInputElement;
   actor.send({ type: 'SET_SEARCH', search: target.value });
-};
-
-const toggleAutoScroll = () => {
-  actor.send({ type: 'TOGGLE_AUTO_SCROLL' });
 };
 
 const clearLogs = () => {
@@ -373,396 +369,10 @@ const getLevelIcon = (level: string) => {
   };
   return icons[level as keyof typeof icons] || Info;
 };
-
-// Auto-scroll when new logs are added
-watch(filteredLogs, async () => {
-  if (autoScroll.value && logsContent.value) {
-    await nextTick();
-    logsContent.value.scrollTop = logsContent.value.scrollHeight;
-  }
-});
 </script>
 
 <style scoped>
-/* Container Layout */
-.logs-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: #0a0a0a;
-  color: #e1e1e1;
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-}
-
-/* Enhanced Header */
-.logs-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: #141414;
-  border-bottom: 1px solid #262626;
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.header-left {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  border: 1px solid #262626;
-}
-
-.filter-icon {
-  color: #666;
-}
-
-.level-filter {
-  background: transparent;
-  border: none;
-  color: #e1e1e1;
-  font-size: 13px;
-  font-weight: 500;
-  outline: none;
-  cursor: pointer;
-}
-
-.level-filter option {
-  background: #1a1a1a;
-}
-
-.search-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: #666;
-  pointer-events: none;
-}
-
-.search-input {
-  padding: 8px 12px 8px 36px;
-  width: 280px;
-  background: #1a1a1a;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #e1e1e1;
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.search-input:focus {
-  border-color: #404040;
-  background: #1f1f1f;
-}
-
-.search-input::placeholder {
-  color: #666;
-}
-
-.header-right {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-
-/* Statistics */
-.stats-group {
-  display: flex;
-  gap: 20px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #e1e1e1;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.stat-item.error .stat-value {
-  color: #ff4757;
-}
-
-.stat-item.warn .stat-value {
-  color: #ffa502;
-}
-
-/* Action Buttons */
-.action-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.icon-btn {
-  padding: 8px;
-  background: #1a1a1a;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-btn:hover {
-  background: #262626;
-  color: #e1e1e1;
-  border-color: #404040;
-}
-
-.icon-btn.active {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.icon-btn.danger:hover {
-  background: #ff4757;
-  color: white;
-  border-color: #ff4757;
-}
-
-/* Logs Viewport */
-.logs-viewport {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0;
-}
-
-.logs-list {
-  padding: 12px;
-}
-
-/* Log Items */
-.log-item {
-  margin-bottom: 1px;
-  background: #141414;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.log-item:hover {
-  background: #1a1a1a;
-  border-color: #262626;
-}
-
-/* Level-based styling */
-.level-debug {
-  border-left: 3px solid #6b7280;
-}
-
-.level-info {
-  border-left: 3px solid #3b82f6;
-}
-
-.level-warn {
-  border-left: 3px solid #ffa502;
-}
-
-.level-error {
-  border-left: 3px solid #ff4757;
-}
-
-/* Log Header */
-.log-header {
-  padding: 12px 16px 8px;
-}
-
-.log-meta-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.log-time {
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #666;
-}
-
-.log-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.badge-debug {
-  background: rgba(107, 114, 128, 0.2);
-  color: #9ca3af;
-}
-
-.badge-info {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-}
-
-.badge-warn {
-  background: rgba(255, 165, 2, 0.2);
-  color: #ffa502;
-}
-
-.badge-error {
-  background: rgba(255, 71, 87, 0.2);
-  color: #ff6b7a;
-}
-
-.log-source {
-  font-size: 12px;
-  color: #666;
-  background: #1a1a1a;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-}
-
-/* Log Body */
-.log-body {
-  padding: 0 16px 12px;
-}
-
-.log-message {
-  margin: 0;
-  color: #e1e1e1;
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-/* Expandable Sections */
-.log-metadata,
-.log-stacktrace {
-  margin-top: 12px;
-}
-
-.expand-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #1a1a1a;
-  border: 1px solid #262626;
-  border-radius: 6px;
-  color: #999;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.expand-btn:hover {
-  background: #262626;
-  color: #e1e1e1;
-  border-color: #404040;
-}
-
-.expand-btn.error {
-  border-color: rgba(255, 71, 87, 0.3);
-  color: #ff6b7a;
-}
-
-.expand-btn.error:hover {
-  background: rgba(255, 71, 87, 0.1);
-  border-color: rgba(255, 71, 87, 0.5);
-}
-
-.expand-icon {
-  transition: transform 0.2s;
-}
-
-.expand-icon.expanded {
-  transform: rotate(90deg);
-}
-
-.metadata-content,
-.stacktrace-content {
-  margin-top: 8px;
-  padding: 12px;
-  background: #0a0a0a;
-  border-radius: 6px;
-  border: 1px solid #262626;
-}
-
-.stack-pre {
-  margin: 0;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #ff6b7a;
-  line-height: 1.6;
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 40px;
-  text-align: center;
-}
-
-.empty-icon {
-  color: #404040;
-  margin-bottom: 16px;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #666;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 14px;
-  color: #404040;
-}
-
-/* Animations */
+/* Vue Transitions */
 .log-fade-enter-active {
   transition: all 0.3s ease;
 }
@@ -783,21 +393,8 @@ watch(filteredLogs, async () => {
   transform: translateY(-8px);
 }
 
-/* Scrollbar Styling */
-.logs-viewport::-webkit-scrollbar {
-  width: 8px;
-}
-
-.logs-viewport::-webkit-scrollbar-track {
-  background: #0a0a0a;
-}
-
-.logs-viewport::-webkit-scrollbar-thumb {
-  background: #262626;
-  border-radius: 4px;
-}
-
-.logs-viewport::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+/* Custom hover state for log items */
+.hover\:bg-neutral-750:hover {
+  background-color: rgb(38 38 38 / 0.5);
 }
 </style> 

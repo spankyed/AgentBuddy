@@ -19,7 +19,6 @@ export interface LogsContext {
     level: 'all' | 'debug' | 'info' | 'warn' | 'error';
     search: string;
   };
-  autoScroll: boolean;
 }
 
 type LogsEvents =
@@ -28,7 +27,6 @@ type LogsEvents =
   | { type: 'logs:LOGS_CLEARED' }
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
-  | { type: 'TOGGLE_AUTO_SCROLL' }
   | { type: 'CLEAR_LOGS' };
 
 const typeOf = safeEvents<LogsEvents>();
@@ -62,10 +60,6 @@ const logsState = setup({
         search: typeOf('SET_SEARCH', event).search,
       }),
     }),
-    toggleAutoScroll: assign({
-      autoScroll: ({ context }) => !context.autoScroll,
-    }),
-
   },
 }).createMachine({
   id,
@@ -76,7 +70,6 @@ const logsState = setup({
       level: 'all',
       search: '',
     },
-    autoScroll: true,
   },
   states: {
     active: {
@@ -95,9 +88,6 @@ const logsState = setup({
         },
         SET_SEARCH: {
           actions: 'setSearch',
-        },
-        TOGGLE_AUTO_SCROLL: {
-          actions: 'toggleAutoScroll',
         },
         CLEAR_LOGS: {
           actions: 'clearLogs',
