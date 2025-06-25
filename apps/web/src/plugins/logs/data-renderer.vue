@@ -65,11 +65,12 @@ const props = withDefaults(defineProps<{
 // Initialize expanded state
 // If defaultExpanded is explicitly set, use it
 // Otherwise, expand if we're at the root level (depth is 0)
-const expanded = ref(
-  props.defaultExpanded !== undefined 
-    ? props.defaultExpanded 
-    : props.depth === 0
-);
+// const expanded = ref(
+//   props.defaultExpanded !== undefined 
+//     ? props.defaultExpanded 
+//     : props.depth === 0
+// );
+const expanded = ref(true);
 
 const toggleExpanded = () => {
   expanded.value = !expanded.value;
