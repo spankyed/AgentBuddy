@@ -2,13 +2,16 @@
  * attribute‑store.ts – single‑bucket, generic mutator + query shims
  *─────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/shared/utils";
-import { logInternal }   from "@/shared/debug/log";
+import { createLogger } from "@/systems/logs/logger";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "./types";
 import { randomId } from "../utils/random-id";
 
 export const createEntity = (t: EARS.Entity) =>
   `${t}-${randomId()}` as EARS.EntityId;
+
+// Create logger for EARS operations
+const earsLogger = createLogger('ears');
 
 /*─ base buckets ─*/
 const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
@@ -33,7 +36,7 @@ function makeMutator() {
     (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
-    logInternal("AA", false, kind, id, val);
+    earsLogger.debug('Attribute added', { operation: 'ATTRIBUTE[+]', kind, entity: id, value: val }, true);
   };
 
   const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
@@ -61,7 +64,7 @@ function makeMutator() {
           : (val as EARS.AttributeValue);
     }
     
-    logInternal("AU", false, kind, id, val);
+    earsLogger.debug('Attribute updated', { operation: 'ATTRIBUTE[^]', kind, entity: id, value: val }, true);
   };
 
   const drop = (id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) => {
@@ -69,7 +72,7 @@ function makeMutator() {
     if (!list?.length) return;
     list.splice(idx, 1);
     if (!list.length) bucket(kind).delete(id);
-    logInternal("AR", false, kind, id, null);
+    earsLogger.debug('Attribute removed', { operation: 'ATTRIBUTE[-]', kind, entity: id, index: idx }, true);
   };
 
   const dropIf = (id: EARS.EntityId, kind: EARS.AttrKind, crit: unknown) => {
