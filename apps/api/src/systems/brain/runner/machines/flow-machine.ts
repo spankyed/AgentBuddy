@@ -1,4 +1,4 @@
-import { setup, sendParent, assign, enqueueActions, log } from 'xstate';
+import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/types';
 import {
   createEventTNode,
@@ -127,9 +127,10 @@ export function createFlowMachine(
 
           if (!eventNode) return;
 
-          console.log(`Flow ${context.flowId} received event: ${eventType}`);
+          console.log(`${context.flowId} received event: ${eventType}`);
 
           const firstStep = getEventResponderNode(eventNode.id!);
+
           if (firstStep) {
             const eventTNode = createEventTNode(eventNode, flowTNodeId);
 
@@ -244,6 +245,7 @@ export function createFlowMachine(
           result: context.finalResult,
           final: true,
         })),
+        raiseEntryEvent: raise({ type: 'flow.entry' }),
       },
       guards: {
         flowCompleted: ({ event, context }) => {
@@ -285,7 +287,7 @@ export function createFlowMachine(
       },
       states: {
         active: {
-          entry: log('Flow machine active'),
+          entry: [log('Flow machine active'), 'raiseEntryEvent'],
           on: {
             CANCEL_FLOW: 'completed',
           },
