@@ -1,14 +1,14 @@
 <template>
   <div class="bg-neutral-900">
     <!-- Header -->
-    <div class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-neutral-800 border-neutral-700">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 rounded-md">
-          <Filter :size="14" class="text-neutral-400" />
+    <div class="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b bg-neutral-800/95 backdrop-blur-sm border-neutral-700">
+      <div class="flex items-center gap-3">
+        <!-- Level Filter -->
+        <div class="relative">
           <select 
             :value="filterLevel" 
             @change="setFilterLevel"
-            class="text-sm font-medium bg-transparent outline-none cursor-pointer text-neutral-200"
+            class="px-3 py-1 pr-8 text-sm font-medium transition-colors rounded outline-none appearance-none cursor-pointer bg-neutral-700 hover:bg-neutral-600 text-neutral-200"
           >
             <option value="all">All Levels</option>
             <option value="debug">Debug</option>
@@ -16,42 +16,46 @@
             <option value="warn">Warning</option>
             <option value="error">Error</option>
           </select>
+          <ChevronDown :size="12" class="absolute -translate-y-1/2 pointer-events-none right-2 top-1/2 text-neutral-400" />
         </div>
         
-        <div class="relative flex items-center">
-          <Search :size="14" class="absolute left-3 text-neutral-400" />
+        <!-- Search -->
+        <div class="relative">
+          <Search :size="12" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
           <input
             :value="searchTerm"
             @input="setSearch"
             type="text"
-            placeholder="Search logs, sources, or metadata..."
-            class="pl-9 pr-4 py-1.5 w-72 bg-neutral-700 border border-neutral-600 rounded-md text-sm text-neutral-200 placeholder-neutral-400 outline-none focus:border-neutral-500 focus:bg-neutral-600 transition-colors"
+            placeholder="Search logs..."
+            class="w-56 py-1 pl-8 pr-3 text-sm transition-all rounded outline-none bg-neutral-700 hover:bg-neutral-600 text-neutral-200 placeholder-neutral-500 focus:bg-neutral-600 focus:ring-1 focus:ring-neutral-500"
           />
         </div>
       </div>
       
-      <div class="flex items-center gap-6">
-        <div class="flex gap-4">
-          <div class="flex flex-col items-center">
-            <span class="text-lg font-semibold text-neutral-200">{{ logs.length }}</span>
-            <span class="text-xs tracking-wider uppercase text-neutral-500">Total</span>
+      <div class="flex items-center gap-4">
+        <!-- Compact Stats -->
+        <div class="flex items-center gap-3 text-sm">
+          <div class="flex items-center gap-1.5">
+            <span class="text-neutral-500">Total:</span>
+            <span class="font-medium text-neutral-300">{{ logs.length }}</span>
           </div>
-          <div v-if="errorCount > 0" class="flex flex-col items-center">
-            <span class="text-lg font-semibold text-red-400">{{ errorCount }}</span>
-            <span class="text-xs tracking-wider uppercase text-neutral-500">Errors</span>
+          <div v-if="errorCount > 0" class="flex items-center gap-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-red-400"></div>
+            <span class="font-medium text-red-400">{{ errorCount }}</span>
           </div>
-          <div v-if="warnCount > 0" class="flex flex-col items-center">
-            <span class="text-lg font-semibold text-yellow-400">{{ warnCount }}</span>
-            <span class="text-xs tracking-wider uppercase text-neutral-500">Warnings</span>
+          <div v-if="warnCount > 0" class="flex items-center gap-1.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
+            <span class="font-medium text-yellow-400">{{ warnCount }}</span>
           </div>
         </div>
         
+        <!-- Clear Button -->
         <button 
           @click="clearLogs"
-          class="p-2 transition-colors rounded-md bg-neutral-700 text-neutral-400 hover:bg-red-600 hover:text-white"
+          class="px-2.5 py-1 text-sm font-medium transition-all rounded bg-neutral-700 text-neutral-400 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/20"
           title="Clear all logs"
         >
-          <Eraser :size="16" />
+          Clear
         </button>
       </div>
     </div>
@@ -67,13 +71,13 @@
           >
             <div class="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-800/50 transition-colors rounded">
               <!-- Timestamp -->
-              <span class="font-mono text-[11px] text-neutral-500 w-20 flex-shrink-0">
+              <span class="flex-shrink-0 w-24 text-sm text-neutral-500">
                 {{ formatTime(log.timestamp) }}
               </span>
               
               <!-- Level Badge -->
               <div :class="[
-                'flex items-center justify-center w-12 h-5 rounded text-[10px] font-semibold flex-shrink-0',
+                'flex items-center justify-center w-12 h-5 rounded text-sm font-semibold flex-shrink-0',
                 {
                   'bg-neutral-700/50 text-neutral-400': log.level === 'debug',
                   'bg-blue-500/20 text-blue-400': log.level === 'info',
@@ -87,7 +91,7 @@
               <!-- Source Badge -->
               <span 
                 v-if="log.source" 
-                class="px-2 h-5 flex items-center bg-neutral-800 text-neutral-400 text-[11px] font-mono rounded flex-shrink-0 min-w-[72px] justify-center"
+                class="px-2 h-5 flex items-center bg-neutral-800 text-neutral-400 text-sm font-mono rounded flex-shrink-0 min-w-[72px] justify-center"
               >
                 {{ log.source }}
               </span>
@@ -130,11 +134,11 @@
             
             <!-- Expandable Content -->
             <Transition name="expand-fade">
-              <div v-if="expandedMeta.has(log.id) || expandedStacks.has(log.id)" class="border-l-2 border-neutral-800 ml-[23px] mb-1">
+              <div v-if="expandedMeta.has(log.id) || expandedStacks.has(log.id)" class="border-l-2 border-neutral-800 ml-[27px] mb-1">
                 <div v-if="expandedMeta.has(log.id)" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
                   <div class="flex items-center gap-1.5 mb-1.5">
                     <Code2 :size="12" class="text-blue-400" />
-                    <span class="text-[11px] font-medium text-blue-400">Metadata</span>
+                    <span class="text-sm font-medium text-blue-400">Metadata</span>
                   </div>
                   <DataRenderer :data="log.meta" />
                 </div>
@@ -142,9 +146,9 @@
                 <div v-if="expandedStacks.has(log.id)" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
                   <div class="flex items-center gap-1.5 mb-1.5">
                     <FileWarning :size="12" class="text-red-400" />
-                    <span class="text-[11px] font-medium text-red-400">Stack Trace</span>
+                    <span class="text-sm font-medium text-red-400">Stack Trace</span>
                   </div>
-                  <pre class="font-mono text-[11px] text-red-400/90 leading-4 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
+                  <pre class="font-mono text-sm leading-4 whitespace-pre-wrap text-red-400/90">{{ formatStackTrace(log.stack) }}</pre>
                 </div>
               </div>
             </Transition>
@@ -169,10 +173,9 @@
 <script setup lang="ts">
 import { computed, ref, reactive } from 'vue';
 import { 
-  Eraser, 
   Search, 
-  Filter,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
   Info,
   AlertTriangle,
@@ -354,12 +357,34 @@ const clearLogs = () => {
 
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString('en-US', { 
-    hour12: false,
+  const now = new Date();
+  
+  // If it's today, just show time
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString(undefined, { 
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }
+  
+  // If it's within the last week, show day and time
+  const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysDiff < 7) {
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+  
+  // Otherwise show date and time
+  return date.toLocaleDateString(undefined, { 
+    month: 'short',
+    day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
+    minute: '2-digit'
+  });
 };
 
 const toggleMeta = (logId: string) => {
