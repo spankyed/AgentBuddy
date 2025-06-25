@@ -176,7 +176,7 @@ class Logger {
 }
 
 // Export a default logger instance
-export const logger = new Logger();
+export const logger = new Logger('backend');
 
 // Export a factory function to create loggers with specific sources
 export function createLogger(source: string) {

@@ -9,6 +9,9 @@ import { EARS } from '@/shared/ears/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './query-executor';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('database');
 
 export const database = 'database' as const;
 
@@ -80,7 +83,7 @@ export const databaseSystem = setup({
         }));
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Query execution failed:', errorMessage);
+        logger.error('Query execution failed:', { error: errorMessage });
         system.get(bus).send(emit(database, { 
           type: 'QUERY_ERROR',
           error: errorMessage

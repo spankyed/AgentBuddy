@@ -1,6 +1,9 @@
 import { rows } from "./mock-data";
 import { tx } from "@/shared/ears/helpers/transaction";
 import { EARS } from "@/shared/ears/types";
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('load-initial-data');
 
 /**
  * Load mock data into the store
@@ -9,7 +12,7 @@ export function loadMockData(): void {
   const { entity = [], relation = [], role = [] } = rows;
 
   if (!entity.length) {
-    console.warn("No entities found in mock data");
+    logger.warn("No entities found in mock data");
     return;
   }
 

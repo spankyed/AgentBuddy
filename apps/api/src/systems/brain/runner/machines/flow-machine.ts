@@ -12,6 +12,9 @@ import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
 import { brainBus } from '../../system';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('flow-machine');
 
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
@@ -127,7 +130,7 @@ export function createFlowMachine(
 
           if (!eventNode) return;
 
-          console.log(`${context.flowId} received event: ${eventType}`);
+          logger.debug(`${context.flowId} received event: ${eventType}`);
 
           const firstStep = getEventResponderNode(eventNode.id!);
 
@@ -171,7 +174,7 @@ export function createFlowMachine(
           },
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue }) => {
-          console.log(`Child completed in flow ${context.flowId}:`, event);
+          logger.debug(`Child completed in flow ${context.flowId}:`, { event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
           

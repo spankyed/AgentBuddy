@@ -5,6 +5,9 @@ import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
 import { entries } from '@/shared/utils';
 import { EARS } from '@/shared/ears/types';
 import { createEntity } from '@/shared/ears';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('backend');
 
 export type BusEvent = 
   | { type: 'INCOMING'; event: IncomingSystemEvents }
@@ -32,7 +35,7 @@ export const backendSystem = setup({
   },
   actions: {
     routeIncoming: ({ event: incoming, system, }) => {
-      console.log('Incoming event:', incoming);
+      logger.info('Incoming event:', { event: incoming });
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },

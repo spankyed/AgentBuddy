@@ -1,5 +1,8 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext } from '@/systems/brain/types';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('keep-alive-node');
 
 /**
  * Handle execution of a keep-alive node
@@ -10,7 +13,7 @@ export function keepAliveNodeHandler(
   executionContext: ExecutionContext,
   actor: any
 ) {
-  console.log(`Keep-alive node: ${node.label} - flow will remain active`);
+  logger.debug(`Keep-alive node: ${node.label} - flow will remain active`);
   
   // Keep-alive nodes don't complete - they keep the flow running
   // The actor will stay in the executing state indefinitely

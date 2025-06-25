@@ -1,5 +1,8 @@
 import type OpenAI from 'openai';
 import type { StreamHandler } from './runner';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('openai-stream');
 
 /**
  * Handles OpenAI stream events and processes them according to their type
@@ -48,7 +51,7 @@ export const handleOpenAIStream: StreamHandler<OpenAI.Responses.ResponseStreamEv
       return true;
 
     default:
-      console.warn(`Unhandled event type: ${event.type}`);
+      logger.warn(`Unhandled event type: ${event.type}`);
       return false;
   }
 }

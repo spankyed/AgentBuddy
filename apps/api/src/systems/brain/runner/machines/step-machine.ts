@@ -5,6 +5,9 @@ import {
   createStepTNode,
   updateTNodeStatus,
 } from '../../repository/tnode-manager';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('step-machine');
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -41,7 +44,7 @@ export function createStepMachine(
       },
       actions: {
         executeStep: ({ context, self }) => {
-          console.log(
+          logger.debug(
             `Executing step: ${context.step.label} (${context.step.nodeType})`,
           );
 

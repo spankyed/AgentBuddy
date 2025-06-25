@@ -2,6 +2,9 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('agent-repository');
 
 /*──────────────────────── helpers ────────────────────────*/
 const LATEST_THREAD  = EARS.RoleKind.Custom("latest_thread");
@@ -18,7 +21,7 @@ const latestMessageId = (): EARS.EntityId | undefined =>
 export function addMessageToLatestThread(text: string) {
   const threadId = latestThreadId();
   if (!threadId) {
-    console.warn("No latest thread found");
+    logger.warn("No latest thread found");
     return;
   }
 
@@ -35,7 +38,7 @@ export function setNewMessage(
   threadId = latestThreadId(),
 ) {
   if (!threadId) {
-    console.warn("No latest thread found");
+    logger.warn("No latest thread found");
     return;
   }
 

@@ -3,6 +3,9 @@ import type { ExecutionContext } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
 import { llmNodeHandler } from './llm-node';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('node-executor');
 
 /**
  * Execute a node based on its type
@@ -27,7 +30,7 @@ export function executeNode(
       
     default:
       // For unknown node types, complete immediately
-      console.warn(`Unknown node type: ${node.nodeType}`);
+      logger.warn(`Unknown node type: ${node.nodeType}`);
       setTimeout(() => {
         actor.send({ type: 'COMPLETE', result: { executed: true } });
       }, 100);
