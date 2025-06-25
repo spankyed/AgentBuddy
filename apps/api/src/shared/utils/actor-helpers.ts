@@ -4,6 +4,9 @@ import type { Simplify } from '@/shared/utils/type-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/shared/events';
 import { bus, type backendSystem } from '@/systems';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('actor-helpers');
 
 type ExtractEvent<
   TEvent extends { type: string },
@@ -103,7 +106,7 @@ export function getBus(
 export function logErrors(actor: string) {
   return {
     error: (error: unknown) => {
-      console.error(`${actor} State Error:`, error);
+      logger.error(`${actor} State Error:`, { error });
     }
   }
 }

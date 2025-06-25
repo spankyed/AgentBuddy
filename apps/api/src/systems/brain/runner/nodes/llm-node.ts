@@ -1,5 +1,8 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext } from '@/systems/brain/types';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('llm-node');
 
 type LLMNode = NodeEntity & {
   model?: string;
@@ -18,9 +21,10 @@ export function llmNodeHandler(
 ) {
   const llmNode = node as LLMNode;
   
-  console.log(`Executing LLM node: ${node.label}`);
-  console.log(`Model: ${llmNode.model || 'default'}`);
-  console.log(`Prompt: ${llmNode.prompt || 'No prompt specified'}`);
+  logger.debug(`Executing LLM node: ${node.label}`, {
+    model: llmNode.model || 'default',
+    prompt: llmNode.prompt || 'No prompt specified'
+  });
   
   // TODO: Implement actual LLM call
   // For now, simulate async execution

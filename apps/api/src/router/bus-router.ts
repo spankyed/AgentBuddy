@@ -2,6 +2,9 @@ import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingSystemEvents } from '@/shared/events';
 import { procedure, router } from './trpc';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('bus-router');
 
 export const systemBusRouter = router({
   /** COMMAND / fire-and-forget */
@@ -19,13 +22,13 @@ export const systemBusRouter = router({
     .subscription(({ ctx }) =>
       observable<OutgoingSystemEvents>((emit) => {
         const { unsubscribe } = ctx.actor.on('OUTGOING', ({ event }) => {
-          console.log('Outgoing message: ', event.type);
+          logger.info(`Outgoing message: "${event.type}"`, event);
           emit.next(event);
         })
 
         ctx.actor.send({ type: 'CLIENT_CONNECTED' });
         return () => {
-          console.log('Cleaning up subscription');
+          logger.debug('Cleaning up subscription');
           unsubscribe()
         };
       }),

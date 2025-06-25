@@ -10,6 +10,9 @@ import {
 } from "@/shared/ears/attribute-storage";
 import { edgeStore } from "./edge-store";
 import { EARS } from "@/shared/ears/types";
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('atomic-transaction');
 
 type Operation = () => void | any;
 type Rollback = () => void;
@@ -243,7 +246,7 @@ export class AtomicTransaction {
       op: () => destroyEntity(id),
       rollback: () => {
         // This is complex - would need to recreate the entity with all its data
-        console.warn(`Cannot fully rollback entity destruction for ${id}`);
+        logger.warn(`Cannot fully rollback entity destruction for ${id}`);
       },
       description: `destroy ${id}`
     });
@@ -281,7 +284,7 @@ export class AtomicTransaction {
           try {
             rollback();
           } catch (error) {
-            console.error(`Rollback error for ${description}:`, error);
+            logger.error(`Rollback error for ${description}:`, { error });
           }
         }
       }
@@ -305,7 +308,7 @@ export class AtomicTransaction {
     }
     
     if (errors.length > 0) {
-      console.error("Rollback errors:", errors);
+      logger.error("Rollback errors:", { errors });
     }
   }
 

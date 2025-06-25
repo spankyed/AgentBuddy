@@ -11,7 +11,9 @@ import { getExtendedData } from './repository/read';
 import { createFlow } from './repository/create';
 import { updateFlowLabel } from './repository/update';
 import { z } from 'zod';
+import { createLogger } from '@/systems/logs/logger';
 
+const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const flows = 'flows' as const;
@@ -46,7 +48,7 @@ export const flowsSystem = setup({
   },
   actions: {
     sendFlowsStartupData: ({ system }) => {
-      console.log('Sending FE startup event');
+      logger.debug('Sending FE startup event');
       system.get(bus).send(emit(flows, { 
         type: 'FLOWS_STARTUP',
         data: flowsStartupData()

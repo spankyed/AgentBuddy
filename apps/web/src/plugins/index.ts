@@ -3,6 +3,7 @@ import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
 import Brain from './brain/plugin.ts';
+import Logs from './logs/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
@@ -42,6 +43,7 @@ export default [
   Brain,
   Flows,
   Database,
+  Logs,
   ...mockPlugins,
   Blank,
 ];

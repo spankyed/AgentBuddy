@@ -12,6 +12,9 @@ import type { EARS } from '@/shared/ears/types';
 import { AgentStartupData, AgentThreadData, ThreadExtendedData } from '@/types';
 import { getThreadChatData } from './repository/read';
 import agentStartupData from './repository/startup';
+import { createLogger } from '@/systems/logs/logger';
+
+const logger = createLogger('agent');
 
 export const agent = 'agent' as const;
 
@@ -65,7 +68,7 @@ export const agentSystem = setup({
       }));
     },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
-      console.error('Chat stream error:', event.error);
+      logger.error('Chat stream error:', { error: event.error });
     },
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
