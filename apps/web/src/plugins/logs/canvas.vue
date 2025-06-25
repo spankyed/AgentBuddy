@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col min-h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between flex-shrink-0 px-3 py-2 border-b bg-neutral-800/95 backdrop-blur-sm border-neutral-700">
+    <div class="flex items-center justify-between flex-shrink-0 px-3 py-2 border-b backdrop-blur-sm bg-neutral-800/95 border-neutral-700">
       <div class="flex items-center gap-3">
         <!-- Level Filter -->
         <div class="relative">
@@ -33,30 +33,99 @@
       </div>
       
       <div class="flex items-center gap-4">
-        <!-- Compact Stats -->
-        <div class="flex items-center gap-3 text-sm">
-          <div class="flex items-center gap-1.5">
-            <span class="text-neutral-500">Total:</span>
-            <span class="font-medium text-neutral-300">{{ logs.length }}</span>
+        <!-- Log Level Counts with improved UI -->
+        <div class="flex items-center gap-2">
+          <!-- Total Count (de-emphasized) -->
+          <div class="flex gap-1.5 items-center px-2 text-xs text-neutral-500">
+            <span>{{ logs.length }}</span>
+            <span>logs</span>
           </div>
-          <div v-if="errorCount > 0" class="flex items-center gap-1.5">
-            <div class="w-1.5 h-1.5 rounded-full bg-red-400"></div>
-            <span class="font-medium text-red-400">{{ errorCount }}</span>
-          </div>
-          <div v-if="warnCount > 0" class="flex items-center gap-1.5">
-            <div class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-            <span class="font-medium text-yellow-400">{{ warnCount }}</span>
+          
+          <!-- Divider -->
+          <div class="w-px h-4 bg-neutral-700"></div>
+          
+          <!-- Log Level Filters -->
+          <div class="flex items-center gap-1">
+            <!-- Debug -->
+            <button
+              v-if="debugCount > 0"
+              @click="setFilterLevelDirect('debug')"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
+              :class="filterLevel === 'debug' 
+                ? 'bg-neutral-700 text-neutral-200' 
+                : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300'"
+              title="Show only debug logs"
+            >
+              <Bug :size="12" />
+              <span>{{ debugCount }}</span>
+            </button>
+            
+            <!-- Info -->
+            <button
+              v-if="infoCount > 0"
+              @click="setFilterLevelDirect('info')"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
+              :class="filterLevel === 'info' 
+                ? 'bg-blue-500/20 text-blue-400' 
+                : 'text-blue-400/70 hover:bg-blue-500/10 hover:text-blue-400'"
+              title="Show only info logs"
+            >
+              <Info :size="12" />
+              <span>{{ infoCount }}</span>
+            </button>
+            
+            <!-- Warning -->
+            <button
+              v-if="warnCount > 0"
+              @click="setFilterLevelDirect('warn')"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
+              :class="filterLevel === 'warn' 
+                ? 'bg-yellow-500/20 text-yellow-400' 
+                : 'text-yellow-400/70 hover:bg-yellow-500/10 hover:text-yellow-400'"
+              title="Show only warning logs"
+            >
+              <AlertTriangle :size="12" />
+              <span>{{ warnCount }}</span>
+            </button>
+            
+            <!-- Error -->
+            <button
+              v-if="errorCount > 0"
+              @click="setFilterLevelDirect('error')"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
+              :class="filterLevel === 'error' 
+                ? 'bg-red-500/20 text-red-400' 
+                : 'text-red-400/70 hover:bg-red-500/10 hover:text-red-400'"
+              title="Show only error logs"
+            >
+              <AlertCircle :size="12" />
+              <span>{{ errorCount }}</span>
+            </button>
           </div>
         </div>
         
-        <!-- Clear Button -->
-        <button 
-          @click="clearLogs"
-          class="px-2.5 py-1 text-sm font-medium transition-all rounded bg-neutral-700 text-neutral-400 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/20"
-          title="Clear all logs"
-        >
-          Clear
-        </button>
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <!-- Clear Filters (only show when filters are active) -->
+          <button 
+            v-if="filterLevel !== 'all' || searchTerm"
+            @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
+            class="px-2 py-1 text-xs font-medium transition-colors text-neutral-400 hover:text-neutral-200"
+            title="Clear all filters"
+          >
+            <X :size="14" />
+          </button>
+          
+          <!-- Clear Logs Button with better styling -->
+          <button 
+            @click="clearLogs"
+            class="flex gap-1.5 items-center px-3 py-1 text-xs font-medium rounded border transition-all text-neutral-400 bg-neutral-800 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border-neutral-700"
+            title="Clear all logs"
+          >
+            <Trash2 :size="12" />
+            <span>Clear logs</span>
+          </button>
+        </div>
       </div>
     </div>
     
@@ -96,8 +165,8 @@
           
           <div v-else class="flex justify-center gap-2">
             <button 
-              @click="() => { actor.send({ type: 'SET_FILTER_LEVEL', level: 'all' }); actor.send({ type: 'SET_SEARCH', search: '' }); }"
-              class="px-3 py-1.5 text-xs font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded transition-colors"
+              @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
+              class="px-3 py-1.5 text-xs font-medium rounded transition-colors bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
             >
               Clear all filters
             </button>
@@ -111,7 +180,7 @@
             :key="log.id"
             class="group"
           >
-            <div class="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-800/50 transition-colors rounded">
+            <div class="flex gap-2 items-center px-3 py-1.5 rounded transition-colors hover:bg-neutral-800/50">
               <!-- Timestamp -->
               <span class="flex-shrink-0 w-24 text-sm text-neutral-500">
                 {{ formatTime(log.timestamp) }}
@@ -143,7 +212,7 @@
               <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">{{ log.message }}</p>
               
               <!-- Action Icons -->
-              <div class="flex items-center gap-0.5 flex-shrink-0 mr-1">
+              <div class="flex flex-shrink-0 gap-0.5 items-center mr-1">
                 <button 
                   v-if="log.meta && Object.keys(log.meta).length > 0"
                   @click="toggleMeta(log.id)"
@@ -177,16 +246,16 @@
             <!-- Expandable Content -->
             <Transition name="expand-fade">
               <div v-if="expandedMeta.has(log.id) || expandedStacks.has(log.id)" class="border-l-2 border-neutral-800 ml-[27px] mb-1">
-                <div v-if="expandedMeta.has(log.id)" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
-                  <div class="flex items-center gap-1.5 mb-1.5">
+                <div v-if="expandedMeta.has(log.id)" class="p-2.5 mr-3 ml-4 rounded-md bg-neutral-800/30">
+                  <div class="flex gap-1.5 items-center mb-1.5">
                     <Code2 :size="12" class="text-blue-400" />
                     <span class="text-sm font-medium text-blue-400">Metadata</span>
                   </div>
                   <DataRenderer :data="log.meta" />
                 </div>
                 
-                <div v-if="expandedStacks.has(log.id)" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
-                  <div class="flex items-center gap-1.5 mb-1.5">
+                <div v-if="expandedStacks.has(log.id)" class="p-2.5 mt-1 mr-3 ml-4 rounded-md border bg-red-500/5 border-red-500/10">
+                  <div class="flex gap-1.5 items-center mb-1.5">
                     <FileWarning :size="12" class="text-red-400" />
                     <span class="text-sm font-medium text-red-400">Stack Trace</span>
                   </div>
@@ -214,7 +283,9 @@ import {
   FileX,
   Code2,
   FileWarning,
-  Terminal
+  Terminal,
+  X,
+  Trash2
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -254,15 +325,25 @@ const filteredLogs = computed(() => {
 
 const errorCount = computed(() => logs.value.filter(log => log.level === 'error').length);
 const warnCount = computed(() => logs.value.filter(log => log.level === 'warn').length);
+const infoCount = computed(() => logs.value.filter(log => log.level === 'info').length);
+const debugCount = computed(() => logs.value.filter(log => log.level === 'debug').length);
 
 const setFilterLevel = (e: Event) => {
   const target = e.target as HTMLSelectElement;
   actor.send({ type: 'SET_FILTER_LEVEL', level: target.value as any });
 };
 
+const setFilterLevelDirect = (level: 'all' | 'debug' | 'info' | 'warn' | 'error') => {
+  actor.send({ type: 'SET_FILTER_LEVEL', level });
+};
+
 const setSearch = (e: Event) => {
   const target = e.target as HTMLInputElement;
   actor.send({ type: 'SET_SEARCH', search: target.value });
+};
+
+const clearSearch = () => {
+  actor.send({ type: 'SET_SEARCH', search: '' });
 };
 
 const clearLogs = () => {
