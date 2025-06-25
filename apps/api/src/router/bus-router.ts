@@ -8,19 +8,15 @@ import { rootEvents } from '@/systems/logs/log-events';
 const logger = createLogger('bus-router');
 
 export const systemBusRouter = router({
-  /** COMMAND / fire-and-forget */
   send: procedure
     .input(IncomingEventSchema)
     .mutation(({ ctx, input }) => {
       // Emit to root event emitter
+      logger.info(`→ Incoming: "${input.type}"`, { event: input });
+      // logger.info(`→ Incoming: "${input.type}"`);
+
       rootEvents.emitIncoming(input);
-      
-      // ctx.actor.send({
-      //   type: 'INCOMING',
-      //   event: input,
-      // });
     }),
-  /** EVENT STREAM out of the actor */
   sub: procedure
     // .input(z.object({ sessionId: z.string() }))
     .subscription(({ ctx }) =>
@@ -30,7 +26,8 @@ export const systemBusRouter = router({
           const skipLogging = ['EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
 
           if (!skipLogging) {
-            logger.info(`Outgoing message: "${event.type}"`);
+            logger.info(`← Outgoing: "${event.type}"`);
+            // logger.info(`← Outgoing: "${event.type}"`, { event });
           }
 
           emit.next(event);

@@ -61,12 +61,18 @@ export const logsSystem = setup({
         }
       };
 
+      const connectedHandler = () => {
+        sendBack({ type: 'CLIENT_CONNECTED' });
+      };
+
       const onLogUnsub = rootEvents.onLog(logHandler)
       const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
-      
+      const onConnectedUnsub = rootEvents.onConnected(connectedHandler)
+
       return () => {
         onLogUnsub();
         onIncomingUnsub();
+        onConnectedUnsub();
       };
     }),
   },

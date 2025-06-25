@@ -48,7 +48,12 @@ const logsState = setup({
       logs: ({ event }) => typeOf('LOGS_REFRESH', event).logs,
     }),
     addLog: assign({
-      logs: ({ context, event }) => [...context.logs, typeOf('LOG_ADDED', event).log],
+      logs: ({ context, event }) => {
+        const newLog = typeOf('LOG_ADDED', event).log;
+        return context.logs.some(log => log.id === newLog.id) 
+          ? context.logs 
+          : [...context.logs, newLog];
+      },
     }),
     clearLogs: assign({
       logs: () => [],

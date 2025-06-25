@@ -64,7 +64,6 @@ export const backendSystem = setup({
       rootEvents.emitOutgoing(typeOf('OUTGOING', event).event);
     },
     routeIncoming: ({ event: incoming, system }) => {
-      logger.info('Incoming event:', { event: incoming });
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
     },
