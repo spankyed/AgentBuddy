@@ -241,6 +241,21 @@ export function createRootFlowTNode(
   }
 }
 
+/**
+ * Emit a TNode event
+ */
+// function emitTNodeEvent(
+//   eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
+//   data: any,
+//   // systemActor?: any
+// ) {
+//   if (!systemActor) return;
+
+//   systemActor.system.get(bus).send(emit(brain, {
+//     type: eventType,
+//     ...data
+//   }));
+// }
 
 /**
  * Update TNode status in database
@@ -250,4 +265,6 @@ export function updateTNodeStatus(
   status: TNodeEntity['status']
 ): void {
   tx(tNodeId).put('status', status);
+
+  // emitTNodeEvent('TNODE_UPDATED', { tNodeId, status });
 } 
