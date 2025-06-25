@@ -1,278 +1,251 @@
 <template>
-  <div class="flex flex-col min-h-full bg-neutral-900">
-    <!-- Header -->
-    <div class="flex items-center justify-between flex-shrink-0 px-3 py-2 border-b backdrop-blur-sm bg-neutral-800/95 border-neutral-700">
-      <div class="flex items-center gap-3">
-        <!-- Level Filter -->
-        <!-- <div class="relative">
-          <select 
-            :value="filterLevel" 
-            @change="setFilterLevel"
-            class="px-3 py-1 pr-8 text-sm font-medium transition-colors rounded outline-none appearance-none cursor-pointer bg-neutral-700 hover:bg-neutral-600 text-neutral-200"
-          >
-            <option value="all">All Levels</option>
-            <option value="debug">Debug</option>
-            <option value="info">Info</option>
-            <option value="warn">Warning</option>
-            <option value="error">Error</option>
-          </select>
-          <ChevronDown :size="12" class="absolute -translate-y-1/2 pointer-events-none right-2 top-1/2 text-neutral-400" />
-        </div> -->
-        
-        <!-- Search -->
-        <div class="relative">
-          <Search :size="12" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
-          <input
-            :value="searchTerm"
-            @input="setSearch"
-            type="text"
-            placeholder="Search logs..."
-            class="w-56 py-1 pl-8 pr-3 text-sm transition-all rounded outline-none bg-neutral-700 hover:bg-neutral-600 text-neutral-200 placeholder-neutral-500 focus:bg-neutral-600 focus:ring-1 focus:ring-neutral-500"
-          />
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-4">
-        <!-- Log Level Counts with improved UI -->
-        <div class="flex items-center gap-2">
-          <!-- Total Count (de-emphasized) -->
-          <div class="flex gap-1.5 items-center px-2 text-xs text-neutral-500">
-            <span>{{ logs.length }}</span>
-            <span>logs</span>
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Simplified Header -->
+    <div class="border-b border-neutral-800">
+      <!-- Search and Filters Row -->
+      <div class="p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative flex-1 max-w-md">
+              <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                :value="searchTerm"
+                @input="setSearch"
+                type="text"
+                placeholder="Search logs..."
+                class="w-full py-2 pl-10 pr-3 text-sm bg-neutral-800 border rounded-lg outline-none placeholder-neutral-500 transition-colors"
+                :class="searchTerm ? 'border-neutral-600 bg-neutral-800/70' : 'border-neutral-700 focus:border-neutral-600 focus:bg-neutral-800/50'"
+              />
+              <!-- Clear search button -->
+              <button 
+                v-if="searchTerm"
+                @click="clearSearch"
+                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
+              >
+                <X :size="14" />
+              </button>
+            </div>
+            
+            <!-- Level Filter Pills -->
+            <div class="flex items-center gap-1 px-3 py-1 bg-neutral-800 rounded-lg">
+              <button
+                @click="setFilterLevelDirect('all')"
+                class="px-3 py-1 text-xs font-medium rounded transition-colors"
+                :class="filterLevel === 'all' 
+                  ? 'bg-neutral-700 text-neutral-100' 
+                  : 'text-neutral-400 hover:text-neutral-200'"
+              >
+                All
+                <span class="ml-1 text-[10px] opacity-60">
+                  {{ (filterLevel !== 'all' || searchTerm) && filteredLogs.length !== logs.length 
+                    ? `${filteredLogs.length}/${logs.length}` 
+                    : logs.length 
+                  }}
+                </span>
+              </button>
+              
+              <button
+                v-if="debugCount > 0"
+                @click="setFilterLevelDirect('debug')"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                :class="filterLevel === 'debug' 
+                  ? 'bg-neutral-700 text-neutral-100' 
+                  : 'text-neutral-500 hover:text-neutral-300'"
+              >
+                <Bug :size="12" />
+                {{ filterLevel === 'debug' && searchTerm ? filteredLogs.length : debugCount }}
+              </button>
+              
+              <button
+                v-if="infoCount > 0"
+                @click="setFilterLevelDirect('info')"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                :class="filterLevel === 'info' 
+                  ? 'bg-blue-500/20 text-blue-400' 
+                  : 'text-blue-400/60 hover:text-blue-400'"
+              >
+                <Info :size="12" />
+                {{ filterLevel === 'info' && searchTerm ? filteredLogs.length : infoCount }}
+              </button>
+              
+              <button
+                v-if="warnCount > 0"
+                @click="setFilterLevelDirect('warn')"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                :class="filterLevel === 'warn' 
+                  ? 'bg-yellow-500/20 text-yellow-400' 
+                  : 'text-yellow-400/60 hover:text-yellow-400'"
+              >
+                <AlertTriangle :size="12" />
+                {{ filterLevel === 'warn' && searchTerm ? filteredLogs.length : warnCount }}
+              </button>
+              
+              <button
+                v-if="errorCount > 0"
+                @click="setFilterLevelDirect('error')"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                :class="filterLevel === 'error' 
+                  ? 'bg-red-500/20 text-red-400' 
+                  : 'text-red-400/60 hover:text-red-400'"
+              >
+                <AlertCircle :size="12" />
+                {{ filterLevel === 'error' && searchTerm ? filteredLogs.length : errorCount }}
+              </button>
+            </div>
           </div>
           
-          <!-- Divider -->
-          <div class="w-px h-4 bg-neutral-700"></div>
-          
-          <!-- Log Level Filters -->
-          <div class="flex items-center gap-1">
-            <!-- Debug -->
-            <button
-              v-if="debugCount > 0"
-              @click="setFilterLevelDirect('debug')"
-              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
-              :class="filterLevel === 'debug' 
-                ? 'bg-neutral-700 text-neutral-200' 
-                : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300'"
-              title="Show only debug logs"
-            >
-              <Bug :size="12" />
-              <span>{{ debugCount }}</span>
-            </button>
-            
-            <!-- Info -->
-            <button
-              v-if="infoCount > 0"
-              @click="setFilterLevelDirect('info')"
-              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
-              :class="filterLevel === 'info' 
-                ? 'bg-blue-500/20 text-blue-400' 
-                : 'text-blue-400/70 hover:bg-blue-500/10 hover:text-blue-400'"
-              title="Show only info logs"
-            >
-              <Info :size="12" />
-              <span>{{ infoCount }}</span>
-            </button>
-            
-            <!-- Warning -->
-            <button
-              v-if="warnCount > 0"
-              @click="setFilterLevelDirect('warn')"
-              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
-              :class="filterLevel === 'warn' 
-                ? 'bg-yellow-500/20 text-yellow-400' 
-                : 'text-yellow-400/70 hover:bg-yellow-500/10 hover:text-yellow-400'"
-              title="Show only warning logs"
-            >
-              <AlertTriangle :size="12" />
-              <span>{{ warnCount }}</span>
-            </button>
-            
-            <!-- Error -->
-            <button
-              v-if="errorCount > 0"
-              @click="setFilterLevelDirect('error')"
-              class="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-all rounded group"
-              :class="filterLevel === 'error' 
-                ? 'bg-red-500/20 text-red-400' 
-                : 'text-red-400/70 hover:bg-red-500/10 hover:text-red-400'"
-              title="Show only error logs"
-            >
-              <AlertCircle :size="12" />
-              <span>{{ errorCount }}</span>
-            </button>
-          </div>
-        </div>
-        
-        <!-- Actions -->
-        <div class="flex items-center gap-2">
-          <!-- Clear Filters (only show when filters are active) -->
-          <button 
-            v-if="filterLevel !== 'all' || searchTerm"
-            @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
-            class="px-2 py-1 text-xs font-medium transition-colors text-neutral-400 hover:text-neutral-200"
-            title="Clear all filters"
-          >
-            <X :size="14" />
-          </button>
-          
-          <!-- Clear Logs Button with better styling -->
+          <!-- Clear logs button (moved to far right) -->
           <button 
             @click="clearLogs"
-            class="flex gap-1.5 items-center px-3 py-1 text-xs font-medium rounded border transition-all text-neutral-400 bg-neutral-800 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border-neutral-700"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:text-red-400"
             title="Clear all logs"
           >
             <Trash2 :size="12" />
-            <span>Clear logs</span>
+            <span>Clear</span>
           </button>
         </div>
       </div>
     </div>
     
     <!-- Logs Content -->
-    <div ref="logsContent" class="flex-1 min-h-0 bg-neutral-900">
+    <div ref="logsContent" class="flex-1 overflow-y-auto">
       <!-- Empty State -->
-      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
-        <div class="p-8 border rounded-lg bg-neutral-800/30 border-neutral-700/50">
-          <div class="relative p-4 mx-auto mb-4 rounded-full bg-neutral-800/50 w-fit">
+      <div v-if="filteredLogs.length === 0" class="flex items-center justify-center h-full min-h-[400px]">
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
             <component 
               :is="logs.length === 0 ? Terminal : Search" 
-              :size="32" 
+              :size="24" 
               class="text-neutral-500"
             />
-            <div v-if="logs.length === 0" class="absolute w-3 h-3 bg-green-500 rounded-full top-1 right-1 animate-pulse"></div>
           </div>
           
-          <h3 class="mb-2 text-lg font-semibold text-neutral-300">
-            {{ logs.length === 0 ? 'No logs recorded yet' : 'No logs match your filters' }}
+          <h3 class="mb-2 text-lg font-medium text-neutral-300">
+            {{ logs.length === 0 ? 'No logs yet' : 'No matching logs' }}
           </h3>
           
-          <p class="max-w-sm mx-auto mb-6 text-sm text-neutral-500">
+          <p class="max-w-sm text-sm text-neutral-500">
             {{ logs.length === 0 
-              ? 'Backend logs will appear here in real-time as they are generated by the application.' 
-              : `Try adjusting your filters or search for different keywords. ${logs.length} logs are currently hidden.` 
+              ? 'Logs from your backend will appear here.' 
+              : 'Try adjusting your search or filters.' 
             }}
           </p>
           
-          <div v-if="logs.length === 0" class="flex flex-col gap-3 text-xs text-neutral-500">
-            <div class="p-3 font-mono text-left border rounded bg-neutral-800/50 border-neutral-700/50">
-              <span class="text-neutral-600">// Example usage in backend:</span><br>
-              <span class="text-blue-400">import</span> { log } <span class="text-blue-400">from</span> <span class="text-green-400">'@/systems/logs/logger'</span>;<br><br>
-              <span class="text-neutral-400">log</span>.<span class="text-blue-400">info</span>(<span class="text-green-400">'Server started'</span>);<br>
-              <span class="text-neutral-400">log</span>.<span class="text-yellow-400">warn</span>(<span class="text-green-400">'High memory usage'</span>, { <span class="text-neutral-400">usage</span>: <span class="text-orange-400">'85%'</span> });
-            </div>
-          </div>
-          
-          <div v-else class="flex justify-center gap-2">
+          <div v-if="logs.length > 0" class="mt-4">
             <button 
               @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
-              class="px-3 py-1.5 text-xs font-medium rounded transition-colors bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
+              class="px-4 py-2 text-sm font-medium text-neutral-300 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors"
             >
-              Clear all filters
+              Show all logs
             </button>
           </div>
         </div>
       </div>
-      <div v-else-if="filteredLogs.length > 0" class="px-3 py-2 space-y-0.5">
+      
+      <!-- Logs List -->
+      <div v-else class="divide-y divide-neutral-800/50">
         <TransitionGroup name="log-fade">
           <div 
             v-for="log in filteredLogs" 
             :key="log.id"
-            class="group"
+            class="group hover:bg-neutral-800/30 transition-colors"
           >
             <div 
-              class="flex gap-2 items-center px-3 py-1.5 rounded transition-colors hover:bg-neutral-800/50"
+              class="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
               :class="hasExpandableContent(log) ? 'cursor-pointer' : ''"
               @click="cycleExpansion(log)"
             >
-              <!-- Expansion Indicator -->
-              <div class="flex-shrink-0 w-4">
-                <ChevronRight 
-                  v-if="hasExpandableContent(log)"
-                  :size="12" 
-                  class="transition-transform text-neutral-500"
-                  :class="isExpanded(log.id) ? 'rotate-90' : ''"
-                />
-              </div>
-              
-              <!-- Timestamp -->
-              <span class="flex-shrink-0 w-24 text-sm text-neutral-500">
-                {{ formatTime(log.timestamp) }}
-              </span>
-              
-              <!-- Level Badge -->
+              <!-- Level Icon -->
               <div :class="[
-                'flex items-center justify-center w-12 h-5 rounded text-sm font-semibold flex-shrink-0',
+                'flex-shrink-0',
                 {
-                  'bg-neutral-700/50 text-neutral-400': log.level === 'debug',
-                  'bg-blue-500/20 text-blue-400': log.level === 'info',
-                  'bg-yellow-500/20 text-yellow-400': log.level === 'warn',
-                  'bg-red-500/20 text-red-400': log.level === 'error'
+                  'text-neutral-500': log.level === 'debug',
+                  'text-blue-400': log.level === 'info',
+                  'text-yellow-400': log.level === 'warn',
+                  'text-red-400': log.level === 'error'
                 }
               ]">
-                <component :is="getLevelIcon(log.level)" :size="12" />
+                <component :is="getLevelIcon(log.level)" :size="14" />
               </div>
               
-              <!-- Source Badge -->
-              <span 
-                v-if="log.source" 
-                class="px-2 h-5 flex items-center bg-neutral-800 text-neutral-400 text-sm font-mono rounded flex-shrink-0 min-w-[72px] justify-center"
-              >
-                {{ log.source }}
-              </span>
-              <span v-else class="w-[72px] flex-shrink-0"></span>
-              
               <!-- Message -->
-              <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">
-                <span v-if="searchTerm" v-html="highlightSearchTerm(log.message)"></span>
-                <span v-else>{{ log.message }}</span>
-              </p>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-neutral-200 break-words">
+                  <span v-if="searchTerm" v-html="highlightSearchTerm(log.message)"></span>
+                  <span v-else>{{ log.message }}</span>
+                </p>
+              </div>
               
-              <!-- Action Icons -->
-              <div class="flex flex-shrink-0 gap-0.5 items-center mr-1">
-                <button 
-                  v-if="log.meta && Object.keys(log.meta).length > 0"
-                  @click.stop="toggleContent(log.id, 'meta')"
-                  :class="[
-                    'p-1 rounded transition-all',
-                    expandedContent.get(log.id) === 'meta'
-                      ? 'bg-blue-500/20 text-blue-400' 
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
-                  ]"
-                  title="View metadata"
+              <!-- Right side metadata -->
+              <div class="flex items-center gap-3 flex-shrink-0 ml-auto text-xs">
+                <!-- Source Badge (if exists) -->
+                <span 
+                  v-if="log.source" 
+                  class="px-2 py-0.5 text-[11px] font-mono bg-neutral-800 text-neutral-400 rounded"
                 >
-                  <Code2 :size="14" />
-                </button>
+                  {{ log.source }}
+                </span>
                 
-                <button 
-                  v-if="log.stack"
-                  @click.stop="toggleContent(log.id, 'stack')"
-                  :class="[
-                    'p-1 rounded transition-all',
-                    expandedContent.get(log.id) === 'stack'
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
-                  ]"
-                  title="View stack trace"
-                >
-                  <FileWarning :size="14" />
-                </button>
+                <!-- Timestamp -->
+                <span class="text-neutral-500 tabular-nums">
+                  {{ formatTime(log.timestamp) }}
+                </span>
+                
+                <!-- Expansion Indicator or spacer -->
+                <div class="w-4 flex items-center justify-center">
+                  <ChevronRight 
+                    v-if="hasExpandableContent(log)"
+                    :size="12" 
+                    class="text-neutral-400 transition-transform"
+                    :class="isExpanded(log.id) ? 'rotate-90' : ''"
+                  />
+                </div>
               </div>
             </div>
             
             <!-- Expandable Content -->
             <Transition name="expand-fade">
-              <div v-if="isExpanded(log.id)" class="mb-1 ml-[43px] border-l-2 border-neutral-800">
-                <div v-if="expandedContent.get(log.id) === 'meta'" class="p-2.5 mr-3 ml-4 rounded-md bg-neutral-800/30">
-                  <DataRenderer :data="log.meta" />
-                </div>
-                
-                <div v-if="expandedContent.get(log.id) === 'stack'" class="p-2.5 mt-1 mr-3 ml-4 rounded-md border bg-red-500/5 border-red-500/10">
-                  <div class="flex gap-1.5 items-center mb-1.5">
-                    <FileWarning :size="12" class="text-red-400" />
-                    <span class="text-sm font-medium text-red-400">Stack Trace</span>
+              <div v-if="isExpanded(log.id)" class="px-4 pb-3 ml-7 border-l-2 border-neutral-800">
+                <div class="ml-4 space-y-2">
+                  <!-- Meta Data -->
+                  <div v-if="expandedContent.get(log.id) === 'meta' && log.meta" class="p-3 bg-neutral-800/50 rounded-lg">
+                    <div class="mb-1 text-xs font-medium text-neutral-400">Metadata</div>
+                    <DataRenderer :data="log.meta" />
                   </div>
-                  <pre class="font-mono text-sm leading-4 whitespace-pre-wrap text-red-400/90">{{ formatStackTrace(log.stack) }}</pre>
+                  
+                  <!-- Stack Trace -->
+                  <div v-if="expandedContent.get(log.id) === 'stack' && log.stack" class="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                    <div class="flex items-center gap-1.5 mb-2">
+                      <FileWarning :size="12" class="text-red-400" />
+                      <span class="text-xs font-medium text-red-400">Stack Trace</span>
+                    </div>
+                    <pre class="font-mono text-xs text-red-300/90 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
+                  </div>
+                  
+                  <!-- Content type toggles -->
+                  <div v-if="getAvailableContent(log).length > 1" class="flex gap-2 mt-2">
+                    <button 
+                      v-if="log.meta && Object.keys(log.meta).length > 0"
+                      @click.stop="toggleContent(log.id, 'meta')"
+                      class="px-2 py-1 text-xs rounded transition-colors"
+                      :class="expandedContent.get(log.id) === 'meta' 
+                        ? 'bg-neutral-700 text-neutral-200' 
+                        : 'text-neutral-400 hover:text-neutral-200'"
+                    >
+                      View metadata
+                    </button>
+                    <button 
+                      v-if="log.stack"
+                      @click.stop="toggleContent(log.id, 'stack')"
+                      class="px-2 py-1 text-xs rounded transition-colors"
+                      :class="expandedContent.get(log.id) === 'stack' 
+                        ? 'bg-red-500/20 text-red-400' 
+                        : 'text-neutral-400 hover:text-red-400'"
+                    >
+                      View stack trace
+                    </button>
+                  </div>
                 </div>
               </div>
             </Transition>
@@ -397,17 +370,17 @@ const formatTime = (timestamp: number) => {
     });
   }
   
-  // If it's within the last week, show day and time
-  const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysDiff < 7) {
-    return date.toLocaleDateString(undefined, { 
-      weekday: 'short',
+  // If it's yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday ' + date.toLocaleTimeString(undefined, { 
       hour: '2-digit',
       minute: '2-digit'
     });
   }
   
-  // Otherwise show date and time
+  // Otherwise show date
   return date.toLocaleDateString(undefined, { 
     month: 'short',
     day: 'numeric',
@@ -497,7 +470,7 @@ const getAvailableContent = (log: LogEntry): ContentType[] => {
 
 .log-fade-enter-from {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateX(-10px);
 }
 
 .expand-fade-enter-active,
