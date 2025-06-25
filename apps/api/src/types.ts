@@ -18,4 +18,7 @@ export type * from './systems/flows/types';
 export type { OutgoingDatabaseEvents } from './systems/database/system';
 export type * from './systems/database/types';
 
+export type { OutgoingLogsEvents } from './systems/logs/system';
+export type * from './systems/logs/types';
+
 // todo, we should probably export all the entities from here

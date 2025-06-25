@@ -7,6 +7,7 @@ import { brain, brainSystem, BrainSystemEvents } from '@/systems/brain/system';
 import { threads, threadsSystem, ThreadsSystemEvents } from '@/systems/threads/system';
 import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
 import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/database/system';
+import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
 
 export default {
   [agent]: agentSystem,
@@ -14,6 +15,7 @@ export default {
   [threads]: threadsSystem,
   [flows]: flowsSystem,
   [database]: databaseSystem,
+  [logs]: logsSystem,
 } as const;
 
 export const events = mergeSystems(
@@ -21,7 +23,8 @@ export const events = mergeSystems(
   BrainSystemEvents,
   ThreadsSystemEvents,
   FlowsSystemEvents,
-  DatabaseSystemEvents
+  DatabaseSystemEvents,
+  LogsSystemEvents
 );
 
 export { backendSystem } from "@/systems/_backend/backend";
