@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div class="flex flex-col min-h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between flex-shrink-0 px-3 py-2 border-b bg-neutral-800/95 backdrop-blur-sm border-neutral-700">
       <div class="flex items-center gap-3">
@@ -61,7 +61,7 @@
     </div>
     
     <!-- Logs Content -->
-    <div ref="logsContent" class="flex-1 min-h-0 overflow-hidden bg-neutral-900">
+    <div ref="logsContent" class="flex-1 min-h-0 bg-neutral-900">
       <!-- Empty State -->
       <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
         <div class="p-8 border rounded-lg bg-neutral-800/30 border-neutral-700/50">
@@ -222,130 +222,12 @@ import { useSelector } from '@xstate/vue';
 import DataRenderer from './DataRenderer.vue';
 import { applicationState } from '@/app'
 
-const actor: LogsState = applicationState.system.get(id)
-
-const props = defineProps<{
-  actor: LogsState;
-}>();
-
 const logsContent = ref<HTMLElement>();
 const expandedMeta = reactive(new Set<string>());
 const expandedStacks = reactive(new Set<string>());
 
-// Mock data for development
-const mockLogs: LogEntry[] = [
-  {
-    id: '1',
-    timestamp: Date.now() - 10000,
-    level: 'info',
-    message: 'Application started successfully',
-    source: 'backend',
-  },
-  {
-    id: '2',
-    timestamp: Date.now() - 9000,
-    level: 'debug',
-    message: 'Connecting to database...',
-    source: 'database',
-  },
-  {
-    id: '3',
-    timestamp: Date.now() - 8500,
-    level: 'info',
-    message: 'Database connection established',
-    source: 'database',
-    meta: {
-      host: 'localhost',
-      port: 5432,
-      database: 'agentbuddy'
-    }
-  },
-  {
-    id: '4',
-    timestamp: Date.now() - 7000,
-    level: 'info',
-    message: 'Starting agent system',
-    source: 'agent',
-  },
-  {
-    id: '5',
-    timestamp: Date.now() - 6000,
-    level: 'warn',
-    message: 'Rate limit approaching threshold',
-    source: 'api',
-    meta: {
-      current: 85,
-      limit: 100,
-      resetIn: '5 minutes'
-    }
-  },
-  {
-    id: '6',
-    timestamp: Date.now() - 5000,
-    level: 'error',
-    message: 'Failed to fetch user preferences',
-    source: 'api',
-    stack: `Error: Failed to fetch user preferences
-    at fetchUserPreferences (/app/src/api/user.ts:45:11)
-    at async handleRequest (/app/src/api/handler.ts:23:5)
-    at async processRequest (/app/src/server.ts:156:3)`,
-    meta: {
-      userId: 'user-123',
-      endpoint: '/api/preferences'
-    }
-  },
-  {
-    id: '7',
-    timestamp: Date.now() - 4000,
-    level: 'info',
-    message: 'Retrying user preferences fetch...',
-    source: 'api',
-  },
-  {
-    id: '8',
-    timestamp: Date.now() - 3500,
-    level: 'info',
-    message: 'Successfully fetched user preferences on retry',
-    source: 'api',
-  },
-  {
-    id: '9',
-    timestamp: Date.now() - 2000,
-    level: 'debug',
-    message: 'Processing message from user',
-    source: 'agent',
-    meta: {
-      messageId: 'msg-456',
-      wordCount: 42
-    }
-  },
-  {
-    id: '10',
-    timestamp: Date.now() - 1000,
-    level: 'info',
-    message: 'Generated response in 234ms',
-    source: 'agent',
-  },
-  {
-    id: '11',
-    timestamp: Date.now() - 500,
-    level: 'warn',
-    message: 'Memory usage above 80%',
-    source: 'system',
-    meta: {
-      used: '1.6GB',
-      total: '2GB',
-      percentage: 82
-    }
-  },
-];
-
-const logs = computed(() => {
-  // Use mock data if no real logs yet
-  const realLogs = useSelector(actor, (s) => (s as any).context.logs).value || [];
-  return realLogs.length > 0 ? realLogs : mockLogs;
-});
-
+const actor: LogsState = applicationState.system.get(id)
+const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
 

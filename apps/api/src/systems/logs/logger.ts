@@ -1,7 +1,123 @@
-import { bus } from '@/systems/_backend/backend';
-import { logs } from './system';
-import type { LogLevel } from './types';
-import { backendActor } from '@/router/context';
+import { v4 as uuid } from 'uuid';
+import type { LogLevel, LogEntry } from './types';
+
+// Global logs storage
+export const globalLogs: LogEntry[] = [];
+const MAX_LOGS = 1000;
+
+// Initialize with mock logs on startup
+export const initializeMockLogs = () => {
+  const mockLogs: LogEntry[] = [
+    {
+      id: uuid(),
+      timestamp: Date.now() - 10000,
+      level: 'info',
+      message: 'Application started successfully',
+      source: 'backend',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 9000,
+      level: 'debug',
+      message: 'Connecting to database...',
+      source: 'database',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 8500,
+      level: 'info',
+      message: 'Database connection established',
+      source: 'database',
+      meta: {
+        host: 'localhost',
+        port: 5432,
+        database: 'agentbuddy'
+      }
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 7000,
+      level: 'info',
+      message: 'Starting agent system',
+      source: 'agent',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 6000,
+      level: 'warn',
+      message: 'Rate limit approaching threshold',
+      source: 'api',
+      meta: {
+        current: 85,
+        limit: 100,
+        resetIn: '5 minutes'
+      }
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 5000,
+      level: 'error',
+      message: 'Failed to fetch user preferences',
+      source: 'api',
+      stack: `Error: Failed to fetch user preferences
+    at fetchUserPreferences (/app/src/api/user.ts:45:11)
+    at async handleRequest (/app/src/api/handler.ts:23:5)
+    at async processRequest (/app/src/server.ts:156:3)`,
+      meta: {
+        userId: 'user-123',
+        endpoint: '/api/preferences'
+      }
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 4000,
+      level: 'info',
+      message: 'Retrying user preferences fetch...',
+      source: 'api',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 3500,
+      level: 'info',
+      message: 'Successfully fetched user preferences on retry',
+      source: 'api',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 2000,
+      level: 'debug',
+      message: 'Processing message from user',
+      source: 'agent',
+      meta: {
+        messageId: 'msg-456',
+        wordCount: 42
+      }
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 1000,
+      level: 'info',
+      message: 'Generated response in 234ms',
+      source: 'agent',
+    },
+    {
+      id: uuid(),
+      timestamp: Date.now() - 500,
+      level: 'warn',
+      message: 'Memory usage above 80%',
+      source: 'system',
+      meta: {
+        used: '1.6GB',
+        total: '2GB',
+        percentage: 82
+      }
+    },
+  ];
+
+  // Clear existing logs and add mock logs
+  globalLogs.length = 0;
+  globalLogs.push(...mockLogs);
+};
 
 class Logger {
   private source?: string;
@@ -11,14 +127,6 @@ class Logger {
   }
 
   private log(level: LogLevel, message: string, meta?: Record<string, any>) {
-    const actor = backendActor;
-    
-    if (!actor) {
-      // Fallback to console if bus is not initialized
-      console[level](this.source ? `[${this.source}]` : '', message, meta);
-      return;
-    }
-
     // Get stack trace for errors
     let stack: string | undefined;
     if (level === 'error') {
@@ -26,20 +134,28 @@ class Logger {
       stack = err.stack;
     }
 
-    actor.system.get(logs).send({
-      type: 'ADD_LOG',
+    // Create log entry
+    const logEntry: LogEntry = {
+      id: uuid(),
+      timestamp: Date.now(),
       level,
       message,
       source: this.source,
       meta,
       stack,
-    });
+    };
 
-    // Also log to console for development
-    if (process.env.NODE_ENV === 'development') {
-      const prefix = this.source ? `[${this.source}]` : '';
-      console[level](prefix, message, meta);
+    // Add to global logs array
+    globalLogs.push(logEntry);
+
+    // Keep only the last MAX_LOGS entries
+    if (globalLogs.length > MAX_LOGS) {
+      globalLogs.splice(0, globalLogs.length - MAX_LOGS);
     }
+
+    // Log to console
+    const prefix = this.source ? `[${this.source}]` : '';
+    console[level](prefix, message, meta);
   }
 
   debug(message: string, meta?: Record<string, any>) {
@@ -73,4 +189,9 @@ export const log = {
   info: (message: string, meta?: Record<string, any>) => logger.info(message, meta),
   warn: (message: string, meta?: Record<string, any>) => logger.warn(message, meta),
   error: (message: string, meta?: Record<string, any>) => logger.error(message, meta),
-}; 
+};
+
+// Helper function to clear logs
+export function clearLogs() {
+  globalLogs.length = 0;
+} 

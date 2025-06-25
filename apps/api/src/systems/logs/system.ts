@@ -1,11 +1,11 @@
 import { assign, setup } from 'xstate';
-import { v4 as uuid } from 'uuid';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit } from '@/shared/utils/actor-helpers';
 import type { EARS } from '@/shared/ears/types';
-import { LogEntry, type LogsState } from './types';
+import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
+import { globalLogs, clearLogs, initializeMockLogs } from './logger';
 
 export const logs = 'logs' as const;
 
@@ -17,15 +17,15 @@ export const IncomingLogEvents = [
 
 export type LogsInternalEvents = 
   | SystemEvents
-  | { type: 'ADD_LOG'; level: LogEntry['level']; message: string; source?: string; meta?: Record<string, any>; stack?: string }
-  | { type: 'CLEAR_LOGS' };
+  | { type: 'CLEAR_LOGS' }
+  | { type: 'REQUEST_LOGS_UPDATE' };
 
 export type OutgoingLogsEvents =
-  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
-  | { type: 'LOG_ADDED'; log: LogEntry }
+  | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
+  | { type: 'LOGS_UPDATE'; logs: typeof globalLogs }
   | { type: 'LOGS_CLEARED' };
 
-export interface LogsContext extends LogsState {
+export interface LogsContext {
   systemId: EARS.EntityId;
 }
 
@@ -38,56 +38,25 @@ export const logsSystem = setup({
     events: {} as LogsInternalEvents,
   },
   actions: {
-    addLog: assign({
-      logs: ({ context, event }) => {
-        if (event.type !== 'ADD_LOG') return context.logs;
-        
-        const { level, message, source, meta, stack } = event;
-        
-        const newLog: LogEntry = {
-          id: uuid(),
-          timestamp: Date.now(),
-          level,
-          message,
-          source,
-          meta,
-          stack,
-        };
-
-        // Keep only the last maxLogs entries
-        const updatedLogs = [...context.logs, newLog];
-        if (updatedLogs.length > context.maxLogs) {
-          return updatedLogs.slice(-context.maxLogs);
-        }
-        return updatedLogs;
-      },
-    }),
-    clearLogs: assign({
-      logs: () => [],
-    }),
-    broadcastLogAdded: ({ context, system, event }) => {
-      if (event.type !== 'ADD_LOG') return;
-      
-      const { level, message, source, meta, stack } = event;
-      const newLog: LogEntry = {
-        id: uuid(),
-        timestamp: Date.now(),
-        level,
-        message,
-        source,
-        meta,
-        stack,
-      };
-      
+    initializeLogs: () => {
+      // Initialize with mock logs if empty
+      if (globalLogs.length === 0) {
+        initializeMockLogs();
+      }
+    },
+    sendLogsStartup: ({ system }) => {
       system.get(bus).send(emit(logs, {
-        type: 'LOG_ADDED',
-        log: newLog,
+        type: 'LOGS_STARTUP',
+        logs: globalLogs,
       }));
     },
-    broadcastLogsUpdate: ({ context, system }) => {
+    clearLogsAction: () => {
+      clearLogs();
+    },
+    broadcastLogsUpdate: ({ system }) => {
       system.get(bus).send(emit(logs, {
         type: 'LOGS_UPDATE',
-        logs: context.logs,
+        logs: globalLogs,
       }));
     },
     broadcastLogsCleared: ({ system }) => {
@@ -101,22 +70,20 @@ export const logsSystem = setup({
   initial: 'active',
   context: ({ input }) => ({
     systemId: input,
-    logs: [],
-    maxLogs: 1000, // Keep last 1000 logs
   }),
   on: {
     CLIENT_CONNECTED: {
-      actions: 'broadcastLogsUpdate',
+      actions: ['initializeLogs', 'sendLogsStartup'],
     },
   },
   states: {
     active: {
       on: {
-        ADD_LOG: {
-          actions: ['addLog', 'broadcastLogAdded'],
-        },
         CLEAR_LOGS: {
-          actions: ['clearLogs', 'broadcastLogsCleared'],
+          actions: ['clearLogsAction', 'broadcastLogsCleared'],
+        },
+        REQUEST_LOGS_UPDATE: {
+          actions: 'broadcastLogsUpdate',
         },
       },
     },

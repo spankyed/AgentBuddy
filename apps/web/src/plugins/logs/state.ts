@@ -1,4 +1,4 @@
-import { setup, type ActorRefFrom, assign } from 'xstate';
+import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 
 export const id = 'logs' as const;
@@ -22,9 +22,10 @@ export interface LogsContext {
 }
 
 type LogsEvents =
-  | { type: 'logs:LOGS_UPDATE'; logs: LogEntry[] }
-  | { type: 'logs:LOG_ADDED'; log: LogEntry }
-  | { type: 'logs:LOGS_CLEARED' }
+  | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
+  | { type: 'LOGS_REFRESH'; logs: LogEntry[] }
+  | { type: 'LOG_ADDED'; log: LogEntry }
+  // | { type: 'LOGS_CLEARED' }
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' };
@@ -39,11 +40,14 @@ const logsState = setup({
     events: {} as LogsEvents,
   },
   actions: {
+    setStartupLogs: assign({
+      logs: ({ event }) => typeOf('LOGS_STARTUP', event).logs,
+    }),
     updateLogs: assign({
-      logs: ({ event }) => typeOf('logs:LOGS_UPDATE', event).logs,
+      logs: ({ event }) => typeOf('LOGS_REFRESH', event).logs,
     }),
     addLog: assign({
-      logs: ({ context, event }) => [...context.logs, typeOf('logs:LOG_ADDED', event).log],
+      logs: ({ context, event }) => [...context.logs, typeOf('LOG_ADDED', event).log],
     }),
     clearLogs: assign({
       logs: () => [],
@@ -74,15 +78,18 @@ const logsState = setup({
   states: {
     active: {
       on: {
-        'logs:LOGS_UPDATE': {
+        'LOGS_STARTUP': {
+          actions: [log('hiii'), 'setStartupLogs'],
+        },
+        'LOGS_REFRESH': {
           actions: 'updateLogs',
         },
-        'logs:LOG_ADDED': {
+        'LOG_ADDED': {
           actions: 'addLog',
         },
-        'logs:LOGS_CLEARED': {
-          actions: 'clearLogs',
-        },
+        // 'LOGS_CLEARED': {
+        //   actions: 'clearLogs',
+        // },
         SET_FILTER_LEVEL: {
           actions: 'setFilterLevel',
         },
