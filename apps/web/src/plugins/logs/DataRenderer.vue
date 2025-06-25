@@ -58,16 +58,16 @@ const toggleExpanded = () => {
 
 const isPrimitive = (value: any): boolean => {
   return value === null || 
-         value === undefined ||
-         typeof value === 'string' ||
-         typeof value === 'number' ||
-         typeof value === 'boolean';
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean';
 };
 
 const isObject = (value: any): boolean => {
   return value !== null && 
-         typeof value === 'object' && 
-         !Array.isArray(value);
+    typeof value === 'object' && 
+    !Array.isArray(value);
 };
 
 const getType = (value: any): string => {
