@@ -26,7 +26,7 @@ export function getEventResponderNode(eventNodeId: EARS.EntityId): NodeEntity | 
   
   if (responderLinks.length > 0) {
     return qx(responderLinks[0].id)
-      .pickOne(["id", "nodeType", "label"]) as NodeEntity;
+      .pickAll()[0] as unknown as NodeEntity | undefined;
   }
   
   return undefined;
@@ -40,7 +40,7 @@ export function getNextNodes(nodeId: EARS.EntityId): NodeEntity[] {
     .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
   
   return nextLinks.map(link => 
-    qx(link.id).pickOne(["id", "nodeType", "label"]) as NodeEntity
+    qx(link.id).pickAll() as unknown as NodeEntity
   );
 } 
 
@@ -108,32 +108,29 @@ export function createFlowTNode(
   const eventNodes = getFlowEventNodes(flowStepId);
 
   const now = Date.now();
-  const transaction = tx(EARS.Entity.TNode)
-    .batchPut({
-      tNodeType: 'flow',
-      label: flow.label!,
-      status: 'active',
-      startedAt: now,
-    })
-    .link(EARS.RelKind.INSTANCE_OF, flowStepId);
-  
-  // Create SPAWNED relationship from parent
-  if (eventTrackId) {
-    tx(eventTrackId).link(EARS.RelKind.SPAWNED, transaction.id());
-  }
-  
-  const flowTNode: TNodeEntity = {
-    id: transaction.id(),
-    entityType: EARS.Entity.TNode,
+
+  const flowTNode: Partial<TNodeEntity> = {
     tNodeType: 'flow',
     label: flow.label!,
     status: 'active',
     startedAt: now,
-    createdAt: now,
+    // ...(flowStepNode.final && { final: true }),
   };
+
+  const flowTnodeId = tx(EARS.Entity.TNode)
+    .batchPut(flowTNode)
+    .link(EARS.RelKind.INSTANCE_OF, flowStepId)
+    .id();
+  
+  // Create SPAWNED relationship from parent
+  if (eventTrackId) {
+    tx(eventTrackId).link(EARS.RelKind.SPAWNED, flowTnodeId);
+  }
+
+  Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
   
   return {
-    flowTNode,
+    flowTNode: flowTNode as TNodeEntity,
     eventNodes,
   };
 }
@@ -145,8 +142,12 @@ export function createStepTNode(
   stepId: EARS.EntityId,
   eventTrackId: EARS.EntityId,
 ) {
+  if (!stepId) {
+    throw new Error('Step ID is required');
+  }
+
   const step = qx(stepId)
-    .pickAll() as Partial<NodeEntity> | undefined;
+  .pickAll()[0] as Partial<NodeEntity> | undefined;
 
   if (!step) {
     throw new Error(`Flow node ${stepId} not found or not a flow type`);
@@ -239,6 +240,7 @@ export function createRootFlowTNode(
     entryNode, // ! unused currently
   }
 }
+
 
 /**
  * Update TNode status in database
