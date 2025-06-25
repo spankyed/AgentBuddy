@@ -29,9 +29,8 @@ export function sendParentSafe<TEvent extends { type: string }>() {
  * const msg = typeOf(['A', 'B'], evt);   // evt is now narrowed
  * ```
  */
-export const safeEvents =
-  <TEvent extends { type: string }>() =>
-  <
+export function safeEvents<TEvent extends { type: string }>() {
+  return function<
     TTypes extends
       | TEvent['type']                                   // single literal
       | readonly TEvent['type'][]                        // tuple / array
@@ -41,7 +40,7 @@ export const safeEvents =
   ): ExtractEvent<
     TEvent,
     TTypes extends readonly TEvent['type'][] ? TTypes[number] : TTypes
-  > => {
+  > {
     // normalise to array for the runtime check
     const expectedArr: readonly TEvent['type'][] = Array.isArray(expected)
       ? expected
@@ -56,6 +55,7 @@ export const safeEvents =
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     return event as any;
   };
+}
 
 type SystemStates = typeof systems;
 export type SystemId = keyof SystemStates;
