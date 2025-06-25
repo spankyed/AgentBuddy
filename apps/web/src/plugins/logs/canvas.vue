@@ -219,7 +219,7 @@ import {
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
-import DataRenderer from './DataRenderer.vue';
+import DataRenderer from './data-renderer.vue';
 import { applicationState } from '@/app'
 
 const logsContent = ref<HTMLElement>();
