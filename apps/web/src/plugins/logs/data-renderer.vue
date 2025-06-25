@@ -20,7 +20,7 @@
         <div v-if="expanded" class="mt-1">
           <div v-for="(item, index) in data" :key="index" class="flex items-start gap-1.5 ml-4 my-0.5">
             <span class="text-neutral-600 text-[10px] min-w-[16px] text-right">{{ index }}</span>
-            <DataRenderer :data="item" />
+            <DataRenderer :data="item" :depth="depth + 1" />
           </div>
         </div>
       </Transition>
@@ -42,7 +42,7 @@
         <div v-if="expanded" class="mt-1">
           <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-1.5 ml-4 my-0.5">
             <span class="text-purple-400 shrink-0">{{ key }}:</span>
-            <DataRenderer :data="value" />
+            <DataRenderer :data="value" :depth="depth + 1" />
           </div>
         </div>
       </Transition>
@@ -51,15 +51,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, withDefaults } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   data: any;
   defaultExpanded?: boolean;
-}>();
+  depth?: number;
+}>(), {
+  depth: 0
+});
 
-const expanded = ref(props.defaultExpanded ?? false);
+// Initialize expanded state
+// If defaultExpanded is explicitly set, use it
+// Otherwise, expand if we're at the root level (depth is 0)
+const expanded = ref(
+  props.defaultExpanded !== undefined 
+    ? props.defaultExpanded 
+    : props.depth === 0
+);
 
 const toggleExpanded = () => {
   expanded.value = !expanded.value;
