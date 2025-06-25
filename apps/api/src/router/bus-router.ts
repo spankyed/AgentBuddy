@@ -22,7 +22,13 @@ export const systemBusRouter = router({
     .subscription(({ ctx }) =>
       observable<OutgoingSystemEvents>((emit) => {
         const { unsubscribe } = ctx.actor.on('OUTGOING', ({ event }) => {
-          logger.info(`Outgoing message: "${event.type}"`, event);
+          const skipLogging = ['CLEAR_LOGS', 'EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
+
+          if (!skipLogging) {
+            // logger.info(`Outgoing message: "${event.type}"`, event);
+            logger.info(`Outgoing message: "${event.type}"`);
+          }
+
           emit.next(event);
         })
 
