@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingSystemEvents } from '@/shared/events';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/systems/logs/logger';
+import { rootEvents } from '@/systems/logs/log-events';
 
 const logger = createLogger('bus-router');
 
@@ -11,31 +12,35 @@ export const systemBusRouter = router({
   send: procedure
     .input(IncomingEventSchema)
     .mutation(({ ctx, input }) => {
-      ctx.actor.send({
-        type: 'INCOMING',
-        event: input,
-      });
+      // Emit to root event emitter
+      rootEvents.emitIncoming(input);
+      
+      // ctx.actor.send({
+      //   type: 'INCOMING',
+      //   event: input,
+      // });
     }),
   /** EVENT STREAM out of the actor */
   sub: procedure
     // .input(z.object({ sessionId: z.string() }))
     .subscription(({ ctx }) =>
       observable<OutgoingSystemEvents>((emit) => {
-        const { unsubscribe } = ctx.actor.on('OUTGOING', ({ event }) => {
-          const skipLogging = ['CLEAR_LOGS', 'EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
+        // Subscribe to root event emitter for outgoing events
+        const unsubscribe = rootEvents.onOutgoing((event) => {
+          const skipLogging = ['EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
 
           if (!skipLogging) {
-            // logger.info(`Outgoing message: "${event.type}"`, event);
             logger.info(`Outgoing message: "${event.type}"`);
           }
 
           emit.next(event);
-        })
+        });
 
-        ctx.actor.send({ type: 'CLIENT_CONNECTED' });
+        rootEvents.emitConnected();
+
         return () => {
           logger.debug('Cleaning up subscription');
-          unsubscribe()
+          unsubscribe();
         };
       }),
     ),

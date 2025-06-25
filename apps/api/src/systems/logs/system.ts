@@ -1,11 +1,12 @@
-import { assign, setup } from 'xstate';
+import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { fromSystem, systemBus, type MergeReceivable } from '@/shared/utils/event-helpers';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit } from '@/shared/utils/actor-helpers';
-import type { EARS } from '@/shared/ears/types';
 import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
-import { globalLogs, clearLogs, initializeMockLogs, setLogAddedCallback } from './logger';
+import { randomId } from '@/shared/utils/random-id';
+import { rootEvents } from './log-events';
+import { LogEvent } from './logger';
+import { IncomingSystemEvents } from '@/shared/events';
 
 export const logs = 'logs' as const;
 
@@ -17,73 +18,116 @@ export const IncomingLogEvents = [
 ] as const
 
 export type LogsInternalEvents = 
-  | SystemEvents
+  | { type: "CLIENT_CONNECTED" }
   | { type: 'REQUEST_LOGS_UPDATE' }
-  | { type: 'NEW_LOG_ADDED'; log: LogEntry }
+  | {
+    type: 'ADD_LOG';
+    log: Omit<LogEntry, 'id' | 'timestamp'>;
+  };
 
 type ReceivableEvents = MergeReceivable<typeof IncomingLogEvents, LogsInternalEvents>;
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
-  | { type: 'LOGS_UPDATE'; logs: typeof globalLogs }
+  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
   | { type: 'LOGS_CLEARED' };
 
 export interface LogsContext {
-  systemId: EARS.EntityId;
+  logs: LogEntry[];
+  maxLogs: number;
 }
 
 export const LogsSystemEvents = fromSystem(IncomingLogEvents)<OutgoingLogsEvents, typeof logs>();
 
 export const logsSystem = setup({
   types: {
-    input: {} as EARS.EntityId,
     context: {} as LogsContext,
     events: {} as ReceivableEvents,
   },
+  actors: {
+    setupEventListeners: fromCallback(({ sendBack }) => {
+      const logHandler = (event: LogEvent) => {
+        sendBack({
+          type: 'ADD_LOG',
+          log: event
+        });
+      };
+
+      const incomingHandler = (event: IncomingSystemEvents) => {
+        if (event.systemId === 'logs') {
+          const { systemId, ...actualEvent } = event;
+          sendBack(actualEvent);
+        }
+      };
+
+      const onLogUnsub = rootEvents.onLog(logHandler)
+      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
+      
+      return () => {
+        onLogUnsub();
+        onIncomingUnsub();
+      };
+    }),
+  },
   actions: {
-    initializeLogs: ({ self }) => {
-      // Set up the callback to receive new logs
-      setLogAddedCallback((log: LogEntry) => {
-        self.send({ type: 'NEW_LOG_ADDED', log });
-      });
-      // initializeMockLogs();
-    },
-    sendLogsStartup: ({ system }) => {
-      system.get(bus).send(emit(logs, {
+    setupEventListeners: spawnChild('setupEventListeners'),
+    clearLogs: assign({ logs: () => [] }),
+    addLog: assign({
+      logs: ({ context, event }) => {
+        const { log } = event as Extract<ReceivableEvents, { type: 'ADD_LOG' }>;
+        const newLog: LogEntry = {
+          ...log,
+          id: randomId(),
+          timestamp: Date.now(),
+        };
+        
+        const updatedLogs = [...context.logs, newLog];
+        
+        // Keep only the last maxLogs entries
+        if (updatedLogs.length > context.maxLogs) {
+          return updatedLogs.slice(updatedLogs.length - context.maxLogs);
+        }
+        
+        return updatedLogs;
+      }
+    }),
+    sendLogsStartup: ({ context }) => {
+      const wrapped = emit(logs, {
         type: 'LOGS_STARTUP',
-        logs: globalLogs,
-      }));
+        logs: context.logs,
+      });
+      rootEvents.emitOutgoing(wrapped.event);
     },
-    broadcastNewLog: ({ system, event }) => {
-      const { log } = event as { type: 'NEW_LOG_ADDED'; log: LogEntry };
-      system.get(bus).send(emit(logs, {
+    broadcastNewLog: ({ context }) => {
+      const wrapped = emit(logs, {
         type: 'LOG_ADDED',
-        log,
-      }));
+        log: context.logs[context.logs.length - 1],
+      });
+      rootEvents.emitOutgoing(wrapped.event);
     },
-    clearLogsAction: () => {
-      clearLogs();
-    },
-    broadcastLogsUpdate: ({ system }) => {
-      system.get(bus).send(emit(logs, {
+    broadcastLogsUpdate: ({ context }) => {
+      const wrapped = emit(logs, {
         type: 'LOGS_UPDATE',
-        logs: globalLogs,
-      }));
+        logs: context.logs,
+      });
+      rootEvents.emitOutgoing(wrapped.event);
     },
-    broadcastLogsCleared: ({ system }) => {
-      system.get(bus).send(emit(logs, {
+    broadcastLogsCleared: () => {
+      const wrapped = emit(logs, {
         type: 'LOGS_CLEARED',
-      }));
+      });
+      rootEvents.emitOutgoing(wrapped.event)
     },
   },
 }).createMachine({
   id: logs,
   initial: 'active',
-  context: ({ input }) => ({
-    systemId: input,
-  }),
-  entry: 'initializeLogs',
+  context: {
+    logs: [],
+    maxLogs: 1000,
+  },
+  entry: ['setupEventListeners'],
   on: {
     CLIENT_CONNECTED: {
       actions: ['sendLogsStartup'],
@@ -92,11 +136,11 @@ export const logsSystem = setup({
   states: {
     active: {
       on: {
-        NEW_LOG_ADDED: {
-          actions: 'broadcastNewLog',
+        'ADD_LOG': {
+          actions: ['addLog', 'broadcastNewLog'],
         },
         CLEAR_LOGS: {
-          actions: ['clearLogsAction', 'broadcastLogsCleared'],
+          actions: ['clearLogs', 'broadcastLogsCleared'],
         },
         REQUEST_LOGS_UPDATE: {
           actions: 'broadcastLogsUpdate',

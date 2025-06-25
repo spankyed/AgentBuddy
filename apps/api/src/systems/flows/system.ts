@@ -37,7 +37,6 @@ export type OutgoingFlowsEvents =
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
 
-
 export const flowsSystem = setup({
   types: {
     context: {} as {

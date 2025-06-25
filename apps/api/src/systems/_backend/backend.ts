@@ -1,4 +1,4 @@
-import { emit as notify, setup, enqueueActions } from 'xstate';
+import { emit as notify, setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/shared/events';
 import systems from '@/systems';
 import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
@@ -6,6 +6,7 @@ import { entries } from '@/shared/utils';
 import { EARS } from '@/shared/ears/types';
 import { createEntity } from '@/shared/ears';
 import { createLogger } from '@/systems/logs/logger';
+import { rootEvents } from '@/systems/logs/log-events';
 
 const logger = createLogger('backend');
 
@@ -33,8 +34,36 @@ export const backendSystem = setup({
     events: {} as BackendEvents,
     emitted: {} as Extract<BackendEvents, { type: 'OUTGOING' }>,
   },
+  actors: {
+    setupEventListeners: fromCallback(({ sendBack }) => {
+      const incomingHandler = (event: any) => {
+        if (event.systemId !== 'logs') {
+          sendBack({
+            type: 'INCOMING',
+            event,
+          });
+        }
+      };
+
+      const connectedHandler = () => {
+        sendBack({ type: 'CLIENT_CONNECTED' });
+      };
+
+      const onConnectedUnsub = rootEvents.onConnected(connectedHandler)
+      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
+
+      return () => {
+        onConnectedUnsub();
+        onIncomingUnsub();
+      };
+    }),
+  },
   actions: {
-    routeIncoming: ({ event: incoming, system, }) => {
+    setupEventListeners: spawnChild('setupEventListeners'),
+    notify: ({ event }) => {
+      rootEvents.emitOutgoing(typeOf('OUTGOING', event).event);
+    },
+    routeIncoming: ({ event: incoming, system }) => {
       logger.info('Incoming event:', { event: incoming });
       const { systemId, ...event } = typeOf('INCOMING', incoming).event;
       system.get(systemId).send(event);
@@ -67,7 +96,7 @@ export const backendSystem = setup({
         target: '.connected',
       },
     },
-    entry: 'spawnActors',
+    entry: ['spawnActors', 'setupEventListeners'],
     states: {
       disconnected: {
       },
@@ -78,7 +107,7 @@ export const backendSystem = setup({
             actions: 'routeIncoming'
           },
           OUTGOING: {
-            actions: notify(({ event }) => event),
+            actions: 'notify',
           },
         }
       },

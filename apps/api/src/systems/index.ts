@@ -15,7 +15,7 @@ export default {
   [threads]: threadsSystem,
   [flows]: flowsSystem,
   [database]: databaseSystem,
-  [logs]: logsSystem,
+  // [logs]: logsSystem,
 } as const;
 
 export const events = mergeSystems(
