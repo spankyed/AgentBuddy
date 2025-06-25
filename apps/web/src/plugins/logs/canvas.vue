@@ -1,7 +1,7 @@
 <template>
-  <div class="bg-neutral-900">
+  <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b bg-neutral-800/95 backdrop-blur-sm border-neutral-700">
+    <div class="flex items-center justify-between flex-shrink-0 px-3 py-2 border-b bg-neutral-800/95 backdrop-blur-sm border-neutral-700">
       <div class="flex items-center gap-3">
         <!-- Level Filter -->
         <div class="relative">
@@ -61,8 +61,8 @@
     </div>
     
     <!-- Logs Content -->
-    <div ref="logsContent" class="px-3 py-2">
-      <div class="space-y-0.5">
+    <div ref="logsContent" class="flex-1 min-h-0 px-3 py-2 bg-neutral-900">
+      <div v-if="filteredLogs.length > 0" class="space-y-0.5">
         <TransitionGroup name="log-fade">
           <div 
             v-for="log in filteredLogs" 
@@ -157,7 +157,7 @@
       </div>
       
       <!-- Empty State -->
-      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center h-full text-center">
         <FileX :size="48" class="mb-4 text-neutral-600" />
         <h3 class="mb-2 text-lg font-semibold text-neutral-400">
           {{ logs.length === 0 ? 'No logs recorded yet' : 'No logs match your filters' }}
