@@ -38,7 +38,7 @@
     </div>
 
     <!-- MAIN SCROLL AREA -->
-    <div ref="scrollContainer" class="relative flex-1 w-full overflow-y-auto">
+    <div ref="scrollContainer" class="flex-1 w-full overflow-y-auto">
       <slot />
       <button
         v-show="showScrollButton"
