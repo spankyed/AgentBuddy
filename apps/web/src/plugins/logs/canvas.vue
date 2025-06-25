@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive } from 'vue';
+import { computed, ref, reactive, onMounted, nextTick } from 'vue';
 import { 
   Search, 
   ChevronRight,
@@ -280,6 +280,17 @@ import DataRenderer from './data-renderer.vue';
 import { applicationState } from '../../app';
 
 const logsContent = ref<HTMLElement>();
+
+// Scroll to bottom when component is mounted
+onMounted(async () => {
+  await nextTick();
+  if (logsContent.value) {
+    logsContent.value.scrollTo({
+      top: logsContent.value.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+});
 
 // Simple content type tracking
 // To add new content types: 
