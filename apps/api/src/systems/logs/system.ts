@@ -42,8 +42,8 @@ export const logsSystem = setup({
       // Initialize with mock logs if empty
       if (globalLogs.length === 0) {
         initializeMockLogs();
-      }
-    },
+        }
+      },
     sendLogsStartup: ({ system }) => {
       system.get(bus).send(emit(logs, {
         type: 'LOGS_STARTUP',

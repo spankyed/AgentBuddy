@@ -5,6 +5,28 @@ import type { LogLevel, LogEntry } from './types';
 export const globalLogs: LogEntry[] = [];
 const MAX_LOGS = 1000;
 
+// Safely stringify objects that might contain circular references
+function safeStringify(obj: any): any {
+  const seen = new WeakSet();
+  
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+      seen.add(value);
+    }
+    // Also handle functions and other non-serializable types
+    if (typeof value === 'function') {
+      return '[Function]';
+    }
+    if (typeof value === 'undefined') {
+      return '[Undefined]';
+    }
+    return value;
+  }));
+}
+
 // Initialize with mock logs on startup
 export const initializeMockLogs = () => {
   const mockLogs: LogEntry[] = [
@@ -134,14 +156,14 @@ class Logger {
       stack = err.stack;
     }
 
-    // Create log entry
+    // Create log entry with sanitized metadata
     const logEntry: LogEntry = {
       id: uuid(),
       timestamp: Date.now(),
       level,
       message,
       source: this.source,
-      meta,
+      meta: meta ? safeStringify(meta) : undefined,
       stack,
     };
 

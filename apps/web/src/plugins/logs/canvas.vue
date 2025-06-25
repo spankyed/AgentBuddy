@@ -260,16 +260,12 @@
             <!-- Expandable Content -->
             <Transition name="expand-fade">
               <div v-if="isExpanded(log.id)" class="mb-1 ml-[43px] border-l-2 border-neutral-800">
-                <div v-if="expandedContent.get(log.id) === 'meta'" class="p-2.5 mr-3 ml-4 rounded-md bg-neutral-800/30">
-                  <div class="flex gap-1.5 items-center mb-1.5">
-                    <Code2 :size="12" class="text-blue-400" />
-                    <span class="text-sm font-medium text-blue-400">Metadata</span>
-                  </div>
+                <div v-if="expandedContent.get(log.id) === 'meta'" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
                   <DataRenderer :data="log.meta" />
                 </div>
                 
-                <div v-if="expandedContent.get(log.id) === 'stack'" class="p-2.5 mt-1 mr-3 ml-4 rounded-md border bg-red-500/5 border-red-500/10">
-                  <div class="flex gap-1.5 items-center mb-1.5">
+                <div v-if="expandedContent.get(log.id) === 'stack'" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
+                  <div class="flex items-center gap-1.5 mb-1.5">
                     <FileWarning :size="12" class="text-red-400" />
                     <span class="text-sm font-medium text-red-400">Stack Trace</span>
                   </div>
