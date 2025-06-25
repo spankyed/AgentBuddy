@@ -23,7 +23,11 @@ type UIEvent =
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
 
-export type BrainEvents = UIEvent | SystemEvent
+type PluginEvent =
+  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'PLUGIN_DEACTIVATED' }
+
+export type BrainEvents = UIEvent | SystemEvent | PluginEvent
 const typeOf = safeEvents<BrainEvents>()
 
 const brainState = setup({
@@ -34,19 +38,19 @@ const brainState = setup({
   actors: {},
   actions: {
     setBrainData: assign(({ event }) => {
-      if (event.type !== 'BRAIN_STARTUP') return {};
+      const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
       return {
-        flowTNodeId: event.data.flowTNodeId,
-        tNodeTree: event.data.tNodeTree,
-        possibleEvents: event.data.possibleEvents,
+        flowTNodeId: typedEv.data.flowTNodeId,
+        tNodeTree: typedEv.data.tNodeTree,
+        possibleEvents: typedEv.data.possibleEvents,
       };
     }),
     setTNodeData: assign(({ event }) => {
-      if (event.type !== 'TNODE_OPENED') return {};
+      const typedEv = typeOf('TNODE_OPENED', event);
       return {
-        flowTNodeId: event.data.flowTNodeId,
-        tNodeTree: event.data.tNodeTree,
-        possibleEvents: event.data.possibleEvents,
+        flowTNodeId: typedEv.data.flowTNodeId,
+        tNodeTree: typedEv.data.tNodeTree,
+        possibleEvents: typedEv.data.possibleEvents,
       };
     }),
     addEventTNode: assign(({ context, event }) => {
@@ -89,6 +93,12 @@ const brainState = setup({
         type: 'GO_BACK_TNODE'
       });
     },
+    requestPluginData: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REQUEST_PLUGIN_DATA'
+      });
+    },
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -104,7 +114,7 @@ const brainState = setup({
   states: {
     loading: {
       on: {
-        BRAIN_STARTUP: {
+        RECEIVE_PLUGIN_DATA: {
           target: 'ready',
           actions: 'setBrainData'
         }
@@ -112,6 +122,9 @@ const brainState = setup({
     },
     ready: {
       on: {
+        RECEIVE_PLUGIN_DATA: {
+          actions: 'setBrainData'
+        },
         'TNODE.CLICK': {
           actions: 'openTNode'
         },
@@ -120,6 +133,12 @@ const brainState = setup({
           actions: 'goBack'
         },
         'EVENT.CLICK': {
+        },
+        PLUGIN_ACTIVATED: {
+          actions: 'requestPluginData'
+        },
+        PLUGIN_DEACTIVATED: {
+          // No action needed for deactivation
         },
         TNODE_OPENED: {
           actions: 'setTNodeData'

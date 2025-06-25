@@ -11,18 +11,18 @@ export const rows: Rows = {
   entity: [
     ...threadRows.entity,
     ...flowRows.entity,
-    ...brainRows.entity,
+    // ...brainRows.entity,
   ],
 
   role: [
     ...threadRows.role,
     ...flowRows.role,
-    ...brainRows.role,
+    // ...brainRows.role,
   ],
   
   relation: [
     ...threadRows.relation,
     ...flowRows.relation,
-    ...brainRows.relation,
+    // ...brainRows.relation,
   ],
 };

@@ -23,10 +23,12 @@ interface NodeBase extends BaseEntity {
   x?: number;
   y?: number;
   color?: string;
+  /** When true, completing this node will trigger parent flow completion */
+  final?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
- * 2 ▸ Per‑kind specialisations
+ * 2 ▸ Per‑kind specializations
  *─────────────────────────────────────────────────────────────────*/
 export interface QueryNode extends NodeBase {
   nodeType: 'query';
@@ -86,6 +88,19 @@ export interface FlowNode extends NodeBase {
   propagateCtx?: boolean;             // default true
 }
 
+export interface KeepAliveNode extends NodeBase {
+  nodeType: 'keep_alive';
+}
+
+export interface LLMNode extends NodeBase {
+  nodeType: 'llm';
+  prompt: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+}
+
 /*─────────────────────────────────────────────────────────────────
  * 3 ▸ Union & helpers
  *─────────────────────────────────────────────────────────────────*/
@@ -98,7 +113,9 @@ export type NodeEntity =
   | FireNode
   | ListenNode
   | TransformNode
-  | FlowNode;
+  | FlowNode
+  | KeepAliveNode
+  | LLMNode;
 
 /** Literal union of all nodeType strings (keeps Base clean) */
 export type NodeKind = NodeEntity['nodeType'];

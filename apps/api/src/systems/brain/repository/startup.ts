@@ -5,13 +5,13 @@ import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
-  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "tNodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
   
   // Get the flow TNode
   const flowTNode = qx(tNodeId)
     .pickOne(nodeCols) as TNodeEntity;
   
-  if (!flowTNode || flowTNode.nodeType !== 'flow') {
+  if (!flowTNode || flowTNode.tNodeType !== 'flow') {
     throw new Error(`Invalid flow TNode: ${tNodeId}`);
   }
   
@@ -38,14 +38,20 @@ function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
   return eventTracks;
 }
 
-export default function getStartupData(): FlowTNodeData {
+export default function getRootData(): FlowTNodeData {
   const rootFlowTNode = qx(EARS.Entity.TNode)
     .withRole(EARS.RoleKind.Custom("root_trace_node"))
     .first();
   
   if (!rootFlowTNode) {
-    throw new Error("No root flow TNode found");
+    // throw new Error("No root flow TNode found");
+    return {
+      flowTNodeId: rootFlowTNode ?? '',
+      tNodeTree: [],
+      possibleEvents: [],
+    }
   }
+
   return getExtendedTNodeData(rootFlowTNode);
 }
 
@@ -54,9 +60,9 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   
   // Get the TNode and ensure it's a flow node
   const tNode = qx(tNodeId)
-    .pickOne(["nodeType"]) as Pick<TNodeEntity, 'nodeType'> | null;
+    .pickOne(["tNodeType"]) as Pick<TNodeEntity, 'tNodeType'> | null;
   
-  if (!tNode || tNode.nodeType !== 'flow') {
+  if (!tNode || tNode.tNodeType !== 'flow') {
     throw new Error(`Invalid flow TNode: ${tNodeId}`);
   }
   
@@ -101,7 +107,7 @@ export function getExtendedTNodeData(tNodeId: EARS.EntityId): FlowTNodeData {
   
   // Build the TNode tree starting from the current flow TNode
   const tNodeTree = buildEventTracks(tNodeId);
-  console.log('tNodeTree: ', tNodeTree);
+  // console.log('tNodeTree: ', tNodeTree);
   
   return {
     flowTNodeId: tNodeId,

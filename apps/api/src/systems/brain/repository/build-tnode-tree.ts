@@ -4,7 +4,7 @@ import type { FlowTNodeData, TNodeEntity, TrackEntity,  } from '../types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 export default function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
-  const nodeCols = ["id", "nodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "tNodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
   
   // Get the TNode
   const tNode = qx(tNodeId)
@@ -16,7 +16,7 @@ export default function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
   
   let children: TrackEntity[] = [];
   
-  if (tNode.nodeType === 'flow') {
+  if (tNode.tNodeType === 'flow') {
     // Flow nodes use TRACKED to find event nodes
     const childLinks = qx(tNodeId)
       .links(EARS.RelKind.TRACKED, [EARS.Entity.TNode])
@@ -29,7 +29,7 @@ export default function buildTNodeTree(tNodeId: EARS.EntityId): TrackEntity {
     
     // Recursively build children
     children = childLinks.map(({ id }) => buildTNodeTree(id));
-  } else if (tNode.nodeType === 'event' || tNode.nodeType === 'step') {
+  } else if (tNode.tNodeType === 'event' || tNode.tNodeType === 'step') {
     // For event and step nodes, find the sequential chain using SPAWNED relation
     const chainNodes = descendants(tNodeId, EARS.RelKind.SPAWNED);
     
