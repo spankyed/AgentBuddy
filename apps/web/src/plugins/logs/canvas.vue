@@ -321,27 +321,6 @@ const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
 
-// Simple fuzzy match function - checks if all search characters appear in order
-const fuzzyMatch = (text: string, search: string): boolean => {
-  const textLower = text.toLowerCase();
-  const searchLower = search.toLowerCase();
-  
-  // First try exact substring match
-  if (textLower.includes(searchLower)) {
-    return true;
-  }
-  
-  // Then try fuzzy match - all characters must appear in order
-  let searchIndex = 0;
-  for (let i = 0; i < textLower.length && searchIndex < searchLower.length; i++) {
-    if (textLower[i] === searchLower[searchIndex]) {
-      searchIndex++;
-    }
-  }
-  
-  return searchIndex === searchLower.length;
-};
-
 const filteredLogs = computed(() => {
   let filtered = logs.value;
   
@@ -350,16 +329,16 @@ const filteredLogs = computed(() => {
     filtered = filtered.filter(log => log.level === filterLevel.value);
   }
   
-  // Filter by search term - use fuzzy matching
+  // Filter by search term - simple case-insensitive substring search
   if (searchTerm.value && searchTerm.value.trim()) {
-    const search = searchTerm.value.trim();
+    const search = searchTerm.value.trim().toLowerCase();
     filtered = filtered.filter(log => {
       // Search in message
-      if (fuzzyMatch(log.message, search)) return true;
+      if (log.message.toLowerCase().includes(search)) return true;
       // Search in source
-      if (log.source && fuzzyMatch(log.source, search)) return true;
+      if (log.source && log.source.toLowerCase().includes(search)) return true;
       // Search in meta (stringified)
-      if (log.meta && fuzzyMatch(JSON.stringify(log.meta), search)) return true;
+      if (log.meta && JSON.stringify(log.meta).toLowerCase().includes(search)) return true;
       return false;
     });
   }
@@ -381,20 +360,9 @@ const setFilterLevelDirect = (level: 'all' | 'debug' | 'info' | 'warn' | 'error'
   actor.send({ type: 'SET_FILTER_LEVEL', level });
 };
 
-let searchTimeout: NodeJS.Timeout | null = null;
-
 const setSearch = (e: Event) => {
   const target = e.target as HTMLInputElement;
-  
-  // Clear any existing timeout
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-  
-  // Set a new timeout for debounced search
-  searchTimeout = setTimeout(() => {
-    actor.send({ type: 'SET_SEARCH', search: target.value });
-  }, 150); // 150ms debounce - short enough to feel responsive
+  actor.send({ type: 'SET_SEARCH', search: target.value });
 };
 
 const clearSearch = () => {
@@ -412,29 +380,8 @@ const highlightSearchTerm = (text: string): string => {
   }
   
   const search = searchTerm.value.trim();
-  
-  // First try exact match highlighting
-  const exactRegex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  if (text.match(exactRegex)) {
-    return text.replace(exactRegex, '<mark class="bg-yellow-500/30 text-yellow-200">$1</mark>');
-  }
-  
-  // If no exact match, highlight individual characters in fuzzy match
-  const searchLower = search.toLowerCase();
-  const textLower = text.toLowerCase();
-  let result = '';
-  let searchIndex = 0;
-  
-  for (let i = 0; i < text.length; i++) {
-    if (searchIndex < searchLower.length && textLower[i] === searchLower[searchIndex]) {
-      result += `<mark class="bg-yellow-500/30 text-yellow-200">${text[i]}</mark>`;
-      searchIndex++;
-    } else {
-      result += text[i];
-    }
-  }
-  
-  return result;
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(regex, '<mark class="text-yellow-200 bg-yellow-500/30">$1</mark>');
 };
 
 const formatTime = (timestamp: number) => {
