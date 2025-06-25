@@ -61,110 +61,50 @@
     </div>
     
     <!-- Logs Content -->
-    <div ref="logsContent" class="flex-1 min-h-0 px-3 py-2 bg-neutral-900">
-      <div v-if="filteredLogs.length > 0" class="space-y-0.5">
-        <TransitionGroup name="log-fade">
-          <div 
-            v-for="log in filteredLogs" 
-            :key="log.id"
-            class="group"
-          >
-            <div class="flex items-center gap-2 px-3 py-1.5 hover:bg-neutral-800/50 transition-colors rounded">
-              <!-- Timestamp -->
-              <span class="flex-shrink-0 w-24 text-sm text-neutral-500">
-                {{ formatTime(log.timestamp) }}
-              </span>
-              
-              <!-- Level Badge -->
-              <div :class="[
-                'flex items-center justify-center w-12 h-5 rounded text-sm font-semibold flex-shrink-0',
-                {
-                  'bg-neutral-700/50 text-neutral-400': log.level === 'debug',
-                  'bg-blue-500/20 text-blue-400': log.level === 'info',
-                  'bg-yellow-500/20 text-yellow-400': log.level === 'warn',
-                  'bg-red-500/20 text-red-400': log.level === 'error'
-                }
-              ]">
-                <component :is="getLevelIcon(log.level)" :size="12" />
-              </div>
-              
-              <!-- Source Badge -->
-              <span 
-                v-if="log.source" 
-                class="px-2 h-5 flex items-center bg-neutral-800 text-neutral-400 text-sm font-mono rounded flex-shrink-0 min-w-[72px] justify-center"
-              >
-                {{ log.source }}
-              </span>
-              <span v-else class="w-[72px] flex-shrink-0"></span>
-              
-              <!-- Message -->
-              <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">{{ log.message }}</p>
-              
-              <!-- Action Icons -->
-              <div class="flex items-center gap-0.5 flex-shrink-0 mr-1">
-                <button 
-                  v-if="log.meta && Object.keys(log.meta).length > 0"
-                  @click="toggleMeta(log.id)"
-                  :class="[
-                    'p-1 rounded transition-all',
-                    expandedMeta.has(log.id) 
-                      ? 'bg-blue-500/20 text-blue-400' 
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
-                  ]"
-                  title="View metadata"
-                >
-                  <Code2 :size="14" />
-                </button>
-                
-                <button 
-                  v-if="log.stack"
-                  @click="toggleStack(log.id)"
-                  :class="[
-                    'p-1 rounded transition-all',
-                    expandedStacks.has(log.id)
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'
-                  ]"
-                  title="View stack trace"
-                >
-                  <FileWarning :size="14" />
-                </button>
-              </div>
-            </div>
-            
-            <!-- Expandable Content -->
-            <Transition name="expand-fade">
-              <div v-if="expandedMeta.has(log.id) || expandedStacks.has(log.id)" class="border-l-2 border-neutral-800 ml-[27px] mb-1">
-                <div v-if="expandedMeta.has(log.id)" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <Code2 :size="12" class="text-blue-400" />
-                    <span class="text-sm font-medium text-blue-400">Metadata</span>
-                  </div>
-                  <DataRenderer :data="log.meta" />
-                </div>
-                
-                <div v-if="expandedStacks.has(log.id)" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
-                  <div class="flex items-center gap-1.5 mb-1.5">
-                    <FileWarning :size="12" class="text-red-400" />
-                    <span class="text-sm font-medium text-red-400">Stack Trace</span>
-                  </div>
-                  <pre class="font-mono text-sm leading-4 whitespace-pre-wrap text-red-400/90">{{ formatStackTrace(log.stack) }}</pre>
-                </div>
-              </div>
-            </Transition>
-          </div>
-        </TransitionGroup>
-      </div>
+    <div ref="logsContent" class="flex-1 min-h-0 overflow-hidden bg-neutral-900">
+
       
       <!-- Empty State -->
-      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center h-full text-center">
-        <FileX :size="48" class="mb-4 text-neutral-600" />
-        <h3 class="mb-2 text-lg font-semibold text-neutral-400">
-          {{ logs.length === 0 ? 'No logs recorded yet' : 'No logs match your filters' }}
-        </h3>
-        <p class="text-sm text-neutral-500">
-          {{ logs.length === 0 ? 'Logs will appear here as they are generated' : 'Try adjusting your filters or search query' }}
-        </p>
+      <div v-if="true" class="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
+        <div class="p-8 border rounded-lg bg-neutral-800/30 border-neutral-700/50">
+          <div class="relative p-4 mx-auto mb-4 rounded-full bg-neutral-800/50 w-fit">
+            <component 
+              :is="true ? Terminal : Search" 
+              :size="32" 
+              class="text-neutral-500"
+            />
+            <div v-if="true" class="absolute w-3 h-3 bg-green-500 rounded-full -bottom-1 -right-1 animate-pulse"></div>
+          </div>
+          
+          <h3 class="mb-2 text-lg font-semibold text-neutral-300">
+            {{ true ? 'No logs recorded yet' : 'No logs match your filters' }}
+          </h3>
+          
+          <p class="max-w-sm mx-auto mb-6 text-sm text-neutral-500">
+            {{ true 
+              ? 'Backend logs will appear here in real-time as they are generated by the application.' 
+              : `Try adjusting your filters or search for different keywords. ${logs.length} logs are currently hidden.` 
+            }}
+          </p>
+          
+          <div v-if="true" class="flex flex-col gap-3 text-xs text-neutral-500">
+            <div class="p-3 font-mono text-left border rounded bg-neutral-800/50 border-neutral-700/50">
+              <span class="text-neutral-600">// Example usage in backend:</span><br>
+              <span class="text-blue-400">import</span> { log } <span class="text-blue-400">from</span> <span class="text-green-400">'@/systems/logs/logger'</span>;<br><br>
+              <span class="text-neutral-400">log</span>.<span class="text-blue-400">info</span>(<span class="text-green-400">'Server started'</span>);<br>
+              <span class="text-neutral-400">log</span>.<span class="text-yellow-400">warn</span>(<span class="text-green-400">'High memory usage'</span>, { <span class="text-neutral-400">usage</span>: <span class="text-orange-400">'85%'</span> });
+            </div>
+          </div>
+          
+          <div v-else class="flex justify-center gap-2">
+            <button 
+              @click="() => { actor.send({ type: 'SET_FILTER_LEVEL', level: 'all' }); actor.send({ type: 'SET_SEARCH', search: '' }); }"
+              class="px-3 py-1.5 text-xs font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded transition-colors"
+            >
+              Clear all filters
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -182,7 +122,8 @@ import {
   Bug,
   FileX,
   Code2,
-  FileWarning
+  FileWarning,
+  Terminal
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
