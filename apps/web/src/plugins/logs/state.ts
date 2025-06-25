@@ -1,5 +1,6 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
+import { trpc } from '@/core/trpc';
 
 export const id = 'logs' as const;
 
@@ -25,7 +26,7 @@ type LogsEvents =
   | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
   | { type: 'LOGS_REFRESH'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
-  // | { type: 'LOGS_CLEARED' }
+  | { type: 'LOGS_CLEARED' }
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' };
@@ -52,6 +53,12 @@ const logsState = setup({
     clearLogs: assign({
       logs: () => [],
     }),
+    sendClearLogsToBackend: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CLEAR_LOGS',
+      });
+    },
     setFilterLevel: assign({
       filter: ({ context, event }) => ({
         ...context.filter,
@@ -87,9 +94,9 @@ const logsState = setup({
         'LOG_ADDED': {
           actions: 'addLog',
         },
-        // 'LOGS_CLEARED': {
-        //   actions: 'clearLogs',
-        // },
+        'LOGS_CLEARED': {
+          actions: 'clearLogs',
+        },
         SET_FILTER_LEVEL: {
           actions: 'setFilterLevel',
         },
@@ -97,7 +104,7 @@ const logsState = setup({
           actions: 'setSearch',
         },
         CLEAR_LOGS: {
-          actions: 'clearLogs',
+          actions: ['clearLogs', 'sendClearLogsToBackend'],
         },
       },
     },

@@ -1,5 +1,5 @@
 import { assign, setup } from 'xstate';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import { fromSystem, systemBus, type MergeReceivable } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit } from '@/shared/utils/actor-helpers';
 import type { EARS } from '@/shared/ears/types';
@@ -13,12 +13,14 @@ const busEvent = systemBus(logs);
 
 export const IncomingLogEvents = [
   busEvent('EMPTY', { empty: z.string() }),
+  busEvent('CLEAR_LOGS', {}),
 ] as const
 
 export type LogsInternalEvents = 
   | SystemEvents
-  | { type: 'CLEAR_LOGS' }
-  | { type: 'REQUEST_LOGS_UPDATE' };
+  | { type: 'REQUEST_LOGS_UPDATE' }
+
+type ReceivableEvents = MergeReceivable<typeof IncomingLogEvents, LogsInternalEvents>;
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
@@ -35,7 +37,7 @@ export const logsSystem = setup({
   types: {
     input: {} as EARS.EntityId,
     context: {} as LogsContext,
-    events: {} as LogsInternalEvents,
+    events: {} as ReceivableEvents,
   },
   actions: {
     initializeLogs: () => {
