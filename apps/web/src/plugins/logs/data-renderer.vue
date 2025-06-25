@@ -1,38 +1,47 @@
 <template>
-  <div class="font-mono text-sm">
-    <div v-if="isPrimitive(data)" class="inline-flex items-center gap-2">
-      <span class="text-sm tracking-wider uppercase text-neutral-500">{{ getType(data) }}</span>
+  <div class="font-mono text-xs">
+    <!-- Primitive values -->
+    <div v-if="isPrimitive(data)" class="inline-flex items-center gap-1.5">
+      <span class="text-[10px] tracking-wider uppercase text-neutral-600">{{ getType(data) }}</span>
       <span :class="getPrimitiveClass(data)">{{ formatPrimitive(data) }}</span>
     </div>
     
-    <div v-else-if="Array.isArray(data)" class="my-0.5">
-      <div class="mb-1">
-        <button @click="toggleExpanded" class="inline-flex items-center gap-1 px-1.5 py-0.5 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded transition-colors">
-          <ChevronRight :class="['transition-transform', expanded && 'rotate-90']" :size="12" />
-          <span class="text-blue-400">Array</span>[{{ data.length }}]
-        </button>
-      </div>
+    <!-- Arrays -->
+    <div v-else-if="Array.isArray(data)" class="inline-block">
+      <button 
+        @click="toggleExpanded" 
+        class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all"
+      >
+        <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
+        <span class="text-blue-400">Array</span>
+        <span class="text-neutral-500">[{{ data.length }}]</span>
+      </button>
       <Transition name="expand">
-        <div v-if="expanded" class="pl-3 ml-4 border-l border-neutral-700">
-          <div v-for="(item, index) in data" :key="index" class="flex items-start gap-2 my-1">
-            <span class="text-neutral-500 min-w-[20px]">{{ index }}:</span>
+        <div v-if="expanded" class="mt-1">
+          <div v-for="(item, index) in data" :key="index" class="flex items-start gap-1.5 ml-4 my-0.5">
+            <span class="text-neutral-600 text-[10px] min-w-[16px] text-right">{{ index }}</span>
             <DataRenderer :data="item" />
           </div>
         </div>
       </Transition>
     </div>
     
-    <div v-else-if="isObject(data)" class="my-0.5">
-      <div class="mb-1">
-        <button @click="toggleExpanded" class="inline-flex items-center gap-1 px-1.5 py-0.5 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded transition-colors">
-          <ChevronRight :class="['transition-transform', expanded && 'rotate-90']" :size="12" />
-          <span class="text-purple-400">{{ getObjectPreview(data) }}</span>
-        </button>
-      </div>
+    <!-- Objects -->
+    <div v-else-if="isObject(data)" class="inline-block">
+      <button 
+        @click="toggleExpanded" 
+        class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all"
+      >
+        <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
+        <span class="text-purple-400">Object</span>
+        <span class="text-neutral-500" v-if="Object.keys(data).length > 0">
+          ({{ Object.keys(data).length }})
+        </span>
+      </button>
       <Transition name="expand">
-        <div v-if="expanded" class="pl-3 ml-4 border-l border-neutral-700">
-          <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-2 my-1">
-            <span class="text-purple-400 min-w-fit">{{ key }}:</span>
+        <div v-if="expanded" class="mt-1">
+          <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-1.5 ml-4 my-0.5">
+            <span class="text-purple-400 shrink-0">{{ key }}:</span>
             <DataRenderer :data="value" />
           </div>
         </div>
@@ -83,15 +92,8 @@ const formatPrimitive = (value: any): string => {
   return String(value);
 };
 
-const getObjectPreview = (obj: any): string => {
-  const keys = Object.keys(obj);
-  const preview = keys.slice(0, 3).join(', ');
-  const suffix = keys.length > 3 ? ', ...' : '';
-  return `{ ${preview}${suffix} }`;
-};
-
 const getPrimitiveClass = (value: any): string => {
-  if (value === null || value === undefined) return 'text-neutral-500 opacity-60';
+  if (value === null || value === undefined) return 'text-neutral-500 italic';
   if (typeof value === 'string') return 'text-green-400';
   if (typeof value === 'number') return 'text-orange-400';
   if (typeof value === 'boolean') return 'text-cyan-400';
@@ -103,13 +105,19 @@ const getPrimitiveClass = (value: any): string => {
 /* Vue Transitions */
 .expand-enter-active,
 .expand-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.15s ease-out;
   transform-origin: top;
 }
 
 .expand-enter-from,
 .expand-leave-to {
   opacity: 0;
-  transform: scaleY(0.8);
+  transform: scaleY(0.95) translateY(-2px);
+}
+
+.expand-enter-to,
+.expand-leave-from {
+  opacity: 1;
+  transform: scaleY(1) translateY(0);
 }
 </style> 
