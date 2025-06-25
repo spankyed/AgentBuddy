@@ -223,7 +223,10 @@
               <span v-else class="w-[72px] flex-shrink-0"></span>
               
               <!-- Message -->
-              <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">{{ log.message }}</p>
+              <p class="flex-1 text-[13px] text-neutral-200 leading-5 truncate">
+                <span v-if="searchTerm" v-html="highlightSearchTerm(log.message)"></span>
+                <span v-else>{{ log.message }}</span>
+              </p>
               
               <!-- Action Icons -->
               <div class="flex flex-shrink-0 gap-0.5 items-center mr-1">
@@ -260,12 +263,12 @@
             <!-- Expandable Content -->
             <Transition name="expand-fade">
               <div v-if="isExpanded(log.id)" class="mb-1 ml-[43px] border-l-2 border-neutral-800">
-                <div v-if="expandedContent.get(log.id) === 'meta'" class="ml-4 mr-3 p-2.5 bg-neutral-800/30 rounded-md">
+                <div v-if="expandedContent.get(log.id) === 'meta'" class="p-2.5 mr-3 ml-4 rounded-md bg-neutral-800/30">
                   <DataRenderer :data="log.meta" />
                 </div>
                 
-                <div v-if="expandedContent.get(log.id) === 'stack'" class="ml-4 mr-3 mt-1 p-2.5 bg-red-500/5 border border-red-500/10 rounded-md">
-                  <div class="flex items-center gap-1.5 mb-1.5">
+                <div v-if="expandedContent.get(log.id) === 'stack'" class="p-2.5 mt-1 mr-3 ml-4 rounded-md border bg-red-500/5 border-red-500/10">
+                  <div class="flex gap-1.5 items-center mb-1.5">
                     <FileWarning :size="12" class="text-red-400" />
                     <span class="text-sm font-medium text-red-400">Stack Trace</span>
                   </div>
@@ -301,7 +304,7 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from './data-renderer.vue';
-import { applicationState } from '@/app'
+import { applicationState } from '../../app';
 
 const logsContent = ref<HTMLElement>();
 
@@ -326,14 +329,18 @@ const filteredLogs = computed(() => {
     filtered = filtered.filter(log => log.level === filterLevel.value);
   }
   
-  // Filter by search term
-  if (searchTerm.value) {
-    const search = searchTerm.value.toLowerCase();
-    filtered = filtered.filter(log => 
-      log.message.toLowerCase().includes(search) ||
-      log.source?.toLowerCase().includes(search) ||
-      JSON.stringify(log.meta).toLowerCase().includes(search)
-    );
+  // Filter by search term - simple case-insensitive substring search
+  if (searchTerm.value && searchTerm.value.trim()) {
+    const search = searchTerm.value.trim().toLowerCase();
+    filtered = filtered.filter(log => {
+      // Search in message
+      if (log.message.toLowerCase().includes(search)) return true;
+      // Search in source
+      if (log.source && log.source.toLowerCase().includes(search)) return true;
+      // Search in meta (stringified)
+      if (log.meta && JSON.stringify(log.meta).toLowerCase().includes(search)) return true;
+      return false;
+    });
   }
   
   return filtered;
@@ -364,6 +371,17 @@ const clearSearch = () => {
 
 const clearLogs = () => {
   actor.send({ type: 'CLEAR_LOGS' });
+};
+
+// Helper function to highlight search term in text
+const highlightSearchTerm = (text: string): string => {
+  if (!searchTerm.value || !searchTerm.value.trim()) {
+    return text;
+  }
+  
+  const search = searchTerm.value.trim();
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(regex, '<mark class="text-yellow-200 bg-yellow-500/30">$1</mark>');
 };
 
 const formatTime = (timestamp: number) => {
