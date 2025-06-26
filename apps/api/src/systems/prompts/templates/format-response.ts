@@ -7,30 +7,40 @@ export const formatResponseTemplate: PromptTemplate = {
   category: 'generation',
   
   templateFn: (params) => {
-    const { analysisResult, responseStyle, additionalInstructions } = params;
+    const context = params.context || {};
     
-    let prompt = `Based on the following analysis:\n\n`;
+    // Get the analysis result from previous step
+    // Try by label first, then fall back to last result
+    const analysisResult = context.getResultByLabel?.('Process User Message') || 
+                          context.getResultByLabel?.('Analyze User Message') ||
+                          context.lastResult ||
+                          {};
+    
+    // Get the original user message
+    const userMessage = context.eventPayload?.message || 
+                       context.eventPayload?.text || 
+                       '[No message]';
+    
+    const responseStyle = params.responseStyle || 'professional';
+    
+    let prompt = `Original user message: "${userMessage}"\n\n`;
+    prompt += `Based on the following analysis:\n\n`;
     prompt += `${JSON.stringify(analysisResult, null, 2)}\n\n`;
     
-    prompt += `Generate a ${responseStyle || 'professional'} response that:\n`;
-    prompt += `- Addresses the identified intent\n`;
-    prompt += `- References the key entities mentioned\n`;
+    prompt += `Generate a ${responseStyle} response that:\n`;
+    prompt += `- Directly addresses the user's question or request\n`;
+    prompt += `- Uses the identified intent and entities appropriately\n`;
     prompt += `- Follows the suggested response category\n`;
+    prompt += `- Is helpful and actionable\n`;
     
-    if (additionalInstructions) {
-      prompt += `\nAdditional instructions: ${additionalInstructions}`;
+    if (params.additionalInstructions) {
+      prompt += `\nAdditional instructions: ${params.additionalInstructions}`;
     }
     
     return prompt;
   },
   
   params: [
-    {
-      name: 'analysisResult',
-      description: 'The result from the previous analysis step',
-      type: 'object',
-      required: true,
-    },
     {
       name: 'responseStyle',
       description: 'The style of response (professional, casual, technical, etc.)',
@@ -48,15 +58,38 @@ export const formatResponseTemplate: PromptTemplate = {
   
   example: {
     params: {
-      analysisResult: {
-        summary: "User needs help debugging Python",
-        intent: "technical_support",
-        entities: ["Python", "debugging", "function"],
-        category: "programming_help"
+      context: {
+        eventType: 'user.message',
+        eventPayload: { message: 'Can you help me debug this Python function?' },
+        previousResults: [{
+          stepId: 'step-1',
+          stepLabel: 'Process User Message',
+          result: {
+            summary: "User needs help debugging Python",
+            intent: "technical_support",
+            entities: ["Python", "debugging", "function"],
+            category: "programming_help"
+          },
+          timestamp: Date.now()
+        }],
+        lastResult: {
+          summary: "User needs help debugging Python",
+          intent: "technical_support",
+          entities: ["Python", "debugging", "function"],
+          category: "programming_help"
+        },
+        getResultByLabel: () => ({
+          summary: "User needs help debugging Python",
+          intent: "technical_support",
+          entities: ["Python", "debugging", "function"],
+          category: "programming_help"
+        })
       },
       responseStyle: "helpful and technical"
     },
-    output: `Based on the following analysis:
+    output: `Original user message: "Can you help me debug this Python function?"
+
+Based on the following analysis:
 
 {
   "summary": "User needs help debugging Python",
@@ -66,9 +99,10 @@ export const formatResponseTemplate: PromptTemplate = {
 }
 
 Generate a helpful and technical response that:
-- Addresses the identified intent
-- References the key entities mentioned
-- Follows the suggested response category`
+- Directly addresses the user's question or request
+- Uses the identified intent and entities appropriately
+- Follows the suggested response category
+- Is helpful and actionable`
   }
 };
 

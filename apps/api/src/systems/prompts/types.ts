@@ -23,10 +23,11 @@ export interface PromptTemplate {
   category?: string;               // Category for organization (e.g., "code", "analysis", "generation")
   
   // The template function that generates the prompt
-  // Parameters are passed as a key-value object
+  // Always receives a 'context' parameter with execution data
+  // Can receive additional custom parameters
   templateFn: (params: Record<string, any>) => string;
   
-  // Define what parameters this template expects
+  // Define what custom parameters this template expects (besides context)
   params: PromptTemplateParam[];
   
   // Example usage
@@ -46,49 +47,4 @@ export const promptTemplateRegistry: Map<string, PromptTemplate> = new Map();
  */
 export function registerPromptTemplate(template: PromptTemplate): void {
   promptTemplateRegistry.set(template.id, template);
-}
-
-/**
- * Defines how a step's output is mapped to a prompt template parameter
- */
-export interface InputMapping {
-  // The parameter name in the prompt template
-  paramName: string;
-  
-  // Source of the input value
-  source: {
-    type: 'previousStep' | 'eventPayload' | 'static' | 'expression' | 'context';
-    
-    // For previousStep: the step ID to get the result from
-    stepId?: string;
-    
-    // For static: the static value
-    value?: any;
-    
-    // For expression or context: a path to extract value
-    // For context type, examples:
-    // - "previousResults[0].result" (first step's result)
-    // - "previousResults.find(r => r.stepLabel === 'Process User Message').result"
-    // - "eventPayload.userId"
-    // - Any valid JavaScript property access path
-    path?: string;
-  };
-  
-  // Optional transformation
-  transform?: 'toString' | 'toNumber' | 'toBoolean' | 'toJSON';
-}
-
-/**
- * Configuration for using a prompt template in an LLM node
- */
-export interface PromptConfig {
-  // Either use a template or a static prompt
-  type: 'template' | 'static';
-  
-  // For template type
-  templateId?: string;
-  inputMappings?: InputMapping[];
-  
-  // For static type (backward compatibility)
-  staticPrompt?: string;
 } 

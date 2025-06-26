@@ -97,27 +97,10 @@ export const runAgentBrainFlow: Rows = {
       nodeType: "llm",
       label: "Process User Message",
       model: "gpt-4",
-      promptConfig: {
-        type: "template",
-        templateId: "user-message-analysis",
-        inputMappings: [
-          {
-            paramName: "userMessage",
-            source: {
-              type: "eventPayload",
-              path: "message"
-            }
-          },
-          {
-            paramName: "context", 
-            source: {
-              type: "static",
-              value: "User is interacting with the agent brain system"
-            }
-          }
-        ]
+      promptTemplateId: "user-message-analysis",
+      promptTemplateParams: {
+        additionalContext: "User is interacting with the agent brain system"
       },
-      prompt: "Process and analyze the user message before storing",
       x: 100,
       y: 100,
       color: "#9C27B0", // purple
@@ -129,26 +112,9 @@ export const runAgentBrainFlow: Rows = {
       nodeType: "llm",
       label: "Format Response",
       model: "gpt-4",
-      promptConfig: {
-        type: "template",
-        templateId: "format-response",
-        inputMappings: [
-          {
-            paramName: "analysisResult",
-            source: {
-              type: "previousStep",
-              stepId: "Node-a7s",
-              path: "result"
-            }
-          },
-          {
-            paramName: "responseStyle",
-            source: {
-              type: "static",
-              value: "helpful and professional"
-            }
-          }
-        ]
+      promptTemplateId: "format-response",
+      promptTemplateParams: {
+        responseStyle: "helpful and professional"
       },
       x: 100,
       y: 100,

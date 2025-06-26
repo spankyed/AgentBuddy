@@ -137,28 +137,17 @@ export function createFlowMachine(
           if (firstStep) {
             const eventTNode = createEventTNode(eventNode, flowTNodeId);
 
-            // Extract event payload - handle different event structures
-            // If event has a 'payload' property, use it; otherwise use entire event minus 'type'
-            let eventPayload: any;
-            if ('payload' in event && event.payload !== undefined) {
-              eventPayload = event.payload;
-            } else {
-              // Extract all properties except 'type' as the payload
-              const { type, ...restOfEvent } = event;
-              eventPayload = restOfEvent;
-            }
-
-            // Create a new execution context for this event track
+            // Create execution context with event data
+            // The entire event (minus type) becomes the payload for flexibility
+            const { type: _, ...eventData } = event;
+            
             const eventTrackContext: ExecutionContext = {
               eventType,
-              eventPayload,
+              eventPayload: eventData,
               previousResults: [],
             };
 
-            logger.debug(`Creating execution context for ${eventType}:`, {
-              eventPayload,
-              eventTrackContext
-            });
+            logger.debug(`Event ${eventType} received with data:`, eventData);
 
             // Store the execution context for this event track
             enqueue.assign({

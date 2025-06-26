@@ -7,17 +7,31 @@ export const userMessageAnalysisTemplate: PromptTemplate = {
   category: 'analysis',
   
   templateFn: (params) => {
-    const { userMessage, context, intent } = params;
+    // Access the context object which contains all execution data
+    const context = params.context || {};
     
+    // Extract user message from event payload
+    const userMessage = context.eventPayload?.message || 
+                       context.eventPayload?.text || 
+                       context.eventPayload || 
+                       '[No message provided]';
+    
+    // Build the prompt
     let prompt = `Analyze the following user message:\n\n`;
     prompt += `Message: "${userMessage}"\n\n`;
     
-    if (context) {
-      prompt += `Context: ${context}\n\n`;
+    // Add any previous results if available
+    if (context.previousResults && context.previousResults.length > 0) {
+      prompt += `Previous Processing Results:\n`;
+      context.previousResults.forEach((result: any, idx: number) => {
+        prompt += `- ${result.stepLabel}: ${JSON.stringify(result.result).substring(0, 100)}...\n`;
+      });
+      prompt += `\n`;
     }
     
-    if (intent) {
-      prompt += `Expected Intent: ${intent}\n\n`;
+    // Add custom context if provided
+    if (params.additionalContext) {
+      prompt += `Additional Context: ${params.additionalContext}\n\n`;
     }
     
     prompt += `Please provide:\n`;
@@ -32,36 +46,27 @@ export const userMessageAnalysisTemplate: PromptTemplate = {
   
   params: [
     {
-      name: 'userMessage',
-      description: 'The message from the user to analyze',
-      type: 'string',
-      required: true,
-    },
-    {
-      name: 'context',
-      description: 'Additional context about the conversation',
+      name: 'additionalContext',
+      description: 'Any additional context to include in the analysis',
       type: 'string',
       required: false,
-    },
-    {
-      name: 'intent',
-      description: 'Expected intent category',
-      type: 'string', 
-      required: false,
-      defaultValue: 'general'
     }
   ],
   
   example: {
     params: {
-      userMessage: 'Can you help me debug this Python function?',
-      context: 'User is working on a data analysis project'
+      context: {
+        eventType: 'user.message',
+        eventPayload: { message: 'Can you help me debug this Python function?' },
+        previousResults: []
+      },
+      additionalContext: 'User is working on a data analysis project'
     },
     output: `Analyze the following user message:
 
 Message: "Can you help me debug this Python function?"
 
-Context: User is working on a data analysis project
+Additional Context: User is working on a data analysis project
 
 Please provide:
 1. A summary of the message
