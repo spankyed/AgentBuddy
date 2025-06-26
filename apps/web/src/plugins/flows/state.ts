@@ -144,6 +144,7 @@ const flowsState = setup({
         logs: context.logs,
       }
     }),
+    deselectNode: assign({ selectedNodeId: undefined }),
 
     createNode: assign(({ context, event }) => {
       const id = `Node-${randId()}`
@@ -209,6 +210,7 @@ const flowsState = setup({
       }
     },
     view: {
+      exit: 'deselectNode',
       tags: ['view-flow'],
       meta: {
         ...breadcrumbWithParams<FlowsContext>({
