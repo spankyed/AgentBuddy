@@ -13,6 +13,7 @@ import { AgentStartupData, AgentThreadData, ThreadExtendedData } from '@/types';
 import { getThreadChatData } from './repository/read';
 import agentStartupData from './repository/startup';
 import { createLogger } from '@/systems/logs/logger';
+import { brain } from '../brain/system';
 
 const logger = createLogger('agent');
 
@@ -100,10 +101,20 @@ export const agentSystem = setup({
         error: typeOf('LLM_ERROR', event).error
       }));
     },
-    storeUserMessage: ({ context, event }) => {
+    // storeUserMessage: ({ context, event }) => {
+    //   const text = typeOf('USER_MSG', event).text;
+    //   addMessageToLatestThread(text);
+    // },
+    fireBrainEvent: ({ system, event }) => {
       const text = typeOf('USER_MSG', event).text;
-      addMessageToLatestThread(text);
-    },
+      const brainActor = getActor(system, brain);
+      console.log('brainActor: ', brainActor.send);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.message',
+        payload: text,
+      });
+    }
   },
 }).createMachine(
   {
@@ -133,9 +144,13 @@ export const agentSystem = setup({
     states: {
       idle: {
         on: {
+          // USER_MSG: {
+          //   target: 'processMessage',
+          //   actions: 'storeUserMessage',
+          // },
           USER_MSG: {
-            target: 'processMessage',
-            actions: 'storeUserMessage',
+            // target: 'processMessage',
+            actions: 'fireBrainEvent',
           },
         },
       },
