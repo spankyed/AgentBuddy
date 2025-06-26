@@ -1,5 +1,6 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
 import { flowRows } from './repository/mock-data';
+import { PromptConfig } from '@/systems/prompts/types';
 
 
 export interface FlowEntity extends BaseEntity {
@@ -94,7 +95,14 @@ export interface KeepAliveNode extends NodeBase {
 
 export interface LLMNode extends NodeBase {
   nodeType: 'llm';
-  prompt: string;
+  
+  // New prompt configuration (supports both templates and static prompts)
+  promptConfig?: PromptConfig;
+  
+  // Legacy support - if promptConfig is not provided, use this
+  prompt?: string;
+  
+  // LLM configuration
   model?: string;
   temperature?: number;
   maxTokens?: number;
