@@ -25,13 +25,29 @@ function resolveInputMapping(
   const { source, transform } = mapping;
   let value: any;
 
+  logger.debug(`Resolving input mapping:`, { 
+    paramName: mapping.paramName,
+    sourceType: source.type,
+    sourcePath: source.path,
+    transform
+  });
+
   switch (source.type) {
     case 'static':
       value = source.value;
       break;
 
     case 'eventPayload':
+      if (!executionContext.eventPayload) {
+        logger.warn('eventPayload is undefined in execution context');
+        return undefined;
+      }
       value = getValueByPath(executionContext.eventPayload, source.path || '');
+      logger.debug(`Resolved eventPayload value:`, { 
+        path: source.path,
+        eventPayload: executionContext.eventPayload,
+        resolvedValue: value 
+      });
       break;
 
     case 'previousStep':
@@ -48,6 +64,12 @@ function resolveInputMapping(
         return undefined;
       }
       value = getValueByPath(stepResult, source.path || 'result');
+      logger.debug(`Resolved previousStep value:`, { 
+        stepId: source.stepId,
+        path: source.path,
+        stepResult,
+        resolvedValue: value 
+      });
       break;
 
     case 'context':
@@ -92,15 +114,29 @@ function resolveInputMapping(
  * Supports array indexing like "previousResults[0].result"
  */
 function getValueByPath(obj: any, path: string): any {
-  if (!path) return obj;
+  if (!path || path === '') return obj;
+  
+  // Handle root-level access (empty path or just ".")
+  if (path === '.' || path === '') {
+    return obj;
+  }
   
   // Convert array notation to dot notation for simplicity
   // e.g., "previousResults[0].result" -> "previousResults.0.result"
   const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
   
-  return normalizedPath.split('.').reduce((current, key) => {
-    return current?.[key];
-  }, obj);
+  try {
+    return normalizedPath.split('.').reduce((current, key) => {
+      if (current === null || current === undefined) {
+        logger.debug(`Path resolution stopped at null/undefined for key: ${key}`);
+        return undefined;
+      }
+      return current[key];
+    }, obj);
+  } catch (error) {
+    logger.error(`Error resolving path ${path}:`, { error, obj });
+    return undefined;
+  }
 }
 
 /**
@@ -185,14 +221,29 @@ export function llmNodeHandler(
   // Log resolved inputs for debugging
   if (llmNode.promptConfig?.type === 'template' && llmNode.promptConfig.inputMappings) {
     const resolvedInputs: Record<string, any> = {};
+    const errors: string[] = [];
+    
     llmNode.promptConfig.inputMappings.forEach(mapping => {
       try {
-        resolvedInputs[mapping.paramName] = resolveInputMapping(mapping, executionContext);
+        const value = resolveInputMapping(mapping, executionContext);
+        if (value === undefined) {
+          errors.push(`${mapping.paramName}: [Undefined]`);
+          resolvedInputs[mapping.paramName] = '[Undefined]';
+        } else {
+          resolvedInputs[mapping.paramName] = value;
+        }
       } catch (error) {
-        resolvedInputs[mapping.paramName] = `[Error: ${error}]`;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push(`${mapping.paramName}: [Error: ${errorMsg}]`);
+        resolvedInputs[mapping.paramName] = `[Error: ${errorMsg}]`;
       }
     });
+    
     logger.debug('Resolved inputs:', resolvedInputs);
+    
+    if (errors.length > 0) {
+      logger.warn('Some inputs could not be resolved:', errors);
+    }
   }
   
   // TODO: Implement actual LLM call
