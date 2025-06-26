@@ -56,8 +56,9 @@ export const runAgentBrainFlow: Rows = {
       mode: "internal",
       eventType: "database.query.prompt",
     },
+    /* Responders */
     {
-      id: "Node-a4",
+      id: "Node-a4s",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
       nodeType: "keep_alive",
@@ -67,7 +68,7 @@ export const runAgentBrainFlow: Rows = {
       color: "#1E88E5", // blue
     },
     {
-      id: "Node-a5",
+      id: "Node-a5s",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
       nodeType: "action",
@@ -78,7 +79,7 @@ export const runAgentBrainFlow: Rows = {
       color: "#1E88E5", // blue
     },
     {
-      id: "Node-a6",
+      id: "Node-a6s",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
       nodeType: "llm",
@@ -88,7 +89,22 @@ export const runAgentBrainFlow: Rows = {
       x: 100,
       y: 100,
       color: "#1E88E5", // blue
+    },
+    {
+      id: "Node-a7s",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 900,
+      nodeType: "llm",
+      label: "Process User Message",
+      model: "gpt-4",
+      prompt: "Process and analyze the user message before storing",
+      x: 100,
+      y: 100,
+      color: "#9C27B0", // purple
     }
+
+    /* Steps */,
+    
   ],
 
   /*──────────────────────────────────────────*
@@ -112,16 +128,19 @@ export const runAgentBrainFlow: Rows = {
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a1", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a2", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a3", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a4", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a5", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a6", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a4s", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a5s", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a6s", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a7s", info: {} },
 
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a1", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a3", info: {} },
 
-    { source: "Node-a1", kind: EARS.RelKind.RESPONDER, target: "Node-a4", info: {} },
-    { source: "Node-a2", kind: EARS.RelKind.RESPONDER, target: "Node-a5", info: {} },
-    { source: "Node-a3", kind: EARS.RelKind.RESPONDER, target: "Node-a6", info: {} },
+    { source: "Node-a1", kind: EARS.RelKind.RESPONDER, target: "Node-a4s", info: {} },
+    { source: "Node-a2", kind: EARS.RelKind.RESPONDER, target: "Node-a7s", info: {} },
+    { source: "Node-a3", kind: EARS.RelKind.RESPONDER, target: "Node-a6s", info: {} },
+
+    { source: "Node-a7s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a5s", info: {} },
   ],
 }; 
