@@ -38,8 +38,23 @@ class Logger {
     // Get stack trace for errors
     let stack: string | undefined;
     if (level === 'error') {
-      const err = new Error();
-      stack = err.stack;
+      // First, check if an error was passed in meta
+      if (meta?.error) {
+        if (meta.error instanceof Error) {
+          stack = meta.error.stack;
+        } else if (typeof meta.error === 'object' && meta.error.stack) {
+          // Handle cases where error might be a plain object with a stack property
+          stack = meta.error.stack;
+        } else if (typeof meta.error === 'string') {
+          // If error is just a string message, create stack trace from current location
+          const err = new Error(meta.error);
+          stack = err.stack;
+        }
+      } else {
+        // Fallback: create new Error to get current stack trace
+        const err = new Error(message);
+        stack = err.stack;
+      }
     }
 
     // Emit log event
