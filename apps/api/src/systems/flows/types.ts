@@ -98,7 +98,12 @@ export interface LLMNode extends NodeBase {
   // Prompt configuration
   prompt?: string;                    // Direct prompt string
   promptTemplateId?: string;          // Or use a registered template ID
-  promptTemplateParams?: Record<string, any>; // Simple key-value params for template
+  fieldMappings?: Array<{             // Data-driven field mappings
+    targetField: string;              // Field name in template params
+    sourcePath: string;               // Path to extract value from context
+    defaultValue?: any;               // Default if source is undefined
+    transform?: string;               // Optional transform function
+  }>;
   
   // LLM configuration
   model?: string;

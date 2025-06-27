@@ -64,3 +64,35 @@ export interface ExecutionContext {
   // Allow additional properties
   [key: string]: any;
 }
+
+// Schema Definition Types
+export interface FieldSchema {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+  description?: string;
+  required?: boolean;
+  // For objects and arrays
+  properties?: Record<string, FieldSchema>;
+  items?: FieldSchema;
+}
+
+export interface EventSchema {
+  eventType: string;
+  description?: string;
+  fields: Record<string, FieldSchema>;
+}
+
+export interface StepOutputSchema {
+  stepId: string;
+  stepLabel: string;
+  description?: string;
+  fields: Record<string, FieldSchema>;
+}
+
+// Mapping Types
+export interface FieldMapping {
+  targetField: string;          // The field name in the target (e.g., "userMessage")
+  sourcePath: string;           // JSONPath or simple path to source value (e.g., "$.eventPayload.message")
+  defaultValue?: any;           // Value to use if source is undefined
+  transform?: string;           // Optional transform function name
+}

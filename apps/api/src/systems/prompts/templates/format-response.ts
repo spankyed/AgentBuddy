@@ -7,40 +7,39 @@ export const formatResponseTemplate: PromptTemplate = {
   category: 'generation',
   
   templateFn: (params) => {
-    const context = params.context || {};
+    // Template receives exactly what it needs via field mappings
+    const { userMessage, analysisResult, responseStyle, additionalInstructions } = params;
     
-    // Get the analysis result from previous step
-    // Try by label first, then fall back to last result
-    const analysisResult = context.getResultByLabel?.('Process User Message') || 
-                          context.getResultByLabel?.('Analyze User Message') ||
-                          context.lastResult ||
-                          {};
-    
-    // Get the original user message
-    const userMessage = context.eventPayload?.message || 
-                       context.eventPayload?.text || 
-                       '[No message]';
-    
-    const responseStyle = params.responseStyle || 'professional';
-    
-    let prompt = `Original user message: "${userMessage}"\n\n`;
+    let prompt = `Original user message: "${userMessage || '[No message]'}"\n\n`;
     prompt += `Based on the following analysis:\n\n`;
-    prompt += `${JSON.stringify(analysisResult, null, 2)}\n\n`;
+    prompt += `${JSON.stringify(analysisResult || {}, null, 2)}\n\n`;
     
-    prompt += `Generate a ${responseStyle} response that:\n`;
+    prompt += `Generate a ${responseStyle || 'professional'} response that:\n`;
     prompt += `- Directly addresses the user's question or request\n`;
     prompt += `- Uses the identified intent and entities appropriately\n`;
     prompt += `- Follows the suggested response category\n`;
     prompt += `- Is helpful and actionable\n`;
     
-    if (params.additionalInstructions) {
-      prompt += `\nAdditional instructions: ${params.additionalInstructions}`;
+    if (additionalInstructions) {
+      prompt += `\nAdditional instructions: ${additionalInstructions}`;
     }
     
     return prompt;
   },
   
   params: [
+    {
+      name: 'userMessage',
+      description: 'The original user message',
+      type: 'string',
+      required: true,
+    },
+    {
+      name: 'analysisResult',
+      description: 'The analysis result from the previous step',
+      type: 'object',
+      required: true,
+    },
     {
       name: 'responseStyle',
       description: 'The style of response (professional, casual, technical, etc.)',
@@ -58,32 +57,12 @@ export const formatResponseTemplate: PromptTemplate = {
   
   example: {
     params: {
-      context: {
-        eventType: 'user.message',
-        eventPayload: { message: 'Can you help me debug this Python function?' },
-        previousResults: [{
-          stepId: 'step-1',
-          stepLabel: 'Process User Message',
-          result: {
-            summary: "User needs help debugging Python",
-            intent: "technical_support",
-            entities: ["Python", "debugging", "function"],
-            category: "programming_help"
-          },
-          timestamp: Date.now()
-        }],
-        lastResult: {
-          summary: "User needs help debugging Python",
-          intent: "technical_support",
-          entities: ["Python", "debugging", "function"],
-          category: "programming_help"
-        },
-        getResultByLabel: () => ({
-          summary: "User needs help debugging Python",
-          intent: "technical_support",
-          entities: ["Python", "debugging", "function"],
-          category: "programming_help"
-        })
+      userMessage: 'Can you help me debug this Python function?',
+      analysisResult: {
+        summary: "User needs help debugging Python",
+        intent: "technical_support",
+        entities: ["Python", "debugging", "function"],
+        category: "programming_help"
       },
       responseStyle: "helpful and technical"
     },

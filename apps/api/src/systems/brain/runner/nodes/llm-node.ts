@@ -1,31 +1,20 @@
 /**
- * LLM Node Handler - Simplified Approach
- * 
- * This handler executes LLM (Language Model) nodes in the flow system.
+ * LLM Node Handler - Data-Driven Approach
  * 
  * ## Design Philosophy:
- * - Keep it simple - no complex path resolution or input mappings
- * - Pass the full execution context to templates
- * - Let templates extract what they need
- * - Provide helpful utilities in the context
+ * - All intelligence is in the data (schemas and mappings)
+ * - The logic is "dumb" - it just applies mappings
+ * - Templates receive exactly what they declare they need
  * 
  * ## How it works:
- * 1. LLM nodes can have either:
- *    - A direct prompt string, OR
- *    - A template ID that references a registered prompt template
+ * 1. Each LLM node has fieldMappings that define:
+ *    - What fields the template needs (targetField)
+ *    - Where to get the data from (sourcePath)
+ *    - Optional transforms and defaults
  * 
- * 2. Templates receive a params object with:
- *    - `context`: The full execution context including:
- *      - eventType: The event that triggered this flow
- *      - eventPayload: All data from the event
- *      - previousResults: Array of all previous step results
- *      - Helper functions like getResultByLabel()
- *    - Any custom parameters defined in the node config
+ * 2. The runtime simply applies these mappings
  * 
- * 3. Templates are simple functions that:
- *    - Take the params object
- *    - Extract what they need from context
- *    - Return a prompt string
+ * 3. Templates receive a clean, predictable structure
  * 
  * ## Example node configuration:
  * ```
@@ -33,29 +22,25 @@
  *   nodeType: 'llm',
  *   label: 'Analyze User Message',
  *   promptTemplateId: 'user-message-analysis',
- *   promptTemplateParams: {
- *     additionalContext: 'Customer support chat'
- *   },
- *   model: 'gpt-4',
- *   temperature: 0.7
- * }
- * ```
- * 
- * ## Example template:
- * ```
- * templateFn: (params) => {
- *   const context = params.context;
- *   const userMessage = context.eventPayload?.message || 'No message';
- *   const lastResult = context.lastResult;
- *   
- *   return `Analyze: ${userMessage}...`;
+ *   fieldMappings: [
+ *     {
+ *       targetField: 'userMessage',
+ *       sourcePath: '$.eventPayload.message',
+ *       defaultValue: '[No message]'
+ *     },
+ *     {
+ *       targetField: 'previousSummary',
+ *       sourcePath: '$.previousResults.Process User Message.result.summary'
+ *     }
+ *   ]
  * }
  * ```
  */
 
 import type { NodeEntity } from '@/systems/flows/types';
-import type { ExecutionContext } from '@/systems/brain/types';
+import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
 import { promptTemplateRegistry } from '@/systems/prompts/templates';
+import { applyFieldMappings } from '../field-mapper';
 import { createLogger } from '@/systems/logs/logger';
 
 const logger = createLogger('llm-node');
@@ -68,52 +53,12 @@ interface LLMNodeConfig {
   systemPrompt?: string;
   
   // Prompt configuration
-  prompt?: string;                    // Direct prompt string
-  promptTemplateId?: string;          // Or use a template
-  promptTemplateParams?: Record<string, any>; // Simple key-value params for template
+  prompt?: string;                          // Direct prompt string
+  promptTemplateId?: string;                // Or use a template
+  fieldMappings?: FieldMapping[];           // Data-driven field mappings
 }
 
 type LLMNode = NodeEntity & LLMNodeConfig;
-
-/**
- * Build prompt template parameters from execution context
- * This is where we handle all the "smart" parameter resolution
- */
-function buildTemplateParams(
-  node: LLMNode,
-  context: ExecutionContext
-): Record<string, any> {
-  // Start with any explicit params from the node configuration
-  const params = { ...node.promptTemplateParams };
-  
-  // Add common context values that templates might need
-  // Templates can pick what they need from this
-  params.context = {
-    // Event information
-    eventType: context.eventType,
-    eventPayload: context.eventPayload,
-    
-    // Previous step results as a simple array
-    previousResults: context.previousResults,
-    
-    // Helper to get the last result
-    lastResult: context.previousResults.length > 0 
-      ? context.previousResults[context.previousResults.length - 1].result 
-      : null,
-    
-    // Helper to get result by step label
-    getResultByLabel: (label: string) => {
-      const step = context.previousResults.find(r => r.stepLabel === label);
-      return step?.result;
-    },
-    
-    // Node information
-    nodeLabel: node.label,
-    nodeId: node.id,
-  };
-  
-  return params;
-}
 
 /**
  * Generate the prompt for the LLM
@@ -136,7 +81,13 @@ function generatePrompt(
     }
     
     try {
-      const params = buildTemplateParams(node, context);
+      // Apply field mappings to generate template parameters
+      const params = node.fieldMappings 
+        ? applyFieldMappings(node.fieldMappings, context)
+        : {};
+      
+      logger.debug(`Template params for ${node.label}:`, params);
+      
       return template.templateFn(params);
     } catch (error) {
       logger.error(`Failed to generate prompt from template:`, { 
@@ -164,6 +115,7 @@ export function llmNodeHandler(
     model: llmNode.model || 'default',
     hasPrompt: !!llmNode.prompt,
     templateId: llmNode.promptTemplateId,
+    mappingsCount: llmNode.fieldMappings?.length || 0,
   });
   
   // Generate the prompt
@@ -172,11 +124,6 @@ export function llmNodeHandler(
   logger.debug(`Generated prompt:`, {
     nodeLabel: node.label,
     promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
-    fullContext: {
-      eventType: executionContext.eventType,
-      eventPayload: executionContext.eventPayload,
-      previousStepsCount: executionContext.previousResults.length,
-    }
   });
   
   // TODO: Implement actual LLM call

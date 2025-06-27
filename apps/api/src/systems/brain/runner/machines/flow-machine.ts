@@ -137,8 +137,8 @@ export function createFlowMachine(
           if (firstStep) {
             const eventTNode = createEventTNode(eventNode, flowTNodeId);
 
-            // Create execution context with event data
-            // The entire event (minus type) becomes the payload for flexibility
+            // Create execution context with raw event data
+            // Field mappings in LLM nodes handle all data extraction
             const { type: _, ...eventData } = event;
             
             const eventTrackContext: ExecutionContext = {
@@ -147,7 +147,7 @@ export function createFlowMachine(
               previousResults: [],
             };
 
-            logger.debug(`Event ${eventType} received with data:`, eventData);
+            logger.debug(`Event ${eventType} received:`, eventData);
 
             // Store the execution context for this event track
             enqueue.assign({

@@ -43,6 +43,7 @@ export const runAgentBrainFlow: Rows = {
       color: "#1E88E5", // blue
       mode: "internal",
       eventType: "user.message",
+      // Expected event structure: { type: "user.message", payload: "message text", userId?: "123", context?: "additional info" }
     },
     {
       id: "Node-a3",
@@ -90,6 +91,7 @@ export const runAgentBrainFlow: Rows = {
       y: 100,
       color: "#1E88E5", // blue
     },
+    /* Process User Message - Maps event payload to template params */
     {
       id: "Node-a7s",
       entityType: EARS.Entity.Node,
@@ -98,9 +100,18 @@ export const runAgentBrainFlow: Rows = {
       label: "Process User Message",
       model: "gpt-4",
       promptTemplateId: "user-message-analysis",
-      promptTemplateParams: {
-        additionalContext: "User is interacting with the agent brain system"
-      },
+      fieldMappings: [
+        {
+          targetField: "userMessage",
+          sourcePath: "$.eventPayload.payload",  // Maps from event.payload to template param userMessage
+          defaultValue: "[No message provided]"
+        },
+        {
+          targetField: "additionalContext",
+          sourcePath: "$.eventPayload.context",   // Maps from event.context to template param additionalContext
+          defaultValue: "User is interacting with the agent brain system"
+        }
+      ],
       x: 100,
       y: 100,
       color: "#9C27B0", // purple
@@ -113,9 +124,21 @@ export const runAgentBrainFlow: Rows = {
       label: "Format Response",
       model: "gpt-4",
       promptTemplateId: "format-response",
-      promptTemplateParams: {
-        responseStyle: "helpful and professional"
-      },
+      fieldMappings: [
+        {
+          targetField: "userMessage",
+          sourcePath: "$.eventPayload.payload"
+        },
+        {
+          targetField: "analysisResult",
+          sourcePath: "$.previousResults.Process User Message.result"
+        },
+        {
+          targetField: "responseStyle",
+          sourcePath: "$.eventPayload.responseStyle",
+          defaultValue: "helpful and professional"
+        }
+      ],
       x: 100,
       y: 100,
       color: "#4CAF50", // green
