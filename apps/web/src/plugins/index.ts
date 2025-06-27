@@ -13,6 +13,7 @@ import {
   Workflow,
   Bird,
   ListTodo,
+  Library,
   NotebookText,
   LandPlot
 } from 'lucide-vue-next';
@@ -33,6 +34,7 @@ const mockPlugins = [
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
   mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
+  mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
   mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
   mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
 ];
