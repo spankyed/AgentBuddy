@@ -49,20 +49,28 @@ export interface EventReceived {
 
 // Brain Runner Types
 export interface ExecutionContext {
-  // Event track data
-  eventType: string;          // The event that triggered this track
-  eventPayload?: any;        // The payload of the triggering event
+  // Event that triggered this execution
+  event: {
+    type: string;           // The event type (e.g., 'user.message')
+    data: Record<string, any>;  // Event data (what was previously eventPayload)
+    timestamp?: number;     // When the event occurred
+    source?: string;        // Where the event came from
+  };
   
   // Results from previous steps in this track
-  previousResults: Array<{
-    stepId: string;
-    stepLabel: string;
-    result: any;
-    timestamp: number;
+  steps: Array<{
+    id: string;             // Step ID for reliable references
+    label: string;          // Human-readable label
+    result: any;            // The step's output
+    timestamp: number;      // When it completed
   }>;
   
-  // Allow additional properties
-  [key: string]: any;
+  // Computed properties for convenience
+  lastStep?: {
+    id: string;
+    label: string;
+    result: any;
+  };
 }
 
 // Schema Definition Types
@@ -89,10 +97,32 @@ export interface StepOutputSchema {
   fields: Record<string, FieldSchema>;
 }
 
-// Mapping Types
+// Type-safe path constants to replace string-based paths
+export const ContextPaths = {
+  // Event paths
+  EVENT_TYPE: '$.event.type',
+  EVENT_DATA: '$.event.data',
+  EVENT_TIMESTAMP: '$.event.timestamp',
+  
+  // Common event data patterns
+  EVENT_MESSAGE: '$.event.data.message',
+  EVENT_PAYLOAD: '$.event.data.payload',
+  EVENT_TEXT: '$.event.data.text',
+  EVENT_USER_ID: '$.event.data.userId',
+  
+  // Step paths
+  LAST_STEP: '$.lastStep',
+  LAST_STEP_RESULT: '$.lastStep.result',
+  STEPS: '$.steps',
+  
+  // Helper function to get step by ID
+  stepById: (stepId: string) => `$.steps[id=${stepId}].result`,
+  stepByLabel: (label: string) => `$.steps[label=${label}].result`,
+} as const;
+
+// Simplified field mapping that's easier to understand
 export interface FieldMapping {
-  targetField: string;          // The field name in the target (e.g., "userMessage")
-  sourcePath: string;           // JSONPath or simple path to source value (e.g., "$.eventPayload.message")
-  defaultValue?: any;           // Value to use if source is undefined
-  transform?: string;           // Optional transform function name
+  target: string;               // Target field name in template
+  source: string | ((ctx: ExecutionContext) => any);  // Path or function
+  default?: any;                // Default value if source is undefined
 }

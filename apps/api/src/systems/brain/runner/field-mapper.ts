@@ -4,42 +4,60 @@ import { createLogger } from '@/systems/logs/logger';
 const logger = createLogger('field-mapper');
 
 /**
- * Simple field mapper - "dumb" logic that just applies mappings
- * All intelligence is in the mapping configuration
+ * Simple field mapper with cleaner implementation
  */
 
 /**
- * Extract value from source using a simple path
- * Supports:
- * - $.eventPayload.message
- * - $.previousResults[0].result.summary
- * - $.previousResults.Process User Message.result.intent
+ * Extract value from context using a path or function
  */
-function extractValue(source: any, path: string): any {
+function extractValue(context: ExecutionContext, source: string | ((ctx: ExecutionContext) => any)): any {
+  // If source is a function, call it with context
+  if (typeof source === 'function') {
+    try {
+      return source(context);
+    } catch (error) {
+      logger.error('Function extractor failed:', { error });
+      return undefined;
+    }
+  }
+  
+  // Otherwise, treat as a path
+  return extractValueByPath(context, source);
+}
+
+/**
+ * Extract value using a simple path
+ * Now supports cleaner paths like:
+ * - $.event.data.message
+ * - $.lastStep.result
+ * - $.steps[id=123].result
+ * - $.steps[label=Process User Message].result
+ */
+function extractValueByPath(source: any, path: string): any {
   if (!path || path === '$') return source;
   
   // Remove leading $ if present
   const cleanPath = path.startsWith('$.') ? path.substring(2) : path;
   
-  // Split on dots but preserve array indices and quoted strings
-  const segments = cleanPath.match(/([^.\[\]]+|\[[^\]]+\])/g) || [];
+  // Split path into segments, handling special selectors
+  const segments = cleanPath.split('.');
   
   let current = source;
   for (const segment of segments) {
     if (current === null || current === undefined) return undefined;
     
-    // Handle array index like [0]
-    if (segment.startsWith('[') && segment.endsWith(']')) {
-      const index = segment.slice(1, -1);
-      current = current[index];
-    }
-    // Handle previousResults by label
-    else if (current === source.previousResults && !(/^\d+$/.test(segment))) {
-      // Find by step label
-      const result = current.find((r: any) => r.stepLabel === segment);
-      current = result;
-    }
-    else {
+    // Handle array selector like steps[id=123]
+    const selectorMatch = segment.match(/^(\w+)\[(\w+)=([^\]]+)\]$/);
+    if (selectorMatch) {
+      const [, arrayName, field, value] = selectorMatch;
+      const array = current[arrayName];
+      if (Array.isArray(array)) {
+        current = array.find(item => item[field] === value);
+      } else {
+        return undefined;
+      }
+    } else {
+      // Normal property access
       current = current[segment];
     }
   }
@@ -49,7 +67,6 @@ function extractValue(source: any, path: string): any {
 
 /**
  * Apply field mappings to create template parameters
- * This is the core "dumb" logic - it just follows the mappings
  */
 export function applyFieldMappings(
   mappings: FieldMapping[],
@@ -58,65 +75,39 @@ export function applyFieldMappings(
   const result: Record<string, any> = {};
   
   // Debug log the available context
-  logger.debug('Applying field mappings with context:', {
-    eventType: context.eventType,
-    eventPayloadKeys: context.eventPayload ? Object.keys(context.eventPayload) : [],
-    eventPayloadSample: context.eventPayload,
-    previousResultsCount: context.previousResults.length,
+  logger.debug('Applying field mappings:', {
+    eventType: context.event.type,
+    eventDataKeys: Object.keys(context.event.data),
+    eventData: context.event.data,
+    stepsCount: context.steps.length,
+    lastStepLabel: context.lastStep?.label,
     mappingsCount: mappings.length
   });
   
   for (const mapping of mappings) {
     try {
       // Extract value from source
-      let value = extractValue(context, mapping.sourcePath);
+      let value = extractValue(context, mapping.source);
       
       // Use default if undefined
-      if (value === undefined && mapping.defaultValue !== undefined) {
-        value = mapping.defaultValue;
-      }
-      
-      // Apply transform if specified
-      if (mapping.transform && value !== undefined) {
-        value = applyTransform(value, mapping.transform);
+      if (value === undefined && mapping.default !== undefined) {
+        value = mapping.default;
       }
       
       // Set the target field
-      result[mapping.targetField] = value;
+      result[mapping.target] = value;
       
-      logger.debug(`Mapped ${mapping.sourcePath} -> ${mapping.targetField}:`, value);
+      logger.debug(`Mapped ${mapping.target}:`, { 
+        source: typeof mapping.source === 'function' ? '[Function]' : mapping.source,
+        value 
+      });
     } catch (error) {
-      logger.error(`Failed to apply mapping for ${mapping.targetField}:`, { error, mapping });
-      if (mapping.defaultValue !== undefined) {
-        result[mapping.targetField] = mapping.defaultValue;
+      logger.error(`Failed to apply mapping for ${mapping.target}:`, { error, mapping });
+      if (mapping.default !== undefined) {
+        result[mapping.target] = mapping.default;
       }
     }
   }
   
   return result;
-}
-
-/**
- * Simple transform functions
- */
-function applyTransform(value: any, transform: string): any {
-  switch (transform) {
-    case 'toString':
-      return String(value);
-    case 'toNumber':
-      return Number(value);
-    case 'toBoolean':
-      return Boolean(value);
-    case 'toJSON':
-      return JSON.stringify(value);
-    case 'fromJSON':
-      return typeof value === 'string' ? JSON.parse(value) : value;
-    case 'toUpperCase':
-      return String(value).toUpperCase();
-    case 'toLowerCase':
-      return String(value).toLowerCase();
-    default:
-      logger.warn(`Unknown transform: ${transform}`);
-      return value;
-  }
 } 

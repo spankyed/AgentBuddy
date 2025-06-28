@@ -19,6 +19,24 @@ export const filePromptTemplate: PromptTemplate = {
   description: 'Wraps content in file tags for structured context',
   category: 'code',
   
+  // Declare expected inputs
+  inputs: {
+    filename: {
+      name: 'filename',
+      type: 'string',
+      description: 'The name of the file',
+      required: true,
+      example: 'backend.ts'
+    },
+    content: {
+      name: 'content',
+      type: 'string', 
+      description: 'The content of the file',
+      required: true,
+      example: 'const server = express();'
+    }
+  },
+  
   templateFn: (params) => {
     const { filename, content } = params;
     return `
@@ -27,21 +45,6 @@ ${content}
 </${filename}>
 `;
   },
-  
-  params: [
-    {
-      name: 'filename',
-      description: 'The name of the file',
-      type: 'string',
-      required: true,
-    },
-    {
-      name: 'content', 
-      description: 'The content of the file',
-      type: 'string',
-      required: true,
-    }
-  ],
   
   example: {
     params: {

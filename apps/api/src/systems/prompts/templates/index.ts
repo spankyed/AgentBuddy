@@ -15,4 +15,4 @@ export { formatResponseTemplate } from './format-response';
 export { summaryTemplate } from './summary-template';
 
 // Export the registry for access
-export { promptTemplateRegistry } from '../types'; 
+export { promptTemplateRegistry, getTemplateWithValidation } from '../types'; 

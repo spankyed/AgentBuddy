@@ -6,6 +6,38 @@ export const summaryTemplate: PromptTemplate = {
   description: 'Creates a summary using results from multiple previous steps',
   category: 'analysis',
   
+  // Declare expected inputs
+  inputs: {
+    firstAnalysis: {
+      name: 'firstAnalysis',
+      type: 'object',
+      description: 'Results from the first analysis step',
+      required: false,
+      commonSources: ['$.steps[0].result', '$.lastStep.result']
+    },
+    secondAnalysis: {
+      name: 'secondAnalysis',
+      type: 'object',
+      description: 'Results from the second analysis step',
+      required: false,
+      commonSources: ['$.steps[1].result']
+    },
+    originalMessage: {
+      name: 'originalMessage',
+      type: 'string',
+      description: 'The original user message',
+      required: false,
+      commonSources: ['$.event.data.message', '$.event.data.payload']
+    },
+    allPreviousSteps: {
+      name: 'allPreviousSteps',
+      type: 'array',
+      description: 'Summary of all previous step results',
+      required: false,
+      commonSources: ['$.steps']
+    }
+  },
+  
   templateFn: (params) => {
     const { firstAnalysis, secondAnalysis, originalMessage, allPreviousSteps } = params;
     
@@ -34,33 +66,6 @@ export const summaryTemplate: PromptTemplate = {
     
     return prompt;
   },
-  
-  params: [
-    {
-      name: 'firstAnalysis',
-      description: 'Results from the first analysis step',
-      type: 'object',
-      required: false,
-    },
-    {
-      name: 'secondAnalysis', 
-      description: 'Results from the second analysis step',
-      type: 'object',
-      required: false,
-    },
-    {
-      name: 'originalMessage',
-      description: 'The original user message',
-      type: 'string',
-      required: false,
-    },
-    {
-      name: 'allPreviousSteps',
-      description: 'Summary of all previous step results',
-      type: 'array',
-      required: false,
-    }
-  ],
   
   example: {
     params: {

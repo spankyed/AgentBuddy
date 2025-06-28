@@ -6,6 +6,45 @@ export const formatResponseTemplate: PromptTemplate = {
   description: 'Formats a response based on analysis results',
   category: 'generation',
   
+  // Declare expected inputs
+  inputs: {
+    userMessage: {
+      name: 'userMessage',
+      type: 'string',
+      description: 'The original user message',
+      required: true,
+      commonSources: ['$.event.data.message', '$.event.data.payload']
+    },
+    analysisResult: {
+      name: 'analysisResult',
+      type: 'object',
+      description: 'The analysis result from the previous step',
+      required: true,
+      commonSources: ['$.lastStep.result', '$.steps[label=Process User Message].result'],
+      example: {
+        summary: "User needs help debugging Python",
+        intent: "technical_support",
+        entities: ["Python", "debugging", "function"],
+        category: "programming_help"
+      }
+    },
+    responseStyle: {
+      name: 'responseStyle',
+      type: 'string',
+      description: 'The style of response (professional, casual, technical, etc.)',
+      required: false,
+      defaultValue: 'professional',
+      example: 'helpful and technical'
+    },
+    additionalInstructions: {
+      name: 'additionalInstructions',
+      type: 'string',
+      description: 'Any additional formatting instructions',
+      required: false,
+      defaultValue: ''
+    }
+  },
+  
   templateFn: (params) => {
     // Template receives exactly what it needs via field mappings
     const { userMessage, analysisResult, responseStyle, additionalInstructions } = params;
@@ -26,34 +65,6 @@ export const formatResponseTemplate: PromptTemplate = {
     
     return prompt;
   },
-  
-  params: [
-    {
-      name: 'userMessage',
-      description: 'The original user message',
-      type: 'string',
-      required: true,
-    },
-    {
-      name: 'analysisResult',
-      description: 'The analysis result from the previous step',
-      type: 'object',
-      required: true,
-    },
-    {
-      name: 'responseStyle',
-      description: 'The style of response (professional, casual, technical, etc.)',
-      type: 'string',
-      required: false,
-      defaultValue: 'professional'
-    },
-    {
-      name: 'additionalInstructions',
-      description: 'Any additional formatting instructions',
-      type: 'string',
-      required: false,
-    }
-  ],
   
   example: {
     params: {

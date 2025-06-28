@@ -4,14 +4,12 @@ import type { EventSchema, StepOutputSchema } from '@/systems/brain/types';
  * Schema Registry - Single source of truth for data shapes
  * In a real system, these would be stored in a database and managed via UI
  * 
- * IMPORTANT: Event structures after entering the system:
+ * IMPORTANT: Event structures in the new system:
  * - Original event: { type: 'user.message', payload: 'Hello', userId: '123' }
- * - In execution context: eventPayload = { payload: 'Hello', userId: '123' }
- * - Field mapping path: $.eventPayload.payload
+ * - In execution context: event.data = { payload: 'Hello', userId: '123' }
+ * - Field mapping path: $.event.data.payload
  * 
- * - Original event: { type: 'user.message', message: 'Hello', userId: '123' }  
- * - In execution context: eventPayload = { message: 'Hello', userId: '123' }
- * - Field mapping path: $.eventPayload.message
+ * The cleaner structure avoids the confusing eventPayload.payload nesting
  */
 
 // Event schemas define what data each event type provides

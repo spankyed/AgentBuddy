@@ -6,6 +6,26 @@ export const userMessageAnalysisTemplate: PromptTemplate = {
   description: 'Analyzes and processes a user message before storage',
   category: 'analysis',
   
+  // Declare expected inputs - this connects to the mapping system
+  inputs: {
+    userMessage: {
+      name: 'userMessage',
+      type: 'string',
+      description: 'The user message to analyze',
+      required: true,
+      commonSources: ['$.event.data.message', '$.event.data.payload', '$.event.data.text'],
+      example: 'Can you help me debug this Python function?'
+    },
+    additionalContext: {
+      name: 'additionalContext',
+      type: 'string',
+      description: 'Any additional context to include in the analysis',
+      required: false,
+      defaultValue: '',
+      example: 'User is working on a data analysis project'
+    }
+  },
+  
   templateFn: (params) => {
     // Template receives exactly what it needs via field mappings
     const { userMessage, additionalContext } = params;
@@ -28,21 +48,6 @@ export const userMessageAnalysisTemplate: PromptTemplate = {
     
     return prompt;
   },
-  
-  params: [
-    {
-      name: 'userMessage',
-      description: 'The user message to analyze',
-      type: 'string',
-      required: true,
-    },
-    {
-      name: 'additionalContext',
-      description: 'Any additional context to include in the analysis',
-      type: 'string',
-      required: false,
-    }
-  ],
   
   example: {
     params: {

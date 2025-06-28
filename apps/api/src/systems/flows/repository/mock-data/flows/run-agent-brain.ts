@@ -1,6 +1,7 @@
 import { EARS } from '@/shared/ears/types';
 import type { Rows } from '@/shared/types';
 import { FlowEntity } from '@/types';
+import { ContextPaths } from '@/systems/brain/types';
 
 const nowMs = Date.now();
 
@@ -102,14 +103,14 @@ export const runAgentBrainFlow: Rows = {
       promptTemplateId: "user-message-analysis",
       fieldMappings: [
         {
-          targetField: "userMessage",
-          sourcePath: "$.eventPayload.payload",  // Maps from event.payload to template param userMessage
-          defaultValue: "[No message provided]"
+          target: "userMessage",
+          source: ContextPaths.EVENT_PAYLOAD,  // Maps event.data.payload to userMessage
+          default: "[No message provided]"
         },
         {
-          targetField: "additionalContext",
-          sourcePath: "$.eventPayload.context",   // Maps from event.context to template param additionalContext
-          defaultValue: "User is interacting with the agent brain system"
+          target: "additionalContext",
+          source: "$.event.data.context",      // Maps event.data.context if present
+          default: "User is interacting with the agent brain system"
         }
       ],
       x: 100,
@@ -126,17 +127,17 @@ export const runAgentBrainFlow: Rows = {
       promptTemplateId: "format-response",
       fieldMappings: [
         {
-          targetField: "userMessage",
-          sourcePath: "$.eventPayload.payload"
+          target: "userMessage",
+          source: ContextPaths.EVENT_PAYLOAD    // Original user message
         },
         {
-          targetField: "analysisResult",
-          sourcePath: "$.previousResults.Process User Message.result"
+          target: "analysisResult",
+          source: ContextPaths.stepByLabel('Process User Message')  // Get result by step label
         },
         {
-          targetField: "responseStyle",
-          sourcePath: "$.eventPayload.responseStyle",
-          defaultValue: "helpful and professional"
+          target: "responseStyle",
+          source: "$.event.data.responseStyle",
+          default: "helpful and professional"
         }
       ],
       x: 100,

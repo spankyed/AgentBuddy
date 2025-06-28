@@ -1,45 +1,59 @@
 /**
- * LLM Node Handler - Data-Driven Approach
+ * LLM Node Handler - Clean Data-Driven Architecture
  * 
- * ## Design Philosophy:
- * - All intelligence is in the data (schemas and mappings)
- * - The logic is "dumb" - it just applies mappings
- * - Templates receive exactly what they declare they need
+ * ## Improvements Made:
  * 
- * ## How it works:
- * 1. Each LLM node has fieldMappings that define:
- *    - What fields the template needs (targetField)
- *    - Where to get the data from (sourcePath)
- *    - Optional transforms and defaults
+ * 1. **Cleaner Event Structure**
+ *    - Before: eventPayload.payload (confusing nesting)
+ *    - After: event.data.payload (clear hierarchy)
  * 
- * 2. The runtime simply applies these mappings
+ * 2. **Type-Safe Configuration**
+ *    - Before: String paths like "$.eventPayload.message"
+ *    - After: Constants like ContextPaths.EVENT_MESSAGE
  * 
- * 3. Templates receive a clean, predictable structure
+ * 3. **Connected Templates**
+ *    - Templates declare their inputs with types and defaults
+ *    - System validates mappings against template expectations
+ *    - UI can show what data is needed and available
  * 
- * ## Example node configuration:
+ * 4. **Simpler Mappings**
+ *    - Before: targetField, sourcePath, defaultValue, transform
+ *    - After: target, source, default (transforms in template if needed)
+ * 
+ * ## Example Configuration:
  * ```
  * {
  *   nodeType: 'llm',
- *   label: 'Analyze User Message',
  *   promptTemplateId: 'user-message-analysis',
  *   fieldMappings: [
  *     {
- *       targetField: 'userMessage',
- *       sourcePath: '$.eventPayload.message',
- *       defaultValue: '[No message]'
- *     },
- *     {
- *       targetField: 'previousSummary',
- *       sourcePath: '$.previousResults.Process User Message.result.summary'
+ *       target: 'userMessage',
+ *       source: ContextPaths.EVENT_PAYLOAD,
+ *       default: '[No message]'
  *     }
  *   ]
+ * }
+ * ```
+ * 
+ * ## How Templates Work:
+ * ```
+ * {
+ *   id: 'my-template',
+ *   inputs: {
+ *     userMessage: {
+ *       type: 'string',
+ *       required: true,
+ *       commonSources: ['$.event.data.message']
+ *     }
+ *   },
+ *   templateFn: (params) => `Message: ${params.userMessage}`
  * }
  * ```
  */
 
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
-import { promptTemplateRegistry } from '@/systems/prompts/templates';
+import { promptTemplateRegistry, getTemplateWithValidation } from '@/systems/prompts/templates';
 import { applyFieldMappings } from '../field-mapper';
 import { createLogger } from '@/systems/logs/logger';
 
@@ -74,21 +88,37 @@ function generatePrompt(
   
   // Use template if specified
   if (node.promptTemplateId) {
-    const template = promptTemplateRegistry.get(node.promptTemplateId);
-    if (!template) {
-      logger.error(`Template ${node.promptTemplateId} not found`);
-      return 'Error: Template not found';
-    }
-    
     try {
       // Apply field mappings to generate template parameters
       const params = node.fieldMappings 
         ? applyFieldMappings(node.fieldMappings, context)
         : {};
       
-      logger.debug(`Template params for ${node.label}:`, params);
+      // Get template and validate params
+      const validation = getTemplateWithValidation(node.promptTemplateId, params);
+      if (!validation) {
+        logger.error(`Template ${node.promptTemplateId} not found`);
+        return 'Error: Template not found';
+      }
       
-      return template.templateFn(params);
+      const { template, errors } = validation;
+      
+      // Log any validation errors
+      if (errors.length > 0) {
+        logger.warn(`Template validation issues for ${node.label}:`, errors);
+      }
+      
+      // Apply defaults for missing params
+      const finalParams = { ...params };
+      for (const [name, input] of Object.entries(template.inputs)) {
+        if (!(name in finalParams) && input.defaultValue !== undefined) {
+          finalParams[name] = input.defaultValue;
+        }
+      }
+      
+      logger.debug(`Template params for ${node.label}:`, finalParams);
+      
+      return template.templateFn(finalParams);
     } catch (error) {
       logger.error(`Failed to generate prompt from template:`, { 
         templateId: node.promptTemplateId, 
