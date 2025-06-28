@@ -67,7 +67,7 @@ export const formatResponseTemplate: PromptTemplate = {
   },
   
   example: {
-    params: {
+    input: {
       userMessage: 'Can you help me debug this Python function?',
       analysisResult: {
         summary: "User needs help debugging Python",

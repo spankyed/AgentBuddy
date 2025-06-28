@@ -68,7 +68,7 @@ export const summaryTemplate: PromptTemplate = {
   },
   
   example: {
-    params: {
+    input: {
       firstAnalysis: { intent: "help", category: "technical" },
       secondAnalysis: { sentiment: "neutral", urgency: "medium" },
       originalMessage: "Can you help me debug this?",

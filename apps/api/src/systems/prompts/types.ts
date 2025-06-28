@@ -35,8 +35,8 @@ export interface PromptTemplate {
   
   // Example usage
   example?: {
-    params: Record<string, any>;
-    output: string;
+    input: Record<string, any>;
+    output: string | any;
   };
 }
 

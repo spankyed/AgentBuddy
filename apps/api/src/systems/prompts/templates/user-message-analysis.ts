@@ -50,7 +50,7 @@ export const userMessageAnalysisTemplate: PromptTemplate = {
   },
   
   example: {
-    params: {
+    input: {
       userMessage: 'Can you help me debug this Python function?',
       additionalContext: 'User is working on a data analysis project'
     },

@@ -47,7 +47,7 @@ ${content}
   },
   
   example: {
-    params: {
+    input: {
       filename: 'backend.ts',
       content: 'const server = express();'
     },
