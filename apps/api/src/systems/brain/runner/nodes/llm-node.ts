@@ -1,18 +1,138 @@
+/**
+ * LLM Node Handler - Clean Data-Driven Architecture
+ * 
+ * ## Improvements Made:
+ * 
+ * 1. **Cleaner Event Structure**
+ *    - Before: eventPayload.payload (confusing nesting)
+ *    - After: event.data.payload (clear hierarchy)
+ * 
+ * 2. **Type-Safe Configuration**
+ *    - Before: String paths like "$.eventPayload.message"
+ *    - After: Constants like ContextPaths.EVENT_MESSAGE
+ * 
+ * 3. **Connected Templates**
+ *    - Templates declare their inputs with types and defaults
+ *    - System validates mappings against template expectations
+ *    - UI can show what data is needed and available
+ * 
+ * 4. **Simpler Mappings**
+ *    - Before: targetField, sourcePath, defaultValue, transform
+ *    - After: target, source, default (transforms in template if needed)
+ * 
+ * ## Example Configuration:
+ * ```
+ * {
+ *   nodeType: 'llm',
+ *   promptTemplateId: 'user-message-analysis',
+ *   fieldMappings: [
+ *     {
+ *       target: 'userMessage',
+ *       source: ContextPaths.EVENT_PAYLOAD,
+ *       default: '[No message]'
+ *     }
+ *   ]
+ * }
+ * ```
+ * 
+ * ## How Templates Work:
+ * ```
+ * {
+ *   id: 'my-template',
+ *   inputs: {
+ *     userMessage: {
+ *       type: 'string',
+ *       required: true,
+ *       commonSources: ['$.event.data.message']
+ *     }
+ *   },
+ *   templateFn: (params) => `Message: ${params.userMessage}`
+ * }
+ * ```
+ */
+
 import type { NodeEntity } from '@/systems/flows/types';
-import type { ExecutionContext } from '@/systems/brain/types';
+import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
+import { promptTemplateRegistry, getTemplateWithValidation } from '@/systems/prompts/templates';
+import { applyFieldMappings } from '../field-mapper';
 import { createLogger } from '@/systems/logs/logger';
 
 const logger = createLogger('llm-node');
 
-type LLMNode = NodeEntity & {
+interface LLMNodeConfig {
+  // Core LLM settings
   model?: string;
-  prompt?: string;
   temperature?: number;
-};
+  maxTokens?: number;
+  systemPrompt?: string;
+  
+  // Prompt configuration
+  prompt?: string;                          // Direct prompt string
+  promptTemplateId?: string;                // Or use a template
+  fieldMappings?: FieldMapping[];           // Data-driven field mappings
+}
+
+type LLMNode = NodeEntity & LLMNodeConfig;
+
+/**
+ * Generate the prompt for the LLM
+ */
+function generatePrompt(
+  node: LLMNode,
+  context: ExecutionContext
+): string {
+  // Direct prompt takes precedence
+  if (node.prompt) {
+    return node.prompt;
+  }
+  
+  // Use template if specified
+  if (node.promptTemplateId) {
+    try {
+      // Apply field mappings to generate template parameters
+      const params = node.fieldMappings 
+        ? applyFieldMappings(node.fieldMappings, context)
+        : {};
+      
+      // Get template and validate params
+      const validation = getTemplateWithValidation(node.promptTemplateId, params);
+      if (!validation) {
+        logger.error(`Template ${node.promptTemplateId} not found`);
+        return 'Error: Template not found';
+      }
+      
+      const { template, errors } = validation;
+      
+      // Log any validation errors
+      if (errors.length > 0) {
+        logger.warn(`Template validation issues for ${node.label}:`, errors);
+      }
+      
+      // Apply defaults for missing params
+      const finalParams = { ...params };
+      for (const [name, input] of Object.entries(template.inputs)) {
+        if (!(name in finalParams) && input.defaultValue !== undefined) {
+          finalParams[name] = input.defaultValue;
+        }
+      }
+      
+      logger.debug(`Template params for ${node.label}:`, finalParams);
+      
+      return template.templateFn(finalParams);
+    } catch (error) {
+      logger.error(`Failed to generate prompt from template:`, { 
+        templateId: node.promptTemplateId, 
+        error 
+      });
+      return 'Error: Failed to generate prompt';
+    }
+  }
+  
+  return 'No prompt specified';
+}
 
 /**
  * Handle execution of an LLM node
- * LLM nodes make calls to language models
  */
 export function llmNodeHandler(
   node: NodeEntity,
@@ -23,19 +143,50 @@ export function llmNodeHandler(
   
   logger.debug(`Executing LLM node: ${node.label}`, {
     model: llmNode.model || 'default',
-    prompt: llmNode.prompt || 'No prompt specified'
+    hasPrompt: !!llmNode.prompt,
+    templateId: llmNode.promptTemplateId,
+    mappingsCount: llmNode.fieldMappings?.length || 0,
+  });
+  
+  // Generate the prompt
+  const prompt = generatePrompt(llmNode, executionContext);
+  
+  logger.debug(`Generated prompt:`, {
+    nodeLabel: node.label,
+    promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
   });
   
   // TODO: Implement actual LLM call
-  // For now, simulate async execution
+  // For now, simulate async execution with mock response
   setTimeout(() => {
+    // Simulate different responses based on the node
+    let mockResponse: any;
+    
+    if (node.label === 'Process User Message') {
+      mockResponse = {
+        summary: 'User is asking for help with debugging',
+        intent: 'technical_support',
+        entities: ['debugging', 'help'],
+        category: 'programming_help',
+        urgency: 'medium'
+      };
+    } else if (node.label === 'Format Response') {
+      mockResponse = {
+        formattedMessage: 'I understand you need help with debugging. Let me assist you with that.',
+        responseType: 'helpful',
+        suggestedActions: ['provide_debugging_tips', 'ask_for_code_snippet']
+      };
+    } else {
+      mockResponse = {
+        result: `Processed prompt for ${node.label}`,
+        prompt: prompt.substring(0, 100) + '...',
+        timestamp: Date.now()
+      };
+    }
+    
     actor.send({ 
       type: 'COMPLETE', 
-      result: { 
-        response: 'Simulated LLM response',
-        model: llmNode.model || 'default',
-        promptUsed: llmNode.prompt
-      } 
+      result: mockResponse
     });
   }, 1000);
 } 

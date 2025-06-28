@@ -137,12 +137,27 @@ export function createFlowMachine(
           if (firstStep) {
             const eventTNode = createEventTNode(eventNode, flowTNodeId);
 
-            // Create a new execution context for this event track
+            // Create execution context with cleaner structure
+            const { type, ...eventData } = event;
+            
             const eventTrackContext: ExecutionContext = {
-              eventType,
-              eventPayload: (event as any).payload,
-              previousResults: [],
+              event: {
+                type: eventType,
+                data: eventData,
+                timestamp: Date.now(),
+              },
+              steps: [],
+              lastStep: undefined,
             };
+
+            logger.debug(`Event ${eventType} received:`, {
+              eventData,
+              contextStructure: {
+                'event.type': eventType,
+                'event.data': eventData,
+                'steps.length': 0
+              }
+            });
 
             // Store the execution context for this event track
             enqueue.assign({
@@ -190,17 +205,17 @@ export function createFlowMachine(
           if (typedEv.eventTNodeId && typedEv.stepId) {
             executionContext = context.eventTrackContexts[typedEv.eventTNodeId];
             if (executionContext) {
+              const newStep = {
+                id: typedEv.stepId,
+                label: typedEv.stepLabel || '',
+                result: typedEv.result,
+                timestamp: Date.now(),
+              };
+              
               const updatedContext: ExecutionContext = {
                 ...executionContext,
-                previousResults: [
-                  ...executionContext.previousResults,
-                  {
-                    stepId: typedEv.stepId,
-                    stepLabel: typedEv.stepLabel || '',
-                    result: typedEv.result,
-                    timestamp: Date.now(),
-                  },
-                ],
+                steps: [...executionContext.steps, newStep],
+                lastStep: newStep,
               };
               
               eventTrackContexts = {

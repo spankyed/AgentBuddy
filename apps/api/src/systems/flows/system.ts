@@ -47,7 +47,6 @@ export const flowsSystem = setup({
   },
   actions: {
     sendFlowsStartupData: ({ system }) => {
-      logger.debug('Sending FE startup event');
       system.get(bus).send(emit(flows, { 
         type: 'FLOWS_STARTUP',
         data: flowsStartupData()

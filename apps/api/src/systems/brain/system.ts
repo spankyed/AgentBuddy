@@ -10,6 +10,12 @@ import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './t
 import getRootData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
 
+const eventsCatalog = {
+  'user.message': z.object({
+    text: z.string(),
+  }),
+}
+
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const brain = 'brain' as const;
@@ -26,6 +32,7 @@ export const IncomingBrainEvents = [
 export type BrainInternalEvents = 
   | SystemEvents
   | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
+  | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
@@ -85,6 +92,19 @@ export const brainSystem = setup({
         data
       }));
     },
+    triggerBrainEvent: ({ system, event, context }) => {
+      console.log('TRIGGER_BRAIN_EVENT', event);
+      const ev = typeOf('TRIGGER_BRAIN_EVENT', event);
+      const { eventType, payload } = ev;
+      // const brainActor = getActor(system, brainBus);
+      const brainActor = system.get(brainBus);
+
+
+      brainActor.send({
+        type: eventType,
+        payload
+      });
+    },
     handleEventReceived: ({ system, event, context }) => {
       if (event.type === 'TRACE_EVENT_RECEIVED') {
         // Pulse the event in UI
@@ -138,6 +158,9 @@ export const brainSystem = setup({
           },
           TRACE_EVENT_RECEIVED: {
             actions: 'handleEventReceived',
+          },
+          TRIGGER_BRAIN_EVENT: {
+            actions: 'triggerBrainEvent',
           },
         },
       }

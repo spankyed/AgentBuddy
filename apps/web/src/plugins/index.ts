@@ -13,6 +13,7 @@ import {
   Workflow,
   Bird,
   ListTodo,
+  Library,
   NotebookText,
   LandPlot
 } from 'lucide-vue-next';
@@ -28,6 +29,7 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
+  mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
   mockPlugin({ id: 'actions', label: 'Actions', icon: LandPlot, }),
   mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),

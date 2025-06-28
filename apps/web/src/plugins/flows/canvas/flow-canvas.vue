@@ -36,8 +36,8 @@
       @nodes-initialized="handleNodesInitialized"
     />
 
-    <!-- ▸ Node editor overlay -->
-    <NodeEditor
+    <!-- ▸ Node form overlay -->
+    <NodeForm
       :selected-node="selected"
       @close="handleCloseNodeEditor"
     />
@@ -73,7 +73,7 @@ import { useSelector } from '@xstate/vue'
 import FlowsList from './components/FlowsList.vue'
 import NodePalette from './components/NodePalette.vue'
 import FlowCanvas from './components/FlowEditor.vue'
-import NodeEditor from './components/NodeForm.vue'
+import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()

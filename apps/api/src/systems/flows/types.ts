@@ -94,7 +94,17 @@ export interface KeepAliveNode extends NodeBase {
 
 export interface LLMNode extends NodeBase {
   nodeType: 'llm';
-  prompt: string;
+  
+  // Prompt configuration
+  prompt?: string;                    // Direct prompt string
+  promptTemplateId?: string;          // Or use a registered template ID
+  fieldMappings?: Array<{             
+    target: string;                   // Target field name in template
+    source: string;                   // Path to extract value (e.g., '$.event.data.message')
+    default?: any;                    // Default if source is undefined
+  }>;
+  
+  // LLM configuration
   model?: string;
   temperature?: number;
   maxTokens?: number;

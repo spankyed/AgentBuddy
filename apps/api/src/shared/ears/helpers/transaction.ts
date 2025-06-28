@@ -145,6 +145,34 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
       }),
       self
     ),
+    define: (def: {
+      attributes?: Record<string, unknown>;
+      links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
+      roles?: string | string[];
+    }) => {
+      if (def.attributes) {
+        self.batchPut(def.attributes);
+      }
+
+      if (def.links) {
+        const links = Array.isArray(def.links[0])
+          ? def.links as Array<[EARS.RelKind, EARS.EntityId]>
+          : [def.links] as Array<[EARS.RelKind, EARS.EntityId]>;
+
+        for (const [kind, target] of links) {
+          self.link(kind, target);
+        }
+      }
+
+      if (def.roles) {
+        const roles = Array.isArray(def.roles) ? def.roles : [def.roles];
+        for (const role of roles) {
+          self.grant(role);
+        }
+      }
+
+      return self;
+    },
 
     /*─ entity lifecycle ─*/
     destroy: () => (destroyEntity(id), undefined as never),

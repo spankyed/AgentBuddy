@@ -8,30 +8,30 @@
           <div class="flex items-center gap-3">
             <!-- Search Input -->
             <div class="relative flex-1 max-w-md">
-              <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <Search :size="16" class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
               <input
                 :value="searchTerm"
                 @input="setSearch"
                 type="text"
                 placeholder="Search logs..."
-                class="w-full py-2 pl-10 pr-3 text-sm bg-neutral-800 border rounded-lg outline-none placeholder-neutral-500 transition-colors"
+                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-800 placeholder-neutral-500"
                 :class="searchTerm ? 'border-neutral-600 bg-neutral-800/70' : 'border-neutral-700 focus:border-neutral-600 focus:bg-neutral-800/50'"
               />
               <!-- Clear search button -->
               <button 
                 v-if="searchTerm"
                 @click="clearSearch"
-                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
+                class="absolute p-1 transition-colors -translate-y-1/2 right-2 top-1/2 text-neutral-500 hover:text-neutral-300"
               >
                 <X :size="14" />
               </button>
             </div>
             
             <!-- Level Filter Pills -->
-            <div class="flex items-center gap-1 px-3 py-1 bg-neutral-800 rounded-lg">
+            <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-800">
               <button
                 @click="setFilterLevelDirect('all')"
-                class="px-3 py-1 text-xs font-medium rounded transition-colors"
+                class="px-3 py-1 text-xs font-medium transition-colors rounded"
                 :class="filterLevel === 'all' 
                   ? 'bg-neutral-700 text-neutral-100' 
                   : 'text-neutral-400 hover:text-neutral-200'"
@@ -48,7 +48,7 @@
               <button
                 v-if="debugCount > 0"
                 @click="setFilterLevelDirect('debug')"
-                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium transition-colors rounded"
                 :class="filterLevel === 'debug' 
                   ? 'bg-neutral-700 text-neutral-100' 
                   : 'text-neutral-500 hover:text-neutral-300'"
@@ -60,7 +60,7 @@
               <button
                 v-if="infoCount > 0"
                 @click="setFilterLevelDirect('info')"
-                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium transition-colors rounded"
                 :class="filterLevel === 'info' 
                   ? 'bg-blue-500/20 text-blue-400' 
                   : 'text-blue-400/60 hover:text-blue-400'"
@@ -72,7 +72,7 @@
               <button
                 v-if="warnCount > 0"
                 @click="setFilterLevelDirect('warn')"
-                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium transition-colors rounded"
                 :class="filterLevel === 'warn' 
                   ? 'bg-yellow-500/20 text-yellow-400' 
                   : 'text-yellow-400/60 hover:text-yellow-400'"
@@ -84,7 +84,7 @@
               <button
                 v-if="errorCount > 0"
                 @click="setFilterLevelDirect('error')"
-                class="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded transition-colors"
+                class="flex items-center gap-1 px-3 py-1 text-xs font-medium transition-colors rounded"
                 :class="filterLevel === 'error' 
                   ? 'bg-red-500/20 text-red-400' 
                   : 'text-red-400/60 hover:text-red-400'"
@@ -135,7 +135,7 @@
           <div v-if="logs.length > 0" class="mt-4">
             <button 
               @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
-              class="px-4 py-2 text-sm font-medium text-neutral-300 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors"
+              class="px-4 py-2 text-sm font-medium transition-colors rounded-lg text-neutral-300 bg-neutral-800 hover:bg-neutral-700"
             >
               Show all logs
             </button>
@@ -149,7 +149,7 @@
           <div 
             v-for="log in filteredLogs" 
             :key="log.id"
-            class="group hover:bg-neutral-800/30 transition-colors"
+            class="transition-colors group hover:bg-neutral-800/30"
           >
             <div 
               class="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
@@ -171,14 +171,14 @@
               
               <!-- Message -->
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-neutral-200 break-words">
+                <p class="text-sm break-words text-neutral-200">
                   <span v-if="searchTerm" v-html="highlightSearchTerm(log.message)"></span>
                   <span v-else>{{ log.message }}</span>
                 </p>
               </div>
               
               <!-- Right side metadata -->
-              <div class="flex items-center gap-3 flex-shrink-0 ml-auto text-xs">
+              <div class="flex items-center flex-shrink-0 gap-3 ml-auto text-xs">
                 <!-- Source Badge (if exists) -->
                 <span 
                   v-if="log.source" 
@@ -193,11 +193,11 @@
                 </span>
                 
                 <!-- Expansion Indicator or spacer -->
-                <div class="w-4 flex items-center justify-center">
+                <div class="flex items-center justify-center w-4">
                   <ChevronRight 
                     v-if="hasExpandableContent(log)"
                     :size="12" 
-                    class="text-neutral-400 transition-transform"
+                    class="transition-transform text-neutral-400"
                     :class="isExpanded(log.id) ? 'rotate-90' : ''"
                   />
                 </div>
@@ -206,21 +206,21 @@
             
             <!-- Expandable Content -->
             <Transition name="expand-fade">
-              <div v-if="isExpanded(log.id)" class="px-4 pb-3 ml-7 border-l-2 border-neutral-800">
+              <div v-if="isExpanded(log.id)" class="px-4 pb-3 border-l-2 ml-7 border-neutral-800">
                 <div class="ml-4 space-y-2">
                   <!-- Meta Data -->
-                  <div v-if="expandedContent.get(log.id) === 'meta' && log.meta" class="p-3 bg-neutral-800/50 rounded-lg">
+                  <div v-if="expandedContent.get(log.id) === 'meta' && log.meta" class="p-3 rounded-lg bg-neutral-800/50">
                     <div class="mb-1 text-xs font-medium text-neutral-400">Metadata</div>
                     <DataRenderer :data="log.meta" />
                   </div>
                   
                   <!-- Stack Trace -->
-                  <div v-if="expandedContent.get(log.id) === 'stack' && log.stack" class="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                  <div v-if="expandedContent.get(log.id) === 'stack' && log.stack" class="p-3 border rounded-lg bg-red-500/5 border-red-500/20">
                     <div class="flex items-center gap-1.5 mb-2">
                       <FileWarning :size="12" class="text-red-400" />
                       <span class="text-xs font-medium text-red-400">Stack Trace</span>
                     </div>
-                    <pre class="font-mono text-xs text-red-300/90 whitespace-pre-wrap">{{ formatStackTrace(log.stack) }}</pre>
+                    <pre class="font-mono text-xs whitespace-pre-wrap text-red-300/90">{{ formatStackTrace(log.stack) }}</pre>
                   </div>
                   
                   <!-- Content type toggles -->
@@ -228,7 +228,7 @@
                     <button 
                       v-if="log.meta && Object.keys(log.meta).length > 0"
                       @click.stop="toggleContent(log.id, 'meta')"
-                      class="px-2 py-1 text-xs rounded transition-colors"
+                      class="px-2 py-1 text-xs transition-colors rounded"
                       :class="expandedContent.get(log.id) === 'meta' 
                         ? 'bg-neutral-700 text-neutral-200' 
                         : 'text-neutral-400 hover:text-neutral-200'"
@@ -238,7 +238,7 @@
                     <button 
                       v-if="log.stack"
                       @click.stop="toggleContent(log.id, 'stack')"
-                      class="px-2 py-1 text-xs rounded transition-colors"
+                      class="px-2 py-1 text-xs transition-colors rounded"
                       :class="expandedContent.get(log.id) === 'stack' 
                         ? 'bg-red-500/20 text-red-400' 
                         : 'text-neutral-400 hover:text-red-400'"
@@ -467,8 +467,8 @@ const isExpanded = (logId: string) => {
 // Get available content types for a log
 const getAvailableContent = (log: LogEntry): ContentType[] => {
   const available: ContentType[] = [];
-  if (log.meta && Object.keys(log.meta).length > 0) available.push('meta');
   if (log.stack) available.push('stack');
+  if (log.meta && Object.keys(log.meta).length > 0) available.push('meta');
   return available;
 };
 </script>
