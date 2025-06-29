@@ -1,5 +1,5 @@
 import { uuid } from "drizzle-orm/gel-core";
-import { LogEntry } from "./types";
+import { LogEntry } from "@/systems/logs/types";
 
 const mockLogs: LogEntry[] = [
   {

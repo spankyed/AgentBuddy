@@ -1,5 +1,5 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import { flowRows } from './repository/mock-data';
+import { flowRows } from '@/systems/_backend/mock-data/flows';
 
 
 export interface FlowEntity extends BaseEntity {
