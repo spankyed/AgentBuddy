@@ -2,6 +2,8 @@
  * Prompt template types and definitions
  */
 
+import { BaseEntity, EARS } from '@/shared/ears/types';
+
 /**
  * Defines an input that a template expects
  */
@@ -86,4 +88,29 @@ export function getTemplateWithValidation(
   }
   
   return { template, errors };
+}
+
+/**
+ * Defines a prompt entity stored in the system
+ */
+export interface PromptEntity extends BaseEntity {
+  entityType: EARS.Entity.Prompt;
+  label: string;
+  description?: string;
+  category?: string;
+  inputs: Record<string, TemplateInput>;
+  templateFn: string;  // Stored as string, evaluated at runtime
+  outputSchema?: any;  // Optional JSON schema for structured output
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Data sent on prompts system startup
+ */
+export interface PromptsStartupData {
+  prompts: PromptEntity[];
+  page: number;
+  totalPages: number;
+  totalCount: number;
 } 

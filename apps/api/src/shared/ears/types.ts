@@ -21,6 +21,7 @@ export namespace EARS {
     Flow = 'Flow',
     Node = 'Node',
     TNode = 'TNode',
+    Prompt = 'Prompt',
   }
   export type EntityId = `${Entity}-${string}`;
 

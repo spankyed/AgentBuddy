@@ -4,6 +4,7 @@ import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
 import Brain from './brain/plugin.ts';
 import Logs from './logs/plugin.ts';
+import Prompts from './prompts/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
@@ -31,7 +32,6 @@ const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
   mockPlugin({ id: 'actions', label: 'Actions', icon: LandPlot, }),
-  mockPlugin({ id: 'prompt', label: 'Prompt Builder', icon: Sparkle, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
   mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
@@ -44,6 +44,7 @@ export default [
   Agent,
   Brain,
   Flows,
+  Prompts,
   Database,
   Logs,
   ...mockPlugins,

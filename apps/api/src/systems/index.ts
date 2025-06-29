@@ -8,6 +8,7 @@ import { threads, threadsSystem, ThreadsSystemEvents } from '@/systems/threads/s
 import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
 import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/database/system';
 import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
+import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
 
 export default {
   [agent]: agentSystem,
@@ -15,6 +16,7 @@ export default {
   [threads]: threadsSystem,
   [flows]: flowsSystem,
   [database]: databaseSystem,
+  [prompts]: promptsSystem,
   // [logs]: logsSystem,
 } as const;
 
@@ -24,7 +26,8 @@ export const events = mergeSystems(
   ThreadsSystemEvents,
   FlowsSystemEvents,
   DatabaseSystemEvents,
-  LogsSystemEvents
+  LogsSystemEvents,
+  PromptsSystemEvents
 );
 
 export { backendSystem } from "@/systems/_backend/backend";
