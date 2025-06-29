@@ -1,25 +1,12 @@
 import type { Rows } from '@/shared/types';
-import { summarizeTextPrompt } from './prompts/summarize-text';
-import { codeReviewPrompt } from './prompts/code-review';
-import { qaAssistantPrompt } from './prompts/qa-assistant';
+import { summarizeTextPrompt } from './summarize-text';
+import { codeReviewPrompt } from './code-review';
+import { qaAssistantPrompt } from './qa-assistant';
+import { composeData } from '@/systems/_backend/mock-data';
 
 // Combine all prompt data
-export const promptRows: Rows = {
-  entity: [
-    ...summarizeTextPrompt.entity,
-    ...codeReviewPrompt.entity,
-    ...qaAssistantPrompt.entity,
-  ],
-  
-  role: [
-    ...summarizeTextPrompt.role,
-    ...codeReviewPrompt.role,
-    ...qaAssistantPrompt.role,
-  ],
-  
-  relation: [
-    ...summarizeTextPrompt.relation,
-    ...codeReviewPrompt.relation,
-    ...qaAssistantPrompt.relation,
-  ],
-};
+export const promptRows: Rows = composeData([
+  summarizeTextPrompt,
+  codeReviewPrompt,
+  qaAssistantPrompt,
+]);

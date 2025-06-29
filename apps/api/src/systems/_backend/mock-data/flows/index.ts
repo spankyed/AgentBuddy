@@ -1,25 +1,11 @@
 import type { Rows } from '@/shared/types';
-import { runAgentBrainFlow } from './flows/run-agent-brain';
-import { chatFlow } from './flows/chat-flow';
-import { someFlowWithValidation } from './flows/some-flow-with-validation';
+import { runAgentBrainFlow } from './run-agent-brain';
+import { chatFlow } from './chat-flow';
+import { someFlowWithValidation } from './some-flow-with-validation';
+import { composeData } from '@/systems/_backend/mock-data';
 
-// Combine all flow data
-export const flowRows: Rows = {
-  entity: [
-    ...runAgentBrainFlow.entity,
-    ...chatFlow.entity,
-    ...someFlowWithValidation.entity,
-  ],
-  
-  role: [
-    ...runAgentBrainFlow.role,
-    ...chatFlow.role,
-    ...someFlowWithValidation.role,
-  ],
-  
-  relation: [
-    ...runAgentBrainFlow.relation,
-    ...chatFlow.relation,
-    ...someFlowWithValidation.relation,
-  ],
-};
+export const flowRows: Rows = composeData([
+  runAgentBrainFlow,
+  chatFlow,
+  someFlowWithValidation,
+]);
