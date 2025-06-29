@@ -4,11 +4,8 @@ import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
-import promptsStartupData from './repository/startup';
 import { PromptsStartupData, PromptEntity } from './types';
-import { getPromptById } from './repository/read';
-import { createPrompt } from './repository/create';
-import { updatePrompt } from './repository/update';
+import { promptsStartupData, getPromptById, createPrompt, updatePrompt, deletePrompt } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
 
@@ -25,14 +22,18 @@ export const IncomingPromptEvents = [
     label: z.string(),
     inputs: z.record(z.any()),
     templateFn: z.string(),
-    outputSchema: z.any().optional()
+    outputSchema: z.any().optional(),
+    description: z.string().optional(),
+    category: z.string().optional()
   }),
   busEvent('UPDATE_PROMPT', { 
     promptId: z.string(),
     label: z.string().optional(),
     inputs: z.record(z.any()).optional(),
     templateFn: z.string().optional(),
-    outputSchema: z.any().optional()
+    outputSchema: z.any().optional(),
+    description: z.string().optional(),
+    category: z.string().optional()
   }),
   busEvent('DELETE_PROMPT', { promptId: z.string() }),
   busEvent('FETCH_PROMPTS_PAGE', { page: z.number().optional() }),
@@ -85,7 +86,9 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
-        outputSchema: ev.outputSchema
+        outputSchema: ev.outputSchema,
+        description: ev.description,
+        category: ev.category
       });
 
       system.get(bus).send(emit(prompts, {
@@ -100,7 +103,9 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
-        outputSchema: ev.outputSchema
+        outputSchema: ev.outputSchema,
+        description: ev.description,
+        category: ev.category
       });
 
       if (updatedPrompt) {
@@ -113,10 +118,26 @@ export const promptsSystem = setup({
     },
     deletePrompt: ({ system, event }) => {
       const ev = typeOf('DELETE_PROMPT', event);
-      // Implementation would go here
+      const success = deletePrompt(ev.promptId as EARS.EntityId);
+      
+      if (success) {
+        system.get(bus).send(emit(prompts, {
+          type: 'PROMPT_DELETED',
+          promptId: ev.promptId as EARS.EntityId,
+        }));
+      }
+    },
+    fetchPromptsPage: ({ system, event }) => {
+      const ev = typeOf('FETCH_PROMPTS_PAGE', event);
+      const data = promptsStartupData(ev.page || 1);
+      
       system.get(bus).send(emit(prompts, {
-        type: 'PROMPT_DELETED',
-        promptId: ev.promptId as EARS.EntityId,
+        type: 'PROMPTS_PAGE_LOADED',
+        data: {
+          prompts: data.prompts,
+          page: data.page,
+          totalPages: data.totalPages
+        }
       }));
     },
   },
@@ -139,6 +160,9 @@ export const promptsSystem = setup({
       },
       DELETE_PROMPT: {
         actions: 'deletePrompt',
+      },
+      FETCH_PROMPTS_PAGE: {
+        actions: 'fetchPromptsPage',
       },
     },
     states: {

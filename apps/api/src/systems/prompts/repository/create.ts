@@ -1,6 +1,7 @@
+import { tx } from '@/shared/ears/helpers/transaction';
+import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { PromptEntity, TemplateInput } from '../types';
-import { addPrompt } from './mock-data';
 
 export function createPrompt(data: {
   label: string;
@@ -10,8 +11,8 @@ export function createPrompt(data: {
   description?: string;
   category?: string;
 }): PromptEntity {
-  const now = Date.now();
-  const id = `prompt-${now}` as EARS.EntityId;
+  const ts = Date.now();
+  const count = qx(EARS.Entity.Prompt).count() + 1;
   
   // Transform inputs to proper TemplateInput format
   const transformedInputs: Record<string, TemplateInput> = {};
@@ -28,8 +29,7 @@ export function createPrompt(data: {
     }
   }
   
-  const newPrompt: PromptEntity = {
-    id,
+  const newPrompt: Omit<PromptEntity, 'id'> = {
     entityType: EARS.Entity.Prompt,
     label: data.label,
     description: data.description,
@@ -37,10 +37,13 @@ export function createPrompt(data: {
     inputs: transformedInputs,
     templateFn: data.templateFn,
     outputSchema: data.outputSchema,
-    createdAt: now,
-    updatedAt: now
+    createdAt: ts,
+    updatedAt: ts
   };
   
-  addPrompt(newPrompt);
-  return newPrompt;
+  const id = tx(EARS.Entity.Prompt)
+    .batchPut(newPrompt)
+    .id();
+  
+  return { id, ...newPrompt };
 } 

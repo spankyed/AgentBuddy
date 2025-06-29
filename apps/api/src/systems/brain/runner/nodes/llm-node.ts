@@ -53,7 +53,7 @@
 
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
-import { promptTemplateRegistry, getTemplateWithValidation } from '@/systems/prompts/templates';
+// Template registry functionality has been moved to EARS datastore
 import { applyFieldMappings } from '../field-mapper';
 import { createLogger } from '@/systems/logs/logger';
 
@@ -94,31 +94,16 @@ function generatePrompt(
         ? applyFieldMappings(node.fieldMappings, context)
         : {};
       
-      // Get template and validate params
-      const validation = getTemplateWithValidation(node.promptTemplateId, params);
-      if (!validation) {
-        logger.error(`Template ${node.promptTemplateId} not found`);
-        return 'Error: Template not found';
-      }
+      // TODO: Replace with EARS datastore lookup for prompt templates
+      // For now, return a simple template-based prompt
+      logger.debug(`Template params for ${node.label}:`, params);
       
-      const { template, errors } = validation;
+      // Simple fallback until template system is integrated with EARS
+      const paramsString = Object.entries(params)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
       
-      // Log any validation errors
-      if (errors.length > 0) {
-        logger.warn(`Template validation issues for ${node.label}:`, errors);
-      }
-      
-      // Apply defaults for missing params
-      const finalParams = { ...params };
-      for (const [name, input] of Object.entries(template.inputs)) {
-        if (!(name in finalParams) && input.defaultValue !== undefined) {
-          finalParams[name] = input.defaultValue;
-        }
-      }
-      
-      logger.debug(`Template params for ${node.label}:`, finalParams);
-      
-      return template.templateFn(finalParams);
+      return `Template ID: ${node.promptTemplateId}\n\nParameters:\n${paramsString}`;
     } catch (error) {
       logger.error(`Failed to generate prompt from template:`, { 
         templateId: node.promptTemplateId, 

@@ -1,6 +1,36 @@
+import { tx } from '@/shared/ears/helpers/transaction';
+import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { PromptEntity, TemplateInput } from '../types';
-import { getPromptById, updatePromptInStore } from './mock-data';
+
+const promptFields = [
+  'id',
+  'entityType', 
+  'label',
+  'description',
+  'category',
+  'inputs',
+  'templateFn',
+  'outputSchema',
+  'createdAt',
+  'updatedAt'
+] as const;
+
+function transformInputs(inputs: Record<string, any>): Record<string, TemplateInput> {
+  const transformed: Record<string, TemplateInput> = {};
+  for (const [key, value] of Object.entries(inputs)) {
+    if (typeof value === 'object' && value !== null) {
+      transformed[key] = value as TemplateInput;
+    } else {
+      transformed[key] = {
+        name: key,
+        type: 'any',
+        required: true
+      };
+    }
+  }
+  return transformed;
+}
 
 export function updatePrompt(
   id: EARS.EntityId,
@@ -13,39 +43,37 @@ export function updatePrompt(
     category?: string;
   }
 ): PromptEntity | undefined {
-  const existingPrompt = getPromptById(id);
+  // Check if prompt exists
+  const existingPrompt = qx(id).pick(['id']);
   if (!existingPrompt) {
     return undefined;
   }
   
-  // Transform inputs if provided
-  let transformedInputs: Record<string, TemplateInput> | undefined;
-  if (data.inputs) {
-    transformedInputs = {};
-    for (const [key, value] of Object.entries(data.inputs)) {
-      if (typeof value === 'object' && value !== null) {
-        transformedInputs[key] = value as TemplateInput;
-      } else {
-        transformedInputs[key] = {
-          name: key,
-          type: 'any',
-          required: true
-        };
-      }
-    }
-  }
-  
-  const updatedPrompt: PromptEntity = {
-    ...existingPrompt,
-    ...(data.label && { label: data.label }),
-    ...(data.description !== undefined && { description: data.description }),
-    ...(data.category !== undefined && { category: data.category }),
-    ...(transformedInputs && { inputs: transformedInputs }),
-    ...(data.templateFn && { templateFn: data.templateFn }),
-    ...(data.outputSchema !== undefined && { outputSchema: data.outputSchema }),
+  // Build update attributes
+  const updates: Record<string, unknown> = {
     updatedAt: Date.now()
   };
   
-  updatePromptInStore(id, updatedPrompt);
-  return updatedPrompt;
+  if (data.label !== undefined) updates.label = data.label;
+  if (data.description !== undefined) updates.description = data.description;
+  if (data.category !== undefined) updates.category = data.category;
+  if (data.templateFn !== undefined) updates.templateFn = data.templateFn;
+  if (data.outputSchema !== undefined) updates.outputSchema = data.outputSchema;
+  if (data.inputs !== undefined) updates.inputs = transformInputs(data.inputs);
+  
+  // Apply all updates in one fluent chain
+  tx(id).batchPut(updates);
+  
+  // Return updated prompt
+  return qx(id).pick(promptFields) as unknown as PromptEntity;
+}
+
+export function deletePrompt(id: EARS.EntityId): boolean {
+  // Check if prompt exists before attempting delete
+  if (!qx(id).pick(['id'])) {
+    return false;
+  }
+  
+  tx(id).destroy();
+  return true;
 } 

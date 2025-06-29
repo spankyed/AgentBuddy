@@ -4,6 +4,7 @@
 
 import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
 import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "../types";
+import { PromptEntity } from "@/systems/prompts/types";
 
 export namespace EARS {
   /*-------------------------------------------------------------------------*\
@@ -141,3 +142,4 @@ export type Entity =
   | FlowEntity
   | NodeEntity
   | TNodeEntity
+  | PromptEntity
