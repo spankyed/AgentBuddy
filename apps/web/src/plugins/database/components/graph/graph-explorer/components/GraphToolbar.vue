@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-neutral-800 dark:bg-gray-800">
+  <div class="flex items-center justify-between px-4 py-2.5 border-b border-neutral-700 dark:border-gray-700 bg-neutral-800 dark:bg-gray-800">
     <div class="flex items-center gap-3">
       <!-- Layout Selector -->
       <LayoutSelector 

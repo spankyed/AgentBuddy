@@ -7,12 +7,12 @@
     leave-from-class="translate-x-0 opacity-100"
     leave-to-class="translate-x-full opacity-0"
   >
-    <div class="absolute w-64 p-4 bg-white border border-gray-200 rounded-lg shadow-lg top-4 right-4 dark:bg-gray-800 dark:border-gray-700">
+    <div class="absolute w-64 p-4 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg top-4 right-4 dark:bg-gray-800 dark:border-gray-700">
       <div class="flex items-center justify-between mb-3">
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Node Details</h4>
+        <h4 class="text-sm font-semibold text-neutral-100 dark:text-gray-100">Node Details</h4>
         <button
           @click="$emit('close')"
-          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          class="p-1 rounded hover:bg-neutral-800 dark:hover:bg-gray-700 transition-colors"
           title="Close panel"
         >
           <X class="w-3 h-3 text-gray-500" />
@@ -30,7 +30,7 @@
         />
         
         <!-- Additional properties -->
-        <div v-if="additionalProperties.length > 0" class="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div v-if="additionalProperties.length > 0" class="pt-2 border-t border-neutral-700 dark:border-gray-700">
           <h5 class="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Properties</h5>
           <div class="space-y-2">
             <InfoField 

@@ -2,7 +2,7 @@
   <div class="absolute inset-0 flex items-center justify-center">
     <div class="text-center">
       <div class="relative inline-block">
-        <Database class="w-16 h-16 mx-auto mb-4 text-neutral-400 dark:text-gray-600" />
+        <Database class="w-16 h-16 mx-auto mb-4 text-neutral-400 dark:text-neutral-400" />
         <div class="absolute inset-0 animate-ping">
           <Database class="w-16 h-16 mx-auto text-neutral-300 opacity-75 dark:text-gray-700" />
         </div>

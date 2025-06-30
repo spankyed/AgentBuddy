@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-1 p-1 bg-gray-100 rounded-lg dark:bg-gray-800">
+  <div class="flex items-center gap-1 p-1 bg-neutral-800 rounded-lg dark:bg-gray-800">
     <button
       v-for="layout in layouts"
       :key="layout.type"
@@ -8,8 +8,8 @@
       :class="[
         'px-2 py-1 text-xs font-medium rounded transition-all',
         modelValue === layout.type
-          ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
+          ? 'bg-neutral-800 dark:bg-gray-700 text-neutral-100 dark:text-gray-100 shadow-sm'
+          : 'text-neutral-400 dark:text-gray-400 hover:text-neutral-100 dark:hover:text-gray-200',
         disabled && 'opacity-50 cursor-not-allowed'
       ]"
       :title="layout.description"

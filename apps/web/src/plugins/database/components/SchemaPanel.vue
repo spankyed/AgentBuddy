@@ -75,7 +75,7 @@
                 'group flex items-center py-1.5 px-3 rounded-lg cursor-pointer text-sm transition-all duration-150',
                 selectedItemId === child.id 
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                  : 'hover:bg-neutral-700/50 text-neutral-600 dark:text-neutral-400'
+                  : 'hover:bg-neutral-700/50 text-neutral-400 dark:text-neutral-400'
               ]"
               @click="selectItem(child)"
               :title="child.description || child.label"
@@ -103,7 +103,7 @@
       
       <!-- Empty state -->
       <div v-if="filteredCategories.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
-        <Search class="w-12 h-12 mb-3 text-neutral-300 dark:text-neutral-600" />
+        <Search class="w-12 h-12 mb-3 text-neutral-300 dark:text-neutral-400" />
         <p class="text-sm text-neutral-400">
           No results found for "{{ searchQuery }}"
         </p>
@@ -120,7 +120,7 @@
     <div class="p-1 border-t border-neutral-800">
       <button
         @click="collapseAll"
-        class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-700"
+        class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-400 dark:text-neutral-400 hover:bg-neutral-700"
       >
         <FoldVertical class="inline-block w-4 h-4 mr-2" />
         Collapse All
