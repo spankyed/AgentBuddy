@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full border-r border-neutral-200 dark:border-neutral-700">
+  <div class="flex flex-col h-full border-r border-neutral-800">
     <QueryEditorHeader
       v-model:active-mode="activeMode"
       :is-loading="isLoading"

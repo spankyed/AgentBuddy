@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header with Search -->
-    <div class="px-4 pt-1 pb-3.5 border-b border-neutral-200 dark:border-neutral-700">
+    <div class="px-4 pt-2 pb-2.5 border-b border-neutral-800">
       <!-- Search Input -->
       <div class="relative">
         <Search class="absolute w-4 h-4 transform -translate-y-1/2 text-neutral-400 left-3 top-1/2" />
@@ -9,12 +9,12 @@
           v-model="searchQuery"
           type="text"
           placeholder="Search schema..."
-          class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-200 bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-800 bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           v-if="searchQuery"
           @click="searchQuery = ''"
-          class="absolute p-1 transform -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+          class="absolute p-1 transform -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700"
         >
           <X class="w-3 h-3 text-neutral-500" />
         </button>
@@ -30,13 +30,13 @@
       >
         <!-- Category header -->
         <div 
-          class="flex items-center px-3 py-2 transition-colors duration-150 rounded-lg cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/50 group"
+          class="flex items-center px-3 py-2 transition-colors duration-150 rounded-lg cursor-pointer hover:bg-neutral-700/50 group"
           @click="toggleExpanded(category.id)"
         >
           <ChevronRight
             v-if="category.children.length > 0"
             :class="[
-              'w-4 h-4 mr-2 transition-transform duration-200 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300',
+              'w-4 h-4 mr-2 transition-transform duration-200 text-neutral-400 group-hover:text-neutral-300',
               expandedItems.includes(category.id) && 'rotate-90'
             ]"
           />
@@ -47,10 +47,10 @@
               getCategoryColor(category.id)
             ]"
           />
-          <span class="flex-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <span class="flex-1 text-sm font-medium text-neutral-300">
             {{ category.label }}
           </span>
-          <span class="text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 rounded-full">
+          <span class="text-xs text-neutral-400 bg-neutral-700 px-2 py-0.5 rounded-full">
             {{ category.children.length }}
           </span>
         </div>
@@ -75,7 +75,7 @@
                 'group flex items-center py-1.5 px-3 rounded-lg cursor-pointer text-sm transition-all duration-150',
                 selectedItemId === child.id 
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-700/50 text-neutral-600 dark:text-neutral-400'
+                  : 'hover:bg-neutral-700/50 text-neutral-400 dark:text-neutral-400'
               ]"
               @click="selectItem(child)"
               :title="child.description || child.label"
@@ -86,7 +86,7 @@
                   'w-3 h-3 mr-2.5 transition-colors',
                   selectedItemId === child.id 
                     ? 'text-blue-500 dark:text-blue-400' 
-                    : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-500 dark:group-hover:text-neutral-400'
+                    : 'text-neutral-400 dark:text-neutral-500 group-hover:group-hover:text-neutral-400'
                 ]"
               />
               <span class="flex-1 truncate">{{ child.label }}</span>
@@ -103,8 +103,8 @@
       
       <!-- Empty state -->
       <div v-if="filteredCategories.length === 0" class="flex flex-col items-center justify-center py-8 text-center">
-        <Search class="w-12 h-12 mb-3 text-neutral-300 dark:text-neutral-600" />
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">
+        <Search class="w-12 h-12 mb-3 text-neutral-300 dark:text-neutral-400" />
+        <p class="text-sm text-neutral-400">
           No results found for "{{ searchQuery }}"
         </p>
         <button
@@ -117,10 +117,10 @@
     </div>
     
     <!-- Footer Actions -->
-    <div class="p-1 border-t border-neutral-200 dark:border-neutral-700">
+    <div class="p-1 border-t border-neutral-800">
       <button
         @click="collapseAll"
-        class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+        class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-400 dark:text-neutral-400 hover:bg-neutral-700"
       >
         <FoldVertical class="inline-block w-4 h-4 mr-2" />
         Collapse All
@@ -251,7 +251,7 @@ function getCategoryColor(categoryId: string) {
     case 'relations':
       return 'text-purple-500 dark:text-purple-400';
     default:
-      return 'text-neutral-500 dark:text-neutral-400';
+      return 'text-neutral-400';
   }
 }
 

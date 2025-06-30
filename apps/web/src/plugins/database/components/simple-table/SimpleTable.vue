@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col h-full overflow-hidden bg-neutral-800/20">
     <!-- Table Container -->
     <div class="flex-1 overflow-auto custom-scrollbar">
       <!-- State displays -->

@@ -42,7 +42,7 @@
     </div>
     
     <div v-if="events.length === 0" class="flex flex-col items-center justify-center h-48 px-4 text-center">
-      <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/50">
+      <div class="flex items-center justify-center w-12 h-12 mb-3">
         <svg class="w-6 h-6 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>

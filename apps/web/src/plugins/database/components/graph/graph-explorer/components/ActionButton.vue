@@ -2,10 +2,10 @@
   <button
     :disabled="disabled"
     :class="[
-      'p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100',
-      'hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors',
+      'p-1.5 text-neutral-400 hover:text-neutral-100 dark:text-gray-400 dark:hover:text-gray-100',
+      'hover:bg-neutral-800 dark:hover:bg-gray-700 rounded transition-colors',
       'disabled:opacity-50 disabled:cursor-not-allowed',
-      active && 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+      active && 'bg-neutral-800 dark:bg-gray-700 text-neutral-100 dark:text-gray-100'
     ]"
     :title="title"
     @click="$emit('click')"

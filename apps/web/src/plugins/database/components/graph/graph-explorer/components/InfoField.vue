@@ -10,7 +10,7 @@
     </label>
     <p 
       :class="[
-        'text-gray-900 dark:text-gray-100 break-all',
+        'text-neutral-100 dark:text-gray-100 break-all',
         small ? 'text-xs' : 'text-sm',
         monospace && 'font-mono'
       ]"

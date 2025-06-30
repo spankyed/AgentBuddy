@@ -1,28 +1,24 @@
-import { EARS } from '@/shared/ears/types';
 import type { Rows } from '@/shared/types';
-import { threadRows } from '../threads/repository/mock-data';
-import { flowRows } from '../flows/repository/mock-data';
-import { brainRows } from '../brain/repository/mock-data';
+import { threadRows } from './mock-data/threads';
+import { flowRows } from './mock-data/flows';
+// import { brainRows } from './mock-data/brain';
+import { promptRows } from './mock-data/prompts';
 
-const nowMs = Date.now();
-export const now = new Date(nowMs);
+export const rows: Rows = composeData([
+  threadRows,
+  flowRows,
+  promptRows,
+  // brainRows,
+]);
 
-export const rows: Rows = {
-  entity: [
-    ...threadRows.entity,
-    ...flowRows.entity,
-    // ...brainRows.entity,
-  ],
 
-  role: [
-    ...threadRows.role,
-    ...flowRows.role,
-    // ...brainRows.role,
-  ],
-  
-  relation: [
-    ...threadRows.relation,
-    ...flowRows.relation,
-    // ...brainRows.relation,
-  ],
-};
+export function composeData(sources: Partial<Rows>[]) {
+  return sources.reduce<Rows>(
+    (acc, source) => ({
+      entity: [...acc.entity, ...(source.entity || [])],
+      role: [...acc.role, ...(source.role || [])],
+      relation: [...acc.relation, ...(source.relation || [])],
+    }),
+    { entity: [], role: [], relation: [] }
+  );
+}

@@ -2,8 +2,10 @@
  * Prompt template types and definitions
  */
 
+import { BaseEntity, EARS } from '@/shared/ears/types';
+
 /**
- * Defines an input that a template expects
+ * Defines an input parameter that a prompt template expects
  */
 export interface TemplateInput {
   name: string;                    // Input name (e.g., "userMessage")
@@ -17,73 +19,28 @@ export interface TemplateInput {
   example?: any;                   // Example value
 }
 
+
 /**
- * Defines a prompt template
+ * Defines a prompt entity stored in the system
  */
-export interface PromptTemplate {
-  id: string;                      // Unique identifier
-  name: string;                    // Display name
-  description?: string;            // What this template does
-  category?: string;               // Category for organization
-  
-  // Declare expected inputs - this connects templates to the mapping system
+export interface PromptEntity extends BaseEntity {
+  entityType: EARS.Entity.Prompt;
+  label: string;
+  description?: string;
+  category?: string;
   inputs: Record<string, TemplateInput>;
-  
-  // The template function that generates the prompt
-  // Receives mapped parameters based on declared inputs
-  templateFn: (params: Record<string, any>) => string;
-  
-  // Example usage
-  example?: {
-    input: Record<string, any>;
-    output: string | any;
-  };
+  templateFn: string;  // Stored as string, evaluated at runtime
+  outputSchema?: any;  // Optional JSON schema for structured output
+  createdAt: number;
+  updatedAt: number;
 }
 
 /**
- * Registry to store all available prompt templates
+ * Data sent on prompts system startup
  */
-export const promptTemplateRegistry: Map<string, PromptTemplate> = new Map();
-
-/**
- * Helper to register a prompt template
- */
-export function registerPromptTemplate(template: PromptTemplate): void {
-  // Validate that all required inputs have defaults or are marked required
-  for (const [name, input] of Object.entries(template.inputs)) {
-    if (input.required !== false && input.defaultValue === undefined) {
-      console.warn(`Template ${template.id}: Input '${name}' is required but has no default`);
-    }
-  }
-  
-  promptTemplateRegistry.set(template.id, template);
-}
-
-/**
- * Get a template and validate params match expected inputs
- */
-export function getTemplateWithValidation(
-  templateId: string,
-  params: Record<string, any>
-): { template: PromptTemplate; errors: string[] } | null {
-  const template = promptTemplateRegistry.get(templateId);
-  if (!template) return null;
-  
-  const errors: string[] = [];
-  
-  // Check required inputs
-  for (const [name, input] of Object.entries(template.inputs)) {
-    if (input.required !== false && !(name in params) && input.defaultValue === undefined) {
-      errors.push(`Missing required input: ${name}`);
-    }
-  }
-  
-  // Warn about unknown params
-  for (const paramName of Object.keys(params)) {
-    if (!(paramName in template.inputs)) {
-      errors.push(`Unknown parameter: ${paramName}`);
-    }
-  }
-  
-  return { template, errors };
+export interface PromptsStartupData {
+  prompts: PromptEntity[];
+  page: number;
+  totalPages: number;
+  totalCount: number;
 } 

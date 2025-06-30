@@ -13,7 +13,7 @@
   <div v-else-if="state === 'no-results'" class="flex items-center justify-center h-full">
     <div class="text-center">
       <div class="relative inline-block">
-        <Database class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+        <Database class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-neutral-400" />
         <!-- <div class="absolute inset-0 animate-ping">
           <Database class="w-16 h-16 mx-auto text-gray-200 opacity-75 dark:text-gray-700" />
         </div> -->

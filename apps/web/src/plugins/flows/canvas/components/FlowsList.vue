@@ -85,7 +85,7 @@
       <!-- Default state: Create and Search buttons -->
       <div v-if="!isSearchMode" class="flex gap-2">
         <Button 
-          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3"
+          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center"
           @click="$emit('create-flow')"
         >
           <Plus class="w-4 h-4" />

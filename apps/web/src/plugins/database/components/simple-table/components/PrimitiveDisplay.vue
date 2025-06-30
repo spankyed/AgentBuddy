@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <div class="p-4 rounded-md bg-neutral-100 dark:bg-neutral-800">
+    <div class="p-4 rounded-md bg-neutral-800 dark:bg-neutral-900">
       {{ value }}
     </div>
   </div>
