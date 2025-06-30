@@ -16,7 +16,7 @@ const fields = [
 ] as const;
 
 export function getPromptById(id: EARS.EntityId): PromptEntity | undefined {
-  const result = qx(id).pick(fields);
+  const result = qx(id).pickOne(fields);
   return result ? result as unknown as PromptEntity : undefined;
 }
 
