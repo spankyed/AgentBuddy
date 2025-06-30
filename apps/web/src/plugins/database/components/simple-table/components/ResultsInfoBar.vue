@@ -5,14 +5,14 @@
       <div class="flex items-center gap-4 text-sm">
         <!-- Result count with small icon -->
         <div class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg v-if="!queryResult" class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
           <template v-if="!queryResult">
             <span class="text-neutral-500 dark:text-neutral-400">No results</span>
           </template>
           <template v-else-if="resultType === 'array'">
-            <span class="font-semibold text-neutral-100 dark:text-neutral-100">{{ resultCount.toLocaleString() }}</span>
+            <span class="text-xs font-semibold text-neutral-100 dark:text-neutral-100">{{ resultCount.toLocaleString() }}</span>
             <span class="text-neutral-500 dark:text-neutral-400">{{ resultCount === 1 ? 'result' : 'results' }}</span>
           </template>
           <template v-else-if="resultType === 'object'">

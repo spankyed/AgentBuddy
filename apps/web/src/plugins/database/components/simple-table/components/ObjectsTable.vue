@@ -1,7 +1,7 @@
 <template>
   <div class="min-w-full">
-    <table class="min-w-full divide-y divide-neutral-700">
-      <thead class="sticky top-0 bg-neutral-900">
+    <table class="min-w-full divide-y divide-neutral-800">
+      <thead class="sticky top-0">
         <tr>
           <th
             v-for="header in headers"
@@ -12,7 +12,7 @@
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y bg-neutral-950/40 divide-neutral-700">
+      <tbody class="divide-y bg-neutral-800/20 divide-neutral-800">
         <tr
           v-for="(row, index) in rows"
           :key="index"
