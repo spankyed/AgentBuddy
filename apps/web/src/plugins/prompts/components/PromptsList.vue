@@ -10,8 +10,8 @@
 
     <!-- Prompts Table -->
     <div class="flex-1 p-4 overflow-auto">
-      <table class="min-w-full overflow-hidden divide-y rounded-lg shadow-lg divide-neutral-800 bg-neutral-900">
-        <thead class="bg-neutral-950/40">
+      <table class="min-w-full overflow-hidden divide-y rounded-lg shadow-lg divide-neutral-800 bg-neutral-800/40">
+        <thead class="bg-neutral-900">
           <tr>
             <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Name</th>
             <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Description</th>

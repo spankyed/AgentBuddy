@@ -155,13 +155,21 @@
             <!-- Search Input -->
             <div class="relative flex-1">
               <Search :size="16" class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
-              <input
+              <!-- <input
                 :value="searchTerm"
                 @input="setSearch"
                 type="text"
                 placeholder="Search logs..."
                 class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-800 placeholder-neutral-500"
                 :class="searchTerm ? 'border-neutral-600 bg-neutral-800/70' : 'border-neutral-700 focus:border-neutral-600 focus:bg-neutral-800/50'"
+              /> -->
+              <input
+                :value="searchTerm"
+                @input="setSearch"
+                type="text"
+                placeholder="Search logs..."
+                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-900 placeholder-neutral-500"
+                :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
               />
               <!-- Clear search button -->
               <button 
@@ -174,12 +182,12 @@
             </div>
             
             <!-- Level Filter Pills -->
-            <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-800">
+            <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-900">
               <button
                 @click="setFilterLevelDirect('all')"
                 class="px-3 py-1 text-sm font-medium transition-colors rounded"
                 :class="filterLevel === 'all' 
-                  ? 'bg-neutral-700 text-neutral-100' 
+                  ? 'bg-neutral-800 text-neutral-100' 
                   : 'text-neutral-400 hover:text-neutral-200'"
               >
                 All
