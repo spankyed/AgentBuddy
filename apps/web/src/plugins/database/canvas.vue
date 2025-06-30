@@ -1,16 +1,16 @@
 <template>
-  <div class="flex w-full h-full overflow-hidden bg-neutral-50 dark:bg-neutral-900">
+  <div class="flex w-full h-full overflow-hidden bg-neutral-800">
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
-      class="relative flex-shrink-0 overflow-hidden bg-white border-r shadow-sm border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700"
+      class="relative flex-shrink-0 overflow-hidden border-r shadow-sm bg-neutral-900 border-neutral-700"
       :style="{ width: schemaPanelWidth + 'rem' }"
     >
       <SchemaPanel />
       
       <!-- Resize Handle -->
       <div
-        class="absolute top-0 right-0 w-1 h-full cursor-col-resize group hover:bg-neutral-500/20"
+        class="absolute top-0 right-0 w-1 h-full cursor-col-resize group hover:bg-neutral-600/20"
         @mousedown="startResizeSchema"
       >
         <div class="absolute inset-y-0 right-0 w-4 -mr-2"></div>
@@ -22,14 +22,14 @@
       <!-- Query Editor -->
       <div 
         ref="queryPanel"
-        class="relative overflow-hidden bg-white shadow-sm dark:bg-neutral-800"
+        class="relative overflow-hidden shadow-sm bg-neutral-900"
         :style="{ height: queryPanelHeight + '%' }"
       >
         <QueryEditor />
         
         <!-- Resize Handle (Horizontal) -->
         <div
-          class="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize group hover:bg-neutral-500/20"
+          class="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize group hover:bg-neutral-600/20"
           @mousedown="startResizeQuery"
         >
           <div class="absolute inset-x-0 bottom-0 h-4 -mb-2"></div>
@@ -37,7 +37,7 @@
       </div>
       
       <!-- Results Table -->
-      <div class="flex-1 overflow-hidden bg-white border-t shadow-sm border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
+      <div class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-700">
         <SimpleTable />
       </div>
     </div>

@@ -1,27 +1,26 @@
 <template>
   <div class="min-w-full">
-    <table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
-      <thead class="sticky top-0 bg-neutral-50 dark:bg-neutral-800">
+    <table class="min-w-full divide-y divide-neutral-700">
+      <thead class="sticky top-0 bg-neutral-900">
         <tr>
           <th
             v-for="header in headers"
             :key="header"
-            class="px-4 py-2 text-xs font-medium tracking-wider text-left uppercase text-neutral-500 dark:text-neutral-400"
+            class="px-4 py-2 text-xs font-medium tracking-wider text-left uppercase text-neutral-400"
           >
             {{ header }}
           </th>
         </tr>
       </thead>
-      <tbody class="bg-white divide-y dark:bg-neutral-900 divide-neutral-200 dark:divide-neutral-700">
+      <tbody class="divide-y bg-neutral-950/40 divide-neutral-700">
         <tr
           v-for="(row, index) in rows"
           :key="index"
-          class="hover:bg-neutral-50 dark:hover:bg-neutral-800"
         >
           <td
             v-for="header in headers"
             :key="header"
-            class="px-4 py-2 text-sm text-neutral-900 dark:text-neutral-100"
+            class="px-4 py-2 text-sm text-neutral-100"
           >
             <div class="max-w-xs truncate" :title="formatCellValue(row[header])">
               {{ formatCellValue(row[header]) }}

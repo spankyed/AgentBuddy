@@ -1,9 +1,9 @@
 <template>
-  <div class="flex w-full h-full overflow-hidden bg-gray-50 dark:bg-gray-900">
+  <div class="flex w-full h-full overflow-hidden bg-neutral-900 dark:bg-gray-900">
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
-      class="relative flex-shrink-0 overflow-hidden bg-white border-r border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700"
+      class="relative flex-shrink-0 overflow-hidden bg-neutral-800 border-r border-neutral-700 shadow-sm dark:bg-gray-800 dark:border-gray-700"
       :style="{ width: schemaPanelWidth + 'px' }"
     >
       <SchemaPanel />
@@ -22,7 +22,7 @@
       <!-- Query Editor -->
       <div 
         ref="queryPanel"
-        class="relative overflow-hidden bg-white shadow-sm dark:bg-gray-800"
+        class="relative overflow-hidden bg-neutral-800 shadow-sm dark:bg-gray-800"
         :style="{ width: queryPanelWidth + '%' }"
       >
         <QueryEditor />
@@ -37,7 +37,7 @@
       </div>
       
       <!-- Graph Explorer -->
-      <div class="flex-1 overflow-hidden bg-white shadow-sm dark:bg-gray-800">
+      <div class="flex-1 overflow-hidden bg-neutral-800 shadow-sm dark:bg-gray-800">
         <GraphExplorer />
       </div>
     </div>

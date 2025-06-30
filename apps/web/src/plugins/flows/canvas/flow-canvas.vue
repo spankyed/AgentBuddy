@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white w-60 bg-neutral-800 scrollbar-thin">
+    <aside class="overflow-y-auto text-white w-60 bg-neutral-900 scrollbar-thin">
       <!-- Flows list view -->
       <FlowsList
         v-if="inListState"

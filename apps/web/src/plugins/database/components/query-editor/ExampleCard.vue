@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative p-3 transition-colors rounded-lg cursor-pointer group bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+    class="relative p-3 transition-colors rounded-lg cursor-pointer group bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-700"
     @click="$emit('select')"
   >
     <div class="flex items-start justify-between">
@@ -11,7 +11,7 @@
         <p class="mb-2 text-xs text-neutral-600 dark:text-neutral-400">
           {{ example.description }}
         </p>
-        <pre class="p-2 font-mono text-xs rounded text-neutral-700 bg-neutral-100 dark:text-neutral-300 dark:bg-neutral-900">{{ example.query }}</pre>
+        <pre class="p-2 font-mono text-xs rounded text-neutral-700 bg-neutral-100 dark:text-neutral-300 dark:bg-neutral-800">{{ example.query }}</pre>
       </div>
       <button
         class="p-1 transition-all rounded opacity-0 group-hover:opacity-100 hover:bg-neutral-200 dark:hover:bg-neutral-600"

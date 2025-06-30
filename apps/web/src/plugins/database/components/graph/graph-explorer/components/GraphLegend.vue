@@ -1,12 +1,12 @@
 <template>
-  <div class="relative px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+  <div class="relative px-4 py-3 border-t border-neutral-700 dark:border-gray-700 bg-neutral-900 dark:bg-gray-900">
     <!-- Left scroll indicator -->
     <div 
       v-if="canScrollLeft" 
       class="absolute top-0 bottom-0 left-0 z-10 flex items-center justify-center w-8 transition-opacity cursor-pointer opacity-80 hover:opacity-100 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent"
       @click="scrollToStart"
     >
-      <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3 h-3 text-neutral-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
       </svg>
     </div>
@@ -20,13 +20,13 @@
         <div 
           v-for="(color, type) in colors" 
           :key="type" 
-          class="flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+          class="flex items-center gap-1.5 flex-shrink-0 px-2 py-1 rounded hover:bg-neutral-600 dark:hover:bg-gray-800 transition-colors"
         >
           <div 
-            class="w-3 h-3 rounded-full ring-1 ring-gray-300 dark:ring-gray-600" 
+            class="w-3 h-3 rounded-full ring-1 ring-neutral-700 dark:ring-gray-600" 
             :style="{ backgroundColor: color }"
           />
-          <span class="text-gray-600 dark:text-gray-400">{{ type }}</span>
+          <span class="text-neutral-400 dark:text-neutral-400">{{ type }}</span>
         </div>
       </TransitionGroup>
     </div>
@@ -37,7 +37,7 @@
       class="absolute top-0 bottom-0 right-0 z-10 flex items-center justify-center w-8 transition-opacity cursor-pointer opacity-80 hover:opacity-100 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent"
       @click="scrollToEnd"
     >
-      <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3 h-3 text-neutral-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
       </svg>
     </div>

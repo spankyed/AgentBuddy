@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-1 p-1 rounded-lg bg-neutral-100 dark:bg-neutral-800">
+  <div class="flex items-center gap-1 p-1 rounded-lg bg-neutral-100 dark:bg-neutral-900">
     <button
       v-for="mode in modes"
       :key="mode.value"

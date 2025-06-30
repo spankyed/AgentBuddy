@@ -21,7 +21,7 @@
     <div class="relative flex-1 overflow-hidden">
       <div 
         ref="graphContainer" 
-        class="absolute inset-0 bg-white dark:bg-gray-800"
+        class="absolute inset-0 bg-neutral-800 dark:bg-gray-800"
         :class="{ 'cursor-grabbing': isDragging }"
       />
       

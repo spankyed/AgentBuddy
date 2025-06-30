@@ -2,17 +2,17 @@
   <div class="absolute inset-0 flex items-center justify-center">
     <div class="text-center">
       <div class="relative inline-block">
-        <Database class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+        <Database class="w-16 h-16 mx-auto mb-4 text-neutral-400 dark:text-gray-600" />
         <div class="absolute inset-0 animate-ping">
-          <Database class="w-16 h-16 mx-auto text-gray-200 opacity-75 dark:text-gray-700" />
+          <Database class="w-16 h-16 mx-auto text-neutral-300 opacity-75 dark:text-gray-700" />
         </div>
       </div>
       
-      <h4 class="mb-1 text-lg font-medium text-gray-900 dark:text-gray-100">
+      <h4 class="mb-1 text-lg font-medium text-neutral-100 dark:text-gray-100">
         {{ title }}
       </h4>
       
-      <p class="text-sm text-gray-500 dark:text-gray-400">
+      <p class="text-sm text-neutral-400 dark:text-gray-400">
         {{ description }}
       </p>
       
