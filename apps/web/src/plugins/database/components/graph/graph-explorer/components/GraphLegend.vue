@@ -1,5 +1,5 @@
 <template>
-  <div class="relative px-4 py-3 border-t border-neutral-700 dark:border-gray-700 bg-neutral-900 dark:bg-gray-900">
+  <div class="relative px-4 py-3 border-t border-neutral-800 dark:border-gray-700 bg-neutral-900 dark:bg-gray-900">
     <!-- Left scroll indicator -->
     <div 
       v-if="canScrollLeft" 

@@ -3,7 +3,7 @@
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
-      class="relative flex-shrink-0 overflow-hidden border-r shadow-sm bg-neutral-900 border-neutral-700"
+      class="relative flex-shrink-0 overflow-hidden border-r shadow-sm bg-neutral-900 border-neutral-800"
       :style="{ width: schemaPanelWidth + 'rem' }"
     >
       <SchemaPanel />
@@ -37,7 +37,7 @@
       </div>
       
       <!-- Results Table -->
-      <div class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-700">
+      <div class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-800">
         <SimpleTable />
       </div>
     </div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="border-t bg-neutral-800 dark:bg-neutral-900 border-neutral-700 dark:border-neutral-700">
+  <div class="border-t bg-neutral-800 dark:bg-neutral-900 border-neutral-800 dark:border-neutral-800">
     <div class="flex items-center justify-between px-4 py-3">
       <!-- Left side - Primary information -->
       <div class="flex items-center gap-4 text-sm">

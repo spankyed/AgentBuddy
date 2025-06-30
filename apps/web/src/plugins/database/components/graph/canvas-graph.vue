@@ -3,7 +3,7 @@
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
-      class="relative flex-shrink-0 overflow-hidden bg-neutral-800 border-r border-neutral-700 shadow-sm dark:bg-gray-800 dark:border-gray-700"
+      class="relative flex-shrink-0 overflow-hidden bg-neutral-800 border-r border-neutral-800 shadow-sm dark:bg-gray-800 dark:border-gray-700"
       :style="{ width: schemaPanelWidth + 'px' }"
     >
       <SchemaPanel />

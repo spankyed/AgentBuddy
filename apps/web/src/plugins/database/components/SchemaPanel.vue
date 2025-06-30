@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header with Search -->
-    <div class="px-4 pt-2 pb-2.5 border-b border-neutral-700">
+    <div class="px-4 pt-2 pb-2.5 border-b border-neutral-800">
       <!-- Search Input -->
       <div class="relative">
         <Search class="absolute w-4 h-4 transform -translate-y-1/2 text-neutral-400 left-3 top-1/2" />
@@ -9,7 +9,7 @@
           v-model="searchQuery"
           type="text"
           placeholder="Search schema..."
-          class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-700 bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-800 bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           v-if="searchQuery"
@@ -117,7 +117,7 @@
     </div>
     
     <!-- Footer Actions -->
-    <div class="p-1 border-t border-neutral-700">
+    <div class="p-1 border-t border-neutral-800">
       <button
         @click="collapseAll"
         class="w-full px-3 py-2 text-sm transition-colors rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-700"

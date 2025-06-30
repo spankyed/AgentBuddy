@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
     <ModeTabs
       :active-mode="activeMode"
       @update:active-mode="$emit('update:activeMode', $event)"
