@@ -146,8 +146,8 @@ watch(selected, async (newSelected) => {
     
     if (isNewNode) {
       setTimeout(async () => {
-        // Center the new node in view
-        await centerNodeInView(newSelected.id)
+        // Center the new node in view instantly (no animation)
+        await centerNodeInView(newSelected.id, true)
       }, 100) // Delay to ensure the node is rendered
       // await centerNodeInView(newSelected.id)
     }

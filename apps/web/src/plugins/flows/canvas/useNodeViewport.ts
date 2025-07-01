@@ -7,8 +7,10 @@ export function useNodeViewport() {
 
   /**
    * Centers a node in the viewport, accounting for the form panel
+   * @param nodeId - The ID of the node to center
+   * @param instant - If true, snaps to position instantly without animation
    */
-  async function centerNodeInView(nodeId: string) {
+  async function centerNodeInView(nodeId: string, instant: boolean = false) {
     await nextTick()
     
     const node = findNode(nodeId)
@@ -35,14 +37,18 @@ export function useNodeViewport() {
     const fixedZoom = 1.75 // Fixed zoom level for consistent node viewing
     setCenter(targetX, targetY, { 
       zoom: fixedZoom,
-      duration: 300 // Smooth animation
+      duration: instant ? 0 : 300 // 0 duration for instant snap, 300ms for smooth animation
     })
   }
 
   /**
    * Centers a node by its position data (for newly created nodes)
+   * @param x - The x position of the node
+   * @param y - The y position of the node  
+   * @param width - The width of the node (default: 150)
+   * @param instant - If true, snaps to position instantly without animation
    */
-  async function centerNodeByPosition(x: number, y: number, width: number = 150) {
+  async function centerNodeByPosition(x: number, y: number, width: number = 150, instant: boolean = false) {
     await nextTick()
     
     // Calculate the visible area considering the form panel (40% width on right)
@@ -59,6 +65,8 @@ export function useNodeViewport() {
     setCenter(targetX, targetY, { 
       zoom: fixedZoom,
       duration: 300 // Smooth animation
+
+      // duration: instant ? 0 : 300 // 0 duration for instant snap, 300ms for smooth animation
     })
   }
 
