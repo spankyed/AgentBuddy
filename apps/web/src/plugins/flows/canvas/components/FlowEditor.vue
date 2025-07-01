@@ -88,7 +88,7 @@ import { ChevronLeft } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
-import { useNodeViewport } from '../useNodeViewport'
+// import { useNodeViewport } from '../useNodeViewport'
 
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
 import Button from '@/core/design/button.vue'
@@ -103,7 +103,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const { centerNodeInView } = useNodeViewport()
+// const { centerNodeInView } = useNodeViewport()
 
 const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
@@ -117,7 +117,8 @@ const emit = defineEmits<{
 }>()
 
 async function handleNodeClick(event: NodeMouseEvent) {
-  await centerNodeInView(event.node.id)
+  // await centerNodeInView(event.node.id)
+
   emit('node-click', event)
 }
 </script> 
