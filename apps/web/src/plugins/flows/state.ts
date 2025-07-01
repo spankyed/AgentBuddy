@@ -40,7 +40,7 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
-  | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
+  | { type: 'NODE.CREATE'; nodeType: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
@@ -149,7 +149,7 @@ const flowsState = setup({
 
     createNode: assign(({ context, event }) => {
       const id = `Node-${randId()}`
-      const ev = typeOf('NODE.DRAG_CREATE', event)
+      const ev = typeOf('NODE.CREATE', event)
       const newNode = {
         id,
         nodeType: ev.nodeType,
@@ -165,7 +165,7 @@ const flowsState = setup({
     }),
 
     sendNodeCreate: ({ context, event }) => {
-      const ev = typeOf('NODE.DRAG_CREATE', event);
+      const ev = typeOf('NODE.CREATE', event);
       if (!context.selectedFlowId) return;
       
       const nodeId = `Node-${randId()}`;
@@ -280,7 +280,7 @@ const flowsState = setup({
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
-        'NODE.DRAG_CREATE': {
+        'NODE.CREATE': {
           actions: ['createNode', 'sendNodeCreate'],
         },
         'NODE.UPDATE': {

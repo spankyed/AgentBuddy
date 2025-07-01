@@ -147,35 +147,16 @@ function handleDrop(e: DragEvent) {
   const nodeType = e.dataTransfer?.getData('application/vueflow')
   if (!nodeType) return
   
-  // Get the flow container element to calculate position
-  const flowEl = e.currentTarget as HTMLElement
-  const bounds = flowEl.getBoundingClientRect()
-  
-  // Calculate position relative to the flow container
-  const position = project({
-    x: e.clientX - bounds.left,
-    y: e.clientY - bounds.top,
-  })
-  
   actor.send({
-    type: 'NODE.DRAG_CREATE',
+    type: 'NODE.CREATE',
     nodeType,
-    x: position.x,
-    y: position.y,
   })
 }
 
 function handlePaletteClick(nodeType: string) {
-  // Create node at center of current viewport
-  const vfNodes = getNodes.value
-  const centerX = 250 + vfNodes.length * 50
-  const centerY = 200 + (vfNodes.length % 3) * 100
-  
   actor.send({
-    type: 'NODE.DRAG_CREATE',
+    type: 'NODE.CREATE',
     nodeType,
-    x: centerX,
-    y: centerY,
   })
 }
 
