@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white w-60 bg-neutral-900 scrollbar-thin">
+    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-900 scrollbar-thin border-neutral-800">
       <!-- Flows list view -->
       <FlowsList
         v-if="inListState"
@@ -25,6 +25,7 @@
       :nodes="plainNodes"
       :edges="plainEdges"
       :selected-flow-id="selectedFlowId"
+      :selected-flow-label="currentFlowLabel"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
       @connect="handleConnect"
