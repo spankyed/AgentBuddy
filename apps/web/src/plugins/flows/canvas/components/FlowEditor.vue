@@ -13,7 +13,7 @@
       }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       :connect-on-click="true"
-      @node-click="$emit('node-click', $event)"
+      @node-click="handleNodeClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
       @dragover.prevent
@@ -79,12 +79,14 @@ import {
   VueFlow,
   ConnectionLineType,
   MarkerType,
+  useVueFlow,
 } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { ChevronLeft } from 'lucide-vue-next'
+import { nextTick } from 'vue'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
@@ -102,8 +104,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { setCenter, getViewport } = useVueFlow()
 
-defineEmits<{
+const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
   'connect': [params: Connection]
   'drop': [event: DragEvent]
@@ -113,4 +116,37 @@ defineEmits<{
   'overlay-click': []
   'nodes-initialized': []
 }>()
+
+async function handleNodeClick(event: NodeMouseEvent) {
+  // Calculate the visible area considering the form panel (40% width on right)
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const nodePaletteWidth = 240 // w-60 = 15rem = 240px
+  const formPanelWidth = viewportWidth * 0.4 // 40% for the form
+  const visibleWidth = viewportWidth - nodePaletteWidth - formPanelWidth
+  const visibleCenterX = nodePaletteWidth + (visibleWidth / 2)
+  
+  // Get the node position and dimensions
+  const nodeX = event.node.position.x
+  const nodeY = event.node.position.y
+  const nodeWidth = event.node.dimensions?.width || 150
+  const nodeHeight = event.node.dimensions?.height || 50
+  
+  // Calculate offset to position node in the visible area
+  // We want to move the camera/viewport to the RIGHT so the node appears to move LEFT
+  // This keeps the node visible when the form panel opens on the right
+  const targetX = nodeX + (formPanelWidth / 2) - nodeWidth
+  const targetY = nodeY + (viewportHeight * 0.05) // Move camera down so node appears higher
+  
+  // Pan to the adjusted position with fixed zoom
+  await nextTick()
+  const fixedZoom = 1.75 // Fixed zoom level for consistent node viewing
+  setCenter(targetX, targetY, { 
+    zoom: fixedZoom,
+    duration: 300 // Smooth animation
+  })
+  
+  // Emit the event after repositioning
+  emit('node-click', event)
+}
 </script> 
