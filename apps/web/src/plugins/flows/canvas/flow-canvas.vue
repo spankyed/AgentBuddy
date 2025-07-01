@@ -21,7 +21,7 @@
     </aside>
 
     <!-- ▸ VueFlow canvas (center) -->
-    <FlowCanvas
+    <FlowEditor
       :nodes="plainNodes"
       :edges="plainEdges"
       :selected-flow-id="selectedFlowId"
@@ -75,7 +75,7 @@ import { useSelector } from '@xstate/vue'
 // Import sub-components
 import FlowsList from './components/FlowsList.vue'
 import NodePalette from './components/NodePalette.vue'
-import FlowCanvas from './components/FlowEditor.vue'
+import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
