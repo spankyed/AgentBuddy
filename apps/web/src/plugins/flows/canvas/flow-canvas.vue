@@ -57,10 +57,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref } from 'vue'
+import { computed, type Ref, ref, watch, nextTick } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode } from '@vue-flow/core'
 import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
+import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
 import type { FlowEntity, NodeEntity } from '@abuddy/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -82,6 +83,7 @@ import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
 const { project, getNodes } = useVueFlow()
+const { centerNodeInView } = useNodeViewport()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -134,6 +136,24 @@ const currentFlowLabel = computed(() => {
   
   return currentFlow?.label || ''
 })
+
+// Watch for newly selected nodes (which happens after node creation)
+let previousSelectedId: string | undefined = undefined
+watch(selected, async (newSelected) => {
+  if (newSelected?.id && newSelected.id !== previousSelectedId) {
+    // Check if this is a newly created node by seeing if it was just added to the nodes list
+    const isNewNode = nodes.value.some(n => n.id === newSelected.id && n.label?.startsWith('New '))
+    
+    if (isNewNode) {
+      setTimeout(async () => {
+        // Center the new node in view
+        await centerNodeInView(newSelected.id)
+      }, 100) // Delay to ensure the node is rendered
+      // await centerNodeInView(newSelected.id)
+    }
+  }
+  previousSelectedId = newSelected?.id
+}, { immediate: true })
 
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
