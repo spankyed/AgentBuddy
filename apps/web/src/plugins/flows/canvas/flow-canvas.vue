@@ -40,6 +40,9 @@
     <NodeForm
       :selected-node="selected"
       @close="handleCloseNodeEditor"
+      @update-label="(nodeId, label) => handleNodeUpdate(nodeId, { label })"
+      @update-description="(nodeId, description) => handleNodeUpdate(nodeId, { description })"
+      @update-config="(nodeId, config) => handleNodeUpdate(nodeId, config)"
     />
 
     <!-- Label Edit Dialog -->
@@ -209,6 +212,10 @@ function handleLayout(direction?: Direction) {
 
 function handleNodesInitialized() {
   layout()
+}
+
+function handleNodeUpdate(nodeId: string, updates: any) {
+  actor.send({ type: 'NODE.UPDATE', nodeId: nodeId as any, updates })
 }
 </script>
 

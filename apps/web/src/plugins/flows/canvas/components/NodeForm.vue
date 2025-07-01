@@ -14,6 +14,9 @@
       <component
         :is="getFormComponent(selectedNode.nodeType)"
         :node="selectedNode"
+        @update-label="handleUpdateLabel"
+        @update-description="handleUpdateDescription"
+        @update-config="handleUpdateConfig"
       />
     </div>
   </div>
@@ -32,11 +35,32 @@ interface Props {
   selectedNode?: NodeEntity | null
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   'close': []
+  'update-label': [nodeId: string, label: string]
+  'update-description': [nodeId: string, description: string]
+  'update-config': [nodeId: string, config: Record<string, any>]
 }>()
+
+function handleUpdateLabel(label: string) {
+  if (props.selectedNode?.id) {
+    emit('update-label', props.selectedNode.id, label)
+  }
+}
+
+function handleUpdateDescription(description: string) {
+  if (props.selectedNode?.id) {
+    emit('update-description', props.selectedNode.id, description)
+  }
+}
+
+function handleUpdateConfig(config: Record<string, any>) {
+  if (props.selectedNode?.id) {
+    emit('update-config', props.selectedNode.id, config)
+  }
+}
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {

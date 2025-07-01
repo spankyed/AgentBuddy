@@ -41,6 +41,7 @@ type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
+  | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
@@ -164,6 +165,57 @@ const flowsState = setup({
         selectedNodeId: id as EARS.EntityId,
       }
     }),
+
+    sendNodeCreate: ({ context, event }) => {
+      const ev = typeOf('NODE.DRAG_CREATE', event);
+      if (!context.selectedFlowId) return;
+      
+      const nodeId = `Node-${randId()}`;
+      
+      // Send create to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NODE',
+        flowId: context.selectedFlowId,
+        nodeData: {
+          id: nodeId,
+          nodeType: ev.nodeType,
+          label: `New ${ev.nodeType}`,
+          x: ev.x,
+          y: ev.y,
+        },
+      });
+    },
+
+    /* ── node update actions ──────────────────────────────── */
+    updateNode: assign(({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE', event);
+      return {
+        graph: {
+          ...context.graph,
+          nodes: context.graph.nodes.map(node =>
+            node.id === ev.nodeId ? { ...node, ...ev.updates } : node
+          ),
+        },
+      };
+    }),
+
+    sendNodeUpdate: ({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE', event);
+      if (!context.selectedFlowId) return;
+      
+      const node = context.graph.nodes.find(n => n.id === ev.nodeId);
+      if (!node) return;
+
+      // Send update to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NODE',
+        flowId: context.selectedFlowId,
+        nodeId: ev.nodeId,
+        nodeData: { ...node, ...ev.updates },
+      });
+    },
   },
   guards: { targetIs },
 }).createMachine({
@@ -233,7 +285,10 @@ const flowsState = setup({
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: 'connectEdge' },
         'NODE.DRAG_CREATE': {
-          actions: 'createNode',
+          actions: ['createNode', 'sendNodeCreate'],
+        },
+        'NODE.UPDATE': {
+          actions: ['updateNode', 'sendNodeUpdate'],
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
