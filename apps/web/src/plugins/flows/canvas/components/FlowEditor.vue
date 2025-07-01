@@ -62,7 +62,7 @@
       class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/40 backdrop-blur-sm"
       @click="$emit('overlay-click')"
     >
-      <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-1/2 left-1/2">
+      <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-20 left-1/2">
         <div class="px-4 py-2 text-center border rounded-lg bg-neutral-900/80 border-neutral-700">
           <div class="text-sm text-neutral-300">Click anywhere to view</div>
           <div v-if="props.selectedFlowLabel" class="mt-1 font-medium text-neutral-100">
