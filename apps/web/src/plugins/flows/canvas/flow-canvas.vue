@@ -81,6 +81,7 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
+const { project, getNodes } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -103,10 +104,13 @@ const selected = useSelector(actor, (s) =>
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
-    .map((n) => ({
+    .map((n, index) => ({
       id       : n.id!,
       type     : n.nodeType,
-      position : { x: n.x ?? 0, y: n.y ?? 0 },
+      position : { 
+        x: 100 + (index % 5) * 200, 
+        y: 100 + Math.floor(index / 5) * 150 
+      },
       data     : n,  // The node itself is the data
     })) as VueFlowNode[]
 
@@ -142,21 +146,36 @@ function handleDragStart(e: DragEvent, nodeType: string) {
 function handleDrop(e: DragEvent) {
   const nodeType = e.dataTransfer?.getData('application/vueflow')
   if (!nodeType) return
-  const bounds = (e.target as HTMLElement).getBoundingClientRect()
+  
+  // Get the flow container element to calculate position
+  const flowEl = e.currentTarget as HTMLElement
+  const bounds = flowEl.getBoundingClientRect()
+  
+  // Calculate position relative to the flow container
+  const position = project({
+    x: e.clientX - bounds.left,
+    y: e.clientY - bounds.top,
+  })
+  
   actor.send({
     type: 'NODE.DRAG_CREATE',
     nodeType,
-    x: e.clientX - bounds.left,
-    y: e.clientY - bounds.top,
+    x: position.x,
+    y: position.y,
   })
 }
 
 function handlePaletteClick(nodeType: string) {
+  // Create node at center of current viewport
+  const vfNodes = getNodes.value
+  const centerX = 250 + vfNodes.length * 50
+  const centerY = 200 + (vfNodes.length % 3) * 100
+  
   actor.send({
     type: 'NODE.DRAG_CREATE',
     nodeType,
-    x: 0,
-    y: 0,
+    x: centerX,
+    y: centerY,
   })
 }
 

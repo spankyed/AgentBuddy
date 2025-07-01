@@ -27,8 +27,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Flow Entry",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
       mode: "entry",
       eventType: "flow.entry",
@@ -39,8 +37,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
       mode: "internal",
       eventType: "user.message",
@@ -52,8 +48,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Database Query Prompt",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
       mode: "internal",
       eventType: "database.query.prompt",
@@ -65,8 +59,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "keep_alive",
       label: "Keep Alive",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
     },
     {
@@ -76,8 +68,6 @@ export const runAgentBrainFlow: Rows = {
       nodeType: "action",
       label: "save to db",
       actionName: "save_entity",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
     },
     {
@@ -88,8 +78,6 @@ export const runAgentBrainFlow: Rows = {
       label: "LLM Call",
       model: "gpt-4.1",
       prompt: "Respond with a query like `return qx(EARS.Entity.Thread).limit(10).pickAll();`",
-      x: 100,
-      y: 100,
       color: "#1E88E5", // blue
     },
     /* Process User Message - Maps event payload to template params */
@@ -113,8 +101,6 @@ export const runAgentBrainFlow: Rows = {
           default: "User is interacting with the agent brain system"
         }
       ],
-      x: 100,
-      y: 100,
       color: "#9C27B0", // purple
     },
     {
@@ -140,8 +126,6 @@ export const runAgentBrainFlow: Rows = {
           default: "helpful and professional"
         }
       ],
-      x: 100,
-      y: 100,
       color: "#4CAF50", // green
     }
 

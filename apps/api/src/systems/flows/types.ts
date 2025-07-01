@@ -20,8 +20,6 @@ interface NodeBase extends BaseEntity {
   nodeType: NodeKind;                 // defined below
   label: string;
   description?: string;
-  x?: number;
-  y?: number;
   color?: string;
   /** When true, completing this node will trigger parent flow completion */
   final?: boolean;

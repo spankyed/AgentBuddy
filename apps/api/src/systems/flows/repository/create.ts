@@ -33,8 +33,6 @@ export function createNode(flowId: EARS.EntityId, nodeData: Partial<NodeEntity>)
     nodeType: nodeData.nodeType || 'action',
     label: nodeData.label || 'New Node',
     description: nodeData.description || '',
-    x: nodeData.x || 0,
-    y: nodeData.y || 0,
     createdAt: ts,
     updatedAt: ts,
     ...nodeData,

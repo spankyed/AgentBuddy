@@ -154,8 +154,6 @@ const flowsState = setup({
         id,
         nodeType: ev.nodeType,
         label: `New ${ev.nodeType}`,
-        x: ev.x,
-        y: ev.y,
       } as Partial<NodeEntity>
       return { 
         graph: {
@@ -181,8 +179,6 @@ const flowsState = setup({
           id: nodeId,
           nodeType: ev.nodeType,
           label: `New ${ev.nodeType}`,
-          x: ev.x,
-          y: ev.y,
         },
       });
     },
