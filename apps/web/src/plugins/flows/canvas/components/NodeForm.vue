@@ -17,6 +17,7 @@
         @update-label="handleUpdateLabel"
         @update-description="handleUpdateDescription"
         @update-config="handleUpdateConfig"
+        @update-node="handleUpdateNode"
       />
     </div>
   </div>
@@ -30,6 +31,7 @@ import BaseForm from '../forms/BaseForm.vue'
 import ListenForm from '../forms/ListenForm.vue'
 import FireForm from '../forms/FireForm.vue'
 import CreateForm from '../forms/CreateForm.vue'
+import LLMForm from '../forms/LLMForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -42,6 +44,7 @@ const emit = defineEmits<{
   'update-label': [nodeId: string, label: string]
   'update-description': [nodeId: string, description: string]
   'update-config': [nodeId: string, config: Record<string, any>]
+  'update-node': [node: Partial<NodeEntity>]
 }>()
 
 function handleUpdateLabel(label: string) {
@@ -62,11 +65,16 @@ function handleUpdateConfig(config: Record<string, any>) {
   }
 }
 
+function handleUpdateNode(node: Partial<NodeEntity>) {
+  emit('update-node', node)
+}
+
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
     'listen': ListenForm,
     'fire': FireForm,
     'create': CreateForm,
+    'llm': LLMForm,
   }
   return formMap[nodeType] || BaseForm
 }

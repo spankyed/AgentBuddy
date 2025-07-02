@@ -12,6 +12,7 @@ import type {
   NodeEntity,
   EARS,
   EdgeEntity,
+  PromptEntity,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
 
@@ -20,7 +21,8 @@ const randId = () => Math.random().toString(36).slice(2, 8)
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'flows'
+export const flowsId = 'flows'
+export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
 
 export interface FlowsContext {
@@ -33,6 +35,7 @@ export interface FlowsContext {
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
   logs: { id: number; text: string }[];
+  prompts: PromptEntity[];
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -46,6 +49,7 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
+  | { type: 'FETCH_PROMPTS' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -59,7 +63,19 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      return { ...ev.data, logs: [] }
+      return { ...ev.data, logs: [], prompts: [] }
+    }),
+
+    fetchPrompts: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_ALL_PROMPTS'
+      });
+    },
+
+    setPrompts: assign(({ event }) => {
+      const ev = typeOf('ALL_PROMPTS_FETCHED', event);
+      return { prompts: ev.prompts };
     }),
 
     /* ── flow interactions ────────────────────────────── */
@@ -276,9 +292,10 @@ const flowsState = setup({
     flows: [] as Partial<FlowEntity>[],
     rootFlow: undefined as Partial<FlowEntity> | undefined,
     logs: [] as { id: number; text: string }[],
+    prompts: [] as PromptEntity[],
   },
   on: {
-    FLOWS_STARTUP: { actions: 'setPluginData' },
+    FLOWS_STARTUP: { actions: ['setPluginData', 'fetchPrompts'] },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: ['addCreatedFlow', 'selectFlow'],
@@ -287,6 +304,7 @@ const flowsState = setup({
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
     },
+    ALL_PROMPTS_FETCHED: { actions: 'setPrompts' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -343,6 +361,9 @@ const flowsState = setup({
         },
         'GO.BACK': {
           target: 'list',
+        },
+        'FETCH_PROMPTS': {
+          actions: 'fetchPrompts',
         },
       },
     },
