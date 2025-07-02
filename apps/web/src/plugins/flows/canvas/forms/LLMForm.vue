@@ -238,7 +238,6 @@ import {
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
 import type { LLMNode, ModelConfig } from '@abuddy/api'
-import { availableModels } from '../../config/available-models'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
@@ -251,9 +250,10 @@ const emit = defineEmits<{
   'update-node': [data: Partial<LLMNode>]
 }>()
 
-// Get flows actor and prompts from state
+// Get flows actor and data from state
 const flowsActor = applicationState.system.get(flowsId)
 const prompts = useSelector(flowsActor, (state: any) => state.context.prompts || [])
+const availableModels = useSelector(flowsActor, (state: any) => state.context.models || [])
 
 // Local state
 const selectedPrompt = ref<any>(null)
@@ -277,7 +277,7 @@ onMounted(() => {
   }
   
   if (props.node.model) {
-    const model = availableModels.find(m => m.id === props.node.model)
+    const model = availableModels.value.find(m => m.id === props.node.model)
     if (model) {
       selectedModel.value = model
     }
@@ -295,9 +295,9 @@ const filteredPrompts = computed(() => {
 
 // Computed filtered models
 const filteredModels = computed(() => {
-  if (modelQuery.value === '') return availableModels
+  if (modelQuery.value === '') return availableModels.value
   
-  return availableModels.filter((model) =>
+  return availableModels.value.filter((model) =>
     startsWith(model.name, modelQuery.value) ||
     startsWith(model.provider, modelQuery.value)
   )

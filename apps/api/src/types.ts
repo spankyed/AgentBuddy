@@ -14,7 +14,6 @@ export type * from './systems/threads/types';
 
 export type { OutgoingFlowsEvents } from './systems/flows/system';
 export type * from './systems/flows/types';
-export type { ModelConfig } from './systems/flows/config/available-models';
 
 export type { OutgoingDatabaseEvents } from './systems/database/system';
 export type * from './systems/database/types';

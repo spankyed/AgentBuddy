@@ -13,6 +13,7 @@ import type {
   EARS,
   EdgeEntity,
   PromptEntity,
+  ModelConfig,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
 
@@ -36,6 +37,7 @@ export interface FlowsContext {
   rootFlow?: Partial<FlowEntity>;
   logs: { id: number; text: string }[];
   prompts: PromptEntity[];
+  models: ModelConfig[];
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -49,7 +51,6 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
-  | { type: 'FETCH_PROMPTS' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -63,20 +64,10 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      return { ...ev.data, logs: [], prompts: [] }
+      // models and prompts are included in ev.data from startup
+      return { ...ev.data, logs: [] }
     }),
 
-    fetchPrompts: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'FETCH_ALL_PROMPTS'
-      });
-    },
-
-    setPrompts: assign(({ event }) => {
-      const ev = typeOf('ALL_PROMPTS_FETCHED', event);
-      return { prompts: ev.prompts };
-    }),
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {
@@ -293,9 +284,10 @@ const flowsState = setup({
     rootFlow: undefined as Partial<FlowEntity> | undefined,
     logs: [] as { id: number; text: string }[],
     prompts: [] as PromptEntity[],
+    models: [] as ModelConfig[],
   },
   on: {
-    FLOWS_STARTUP: { actions: ['setPluginData', 'fetchPrompts'] },
+    FLOWS_STARTUP: { actions: 'setPluginData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: ['addCreatedFlow', 'selectFlow'],
@@ -304,7 +296,6 @@ const flowsState = setup({
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
     },
-    ALL_PROMPTS_FETCHED: { actions: 'setPrompts' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -361,9 +352,6 @@ const flowsState = setup({
         },
         'GO.BACK': {
           target: 'list',
-        },
-        'FETCH_PROMPTS': {
-          actions: 'fetchPrompts',
         },
       },
     },

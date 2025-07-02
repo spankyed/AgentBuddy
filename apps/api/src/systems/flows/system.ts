@@ -12,7 +12,6 @@ import { createFlow, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
-import { getAllPrompts } from '../prompts/repository/read';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -28,7 +27,6 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
-  busEvent('FETCH_ALL_PROMPTS', {}),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -41,7 +39,6 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
-  | { type: 'ALL_PROMPTS_FETCHED'; prompts: any[] }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -59,14 +56,6 @@ export const flowsSystem = setup({
       system.get(bus).send(emit(flows, { 
         type: 'FLOWS_STARTUP',
         data: flowsStartupData()
-      }));
-    },
-    fetchAllPrompts: ({ system }) => {
-      const prompts = getAllPrompts();
-      
-      system.get(bus).send(emit(flows, {
-        type: 'ALL_PROMPTS_FETCHED',
-        prompts
       }));
     },
     sendFlowData: ({ system, event }) => {
@@ -163,9 +152,6 @@ export const flowsSystem = setup({
       },
       CREATE_EDGE: {
         actions: 'createEdge',
-      },
-      FETCH_ALL_PROMPTS: {
-        actions: 'fetchAllPrompts',
       },
     },
     states: {

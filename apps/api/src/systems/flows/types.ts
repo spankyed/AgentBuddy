@@ -153,6 +153,20 @@ export interface FlowsStartupData {
   };
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
+  models: ModelConfig[];
+  prompts: any[]; // Will be typed as PromptEntity[] in frontend
+}
+
+export interface ModelConfig {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+  contextWindow: number;
+  maxOutput?: number;
+  costPer1kInput?: number;
+  costPer1kOutput?: number;
+  capabilities?: string[];
 }
 
 // export type FlowsStartupData = {
