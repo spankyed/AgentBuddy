@@ -68,73 +68,68 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-neutral-800">
-            <template v-for="thread in paginatedThreads" :key="thread.id">
-              <tr
-                v-if="!isPlaceholderThread(thread)"
-                :class="[
-                  'transition-all duration-200 cursor-pointer group hover:bg-neutral-800',
-                  { 'animate-highlight': thread.isNew }
-                ]"
-                @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
-              >
-                <td class="px-6 py-4">
-                  <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-                    {{ thread.shortCode }}
+            <tr
+              v-for="thread in paginatedThreads"
+              :key="thread.id"
+              :class="[
+                'transition-all duration-200 cursor-pointer group hover:bg-neutral-800',
+                { 'animate-highlight': thread.isNew }
+              ]"
+              @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
+            >
+              <td class="px-6 py-4">
+                <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+                  {{ thread.shortCode }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
+                    <MessageCircleMore class="w-4 h-4 text-neutral-400" />
+                  </div>
+                  <span class="font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
+                    {{ thread.topic || 'Untitled thread' }}
                   </span>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                      <MessageCircleMore class="w-4 h-4 text-neutral-400" />
-                    </div>
-                    <span class="font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
-                      {{ thread.topic || 'Untitled thread' }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-4">
-                  <select
-                    @click.stop
-                    :value="thread.status"
-                    @change="(e) => actor.send({ type: 'UPDATE_THREAD_STATUS', id: thread.id, status: (e.target as HTMLSelectElement).value as ThreadEntity['status'] })"
-                    class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200"
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <select
+                  @click.stop
+                  :value="thread.status"
+                  @change="(e) => actor.send({ type: 'UPDATE_THREAD_STATUS', id: thread.id, status: (e.target as HTMLSelectElement).value as ThreadEntity['status'] })"
+                  class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="queued">Queued</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex gap-2 overflow-hidden">
+                  <span
+                    v-for="tag in thread.tags"
+                    :key="tag.id"
+                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 truncate"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="queued">Queued</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="flex gap-2 overflow-hidden">
-                    <span
-                      v-for="tag in thread.tags"
-                      :key="tag.id"
-                      class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 truncate"
-                    >
-                      {{ tag.name }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="flex items-center justify-end">
-                    <button
-                      @click.stop="actor.send({ type: 'OPEN_THREAD_CHAT', threadId: thread.id })"
-                      type="button"
-                      class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 rounded-md transition-all duration-200"
-                    >
-                      <span>Chat</span>
-                      <MessageCircleMore class="w-3.5 h-3.5"/>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-else>
-                <td colspan="5" class="p-3">
-                  <div class="h-12 rounded-md bg-neutral-800/50 animate-pulse"></div>
-                </td>
-              </tr>
-            </template>
+                    {{ tag.name }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click.stop="actor.send({ type: 'OPEN_THREAD_CHAT', threadId: thread.id })"
+                    type="button"
+                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+                    aria-label="Open chat"
+                    title="Open chat"
+                  >
+                    <MessageCircleMore class="w-4 h-4"/>
+                  </button>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -188,23 +183,10 @@ const currentPage = ref(1)
 
 const paginatedThreads = computed(() => {
   const start = (currentPage.value - 1) * threadsPerPage
-  const slicedThreads = threads.value.slice(start, start + threadsPerPage)
-  
-  // Add placeholder threads if needed
-  const placeholders = Array(threadsPerPage - slicedThreads.length).fill(null).map((_, i) => ({
-    id: `placeholder-${i}`,
-    isPlaceholder: true
-  }))
-  
-  return [...slicedThreads, ...placeholders]
+  return threads.value.slice(start, start + threadsPerPage)
 })
 
 const searchKeyword = ref('');
-
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-function isPlaceholderThread(thread: any): thread is { id: string; isPlaceholder: boolean } {
-  return thread.isPlaceholder === true;
-}
 </script>
 
 <style lang="scss">
