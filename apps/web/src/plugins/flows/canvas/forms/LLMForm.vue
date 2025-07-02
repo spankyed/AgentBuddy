@@ -4,6 +4,85 @@
     @update-label="handleUpdateLabel"
   >
     <div class="space-y-4">
+      <!-- Model Selection -->
+      <div>
+        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+          MODEL
+        </label>
+        <ComboboxRoot
+          v-model="selectedModel"
+          ignore-filter
+          class="relative w-full"
+          :open="isModelDropdownOpen"
+          @update:open="isModelDropdownOpen = $event"
+          @update:model-value="handleModelChange"
+        >
+          <ComboboxAnchor class="w-full">
+            <ComboboxTrigger as-child>
+              <div class="inline-flex items-center justify-between rounded-md px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isModelDropdownOpen">
+                <ComboboxInput
+                  class="flex-1 bg-transparent outline-none placeholder-neutral-500"
+                  :placeholder="selectedModel ? '' : 'Select a model...'"
+                  :value="selectedModel ? selectedModel.name : modelQuery"
+                  @input="modelQuery = ($event.target as HTMLInputElement).value"
+                />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
+              </div>
+            </ComboboxTrigger>
+          </ComboboxAnchor>
+          <ComboboxContent
+            class="absolute z-10 w-full mt-1 overflow-hidden bg-neutral-800 border border-neutral-700 rounded-md shadow-lg"
+            :style="{ top: '100%' }"
+          >
+            <ComboboxViewport class="max-h-60 overflow-y-auto p-1">
+              <div
+                v-if="filteredModels.length === 0 && modelQuery !== ''"
+                class="relative px-4 py-2 cursor-default select-none text-neutral-400"
+              >
+                No models found.
+              </div>
+              <div v-for="(group, provider) in groupedModels" :key="provider">
+                <div v-if="group.length > 0" class="px-3 py-1 text-xs font-semibold text-neutral-500 sticky top-0 bg-neutral-800">
+                  {{ provider }}
+                </div>
+                <ComboboxGroup>
+                  <ComboboxItem
+                    v-for="model in group"
+                    :key="model.id"
+                    :value="model"
+                    class="relative flex cursor-default select-none items-center rounded-md px-3 py-2 text-sm text-neutral-200 data-[highlighted]:bg-neutral-700 data-[highlighted]:text-white"
+                  >
+                    <ComboboxItemIndicator
+                      class="absolute left-2 inline-flex items-center justify-center opacity-0 data-[state=checked]:opacity-100"
+                    >
+                      <Check class="w-4 h-4 text-blue-500" />
+                    </ComboboxItemIndicator>
+                    <div class="ml-6 flex-1">
+                      <div class="flex items-center justify-between">
+                        <span>{{ model.name }}</span>
+                        <span v-if="model.contextWindow" class="text-xs text-neutral-500">
+                          {{ formatContextWindow(model.contextWindow) }}
+                        </span>
+                      </div>
+                      <p v-if="model.description" class="text-xs text-neutral-500 mt-1">
+                        {{ model.description }}
+                      </p>
+                    </div>
+                  </ComboboxItem>
+                </ComboboxGroup>
+              </div>
+            </ComboboxViewport>
+          </ComboboxContent>
+        </ComboboxRoot>
+        <div v-if="selectedModel" class="mt-2 flex items-center gap-4 text-xs text-neutral-500">
+          <span v-if="selectedModel.contextWindow">
+            Context: {{ formatContextWindow(selectedModel.contextWindow) }}
+          </span>
+          <span v-if="selectedModel.costPer1kInput && selectedModel.costPer1kOutput">
+            Cost: ${{ selectedModel.costPer1kInput }}/1k in, ${{ selectedModel.costPer1kOutput }}/1k out
+          </span>
+        </div>
+      </div>
       <!-- Prompt Template Dropdown -->
       <div>
         <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
@@ -143,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import {
   ComboboxAnchor,
@@ -158,7 +237,8 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { LLMNode } from '@abuddy/api'
+import type { LLMNode, ModelConfig } from '@abuddy/api'
+import { availableModels } from '../../config/available-models'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
@@ -180,17 +260,29 @@ const selectedPrompt = ref<any>(null)
 const promptQuery = ref('')
 const fieldMappings = ref<Array<{ target: string; source: string; default?: any }>>([])
 const isOpen = ref(false)
+const selectedModel = ref<ModelConfig | null>(null)
+const modelQuery = ref('')
+const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
 // Initialize from node data
-if (props.node.promptTemplateId) {
-  const prompt = prompts.value.find(p => p.id === props.node.promptTemplateId)
-  if (prompt) {
-    selectedPrompt.value = prompt
-    fieldMappings.value = props.node.fieldMappings || []
+onMounted(() => {
+  if (props.node.promptTemplateId) {
+    const prompt = prompts.value.find(p => p.id === props.node.promptTemplateId)
+    if (prompt) {
+      selectedPrompt.value = prompt
+      fieldMappings.value = props.node.fieldMappings || []
+    }
   }
-}
+  
+  if (props.node.model) {
+    const model = availableModels.find(m => m.id === props.node.model)
+    if (model) {
+      selectedModel.value = model
+    }
+  }
+})
 
 // Computed filtered prompts
 const filteredPrompts = computed(() => {
@@ -201,10 +293,48 @@ const filteredPrompts = computed(() => {
   )
 })
 
+// Computed filtered models
+const filteredModels = computed(() => {
+  if (modelQuery.value === '') return availableModels
+  
+  return availableModels.filter((model) =>
+    startsWith(model.name, modelQuery.value) ||
+    startsWith(model.provider, modelQuery.value)
+  )
+})
+
+// Group models by provider
+const groupedModels = computed(() => {
+  const groups: Record<string, ModelConfig[]> = {}
+  filteredModels.value.forEach(model => {
+    if (!groups[model.provider]) {
+      groups[model.provider] = []
+    }
+    groups[model.provider].push(model)
+  })
+  return groups
+})
+
+// Helper to format context window
+const formatContextWindow = (tokens: number) => {
+  if (tokens >= 1000000) {
+    return `${(tokens / 1000000).toFixed(1)}M tokens`
+  } else if (tokens >= 1000) {
+    return `${(tokens / 1000).toFixed(0)}K tokens`
+  }
+  return `${tokens} tokens`
+}
+
 // Clear query when dropdown closes
 watch(isOpen, (newValue) => {
   if (!newValue) {
     promptQuery.value = ''
+  }
+})
+
+watch(isModelDropdownOpen, (newValue) => {
+  if (!newValue) {
+    modelQuery.value = ''
   }
 })
 
@@ -251,6 +381,16 @@ const handleFieldMappingChange = (field: string, value: string) => {
   emit('update-node', {
     ...props.node,
     fieldMappings: [...fieldMappings.value]
+  })
+}
+
+const handleModelChange = (model: ModelConfig | null) => {
+  selectedModel.value = model
+  modelQuery.value = ''
+  
+  emit('update-node', {
+    ...props.node,
+    model: model?.id || undefined
   })
 }
 </script>
