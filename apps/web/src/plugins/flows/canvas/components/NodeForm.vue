@@ -6,24 +6,41 @@
       @click="$emit('close')" 
     />
     
-    <!-- Slide-in form -->
+    <!-- Slide-in form with tab -->
     <div 
-      class="absolute top-0 right-0 w-2/5 h-full transform transition-transform duration-300 ease-in-out z-[6] overflow-y-auto overflow-x-hidden scrollbar-thin bg-neutral-800"
+      class="absolute top-0 right-0 w-2/5 h-full transform transition-transform duration-300 ease-in-out z-[6] flex"
       :class="selectedNode ? 'translate-x-0' : 'translate-x-full'"
     >
-      <component
-        :is="getFormComponent(selectedNode.nodeType)"
-        :node="selectedNode"
-        @update-label="handleUpdateLabel"
-        @update-config="handleUpdateConfig"
-        @update-node="handleUpdateNode"
-      />
+      <!-- Tab hanging off the side -->
+      <div class="relative">
+        <div class="absolute right-full top-20 bg-neutral-800 border border-r-0 border-neutral-700 rounded-l-lg px-3 py-2 flex items-center gap-2 min-w-[120px]">
+          <span class="text-sm font-semibold text-neutral-100">{{ selectedNode.nodeType.toUpperCase() }}</span>
+          <button
+            @click="$emit('close')"
+            class="ml-auto p-1 rounded hover:bg-neutral-700 transition-colors"
+          >
+            <X class="w-4 h-4 text-neutral-400 hover:text-neutral-200" />
+          </button>
+        </div>
+      </div>
+      
+      <!-- Form content -->
+      <div class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin bg-neutral-800">
+        <component
+          :is="getFormComponent(selectedNode.nodeType)"
+          :node="selectedNode"
+          @update-label="handleUpdateLabel"
+          @update-config="handleUpdateConfig"
+          @update-node="handleUpdateNode"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { NodeEntity } from '@abuddy/api'
+import { X } from 'lucide-vue-next'
 
 // Form components
 import BaseForm from '../forms/BaseForm.vue'

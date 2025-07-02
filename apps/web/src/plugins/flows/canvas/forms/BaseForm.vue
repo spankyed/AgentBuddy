@@ -1,11 +1,5 @@
 <template>
   <section class="w-full min-h-full bg-neutral-900">
-    <!-- Header -->
-    <div class="px-6 py-4 border-b border-neutral-800">
-      <h3 class="text-lg font-semibold text-neutral-100">{{ node.nodeType.toUpperCase() }}</h3>
-      <p class="text-sm text-neutral-500 mt-1">Configure {{ node.nodeType }} node settings</p>
-    </div>
-    
     <!-- Content -->
     <div class="p-6 space-y-4">
       <!-- Common fields for all nodes -->
