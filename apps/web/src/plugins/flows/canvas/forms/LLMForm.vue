@@ -6,7 +6,7 @@
     <div class="space-y-4">
       <!-- Model Selection -->
       <div>
-        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
           MODEL
         </label>
         <ComboboxRoot
@@ -19,22 +19,23 @@
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between rounded-md px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isModelDropdownOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600" :data-open="isModelDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="selectedModel ? '' : 'Select a model...'"
+                  :placeholder="isLoadingFormData ? 'Loading models...' : (selectedModel ? '' : 'Select a model...')"
                   :value="selectedModel ? selectedModel.name : modelQuery"
                   @input="modelQuery = ($event.target as HTMLInputElement).value"
+                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
           <ComboboxContent
-            class="absolute z-10 w-full mt-1 overflow-hidden bg-neutral-800 border border-neutral-700 rounded-md shadow-lg"
+            class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
             :style="{ top: '100%' }"
           >
-            <ComboboxViewport class="max-h-60 overflow-y-auto p-1">
+            <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
               <div
                 v-if="filteredModels.length === 0 && modelQuery !== ''"
                 class="relative px-4 py-2 cursor-default select-none text-neutral-400"
@@ -42,7 +43,7 @@
                 No models found.
               </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
-                <div v-if="group.length > 0" class="px-3 py-1 text-xs font-semibold text-neutral-500 sticky top-0 bg-neutral-800">
+                <div v-if="group.length > 0" class="sticky top-0 px-3 py-1 text-xs font-semibold text-neutral-500 bg-neutral-800">
                   {{ provider }}
                 </div>
                 <ComboboxGroup>
@@ -57,14 +58,14 @@
                     >
                       <Check class="w-4 h-4 text-blue-500" />
                     </ComboboxItemIndicator>
-                    <div class="ml-6 flex-1">
+                    <div class="flex-1 ml-6">
                       <div class="flex items-center justify-between">
                         <span>{{ model.name }}</span>
                         <span v-if="model.contextWindow" class="text-xs text-neutral-500">
                           {{ formatContextWindow(model.contextWindow) }}
                         </span>
                       </div>
-                      <p v-if="model.description" class="text-xs text-neutral-500 mt-1">
+                      <p v-if="model.description" class="mt-1 text-xs text-neutral-500">
                         {{ model.description }}
                       </p>
                     </div>
@@ -74,7 +75,7 @@
             </ComboboxViewport>
           </ComboboxContent>
         </ComboboxRoot>
-        <div v-if="selectedModel" class="mt-2 flex items-center gap-4 text-xs text-neutral-500">
+        <div v-if="selectedModel" class="flex items-center gap-4 mt-2 text-xs text-neutral-500">
           <span v-if="selectedModel.contextWindow">
             Context: {{ formatContextWindow(selectedModel.contextWindow) }}
           </span>
@@ -85,7 +86,7 @@
       </div>
       <!-- Prompt Template Dropdown -->
       <div>
-        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
           PROMPT TEMPLATE
         </label>
         <ComboboxRoot
@@ -98,22 +99,23 @@
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between rounded-md px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600" :data-open="isOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="selectedPrompt ? '' : 'Select a prompt template...'"
+                  :placeholder="isLoadingFormData ? 'Loading prompts...' : (selectedPrompt ? '' : 'Select a prompt template...')"
                   :value="selectedPrompt ? selectedPrompt.label : promptQuery"
                   @input="promptQuery = ($event.target as HTMLInputElement).value"
+                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
           <ComboboxContent
-            class="absolute z-10 w-full mt-1 overflow-hidden bg-neutral-800 border border-neutral-700 rounded-md shadow-lg"
+            class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
             :style="{ top: '100%' }"
           >
-            <ComboboxViewport class="max-h-60 overflow-y-auto p-1">
+            <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
               <div
                 v-if="filteredPrompts.length === 0 && promptQuery !== ''"
                 class="relative px-4 py-2 cursor-default select-none text-neutral-400"
@@ -146,11 +148,11 @@
       <!-- Available Context Info -->
       <div v-if="selectedPrompt">
         <details class="group">
-          <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-neutral-400 hover:text-neutral-300 list-none">
+          <summary class="text-xs font-medium tracking-wider uppercase list-none cursor-pointer text-neutral-400 hover:text-neutral-300">
             Available Context
             <ChevronRight class="inline w-3 h-3 ml-1 transition-transform group-open:rotate-90" />
           </summary>
-          <div class="mt-2 p-3 text-xs font-mono rounded-md bg-neutral-900 border border-neutral-700 text-neutral-400">
+          <div class="p-3 mt-2 font-mono text-xs border rounded-md bg-neutral-900 border-neutral-700 text-neutral-400">
             <div class="space-y-2">
               <div>
                 <span class="text-blue-400">$.event</span>
@@ -178,7 +180,7 @@
 
       <!-- Field Mappings -->
       <div v-if="selectedPrompt">
-        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
           FIELD MAPPINGS
         </label>
         <div class="p-4 border rounded-md bg-neutral-800 border-neutral-700">
@@ -192,7 +194,7 @@
               class="flex items-center gap-3"
             >
               <div class="flex-1">
-                <label class="block text-sm font-medium text-neutral-300 mb-1">
+                <label class="block mb-1 text-sm font-medium text-neutral-300">
                   {{ input.label || key }}
                   <span v-if="input.required" class="text-red-400">*</span>
                 </label>
@@ -209,7 +211,7 @@
               </div>
             </div>
           </div>
-          <div class="mt-3 pt-3 border-t border-neutral-700">
+          <div class="pt-3 mt-3 border-t border-neutral-700">
             <p class="text-xs text-neutral-500">
               Use JSONPath expressions to map fields from the execution context.
               Examples: $.event.data.text, $.lastStep.result
@@ -254,6 +256,7 @@ const emit = defineEmits<{
 const flowsActor = applicationState.system.get(flowsId)
 const prompts = useSelector(flowsActor, (state: any) => state.context.prompts || [])
 const availableModels = useSelector(flowsActor, (state: any) => state.context.models || [])
+const isLoadingFormData = useSelector(flowsActor, (state: any) => state.context.isLoadingFormData)
 
 // Local state
 const selectedPrompt = ref<any>(null)
@@ -266,8 +269,11 @@ const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Initialize from node data
+// Initialize from node data and fetch latest data
 onMounted(() => {
+  // Fetch latest models and prompts
+  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
+  
   if (props.node.promptTemplateId) {
     const prompt = prompts.value.find(p => p.id === props.node.promptTemplateId)
     if (prompt) {
@@ -282,6 +288,11 @@ onMounted(() => {
       selectedModel.value = model
     }
   }
+})
+
+// Re-fetch data when node changes
+watch(() => props.node.id, () => {
+  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
 })
 
 // Computed filtered prompts
@@ -393,6 +404,7 @@ const handleModelChange = (model: ModelConfig | null) => {
     model: model?.id || undefined
   })
 }
+
 </script>
 
 <style scoped>

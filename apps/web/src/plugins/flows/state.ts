@@ -38,6 +38,7 @@ export interface FlowsContext {
   logs: { id: number; text: string }[];
   prompts: PromptEntity[];
   models: ModelConfig[];
+  isLoadingFormData: boolean;
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -51,6 +52,7 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
+  | { type: 'FETCH_LLM_FORM_DATA' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -64,8 +66,20 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      // models and prompts are included in ev.data from startup
-      return { ...ev.data, logs: [] }
+      return { ...ev.data, logs: [], prompts: [], models: [], isLoadingFormData: false }
+    }),
+
+    fetchLLMFormData: assign(() => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_LLM_FORM_DATA'
+      });
+      return { isLoadingFormData: true };
+    }),
+
+    setLLMFormData: assign(({ event }) => {
+      const ev = typeOf('LLM_FORM_DATA_FETCHED', event);
+      return { models: ev.models, prompts: ev.prompts, isLoadingFormData: false };
     }),
 
 
@@ -285,9 +299,11 @@ const flowsState = setup({
     logs: [] as { id: number; text: string }[],
     prompts: [] as PromptEntity[],
     models: [] as ModelConfig[],
+    isLoadingFormData: false,
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
+    LLM_FORM_DATA_FETCHED: { actions: 'setLLMFormData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: ['addCreatedFlow', 'selectFlow'],
@@ -352,6 +368,9 @@ const flowsState = setup({
         },
         'GO.BACK': {
           target: 'list',
+        },
+        'FETCH_LLM_FORM_DATA': {
+          actions: 'fetchLLMFormData',
         },
       },
     },
