@@ -144,3 +144,9 @@ Backend System → Backend Bus → tRPC WebSocket → Frontend Plugin
 - **IncomingSystemEvents**: Events sent from frontend to backend
 - **OutgoingSystemEvents**: Events sent from backend to frontend (always include pluginId)
 - **Emit**: Function to send events from backend systems to frontend plugins through the bus
+
+## Vue Component Best Practices
+- **NEVER use defineExpose()**: This is an anti-pattern. Vue components should communicate through props and events only
+- **Parent-Child Communication**: Use props down, events up pattern exclusively
+- **No Direct Method Calls**: Never call child component methods directly from parent components
+- **Event-Driven**: All component interactions should be through well-defined events

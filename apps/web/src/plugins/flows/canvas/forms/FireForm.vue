@@ -1,9 +1,14 @@
 <template>
-  <BaseForm :node="node">
+  <BaseForm 
+    :node="node"
+    @update-label="$emit('update-label', $event)"
+    @update-description="$emit('update-description', $event)"
+  >
     <label class="block mb-2 text-sm font-medium text-neutral-200">
       Event Tag
       <input
-        v-model="node.eventType"
+        :value="node.eventType || ''"
+        @input="updateConfig({ eventType: ($event.target as HTMLInputElement).value })"
         placeholder="#THREAD.CREATE"
         class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
       />
@@ -20,7 +25,8 @@
     <label class="block mb-2 text-sm font-medium text-neutral-200">
       Scope
       <select
-        v-model="node.scope"
+        :value="node.scope"
+        @change="updateConfig({ scope: ($event.target as HTMLSelectElement).value })"
         class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
       >
         <option value="local">Local</option>
@@ -31,13 +37,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { isNodeKind } from '../../helpers/is-node-kind';
 import type { FireNode } from '@abuddy/api';
 import BaseForm from './BaseForm.vue';
 
 const props = defineProps<{
   node: FireNode;
+}>();
+
+const emit = defineEmits<{
+  'update-label': [label: string]
+  'update-description': [description: string]
+  'update-config': [config: Record<string, any>]
 }>();
 
 // Type guard to ensure we have a FireNode
@@ -54,11 +66,25 @@ onMounted(() => {
   }
 });
 
+// Watch for external changes to the node's payload
+watch(() => props.node.payload, (newPayload) => {
+  if (newPayload) {
+    payloadStr.value = JSON.stringify(newPayload, null, 2);
+  } else {
+    payloadStr.value = '';
+  }
+});
+
 function updatePayload() {
   try {
-    props.node.payload = JSON.parse(payloadStr.value);
+    const payload = JSON.parse(payloadStr.value);
+    updateConfig({ payload });
   } catch (e) {
-    // Invalid JSON - leave the payload as is
+    // Invalid JSON - don't update
   }
+}
+
+function updateConfig(config: Record<string, any>) {
+  emit('update-config', config);
 }
 </script>

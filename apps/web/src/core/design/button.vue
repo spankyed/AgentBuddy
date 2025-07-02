@@ -29,7 +29,7 @@ const props = defineProps<{
   class?: string
 }>()
 
-const baseClasses = 'px-4 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2'
+const baseClasses = 'px-4 py-2 h-7 rounded-md text-sm font-medium transition-colors flex items-center gap-2'
 
 const variantClasses = computed(() => {
   if (props.disabled) {
@@ -40,7 +40,7 @@ const variantClasses = computed(() => {
       case 'transparent':
         return 'bg-transparent text-neutral-500 cursor-not-allowed'
       default:
-        return 'bg-primary-700 text-neutral-400 cursor-not-allowed'
+        return 'bg-blue-600 rounded-md disabled:opacity-50 cursor-not-allowed'
     }
   }
   switch (props.variant) {
@@ -49,7 +49,7 @@ const variantClasses = computed(() => {
     case 'transparent':
       return 'bg-transparent text-neutral-200 hover:bg-neutral-700 hover:text-white'
     default:
-      return 'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-600'
+      return 'bg-blue-600 hover:bg-blue-700 text-white active:bg-primary-600'
   }
 })
 </script> 

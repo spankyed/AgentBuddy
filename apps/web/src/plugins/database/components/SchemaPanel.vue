@@ -151,7 +151,7 @@ const actor: DatabaseState = applicationState.system.get(id)
 const schema = useSelector(actor, (state) => state.context.schema);
 
 const searchQuery = ref('');
-const expandedItems = ref<string[]>(['entities', 'attributes', 'relations']);
+const expandedItems = ref<string[]>([]);
 const selectedItemId = ref<string | null>(null);
 
 interface TreeItem {

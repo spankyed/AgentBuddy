@@ -40,7 +40,8 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
-  | { type: 'NODE.DRAG_CREATE'; nodeType: string; x: number; y: number }
+  | { type: 'NODE.CREATE'; nodeType: string }
+  | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
@@ -136,6 +137,7 @@ const flowsState = setup({
       const ev = typeOf('EDGE.CONNECT', event)
       const newEdge = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' } as EdgeEntity
       context.logs.unshift({ id: Date.now(), text: `${ev.src}→${ev.tgt}` })
+      
       return { 
         graph: {
           ...context.graph,
@@ -144,25 +146,120 @@ const flowsState = setup({
         logs: context.logs,
       }
     }),
+    
+    sendEdgeConnected: ({ context, event }) => {
+      const ev = typeOf('EDGE.CONNECT', event);
+      if (!context.selectedFlowId) return;
+      
+      // Only send if both IDs are permanent (not temporary)
+      if (!ev.src.startsWith('temp-') && !ev.tgt.startsWith('temp-')) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_EDGE',
+          flowId: context.selectedFlowId,
+          sourceId: ev.src,
+          targetId: ev.tgt,
+        });
+      } else {
+        console.log('Cannot create edge yet - nodes still pending:', { src: ev.src, tgt: ev.tgt });
+      }
+    },
+    
     deselectNode: assign({ selectedNodeId: undefined }),
 
     createNode: assign(({ context, event }) => {
-      const id = `Node-${randId()}`
-      const ev = typeOf('NODE.DRAG_CREATE', event)
+      if (!context.selectedFlowId) {
+        return { selectedNodeId: undefined } // Deselect any node before creating a new one
+      }
+
+      const tempId = `temp-${randId()}`
+      const ev = typeOf('NODE.CREATE', event)
       const newNode = {
-        id,
+        id: tempId,
         nodeType: ev.nodeType,
         label: `New ${ev.nodeType}`,
-        x: ev.x,
-        y: ev.y,
       } as Partial<NodeEntity>
-      return { 
+      
+      // Send create to backend if we have a flow selected
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NODE',
+        flowId: context.selectedFlowId,
+        tempId: tempId,
+        nodeData: {
+          nodeType: ev.nodeType,
+          label: newNode.label,
+        },
+      });
+
+      return {
         graph: {
           ...context.graph,
           nodes: [...context.graph.nodes, newNode],
         },
-        selectedNodeId: id as EARS.EntityId,
+        selectedNodeId: tempId as EARS.EntityId,
       }
+    }),
+
+    /* ── node update actions ──────────────────────────────── */
+    updateNode: assign(({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE', event);
+      return {
+        graph: {
+          ...context.graph,
+          nodes: context.graph.nodes.map(node =>
+            node.id === ev.nodeId ? { ...node, ...ev.updates } : node
+          ),
+        },
+      };
+    }),
+
+    sendNodeUpdate: ({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE', event);
+      if (!context.selectedFlowId) return;
+      
+      const node = context.graph.nodes.find(n => n.id === ev.nodeId);
+      if (!node) return;
+
+      // Send update to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NODE',
+        flowId: context.selectedFlowId,
+        nodeId: ev.nodeId,
+        nodeData: { ...node, ...ev.updates },
+      });
+    },
+
+    /* ── ID reconciliation actions ────────────────────────── */
+    reconcileNodeId: assign(({ context, event }) => {
+      const ev = typeOf('NODE_CREATED', event);
+      const { tempId, nodeId: permanentId, node } = ev;
+      
+      // Update the node with permanent ID
+      const updatedNodes = context.graph.nodes.map(n => 
+        n.id === tempId ? { ...node, id: permanentId } : n
+      );
+      
+      // Update selected node ID if it was the temp one
+      const newSelectedNodeId = context.selectedNodeId === tempId 
+        ? permanentId 
+        : context.selectedNodeId;
+      
+      // Update edges that reference the temporary ID
+      const updatedEdges = context.graph.edges.map(edge => ({
+        ...edge,
+        source: edge.source === tempId ? permanentId : edge.source,
+        target: edge.target === tempId ? permanentId : edge.target,
+      }));
+      
+      return {
+        graph: {
+          nodes: updatedNodes,
+          edges: updatedEdges,
+        },
+        selectedNodeId: newSelectedNodeId,
+      };
     }),
   },
   guards: { targetIs },
@@ -186,6 +283,9 @@ const flowsState = setup({
     FLOW_CREATED: { 
       actions: ['addCreatedFlow', 'selectFlow'],
       target: '.view'
+    },
+    NODE_CREATED: { 
+      actions: 'reconcileNodeId'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],
@@ -231,9 +331,12 @@ const flowsState = setup({
       },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
-        'EDGE.CONNECT': { actions: 'connectEdge' },
-        'NODE.DRAG_CREATE': {
+        'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
+        'NODE.CREATE': {
           actions: 'createNode',
+        },
+        'NODE.UPDATE': {
+          actions: ['updateNode', 'sendNodeUpdate'],
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],

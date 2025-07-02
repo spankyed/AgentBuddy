@@ -13,7 +13,7 @@
       }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       :connect-on-click="true"
-      @node-click="$emit('node-click', $event)"
+      @node-click="handleNodeClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
       @dragover.prevent
@@ -59,9 +59,18 @@
     <!-- Backdrop overlay when in list state -->
     <div 
       v-if="showOverlay" 
-      class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/30"
+      class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/40 backdrop-blur-sm"
       @click="$emit('overlay-click')"
-    />
+    >
+      <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-20 left-1/2">
+        <div class="px-4 py-2 text-center border rounded-lg bg-neutral-900/90 border-neutral-700">
+          <div class="text-sm text-neutral-300">Click anywhere to view</div>
+          <div v-if="props.selectedFlowLabel" class="mt-1 font-medium text-neutral-100">
+            {{ props.selectedFlowLabel }}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -79,6 +88,7 @@ import { ChevronLeft } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
+// import { useNodeViewport } from '../useNodeViewport'
 
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
 import Button from '@/core/design/button.vue'
@@ -88,12 +98,14 @@ interface Props {
   nodes: VueFlowNode[]
   edges: Edge[]
   selectedFlowId?: string | null
+  selectedFlowLabel?: string
   showOverlay?: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+// const { centerNodeInView } = useNodeViewport()
 
-defineEmits<{
+const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
   'connect': [params: Connection]
   'drop': [event: DragEvent]
@@ -103,4 +115,10 @@ defineEmits<{
   'overlay-click': []
   'nodes-initialized': []
 }>()
+
+async function handleNodeClick(event: NodeMouseEvent) {
+  // await centerNodeInView(event.node.id)
+
+  emit('node-click', event)
+}
 </script> 

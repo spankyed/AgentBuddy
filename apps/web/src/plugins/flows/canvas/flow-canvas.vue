@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white w-60 bg-neutral-900 scrollbar-thin">
+    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-900 scrollbar-thin border-neutral-800">
       <!-- Flows list view -->
       <FlowsList
         v-if="inListState"
@@ -21,10 +21,11 @@
     </aside>
 
     <!-- ▸ VueFlow canvas (center) -->
-    <FlowCanvas
+    <FlowEditor
       :nodes="plainNodes"
       :edges="plainEdges"
       :selected-flow-id="selectedFlowId"
+      :selected-flow-label="currentFlowLabel"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
       @connect="handleConnect"
@@ -40,6 +41,9 @@
     <NodeForm
       :selected-node="selected"
       @close="handleCloseNodeEditor"
+      @update-label="(nodeId, label) => handleNodeUpdate(nodeId, { label })"
+      @update-description="(nodeId, description) => handleNodeUpdate(nodeId, { description })"
+      @update-config="(nodeId, config) => handleNodeUpdate(nodeId, config)"
     />
 
     <!-- Label Edit Dialog -->
@@ -53,10 +57,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref } from 'vue'
+import { computed, type Ref, ref, watch, nextTick } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode } from '@vue-flow/core'
 import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
+import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
 import type { FlowEntity, NodeEntity } from '@abuddy/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -72,11 +77,13 @@ import { useSelector } from '@xstate/vue'
 // Import sub-components
 import FlowsList from './components/FlowsList.vue'
 import NodePalette from './components/NodePalette.vue'
-import FlowCanvas from './components/FlowEditor.vue'
+import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
+const { project, getNodes } = useVueFlow()
+const { centerNodeInView } = useNodeViewport()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -99,10 +106,13 @@ const selected = useSelector(actor, (s) =>
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
-    .map((n) => ({
+    .map((n, index) => ({
       id       : n.id!,
       type     : n.nodeType,
-      position : { x: n.x ?? 0, y: n.y ?? 0 },
+      position : { 
+        x: 100 + (index % 5) * 200, 
+        y: 100 + Math.floor(index / 5) * 150 
+      },
       data     : n,  // The node itself is the data
     })) as VueFlowNode[]
 
@@ -127,6 +137,24 @@ const currentFlowLabel = computed(() => {
   return currentFlow?.label || ''
 })
 
+// Watch for newly selected nodes (which happens after node creation)
+let previousSelectedId: string | undefined = undefined
+watch(selected, async (newSelected) => {
+  if (newSelected?.id && newSelected.id !== previousSelectedId) {
+    // Check if this is a newly created node by seeing if it was just added to the nodes list
+    const isNewNode = nodes.value.some(n => n.id === newSelected.id && n.label?.startsWith('New '))
+    
+    if (isNewNode) {
+      setTimeout(async () => {
+        // Center the new node in view
+        await centerNodeInView(newSelected.id)
+      }, 100) // Delay to ensure the node is rendered
+      // await centerNodeInView(newSelected.id)
+    }
+  }
+  previousSelectedId = newSelected?.id
+}, { immediate: true })
+
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
 /* ------------------------------------------------------------ */
@@ -138,21 +166,17 @@ function handleDragStart(e: DragEvent, nodeType: string) {
 function handleDrop(e: DragEvent) {
   const nodeType = e.dataTransfer?.getData('application/vueflow')
   if (!nodeType) return
-  const bounds = (e.target as HTMLElement).getBoundingClientRect()
+  
   actor.send({
-    type: 'NODE.DRAG_CREATE',
+    type: 'NODE.CREATE',
     nodeType,
-    x: e.clientX - bounds.left,
-    y: e.clientY - bounds.top,
   })
 }
 
 function handlePaletteClick(nodeType: string) {
   actor.send({
-    type: 'NODE.DRAG_CREATE',
+    type: 'NODE.CREATE',
     nodeType,
-    x: 0,
-    y: 0,
   })
 }
 
@@ -209,6 +233,10 @@ function handleLayout(direction?: Direction) {
 
 function handleNodesInitialized() {
   layout()
+}
+
+function handleNodeUpdate(nodeId: string, updates: any) {
+  actor.send({ type: 'NODE.UPDATE', nodeId: nodeId as any, updates })
 }
 </script>
 

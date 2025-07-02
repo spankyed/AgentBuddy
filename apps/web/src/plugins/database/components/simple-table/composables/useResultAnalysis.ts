@@ -45,11 +45,13 @@ export function useResultAnalysis(queryResult: Ref<any>): ResultAnalysis {
       }
     });
     
-    return Array.from(allKeys).sort((a, b) => {
-      if (a === 'id') return -1;
-      if (b === 'id') return 1;
-      return a.localeCompare(b);
-    });
+    return Array
+      .from(allKeys)
+      // .sort((a, b) => {
+      //   if (a === 'id') return -1;
+      //   if (b === 'id') return 1;
+      //   return a.localeCompare(b);
+      // });
   });
 
   const tableData = computed(() => {

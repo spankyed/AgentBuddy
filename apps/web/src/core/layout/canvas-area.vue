@@ -1,10 +1,10 @@
 <template>
   <div
-    class="relative flex flex-col flex-grow pb-2 bg-neutral-900"
+    class="relative flex flex-col flex-grow border-b bg-neutral-900 border-neutral-800"
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 pt-4 pb-3" :class="headerClass">
+    <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800" :class="headerClass">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs?.length"

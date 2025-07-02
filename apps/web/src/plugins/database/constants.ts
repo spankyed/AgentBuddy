@@ -38,11 +38,11 @@ for (const entityId of allEntities) {
     const allData = getAll(entityId);
     
     results.push({
-      ...entityData,
-      ...allData,
+      source: entityData.id,
       relationType: '${value}',
+      targets: targets.slice(0, 5),
       targetCount: targets.length,
-      targets: targets.slice(0, 5)
+      ...allData,
     });
   }
 }
