@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+    <div v-if="prompts?.length !== 0" class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
       <div>
         <h2 class="text-lg font-semibold text-neutral-100">Prompts</h2>
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
