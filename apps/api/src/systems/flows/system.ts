@@ -8,7 +8,7 @@ import { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
 import { getExtendedData } from './repository/read';
-import { createFlow, createNode } from './repository/create';
+import { createFlow, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
@@ -26,6 +26,7 @@ export const IncomingFlowsEvents = [
   busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
   busEvent('CREATE_NODE', { flowId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
+  busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -37,6 +38,7 @@ export type OutgoingFlowsEvents =
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId }
   | { type: 'NODE_CREATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
+  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -111,6 +113,18 @@ export const flowsSystem = setup({
         logger.error('Failed to update node:', error as any);
       }
     },
+    createEdge: ({ system, event }) => {
+      const ev = typeOf('CREATE_EDGE', event);
+      logger.info('Creating edge:', { sourceId: ev.sourceId, targetId: ev.targetId });
+      
+      createEdge(ev.sourceId as EARS.EntityId, ev.targetId as EARS.EntityId);
+      
+      system.get(bus).send(emit(flows, {
+        type: 'EDGE_CREATED',
+        sourceId: ev.sourceId as EARS.EntityId,
+        targetId: ev.targetId as EARS.EntityId,
+      }));
+    },
   },
 }).createMachine(
   {
@@ -134,6 +148,9 @@ export const flowsSystem = setup({
       },
       UPDATE_NODE: {
         actions: 'updateNode',
+      },
+      CREATE_EDGE: {
+        actions: 'createEdge',
       },
     },
     states: {

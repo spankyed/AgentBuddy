@@ -145,6 +145,21 @@ const flowsState = setup({
         logs: context.logs,
       }
     }),
+    
+    sendEdgeConnected: ({ context, event }) => {
+      const ev = typeOf('EDGE.CONNECT', event);
+      if (!context.selectedFlowId) return;
+      
+      // Send edge creation to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_EDGE',
+        flowId: context.selectedFlowId,
+        sourceId: ev.src,
+        targetId: ev.tgt,
+      });
+    },
+    
     deselectNode: assign({ selectedNodeId: undefined }),
 
     createNode: assign(({ context, event }) => {
@@ -279,7 +294,7 @@ const flowsState = setup({
       },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
-        'EDGE.CONNECT': { actions: 'connectEdge' },
+        'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'NODE.CREATE': {
           actions: ['createNode', 'sendNodeCreate'],
         },
