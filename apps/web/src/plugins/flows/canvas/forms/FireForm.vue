@@ -2,37 +2,42 @@
   <BaseForm 
     :node="node"
     @update-label="$emit('update-label', $event)"
-    @update-description="$emit('update-description', $event)"
   >
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Event Tag
+    <div>
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        EVENT TAG
+      </label>
       <input
         :value="node.eventType || ''"
         @input="updateConfig({ eventType: ($event.target as HTMLInputElement).value })"
         placeholder="#THREAD.CREATE"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
-    </label>
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Payload (JSON)
+    </div>
+    <div>
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        PAYLOAD (JSON)
+      </label>
       <textarea
         v-model="payloadStr"
         rows="4"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         @input="updatePayload"
       />
-    </label>
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Scope
+    </div>
+    <div>
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        SCOPE
+      </label>
       <select
         :value="node.scope"
         @change="updateConfig({ scope: ($event.target as HTMLSelectElement).value })"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         <option value="local">Local</option>
         <option value="global">Global</option>
       </select>
-    </label>
+    </div>
   </BaseForm>
 </template>
 

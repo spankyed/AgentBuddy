@@ -15,7 +15,6 @@
         :is="getFormComponent(selectedNode.nodeType)"
         :node="selectedNode"
         @update-label="handleUpdateLabel"
-        @update-description="handleUpdateDescription"
         @update-config="handleUpdateConfig"
         @update-node="handleUpdateNode"
       />
@@ -42,7 +41,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'close': []
   'update-label': [nodeId: string, label: string]
-  'update-description': [nodeId: string, description: string]
   'update-config': [nodeId: string, config: Record<string, any>]
   'update-node': [node: Partial<NodeEntity>]
 }>()
@@ -50,12 +48,6 @@ const emit = defineEmits<{
 function handleUpdateLabel(label: string) {
   if (props.selectedNode?.id) {
     emit('update-label', props.selectedNode.id, label)
-  }
-}
-
-function handleUpdateDescription(description: string) {
-  if (props.selectedNode?.id) {
-    emit('update-description', props.selectedNode.id, description)
   }
 }
 

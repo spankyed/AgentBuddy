@@ -2,7 +2,6 @@
   <BaseForm
     :node="node"
     @update-label="handleUpdateLabel"
-    @update-description="handleUpdateDescription"
   >
     <div class="space-y-4">
       <!-- Prompt Template Dropdown -->
@@ -214,9 +213,6 @@ const handleUpdateLabel = (label: string) => {
   emit('update-node', { ...props.node, label })
 }
 
-const handleUpdateDescription = (description: string) => {
-  emit('update-node', { ...props.node, description })
-}
 
 const handlePromptChange = (prompt: any) => {
   selectedPrompt.value = prompt

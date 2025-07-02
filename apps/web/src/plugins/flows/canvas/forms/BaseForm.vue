@@ -1,25 +1,29 @@
 <template>
-  <section class="w-full min-h-full p-4 bg-neutral-800">
-    <h3>{{ node.label }}</h3>
-    <!-- Common fields for all nodes -->
-    <label class="block mt-2 mb-2 text-sm font-medium text-neutral-200">
-      Name
-      <input
-        :value="node.label"
-        @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
-        class="w-full px-3 py-2 mt-1 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-      />
-    </label>
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Description
-      <input
-        :value="node.description || ''"
-        @input="$emit('update-description', ($event.target as HTMLInputElement).value)"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-      />
-    </label>
-    <!-- Slot for node-specific fields -->
-    <slot></slot>
+  <section class="w-full min-h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-neutral-800">
+      <h3 class="text-lg font-semibold text-neutral-100">{{ node.nodeType.toUpperCase() }}</h3>
+      <p class="text-sm text-neutral-500 mt-1">Configure {{ node.nodeType }} node settings</p>
+    </div>
+    
+    <!-- Content -->
+    <div class="p-6 space-y-4">
+      <!-- Common fields for all nodes -->
+      <div>
+        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+          LABEL
+        </label>
+        <input
+          :value="node.label"
+          @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
+          class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="Enter node label..."
+        />
+      </div>
+      
+      <!-- Slot for node-specific fields -->
+      <slot></slot>
+    </div>
   </section>
 </template>
 
@@ -32,7 +36,6 @@ defineProps<{
 
 defineEmits<{
   'update-label': [label: string]
-  'update-description': [description: string]
   'update-config': [config: Record<string, any>]
 }>();
 </script>

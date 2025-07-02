@@ -2,39 +2,44 @@
   <BaseForm 
     :node="node"
     @update-label="$emit('update-label', $event)"
-    @update-description="$emit('update-description', $event)"
   >
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Entity Type
+    <div>
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        ENTITY TYPE
+      </label>
       <select
         :value="node.entityTypeTarget"
         @change="updateConfig({ entityTypeTarget: ($event.target as HTMLSelectElement).value })"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         <option value="thread">Thread</option>
         <option value="message">Message</option>
         <option value="node">Node</option>
         <option value="flow">Flow</option>
       </select>
-    </label>
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      Entity ID (optional)
+    </div>
+    <div>
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        ENTITY ID (OPTIONAL)
+      </label>
       <input
         :value="node.entityId || ''"
         @input="updateConfig({ entityId: ($event.target as HTMLInputElement).value })"
         placeholder="Auto-generated if empty"
-        class="w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
-    </label>
-    <label class="block mb-2 text-sm font-medium text-neutral-200">
-      <input
-        type="checkbox"
-        :checked="node.inferLabel"
-        @change="updateConfig({ inferLabel: ($event.target as HTMLInputElement).checked })"
-        class="mr-2"
-      />
-      Infer Label
-    </label>
+    </div>
+    <div>
+      <label class="flex items-center text-sm text-neutral-200">
+        <input
+          type="checkbox"
+          :checked="node.inferLabel"
+          @change="updateConfig({ inferLabel: ($event.target as HTMLInputElement).checked })"
+          class="mr-2 rounded border-neutral-700 bg-neutral-800 text-blue-500 focus:ring-2 focus:ring-blue-500"
+        />
+        <span class="text-xs font-medium uppercase tracking-wider text-neutral-400">INFER LABEL</span>
+      </label>
+    </div>
   </BaseForm>
 </template>
 
@@ -49,7 +54,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-label': [label: string]
-  'update-description': [description: string]
   'update-config': [config: Record<string, any>]
 }>();
 

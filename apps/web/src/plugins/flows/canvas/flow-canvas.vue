@@ -42,7 +42,6 @@
       :selected-node="selected"
       @close="handleCloseNodeEditor"
       @update-label="(nodeId, label) => handleNodeUpdate(nodeId, { label })"
-      @update-description="(nodeId, description) => handleNodeUpdate(nodeId, { description })"
       @update-config="(nodeId, config) => handleNodeUpdate(nodeId, config)"
       @update-node="(node) => node.id && handleNodeUpdate(node.id, node)"
     />
