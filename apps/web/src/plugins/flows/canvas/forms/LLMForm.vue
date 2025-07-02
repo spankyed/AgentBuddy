@@ -43,7 +43,7 @@
                 No models found.
               </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
-                <div v-if="group.length > 0" class="z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-900 border-neutral-800">
+                <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-900 border-neutral-800">
                   {{ provider }}
                 </div>
                 <ComboboxGroup>
