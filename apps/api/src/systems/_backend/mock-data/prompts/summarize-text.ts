@@ -29,11 +29,13 @@ export const summarizeTextPrompt: Rows = {
       },
       templateFn: `(params) => {
   const { text, maxLength = 100 } = params;
-  return \`Please summarize the following text in approximately \${maxLength} words:
+  return \`
+Please summarize the following text in approximately \${maxLength} words:
 
 \${text}
 
-Provide a clear, concise summary focusing on the main points.\`;
+Provide a clear, concise summary focusing on the main points.
+\`;
 }`,
       createdAt: nowMs - 86400000 * 7,
       updatedAt: nowMs - 86400000 * 2

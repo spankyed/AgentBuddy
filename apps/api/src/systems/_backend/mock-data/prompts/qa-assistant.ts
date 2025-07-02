@@ -37,21 +37,25 @@ export const qaAssistantPrompt: Rows = {
   const { question, context = '', tone = 'professional' } = params;
   
   if (context) {
-    return \`Context:
+    return \`
+Context:
 \${context}
 
 Please answer the following question in a \${tone} tone:
 
 \${question}
 
-Provide a clear and helpful response.\`;
+Provide a clear and helpful response.
+\`;
   }
   
-  return \`Please answer the following question in a \${tone} tone:
+  return \`
+Please answer the following question in a \${tone} tone:
 
 \${question}
 
-Provide a clear and helpful response.\`;
+Provide a clear and helpful response.
+\`;
 }`,
       createdAt: nowMs - 86400000 * 3,
       updatedAt: nowMs - 86400000 * 3

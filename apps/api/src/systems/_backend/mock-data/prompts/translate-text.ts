@@ -43,7 +43,8 @@ export const translateTextPrompt: Rows = {
       templateFn: `(params) => {
   const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;
   
-  return \`Please translate the following text to \${targetLang}:
+  return \`
+Please translate the following text to \${targetLang}:
 
 \${text}
 
@@ -54,7 +55,8 @@ Translation requirements:
 - Maintain formatting and structure
 - Ensure cultural appropriateness
 
-Provide only the translated text without explanations.\`;
+Provide only the translated text without explanations.
+\`;
 }`,
       createdAt: nowMs - 86400000 * 4,
       updatedAt: nowMs - 86400000 * 1

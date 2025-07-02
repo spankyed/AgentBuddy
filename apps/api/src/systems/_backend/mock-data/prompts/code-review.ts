@@ -35,7 +35,8 @@ export const codeReviewPrompt: Rows = {
       },
       templateFn: `(params) => {
   const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;
-  return \`Please review the following \${language} code:
+  return \`
+Please review the following \${language} code:
 
 \\\`\\\`\\\`\${language}
 \${code}
@@ -43,7 +44,8 @@ export const codeReviewPrompt: Rows = {
 
 Focus on: \${focusAreas.join(', ')}
 
-Provide specific suggestions for improvements.\`;
+Provide specific suggestions for improvements.
+\`;
 }`,
       outputSchema: {
         type: 'object',

@@ -44,7 +44,8 @@ export const brainstormIdeasPrompt: Rows = {
       templateFn: `(params) => {
   const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;
   
-  return \`Please brainstorm \${quantity} \${creativity} ideas for:
+  return \`
+Please brainstorm \${quantity} \${creativity} ideas for:
 
 \${topic}
 
@@ -59,7 +60,8 @@ export const brainstormIdeasPrompt: Rows = {
 Present each idea with:
 1. A clear title
 2. A 2-3 sentence description
-3. Key benefits or potential impact\`;
+3. Key benefits or potential impact
+\`;
 }`,
       createdAt: nowMs - 86400000 * 8,
       updatedAt: nowMs - 86400000 * 3

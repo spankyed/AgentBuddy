@@ -29,7 +29,8 @@ export const sentimentAnalysisPrompt: Rows = {
       templateFn: `(params) => {
   const { text, detailed = false } = params;
   
-  return \`Please analyze the sentiment of the following text:
+  return \`
+Please analyze the sentiment of the following text:
 
 "\${text}"
 
@@ -39,7 +40,8 @@ Provide a sentiment analysis that includes:
 - Key emotional indicators
 \${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}
 
-Format your response as a clear, structured analysis.\`;
+Format your response as a clear, structured analysis.
+\`;
 }`,
       outputSchema: {
         type: 'object',
