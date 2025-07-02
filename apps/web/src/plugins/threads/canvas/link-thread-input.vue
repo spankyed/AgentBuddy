@@ -1,14 +1,12 @@
 <template>
   <div class="flex flex-col w-full gap-2">
-    <!-- horizontal rule -->
-    <div class="w-full h-px my-2 bg-neutral-700/40"></div>
     <!-- Link Thread Button / Input -->
     <div>
       <button
         v-if="!isInputVisible"
         type="button"
         @click="toggleInput"
-        class="flex items-center gap-2 px-4 py-4 text-sm font-medium transition-colors rounded h-7 text-neutral-200 bg-neutral-900/60 hover:bg-neutral-700"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
       >
         Link Thread
         <Plus :size="16" class="text-neutral-300" />
@@ -16,7 +14,7 @@
 
       <div v-else class="w-full gap-2 mt-2">
         <div class="flex items-center gap-2">
-          <select v-model="relation" class="p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
+          <select v-model="relation" class="px-3 py-2 text-sm font-medium transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600">
             <option value="parent_of">parent_of</option>
             <option value="blocks">blocks</option>
             <option value="blocked_by">blocked_by</option>
@@ -24,10 +22,10 @@
           </select>
 
           <ComboboxRoot v-model="query" :open="isOpen" @update:open="isOpen = $event" class="relative flex-grow">
-            <ComboboxAnchor class="inline-flex items-center flex-1 w-full gap-2 p-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none">
+            <ComboboxAnchor class="inline-flex items-center flex-1 w-full gap-2 px-3 py-2 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus-within:border-neutral-600">
               <ComboboxInput
                 placeholder="Search for threads"
-                class="flex-1 w-full px-4 bg-transparent focus:outline-none placeholder:text-neutral-500"
+                class="flex-1 w-full bg-transparent focus:outline-none placeholder:text-neutral-600"
                 @click="isOpen = true"
                 :display-value="displayThread"
                 @keydown.backspace="query = ''"
@@ -36,7 +34,7 @@
   
             <ComboboxContent
               v-if="filteredOptions.length"
-              class="absolute z-10 w-full mt-0 overflow-hidden rounded shadow-lg bg-neutral-950"
+              class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
             >
               <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
                 <ComboboxGroup>
@@ -44,10 +42,10 @@
                     v-for="thread in filteredOptions"
                     :key="thread.id"
                     :value="thread.id"
-                    class="flex items-center gap-2 px-2 py-1 text-sm rounded cursor-pointer text-neutral-200 hover:bg-neutral-700/40"
+                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors rounded cursor-pointer text-neutral-200 hover:bg-neutral-700 data-[highlighted]:bg-neutral-700"
                   >
                     <div class="flex items-center flex-1 space-x-2">
-                      <span class="w-20 px-2 py-1 text-xs font-semibold text-neutral-500">
+                      <span class="min-w-[5rem] text-xs font-medium uppercase tracking-wider text-neutral-500">
                         {{ thread.shortCode }}
                       </span>
                       <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
@@ -63,14 +61,14 @@
           <button
             type="button"
             @click="linkThread"
-            class="flex items-center px-3 py-1 ml-2 text-sm bg-blue-600 rounded text-neutral-200 hover:bg-blue-700"
+            class="flex items-center px-3 py-2 ml-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
           >
             Link
           </button>
           <button
             type="button"
             @click="toggleInput"
-            class="flex items-center px-3 py-1 text-sm rounded text-neutral-200 hover:bg-neutral-600"
+            class="flex items-center px-3 py-2 text-sm font-medium transition-colors rounded-md text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
           >
             Cancel
           </button>
@@ -85,11 +83,11 @@
         <button
           type="button"
           @click="removeLink(item.id)"
-          class="p-1 rounded focus:outline-none"
+          class="p-1.5 rounded-md hover:bg-neutral-800 focus:outline-none transition-colors"
         >
           <X :size="16" class="text-neutral-400 hover:text-neutral-200" />
         </button>
-        <span class="w-24 h-10 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200">{{ item.relation }}</span>
+        <span class="inline-flex items-center px-3 py-2 text-xs font-medium border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300">{{ item.relation }}</span>
         <Thread
           :lite="lite"
           :key="item.id"

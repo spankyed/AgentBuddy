@@ -1,137 +1,154 @@
 <template>
-  <div class="max-w-5xl px-10 mx-auto root-container">
-    <div class="space-y-4">
-      <!-- Topic & Status -->
-      <div class="flex flex-col items-center gap-4 md:flex-row">
-        <div class="flex-1">
-          <!-- <Label>Topic</Label> -->
-          <div
-            v-show="!isEditingTopic"
-            @click="startEditingTopic"
-            class="w-full px-3 py-2 text-xl rounded bg-neutral-800/40 text-neutral-200 cursor-text"
-          >
-            {{ topic || 'Untitled' }}
-          </div>
-          <input
-            ref="topicInput"
-            v-show="isEditingTopic"
-            :value="topic"
-            @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
-            @blur="isEditingTopic = false"
-            @keydown.enter="isEditingTopic = false"
-            type="text"
-            placeholder="Thread Topic"
-            class="w-full px-3 py-2 text-xl rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-          />
-        </div>
-        <div class="w-full md:w-40">
-          <!-- <Label>Type</Label> -->
-          <select
-            :value="type"
-            @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
-            class="w-full px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-          >
-            <option value="work-item">Work Item</option>
-            <option value="project">Project</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Instructions -->
-      <div>
-        <!-- <Label>Instructions</Label> -->
-        <div
-          v-show="!isEditingInstructions"
-          @click="startEditingInstructions"
-          class="px-3 py-2 border rounded-lg bg-neutral-800 border-neutral-700 cursor-text h-[8rem] overflow-y-auto"
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-900">
+      <div class="flex items-center gap-4">
+        <Button
+          @click="actor.send({ type: 'GO_BACK' })"
+          variant="transparent"
+          class="!p-2"
         >
-          <p class="text-sm text-neutral-300">{{ instructions || 'No agent instructions' }}</p>
-        </div>
-        <textarea
-          ref="instructionsInput"
-          v-show="isEditingInstructions"
-          :value="instructions"
-          @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
-          @blur.passive="isEditingInstructions = false"
-          placeholder="Enter instructions for the agent"
-          class="h-[8rem] w-full px-3 py-2 text-sm rounded bg-neutral-900/40 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600 border border-neutral-700 resize-y"
-        ></textarea>
-      </div>
-
-      <!-- Tags & Status -->
-      <div class="flex items-start gap-2">
-        <!-- Tags -->
-        <TagInput 
-          v-model="tagNames"
-          :available-tags="availableTags"
-          @update:modelValue="(newTags) => updateField('tags', newTags)"
-          class="flex-1"
-        />
-        <!-- Status -->
-        <div class="flex justify-end w-1/2">
-          <select
-            :value="status"
-            @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
-            class="w-32 px-3 py-2 text-sm rounded bg-neutral-900/60 text-neutral-200 focus:outline-none focus:ring-1 focus:ring-primary-600"
-          >
-            <option value="draft">Draft</option>
-            <option value="queued">Queued</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <ArrowLeft class="w-4 h-4" />
+        </Button>
+        <div>
+          <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
+          <p class="text-xs text-neutral-400">{{ topic || 'Untitled thread' }}</p>
         </div>
       </div>
+      <Button 
+        @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+        variant="primary"
+      >
+        <MessageCircleMore class="w-4 h-4" />
+        <span>Open Chat</span>
+      </Button>
+    </div>
 
-      <!-- Messages Container -->
-      <div class="mt-5">
-        <div class="flex gap-2 pb-2">
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar">
+      <div class="max-w-4xl p-6 mx-auto space-y-6">
+        <!-- Topic & Status Section -->
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Topic</label>
+              <div
+                v-show="!isEditingTopic"
+                @click="startEditingTopic"
+                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 cursor-text hover:border-neutral-600"
+              >
+                {{ topic || 'Untitled thread' }}
+              </div>
+              <input
+                ref="topicInput"
+                v-show="isEditingTopic"
+                :value="topic"
+                @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
+                @blur="isEditingTopic = false"
+                @keydown.enter="isEditingTopic = false"
+                type="text"
+                placeholder="Enter thread topic"
+                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
+              <select
+                :value="status"
+                @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
+                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+              >
+                <option value="draft">Draft</option>
+                <option value="queued">Queued</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Instructions & Type -->
+          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
+              <div
+                v-show="!isEditingInstructions"
+                @click="startEditingInstructions"
+                class="min-h-[8rem] px-4 py-3 rounded-md bg-neutral-800 border border-neutral-700 cursor-text hover:border-neutral-600 transition-colors"
+              >
+                <p class="text-sm whitespace-pre-wrap text-neutral-300">{{ instructions || 'Click to add agent instructions...' }}</p>
+              </div>
+              <textarea
+                ref="instructionsInput"
+                v-show="isEditingInstructions"
+                :value="instructions"
+                @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
+                @blur.passive="isEditingInstructions = false"
+                placeholder="Enter instructions for the agent"
+                class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+              ></textarea>
+            </div>
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Type</label>
+              <select
+                :value="type"
+                @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
+                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+              >
+                <option value="work-item">Work Item</option>
+                <option value="project">Project</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div>
+            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
+            <TagInput 
+              v-model="tagNames"
+              :available-tags="availableTags"
+              @update:modelValue="(newTags) => updateField('tags', newTags)"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Messages Section -->
+        <div class="pt-6 border-t border-neutral-800">
           <button
             :disabled="messages.length === 0"
             @click="isMessagesOpen = !isMessagesOpen"
             :class="[
-              'flex items-center justify-between px-2 py-0.5 text-sm font-medium rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700',
-              { 'opacity-50': messages.length === 0 }
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all',
+              messages.length === 0 
+                ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed' 
+                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100'
             ]"
           >
-            <span>View Messages ({{ messages.length }})</span>
             <ChevronDown 
               :size="16" 
-              :class="[`ml-1 transition-transform`, isMessagesOpen ? 'rotate-180' : '']"
+              :class="['transition-transform', isMessagesOpen ? 'rotate-180' : '']"
             />
+            <span>Messages ({{ messages.length }})</span>
           </button>
-          <button
-            topic="Cancel thread creation"
-            type="submit"
-            @click="actor.send({ type: 'GO_BACK' })"
-            :class="[
-              'ml-auto pl-2 pr-3 py-2 h-7 rounded text-sm font-medium transition-colors flex items-center gap-2 hover:bg-neutral-700 text-neutral-500 hover:text-white',
-            ]"
-          >
-            <ArrowLeft :size="16" />
-            Back
-          </button>
-          <Button 
-            type="button"
-            variant="secondary"
-            @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
-          >
-            Chat About {{ topic.slice(0, 10) }}
-            <MessageCircleMore :size="16" class=""/>
-          </Button>
+          <div v-if="isMessagesOpen" class="mt-4">
+            <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
+          </div>
         </div>
-        <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
+
+        <!-- Linked Threads Section -->
+        <div class="pt-6 border-t border-neutral-800">
+          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Linked Threads</label>
+          <ThreadLinkInput
+            v-model="linkedThreads"
+            :available-threads="threadsList"
+            @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
+            @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
+            @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
+            @update:modelValue="(links) => updateField('linkedThreads', links)"
+          />
+        </div>
       </div>
     </div>
-
-    <!-- Related Threads -->
-    <ThreadLinkInput
-      v-model="linkedThreads"
-      :available-threads="threadsList"
-      @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
-      @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
-      @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
-      @update:modelValue="(links) => updateField('linkedThreads', links)"
-      />
   </div>
 </template>
 
@@ -193,30 +210,10 @@ const startEditingInstructions = () => {
 watch(isMessagesOpen, async (isOpen) => {
   if (isOpen) {
     await nextTick()
-    const [messagesContainer, rootContainer] = [
-      document.querySelector('.messages-container'),
-      document.querySelector('.root-container')?.parentElement
-    ]
+    const messagesContainer = document.querySelector('.messages-container')
     if (messagesContainer) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight
-    }
-    if (rootContainer) {
-      rootContainer.scrollTop = rootContainer.scrollHeight
     }
   }
 })
 </script>
-
-<style scoped>
-.resize-handle {
-  resize: vertical;
-  overflow: auto;
-}
-
-.resize-handle::-webkit-resizer {
-  border-width: .1rem;
-  border-style: solid;
-  border-color: transparent #3d3d3d #3d3d3d transparent;
-  background-color: transparent;
-}
-</style>

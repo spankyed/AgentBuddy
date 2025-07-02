@@ -1,14 +1,14 @@
 <template>
   <div
     :class="[
-      'flex w-full items-center justify-between overflow-hidden rounded-md bg-neutral-900/40 border border-neutral-800/50 transition-all duration-200',
-      { 'cursor-pointer hover:bg-neutral-900/60 hover:border-neutral-700/50': !lite },
+      'flex w-full items-center justify-between overflow-hidden rounded-md bg-neutral-800 border border-neutral-700 transition-all duration-200',
+      { 'cursor-pointer hover:bg-neutral-700 hover:border-neutral-600': !lite },
       { 'animate-highlight': !lite && thread.isNew },
     ]"
   >
     <div
       :class="[
-        'flex items-center flex-1 h-full px-4 py-1 gap-4',
+        'flex items-center flex-1 h-full px-4 py-3 gap-4',
         { 'cursor-pointer': !lite }
       ]"
       @click="$emit('select', thread.id)"
@@ -18,9 +18,14 @@
         <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider min-w-[3.5rem]">
           {{ thread.shortCode }}
         </span>
-        <span class="max-w-md text-sm font-medium truncate text-neutral-100">
-          {{ thread.topic || 'Untitled thread' }}
-        </span>
+        <div class="flex items-center gap-3 flex-1">
+          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-700 transition-colors">
+            <MessageCircleMore class="w-4 h-4 text-neutral-400" />
+          </div>
+          <span class="max-w-md text-sm font-medium truncate text-neutral-100">
+            {{ thread.topic || 'Untitled thread' }}
+          </span>
+        </div>
       </div>
       <!-- Status selector and tags -->
       <div v-if="!lite" class="flex items-center gap-4">
@@ -28,7 +33,7 @@
           @click.stop
           :value="thread.status"
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
-          class="px-3 py-1 text-xs transition-all duration-200 border rounded-md cursor-pointer bg-neutral-800 border-neutral-700 text-neutral-300 focus:outline-none focus:border-neutral-600"
+          class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-700 border border-neutral-600 text-neutral-300 hover:bg-neutral-600 focus:outline-none focus:border-neutral-500 transition-all duration-200"
         >
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
@@ -40,7 +45,7 @@
             @click.stop
             v-for="tag in thread.tags"
             :key="tag.id"
-            class="px-2 py-0.5 text-xs text-purple-300 rounded bg-purple-900/30 transition-colors duration-200 truncate"
+            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 transition-colors duration-200 truncate"
           >
             {{ tag.name }}
           </span>
@@ -52,7 +57,7 @@
       v-if="!lite"
       @click.stop="$emit('chat-click', thread.id)"
       type="button"
-      class="flex items-center justify-center h-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 transition-all duration-200 border-l border-neutral-800"
+      class="flex items-center justify-center h-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700 transition-all duration-200 border-l border-neutral-700"
     >
       Chat
       <MessageCircleMore class="w-4 h-4 ml-1.5"/>
@@ -86,12 +91,12 @@ defineEmits<{
 <style lang="scss">
 @keyframes highlight {
   0% {
-    background-color: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.5);
+    background-color: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.3);
   }
   100% {
-    background-color: rgba(23, 23, 23, 0.4);
-    border-color: rgba(38, 38, 38, 0.5);
+    background-color: transparent;
+    border-color: transparent;
   }
 }
 

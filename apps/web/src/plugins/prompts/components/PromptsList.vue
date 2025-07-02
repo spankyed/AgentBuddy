@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div v-if="prompts?.length !== 0" class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
+    <div v-if="prompts?.length !== 0" class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-950">
       <div>
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
       </div>
@@ -14,8 +14,8 @@
     <!-- Prompts Table -->
     <div class="flex-1 overflow-hidden">
       <div v-if="prompts.length > 0" class="h-full overflow-y-auto custom-scrollbar">
-        <table class="w-full bg-neutral-800/40">
-          <thead class="sticky top-0 z-10 bg-neutral-900">
+        <table class="w-full">
+          <thead class="sticky top-0 z-10 bg-neutral-950">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
@@ -28,7 +28,7 @@
             <tr
               v-for="prompt in prompts"
               :key="prompt.id"
-              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-900"
+              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
               @click="$emit('select', prompt.id)"
             >
               <td class="px-6 py-4">

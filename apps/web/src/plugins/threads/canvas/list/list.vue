@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-950/30">
+  <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <!-- Left section: Title and subtitle -->
@@ -7,8 +7,6 @@
         <div>
           <p class="text-sm text-neutral-400">Manage your conversation threads</p>
         </div>
-        
-
       </div>
       
       <!-- Right section: Search and New Thread button -->
@@ -18,7 +16,7 @@
           <Button
             type="button"
             variant="transparent"
-            class="!text-xs !px-3 !py-1.5"
+            class="!text-sm !px-3 !py-1.5"
           >
             <Filter :size="14" />
             <span>Filter</span>
@@ -26,7 +24,7 @@
           <Button
             type="button"
             variant="transparent"
-            class="!text-xs !px-3 !py-1.5"
+            class="!text-sm !px-3 !py-1.5"
           >
             <span>Clear filters</span>
             <span v-if="5 > 0" class="ml-1 text-neutral-500">
@@ -41,7 +39,7 @@
             v-model="searchKeyword"
             type="text"
             placeholder="Search threads..."
-            class="w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-900 border-neutral-800 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-950"
+            class="w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-800"
           />
         </div>
         
@@ -74,7 +72,7 @@
               <tr
                 v-if="!isPlaceholderThread(thread)"
                 :class="[
-                  'transition-all duration-200 cursor-pointer group hover:bg-neutral-900',
+                  'transition-all duration-200 cursor-pointer group hover:bg-neutral-800',
                   { 'animate-highlight': thread.isNew }
                 ]"
                 @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
@@ -133,7 +131,7 @@
               </tr>
               <tr v-else>
                 <td colspan="5" class="p-3">
-                  <div class="h-12 rounded-md bg-neutral-900/20 animate-pulse"></div>
+                  <div class="h-12 rounded-md bg-neutral-800/50 animate-pulse"></div>
                 </td>
               </tr>
             </template>
@@ -147,7 +145,7 @@
         class="flex flex-col items-center justify-center h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
-          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-900">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
             <MessageCircleMore class="w-8 h-8 text-neutral-500" />
           </div>
           <h3 class="mb-2 text-lg font-semibold text-neutral-100">No threads yet</h3>
