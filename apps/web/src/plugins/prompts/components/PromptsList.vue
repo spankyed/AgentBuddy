@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div v-if="prompts?.length !== 0" class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-950">
+    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div>
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
       </div>
@@ -15,7 +15,7 @@
     <div class="flex-1 overflow-hidden">
       <div v-if="prompts.length > 0" class="h-full overflow-y-auto custom-scrollbar">
         <table class="w-full">
-          <thead class="sticky top-0 z-10 bg-neutral-950">
+          <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
@@ -80,7 +80,7 @@
         class="flex flex-col items-center justify-center h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
-          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-900">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
             <FileText class="w-8 h-8 text-neutral-500" />
           </div>
           <h3 class="mb-2 text-lg font-semibold text-neutral-100">No prompts yet</h3>
