@@ -31,8 +31,8 @@
       @connect="handleConnect"
       @drop="handleDrop"
       @go-back="handleGoBack"
-      @layout="handleLayout"
-      @edit-label="openLabelDialog"
+      @action-layout="handleLayout"
+      @action-edit-label="openLabelDialog"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
     />

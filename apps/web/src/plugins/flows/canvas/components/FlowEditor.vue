@@ -110,8 +110,8 @@ const emit = defineEmits<{
   'connect': [params: Connection]
   'drop': [event: DragEvent]
   'go-back': []
-  'layout': [direction?: Direction]
-  'edit-label': []
+  'action-layout': [direction?: Direction]
+  'action-edit-label': []
   'overlay-click': []
   'nodes-initialized': []
 }>()
