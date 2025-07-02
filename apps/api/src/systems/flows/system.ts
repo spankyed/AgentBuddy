@@ -24,7 +24,7 @@ export const IncomingFlowsEvents = [
   busEvent('FLOW_SELECT', { flowId: z.string() }),
   busEvent('CREATE_FLOW', {}),
   busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
-  busEvent('CREATE_NODE', { flowId: z.string(), nodeData: z.any() }),
+  busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
 ] as const
@@ -36,7 +36,7 @@ export type OutgoingFlowsEvents =
   | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId }
-  | { type: 'NODE_CREATED'; nodeId: EARS.EntityId; node: any }
+  | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
 
@@ -83,13 +83,14 @@ export const flowsSystem = setup({
     },
     createNode: ({ system, event }) => {
       const ev = typeOf('CREATE_NODE', event);
-      logger.info('Creating node:', { flowId: ev.flowId, nodeData: ev.nodeData });
+      logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
       
       try {
         const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_CREATED',
+          tempId: ev.tempId,
           nodeId: newNode.id,
           node: newNode,
         }));
