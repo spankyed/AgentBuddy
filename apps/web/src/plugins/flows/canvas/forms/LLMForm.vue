@@ -68,7 +68,7 @@
       <!-- Available Context Info -->
       <div v-if="selectedPrompt">
         <details class="group">
-          <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-neutral-400 hover:text-neutral-300">
+          <summary class="cursor-pointer text-xs font-medium uppercase tracking-wider text-neutral-400 hover:text-neutral-300 list-none">
             Available Context
             <ChevronRight class="inline w-3 h-3 ml-1 transition-transform group-open:rotate-90" />
           </summary>
@@ -258,3 +258,10 @@ const handleFieldMappingChange = (field: string, value: string) => {
   })
 }
 </script>
+
+<style scoped>
+/* Hide default details disclosure triangle */
+summary::-webkit-details-marker {
+  display: none;
+}
+</style>
