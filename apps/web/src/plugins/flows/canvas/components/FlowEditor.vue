@@ -50,8 +50,8 @@
         <!-- Actions menu -->
         <FlowActionsMenu 
           :selected-flow-id="selectedFlowId"
-          @layout="(direction) => $emit('layout', direction)"
-          @edit-label="$emit('edit-label')"
+          @layout="(direction) => $emit('action-layout', direction)"
+          @edit-label="$emit('action-edit-label')"
         />
       </div>
     </VueFlow>
