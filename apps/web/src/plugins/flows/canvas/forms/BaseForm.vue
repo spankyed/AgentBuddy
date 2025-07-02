@@ -1,5 +1,5 @@
 <template>
-  <section class="w-full h-full p-4 bg-neutral-800">
+  <section class="w-full min-h-full p-4 bg-neutral-800">
     <h3>{{ node.label }}</h3>
     <!-- Common fields for all nodes -->
     <label class="block mt-2 mb-2 text-sm font-medium text-neutral-200">
