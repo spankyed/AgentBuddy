@@ -33,9 +33,9 @@ export const codeReviewPrompt: Rows = {
           defaultValue: ['bugs', 'performance', 'readability']
         }
       },
-      templateFn: `(params) => {
-  const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;
-  return \`
+      templateFn: `const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;
+// prettier-ignore
+return \`
 Please review the following \${language} code:
 
 \\\`\\\`\\\`\${language}
@@ -45,8 +45,7 @@ Please review the following \${language} code:
 Focus on: \${focusAreas.join(', ')}
 
 Provide specific suggestions for improvements.
-\`;
-}`,
+\`;`,
       outputSchema: {
         type: 'object',
         properties: {

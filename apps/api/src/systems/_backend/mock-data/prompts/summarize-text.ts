@@ -27,16 +27,15 @@ export const summarizeTextPrompt: Rows = {
           defaultValue: 100
         }
       },
-      templateFn: `(params) => {
-  const { text, maxLength = 100 } = params;
-  return \`
+      templateFn: `const { text, maxLength = 100 } = params;
+// prettier-ignore
+return \`
 Please summarize the following text in approximately \${maxLength} words:
 
 \${text}
 
 Provide a clear, concise summary focusing on the main points.
-\`;
-}`,
+\`;`,
       createdAt: nowMs - 86400000 * 7,
       updatedAt: nowMs - 86400000 * 2
     }

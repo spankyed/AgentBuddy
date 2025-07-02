@@ -33,11 +33,11 @@ export const qaAssistantPrompt: Rows = {
           defaultValue: 'professional'
         }
       },
-      templateFn: `(params) => {
-  const { question, context = '', tone = 'professional' } = params;
-  
-  if (context) {
-    return \`
+      templateFn: `const { question, context = '', tone = 'professional' } = params;
+
+if (context) {
+  // prettier-ignore
+  return \`
 Context:
 \${context}
 
@@ -47,16 +47,16 @@ Please answer the following question in a \${tone} tone:
 
 Provide a clear and helpful response.
 \`;
-  }
-  
-  return \`
+}
+
+// prettier-ignore
+return \`
 Please answer the following question in a \${tone} tone:
 
 \${question}
 
 Provide a clear and helpful response.
-\`;
-}`,
+\`;`,
       createdAt: nowMs - 86400000 * 3,
       updatedAt: nowMs - 86400000 * 3
     }

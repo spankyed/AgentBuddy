@@ -40,10 +40,10 @@ export const translateTextPrompt: Rows = {
           defaultValue: 'natural'
         }
       },
-      templateFn: `(params) => {
-  const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;
-  
-  return \`
+      templateFn: `const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;
+
+// prettier-ignore
+return \`
 Please translate the following text to \${targetLang}:
 
 \${text}
@@ -56,8 +56,7 @@ Translation requirements:
 - Ensure cultural appropriateness
 
 Provide only the translated text without explanations.
-\`;
-}`,
+\`;`,
       createdAt: nowMs - 86400000 * 4,
       updatedAt: nowMs - 86400000 * 1
     }

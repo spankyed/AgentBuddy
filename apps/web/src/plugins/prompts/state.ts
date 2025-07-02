@@ -109,7 +109,7 @@ const promptsState = setup({
         label: '',
         description: '',
         inputs: {},
-        templateFn: '(params) => {\n  // Your template function here\n  return `Your prompt template`;\n}',
+        templateFn: '// Your template function body here\nreturn `Your prompt template`;',
         outputSchema: undefined,
       },
       selectedPromptId: undefined,

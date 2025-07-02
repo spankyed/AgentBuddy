@@ -56,6 +56,9 @@ import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
 // Template registry functionality has been moved to EARS datastore
 import { applyFieldMappings } from '../field-mapper';
 import { createLogger } from '@/systems/logs/logger';
+import { getPromptById } from '@/systems/prompts/repository';
+import { executeTemplate } from '@/systems/prompts/template-executor';
+import { EARS } from '@/shared/ears/types';
 
 const logger = createLogger('llm-node');
 
@@ -89,21 +92,22 @@ function generatePrompt(
   // Use template if specified
   if (node.promptTemplateId) {
     try {
+      // Get the prompt template from EARS datastore
+      const prompt = getPromptById(`Prompt-${node.promptTemplateId}` as EARS.EntityId);
+      if (!prompt) {
+        logger.error(`Prompt template not found:`, { templateId: node.promptTemplateId });
+        return 'Error: Prompt template not found';
+      }
+
       // Apply field mappings to generate template parameters
       const params = node.fieldMappings 
         ? applyFieldMappings(node.fieldMappings, context)
         : {};
       
-      // TODO: Replace with EARS datastore lookup for prompt templates
-      // For now, return a simple template-based prompt
       logger.debug(`Template params for ${node.label}:`, params);
       
-      // Simple fallback until template system is integrated with EARS
-      const paramsString = Object.entries(params)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n');
-      
-      return `Template ID: ${node.promptTemplateId}\n\nParameters:\n${paramsString}`;
+      // Execute the template function with the parameters
+      return executeTemplate(prompt.templateFn, params);
     } catch (error) {
       logger.error(`Failed to generate prompt from template:`, { 
         templateId: node.promptTemplateId, 
