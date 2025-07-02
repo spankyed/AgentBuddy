@@ -1,77 +1,98 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-end mx-4 mt-6 mb-3">
-      <Button @click="$emit('create')">
-        <Plus class="w-5 h-5" />
-        <span>Create New Prompt</span>
+    <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+      <div>
+        <h2 class="text-lg font-semibold text-neutral-100">Prompts</h2>
+        <p class="text-sm text-neutral-400">Manage your prompt templates</p>
+      </div>
+      <Button @click="$emit('create')" variant="primary">
+        <Plus class="w-4 h-4" />
+        <span>Create Prompt</span>
       </Button>
     </div>
 
     <!-- Prompts Table -->
-    <div class="flex-1 p-4 overflow-auto">
-      <table class="min-w-full overflow-hidden divide-y rounded-lg shadow-lg divide-neutral-800 bg-neutral-800/40">
-        <thead class="bg-neutral-900">
-          <tr>
-            <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Name</th>
-            <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Description</th>
-            <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Category</th>
-            <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Inputs</th>
-            <th class="px-4 py-3 text-xs font-semibold tracking-wider text-left uppercase text-neutral-400">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="prompt in prompts"
-            :key="prompt.id"
-            class="transition cursor-pointer group hover:bg-neutral-800/40"
-            @click="$emit('select', prompt.id)"
-          >
-            <td class="px-4 py-2 text-base font-medium text-white whitespace-nowrap">
-              {{ prompt.label }}
-            </td>
-            <td class="max-w-xs px-4 py-2 text-sm truncate text-neutral-400">
-              {{ prompt.description || '-' }}
-            </td>
-            <td class="px-4 py-2 whitespace-nowrap">
-              <span
-                class="inline-block px-3 py-1 text-xs font-semibold rounded-full"
-                :class="categoryColor(prompt.category)"
-              >
-                {{ prompt.category || 'uncategorized' }}
-              </span>
-            </td>
-            <td class="px-4 py-2 text-sm whitespace-nowrap text-neutral-300">
-              {{ Object.keys(prompt.inputs || {}).length }} inputs
-            </td>
-            <td class="px-4 py-2 whitespace-nowrap">
-              <div class="flex items-center gap-3">
-                <button
-                  @click.stop="confirmDelete(prompt)"
-                  class="p-2 transition rounded-full hover:bg-red-600/20"
-                  aria-label="Delete"
-                  title="Delete"
+    <div class="flex-1 overflow-hidden">
+      <div v-if="prompts.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+        <table class="w-full bg-neutral-800/40">
+          <thead class="sticky top-0 z-10 bg-neutral-900">
+            <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
+              <th class="px-6 py-3">Name</th>
+              <th class="px-6 py-3">Description</th>
+              <th class="px-6 py-3">Category</th>
+              <th class="px-6 py-3 text-center">Inputs</th>
+              <th class="px-6 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            <tr
+              v-for="prompt in prompts"
+              :key="prompt.id"
+              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-900"
+              @click="$emit('select', prompt.id)"
+            >
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
+                    <FileText class="w-4 h-4 text-neutral-400" />
+                  </div>
+                  <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm text-neutral-400 line-clamp-1" :title="prompt.description">
+                  {{ prompt.description || 'No description' }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors"
+                  :class="categoryStyle(prompt.category)"
                 >
-                  <Trash2 class="w-5 h-5 text-red-400" />
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                  {{ prompt.category || 'uncategorized' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="text-sm text-neutral-300">
+                  {{ Object.keys(prompt.inputs || {}).length }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click.stop="confirmDelete(prompt)"
+                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+                    aria-label="Delete prompt"
+                    title="Delete prompt"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- Empty State -->
       <div
-        v-if="prompts.length === 0"
-        class="flex flex-col items-center justify-center h-96 text-neutral-400"
+        v-else
+        class="flex flex-col items-center justify-center h-full"
       >
-        <FileText class="w-12 h-12 mb-4" />
-        <p class="text-lg font-semibold">No prompts yet</p>
-        <p class="mb-4 text-sm">Create your first prompt template to get started</p>
-        <Button @click="$emit('create')">
-          <Plus class="w-4 h-4" />
-          <span>Create New Prompt</span>
-        </Button>
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-900">
+            <FileText class="w-8 h-8 text-neutral-500" />
+          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">No prompts yet</h3>
+          <p class="mb-6 text-sm text-neutral-400">
+            Create your first prompt template to get started with reusable AI workflows
+          </p>
+          <Button @click="$emit('create')" variant="primary">
+            <Plus class="w-4 h-4" />
+            <span>Create Your First Prompt</span>
+          </Button>
+        </div>
       </div>
     </div>
   </div>
@@ -96,17 +117,17 @@ function confirmDelete(prompt: PromptEntity) {
   }
 }
 
-// Example color coding for categories
-function categoryColor(category?: string) {
+// Professional category styling
+function categoryStyle(category?: string) {
   switch (category) {
     case 'text-processing':
-      return 'bg-blue-900 text-blue-300';
+      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
     case 'development':
-      return 'bg-green-900 text-green-300';
+      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
     case 'assistant':
-      return 'bg-purple-900 text-purple-300';
+      return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
     default:
-      return 'bg-neutral-800 text-neutral-300';
+      return 'bg-neutral-800 text-neutral-400 border border-neutral-700';
   }
 }
 </script> 
