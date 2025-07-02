@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col justify-center h-full max-w-6xl mx-auto">
+  <div class="flex flex-col justify-center h-full">
     <!-- List View -->
     <PromptsList 
       v-if="state.hasTag('list-prompts')"
