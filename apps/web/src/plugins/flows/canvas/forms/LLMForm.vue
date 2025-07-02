@@ -35,7 +35,7 @@
             class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-900 border-neutral-800"
             :style="{ top: '100%' }"
           >
-            <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
+            <ComboboxViewport class="overflow-y-auto max-h-60">
               <div
                 v-if="filteredModels.length === 0 && modelQuery !== ''"
                 class="relative px-4 py-2 cursor-default select-none text-neutral-400"
@@ -43,7 +43,7 @@
                 No models found.
               </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
-                <div v-if="group.length > 0" class="sticky top-0 px-3 py-1 text-xs font-semibold text-neutral-500 bg-neutral-800">
+                <div v-if="group.length > 0" class="z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-900 border-neutral-800">
                   {{ provider }}
                 </div>
                 <ComboboxGroup>
@@ -51,7 +51,7 @@
                     v-for="model in group"
                     :key="model.id"
                     :value="model"
-                    class="relative flex cursor-default select-none items-center rounded-md px-3 py-2 text-sm text-neutral-200 data-[highlighted]:bg-neutral-700 data-[highlighted]:text-white"
+                    class="relative flex cursor-default select-none items-center px-3 py-2 mx-1 my-0.5 rounded-md text-sm text-neutral-200 data-[highlighted]:bg-neutral-700 data-[highlighted]:text-white"
                   >
                     <ComboboxItemIndicator
                       class="absolute left-2 inline-flex items-center justify-center opacity-0 data-[state=checked]:opacity-100"
@@ -121,7 +121,7 @@
             class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-900 border-neutral-800"
             :style="{ top: '100%' }"
           >
-            <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
+            <ComboboxViewport class="overflow-y-auto max-h-60">
               <div
                 v-if="filteredPrompts.length === 0 && promptQuery !== ''"
                 class="relative px-4 py-2 cursor-default select-none text-neutral-400"
@@ -133,7 +133,7 @@
                   v-for="prompt in filteredPrompts"
                   :key="prompt.id"
                   :value="prompt"
-                  class="relative flex cursor-default select-none items-center rounded-md px-3 py-2 text-sm text-neutral-200 data-[highlighted]:bg-neutral-700 data-[highlighted]:text-white"
+                  class="relative flex cursor-default select-none items-center px-3 py-2 mx-1 my-0.5 rounded-md text-sm text-neutral-200 data-[highlighted]:bg-neutral-700 data-[highlighted]:text-white"
                 >
                   <ComboboxItemIndicator
                     class="absolute left-2 inline-flex items-center justify-center opacity-0 data-[state=checked]:opacity-100"
@@ -152,9 +152,9 @@
       </div>
 
       <!-- Available Context Info -->
-      <div v-if="selectedPrompt" class="border-t border-neutral-800 pt-6">
+      <div v-if="selectedPrompt" class="pt-6 border-t border-neutral-800">
         <details class="group">
-          <summary class="text-xs font-semibold tracking-wider uppercase list-none cursor-pointer text-neutral-500 hover:text-neutral-400 flex items-center">
+          <summary class="flex items-center text-xs font-semibold tracking-wider uppercase list-none cursor-pointer text-neutral-500 hover:text-neutral-400">
             <ChevronRight class="w-3 h-3 mr-2 transition-transform group-open:rotate-90" />
             Available Context
           </summary>
@@ -185,7 +185,7 @@
       </div>
 
       <!-- Field Mappings -->
-      <div v-if="selectedPrompt" class="border-t border-neutral-800 pt-6">
+      <div v-if="selectedPrompt" class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
           Field Mappings
         </label>
@@ -202,7 +202,7 @@
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
                   {{ input.label || key }}
-                  <span v-if="input.required" class="text-red-500 text-xs">*</span>
+                  <span v-if="input.required" class="text-xs text-red-500">*</span>
                 </label>
                 <input
                   :value="fieldMappings.find(m => m.target === key.toString())?.source || ''"
