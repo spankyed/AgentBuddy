@@ -23,8 +23,9 @@
               <div class="inline-flex items-center justify-between rounded-md px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  placeholder="Select a prompt template..."
-                  v-model="promptQuery"
+                  :placeholder="selectedPrompt ? '' : 'Select a prompt template...'"
+                  :value="selectedPrompt ? selectedPrompt.label : promptQuery"
+                  @input="promptQuery = ($event.target as HTMLInputElement).value"
                 />
                 <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
@@ -201,6 +202,13 @@ const filteredPrompts = computed(() => {
   )
 })
 
+// Clear query when dropdown closes
+watch(isOpen, (newValue) => {
+  if (!newValue) {
+    promptQuery.value = ''
+  }
+})
+
 // Handlers
 const handleUpdateLabel = (label: string) => {
   emit('update-node', { ...props.node, label })
@@ -212,6 +220,7 @@ const handleUpdateDescription = (description: string) => {
 
 const handlePromptChange = (prompt: any) => {
   selectedPrompt.value = prompt
+  promptQuery.value = ''
   
   // Reset field mappings for new prompt
   const newMappings: Array<{ target: string; source: string; default?: any }> = []
