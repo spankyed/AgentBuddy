@@ -13,11 +13,11 @@
     >
       <!-- Tab hanging off the side -->
       <div class="relative">
-        <div class="absolute right-full top-20 bg-neutral-800 border border-r-0 border-neutral-700 rounded-l-lg px-3 py-2 flex items-center gap-2 min-w-[120px]">
+        <div class="absolute right-full top-10 bg-neutral-900 border border-r-0 border-neutral-800 rounded-l-lg px-3 py-2 flex items-center gap-2 min-w-[120px]">
           <span class="text-sm font-semibold text-neutral-100">{{ selectedNode.nodeType.toUpperCase() }}</span>
           <button
             @click="$emit('close')"
-            class="ml-auto p-1 rounded hover:bg-neutral-700 transition-colors"
+            class="p-1 ml-auto transition-colors rounded hover:bg-neutral-700"
           >
             <X class="w-4 h-4 text-neutral-400 hover:text-neutral-200" />
           </button>
@@ -25,7 +25,7 @@
       </div>
       
       <!-- Form content -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin bg-neutral-800">
+      <div class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-800">
         <component
           :is="getFormComponent(selectedNode.nodeType)"
           :node="selectedNode"
@@ -90,19 +90,5 @@ function getFormComponent(nodeType: string) {
 </script>
 
 <style>
-.scrollbar-thin::-webkit-scrollbar {
-  @apply w-1.5;
-}
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-neutral-600 rounded;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-500;
-}
 </style> 

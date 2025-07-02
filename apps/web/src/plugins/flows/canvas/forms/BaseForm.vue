@@ -1,10 +1,10 @@
 <template>
-  <section class="w-full min-h-full bg-neutral-900">
+  <section class="w-full min-h-full border-l border-neutral-800 bg-neutral-900">
     <!-- Content -->
     <div class="p-6 space-y-4">
       <!-- Common fields for all nodes -->
       <div>
-        <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
           LABEL
         </label>
         <input

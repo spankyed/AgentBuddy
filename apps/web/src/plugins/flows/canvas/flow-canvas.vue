@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex w-full h-full overflow-hidden">
     <!-- ▸ Node palette (left) -->
-    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-900 scrollbar-thin border-neutral-800">
+    <aside class="overflow-y-auto text-white border-r w-60 bg-neutral-900 border-neutral-800">
       <!-- Flows list view -->
       <FlowsList
         v-if="inListState"
@@ -241,20 +241,5 @@ function handleNodeUpdate(nodeId: string, updates: any) {
 </script>
 
 <style>
-/* Custom scrollbar styling - used by child components */
-.scrollbar-thin::-webkit-scrollbar {
-  @apply w-1.5;
-}
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-neutral-600 rounded;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-500;
-}
 </style>

@@ -26,7 +26,7 @@
     </div>
 
     <!-- Form Content -->
-    <div class="flex-1 overflow-y-auto custom-scrollbar">
+    <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl p-6 mx-auto">
         <div class="space-y-6">
           <!-- Basic Info Section -->
@@ -68,7 +68,7 @@
                 :value="formData.description"
                 @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
                 rows="3"
-                class="w-full px-4 py-3 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 resize-y"
+                class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                 placeholder="Describe what this prompt template does..."
               />
             </div>

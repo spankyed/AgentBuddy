@@ -34,7 +34,7 @@
       </div>
       
       <!-- Sub flows list -->
-      <div class="flex-1 px-1 -mx-1 overflow-x-hidden overflow-y-auto scrollbar-thin">
+      <div class="flex-1 px-1 -mx-1 overflow-x-hidden overflow-y-auto">
         <button
           v-for="flow in filteredFlows"
           :key="flow.id"
@@ -207,19 +207,4 @@ const filteredFlows = computed(() => {
 </script>
 
 <style>
-.scrollbar-thin::-webkit-scrollbar {
-  width: 0.375rem;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-neutral-600/50 rounded;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-500/50;
-}
 </style> 
