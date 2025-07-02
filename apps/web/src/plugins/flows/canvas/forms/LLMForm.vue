@@ -3,11 +3,11 @@
     :node="node"
     @update-label="handleUpdateLabel"
   >
-    <div class="space-y-4">
+    <div class="space-y-6">
       <!-- Model Selection -->
       <div>
-        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-          MODEL
+        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
+          Model
         </label>
         <ComboboxRoot
           v-model="selectedModel"
@@ -19,9 +19,9 @@
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600" :data-open="isModelDropdownOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-900/50 border-neutral-800 text-neutral-200 hover:border-neutral-700 focus-within:border-neutral-700 focus-within:bg-neutral-900/70" :data-open="isModelDropdownOpen">
                 <ComboboxInput
-                  class="flex-1 bg-transparent outline-none placeholder-neutral-500"
+                  class="flex-1 bg-transparent outline-none placeholder-neutral-600"
                   :placeholder="isLoadingFormData ? 'Loading models...' : (selectedModel ? '' : 'Select a model...')"
                   :value="selectedModel ? selectedModel.name : modelQuery"
                   @input="modelQuery = ($event.target as HTMLInputElement).value"
@@ -32,7 +32,7 @@
             </ComboboxTrigger>
           </ComboboxAnchor>
           <ComboboxContent
-            class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
+            class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-900 border-neutral-800"
             :style="{ top: '100%' }"
           >
             <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
@@ -75,19 +75,25 @@
             </ComboboxViewport>
           </ComboboxContent>
         </ComboboxRoot>
-        <div v-if="selectedModel" class="flex items-center gap-4 mt-2 text-xs text-neutral-500">
-          <span v-if="selectedModel.contextWindow">
-            Context: {{ formatContextWindow(selectedModel.contextWindow) }}
+        <div v-if="selectedModel" class="flex items-center gap-3 mt-2 text-xs text-neutral-600">
+          <span v-if="selectedModel.contextWindow" class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            {{ formatContextWindow(selectedModel.contextWindow) }}
           </span>
-          <span v-if="selectedModel.costPer1kInput && selectedModel.costPer1kOutput">
-            Cost: ${{ selectedModel.costPer1kInput }}/1k in, ${{ selectedModel.costPer1kOutput }}/1k out
+          <span v-if="selectedModel.costPer1kInput && selectedModel.costPer1kOutput" class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            ${{ selectedModel.costPer1kInput }}/1k in, ${{ selectedModel.costPer1kOutput }}/1k out
           </span>
         </div>
       </div>
       <!-- Prompt Template Dropdown -->
       <div>
-        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-          PROMPT TEMPLATE
+        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
+          Prompt Template
         </label>
         <ComboboxRoot
           v-model="selectedPrompt"
@@ -99,9 +105,9 @@
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600" :data-open="isOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-900/50 border-neutral-800 text-neutral-200 hover:border-neutral-700 focus-within:border-neutral-700 focus-within:bg-neutral-900/70" :data-open="isOpen">
                 <ComboboxInput
-                  class="flex-1 bg-transparent outline-none placeholder-neutral-500"
+                  class="flex-1 bg-transparent outline-none placeholder-neutral-600"
                   :placeholder="isLoadingFormData ? 'Loading prompts...' : (selectedPrompt ? '' : 'Select a prompt template...')"
                   :value="selectedPrompt ? selectedPrompt.label : promptQuery"
                   @input="promptQuery = ($event.target as HTMLInputElement).value"
@@ -112,7 +118,7 @@
             </ComboboxTrigger>
           </ComboboxAnchor>
           <ComboboxContent
-            class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
+            class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-900 border-neutral-800"
             :style="{ top: '100%' }"
           >
             <ComboboxViewport class="p-1 overflow-y-auto max-h-60">
@@ -140,19 +146,19 @@
             </ComboboxViewport>
           </ComboboxContent>
         </ComboboxRoot>
-        <p v-if="selectedPrompt?.description" class="mt-2 text-xs text-neutral-500">
+        <p v-if="selectedPrompt?.description" class="mt-2 text-xs text-neutral-600">
           {{ selectedPrompt.description }}
         </p>
       </div>
 
       <!-- Available Context Info -->
-      <div v-if="selectedPrompt">
+      <div v-if="selectedPrompt" class="border-t border-neutral-800 pt-6">
         <details class="group">
-          <summary class="text-xs font-medium tracking-wider uppercase list-none cursor-pointer text-neutral-400 hover:text-neutral-300">
+          <summary class="text-xs font-semibold tracking-wider uppercase list-none cursor-pointer text-neutral-500 hover:text-neutral-400 flex items-center">
+            <ChevronRight class="w-3 h-3 mr-2 transition-transform group-open:rotate-90" />
             Available Context
-            <ChevronRight class="inline w-3 h-3 ml-1 transition-transform group-open:rotate-90" />
           </summary>
-          <div class="p-3 mt-2 font-mono text-xs border rounded-md bg-neutral-900 border-neutral-700 text-neutral-400">
+          <div class="p-3 mt-3 font-mono text-xs border rounded-md bg-neutral-900/50 border-neutral-800 text-neutral-500">
             <div class="space-y-2">
               <div>
                 <span class="text-blue-400">$.event</span>
@@ -179,42 +185,41 @@
       </div>
 
       <!-- Field Mappings -->
-      <div v-if="selectedPrompt">
-        <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-          FIELD MAPPINGS
+      <div v-if="selectedPrompt" class="border-t border-neutral-800 pt-6">
+        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
+          Field Mappings
         </label>
-        <div class="p-4 border rounded-md bg-neutral-800 border-neutral-700">
-          <div v-if="Object.keys(selectedPrompt.inputs || {}).length === 0" class="text-sm text-neutral-500">
+        <div class="border rounded-md bg-neutral-900/30 border-neutral-800">
+          <div v-if="Object.keys(selectedPrompt.inputs || {}).length === 0" class="p-4 text-sm text-neutral-600">
             No input fields required for this prompt template.
           </div>
-          <div v-else class="space-y-3">
+          <div v-else class="p-4 space-y-4">
             <div
               v-for="(input, key) in selectedPrompt.inputs"
               :key="key"
               class="flex items-center gap-3"
             >
               <div class="flex-1">
-                <label class="block mb-1 text-sm font-medium text-neutral-300">
+                <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
                   {{ input.label || key }}
-                  <span v-if="input.required" class="text-red-400">*</span>
+                  <span v-if="input.required" class="text-red-500 text-xs">*</span>
                 </label>
                 <input
                   :value="fieldMappings.find(m => m.target === key.toString())?.source || ''"
                   type="text"
-                  :placeholder="input.description || `Map to ${key}`"
-                  class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  :placeholder="input.placeholder || `e.g. $.event.data.${key}`"
+                  class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-950 border-neutral-800 text-neutral-200 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
                   @input="handleFieldMappingChange(key.toString(), ($event.target as HTMLInputElement).value)"
                 />
-                <p v-if="input.description" class="mt-1 text-xs text-neutral-500">
+                <p v-if="input.description" class="mt-1.5 text-xs text-neutral-600">
                   {{ input.description }}
                 </p>
               </div>
             </div>
           </div>
-          <div class="pt-3 mt-3 border-t border-neutral-700">
-            <p class="text-xs text-neutral-500">
-              Use JSONPath expressions to map fields from the execution context.
-              Examples: $.event.data.text, $.lastStep.result
+          <div class="px-4 py-3 border-t border-neutral-800 bg-neutral-900/50">
+            <p class="text-xs text-neutral-600">
+              <span class="font-medium">Tip:</span> Use JSONPath expressions like <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-400">$.event.data.text</code> or <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-400">$.lastStep.result</code>
             </p>
           </div>
         </div>
