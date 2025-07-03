@@ -4,7 +4,8 @@ import { createLogger } from '@/systems/logs/logger';
 import { getActionById } from '@/systems/actions/repository';
 import { EARS } from '@/shared/ears/types';
 import { applyFieldMappings } from '../field-mapper';
-import { mockServices } from '@/systems/actions/repository/mock-data';
+import type { Services } from '@/systems/actions/services';
+import { services } from '@/systems/actions/services';
 
 const logger = createLogger('action-node');
 
@@ -26,7 +27,7 @@ type ActionNode = NodeEntity & ActionNodeConfig;
 async function executeActionFunction(
   actionFn: string,
   params: Record<string, any>,
-  services: typeof mockServices
+  services: Services
 ): Promise<any> {
   try {
     // Create a function that has access to services and params
@@ -94,7 +95,7 @@ export async function actionNodeHandler(
     const result = await executeActionFunction(
       action.actionFn,
       params,
-      mockServices
+      services
     );
     
     logger.debug(`Action completed successfully:`, {

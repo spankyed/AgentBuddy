@@ -1,89 +1,11 @@
 import { createAction } from './create';
 import { createLogger } from '@/systems/logs/logger';
+import { services } from '../services';
 
 const logger = createLogger('actions-mock-data');
 
-// Mock service implementations that will be available to action functions
-export const mockServices = {
-  logger: {
-    info: (message: string, data?: any) => Promise.resolve({ logged: true, message, data }),
-    error: (message: string, error?: any) => Promise.resolve({ logged: true, message, error }),
-    debug: (message: string, data?: any) => Promise.resolve({ logged: true, message, data }),
-  },
-  
-  database: {
-    query: (sql: string, params?: any[]) => Promise.resolve({ 
-      rows: [{ id: 1, name: 'Mock Result' }], 
-      rowCount: 1 
-    }),
-    insert: (table: string, data: any) => Promise.resolve({ 
-      id: Math.random().toString(36).substr(2, 9), 
-      success: true 
-    }),
-    update: (table: string, id: string, data: any) => Promise.resolve({ 
-      affected: 1, 
-      success: true 
-    }),
-    delete: (table: string, id: string) => Promise.resolve({ 
-      affected: 1, 
-      success: true 
-    }),
-  },
-  
-  email: {
-    send: (to: string, subject: string, body: string) => Promise.resolve({ 
-      messageId: `msg-${Date.now()}`, 
-      success: true,
-      to,
-      subject 
-    }),
-    sendTemplate: (to: string, template: string, data: any) => Promise.resolve({ 
-      messageId: `msg-${Date.now()}`, 
-      success: true,
-      to,
-      template 
-    }),
-  },
-  
-  http: {
-    get: (url: string, options?: any) => Promise.resolve({ 
-      status: 200, 
-      data: { mock: true, url } 
-    }),
-    post: (url: string, data: any, options?: any) => Promise.resolve({ 
-      status: 201, 
-      data: { mock: true, received: data } 
-    }),
-    put: (url: string, data: any, options?: any) => Promise.resolve({ 
-      status: 200, 
-      data: { mock: true, updated: data } 
-    }),
-    delete: (url: string, options?: any) => Promise.resolve({ 
-      status: 204, 
-      data: null 
-    }),
-  },
-  
-  storage: {
-    save: (key: string, data: any) => Promise.resolve({ 
-      key, 
-      size: JSON.stringify(data).length,
-      success: true 
-    }),
-    load: (key: string) => Promise.resolve({ 
-      data: { mock: true, key },
-      found: true 
-    }),
-    delete: (key: string) => Promise.resolve({ 
-      deleted: true,
-      key 
-    }),
-    list: (prefix?: string) => Promise.resolve({ 
-      keys: ['mock-key-1', 'mock-key-2'],
-      count: 2 
-    }),
-  }
-};
+// Export services for backward compatibility
+export { services as mockServices };
 
 export function createMockActions() {
   logger.info('Creating mock actions...');
