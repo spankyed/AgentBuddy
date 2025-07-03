@@ -13,14 +13,14 @@
     >
       <!-- Tab hanging off the side -->
       <div class="relative">
-        <div class="absolute right-full top-10 bg-neutral-900 border border-r-0 border-neutral-800 rounded-l-lg px-3 py-2 flex items-center gap-2 min-w-[120px]">
-          <span class="text-sm font-semibold text-neutral-100">{{ selectedNode.nodeType.toUpperCase() }}</span>
+        <div class="absolute flex items-center gap-2 px-3 py-2 border border-r-0 rounded-l-lg right-full top-10 bg-neutral-900 border-neutral-800">
           <button
             @click="$emit('close')"
-            class="p-1 ml-auto transition-colors rounded hover:bg-neutral-700"
+            class="p-1 mr-auto transition-colors rounded hover:bg-neutral-700"
           >
             <X class="w-4 h-4 text-neutral-400 hover:text-neutral-200" />
           </button>
+          <span class="text-sm font-semibold text-neutral-100">{{ selectedNode.nodeType.toUpperCase() }}</span>
         </div>
       </div>
       
