@@ -9,7 +9,7 @@ import {
   Split, 
   Shuffle, 
   Activity,
-  Headset
+  Sparkle
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@abuddy/api'
@@ -268,7 +268,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   llm: {
     type: 'llm',
     label: 'LLM',
-    icon: Headset,
+    icon: Sparkle,
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/10',
     hoverBgColor: 'group-hover:bg-indigo-500/15',

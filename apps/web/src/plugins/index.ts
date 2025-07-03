@@ -16,7 +16,7 @@ import {
   ListTodo,
   Library,
   NotebookText,
-  LandPlot
+  Play
 } from 'lucide-vue-next';
 
 export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
@@ -30,8 +30,9 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
+  mockPlugin({ id: 'actions', label: 'Actions', icon: Play, }),
   mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
-  mockPlugin({ id: 'actions', label: 'Actions', icon: LandPlot, }),
+  // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
   mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
