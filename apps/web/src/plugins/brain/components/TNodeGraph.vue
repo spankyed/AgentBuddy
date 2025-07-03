@@ -87,8 +87,8 @@ const emit = defineEmits<{
 
 // Constants
 const LAYOUT = {
-  HORIZONTAL_GAP: 85,   // Reduced by 2/3 (was 250)
-  VERTICAL_GAP: 50,     // Reduced by half (was 100)
+  HORIZONTAL_GAP: 45,   // Reduced by 2/3 (was 250)
+  VERTICAL_GAP: 40,     // Reduced by half (was 100)
   NODE_WIDTH: 200,
   NODE_HEIGHT: 80,
 } as const;
@@ -162,7 +162,7 @@ const edges = computed<Edge[]>(() => {
     // For children, create a chain: parent -> first child -> second child -> ...
     tnode.children.forEach((child, index) => {
       if (index === 0) {
-        // First child connects to parent
+        // First child connects to parent - should be animated based on parent status
         result.push({
           id: `${tnode.id}-to-${child.id}`,
           source: tnode.id,
@@ -171,14 +171,14 @@ const edges = computed<Edge[]>(() => {
           animated: tnode.status === 'active',
         });
       } else {
-        // Subsequent children connect to previous child
+        // Subsequent children connect to previous child - no animation
         const previousChild = tnode.children[index - 1];
         result.push({
           id: `${previousChild.id}-to-${child.id}`,
           source: previousChild.id,
           target: child.id,
           type: 'smoothstep',
-          animated: previousChild.status === 'active',
+          animated: false, // No animation for sibling connections
         });
       }
       // Recursively process each child's children
