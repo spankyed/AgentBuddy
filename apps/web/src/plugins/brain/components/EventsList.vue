@@ -24,7 +24,7 @@
         <div class="flex items-center justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-neutral-100 mb-0.5 truncate transition-colors duration-300"
-                 :class="{ 'text-blue-200': pulsingEventType === event.eventType }">
+                :class="{ 'text-blue-200': pulsingEventType === event.eventType }">
               {{ event.label }}
             </div>
             <div class="flex items-center gap-2 text-xs text-neutral-500">
@@ -34,28 +34,18 @@
             </div>
           </div>
           <div class="relative flex items-center justify-center flex-shrink-0 w-5 h-5 transition-all duration-300 rounded"
-               :class="pulsingEventType === event.eventType 
-                 ? 'bg-blue-500/30 scale-110' 
-                 : 'bg-blue-500/10 group-hover:bg-blue-500/20'">
+            :class="pulsingEventType === event.eventType 
+            ? 'bg-blue-500/30 scale-110' 
+              : 'bg-blue-500/10 group-hover:bg-blue-500/20'">
             <!-- Ripple effect for active event -->
             <div v-if="pulsingEventType === event.eventType"
-                 class="absolute inset-0 rounded animate-ripple bg-blue-400/30" />
-            <svg 
+                class="absolute inset-0 rounded animate-ripple bg-blue-400/30" />
+            <Radio 
               class="relative z-10 w-3.5 h-3.5 transition-all duration-300"
               :class="pulsingEventType === event.eventType 
                 ? 'text-blue-300 animate-subtle-pulse' 
                 : 'text-blue-400'"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                stroke-linecap="round" 
-                stroke-linejoin="round" 
-                stroke-width="2" 
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+            />
           </div>
         </div>
       </div>
@@ -63,9 +53,7 @@
     
     <div v-if="events.length === 0" class="flex flex-col items-center justify-center h-48 px-4 text-center">
       <div class="flex items-center justify-center w-12 h-12 mb-3">
-        <svg class="w-6 h-6 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
+        <Radio class="w-6 h-6 text-neutral-500" />
       </div>
       <p class="text-sm text-neutral-400">No event listeners in this flow</p>
     </div>
@@ -74,6 +62,7 @@
 
 <script setup lang="ts">
 import type { EventListenerEntity } from '@abuddy/api';
+import { Radio } from 'lucide-vue-next';
 
 interface Props {
   events: EventListenerEntity[];

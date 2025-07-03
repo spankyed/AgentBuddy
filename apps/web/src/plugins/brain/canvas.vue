@@ -2,11 +2,11 @@
   <div class="flex h-full bg-neutral-900">
     <!-- Left Panel: TNode Tree -->
     <div class="flex flex-col border-r w-72 border-neutral-800/50 bg-neutral-900">
-              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
-          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-            Event Trace
-          </h2>
-        </div>
+      <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+        <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+          Event Trace
+        </h2>
+      </div>
       <div class="flex-1 overflow-y-auto">
         <TNodeTree 
           :tnode-tree="tNodeTree"
@@ -28,11 +28,11 @@
 
     <!-- Right Panel: Possible Events -->
     <div class="flex flex-col border-l w-72 border-neutral-800/50 bg-neutral-900">
-              <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
-          <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-            Watched Events
-          </h2>
-        </div>
+      <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
+        <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+          Watched Events
+        </h2>
+      </div>
       <div class="flex-1 overflow-y-auto">
         <EventsList
           :events="possibleEvents"
