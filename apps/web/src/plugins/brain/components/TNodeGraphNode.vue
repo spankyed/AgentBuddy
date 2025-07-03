@@ -38,27 +38,39 @@
       </div>
     </div>
     
-    <!-- Status indicator -->
-    <div v-if="data.status" class="absolute -top-1.5 -right-1.5">
-      <div class="relative">
-        <div 
-          class="w-2.5 h-2.5 rounded-full"
-          :class="statusClasses"
-        />
+    <!-- Status indicator - refined design -->
+    <div v-if="data.status" class="absolute -top-2 -right-2">
+      <div class="relative flex items-center justify-center">
+        <!-- Outer ring for active state -->
         <div 
           v-if="data.status === 'active'"
-          class="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping"
-          :class="statusClasses"
+          class="absolute w-5 h-5 rounded-full ring-2 ring-emerald-400/30 animate-ping"
         />
+        <!-- Main status dot with inner gradient -->
+        <div 
+          class="relative w-3 h-3 overflow-hidden rounded-full"
+          :class="statusOuterClasses"
+        >
+          <div 
+            class="absolute inset-0"
+            :class="statusInnerClasses"
+          />
+          <!-- Highlight effect -->
+          <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-transparent" />
+        </div>
       </div>
     </div>
     
-    <!-- Has children indicator -->
-    <div v-if="data.hasChildren" class="absolute -bottom-1 -right-1">
-      <div class="flex items-center justify-center w-3.5 h-3.5 bg-purple-500/80 rounded-full ring-1 ring-purple-400/30">
-        <svg class="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
+    <!-- Has children indicator - minimalist design -->
+    <div v-if="data.hasChildren" class="absolute bottom-1 right-1">
+      <div class="relative">
+        <!-- Simple dot indicator with subtle animation -->
+        <div class="relative flex items-center justify-center w-5 h-5">
+          <div class="absolute inset-0 transition-transform duration-200 scale-75 rounded-full bg-purple-500/20 group-hover:scale-100" />
+          <svg class="relative w-2.5 h-2.5 text-purple-400/80" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+          </svg>
+        </div>
       </div>
     </div>
     
@@ -194,20 +206,37 @@ const badgeClasses = computed(() => {
   return badgeMap[nodeType] || 'bg-neutral-700/50 text-neutral-300 border border-neutral-600';
 });
 
-const statusClasses = computed(() => {
+const statusOuterClasses = computed(() => {
   if (!props.data.status) return '';
   
   switch (props.data.status) {
     case 'active':
-      return 'bg-green-400 shadow-green-400/50 shadow-sm';
+      return 'ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/30';
     case 'paused':
-      return 'bg-yellow-400 shadow-yellow-400/50 shadow-sm';
+      return 'ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/30';
     case 'completed':
-      return 'bg-blue-400 shadow-blue-400/50 shadow-sm';
+      return 'ring-1 ring-blue-500/50 shadow-lg shadow-blue-500/30';
     case 'failed':
-      return 'bg-red-400 shadow-red-400/50 shadow-sm';
+      return 'ring-1 ring-red-500/50 shadow-lg shadow-red-500/30';
     default:
-      return 'bg-neutral-400';
+      return 'ring-1 ring-neutral-500/50';
+  }
+});
+
+const statusInnerClasses = computed(() => {
+  if (!props.data.status) return '';
+  
+  switch (props.data.status) {
+    case 'active':
+      return 'bg-gradient-to-br from-emerald-400 to-emerald-600';
+    case 'paused':
+      return 'bg-gradient-to-br from-amber-400 to-amber-600';
+    case 'completed':
+      return 'bg-gradient-to-br from-blue-400 to-blue-600';
+    case 'failed':
+      return 'bg-gradient-to-br from-red-400 to-red-600';
+    default:
+      return 'bg-gradient-to-br from-neutral-400 to-neutral-600';
   }
 });
 
