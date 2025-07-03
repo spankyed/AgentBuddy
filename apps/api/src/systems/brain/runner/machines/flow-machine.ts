@@ -134,7 +134,7 @@ export function createFlowMachine(
         input: {} as TNodeFlowMachineInput,
       },
       actions: {
-        handleTrackEvent: enqueueActions(({ context, event, enqueue }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue, self }) => {
           const eventType = event.type;
           const eventNode = context.eventNodes.find(
             (n) => n.eventType === eventType,
@@ -147,7 +147,7 @@ export function createFlowMachine(
           const firstStep = getEventResponderNode(eventNode.id!);
 
           if (firstStep) {
-            const eventTNode = createEventTNode(eventNode, flowTNodeId);
+            const eventTNode = createEventTNode(eventNode, flowTNodeId, self);
 
             // Create execution context with cleaner structure
             const { type, ...eventData } = event;
@@ -270,9 +270,9 @@ export function createFlowMachine(
             });
           }
         }),
-        markFlowCompleted: ({ context }) => {
+        markFlowCompleted: ({ context, self }) => {
           if (context.eventTNodeId) {
-            updateTNodeStatus(context.eventTNodeId, 'completed');
+            updateTNodeStatus(context.eventTNodeId, 'completed', self);
           }
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({

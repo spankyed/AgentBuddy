@@ -3,6 +3,9 @@ import { tx } from '@/shared/ears/helpers/transaction';
 import type { TNodeEntity } from '@/systems/brain/types';
 import type { FlowEntity, FlowNode, ListenNode, NodeEntity } from '@/systems/flows/types';
 import { qx } from '@/shared/ears/helpers/query';
+import { emit } from '@/shared/utils/actor-helpers';
+import { bus } from '@/systems/_backend/backend';
+import { brain } from '@/systems/brain/system';
 
 /**
  * Get event nodes for a specific flow
@@ -53,7 +56,8 @@ export function getNextNodes(nodeId: EARS.EntityId): NodeEntity[] {
  */
 export function createEventTNode(
   eventNode: ListenNode, 
-  flowTNodeId: EARS.EntityId
+  flowTNodeId: EARS.EntityId,
+  systemActor?: any
 ): TNodeEntity {
   const now = Date.now();
   const tNodeId = tx(EARS.Entity.TNode)
@@ -79,6 +83,9 @@ export function createEventTNode(
     startedAt: now,
     createdAt: now,
   };
+  
+  // Emit event to frontend
+  emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: eventTNode }, systemActor);
   
   return eventTNode;
 }
@@ -246,27 +253,30 @@ export function createRootFlowTNode(
 /**
  * Emit a TNode event
  */
-// function emitTNodeEvent(
-//   eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
-//   data: any,
-//   // systemActor?: any
-// ) {
-//   if (!systemActor) return;
+function emitTNodeEvent(
+  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
+  data: any,
+  systemActor?: any
+) {
+  if (!systemActor) return;
 
-//   systemActor.system.get(bus).send(emit(brain, {
-//     type: eventType,
-//     ...data
-//   }));
-// }
+  systemActor.system.get(bus).send(emit(brain, {
+    type: eventType,
+    ...data
+  }));
+}
 
 /**
  * Update TNode status in database
  */
 export function updateTNodeStatus(
   tNodeId: EARS.EntityId, 
-  status: TNodeEntity['status']
+  status: TNodeEntity['status'],
+  systemActor?: any
 ): void {
   tx(tNodeId).put('status', status);
 
-  // emitTNodeEvent('TNODE_UPDATED', { tNodeId, status });
+  emitTNodeEvent('TNODE_UPDATED', { 
+    data: { tNodeId, status }
+  }, systemActor);
 } 
