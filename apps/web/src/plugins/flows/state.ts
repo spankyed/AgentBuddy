@@ -30,7 +30,7 @@ export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   selectedFlowId?: EARS.EntityId;
   graph: {
-    nodes: Partial<NodeEntity>[];
+    nodes: (Partial<NodeEntity> & { x?: number; y?: number })[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];
@@ -48,6 +48,7 @@ type UIEvent =
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.CREATE'; nodeType: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
+  | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
@@ -252,6 +253,18 @@ const flowsState = setup({
       });
     },
 
+    updateNodePosition: assign(({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE_POSITION', event);
+      return {
+        graph: {
+          ...context.graph,
+          nodes: context.graph.nodes.map(node =>
+            node.id === ev.nodeId ? { ...node, x: ev.position.x, y: ev.position.y } : node
+          ),
+        },
+      };
+    }),
+
     /* ── ID reconciliation actions ────────────────────────── */
     reconcileNodeId: assign(({ context, event }) => {
       const ev = typeOf('NODE_CREATED', event);
@@ -362,6 +375,9 @@ const flowsState = setup({
         },
         'NODE.UPDATE': {
           actions: ['updateNode', 'sendNodeUpdate'],
+        },
+        'NODE.UPDATE_POSITION': {
+          actions: 'updateNodePosition',
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],

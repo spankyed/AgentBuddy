@@ -106,12 +106,12 @@ const selected = useSelector(actor, (s) =>
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
-    .map((n, index) => ({
+    .map((n) => ({
       id       : n.id!,
       type     : n.nodeType,
       position : { 
-        x: 100 + (index % 5) * 200, 
-        y: 100 + Math.floor(index / 5) * 150 
+        x: n.x ?? 0,  // Use stored position or default to 0
+        y: n.y ?? 0 
       },
       data     : n,  // The node itself is the data
     })) as VueFlowNode[]
@@ -227,12 +227,34 @@ function handleGoBack() {
   actor.send({ type: 'GO.BACK' })
 }
 
-function handleLayout(direction?: Direction) {
-  layout(direction)
+async function handleLayout(direction?: Direction) {
+  const laidOutNodes = await layout(direction)
+  
+  // Update node positions in frontend state
+  laidOutNodes.forEach(node => {
+    if (node.id && node.position) {
+      actor.send({
+        type: 'NODE.UPDATE_POSITION',
+        nodeId: node.id,
+        position: { x: node.position.x, y: node.position.y }
+      })
+    }
+  })
 }
 
-function handleNodesInitialized() {
-  layout()
+async function handleNodesInitialized() {
+  const laidOutNodes = await layout()
+  
+  // Update node positions in frontend state
+  laidOutNodes.forEach(node => {
+    if (node.id && node.position) {
+      actor.send({
+        type: 'NODE.UPDATE_POSITION',
+        nodeId: node.id,
+        position: { x: node.position.x, y: node.position.y }
+      })
+    }
+  })
 }
 
 function handleNodeUpdate(nodeId: string, updates: any) {
