@@ -87,8 +87,8 @@ const emit = defineEmits<{
 
 // Constants
 const LAYOUT = {
-  HORIZONTAL_GAP: 250,
-  VERTICAL_GAP: 100,
+  HORIZONTAL_GAP: 85,   // Reduced by 2/3 (was 250)
+  VERTICAL_GAP: 50,     // Reduced by half (was 100)
   NODE_WIDTH: 200,
   NODE_HEIGHT: 80,
 } as const;
