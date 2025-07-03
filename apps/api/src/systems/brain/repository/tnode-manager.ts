@@ -39,9 +39,11 @@ export function getNextNodes(nodeId: EARS.EntityId): NodeEntity[] {
   const nextLinks = qx(nodeId)
     .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
   
-  return nextLinks.map(link => 
-    qx(link.id).pickAll() as unknown as NodeEntity
-  );
+  return nextLinks.map(link => {
+    // pickAll returns an array, so we need to get the first element
+    const result = qx(link.id).pickAll();
+    return result[0] as unknown as NodeEntity;
+  }).filter(node => node && node.id);
 } 
 
 // --------------------------------------------------------------------------------------------------

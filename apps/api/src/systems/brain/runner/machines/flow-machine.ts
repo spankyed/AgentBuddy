@@ -35,6 +35,7 @@ type ChildCompletedEvent =
       result?: any;
       final?: boolean;
       eventTNodeId?: EARS.EntityId;
+      isFlowCompletion?: boolean;
     }
   | { type: 'CANCEL_FLOW' };
 
@@ -54,6 +55,17 @@ function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
 ) {
+  logger.debug('createChildNode called with:', {
+    nodeId: stepOrFlowNode?.id,
+    nodeType: stepOrFlowNode?.nodeType,
+    nodeLabel: stepOrFlowNode?.label,
+    eventTNodeId
+  });
+  
+  if (!stepOrFlowNode?.id) {
+    throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
+  }
+  
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId } = isFlowNode
     ? createFlowMachine(stepOrFlowNode.id, eventTNodeId)
@@ -243,6 +255,13 @@ export function createFlowMachine(
           if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
             const nextNodes = getNextNodes(typedEv.stepId);
             const nextNode = nextNodes[0];
+            
+            logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
+              nextNodeId: nextNode?.id,
+              nextNodeType: nextNode?.nodeType,
+              nextNodeLabel: nextNode?.label,
+              eventTNodeId: typedEv.eventTNodeId
+            });
             
             const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId);
             enqueue.spawnChild(nextMachine, { 
