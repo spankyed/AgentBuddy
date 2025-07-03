@@ -1,5 +1,5 @@
 <template>
-  <div :class="statusClasses" class="relative">
+  <div class="relative inline-flex items-center justify-center">
     <div 
       v-if="status === 'active'"
       class="absolute inset-0 rounded-full animate-ping"
@@ -21,10 +21,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const statusClasses = computed(() => {
-  return 'inline-flex items-center justify-center';
-});
-
 const dotClasses = computed(() => {
   switch (props.status) {
     case 'active':
@@ -32,7 +28,7 @@ const dotClasses = computed(() => {
     case 'paused':
       return 'bg-yellow-500';
     case 'completed':
-      return 'bg-blue-500';
+      return 'bg-green-500';
     case 'failed':
       return 'bg-red-500';
     default:

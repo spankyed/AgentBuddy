@@ -1,14 +1,18 @@
 <template>
   <div>
     <div
-      class="flex items-center transition-all duration-200 cursor-pointer group"
-      :style="{ paddingLeft: `${depth * 1 + 0.5}rem` }"
+      class="flex items-center transition-colors duration-150 cursor-pointer group"
+      :style="{ paddingLeft: `${depth * 0.75 + 0.25}rem` }"
+      @click="$emit('tnode-click', tnode.id)"
     >
       <!-- Expand/Collapse Icon -->
-      <div class="flex items-center justify-center w-4 h-full mr-1" @click.stop="expanded = !expanded">
+      <div 
+        class="flex items-center justify-center flex-shrink-0 w-4 h-4 mr-1" 
+        @click.stop="expanded = !expanded"
+      >
         <svg
           v-if="tnode.children.length > 0"
-          class="w-3.5 h-3.5 transition-all duration-200 text-neutral-600 hover:text-neutral-400"
+          class="w-3 h-3 transition-transform duration-150 text-neutral-600"
           :class="{ 'rotate-90': expanded }"
           fill="none"
           stroke="currentColor"
@@ -18,39 +22,46 @@
         </svg>
       </div>
       
-      <!-- Main content area with hover effect -->
+      <!-- Main content area -->
       <div 
-        class="flex flex-1 items-center px-2 py-1 rounded-md hover:bg-white/[0.03]"
-        @click="$emit('tnode-click', tnode.id)"
+        class="flex items-center flex-1 min-w-0 gap-2 px-2 py-1 rounded-md hover:bg-neutral-900/50"
       >
-        <!-- Node Type Icon with subtle background -->
-      <div class="relative flex items-center justify-center flex-shrink-0 w-6 h-6 mr-2 transition-all duration-200 rounded"
-           :class="nodeIconBgColor">
-        <component 
-          :is="nodeIcon" 
-          class="w-3.5 h-3.5 transition-colors duration-200"
-          :class="nodeIconColor"
-        />
-      </div>
-      
-      <!-- Label with better typography -->
-      <span class="text-sm font-medium leading-none truncate transition-colors duration-200 select-none text-neutral-100 group-hover:text-white">
-        {{ tnode.label }}
-      </span>
-      
-      <!-- Status Indicator - Always visible -->
-      <div class="flex-shrink-0 pl-2 ml-auto">
-        <StatusIndicator :status="tnode.status" />
-      </div>
+        <!-- Node Type Icon (before label for flow items with children) -->
+        <div v-if="tnode.children.length > 0" 
+             class="flex items-center justify-center flex-shrink-0 w-5 h-5 rounded"
+             :class="nodeIconBgColor">
+          <component 
+            :is="nodeIcon" 
+            class="w-3 h-3"
+            :class="nodeIconColor"
+          />
+        </div>
+        
+        <!-- Label -->
+        <span class="flex-1 min-w-0 text-sm font-medium truncate text-neutral-100">
+          {{ tnode.label }}
+        </span>
+        
+        <!-- Node Type Icon (after label for leaf nodes) -->
+        <div v-if="tnode.children.length === 0"
+             class="flex items-center justify-center flex-shrink-0 w-5 h-5 rounded"
+             :class="nodeIconBgColor">
+          <component 
+            :is="nodeIcon" 
+            class="w-3 h-3"
+            :class="nodeIconColor"
+          />
+        </div>
+        
+        <!-- Status Indicator -->
+        <div class="flex-shrink-0">
+          <StatusIndicator :status="tnode.status" />
+        </div>
       </div>
     </div>
     
-    <!-- Children with subtle hierarchy line -->
-    <div v-if="expanded && tnode.children.length > 0" class="relative">
-      <div 
-        class="absolute top-0 bottom-0 left-0 w-[0.0625rem] bg-gradient-to-b from-neutral-700/20 via-neutral-700/10 to-transparent"
-        :style="{ marginLeft: `${depth * 1.25 + 1}rem` }"
-      />
+    <!-- Children -->
+    <div v-if="expanded && tnode.children.length > 0">
       <TNodeTreeItem
         v-for="child in tnode.children"
         :key="child.id"
@@ -105,11 +116,29 @@ const nodeIconColor = computed(() => {
 
 const nodeIconBgColor = computed(() => {
   if (props.tnode.tNodeType === 'event') {
-    return 'bg-blue-500/10 group-hover:bg-blue-500/15';
+    return 'bg-blue-500/10';
   }
   
   const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
   const config = getNodeConfig(tNodeType);
-  return config ? `${config.bgColor} ${config.hoverBgColor}` : 'bg-neutral-500/10 group-hover:bg-neutral-500/15';
+  return config?.bgColor || 'bg-neutral-500/10';
+});
+
+const nodeTypeBadgeColor = computed(() => {
+  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
+  
+  const badgeMap: Record<string, string> = {
+    flow: 'bg-purple-500/20 text-purple-400',
+    listen: 'bg-blue-500/20 text-blue-400',
+    fire: 'bg-amber-500/20 text-amber-400',
+    query: 'bg-cyan-500/20 text-cyan-400',
+    create: 'bg-purple-500/20 text-purple-400',
+    update: 'bg-purple-500/20 text-purple-400',
+    decision: 'bg-orange-500/20 text-orange-400',
+    transform: 'bg-emerald-500/20 text-emerald-400',
+    llm: 'bg-indigo-500/20 text-indigo-400',
+  };
+  
+  return badgeMap[tNodeType] || 'bg-neutral-700/50 text-neutral-400';
 });
 </script> 
