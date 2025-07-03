@@ -95,11 +95,7 @@ defineEmits<{
 const expanded = ref(true);
 
 const nodeIcon = computed(() => {
-  if (props.tnode.tNodeType === 'event') {
-    return Calendar;
-  }
-  
-  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
+  const tNodeType = (props.tnode.tNodeType === 'event' ? 'listen' : props.tnode.stepNodeType) as NodeKind;
   const config = getNodeConfig(tNodeType);
   return config?.icon || Calendar;
 });
