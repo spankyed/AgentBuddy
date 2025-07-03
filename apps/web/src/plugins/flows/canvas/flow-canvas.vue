@@ -26,13 +26,14 @@
       :edges="plainEdges"
       :selected-flow-id="selectedFlowId"
       :selected-flow-label="currentFlowLabel"
+      :selected-node-id="selected?.id"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
       @connect="handleConnect"
       @drop="handleDrop"
       @go-back="handleGoBack"
-      @layout="handleLayout"
-      @edit-label="openLabelDialog"
+      @action-layout="handleLayout"
+      @action-edit-label="openLabelDialog"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
     />
@@ -82,8 +83,6 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
-const { project, getNodes } = useVueFlow()
-const { centerNodeInView } = useNodeViewport()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -106,12 +105,12 @@ const selected = useSelector(actor, (s) =>
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
-    .map((n, index) => ({
+    .map((n) => ({
       id       : n.id!,
       type     : n.nodeType,
       position : { 
-        x: 100 + (index % 5) * 200, 
-        y: 100 + Math.floor(index / 5) * 150 
+        x: n.x ?? 0,  // Use stored position or default to 0
+        y: n.y ?? 0 
       },
       data     : n,  // The node itself is the data
     })) as VueFlowNode[]
@@ -136,24 +135,6 @@ const currentFlowLabel = computed(() => {
   
   return currentFlow?.label || ''
 })
-
-// Watch for newly selected nodes (which happens after node creation)
-let previousSelectedId: string | undefined = undefined
-watch(selected, async (newSelected) => {
-  if (newSelected?.id && newSelected.id !== previousSelectedId) {
-    // Check if this is a newly created node by seeing if it was just added to the nodes list
-    const isNewNode = nodes.value.some(n => n.id === newSelected.id && n.label?.startsWith('New '))
-    
-    if (isNewNode) {
-      setTimeout(async () => {
-        // Center the new node in view
-        await centerNodeInView(newSelected.id)
-      }, 100) // Delay to ensure the node is rendered
-      // await centerNodeInView(newSelected.id)
-    }
-  }
-  previousSelectedId = newSelected?.id
-}, { immediate: true })
 
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
@@ -227,12 +208,34 @@ function handleGoBack() {
   actor.send({ type: 'GO.BACK' })
 }
 
-function handleLayout(direction?: Direction) {
-  layout(direction)
+async function handleLayout(direction?: Direction) {
+  const laidOutNodes = await layout(direction)
+  
+  // Update node positions in frontend state
+  laidOutNodes.forEach(node => {
+    if (node.id && node.position) {
+      actor.send({
+        type: 'NODE.UPDATE_POSITION',
+        nodeId: node.id,
+        position: { x: node.position.x, y: node.position.y }
+      })
+    }
+  })
 }
 
-function handleNodesInitialized() {
-  layout()
+async function handleNodesInitialized() {
+  const laidOutNodes = await layout()
+  
+  // Update node positions in frontend state
+  laidOutNodes.forEach(node => {
+    if (node.id && node.position) {
+      actor.send({
+        type: 'NODE.UPDATE_POSITION',
+        nodeId: node.id,
+        position: { x: node.position.x, y: node.position.y }
+      })
+    }
+  })
 }
 
 function handleNodeUpdate(nodeId: string, updates: any) {

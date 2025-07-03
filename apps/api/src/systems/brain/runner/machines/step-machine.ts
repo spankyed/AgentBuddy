@@ -51,14 +51,14 @@ export function createStepMachine(
           // Delegate to step executor
           executeNode(context.step, context.executionContext, self);
         },
-        markCompleted: ({ context }) => {
+        markCompleted: ({ context, self }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'completed');
+            updateTNodeStatus(context.tNodeId, 'completed', self);
           }
         },
-        markFailed: ({ context }) => {
+        markFailed: ({ context, self }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'failed');
+            updateTNodeStatus(context.tNodeId, 'failed', self);
           }
         },
         notifyComplete: sendParent(({ context, event }) => ({

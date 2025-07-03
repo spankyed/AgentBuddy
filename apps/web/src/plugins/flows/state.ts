@@ -13,6 +13,8 @@ import type {
   EARS,
   EdgeEntity,
   PromptEntity,
+  ModelConfig,
+  ActionEntity,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
 
@@ -29,13 +31,16 @@ export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   selectedFlowId?: EARS.EntityId;
   graph: {
-    nodes: Partial<NodeEntity>[];
+    nodes: (Partial<NodeEntity> & { x?: number; y?: number })[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
   logs: { id: number; text: string }[];
   prompts: PromptEntity[];
+  models: ModelConfig[];
+  actions: ActionEntity[];
+  isLoadingFormData: boolean;
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -45,11 +50,13 @@ type UIEvent =
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.CREATE'; nodeType: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
+  | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
-  | { type: 'FETCH_PROMPTS' }
+  | { type: 'FETCH_LLM_FORM_DATA' }
+  | { type: 'FETCH_ACTION_FORM_DATA' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -63,20 +70,35 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      return { ...ev.data, logs: [], prompts: [] }
+      return { ...ev.data, logs: [], prompts: [], models: [], actions: [], isLoadingFormData: false }
     }),
 
-    fetchPrompts: () => {
+    fetchLLMFormData: assign(() => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'FETCH_ALL_PROMPTS'
+        type: 'FETCH_LLM_FORM_DATA'
       });
-    },
-
-    setPrompts: assign(({ event }) => {
-      const ev = typeOf('ALL_PROMPTS_FETCHED', event);
-      return { prompts: ev.prompts };
+      return { isLoadingFormData: true };
     }),
+
+    setLLMFormData: assign(({ event }) => {
+      const ev = typeOf('LLM_FORM_DATA_FETCHED', event);
+      return { models: ev.models, prompts: ev.prompts, isLoadingFormData: false };
+    }),
+
+    fetchActionFormData: assign(() => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_ACTION_FORM_DATA'
+      });
+      return { isLoadingFormData: true };
+    }),
+
+    setActionFormData: assign(({ event }) => {
+      const ev = typeOf('ACTION_FORM_DATA_FETCHED', event);
+      return { actions: ev.actions, isLoadingFormData: false };
+    }),
+
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {
@@ -247,6 +269,18 @@ const flowsState = setup({
       });
     },
 
+    updateNodePosition: assign(({ context, event }) => {
+      const ev = typeOf('NODE.UPDATE_POSITION', event);
+      return {
+        graph: {
+          ...context.graph,
+          nodes: context.graph.nodes.map(node =>
+            node.id === ev.nodeId ? { ...node, x: ev.position.x, y: ev.position.y } : node
+          ),
+        },
+      };
+    }),
+
     /* ── ID reconciliation actions ────────────────────────── */
     reconcileNodeId: assign(({ context, event }) => {
       const ev = typeOf('NODE_CREATED', event);
@@ -293,9 +327,14 @@ const flowsState = setup({
     rootFlow: undefined as Partial<FlowEntity> | undefined,
     logs: [] as { id: number; text: string }[],
     prompts: [] as PromptEntity[],
+    models: [] as ModelConfig[],
+    actions: [] as ActionEntity[],
+    isLoadingFormData: false,
   },
   on: {
-    FLOWS_STARTUP: { actions: ['setPluginData', 'fetchPrompts'] },
+    FLOWS_STARTUP: { actions: 'setPluginData' },
+    LLM_FORM_DATA_FETCHED: { actions: 'setLLMFormData' },
+    ACTION_FORM_DATA_FETCHED: { actions: 'setActionFormData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: ['addCreatedFlow', 'selectFlow'],
@@ -304,7 +343,6 @@ const flowsState = setup({
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
     },
-    ALL_PROMPTS_FETCHED: { actions: 'setPrompts' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -356,14 +394,20 @@ const flowsState = setup({
         'NODE.UPDATE': {
           actions: ['updateNode', 'sendNodeUpdate'],
         },
+        'NODE.UPDATE_POSITION': {
+          actions: 'updateNodePosition',
+        },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
         },
         'GO.BACK': {
           target: 'list',
         },
-        'FETCH_PROMPTS': {
-          actions: 'fetchPrompts',
+        'FETCH_LLM_FORM_DATA': {
+          actions: 'fetchLLMFormData',
+        },
+        'FETCH_ACTION_FORM_DATA': {
+          actions: 'fetchActionFormData',
         },
       },
     },

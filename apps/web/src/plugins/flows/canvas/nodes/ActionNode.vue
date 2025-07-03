@@ -1,51 +1,28 @@
 <template>
-  <div class="step-node" :style="{ borderColor: data.color || '#888' }">
-    <Handle
-      type="target"
-      :position="Position.Left"
-      :id="`${id}-top`"
-      class="handle"
-    />
-    <div class="label">{{ data.label }}</div>
-    <div class="type">{{ data.stepType }}</div>
-    <Handle
-      type="source"
-      :position="Position.Right"
-      :id="`${id}-right`"
-      class="handle"
-    />
-  </div>
+  <BaseNode v-bind="props">
+    <div v-if="data.actionName" class="flex items-center gap-1.5">
+      <svg class="w-2.5 h-2.5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span class="text-[10px] text-neutral-300 font-mono truncate">{{ data.actionName }}</span>
+    </div>
+    
+    <div v-if="data.params && Object.keys(data.params).length > 0" class="mt-1 text-[9px] text-neutral-500">
+      <span class="uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
+    </div>
+  </BaseNode>
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps } from '@vue-flow/core'
+import type { NodeProps } from '@vue-flow/core'
+import type { ActionNode } from '@abuddy/api'
+import BaseNode from './BaseNode.vue'
 
-interface ActionNodeData {
+interface NodeData extends Partial<ActionNode> {
   label: string
-  stepType: string
-  color?: string
+  actionName?: string
+  params?: Record<string, any>
 }
 
-defineProps<NodeProps<ActionNodeData>>()
+const props = defineProps<NodeProps<NodeData>>()
 </script>
-
-<style scoped>
-.step-node {
-  padding: 10px;
-  border-radius: 5px;
-  border: 2px solid;
-  background: #1f1f1f;
-  color: #fff;
-  min-width: 150px;
-}
-.label {
-  text-align: center;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-.type {
-  text-align: center;
-  font-size: 10px;
-  opacity: 0.7;
-}
-</style>

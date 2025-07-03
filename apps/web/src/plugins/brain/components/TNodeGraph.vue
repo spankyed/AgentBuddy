@@ -57,7 +57,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch, nextTick, ref, onUnmounted } from 'vue';
 import {
   VueFlow,
   ConnectionLineType,
@@ -65,6 +65,7 @@ import {
   type Node as VueFlowNode,
   type Edge,
   type NodeMouseEvent,
+  useVueFlow,
 } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -84,46 +85,71 @@ const emit = defineEmits<{
   'back-click': [];
 }>();
 
-// Convert TNode tree to VueFlow nodes and edges
-const nodes = computed<VueFlowNode[]>(() => {
-  if (!props.tnodeTree) return [];
-  
-  const result: VueFlowNode[] = [];
-  let yOffset = 100;
-  
-  // Helper to recursively build nodes
-  const buildNodes = (tnode: TrackEntity, x: number, y: number, parentId?: string) => {
-    result.push({
-      id: tnode.id,
-      type: 'tnode',
-      position: { x, y },
-      data: {
-        label: tnode.label,
-        tNodeType: tnode.tNodeType,
-        stepNodeType: tnode.stepNodeType,
-        status: tnode.status,
-        hasChildren: tnode.children.length > 0,
-      },
-    });
+// Constants
+const LAYOUT = {
+  HORIZONTAL_GAP: 45,   // Reduced by 2/3 (was 250)
+  VERTICAL_GAP: 40,     // Reduced by half (was 100)
+  NODE_WIDTH: 200,
+  NODE_HEIGHT: 80,
+} as const;
+
+const ANIMATION = {
+  DURATION: 800,
+  MAX_RETRY_ATTEMPTS: 2,
+  RETRY_DELAY: 16, // ~1 frame at 60fps
+} as const;
+
+// Vue Flow composables
+const { setCenter, getNode } = useVueFlow();
+
+// State
+const nodePositionCache = new Map<string, { x: number; y: number }>();
+let previousNodeIds = new Set<string>();
+let animationController: AbortController | null = null;
+
+// Helper functions
+const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => ({
+  id: tnode.id,
+  type: 'tnode',
+  position,
+  data: {
+    label: tnode.label,
+    tNodeType: tnode.tNodeType,
+    stepNodeType: tnode.stepNodeType,
+    status: tnode.status,
+    hasChildren: tnode.children.length > 0,
+  },
+});
+
+const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
+  const nodes: VueFlowNode[] = [];
+  let trackY = 0;
+
+  const traverseTrack = (tnode: TrackEntity, x: number, y: number) => {
+    const position = { x, y };
+    nodes.push(createVueFlowNode(tnode, position));
     
     // Process children horizontally
     let childX = x;
-    tnode.children.forEach((child, index) => {
-      // Simple horizontal layout - just go straight right
-      childX += 200;
-      buildNodes(child, childX, y, tnode.id);
+    tnode.children.forEach((child) => {
+      childX += LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
+      traverseTrack(child, childX, y);
     });
   };
-  
-  // Process each track entity
-  if (props.tnodeTree) {
-    props.tnodeTree.forEach((track, index) => {
-      // Stack root nodes vertically since children flow horizontally
-      buildNodes(track, 100, 100 + (index * 100));
-    });
-  }
-  
-  return result;
+
+  // Process each track
+  tracks.forEach((track) => {
+    traverseTrack(track, 0, trackY);
+    trackY += LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+  });
+
+  return nodes;
+};
+
+// Convert TNode tree to VueFlow nodes
+const nodes = computed<VueFlowNode[]>(() => {
+  if (!props.tnodeTree?.length) return [];
+  return calculateNodePositions(props.tnodeTree);
 });
 
 const edges = computed<Edge[]>(() => {
@@ -136,7 +162,7 @@ const edges = computed<Edge[]>(() => {
     // For children, create a chain: parent -> first child -> second child -> ...
     tnode.children.forEach((child, index) => {
       if (index === 0) {
-        // First child connects to parent
+        // First child connects to parent - should be animated based on parent status
         result.push({
           id: `${tnode.id}-to-${child.id}`,
           source: tnode.id,
@@ -145,14 +171,14 @@ const edges = computed<Edge[]>(() => {
           animated: tnode.status === 'active',
         });
       } else {
-        // Subsequent children connect to previous child
+        // Subsequent children connect to previous child - no animation
         const previousChild = tnode.children[index - 1];
         result.push({
           id: `${previousChild.id}-to-${child.id}`,
           source: previousChild.id,
           target: child.id,
           type: 'smoothstep',
-          animated: previousChild.status === 'active',
+          animated: false, // No animation for sibling connections
         });
       }
       // Recursively process each child's children
@@ -173,4 +199,74 @@ const edges = computed<Edge[]>(() => {
 const handleNodeClick = (event: NodeMouseEvent) => {
   emit('tnode-click', event.node.id);
 };
+
+// Animation helpers
+const cancelCurrentAnimation = () => {
+  if (animationController) {
+    animationController.abort();
+    animationController = null;
+  }
+};
+
+const animateToNode = async (nodeId: string, position: { x: number; y: number }, signal: AbortSignal) => {
+  const attemptCenter = async (attempt: number = 0): Promise<void> => {
+    if (signal.aborted) return;
+    
+    const flowNode = getNode.value(nodeId);
+    if (flowNode?.dimensions) {
+      const centerX = position.x + (flowNode.dimensions.width || LAYOUT.NODE_WIDTH) / 2;
+      const centerY = position.y + (flowNode.dimensions.height || LAYOUT.NODE_HEIGHT) / 2;
+      
+      await setCenter(centerX, centerY, { 
+        duration: ANIMATION.DURATION, 
+        zoom: 1 
+      });
+    } else if (attempt < ANIMATION.MAX_RETRY_ATTEMPTS) {
+      // Retry after a frame
+      await new Promise(resolve => setTimeout(resolve, ANIMATION.RETRY_DELAY));
+      return attemptCenter(attempt + 1);
+    }
+  };
+  
+  // Wait for next frame to ensure DOM is updated
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  return attemptCenter();
+};
+
+const findNewNodes = (currentNodes: VueFlowNode[]): string[] => {
+  const currentIds = new Set(currentNodes.map(n => n.id));
+  return Array.from(currentIds).filter(id => !previousNodeIds.has(id));
+};
+
+// Watch for new nodes and animate to them
+watch(() => nodes.value, (newNodes) => {
+  const newNodeIds = findNewNodes(newNodes);
+  
+  if (newNodeIds.length === 0) {
+    previousNodeIds = new Set(newNodes.map(n => n.id));
+    return;
+  }
+  
+  // Cancel any existing animation
+  cancelCurrentAnimation();
+  
+  // Focus on the last new node (most recent)
+  const targetNodeId = newNodeIds[newNodeIds.length - 1];
+  const targetNode = newNodes.find(n => n.id === targetNodeId);
+  
+  if (targetNode) {
+    animationController = new AbortController();
+    animateToNode(targetNodeId, targetNode.position, animationController.signal);
+  }
+  
+  // Update tracked nodes
+  previousNodeIds = new Set(newNodes.map(n => n.id));
+}, { immediate: true });
+
+// Cleanup on unmount
+onUnmounted(() => {
+  cancelCurrentAnimation();
+  nodePositionCache.clear();
+  previousNodeIds.clear();
+});
 </script> 

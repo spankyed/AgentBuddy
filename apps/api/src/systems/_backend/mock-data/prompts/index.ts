@@ -5,6 +5,8 @@ import { qaAssistantPrompt } from './qa-assistant';
 import { translateTextPrompt } from './translate-text';
 import { sentimentAnalysisPrompt } from './sentiment-analysis';
 import { brainstormIdeasPrompt } from './brainstorm-ideas';
+import { userMessageAnalysisPrompt } from './user-message-analysis';
+import { formatResponsePrompt } from './format-response';
 import { composeData } from '@/systems/_backend/mock-data';
 
 // Combine all prompt data
@@ -15,4 +17,6 @@ export const promptRows: Rows = composeData([
   translateTextPrompt,
   sentimentAnalysisPrompt,
   brainstormIdeasPrompt,
+  userMessageAnalysisPrompt,
+  formatResponsePrompt,
 ]);

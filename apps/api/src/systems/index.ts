@@ -9,6 +9,7 @@ import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
 import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/database/system';
 import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
 import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
+import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
 
 export default {
   [agent]: agentSystem,
@@ -17,6 +18,7 @@ export default {
   [flows]: flowsSystem,
   [database]: databaseSystem,
   [prompts]: promptsSystem,
+  [actions]: actionsSystem,
   // [logs]: logsSystem,
 } as const;
 
@@ -27,7 +29,8 @@ export const events = mergeSystems(
   FlowsSystemEvents,
   DatabaseSystemEvents,
   LogsSystemEvents,
-  PromptsSystemEvents
+  PromptsSystemEvents,
+  ActionsSystemEvents
 );
 
 export { backendSystem } from "@/systems/_backend/backend";

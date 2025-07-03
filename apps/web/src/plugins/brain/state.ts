@@ -53,16 +53,20 @@ const brainState = setup({
         possibleEvents: typedEv.data.possibleEvents,
       };
     }),
-    addEventTNode: assign(({ context, event }) => {
-      if (event.type !== 'EVENT_TNODE_SPAWNED') return {};
-      // TODO: Update tNodeTree to include new event node
-      return {};
-    }),
-    updateTNode: assign(({ context, event }) => {
-      if (event.type !== 'TNODE_UPDATED') return {};
-      // TODO: Update tNodeTree with new status
-      return {};
-    }),
+    addEventTNode: () => {
+      // Request fresh data when a new TNode is spawned
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REQUEST_PLUGIN_DATA'
+      });
+    },
+    updateTNode: () => {
+      // Request fresh data when a TNode is updated
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REQUEST_PLUGIN_DATA'
+      });
+    },
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
       return {
@@ -155,6 +159,13 @@ const brainState = setup({
             setTimeout(() => {
               system.get(id).send({ type: 'CLEAR_PULSE' as any });
             }, 400);
+            // Also request fresh data to show the new event
+            setTimeout(() => {
+              trpc.bus.send.mutate({
+                systemId: id,
+                type: 'REQUEST_PLUGIN_DATA'
+              });
+            }, 100);
           }]
         },
         CLEAR_PULSE: {

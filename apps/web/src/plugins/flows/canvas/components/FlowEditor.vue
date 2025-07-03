@@ -4,7 +4,7 @@
       :nodes="nodes"
       :edges="edges"
       class="w-full h-full bg-neutral-900"
-      :fit-view-on-init="true"
+      :fit-view-on-init="false"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{
         type: 'generic',
@@ -50,8 +50,8 @@
         <!-- Actions menu -->
         <FlowActionsMenu 
           :selected-flow-id="selectedFlowId"
-          @layout="(direction) => $emit('layout', direction)"
-          @edit-label="$emit('edit-label')"
+          @layout="(direction) => $emit('action-layout', direction)"
+          @edit-label="$emit('action-edit-label')"
         />
       </div>
     </VueFlow>
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
@@ -88,7 +89,7 @@ import { ChevronLeft } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
-// import { useNodeViewport } from '../useNodeViewport'
+import { useNodeViewport } from '../useNodeViewport'
 
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
 import Button from '@/core/design/button.vue'
@@ -99,26 +100,37 @@ interface Props {
   edges: Edge[]
   selectedFlowId?: string | null
   selectedFlowLabel?: string
+  selectedNodeId?: string
   showOverlay?: boolean
 }
 
 const props = defineProps<Props>()
-// const { centerNodeInView } = useNodeViewport()
+const { centerNodeInView } = useNodeViewport()
 
 const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
   'connect': [params: Connection]
   'drop': [event: DragEvent]
   'go-back': []
-  'layout': [direction?: Direction]
-  'edit-label': []
+  'action-layout': [direction?: Direction]
+  'action-edit-label': []
   'overlay-click': []
   'nodes-initialized': []
 }>()
 
-async function handleNodeClick(event: NodeMouseEvent) {
-  // await centerNodeInView(event.node.id)
+// Watch for selected node changes and center the node
+let previousSelectedId: string | undefined = undefined
+watch(() => props.selectedNodeId, async (newSelectedId) => {
+  if (newSelectedId && newSelectedId !== previousSelectedId) {
+    // Small delay to ensure node is rendered and dimensions are available
+    setTimeout(async () => {
+      await centerNodeInView(newSelectedId)
+    }, 100)
+  }
+  previousSelectedId = newSelectedId
+})
 
+async function handleNodeClick(event: NodeMouseEvent) {
   emit('node-click', event)
 }
 </script> 

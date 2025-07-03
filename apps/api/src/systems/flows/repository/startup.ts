@@ -4,6 +4,8 @@ import { getRootFlow } from './read';
 import { FlowsStartupData, EdgeEntity, NodeEntity, FlowEntity } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
 import { edgeKinds } from '.';
+import { availableModels } from '../config/available-models';
+import { getAllPrompts } from '../../prompts/repository/read';
 
 
 export default function flowsStartupData(): FlowsStartupData {
@@ -69,5 +71,7 @@ export default function flowsStartupData(): FlowsStartupData {
     flows,
     rootFlow,
     selectedFlowId: selectedFlow.id,
+    models: availableModels,
+    prompts: getAllPrompts(),
   };
 }

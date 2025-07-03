@@ -1,92 +1,30 @@
 <template>
-  <div class="node" :style="{ '--node-color': data.color || '#4a9eff' }">
-    <div class="antenna">
-      <div class="dot"></div>
-      <div class="wave"></div>
+  <BaseNode v-bind="props" :show-target-handle="false">
+    <template #badge>
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wide uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
+        {{ data.mode === 'entry' ? 'ENTRY' : 'INTERNAL' }}
+      </span>
+    </template>
+    
+    <div v-if="data.eventType" class="flex items-center gap-1.5">
+      <svg class="w-2.5 h-2.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+      </svg>
+      <span class="text-[10px] text-neutral-300 font-mono truncate">{{ data.eventType }}</span>
     </div>
-    <div class="label">{{ data.label }}</div>
-    <div class="type">LISTEN ({{ data.mode }})</div>
-    <Handle
-      type="source"
-      :position="Position.Right"
-      :id="`${id}-out`"
-      class="handle"
-      :isValidConnection="({ source }) => {
-        const edges = useVueFlow().edges
-        return edges.value.filter(e => e.source === source).length < 3
-      }"    
-    />
-  </div>
+  </BaseNode>
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps, useVueFlow } from '@vue-flow/core'
+import type { NodeProps } from '@vue-flow/core'
 import type { ListenNode } from '@abuddy/api'
+import BaseNode from './BaseNode.vue'
 
 interface NodeData extends Partial<ListenNode> {
   label: string
   mode: 'entry' | 'internal'
+  eventType?: string
 }
 
-defineProps<NodeProps<NodeData>>()
+const props = defineProps<NodeProps<NodeData>>()
 </script>
-
-<style scoped>
-.node {
-  padding: 10px;
-  border-radius: 8px;
-  background: linear-gradient(45deg, #1f1f1f, #2a2a2a);
-  color: #fff;
-  min-width: 150px;
-  position: relative;
-  box-shadow: 0 0 15px rgba(var(--node-color-rgb), 0.15);
-  border: 2px solid var(--node-color);
-}
-
-.antenna {
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.dot {
-  width: 6px;
-  height: 6px;
-  background: var(--node-color);
-  border-radius: 50%;
-}
-
-.wave {
-  width: 2px;
-  height: 8px;
-  background: var(--node-color);
-}
-
-.label {
-  text-align: center;
-  font-size: 14px;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.type {
-  text-align: center;
-  font-size: 10px;
-  opacity: 0.7;
-  color: var(--node-color);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Convert hex color to RGB for box-shadow */
-.node {
-  --node-color-rgb: calc((0x${() => props.data?.color?.slice(1, 3) || '4a'}) * 1),
-                     calc((0x${() => props.data?.color?.slice(3, 5) || '9e'}) * 1),
-                     calc((0x${() => props.data?.color?.slice(5, 7) || 'ff'}) * 1);
-}
-</style>

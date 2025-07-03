@@ -14,7 +14,6 @@ export type * from './systems/threads/types';
 
 export type { OutgoingFlowsEvents } from './systems/flows/system';
 export type * from './systems/flows/types';
-export type { ModelConfig } from './systems/flows/config/available-models';
 
 export type { OutgoingDatabaseEvents } from './systems/database/system';
 export type * from './systems/database/types';
@@ -24,5 +23,8 @@ export type * from './systems/logs/types';
 
 export type { OutgoingPromptEvents } from './systems/prompts/system';
 export type * from './systems/prompts/types';
+
+export type { OutgoingActionEvents } from './systems/actions/system';
+export type * from './systems/actions/types';
 
 // todo, we should probably export all the entities from here

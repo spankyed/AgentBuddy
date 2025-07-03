@@ -99,6 +99,11 @@ export const brainSystem = setup({
       // const brainActor = getActor(system, brainBus);
       const brainActor = system.get(brainBus);
 
+      // Pulse the event in UI
+      system.get(bus).send(emit(brain, {
+        type: 'EVENT_PULSE',
+        eventType: eventType
+      }));
 
       brainActor.send({
         type: eventType,
