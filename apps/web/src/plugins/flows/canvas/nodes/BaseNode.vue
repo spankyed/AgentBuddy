@@ -218,9 +218,9 @@ const formatNodeType = (type: string) => {
   transition: all 0.2s ease;
 }
 
-:deep(.vue-flow__handle:hover) {
+/* :deep(.vue-flow__handle:hover) {
   transform: scale(1.2);
-}
+} */
 
 /* Smooth transitions for all interactive elements */
 .flow-node * {
