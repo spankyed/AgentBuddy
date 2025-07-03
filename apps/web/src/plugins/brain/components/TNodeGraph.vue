@@ -85,58 +85,71 @@ const emit = defineEmits<{
   'back-click': [];
 }>();
 
-const { fitView, setCenter, getNode } = useVueFlow();
+// Constants
+const LAYOUT = {
+  HORIZONTAL_GAP: 250,
+  VERTICAL_GAP: 100,
+  NODE_WIDTH: 200,
+  NODE_HEIGHT: 80,
+} as const;
 
-// Layout constants
-const HORIZONTAL_GAP = 250;  // Gap between parent and child
-const VERTICAL_GAP = 100;    // Gap between siblings
-const NODE_WIDTH = 200;      // Estimated node width
-const NODE_HEIGHT = 80;      // Estimated node height
+const ANIMATION = {
+  DURATION: 800,
+  MAX_RETRY_ATTEMPTS: 2,
+  RETRY_DELAY: 16, // ~1 frame at 60fps
+} as const;
 
-// Animation control
+// Vue Flow composables
+const { setCenter, getNode } = useVueFlow();
+
+// State
+const nodePositionCache = new Map<string, { x: number; y: number }>();
+let previousNodeIds = new Set<string>();
 let animationController: AbortController | null = null;
 
-// Convert TNode tree to VueFlow nodes and edges
-const nodes = computed<VueFlowNode[]>(() => {
-  if (!props.tnodeTree) return [];
-  
-  const result: VueFlowNode[] = [];
-  let trackY = 0; // Y position for track nodes
-  
-  // Helper to recursively build nodes with manual positioning
-  const buildNodes = (tnode: TrackEntity, parentX: number = 0, y: number = 0) => {
-    const x = parentX;
+// Helper functions
+const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => ({
+  id: tnode.id,
+  type: 'tnode',
+  position,
+  data: {
+    label: tnode.label,
+    tNodeType: tnode.tNodeType,
+    stepNodeType: tnode.stepNodeType,
+    status: tnode.status,
+    hasChildren: tnode.children.length > 0,
+  },
+});
+
+const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
+  const nodes: VueFlowNode[] = [];
+  let trackY = 0;
+
+  const traverseTrack = (tnode: TrackEntity, x: number, y: number) => {
+    const position = { x, y };
+    nodes.push(createVueFlowNode(tnode, position));
     
-    result.push({
-      id: tnode.id,
-      type: 'tnode',
-      position: { x, y },
-      data: {
-        label: tnode.label,
-        tNodeType: tnode.tNodeType,
-        stepNodeType: tnode.stepNodeType,
-        status: tnode.status,
-        hasChildren: tnode.children.length > 0,
-      },
-    });
-    
-    // Process children in a horizontal chain
-    let currentX = x;
+    // Process children horizontally
+    let childX = x;
     tnode.children.forEach((child) => {
-      currentX += NODE_WIDTH + HORIZONTAL_GAP;
-      buildNodes(child, currentX, y);
+      childX += LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
+      traverseTrack(child, childX, y);
     });
   };
-  
-  // Process each track entity as a root
-  if (props.tnodeTree) {
-    props.tnodeTree.forEach((track) => {
-      buildNodes(track, 0, trackY);
-      trackY += NODE_HEIGHT + VERTICAL_GAP;
-    });
-  }
-  
-  return result;
+
+  // Process each track
+  tracks.forEach((track) => {
+    traverseTrack(track, 0, trackY);
+    trackY += LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+  });
+
+  return nodes;
+};
+
+// Convert TNode tree to VueFlow nodes
+const nodes = computed<VueFlowNode[]>(() => {
+  if (!props.tnodeTree?.length) return [];
+  return calculateNodePositions(props.tnodeTree);
 });
 
 const edges = computed<Edge[]>(() => {
@@ -187,65 +200,73 @@ const handleNodeClick = (event: NodeMouseEvent) => {
   emit('tnode-click', event.node.id);
 };
 
-// Track new nodes and animate to them
-let previousNodeIds = new Set<string>();
-watch(() => nodes.value, (newNodes) => {
-  const currentNodeIds = new Set(newNodes.map(n => n.id));
-  
-  // Find newly added nodes
-  const newNodeId = Array.from(currentNodeIds).find(id => !previousNodeIds.has(id));
-  
-  if (newNodeId) {
-    // Cancel any in-progress animation
-    if (animationController) {
-      animationController.abort();
-    }
-    animationController = new AbortController();
+// Animation helpers
+const cancelCurrentAnimation = () => {
+  if (animationController) {
+    animationController.abort();
+    animationController = null;
+  }
+};
+
+const animateToNode = async (nodeId: string, position: { x: number; y: number }, signal: AbortSignal) => {
+  const attemptCenter = async (attempt: number = 0): Promise<void> => {
+    if (signal.aborted) return;
     
-    // Find the new node
-    const newNode = newNodes.find(n => n.id === newNodeId);
-    if (newNode) {
-      // Use requestAnimationFrame to ensure node is rendered
-      requestAnimationFrame(() => {
-        // Check if this animation was cancelled
-        if (animationController?.signal.aborted) return;
-        
-        // Check if the node actually exists in the flow
-        const flowNode = getNode.value(newNodeId);
-        if (flowNode && flowNode.dimensions) {
-          // Center on the new node with animation
-          setCenter(
-            newNode.position.x + (flowNode.dimensions.width || NODE_WIDTH) / 2, 
-            newNode.position.y + (flowNode.dimensions.height || NODE_HEIGHT) / 2, 
-            { duration: 800, zoom: 1 }
-          );
-        } else {
-          // Node not ready yet, try again on next frame
-          if (!animationController?.signal.aborted) {
-            requestAnimationFrame(() => {
-              if (animationController?.signal.aborted) return;
-              const retryNode = getNode.value(newNodeId);
-              if (retryNode && retryNode.dimensions) {
-                setCenter(
-                  newNode.position.x + (retryNode.dimensions.width || NODE_WIDTH) / 2, 
-                  newNode.position.y + (retryNode.dimensions.height || NODE_HEIGHT) / 2, 
-                  { duration: 800, zoom: 1 }
-                );
-              }
-            });
-          }
-        }
+    const flowNode = getNode.value(nodeId);
+    if (flowNode?.dimensions) {
+      const centerX = position.x + (flowNode.dimensions.width || LAYOUT.NODE_WIDTH) / 2;
+      const centerY = position.y + (flowNode.dimensions.height || LAYOUT.NODE_HEIGHT) / 2;
+      
+      await setCenter(centerX, centerY, { 
+        duration: ANIMATION.DURATION, 
+        zoom: 1 
       });
+    } else if (attempt < ANIMATION.MAX_RETRY_ATTEMPTS) {
+      // Retry after a frame
+      await new Promise(resolve => setTimeout(resolve, ANIMATION.RETRY_DELAY));
+      return attemptCenter(attempt + 1);
     }
+  };
+  
+  // Wait for next frame to ensure DOM is updated
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  return attemptCenter();
+};
+
+const findNewNodes = (currentNodes: VueFlowNode[]): string[] => {
+  const currentIds = new Set(currentNodes.map(n => n.id));
+  return Array.from(currentIds).filter(id => !previousNodeIds.has(id));
+};
+
+// Watch for new nodes and animate to them
+watch(() => nodes.value, (newNodes) => {
+  const newNodeIds = findNewNodes(newNodes);
+  
+  if (newNodeIds.length === 0) {
+    previousNodeIds = new Set(newNodes.map(n => n.id));
+    return;
   }
   
-  previousNodeIds = currentNodeIds;
+  // Cancel any existing animation
+  cancelCurrentAnimation();
+  
+  // Focus on the last new node (most recent)
+  const targetNodeId = newNodeIds[newNodeIds.length - 1];
+  const targetNode = newNodes.find(n => n.id === targetNodeId);
+  
+  if (targetNode) {
+    animationController = new AbortController();
+    animateToNode(targetNodeId, targetNode.position, animationController.signal);
+  }
+  
+  // Update tracked nodes
+  previousNodeIds = new Set(newNodes.map(n => n.id));
 }, { immediate: true });
 
 // Cleanup on unmount
 onUnmounted(() => {
-  if (animationController) {
-    animationController.abort();
-  }
+  cancelCurrentAnimation();
+  nodePositionCache.clear();
+  previousNodeIds.clear();
 });
 </script> 
