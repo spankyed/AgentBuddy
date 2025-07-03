@@ -78,7 +78,7 @@ import { ref, computed } from 'vue';
 import type { TrackEntity } from '@abuddy/api'
 import StatusIndicator from './StatusIndicator.vue';
 import { Calendar } from 'lucide-vue-next';
-import { getNodeConfig } from '../../flows/config/node-config';
+import { getNodeConfig, getNodeIconTextColor, getNodeIconBgColor } from '../../flows/config/node-config';
 import type { NodeKind } from '@abuddy/api';
 
 interface Props {
@@ -105,40 +105,19 @@ const nodeIcon = computed(() => {
 });
 
 const nodeIconColor = computed(() => {
-  if (props.tnode.tNodeType === 'event') {
-    return 'text-blue-400';
-  }
-  
-  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
-  const config = getNodeConfig(tNodeType);
-  return config?.color || 'text-neutral-400';
+  const nodeType = props.tnode.tNodeType === 'step' ? (props.tnode.stepNodeType || 'action') : props.tnode.tNodeType;
+  return getNodeIconTextColor(nodeType, { isEvent: props.tnode.tNodeType === 'event' });
 });
 
 const nodeIconBgColor = computed(() => {
-  if (props.tnode.tNodeType === 'event') {
-    return 'bg-blue-500/10';
-  }
-  
-  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
-  const config = getNodeConfig(tNodeType);
-  return config?.bgColor || 'bg-neutral-500/10';
+  const nodeType = props.tnode.tNodeType === 'step' ? (props.tnode.stepNodeType || 'action') : props.tnode.tNodeType;
+  return getNodeIconBgColor(nodeType, { isEvent: props.tnode.tNodeType === 'event' });
 });
 
-const nodeTypeBadgeColor = computed(() => {
-  const tNodeType = (props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType) as NodeKind;
-  
-  const badgeMap: Record<string, string> = {
-    flow: 'bg-purple-500/20 text-purple-400',
-    listen: 'bg-blue-500/20 text-blue-400',
-    fire: 'bg-amber-500/20 text-amber-400',
-    query: 'bg-cyan-500/20 text-cyan-400',
-    create: 'bg-purple-500/20 text-purple-400',
-    update: 'bg-purple-500/20 text-purple-400',
-    decision: 'bg-orange-500/20 text-orange-400',
-    transform: 'bg-emerald-500/20 text-emerald-400',
-    llm: 'bg-indigo-500/20 text-indigo-400',
-  };
-  
-  return badgeMap[tNodeType] || 'bg-neutral-700/50 text-neutral-400';
-});
+// Note: nodeTypeBadgeColor is defined but not used in the template
+// If needed in the future, it can use the shared function:
+// const nodeTypeBadgeColor = computed(() => {
+//   const nodeType = props.tnode.tNodeType === 'step' ? props.tnode.stepNodeType : props.tnode.tNodeType;
+//   return getNodeBadgeClasses(nodeType, { isEvent: props.tnode.tNodeType === 'event' });
+// });
 </script> 

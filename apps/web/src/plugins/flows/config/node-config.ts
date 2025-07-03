@@ -345,6 +345,34 @@ export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: Nod
 }
 
 /**
+ * Returns text color classes for node type icons
+ */
+export const getNodeIconTextColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
+  const effectiveType = resolveNodeType(nodeType, options)
+  const config = getNodeConfig(effectiveType)
+  
+  if (effectiveType === 'event') {
+    return 'text-blue-400'
+  }
+  
+  return config?.color || 'text-neutral-400'
+}
+
+/**
+ * Returns background color classes for node type icons
+ */
+export const getNodeIconBgColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
+  const effectiveType = resolveNodeType(nodeType, options)
+  const config = getNodeConfig(effectiveType)
+  
+  if (effectiveType === 'event') {
+    return 'bg-blue-500/10'
+  }
+  
+  return config?.bgColor || 'bg-neutral-500/10'
+}
+
+/**
  * Returns status indicator classes based on variant
  */
 export const getNodeStatusClasses = (
