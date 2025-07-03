@@ -32,7 +32,7 @@
           class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wide uppercase"
           :class="badgeClasses"
         >
-          {{ formatNodeType(data.tNodeType) }}
+          {{ data.tNodeType === 'event' ? formatNodeType(data.tNodeType) : ''}}
           <span v-if="data.stepNodeType" class="ml-1">{{ formatNodeType(data.stepNodeType) }}</span>
         </span>
       </div>
