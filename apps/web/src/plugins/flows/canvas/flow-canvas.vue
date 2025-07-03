@@ -26,6 +26,7 @@
       :edges="plainEdges"
       :selected-flow-id="selectedFlowId"
       :selected-flow-label="currentFlowLabel"
+      :selected-node-id="selected?.id"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
       @connect="handleConnect"
@@ -82,8 +83,6 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
-const { project, getNodes } = useVueFlow()
-const { centerNodeInView } = useNodeViewport()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -136,24 +135,6 @@ const currentFlowLabel = computed(() => {
   
   return currentFlow?.label || ''
 })
-
-// Watch for newly selected nodes (which happens after node creation)
-let previousSelectedId: string | undefined = undefined
-watch(selected, async (newSelected) => {
-  if (newSelected?.id && newSelected.id !== previousSelectedId) {
-    // Check if this is a newly created node by seeing if it was just added to the nodes list
-    const isNewNode = nodes.value.some(n => n.id === newSelected.id && n.label?.startsWith('New '))
-    
-    if (isNewNode) {
-      setTimeout(async () => {
-        // Center the new node in view
-        await centerNodeInView(newSelected.id)
-      }, 100) // Delay to ensure the node is rendered
-      // await centerNodeInView(newSelected.id)
-    }
-  }
-  previousSelectedId = newSelected?.id
-}, { immediate: true })
 
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
