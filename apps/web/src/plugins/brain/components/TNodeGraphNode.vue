@@ -62,7 +62,7 @@
     </div>
     
     <!-- Has children indicator - minimalist design -->
-    <div v-if="data.hasChildren" class="absolute bottom-1 right-1">
+    <div v-if="data.tNodeType === 'flow'" class="absolute bottom-1 right-1">
       <div class="relative">
         <!-- Simple dot indicator with subtle animation -->
         <div class="relative flex items-center justify-center w-5 h-5">
