@@ -171,30 +171,171 @@ export const getNodeCanvasClasses = (nodeType: NodeKind | string, stepNodeType?:
   }
 }
 
-// Helper to get icon background for dots/circles
-export const getNodeIconDotClasses = (nodeType: NodeKind | string, stepNodeType?: string): string => {
-  const type = (stepNodeType || nodeType) as string
+// Helper to get icon background for dots/circles with ring support
+export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: { isEvent?: boolean; includeRing?: boolean }): string => {
+  const type = options?.isEvent ? 'event' : nodeType
   
+  let baseClass = ''
   switch (type) {
-    case 'flow':
-      return 'bg-purple-500'
+    case 'event':
     case 'listen':
-      return 'bg-blue-500'
+      baseClass = 'bg-blue-500'
+      break
+    case 'flow':
+      baseClass = 'bg-purple-500'
+      break
     case 'fire':
-      return 'bg-amber-500'
+      baseClass = 'bg-amber-500'
+      break
     case 'query':
-      return 'bg-cyan-500'
+      baseClass = 'bg-cyan-500'
+      break
     case 'create':
     case 'update':
-      return 'bg-purple-500'
+      baseClass = 'bg-purple-500'
+      break
     case 'decision':
-      return 'bg-orange-500'
+      baseClass = 'bg-orange-500'
+      break
     case 'transform':
-      return 'bg-emerald-500'
+      baseClass = 'bg-emerald-500'
+      break
     case 'llm':
-      return 'bg-indigo-500'
+      baseClass = 'bg-indigo-500'
+      break
     default:
-      return 'bg-neutral-500'
+      baseClass = 'bg-neutral-500'
+  }
+  
+  if (options?.includeRing) {
+    const ringColor = baseClass.replace('bg-', 'ring-')
+    return `${baseClass} ${ringColor}/30`
+  }
+  
+  return baseClass
+}
+
+// Node styling functions for consistent appearance across components
+export const getNodeClasses = (nodeType: NodeKind | string, options?: { isEvent?: boolean }): string => {
+  const baseClasses = 'px-3 py-2 rounded-md border backdrop-blur-sm transition-all duration-200'
+  
+  // Special handling for event nodes (from TNodeGraphNode)
+  if (options?.isEvent || nodeType === 'event') {
+    return `${baseClasses} bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 ring-blue-400`
+  }
+  
+  switch (nodeType) {
+    case 'flow':
+      return `${baseClasses} bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 ring-purple-400`
+    case 'listen':
+      return `${baseClasses} bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 ring-blue-400`
+    case 'fire':
+      return `${baseClasses} bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/30 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/20 ring-amber-400`
+    case 'query':
+      return `${baseClasses} bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 ring-cyan-400`
+    case 'create':
+    case 'update':
+      return `${baseClasses} bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 ring-purple-400`
+    case 'decision':
+      return `${baseClasses} bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30 hover:border-orange-400/50 hover:shadow-lg hover:shadow-orange-500/20 ring-orange-400`
+    case 'transform':
+      return `${baseClasses} bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 ring-emerald-400`
+    case 'llm':
+      return `${baseClasses} bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/20 ring-indigo-400`
+    default:
+      return `${baseClasses} bg-gradient-to-br from-neutral-700/50 to-neutral-800/30 border-neutral-600 hover:border-neutral-500 hover:shadow-lg hover:shadow-neutral-500/20 ring-neutral-400`
+  }
+}
+
+// Glow effect classes for hover state
+export const getNodeGlowClasses = (nodeType: NodeKind | string, options?: { isEvent?: boolean }): string => {
+  if (options?.isEvent || nodeType === 'event') {
+    return 'bg-blue-500/20'
+  }
+  
+  switch (nodeType) {
+    case 'flow': return 'bg-purple-500/20'
+    case 'listen': return 'bg-blue-500/20'
+    case 'fire': return 'bg-amber-500/20'
+    case 'query': return 'bg-cyan-500/20'
+    case 'create':
+    case 'update': return 'bg-purple-500/20'
+    case 'decision': return 'bg-orange-500/20'
+    case 'transform': return 'bg-emerald-500/20'
+    case 'llm': return 'bg-indigo-500/20'
+    default: return 'bg-neutral-500/20'
+  }
+}
+
+// Badge classes for node type labels
+export const getNodeBadgeClasses = (nodeType: NodeKind | string, options?: { isEvent?: boolean }): string => {
+  if (options?.isEvent || nodeType === 'event') {
+    return 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+  }
+  
+  switch (nodeType) {
+    case 'flow': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+    case 'listen': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+    case 'fire': return 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+    case 'query': return 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+    case 'create':
+    case 'update': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+    case 'decision': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+    case 'transform': return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+    case 'llm': return 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+    default: return 'bg-neutral-700/50 text-neutral-300 border border-neutral-600'
+  }
+}
+
+// Status indicator classes
+export const getNodeStatusClasses = (status: string, variant: 'simple' | 'detailed' = 'simple') => {
+  if (variant === 'simple') {
+    // BaseNode style - simple with shadow
+    switch (status) {
+      case 'active':
+        return 'bg-green-400 shadow-green-400/50 shadow-sm'
+      case 'paused':
+        return 'bg-yellow-400 shadow-yellow-400/50 shadow-sm'
+      case 'completed':
+        return 'bg-blue-400 shadow-blue-400/50 shadow-sm'
+      case 'failed':
+        return 'bg-red-400 shadow-red-400/50 shadow-sm'
+      default:
+        return 'bg-neutral-400'
+    }
+  } else {
+    // TNodeGraphNode style - returns outer and inner classes
+    const outer = (() => {
+      switch (status) {
+        case 'active':
+          return 'ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/30'
+        case 'paused':
+          return 'ring-1 ring-amber-500/50 shadow-lg shadow-amber-500/30'
+        case 'completed':
+          return 'ring-1 ring-blue-500/50 shadow-lg shadow-blue-500/30'
+        case 'failed':
+          return 'ring-1 ring-red-500/50 shadow-lg shadow-red-500/30'
+        default:
+          return 'ring-1 ring-neutral-500/50'
+      }
+    })()
+    
+    const inner = (() => {
+      switch (status) {
+        case 'active':
+          return 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+        case 'paused':
+          return 'bg-gradient-to-br from-amber-400 to-amber-600'
+        case 'completed':
+          return 'bg-gradient-to-br from-blue-400 to-blue-600'
+        case 'failed':
+          return 'bg-gradient-to-br from-red-400 to-red-600'
+        default:
+          return 'bg-gradient-to-br from-neutral-400 to-neutral-600'
+      }
+    })()
+    
+    return { outer, inner }
   }
 }
 

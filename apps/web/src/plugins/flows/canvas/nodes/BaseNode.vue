@@ -84,7 +84,7 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeCanvasClasses, getNodeIconDotClasses } from '../../config/node-config'
+import { getNodeClasses, getNodeGlowClasses, getNodeBadgeClasses, getNodeIconDotClasses, getNodeStatusClasses } from '../../config/node-config'
 import type { NodeKind } from '@abuddy/api'
 
 interface BaseNodeData {
@@ -111,88 +111,28 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const nodeClasses = computed(() => {
-  const baseClasses = 'px-3 py-2 rounded-md border backdrop-blur-sm transition-all duration-200'
   const type = props.data.nodeType || 'action'
-  
-  // Enhanced styling with better gradients and shadows
-  switch (type) {
-    case 'flow':
-      return `${baseClasses} bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 ring-purple-400`
-    case 'listen':
-      return `${baseClasses} bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 ring-blue-400`
-    case 'fire':
-      return `${baseClasses} bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/30 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/20 ring-amber-400`
-    case 'query':
-      return `${baseClasses} bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 ring-cyan-400`
-    case 'create':
-    case 'update':
-      return `${baseClasses} bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 ring-purple-400`
-    case 'decision':
-      return `${baseClasses} bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30 hover:border-orange-400/50 hover:shadow-lg hover:shadow-orange-500/20 ring-orange-400`
-    case 'transform':
-      return `${baseClasses} bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 ring-emerald-400`
-    case 'llm':
-      return `${baseClasses} bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/20 ring-indigo-400`
-    default:
-      return `${baseClasses} bg-gradient-to-br from-neutral-700/50 to-neutral-800/30 border-neutral-600 hover:border-neutral-500 hover:shadow-lg hover:shadow-neutral-500/20 ring-neutral-400`
-  }
+  return getNodeClasses(type)
 })
 
 const iconClasses = computed(() => {
   const type = props.data.nodeType || 'action'
-  const base = getNodeIconDotClasses(type)
-  // Add ring color matching the node type
-  const ringColor = base.replace('bg-', 'ring-')
-  return `${base} ${ringColor}/30`
+  return getNodeIconDotClasses(type, { includeRing: true })
 })
 
 const glowClasses = computed(() => {
   const type = props.data.nodeType || 'action'
-  switch (type) {
-    case 'flow': return 'bg-purple-500/20'
-    case 'listen': return 'bg-blue-500/20'
-    case 'fire': return 'bg-amber-500/20'
-    case 'query': return 'bg-cyan-500/20'
-    case 'create':
-    case 'update': return 'bg-purple-500/20'
-    case 'decision': return 'bg-orange-500/20'
-    case 'transform': return 'bg-emerald-500/20'
-    case 'llm': return 'bg-indigo-500/20'
-    default: return 'bg-neutral-500/20'
-  }
+  return getNodeGlowClasses(type)
 })
 
 const badgeClasses = computed(() => {
   const type = props.data.nodeType || 'action'
-  switch (type) {
-    case 'flow': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-    case 'listen': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-    case 'fire': return 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-    case 'query': return 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-    case 'create':
-    case 'update': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-    case 'decision': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
-    case 'transform': return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-    case 'llm': return 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-    default: return 'bg-neutral-700/50 text-neutral-300 border border-neutral-600'
-  }
+  return getNodeBadgeClasses(type)
 })
 
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
-  
-  switch (props.data.status) {
-    case 'active':
-      return 'bg-green-400 shadow-green-400/50 shadow-sm'
-    case 'paused':
-      return 'bg-yellow-400 shadow-yellow-400/50 shadow-sm'
-    case 'completed':
-      return 'bg-blue-400 shadow-blue-400/50 shadow-sm'
-    case 'failed':
-      return 'bg-red-400 shadow-red-400/50 shadow-sm'
-    default:
-      return 'bg-neutral-400'
-  }
+  return getNodeStatusClasses(props.data.status, 'simple') as string
 })
 
 const formatNodeType = (type: string) => {
