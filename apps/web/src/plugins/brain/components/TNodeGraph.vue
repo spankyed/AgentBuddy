@@ -57,7 +57,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch, nextTick, ref, onUnmounted } from 'vue';
 import {
   VueFlow,
   ConnectionLineType,
@@ -65,6 +65,7 @@ import {
   type Node as VueFlowNode,
   type Edge,
   type NodeMouseEvent,
+  useVueFlow,
 } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -84,15 +85,28 @@ const emit = defineEmits<{
   'back-click': [];
 }>();
 
+const { fitView, setCenter, getNode } = useVueFlow();
+
+// Layout constants
+const HORIZONTAL_GAP = 250;  // Gap between parent and child
+const VERTICAL_GAP = 100;    // Gap between siblings
+const NODE_WIDTH = 200;      // Estimated node width
+const NODE_HEIGHT = 80;      // Estimated node height
+
+// Animation control
+let animationController: AbortController | null = null;
+
 // Convert TNode tree to VueFlow nodes and edges
 const nodes = computed<VueFlowNode[]>(() => {
   if (!props.tnodeTree) return [];
   
   const result: VueFlowNode[] = [];
-  let yOffset = 100;
+  let trackY = 0; // Y position for track nodes
   
-  // Helper to recursively build nodes
-  const buildNodes = (tnode: TrackEntity, x: number, y: number, parentId?: string) => {
+  // Helper to recursively build nodes with manual positioning
+  const buildNodes = (tnode: TrackEntity, parentX: number = 0, y: number = 0) => {
+    const x = parentX;
+    
     result.push({
       id: tnode.id,
       type: 'tnode',
@@ -106,20 +120,19 @@ const nodes = computed<VueFlowNode[]>(() => {
       },
     });
     
-    // Process children horizontally
-    let childX = x;
-    tnode.children.forEach((child, index) => {
-      // Simple horizontal layout - just go straight right
-      childX += 200;
-      buildNodes(child, childX, y, tnode.id);
+    // Process children in a horizontal chain
+    let currentX = x;
+    tnode.children.forEach((child) => {
+      currentX += NODE_WIDTH + HORIZONTAL_GAP;
+      buildNodes(child, currentX, y);
     });
   };
   
-  // Process each track entity
+  // Process each track entity as a root
   if (props.tnodeTree) {
-    props.tnodeTree.forEach((track, index) => {
-      // Stack root nodes vertically since children flow horizontally
-      buildNodes(track, 100, 100 + (index * 100));
+    props.tnodeTree.forEach((track) => {
+      buildNodes(track, 0, trackY);
+      trackY += NODE_HEIGHT + VERTICAL_GAP;
     });
   }
   
@@ -173,4 +186,66 @@ const edges = computed<Edge[]>(() => {
 const handleNodeClick = (event: NodeMouseEvent) => {
   emit('tnode-click', event.node.id);
 };
+
+// Track new nodes and animate to them
+let previousNodeIds = new Set<string>();
+watch(() => nodes.value, (newNodes) => {
+  const currentNodeIds = new Set(newNodes.map(n => n.id));
+  
+  // Find newly added nodes
+  const newNodeId = Array.from(currentNodeIds).find(id => !previousNodeIds.has(id));
+  
+  if (newNodeId) {
+    // Cancel any in-progress animation
+    if (animationController) {
+      animationController.abort();
+    }
+    animationController = new AbortController();
+    
+    // Find the new node
+    const newNode = newNodes.find(n => n.id === newNodeId);
+    if (newNode) {
+      // Use requestAnimationFrame to ensure node is rendered
+      requestAnimationFrame(() => {
+        // Check if this animation was cancelled
+        if (animationController?.signal.aborted) return;
+        
+        // Check if the node actually exists in the flow
+        const flowNode = getNode.value(newNodeId);
+        if (flowNode && flowNode.dimensions) {
+          // Center on the new node with animation
+          setCenter(
+            newNode.position.x + (flowNode.dimensions.width || NODE_WIDTH) / 2, 
+            newNode.position.y + (flowNode.dimensions.height || NODE_HEIGHT) / 2, 
+            { duration: 800, zoom: 1 }
+          );
+        } else {
+          // Node not ready yet, try again on next frame
+          if (!animationController?.signal.aborted) {
+            requestAnimationFrame(() => {
+              if (animationController?.signal.aborted) return;
+              const retryNode = getNode.value(newNodeId);
+              if (retryNode && retryNode.dimensions) {
+                setCenter(
+                  newNode.position.x + (retryNode.dimensions.width || NODE_WIDTH) / 2, 
+                  newNode.position.y + (retryNode.dimensions.height || NODE_HEIGHT) / 2, 
+                  { duration: 800, zoom: 1 }
+                );
+              }
+            });
+          }
+        }
+      });
+    }
+  }
+  
+  previousNodeIds = currentNodeIds;
+}, { immediate: true });
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (animationController) {
+    animationController.abort();
+  }
+});
 </script> 
