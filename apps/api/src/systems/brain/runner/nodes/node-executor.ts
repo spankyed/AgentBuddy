@@ -3,6 +3,7 @@ import type { ExecutionContext } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
 import { llmNodeHandler } from './llm-node';
+import { actionNodeHandler } from './action-node';
 import { createLogger } from '@/systems/logs/logger';
 
 const logger = createLogger('node-executor');
@@ -26,6 +27,10 @@ export function executeNode(
       
     case 'llm':
       llmNodeHandler(node, executionContext, actor);
+      break;
+      
+    case 'action':
+      actionNodeHandler(node, executionContext, actor);
       break;
       
     default:

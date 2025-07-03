@@ -13,6 +13,7 @@ import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
 import { getAllPrompts } from '../prompts/repository/read';
+import { getAllActions } from '../actions/repository/read';
 import { availableModels } from './config/available-models';
 
 const logger = createLogger('flows');
@@ -30,6 +31,7 @@ export const IncomingFlowsEvents = [
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
   busEvent('FETCH_LLM_FORM_DATA', {}),
+  busEvent('FETCH_ACTION_FORM_DATA', {}),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -43,6 +45,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
   | { type: 'LLM_FORM_DATA_FETCHED'; models: any[]; prompts: any[] }
+  | { type: 'ACTION_FORM_DATA_FETCHED'; actions: any[] }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -138,6 +141,13 @@ export const flowsSystem = setup({
         prompts
       }));
     },
+    fetchActionFormData: ({ system }) => {
+      const actions = getAllActions();
+      system.get(bus).send(emit(flows, {
+        type: 'ACTION_FORM_DATA_FETCHED',
+        actions
+      }));
+    },
   },
 }).createMachine(
   {
@@ -167,6 +177,9 @@ export const flowsSystem = setup({
       },
       FETCH_LLM_FORM_DATA: {
         actions: 'fetchLLMFormData',
+      },
+      FETCH_ACTION_FORM_DATA: {
+        actions: 'fetchActionFormData',
       },
     },
     states: {

@@ -48,6 +48,7 @@ import ListenForm from '../forms/ListenForm.vue'
 import FireForm from '../forms/FireForm.vue'
 import CreateForm from '../forms/CreateForm.vue'
 import LLMForm from '../forms/LLMForm.vue'
+import ActionForm from '../forms/ActionForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -84,6 +85,7 @@ function getFormComponent(nodeType: string) {
     'fire': FireForm,
     'create': CreateForm,
     'llm': LLMForm,
+    'action': ActionForm,
   }
   return formMap[nodeType] || BaseForm
 }

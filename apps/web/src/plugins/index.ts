@@ -5,6 +5,7 @@ import Database from './database/plugin.ts';
 import Brain from './brain/plugin.ts';
 import Logs from './logs/plugin.ts';
 import Prompts from './prompts/plugin.ts';
+import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
@@ -30,7 +31,6 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
-  mockPlugin({ id: 'actions', label: 'Actions', icon: Play, }),
   mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
   // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
@@ -46,6 +46,7 @@ export default [
   Brain,
   Flows,
   Prompts,
+  Actions,
   Database,
   Logs,
   ...mockPlugins,

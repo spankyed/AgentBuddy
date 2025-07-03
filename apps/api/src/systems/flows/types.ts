@@ -49,8 +49,14 @@ export interface UpdateNode extends NodeBase {
 
 export interface ActionNode extends NodeBase {
   nodeType: 'action';
-  actionName: string;
-  params?: Record<string, any>;
+  actionId?: string;                    // ID of the action to execute
+  actionName?: string;                  // Legacy field, use actionId
+  params?: Record<string, any>;         // Direct parameters
+  fieldMappings?: Array<{               // Or map from context
+    target: string;
+    source: string;
+    default?: any;
+  }>;
 }
 
 export interface DecisionNode extends NodeBase {

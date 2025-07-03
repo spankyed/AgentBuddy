@@ -24,4 +24,7 @@ export type * from './systems/logs/types';
 export type { OutgoingPromptEvents } from './systems/prompts/system';
 export type * from './systems/prompts/types';
 
+export type { OutgoingActionEvents } from './systems/actions/system';
+export type * from './systems/actions/types';
+
 // todo, we should probably export all the entities from here
