@@ -1,71 +1,28 @@
 <template>
-  <div class="node" :style="{ borderColor: data.color || '#888' }">
-    <Handle
-      type="target"
-      :position="Position.Left"
-      :id="`${id}-in`"
-      class="handle"
-      :isValidConnection="({ target }) => {
-        const edges = useVueFlow().edges
-        return edges.value.filter(e => e.target === target).length === 0
-      }"
-    />
-    <div class="label">{{ data.label }}</div>
-    <div class="type">DECISION</div>
-    <Handle
-      type="source"
-      :position="Position.Right"
-      :id="`${id}-out`"
-      class="handle"
-    />
-    <!-- <Handle
-      v-for="(condition, i) in data.conditions"
-      :key="i"
-      type="target"
-      :position="Position.Top"
-      :id="`${id}-out-${i}`"
-      class="handle"
-    />
-    <Handle
-      v-if="data.elseLabel"
-      type="target"
-      :position="Position.Bottom"
-      :id="`${id}-out-else`"
-      class="handle"
-    /> -->
-  </div>
+  <BaseNode v-bind="props">
+    <div v-if="data.conditions && data.conditions.length > 0" class="mt-1 space-y-1">
+      <div v-for="(condition, i) in data.conditions" :key="i" class="text-[10px]">
+        <span class="text-orange-400">{{ i + 1 }}.</span>
+        <span class="text-neutral-400">{{ condition.label || condition.expr }}</span>
+      </div>
+      <div v-if="data.elseLabel" class="text-[10px]">
+        <span class="text-orange-400">else:</span>
+        <span class="text-neutral-400">{{ data.elseLabel }}</span>
+      </div>
+    </div>
+  </BaseNode>
 </template>
 
 <script setup lang="ts">
-import { Position, Handle, type NodeProps, useVueFlow } from '@vue-flow/core'
+import type { NodeProps } from '@vue-flow/core'
 import type { DecisionNode } from '@abuddy/api'
+import BaseNode from './BaseNode.vue'
 
 interface NodeData extends Partial<DecisionNode> {
   label: string
-  conditions: Array<{ expr: string; label?: string }>
+  conditions?: Array<{ expr: string; label?: string }>
   elseLabel?: string
 }
 
-defineProps<NodeProps<NodeData>>()
+const props = defineProps<NodeProps<NodeData>>()
 </script>
-
-<style scoped>
-.node {
-  padding: 10px;
-  border-radius: 5px;
-  border: 2px solid;
-  background: #1f1f1f;
-  color: #fff;
-  min-width: 150px;
-}
-.label {
-  text-align: center;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-.type {
-  text-align: center;
-  font-size: 10px;
-  opacity: 0.7;
-}
-</style>
