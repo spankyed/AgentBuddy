@@ -13,7 +13,7 @@
       >
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
-            class="transition-colors cursor-pointer hover:text-white"
+            class="text-xs font-semibold tracking-wider uppercase transition-colors cursor-pointer hover:text-white text-neutral-400"
             @click="$emit('crumb-click', crumb.target || '')"
           >
             {{ crumb.label }}

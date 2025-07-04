@@ -1,15 +1,5 @@
 <template>
   <div class="h-full bg-neutral-900/50 backdrop-blur-sm">
-    <!-- Header -->
-    <div class="px-4 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
-      <div class="flex items-center justify-between">
-        <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-300">Event Trace</h3>
-        <span v-if="tnodeTree && tnodeTree.length > 0" class="text-[10px] text-neutral-500">
-          {{ tnodeTree.length }} event{{ tnodeTree.length !== 1 ? 's' : '' }}
-        </span>
-      </div>
-    </div>
-    
     <!-- Tree Content -->
     <div class="flex-1 overflow-x-hidden overflow-y-auto">
       <div v-if="tnodeTree && tnodeTree.length > 0" class="p-4">
