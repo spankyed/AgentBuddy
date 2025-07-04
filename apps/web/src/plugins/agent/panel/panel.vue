@@ -4,7 +4,7 @@
     <div v-if="normalizedTree && normalizedTree.rootIds.length > 0" class="tnode-tree">
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold tracking-wider uppercase text-neutral-400">Event Trace</h3>
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
           <span class="text-xs text-neutral-500">{{ normalizedTree.rootIds.length }} event{{ normalizedTree.rootIds.length !== 1 ? 's' : '' }}</span>
         </div>
       </div>

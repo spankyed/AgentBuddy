@@ -9,11 +9,11 @@
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-400"
+        class="flex items-center gap-1 ml-2 text-sm text-neutral-500"
       >
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
-            class="text-xs font-semibold tracking-wider uppercase transition-colors cursor-pointer hover:text-white text-neutral-400"
+            class="text-xs font-semibold tracking-wider uppercase transition-colors cursor-pointer hover:text-white"
             @click="$emit('crumb-click', crumb.target || '')"
           >
             {{ crumb.label }}
