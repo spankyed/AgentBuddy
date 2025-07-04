@@ -115,7 +115,7 @@ const emit = defineEmits<{
   'tnode-click': [tNodeId: string];
 }>();
 
-const expanded = ref(true);
+const expanded = ref(false);
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
