@@ -282,11 +282,12 @@ function emitTNodeEvent(
 export function updateTNodeStatus(
   tNodeId: EARS.EntityId, 
   status: TNodeEntity['status'],
+  eventTNodeId: EARS.EntityId | undefined,
   systemActor?: any
 ): void {
   tx(tNodeId).put('status', status);
 
   emitTNodeEvent('TNODE_UPDATED', { 
-    data: { tNodeId, status }
+    data: { tNodeId, status, eventTNodeId }
   }, systemActor);
 } 

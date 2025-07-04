@@ -274,9 +274,7 @@ export function createFlowMachine(
           }
         }),
         markFlowCompleted: ({ context, self }) => {
-          if (context.eventTNodeId) {
-            updateTNodeStatus(context.eventTNodeId, 'completed', self);
-          }
+          updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
