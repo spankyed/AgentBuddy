@@ -2,10 +2,14 @@
   <div class="flex h-full bg-neutral-900">
     <!-- Left Panel: TNode Tree -->
     <div class="flex flex-col border-r w-72 border-neutral-800/50 bg-neutral-900">
-      <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
-        <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-          Event Trace
-        </h2>
+      <!-- Header -->
+      <div class="px-5 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
+          <span v-if="tNodeTree && tNodeTree.length > 0" class="text-xs text-neutral-500">
+            {{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto">
         <TNodeTree 
@@ -28,10 +32,13 @@
 
     <!-- Right Panel: Possible Events -->
     <div class="flex flex-col border-l w-72 border-neutral-800/50 bg-neutral-900">
-      <div class="flex-shrink-0 px-4 py-3 border-b border-neutral-800/50">
-        <h2 class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-          Watched Events
-        </h2>
+      <div class="px-5 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Watched Events</h3>
+          <span v-if="possibleEvents && possibleEvents.length > 0" class="text-xs text-neutral-500">
+            {{ possibleEvents.length }} event{{ possibleEvents.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto">
         <EventsList

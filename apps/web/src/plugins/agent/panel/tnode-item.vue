@@ -1,11 +1,11 @@
 <template>
   <div 
     class="tnode-item"
-    :class="{ 'has-children': tnode.children.length > 0 }"
+    :class="{ 'has-children': hasChildren }"
   >
     <div
       class="relative w-full overflow-hidden tnode-container group"
-      :class="[itemClasses, tnode.children.length > 0 && expanded ? 'expanded' : '']"
+      :class="[itemClasses, hasChildren && isExpanded ? 'expanded' : '']"
     >
       <!-- Clickable header area -->
       <button
@@ -22,9 +22,11 @@
         <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
           <!-- Expand/Collapse icon for nodes with children -->
           <ChevronRight 
-            v-if="tnode.children.length > 0" 
-            :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
-                     { 'rotate-90': expanded, 'text-neutral-300': expanded }]"
+            v-if="hasChildren" 
+            :class="[
+              'w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
+              { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }
+            ]"
           />
           
           <!-- Icon dot with enhanced styling -->
@@ -36,12 +38,13 @@
           <!-- Node label with context -->
           <div class="flex items-center flex-1 min-w-0">
             <span class="text-xs font-medium tracking-tight text-left truncate transition-colors duration-200 text-white/90 group-hover:text-white">
-              {{ tnode.label }}
+              {{ node.label || getNodeTypeLabel() }}
             </span>
             <!-- Add timestamp for event nodes -->
-            <span v-if="tnode.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
-              {{ formatTimestamp(tnode.startedAt) }}
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
+              {{ formatTimestamp(node.startedAt) }}
             </span>
+            <!-- Todo: Display event data e.g. message -->
           </div>
           
           <!-- Node type icon -->
@@ -53,13 +56,13 @@
           
           <!-- Status indicator with better sizing -->
           <div 
-            v-if="tnode.status"
+            v-if="node.status"
             class="relative flex items-center ml-1"
           >
             <div
               :class="[
                 'rounded-full transition-all',
-                depth === 0 ? 'w-1.5 h-1.5 ring-2 ring-offset-2 ring-offset-neutral-900' : 'w-1 h-1 ring-1 ring-offset-1 ring-offset-neutral-900',
+                level === 0 ? 'w-1.5 h-1.5 ring-2 ring-offset-2 ring-offset-neutral-900' : 'w-1 h-1 ring-1 ring-offset-1 ring-offset-neutral-900',
                 statusClasses, 
                 statusRingClasses
               ]"
@@ -75,13 +78,13 @@
       </button>
       
       <!-- Children nested inside parent container -->
-      <div v-if="expanded && tnode.children.length > 0" class="tnode-children">
-        <TNodeTreeItem
-          v-for="child in tnode.children"
-          :key="child.id"
-          :tnode="child"
-          :depth="depth + 1"
-          @tnode-click="$emit('tnode-click', $event)"
+      <div v-if="isExpanded && hasChildren" class="tnode-children">
+        <TnodeItem
+          v-for="childId in childIds"
+          :key="childId"
+          :node-id="childId"
+          :normalized-tree="normalizedTree"
+          :level="level + 1"
         />
       </div>
     </div>
@@ -89,9 +92,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { TrackEntity } from '@abuddy/api';
+import type { TNodeEntity, NodeKind } from '@abuddy/api';
 import { 
   getPaletteItemClasses,
   getPaletteIconClasses,
@@ -102,32 +105,37 @@ import {
   getNodeConfig,
   nodeConfigs
 } from '@/plugins/flows/config/node-config';
-import type { NodeKind } from '@abuddy/api';
+
 
 interface Props {
-  tnode: TrackEntity;
-  depth: number;
+  nodeId: string;
+  normalizedTree: {
+    byId: Record<string, TNodeEntity>;
+    childrenById: Record<string, string[]>;
+  };
+  level?: number;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  level: 0
+});
 
-const emit = defineEmits<{
-  'tnode-click': [tNodeId: string];
-}>();
-
-const expanded = ref(true);
+const node = computed(() => props.normalizedTree.byId[props.nodeId]);
+const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] || []);
+const hasChildren = computed(() => childIds.value.length > 0);
+const isExpanded = ref(true);
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
-  if (!props.tnode) return 'neutral';
+  if (!node.value) return 'neutral';
   
   // For step nodes, use the actual node type
-  if (props.tnode.tNodeType === 'step' && props.tnode.stepNodeType) {
-    return props.tnode.stepNodeType;
+  if (node.value.tNodeType === 'step' && node.value.stepNodeType) {
+    return node.value.stepNodeType;
   }
   
   // Map other TNode types
-  switch (props.tnode.tNodeType) {
+  switch (node.value.tNodeType) {
     case 'flow': return 'flow';
     case 'event': return 'listen'; // Events map to listen nodes
     default: return 'action'; // Default fallback
@@ -140,6 +148,34 @@ const nodeIcon = computed(() => {
   return config?.icon || nodeConfigs.action?.icon;
 });
 
+// Get label for the node with better formatting
+const getNodeTypeLabel = () => {
+  if (!node.value) return 'Unknown';
+  
+  // For step nodes, use the step node type as label if no label exists
+  if (node.value.tNodeType === 'step' && !node.value.label && node.value.stepNodeType) {
+    const config = getNodeConfig(node.value.stepNodeType as NodeKind);
+    return config?.label || node.value.stepNodeType;
+  }
+  
+  // Better default labels for different node types
+  switch (node.value.tNodeType) {
+    case 'flow': return 'Flow Entry';
+    case 'event': 
+      // Try to use eventType if available
+      if (node.value.eventType) {
+        // Format event type nicely (e.g., "user.message" -> "User Message")
+        return node.value.eventType
+          .split('.')
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+      return 'Event';
+    case 'step': return 'Step';
+    default: return node.value.tNodeType;
+  }
+};
+
 // Styling classes from node-config
 const itemClasses = computed(() => getPaletteItemClasses(effectiveNodeType.value));
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
@@ -149,10 +185,10 @@ const gradientClasses = computed(() => getPaletteGradientClasses(effectiveNodeTy
 
 // Status styling with proper animation
 const statusClasses = computed(() => {
-  const baseClasses = getNodeStatusClasses(props.tnode?.status || '', 'simple');
+  const baseClasses = getNodeStatusClasses(node.value?.status || '', 'simple');
   
   // Add animation for active status
-  if (props.tnode?.status === 'active') {
+  if (node.value?.status === 'active') {
     return `${baseClasses} animate-pulse`;
   }
   
@@ -161,7 +197,7 @@ const statusClasses = computed(() => {
 
 // Status ring colors
 const statusRingClasses = computed(() => {
-  switch (props.tnode?.status) {
+  switch (node.value?.status) {
     case 'active': return 'ring-green-400/30';
     case 'paused': return 'ring-yellow-400/30';
     case 'completed': return 'ring-blue-400/30';
@@ -180,10 +216,10 @@ const formatTimestamp = (timestamp: number) => {
 };
 
 const handleClick = () => {
-  if (props.tnode.children.length > 0) {
-    expanded.value = !expanded.value;
+  if (hasChildren.value) {
+    isExpanded.value = !isExpanded.value;
   }
-  emit('tnode-click', props.tnode.id);
+  // TODO: Add click handler to open TNode details
 };
 </script>
 
@@ -290,4 +326,4 @@ const handleClick = () => {
   background: rgba(59, 130, 246, 0.05);
   border-color: rgba(59, 130, 246, 0.12);
 }
-</style> 
+</style>

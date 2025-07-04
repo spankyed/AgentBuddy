@@ -20,7 +20,7 @@
         <div class="absolute inset-x-0 top-0 h-px animate-scan bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
       </div>
 
-      <div class="relative px-3 py-2.5 border-b border-neutral-800/50">
+      <div class="relative px-5 py-2.5 border-b border-neutral-800/50">
         <div class="flex items-center justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="text-sm font-medium text-neutral-100 mb-0.5 truncate transition-colors duration-300"

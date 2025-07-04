@@ -56,6 +56,7 @@ function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  systemActor?: any,
 ) {
   logger.debug('createChildNode called with:', {
     nodeId: stepOrFlowNode?.id,
@@ -71,8 +72,8 @@ function createChildNode(
   
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId } = isFlowNode
-    ? createFlowMachine(stepOrFlowNode.id, eventTNodeId)
-    : createStepMachine(stepOrFlowNode.id, eventTNodeId, executionContext);
+    ? createFlowMachine(stepOrFlowNode.id, eventTNodeId, systemActor)
+    : createStepMachine(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-${stepOrFlowNode.id}-ev-${eventTNodeId}-tnode-${tNodeId}`;
 
@@ -85,6 +86,7 @@ function createChildNode(
 export function createFlowMachine(
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
+  systemActor?: any,
 ) {
   // Handle TNode creation
   let actualFlowId: EARS.EntityId;
@@ -99,7 +101,7 @@ export function createFlowMachine(
       rootFlow,
       rootFlowTNode,
       eventNodes: rootEventNodes,
-    } = createRootFlowTNode();
+    } = createRootFlowTNode(systemActor);
     actualFlowId = rootFlow.id;
     flowTNodeId = rootFlowTNode.id || 'TNode-Root'; // 'TNode-Root'
     eventNodes = rootEventNodes;
@@ -108,6 +110,7 @@ export function createFlowMachine(
     const { flowTNode, eventNodes: flowEventNodes } = createFlowTNode(
       flowId,
       eventTNodeId,
+      systemActor,
     );
     actualFlowId = flowId;
     flowTNodeId = flowTNode.id;
@@ -183,7 +186,7 @@ export function createFlowMachine(
             });
 
             // Spawn child based on node type
-            const [machine, systemId] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
+            const [machine, systemId] = createChildNode(firstStep, eventTNode.id, eventTrackContext, self);
             enqueue.spawnChild(machine, { 
               systemId, 
               input: { executionContext: eventTrackContext } 
@@ -203,7 +206,7 @@ export function createFlowMachine(
               : context.activeChildrenCount;
           },
         }),
-        handleChildCompletion: enqueueActions(({ context, event, enqueue }) => {
+        handleChildCompletion: enqueueActions(({ context, event, enqueue, self }) => {
           logger.debug(`Child completed in flow ${context.flowId}:`, { event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
@@ -266,7 +269,7 @@ export function createFlowMachine(
               eventTNodeId: typedEv.eventTNodeId
             });
             
-            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId, executionContext);
+            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId, executionContext, self);
             enqueue.spawnChild(nextMachine, { 
               systemId: nextSystemId, 
               input: { executionContext } 
@@ -274,9 +277,7 @@ export function createFlowMachine(
           }
         }),
         markFlowCompleted: ({ context, self }) => {
-          if (context.eventTNodeId) {
-            updateTNodeStatus(context.eventTNodeId, 'completed', self);
-          }
+          updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
@@ -327,7 +328,7 @@ export function createFlowMachine(
       },
       states: {
         active: {
-          entry: [log('Flow machine active'), 'raiseEntryEvent'],
+          entry: ['raiseEntryEvent'],
           on: {
             CANCEL_FLOW: 'completed',
           },

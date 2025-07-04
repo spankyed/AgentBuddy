@@ -415,3 +415,81 @@ export const getPaletteItems = () => {
     .filter((config): config is NodeConfig => Boolean(config))
     .map(({ type, label, icon }) => ({ type, label, icon }))
 }
+
+// ===========================
+// Palette Styling Functions
+// ===========================
+
+/**
+ * Get palette item classes matching our node styles
+ */
+export const getPaletteItemClasses = (type: string): string => {
+  const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98]'
+  const colorKey = getNodeColorKey(type)
+  
+  return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
+}
+
+/**
+ * Get icon dot classes for palette items
+ */
+export const getPaletteIconClasses = (type: string): string => {
+  const colorKey = getNodeColorKey(type)
+  const solidClass = NODE_STYLE_CLASSES.solid[colorKey]
+  const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
+  const hoverRingClass = colorKey === 'neutral' 
+    ? 'group-hover:ring-neutral-400/50'
+    : `group-hover:ring-${colorKey}-400/50`
+  
+  return `${solidClass} ${ringClass} ${hoverRingClass}`
+}
+
+/**
+ * Get icon component classes for palette items
+ */
+export const getPaletteIconComponentClasses = (type: string): string => {
+  const colorKey = getNodeColorKey(type)
+  
+  // Map color keys to text classes
+  const textColorMap: Record<string, string> = {
+    purple: 'text-purple-400 group-hover:text-purple-300',
+    blue: 'text-blue-400 group-hover:text-blue-300',
+    amber: 'text-amber-400 group-hover:text-amber-300',
+    cyan: 'text-cyan-400 group-hover:text-cyan-300',
+    orange: 'text-orange-400 group-hover:text-orange-300',
+    emerald: 'text-emerald-400 group-hover:text-emerald-300',
+    indigo: 'text-indigo-400 group-hover:text-indigo-300',
+    neutral: 'text-neutral-400 group-hover:text-neutral-300'
+  }
+  
+  return textColorMap[colorKey] || textColorMap.neutral
+}
+
+/**
+ * Get glow classes for palette items
+ */
+export const getPaletteGlowClasses = (type: string): string => {
+  const colorKey = getNodeColorKey(type)
+  return NODE_STYLE_CLASSES.glow[colorKey]
+}
+
+/**
+ * Get gradient overlay classes for palette items
+ */
+export const getPaletteGradientClasses = (type: string): string => {
+  const colorKey = getNodeColorKey(type)
+  
+  // Map color keys to gradient classes
+  const gradientMap: Record<string, string> = {
+    purple: 'from-purple-400 to-purple-600',
+    blue: 'from-blue-400 to-blue-600',
+    amber: 'from-amber-400 to-amber-600',
+    cyan: 'from-cyan-400 to-cyan-600',
+    orange: 'from-orange-400 to-orange-600',
+    emerald: 'from-emerald-400 to-emerald-600',
+    indigo: 'from-indigo-400 to-indigo-600',
+    neutral: 'from-neutral-400 to-neutral-600'
+  }
+  
+  return gradientMap[colorKey] || gradientMap.neutral
+}

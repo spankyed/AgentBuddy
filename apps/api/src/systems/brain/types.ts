@@ -49,6 +49,7 @@ export interface TNodeUpdate {
   tNodeId: EARS.EntityId;
   status: TNodeEntity['status'];
   stepNodeId?: EARS.EntityId;
+  eventTNodeId?: EARS.EntityId;
 }
 
 export interface EventReceived {

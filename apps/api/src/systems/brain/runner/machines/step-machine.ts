@@ -34,8 +34,9 @@ export function createStepMachine(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  systemActor?: any,
 ) {
-  const { tNode, step } = createStepTNode(stepId, eventTNodeId, executionContext);
+  const { tNode, step } = createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
   return {
     tNodeId: tNode.id,
     machine: setup({
@@ -55,12 +56,12 @@ export function createStepMachine(
         },
         markCompleted: ({ context, self }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'completed', self);
+            updateTNodeStatus(context.tNodeId, 'completed', context.eventTNodeId, self);
           }
         },
         markFailed: ({ context, self }) => {
           if (context.tNodeId) {
-            updateTNodeStatus(context.tNodeId, 'failed', self);
+            updateTNodeStatus(context.tNodeId, 'failed', context.eventTNodeId, self);
           }
         },
         notifyComplete: sendParent(({ context, event }) => ({

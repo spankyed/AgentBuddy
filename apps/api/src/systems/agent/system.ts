@@ -9,7 +9,7 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
-import { AgentStartupData, AgentThreadData, ThreadExtendedData } from '@/types';
+import { AgentStartupData, AgentThreadData, FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
 import { getThreadChatData } from './repository/read';
 import agentStartupData from './repository/startup';
 import { createLogger } from '@/systems/logs/logger';
@@ -42,6 +42,10 @@ export type OutgoingAgentEvents =
   | { type: 'LLM_ABORTED' }
   | { type: 'LLM_ERROR'; error: unknown }
   | { type: 'TOKEN_STREAM'; token: string }
+  | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
+  | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
+  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
+  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
 
 export interface AgentContext {
   agentId: EARS.EntityId;

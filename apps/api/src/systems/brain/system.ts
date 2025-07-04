@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getRootData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
+import { agent } from '../agent/system';
 
 const eventsCatalog = {
   'user.message': z.object({
@@ -33,12 +34,16 @@ export type BrainInternalEvents =
   | SystemEvents
   | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
+  | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
+  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
+  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
   // | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
   | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
+  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
 
@@ -58,7 +63,7 @@ export const brainSystem = setup({
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const { machine, tNodeId } = createFlowMachine()
+      const { machine, tNodeId } = createFlowMachine(undefined, undefined, self)
       enqueue.spawnChild(machine, {
         systemId: brainBus,
         input: {}
@@ -166,6 +171,27 @@ export const brainSystem = setup({
           },
           TRIGGER_BRAIN_EVENT: {
             actions: 'triggerBrainEvent',
+          },
+          EVENT_TNODE_SPAWNED: {
+            actions: ({ system, event }) => {
+              // Forward to frontend
+              system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
+            }
+          },
+          TNODE_SPAWNED: {
+            actions: ({ system, event }) => {
+              // Forward to frontend
+              system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
+            }
+          },
+          TNODE_UPDATED: {
+            actions: ({ system, event }) => {
+              // Forward to frontend
+              system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
+            }
           },
         },
       }
