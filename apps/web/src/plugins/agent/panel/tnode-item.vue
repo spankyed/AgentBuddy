@@ -1,7 +1,7 @@
 <template>
   <div class="tnode-item" :style="{ paddingLeft: `${level * 20}px` }">
     <button
-      class="tnode-button w-full group relative overflow-hidden"
+      class="relative w-full overflow-hidden tnode-button group"
       :class="itemClasses"
       @click="handleClick"
     >
@@ -18,7 +18,7 @@
           v-if="hasChildren" 
           :class="['w-3 h-3 text-neutral-400 transition-transform flex-shrink-0', { 'rotate-90': isExpanded }]"
         />
-        <div v-else class="w-3 flex-shrink-0" /> <!-- Spacer for alignment -->
+        <div v-else class="flex-shrink-0 w-3" /> <!-- Spacer for alignment -->
         
         <!-- Icon dot with enhanced styling -->
         <div 
@@ -27,7 +27,7 @@
         />
         
         <!-- Node label -->
-        <span class="text-xs font-medium tracking-tight text-white/90 transition-colors duration-200 group-hover:text-white flex-1 text-left">
+        <span class="flex-1 text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
           {{ node.label || getNodeTypeLabel() }}
         </span>
         
@@ -41,7 +41,7 @@
         <!-- Status indicator -->
         <div 
           v-if="node.status"
-          class="ml-2 relative"
+          class="relative ml-2"
         >
           <div
             class="w-2 h-2 rounded-full"
@@ -52,14 +52,14 @@
       
       <!-- Subtle gradient overlay -->
       <div 
-        class="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-10 transition-opacity duration-200 pointer-events-none"
+        class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
         :class="gradientClasses"
       />
     </button>
     
     <!-- Children (recursive) -->
-    <div v-if="isExpanded && hasChildren" class="tnode-children mt-1">
-      <TNodeItem
+    <div v-if="isExpanded && hasChildren" class="mt-1 tnode-children">
+      <TnodeItem
         v-for="childId in childIds"
         :key="childId"
         :node-id="childId"
@@ -84,6 +84,7 @@ import {
   getNodeConfig,
   nodeConfigs
 } from '@/plugins/flows/config/node-config';
+
 
 interface Props {
   nodeId: string;

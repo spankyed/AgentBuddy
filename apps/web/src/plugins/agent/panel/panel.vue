@@ -6,7 +6,7 @@
         <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Execution Tree</h3>
       </div>
       <div class="p-3 space-y-1.5">
-        <TNodeItem
+        <TnodeItem
           v-for="rootId in normalizedTree.rootIds"
           :key="rootId"
           :node-id="rootId"
@@ -32,7 +32,7 @@
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
-import TNodeItem from './tnode-item.vue'
+import TnodeItem from './tnode-item.vue'
 
 const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
