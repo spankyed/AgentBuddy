@@ -325,7 +325,7 @@ export function createFlowMachine(
       },
       states: {
         active: {
-          entry: [log('Flow machine active'), 'raiseEntryEvent'],
+          entry: ['raiseEntryEvent'],
           on: {
             CANCEL_FLOW: 'completed',
           },
