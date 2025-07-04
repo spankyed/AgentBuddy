@@ -36,12 +36,12 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex items-center flex-1 min-w-0">
-            <span class="text-xs font-medium tracking-tight text-left truncate transition-colors duration-200 text-white/90 group-hover:text-white">
+          <div class="flex-1 min-w-0 text-left relative pr-16">
+            <span class="text-xs font-medium tracking-tight truncate transition-colors duration-200 text-white/90 group-hover:text-white block">
               {{ node.label || getNodeTypeLabel() }}
             </span>
-            <!-- Add timestamp for event nodes -->
-            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
+            <!-- Timestamp positioned absolutely -->
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 absolute right-0 top-1/2 -translate-y-1/2">
               {{ formatTimestamp(node.startedAt) }}
             </span>
             <!-- Todo: Display event data e.g. message -->
