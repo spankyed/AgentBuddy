@@ -1,11 +1,12 @@
 import { EARS } from '@/shared/ears/types';
 import { tx } from '@/shared/ears/helpers/transaction';
-import type { TNodeEntity } from '@/systems/brain/types';
+import type { TNodeEntity, ExecutionContext } from '@/systems/brain/types';
 import type { FlowEntity, FlowNode, ListenNode, NodeEntity } from '@/systems/flows/types';
 import { qx } from '@/shared/ears/helpers/query';
 import { emit } from '@/shared/utils/actor-helpers';
 import { bus } from '@/systems/_backend/backend';
 import { brain } from '@/systems/brain/system';
+import { prepareNodeAttributes } from './node-attribute-mapper';
 
 /**
  * Get event nodes for a specific flow
@@ -150,6 +151,7 @@ export function createFlowTNode(
 export function createStepTNode(
   stepId: EARS.EntityId,
   eventTrackId: EARS.EntityId,
+  executionContext?: ExecutionContext,
 ) {
   if (!stepId) {
     throw new Error('Step ID is required');
@@ -164,6 +166,13 @@ export function createStepTNode(
 
   const now = Date.now();
 
+  // Prepare node attributes - this creates a complete instantiation with resolved values
+  let nodeAttributes: Record<string, any> | undefined;
+  
+  if (executionContext && step.nodeType) {
+    nodeAttributes = prepareNodeAttributes(step as NodeEntity, executionContext);
+  }
+
   const stepTNode: Partial<TNodeEntity> = {
     tNodeType: 'step',
     label: step.label ?? '',
@@ -172,6 +181,7 @@ export function createStepTNode(
     stepNodeId: step.id,
     stepNodeType: step.nodeType,
     ...(step.final && { final: true }),
+    ...(nodeAttributes && { nodeAttributes }),
   };
 
   const tNodeId = tx(EARS.Entity.TNode)

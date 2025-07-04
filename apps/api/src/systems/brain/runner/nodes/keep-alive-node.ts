@@ -1,5 +1,5 @@
 import type { NodeEntity } from '@/systems/flows/types';
-import type { ExecutionContext } from '@/systems/brain/types';
+import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
 
 const logger = createLogger('keep-alive-node');
@@ -9,6 +9,7 @@ const logger = createLogger('keep-alive-node');
  * Keep-alive nodes maintain the flow active and don't complete
  */
 export function keepAliveNodeHandler(
+  tNode: TNodeEntity,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any

@@ -16,6 +16,15 @@ export interface TNodeEntity extends BaseEntity {
 
   // Copied from blueprint node - triggers flow completion when this step completes
   final?: boolean;
+
+  // Node-specific attributes from the original NodeEntity with resolved values
+  // This is a complete instantiation of the blueprint node with actual runtime data
+  // For LLM nodes: model, temperature, maxTokens, systemPrompt, prompt, promptTemplateId, + resolved template params
+  // For Action nodes: actionId, + resolved action params (direct params merged with mapped params)
+  // For Listen nodes: mode, debounceMs, scope
+  // For Fire nodes: eventType, payload, scope
+  // etc.
+  nodeAttributes?: Record<string, any>;
 }
 
 export interface TrackEntity extends TNodeEntity {

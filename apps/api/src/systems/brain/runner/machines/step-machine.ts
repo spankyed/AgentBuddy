@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { NodeEntity, EARS, ExecutionContext } from '@/types';
+import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from '../nodes/node-executor';
 import {
   createStepTNode,
@@ -11,6 +11,7 @@ const logger = createLogger('step-machine');
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
+  tNode: TNodeEntity;
   step: NodeEntity;
   eventTNodeId?: EARS.EntityId;
   executionContext: ExecutionContext;
@@ -32,8 +33,9 @@ type StepMachineInput = {
 export function createStepMachine(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
+  executionContext?: ExecutionContext,
 ) {
-  const { tNode, step } = createStepTNode(stepId, eventTNodeId);
+  const { tNode, step } = createStepTNode(stepId, eventTNodeId, executionContext);
   return {
     tNodeId: tNode.id,
     machine: setup({
@@ -48,8 +50,8 @@ export function createStepMachine(
             `Executing step: ${context.step.label} (${context.step.nodeType})`,
           );
 
-          // Delegate to step executor
-          executeNode(context.step, context.executionContext, self);
+          // Delegate to step executor with TNode
+          executeNode(context.tNode, context.step, context.executionContext, self);
         },
         markCompleted: ({ context, self }) => {
           if (context.tNodeId) {
@@ -76,6 +78,7 @@ export function createStepMachine(
       initial: 'executing',
       context: ({ input }) => ({
         tNodeId: tNode.id,
+        tNode: tNode,
         step: step,
         eventTNodeId: eventTNodeId,
         executionContext: input.executionContext || ({} as ExecutionContext),

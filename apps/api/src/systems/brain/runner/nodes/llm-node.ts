@@ -52,9 +52,7 @@
  */
 
 import type { NodeEntity } from '@/systems/flows/types';
-import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
-// Template registry functionality has been moved to EARS datastore
-import { applyFieldMappings } from '../field-mapper';
+import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
 import { getPromptById } from '@/systems/prompts/repository';
 import { executeTemplate } from '@/systems/prompts/template-executor';
@@ -78,39 +76,51 @@ interface LLMNodeConfig {
 type LLMNode = NodeEntity & LLMNodeConfig;
 
 /**
- * Generate the prompt for the LLM
+ * Generate the prompt for the LLM using resolved data from TNode
  */
 function generatePrompt(
-  node: LLMNode,
-  context: ExecutionContext
+  tNode: TNodeEntity,
+  node: LLMNode
 ): string {
+  // All config and resolved params are in nodeAttributes
+  const nodeData = tNode.nodeAttributes || {};
+  console.log('nodeData: ', nodeData);
+  
   // Direct prompt takes precedence
-  if (node.prompt) {
-    return node.prompt;
+  if (nodeData.prompt) {
+    return nodeData.prompt;
   }
   
   // Use template if specified
-  if (node.promptTemplateId) {
+  if (nodeData.promptTemplateId) {
     try {
       // Get the prompt template from EARS datastore
-      const prompt = getPromptById(`Prompt-${node.promptTemplateId}` as EARS.EntityId);
+      const prompt = getPromptById(`Prompt-${nodeData.promptTemplateId}` as EARS.EntityId);
       if (!prompt) {
-        logger.error(`Prompt template not found:`, { templateId: node.promptTemplateId });
+        logger.error(`Prompt template not found:`, { templateId: nodeData.promptTemplateId });
         return 'Error: Prompt template not found';
       }
 
-      // Apply field mappings to generate template parameters
-      const params = node.fieldMappings 
-        ? applyFieldMappings(node.fieldMappings, context)
-        : {};
+      // Extract template parameters from nodeAttributes
+      // These were already resolved during TNode creation via fieldMappings
+      const templateParams: Record<string, any> = {};
       
-      logger.debug(`Template params for ${node.label}:`, params);
+      // The resolved field mapping values are directly in nodeAttributes
+      // We need to separate them from the config fields
+      const configFields = ['model', 'temperature', 'maxTokens', 'systemPrompt', 'prompt', 'promptTemplateId'];
+      for (const [key, value] of Object.entries(nodeData)) {
+        if (!configFields.includes(key)) {
+          templateParams[key] = value;
+        }
+      }
+      
+      logger.debug(`Using resolved params for ${node.label}:`, templateParams);
       
       // Execute the template function with the parameters
-      return executeTemplate(prompt.templateFn, params);
+      return executeTemplate(prompt.templateFn, templateParams);
     } catch (error) {
       logger.error(`Failed to generate prompt from template:`, { 
-        templateId: node.promptTemplateId, 
+        templateId: nodeData.promptTemplateId, 
         error 
       });
       return 'Error: Failed to generate prompt';
@@ -124,21 +134,24 @@ function generatePrompt(
  * Handle execution of an LLM node
  */
 export function llmNodeHandler(
+  tNode: TNodeEntity,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any
 ) {
   const llmNode = node as LLMNode;
+  const nodeData = tNode.nodeAttributes || {};
+  console.log('nodeData: ', nodeData);
   
   logger.debug(`Executing LLM node: ${node.label}`, {
-    model: llmNode.model || 'default',
-    hasPrompt: !!llmNode.prompt,
-    templateId: llmNode.promptTemplateId,
-    mappingsCount: llmNode.fieldMappings?.length || 0,
+    model: nodeData.model || 'default',
+    hasPrompt: !!nodeData.prompt,
+    templateId: nodeData.promptTemplateId,
+    nodeAttributeKeys: Object.keys(nodeData),
   });
   
-  // Generate the prompt
-  const prompt = generatePrompt(llmNode, executionContext);
+  // Generate the prompt using pre-mapped params
+  const prompt = generatePrompt(tNode, llmNode);
   
   logger.debug(`Generated prompt:`, {
     nodeLabel: node.label,

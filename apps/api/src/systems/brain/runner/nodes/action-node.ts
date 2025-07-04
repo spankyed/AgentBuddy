@@ -1,9 +1,8 @@
 import type { NodeEntity } from '@/systems/flows/types';
-import type { ExecutionContext } from '@/systems/brain/types';
+import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
 import { getActionById } from '@/systems/actions/repository';
 import { EARS } from '@/shared/ears/types';
-import { applyFieldMappings } from '../field-mapper';
 import type { Services } from '@/systems/actions/services';
 import { services } from '@/systems/actions/services';
 
@@ -48,48 +47,46 @@ async function executeActionFunction(
  * Handle execution of an action node
  */
 export async function actionNodeHandler(
+  tNode: TNodeEntity,
   node: NodeEntity,
   executionContext: ExecutionContext,
   actor: any
 ) {
   const actionNode = node as ActionNode;
+  const nodeData = tNode.nodeAttributes || {};
   
   logger.debug(`Executing action node: ${node.label}`, {
-    actionId: actionNode.actionId,
-    hasParams: !!actionNode.params,
-    hasMappings: !!actionNode.fieldMappings,
+    actionId: nodeData.actionId,
+    nodeAttributeKeys: Object.keys(nodeData),
   });
   
   try {
     // Get the action definition
-    if (!actionNode.actionId) {
+    if (!nodeData.actionId) {
       throw new Error('No action ID specified');
     }
     
-    const action = getActionById(`Action-${actionNode.actionId}` as EARS.EntityId);
+    const action = getActionById(`Action-${nodeData.actionId}` as EARS.EntityId);
     if (!action) {
-      throw new Error(`Action not found: ${actionNode.actionId}`);
+      throw new Error(`Action not found: ${nodeData.actionId}`);
     }
     
     logger.debug(`Found action: ${action.label}`, {
       parameters: Object.keys(action.parameters || {}),
     });
     
-    // Prepare parameters
-    let params: Record<string, any> = {};
+    // Extract action parameters from nodeAttributes
+    // All params (both direct and mapped) are already resolved in nodeAttributes
+    const params: Record<string, any> = {};
     
-    // Apply direct params first
-    if (actionNode.params) {
-      params = { ...actionNode.params };
+    // The actionId is config, everything else is params
+    for (const [key, value] of Object.entries(nodeData)) {
+      if (key !== 'actionId') {
+        params[key] = value;
+      }
     }
     
-    // Apply field mappings to override/supplement params
-    if (actionNode.fieldMappings && actionNode.fieldMappings.length > 0) {
-      const mappedParams = applyFieldMappings(actionNode.fieldMappings, executionContext);
-      params = { ...params, ...(mappedParams as Record<string, any>) };
-    }
-    
-    logger.debug(`Executing action with params:`, params);
+    logger.debug(`Executing action with resolved params:`, params);
     
     // Execute the action function
     const result = await executeActionFunction(

@@ -49,17 +49,20 @@ const typeOf = safeEvents<ChildCompletedEvent>();
  * Creates a child node (flow or step) and returns the machine and system ID
  * @param stepOrFlowNode - The node entity to create
  * @param eventTNodeId - The event track node ID that spawned this node
+ * @param executionContext - The execution context for the step
  * @returns Tuple of [machine, systemId]
  */
 function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
+  executionContext?: ExecutionContext,
 ) {
   logger.debug('createChildNode called with:', {
     nodeId: stepOrFlowNode?.id,
     nodeType: stepOrFlowNode?.nodeType,
     nodeLabel: stepOrFlowNode?.label,
-    eventTNodeId
+    eventTNodeId,
+    hasContext: !!executionContext
   });
   
   if (!stepOrFlowNode?.id) {
@@ -69,7 +72,7 @@ function createChildNode(
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId } = isFlowNode
     ? createFlowMachine(stepOrFlowNode.id, eventTNodeId)
-    : createStepMachine(stepOrFlowNode.id, eventTNodeId);
+    : createStepMachine(stepOrFlowNode.id, eventTNodeId, executionContext);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-${stepOrFlowNode.id}-ev-${eventTNodeId}-tnode-${tNodeId}`;
 
@@ -180,7 +183,7 @@ export function createFlowMachine(
             });
 
             // Spawn child based on node type
-            const [machine, systemId] = createChildNode(firstStep, eventTNode.id);
+            const [machine, systemId] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
             enqueue.spawnChild(machine, { 
               systemId, 
               input: { executionContext: eventTrackContext } 
@@ -263,7 +266,7 @@ export function createFlowMachine(
               eventTNodeId: typedEv.eventTNodeId
             });
             
-            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId);
+            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId, executionContext);
             enqueue.spawnChild(nextMachine, { 
               systemId: nextSystemId, 
               input: { executionContext } 
