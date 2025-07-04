@@ -1,8 +1,9 @@
 <template>
-  <div class="tnode-item" :style="{ paddingLeft: `${level * 20}px` }">
+  <div class="tnode-item">
     <button
-      class="relative w-full overflow-hidden tnode-button group"
-      :class="itemClasses"
+      class="relative w-full overflow-hidden tnode-button group mb-1"
+      :class="[itemClasses, { 'opacity-75': level > 0 }]"
+      :style="{ marginLeft: `${level * 24}px` }"
       @click="handleClick"
     >
       <!-- Glow effect on hover -->
@@ -12,13 +13,14 @@
       />
       
       <!-- Main content -->
-      <div class="relative z-10 flex items-center gap-2.5 px-3 py-2">
+      <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
         <!-- Expand/Collapse icon for nodes with children -->
         <ChevronRight 
           v-if="hasChildren" 
-          :class="['w-3 h-3 text-neutral-400 transition-transform flex-shrink-0', { 'rotate-90': isExpanded }]"
+          :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
+                   { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }]"
         />
-        <div v-else class="flex-shrink-0 w-3" /> <!-- Spacer for alignment -->
+        <div v-else-if="level === 0" class="flex-shrink-0 w-3.5" /> <!-- Spacer for root items only -->
         
         <!-- Icon dot with enhanced styling -->
         <div 
@@ -26,10 +28,16 @@
           :class="iconDotClasses"
         />
         
-        <!-- Node label -->
-        <span class="flex-1 text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
-          {{ node.label || getNodeTypeLabel() }}
-        </span>
+        <!-- Node label with context -->
+        <div class="flex-1 flex flex-col">
+          <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
+            {{ node.label || getNodeTypeLabel() }}
+          </span>
+          <!-- Add timestamp for event nodes -->
+          <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 mt-0.5">
+            {{ formatTimestamp(node.startedAt) }}
+          </span>
+        </div>
         
         <!-- Node type icon -->
         <component
@@ -38,14 +46,18 @@
           :class="iconComponentClasses"
         />
         
-        <!-- Status indicator -->
+        <!-- Status indicator with better sizing -->
         <div 
           v-if="node.status"
-          class="relative ml-2"
+          class="relative ml-1 flex items-center"
         >
           <div
-            class="w-2 h-2 rounded-full"
-            :class="statusClasses"
+            :class="[
+              'rounded-full transition-all',
+              level === 0 ? 'w-1.5 h-1.5 ring-2 ring-offset-2 ring-offset-neutral-900' : 'w-1 h-1 ring-1 ring-offset-1 ring-offset-neutral-900',
+              statusClasses, 
+              statusRingClasses
+            ]"
           />
         </div>
       </div>
@@ -127,7 +139,7 @@ const nodeIcon = computed(() => {
   return config?.icon || nodeConfigs.action?.icon;
 });
 
-// Get label for the node
+// Get label for the node with better formatting
 const getNodeTypeLabel = () => {
   if (!node.value) return 'Unknown';
   
@@ -137,7 +149,22 @@ const getNodeTypeLabel = () => {
     return config?.label || node.value.stepNodeType;
   }
   
-  return node.value.tNodeType;
+  // Better default labels for different node types
+  switch (node.value.tNodeType) {
+    case 'flow': return 'Flow Entry';
+    case 'event': 
+      // Try to use eventType if available
+      if (node.value.eventType) {
+        // Format event type nicely (e.g., "user.message" -> "User Message")
+        return node.value.eventType
+          .split('.')
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+      return 'Event';
+    case 'step': return 'Step';
+    default: return node.value.tNodeType;
+  }
 };
 
 // Styling classes from node-config
@@ -159,6 +186,27 @@ const statusClasses = computed(() => {
   return baseClasses;
 });
 
+// Status ring colors
+const statusRingClasses = computed(() => {
+  switch (node.value?.status) {
+    case 'active': return 'ring-green-400/30';
+    case 'paused': return 'ring-yellow-400/30';
+    case 'completed': return 'ring-blue-400/30';
+    case 'failed': return 'ring-red-400/30';
+    default: return 'ring-neutral-400/30';
+  }
+});
+
+// Format timestamp helper
+const formatTimestamp = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  });
+};
+
 const handleClick = () => {
   if (hasChildren.value) {
     isExpanded.value = !isExpanded.value;
@@ -176,15 +224,17 @@ const handleClick = () => {
   transform-origin: center;
   position: relative;
   text-align: left;
+  /* Subtle transition for better UX */
+  transition: all 0.15s ease;
 }
 
 .tnode-button:hover {
-  transform: translateY(-0.5px);
+  transform: translateX(1px);
 }
 
 /* Enhanced visual feedback on click */
 .tnode-button:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 
 /* Smooth transitions for all interactive elements */
@@ -192,19 +242,42 @@ const handleClick = () => {
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Children container animation */
+/* Children container with better spacing */
 .tnode-children {
-  animation: slideIn 0.2s ease-out;
+  position: relative;
+  animation: slideIn 0.15s ease-out;
+  
+  /* Add connection line for visual hierarchy */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: -4px;
+    bottom: 4px;
+    width: 1px;
+    background: linear-gradient(to bottom, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.05) 10%,
+      rgba(255, 255, 255, 0.05) 90%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Reduce visual weight for deeply nested items */
+.tnode-item:has(.tnode-item .tnode-item .tnode-item) .tnode-button {
+  font-size: 0.6875rem; /* 11px */
 }
 </style>

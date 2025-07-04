@@ -2,16 +2,21 @@
   <!-- TNode Tree Display -->
   <div class="agent-panel h-full bg-neutral-900/50 backdrop-blur-sm">
     <div v-if="normalizedTree && normalizedTree.rootIds.length > 0" class="tnode-tree">
-      <div class="px-4 py-3 border-b border-neutral-800/50">
-        <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Execution Tree</h3>
+      <div class="px-4 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Execution Tree</h3>
+          <span class="text-[10px] text-neutral-500">{{ normalizedTree.rootIds.length }} root{{ normalizedTree.rootIds.length !== 1 ? 's' : '' }}</span>
+        </div>
       </div>
-      <div class="p-3 space-y-1.5">
-        <TnodeItem
-          v-for="rootId in normalizedTree.rootIds"
-          :key="rootId"
-          :node-id="rootId"
-          :normalized-tree="normalizedTree"
-        />
+      <div class="p-4 overflow-y-auto flex-1">
+        <div class="space-y-1">
+          <TnodeItem
+            v-for="rootId in normalizedTree.rootIds"
+            :key="rootId"
+            :node-id="rootId"
+            :normalized-tree="normalizedTree"
+          />
+        </div>
       </div>
     </div>
     <div v-else class="flex items-center justify-center h-full">
