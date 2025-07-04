@@ -1,83 +1,91 @@
 <template>
-  <div class="tnode-item">
-    <button
-      class="relative w-full overflow-hidden tnode-button group mb-1"
-      :class="[itemClasses, { 'opacity-75': level > 0 }]"
-      :style="{ marginLeft: `${level * 24}px` }"
-      @click="handleClick"
+  <div 
+    class="tnode-item"
+    :class="{ 'has-children': hasChildren }"
+    :style="{ marginLeft: `${level * 16}px` }"
+  >
+    <div
+      class="relative w-full overflow-hidden tnode-container group"
+      :class="[itemClasses, hasChildren && isExpanded ? 'expanded' : '']"
     >
-      <!-- Glow effect on hover -->
-      <div 
-        class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
-        :class="glowClasses"
-      />
-      
-      <!-- Main content -->
-      <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
-        <!-- Expand/Collapse icon for nodes with children -->
-        <ChevronRight 
-          v-if="hasChildren" 
-          :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
-                   { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }]"
-        />
-        <div v-else-if="level === 0" class="flex-shrink-0 w-3.5" /> <!-- Spacer for root items only -->
-        
-        <!-- Icon dot with enhanced styling -->
+      <!-- Clickable header area -->
+      <button
+        class="relative w-full tnode-header"
+        @click="handleClick"
+      >
+        <!-- Glow effect on hover -->
         <div 
-          class="w-1.5 h-1.5 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-neutral-900/50 transition-all duration-200"
-          :class="iconDotClasses"
+          class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
+          :class="glowClasses"
         />
         
-        <!-- Node label with context -->
-        <div class="flex-1 flex flex-col">
-          <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
-            {{ node.label || getNodeTypeLabel() }}
-          </span>
-          <!-- Add timestamp for event nodes -->
-          <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 mt-0.5">
-            {{ formatTimestamp(node.startedAt) }}
-          </span>
-        </div>
-        
-        <!-- Node type icon -->
-        <component
-          :is="nodeIcon"
-          class="w-3.5 h-3.5 transition-all duration-200"
-          :class="iconComponentClasses"
-        />
-        
-        <!-- Status indicator with better sizing -->
-        <div 
-          v-if="node.status"
-          class="relative ml-1 flex items-center"
-        >
-          <div
-            :class="[
-              'rounded-full transition-all',
-              level === 0 ? 'w-1.5 h-1.5 ring-2 ring-offset-2 ring-offset-neutral-900' : 'w-1 h-1 ring-1 ring-offset-1 ring-offset-neutral-900',
-              statusClasses, 
-              statusRingClasses
-            ]"
+        <!-- Main content -->
+        <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
+          <!-- Expand/Collapse icon for nodes with children -->
+          <ChevronRight 
+            v-if="hasChildren" 
+            :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
+                     { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }]"
           />
+          <div v-else class="flex-shrink-0 w-3.5" /> <!-- Spacer for alignment -->
+          
+          <!-- Icon dot with enhanced styling -->
+          <div 
+            class="w-1.5 h-1.5 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-neutral-900/50 transition-all duration-200"
+            :class="iconDotClasses"
+          />
+          
+          <!-- Node label with context -->
+          <div class="flex-1 flex flex-col">
+            <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
+              {{ node.label || getNodeTypeLabel() }}
+            </span>
+            <!-- Add timestamp for event nodes -->
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 mt-0.5">
+              {{ formatTimestamp(node.startedAt) }}
+            </span>
+          </div>
+          
+          <!-- Node type icon -->
+          <component
+            :is="nodeIcon"
+            class="w-3.5 h-3.5 transition-all duration-200"
+            :class="iconComponentClasses"
+          />
+          
+          <!-- Status indicator with better sizing -->
+          <div 
+            v-if="node.status"
+            class="relative ml-1 flex items-center"
+          >
+            <div
+              :class="[
+                'rounded-full transition-all',
+                level === 0 ? 'w-1.5 h-1.5 ring-2 ring-offset-2 ring-offset-neutral-900' : 'w-1 h-1 ring-1 ring-offset-1 ring-offset-neutral-900',
+                statusClasses, 
+                statusRingClasses
+              ]"
+            />
+          </div>
         </div>
-      </div>
+        
+        <!-- Subtle gradient overlay -->
+        <div 
+          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
+          :class="gradientClasses"
+        />
+      </button>
       
-      <!-- Subtle gradient overlay -->
-      <div 
-        class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
-        :class="gradientClasses"
-      />
-    </button>
-    
-    <!-- Children (recursive) -->
-    <div v-if="isExpanded && hasChildren" class="mt-1 tnode-children">
-      <TnodeItem
-        v-for="childId in childIds"
-        :key="childId"
-        :node-id="childId"
-        :normalized-tree="normalizedTree"
-        :level="level + 1"
-      />
+      <!-- Children nested inside parent container -->
+      <div v-if="isExpanded && hasChildren" class="tnode-children">
+        <TnodeItem
+          v-for="childId in childIds"
+          :key="childId"
+          :node-id="childId"
+          :normalized-tree="normalizedTree"
+          :level="level + 1"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -218,57 +226,86 @@ const handleClick = () => {
 <style scoped>
 .tnode-item {
   user-select: none;
+  margin-bottom: 0.25rem;
 }
 
-.tnode-button {
+.tnode-container {
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+  
+  &.expanded {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.tnode-header {
   transform-origin: center;
   position: relative;
   text-align: left;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
   /* Subtle transition for better UX */
   transition: all 0.15s ease;
 }
 
-.tnode-button:hover {
+.tnode-header:hover {
   transform: translateX(1px);
 }
 
 /* Enhanced visual feedback on click */
-.tnode-button:active {
-  transform: scale(0.985);
+.tnode-header:active {
+  transform: scale(0.995);
 }
 
 /* Smooth transitions for all interactive elements */
-.tnode-button * {
+.tnode-header * {
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Children container with better spacing */
+/* Children container with nested appearance */
 .tnode-children {
   position: relative;
+  padding-left: 0.75rem;
+  padding-bottom: 0.5rem;
   animation: slideIn 0.15s ease-out;
   
-  /* Add connection line for visual hierarchy */
+  /* Add subtle left border for hierarchy visualization */
   &::before {
     content: '';
     position: absolute;
-    left: 11px;
-    top: -4px;
-    bottom: 4px;
+    left: 20px;
+    top: 0;
+    bottom: 8px;
     width: 1px;
     background: linear-gradient(to bottom, 
-      transparent 0%, 
-      rgba(255, 255, 255, 0.05) 10%,
-      rgba(255, 255, 255, 0.05) 90%,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.03) 50%,
       transparent 100%
     );
     pointer-events: none;
   }
 }
 
+/* Remove bottom margin from last child */
+.tnode-children .tnode-item:last-child {
+  margin-bottom: 0;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-2px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
@@ -277,7 +314,23 @@ const handleClick = () => {
 }
 
 /* Reduce visual weight for deeply nested items */
-.tnode-item:has(.tnode-item .tnode-item .tnode-item) .tnode-button {
+.tnode-item:has(.tnode-item .tnode-item .tnode-item) .tnode-header {
   font-size: 0.6875rem; /* 11px */
+}
+
+/* Style adjustments for nested levels */
+.tnode-item.has-children .tnode-container {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Subtle depth indicators */
+.tnode-item[style*="marginLeft: 0px"] .tnode-container {
+  background: rgba(59, 130, 246, 0.03);
+  border-color: rgba(59, 130, 246, 0.08);
+}
+
+.tnode-item[style*="marginLeft: 0px"] .tnode-container:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.12);
 }
 </style>
