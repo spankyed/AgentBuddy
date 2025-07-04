@@ -36,12 +36,12 @@
           />
           
           <!-- Node label with context -->
-          <div class="relative flex-1 min-w-0 pr-16 text-left">
+          <div class="relative flex items-center flex-1 min-w-0 pr-16 text-left">
             <span class="block text-xs font-medium tracking-tight truncate transition-colors duration-200 text-white/90 group-hover:text-white">
               {{ node.label || getNodeTypeLabel() }}
             </span>
             <!-- Show key attribute for step nodes -->
-            <span v-if="node.tNodeType === 'step' && keyAttribute" class="text-[10px] text-neutral-500 truncate block">
+            <span v-if="node.tNodeType === 'step' && keyAttribute" class="text-[10px] ml-2 mt-1 text-neutral-500 truncate block">
               {{ keyAttribute }}
             </span>
             <!-- Timestamp positioned absolutely -->
@@ -155,7 +155,7 @@ const node = computed(() => props.normalizedTree.byId[props.nodeId]);
 const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] || []);
 const hasChildren = computed(() => childIds.value.length > 0);
 const isExpanded = ref(true);
-const showDetails = ref(false);
+const showDetails = ref(true);
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
@@ -254,6 +254,7 @@ const hasDetails = computed(() => {
 
 // Get the appropriate detail component based on node type
 const detailComponent = computed(() => {
+  console.log('node.value.stepNodeType:  ', node.value.stepNodeType);
   if (!node.value || node.value.tNodeType !== 'step') return null;
   
   switch (node.value.stepNodeType) {
