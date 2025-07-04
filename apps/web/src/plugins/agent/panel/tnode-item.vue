@@ -2,7 +2,6 @@
   <div 
     class="tnode-item"
     :class="{ 'has-children': hasChildren }"
-    :style="{ marginLeft: `${level * 16}px` }"
   >
     <div
       class="relative w-full overflow-hidden tnode-container group"
@@ -36,14 +35,15 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex-1 flex flex-col">
+          <div class="flex flex-1">
             <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
               {{ node.label || getNodeTypeLabel() }}
             </span>
             <!-- Add timestamp for event nodes -->
-            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 mt-0.5">
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-3">
               {{ formatTimestamp(node.startedAt) }}
             </span>
+            <!-- Todo: Display event data e.g. message -->
           </div>
           
           <!-- Node type icon -->
@@ -56,7 +56,7 @@
           <!-- Status indicator with better sizing -->
           <div 
             v-if="node.status"
-            class="relative ml-1 flex items-center"
+            class="relative flex items-center ml-1"
           >
             <div
               :class="[
@@ -227,6 +227,7 @@ const handleClick = () => {
 .tnode-item {
   user-select: none;
   margin-bottom: 0.25rem;
+  width: 100%;
 }
 
 .tnode-container {
@@ -276,30 +277,22 @@ const handleClick = () => {
 /* Children container with nested appearance */
 .tnode-children {
   position: relative;
-  padding-left: 0.75rem;
-  padding-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
   animation: slideIn 0.15s ease-out;
-  
-  /* Add subtle left border for hierarchy visualization */
-  &::before {
-    content: '';
-    position: absolute;
-    left: 20px;
-    top: 0;
-    bottom: 8px;
-    width: 1px;
-    background: linear-gradient(to bottom, 
-      rgba(255, 255, 255, 0.05) 0%,
-      rgba(255, 255, 255, 0.03) 50%,
-      transparent 100%
-    );
-    pointer-events: none;
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* Remove bottom margin from last child */
 .tnode-children .tnode-item:last-child {
   margin-bottom: 0;
+}
+
+/* Ensure children don't exceed parent width */
+.tnode-children .tnode-item {
+  max-width: 90%;
 }
 
 @keyframes slideIn {
