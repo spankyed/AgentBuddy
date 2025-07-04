@@ -85,7 +85,14 @@ export function createEventTNode(
     createdAt: now,
   };
   
-  // Emit event to frontend
+  // Emit event to frontend - use new TNODE_SPAWNED event
+  emitTNodeEvent('TNODE_SPAWNED', { 
+    tNode: eventTNode,
+    parentId: flowTNodeId,
+    eventTNodeId: tNodeId  // For event nodes, they are their own eventTNodeId
+  }, systemActor);
+  
+  // Also emit the legacy EVENT_TNODE_SPAWNED for backward compatibility
   emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: eventTNode }, systemActor);
   
   return eventTNode;
@@ -96,7 +103,8 @@ export function createEventTNode(
  */
 export function createFlowTNode(
   flowStepId: EARS.EntityId,
-  eventTrackId?: EARS.EntityId
+  eventTrackId?: EARS.EntityId,
+  systemActor?: any,
 ){
   // Get the flow reference from the flow node
   const flowStepNode = qx(flowStepId)
@@ -139,6 +147,13 @@ export function createFlowTNode(
 
   Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
   
+  // Emit TNODE_SPAWNED event
+  emitTNodeEvent('TNODE_SPAWNED', { 
+    tNode: flowTNode as TNodeEntity,
+    parentId: eventTrackId,
+    eventTNodeId: eventTrackId
+  }, systemActor);
+  
   return {
     flowTNode: flowTNode as TNodeEntity,
     eventNodes,
@@ -152,6 +167,7 @@ export function createStepTNode(
   stepId: EARS.EntityId,
   eventTrackId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  systemActor?: any,
 ) {
   if (!stepId) {
     throw new Error('Step ID is required');
@@ -191,14 +207,22 @@ export function createStepTNode(
   // Create SPAWNED relationship from parent
   tx(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
   
-  // Emit event
+  const tNode: TNodeEntity = {
+    id: tNodeId,
+    entityType: EARS.Entity.TNode,
+    createdAt: now,
+    ...stepTNode
+  } as TNodeEntity;
+  
+  // Emit TNODE_SPAWNED event
+  emitTNodeEvent('TNODE_SPAWNED', { 
+    tNode,
+    parentId: eventTrackId,
+    eventTNodeId: eventTrackId
+  }, systemActor);
+  
   return {
-    tNode: {
-      id: tNodeId,
-      entityType: EARS.Entity.TNode,
-      createdAt: now,
-      ...stepTNode
-    } as TNodeEntity,
+    tNode,
     step: step as NodeEntity,
   };
 }
@@ -207,6 +231,7 @@ export function createStepTNode(
  * Create root flow TNode
  */
 export function createRootFlowTNode(
+  systemActor?: any,
 ) {
   const now = Date.now();
   const rootId = 'TNode-Root' as EARS.EntityId; // For the root flow, we specify an ID for consistency
@@ -252,6 +277,12 @@ export function createRootFlowTNode(
     createdAt: now,
   };
   
+  // Emit TNODE_SPAWNED event for root
+  emitTNodeEvent('TNODE_SPAWNED', { 
+    tNode: rootFlowTNode,
+    // No parentId or eventTNodeId for root
+  }, systemActor);
+  
   return {
     rootFlow,
     rootFlowTNode,
@@ -264,7 +295,7 @@ export function createRootFlowTNode(
  * Emit a TNode event
  */
 function emitTNodeEvent(
-  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_UPDATED',
+  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_SPAWNED' | 'TNODE_UPDATED',
   data: any,
   systemActor?: any
 ) {

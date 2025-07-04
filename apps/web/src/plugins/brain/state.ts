@@ -9,9 +9,17 @@ import { trpc } from '@/core/trpc';
 export const id = 'brain';
 export type BrainState = ActorRefFrom<typeof brainState>
 
+// Normalized structure for efficient updates
+interface NormalizedTNodeTree {
+  byId: Record<string, TNodeEntity>;
+  rootIds: string[];
+  childrenById: Record<string, string[]>;
+}
+
 export interface BrainContext {
   flowTNodeId?: string;
   tNodeTree?: TrackEntity[];
+  normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
   pulsingEventType?: string;
 }
@@ -30,6 +38,50 @@ type PluginEvent =
 export type BrainEvents = UIEvent | SystemEvent | PluginEvent
 const typeOf = safeEvents<BrainEvents>()
 
+// Helper functions for tree normalization
+function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
+  const normalized: NormalizedTNodeTree = {
+    byId: {},
+    rootIds: [],
+    childrenById: {}
+  };
+
+  function processNode(node: TrackEntity, isRoot = false) {
+    // Store the node without children
+    const { children, ...nodeWithoutChildren } = node;
+    normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
+    
+    if (isRoot) {
+      normalized.rootIds.push(node.id);
+    }
+    
+    // Process children
+    if (children && children.length > 0) {
+      normalized.childrenById[node.id] = children.map(child => child.id);
+      children.forEach(child => processNode(child, false));
+    } else {
+      normalized.childrenById[node.id] = [];
+    }
+  }
+
+  tree.forEach(node => processNode(node, true));
+  return normalized;
+}
+
+function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
+  function buildNode(id: string): TrackEntity {
+    const node = normalized.byId[id];
+    const childIds = normalized.childrenById[id] || [];
+    
+    return {
+      ...node,
+      children: childIds.map(childId => buildNode(childId))
+    } as TrackEntity;
+  }
+
+  return normalized.rootIds.map(id => buildNode(id));
+}
+
 const brainState = setup({
   types: {
     context: {} as BrainContext,
@@ -39,34 +91,103 @@ const brainState = setup({
   actions: {
     setBrainData: assign(({ event }) => {
       const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
+      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
         tNodeTree: typedEv.data.tNodeTree,
+        normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
       };
     }),
     setTNodeData: assign(({ event }) => {
       const typedEv = typeOf('TNODE_OPENED', event);
+      const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
       return {
         flowTNodeId: typedEv.data.flowTNodeId,
         tNodeTree: typedEv.data.tNodeTree,
+        normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
       };
     }),
-    addEventTNode: () => {
-      // Request fresh data when a new TNode is spawned
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REQUEST_PLUGIN_DATA'
-      });
-    },
-    updateTNode: () => {
-      // Request fresh data when a TNode is updated
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REQUEST_PLUGIN_DATA'
-      });
-    },
+    addTNodeToTree: assign(({ context, event }) => {
+      if (event.type !== 'TNODE_SPAWNED') return {};
+      
+      const { tNode, parentId, eventTNodeId } = event;
+      
+      if (!context.normalizedTree) {
+        // Initialize if not present
+        return {
+          normalizedTree: {
+            byId: { [tNode.id]: tNode },
+            rootIds: parentId ? [] : [tNode.id],
+            childrenById: { [tNode.id]: [] }
+          }
+        };
+      }
+
+      // Clone the normalized tree for immutability
+      const newTree = {
+        byId: { ...context.normalizedTree.byId },
+        rootIds: [...context.normalizedTree.rootIds],
+        childrenById: { ...context.normalizedTree.childrenById }
+      };
+
+      // Add the new node
+      newTree.byId[tNode.id] = tNode;
+      newTree.childrenById[tNode.id] = [];
+
+      // Update parent's children if parentId exists
+      if (parentId) {
+        if (!newTree.childrenById[parentId]) {
+          newTree.childrenById[parentId] = [];
+        } else {
+          newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
+        }
+        newTree.childrenById[parentId].push(tNode.id);
+      } else {
+        // No parent means it's a root node
+        newTree.rootIds.push(tNode.id);
+      }
+
+      // Update denormalized tree as well
+      const denormalizedTree = denormalizeTNodeTree(newTree);
+
+      return {
+        normalizedTree: newTree,
+        tNodeTree: denormalizedTree
+      };
+    }),
+    updateTNodeInTree: assign(({ context, event }) => {
+      if (event.type !== 'TNODE_UPDATED') return {};
+      
+      const { data } = event;
+      const { tNodeId, status, eventTNodeId } = data;
+      
+      if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
+        return {};
+      }
+
+      // Clone the normalized tree
+      const newTree = {
+        byId: { ...context.normalizedTree.byId },
+        rootIds: [...context.normalizedTree.rootIds],
+        childrenById: { ...context.normalizedTree.childrenById }
+      };
+
+      // Update the node status
+      newTree.byId[tNodeId] = {
+        ...newTree.byId[tNodeId],
+        status
+      };
+
+      // Update denormalized tree
+      const denormalizedTree = denormalizeTNodeTree(newTree);
+
+      return {
+        normalizedTree: newTree,
+        tNodeTree: denormalizedTree
+      };
+    }),
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
       return {
@@ -148,10 +269,13 @@ const brainState = setup({
           actions: 'setTNodeData'
         },
         EVENT_TNODE_SPAWNED: {
-          actions: 'addEventTNode'
+          // Keep for backward compatibility but do nothing
+        },
+        TNODE_SPAWNED: {
+          actions: 'addTNodeToTree'
         },
         TNODE_UPDATED: {
-          actions: 'updateTNode'
+          actions: 'updateTNodeInTree'
         },
         EVENT_PULSE: {
           actions: ['pulseEvent', ({ system }) => {

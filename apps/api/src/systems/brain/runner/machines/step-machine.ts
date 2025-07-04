@@ -34,8 +34,9 @@ export function createStepMachine(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  systemActor?: any,
 ) {
-  const { tNode, step } = createStepTNode(stepId, eventTNodeId, executionContext);
+  const { tNode, step } = createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
   return {
     tNodeId: tNode.id,
     machine: setup({
