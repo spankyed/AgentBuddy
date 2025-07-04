@@ -23,8 +23,10 @@
           <!-- Expand/Collapse icon for nodes with children -->
           <ChevronRight 
             v-if="hasChildren" 
-            :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
-                     { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }]"
+            :class="[
+              'w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
+              { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }
+            ]"
           />
           
           <!-- Icon dot with enhanced styling -->
@@ -34,8 +36,8 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex flex-1 items-center min-w-0">
-            <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white truncate">
+          <div class="flex items-center flex-1 min-w-0">
+            <span class="text-xs font-medium tracking-tight text-left truncate transition-colors duration-200 text-white/90 group-hover:text-white">
               {{ node.label || getNodeTypeLabel() }}
             </span>
             <!-- Add timestamp for event nodes -->
@@ -290,7 +292,7 @@ const handleClick = () => {
 
 /* Ensure children don't exceed parent width */
 .tnode-children .tnode-item {
-  max-width: 90%;
+  max-width: 100%;
 }
 
 @keyframes slideIn {

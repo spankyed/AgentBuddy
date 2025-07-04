@@ -2,14 +2,14 @@
   <!-- TNode Tree Display -->
   <div class="h-full agent-panel bg-neutral-900/50 backdrop-blur-sm">
     <div v-if="normalizedTree && normalizedTree.rootIds.length > 0" class="tnode-tree">
-      <div class="px-4 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
+      <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-300">Execution Tree</h3>
-          <span class="text-[10px] text-neutral-500">{{ normalizedTree.rootIds.length }} root{{ normalizedTree.rootIds.length !== 1 ? 's' : '' }}</span>
+          <h3 class="text-sm font-semibold tracking-wider uppercase text-neutral-400">Event Trace</h3>
+          <span class="text-xs text-neutral-500">{{ normalizedTree.rootIds.length }} event{{ normalizedTree.rootIds.length !== 1 ? 's' : '' }}</span>
         </div>
       </div>
       <div class="flex-1 p-4">
-        <div class="space-y-1">
+        <div class="space-y-2">
           <TnodeItem
             v-for="rootId in normalizedTree.rootIds"
             :key="rootId"
@@ -26,8 +26,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <p class="text-sm font-medium text-neutral-400">No execution data</p>
-        <p class="mt-1 text-xs text-neutral-500">Run a flow to see the execution tree</p>
+        <p class="text-sm font-medium text-neutral-400">No event data</p>
+        <p class="mt-1 text-xs text-neutral-500">Run a flow to see an event trace</p>
       </div>
     </div>
   </div>
