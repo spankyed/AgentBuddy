@@ -26,7 +26,6 @@
             :class="['w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
                      { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }]"
           />
-          <div v-else class="flex-shrink-0 w-3.5" /> <!-- Spacer for alignment -->
           
           <!-- Icon dot with enhanced styling -->
           <div 
@@ -35,12 +34,12 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex flex-1">
-            <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white">
+          <div class="flex flex-1 items-center min-w-0">
+            <span class="text-xs font-medium tracking-tight text-left transition-colors duration-200 text-white/90 group-hover:text-white truncate">
               {{ node.label || getNodeTypeLabel() }}
             </span>
             <!-- Add timestamp for event nodes -->
-            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-3">
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
               {{ formatTimestamp(node.startedAt) }}
             </span>
             <!-- Todo: Display event data e.g. message -->
@@ -210,8 +209,7 @@ const formatTimestamp = (timestamp: number) => {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('en-US', { 
     hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
+    minute: '2-digit'
   });
 };
 
