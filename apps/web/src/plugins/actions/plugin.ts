@@ -1,12 +1,12 @@
 import type { Plugin } from "@/core/types/index.ts";
-import { Zap } from 'lucide-vue-next';
+import { Play } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas.vue';
 
 const actionsPlugin: Plugin = {
   id,
   label: 'Actions',
-  icon: Zap,
+  icon: Play,
   state,
   canvas,
   options: {

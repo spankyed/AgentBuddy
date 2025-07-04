@@ -34,7 +34,7 @@
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                    <FileText class="w-4 h-4 text-neutral-400" />
+                    <Sparkle class="w-4 h-4 text-neutral-400" />
                   </div>
                   <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
                 </div>
@@ -81,7 +81,7 @@
       >
         <div class="flex flex-col items-center max-w-sm text-center">
           <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
-            <FileText class="w-8 h-8 text-neutral-500" />
+            <Sparkle class="w-8 h-8 text-neutral-500" />
           </div>
           <h3 class="mb-2 text-lg font-semibold text-neutral-100">No prompts yet</h3>
           <p class="mb-6 text-sm text-neutral-400">
@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { Plus, Edit2, Trash2, FileText } from 'lucide-vue-next';
+import { Plus, Edit2, Trash2, Sparkle } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import type { PromptEntity, EARS } from '@abuddy/api';
 

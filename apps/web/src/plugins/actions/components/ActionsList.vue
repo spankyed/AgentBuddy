@@ -34,7 +34,7 @@
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                    <Zap class="w-4 h-4 text-neutral-400" />
+                    <Play class="w-4 h-4 text-neutral-400" />
                   </div>
                   <span class="font-medium text-neutral-100">{{ action.label }}</span>
                 </div>
@@ -83,7 +83,7 @@
       </div>
       <div v-else class="flex items-center justify-center h-full">
         <div class="text-center">
-          <Zap class="w-12 h-12 mx-auto mb-4 text-neutral-600" />
+          <Play class="w-12 h-12 mx-auto mb-4 text-neutral-600" />
           <h3 class="mb-2 text-lg font-medium text-neutral-300">No actions yet</h3>
           <p class="mb-4 text-sm text-neutral-500">Create your first action function to get started</p>
           <Button @click="$emit('create')" variant="primary">
@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
 import type { ActionEntity, EARS } from '@abuddy/api'
-import { Plus, Zap, Edit2, Trash } from 'lucide-vue-next'
+import { Plus, Play, Edit2, Trash } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 
 interface Props {
