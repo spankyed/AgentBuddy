@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import getRootData, { getExtendedTNodeData } from './repository/startup';
 import { createFlowMachine } from './runner/machines/flow-machine';
+import { agent } from '../agent/system';
 
 const eventsCatalog = {
   'user.message': z.object({
@@ -175,18 +176,21 @@ export const brainSystem = setup({
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
             }
           },
           TNODE_SPAWNED: {
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
             }
           },
           TNODE_UPDATED: {
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
+              system.get(bus).send(emit(agent, event));
             }
           },
         },

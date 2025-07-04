@@ -15,6 +15,9 @@ import type {
   PromptEntity,
   ModelConfig,
   ActionEntity,
+  TNodeEntity,
+  TrackEntity,
+  OutgoingBrainEvents,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
 
@@ -26,6 +29,13 @@ const randId = () => Math.random().toString(36).slice(2, 8)
 export const flowsId = 'flows'
 export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
+
+// Normalized structure for efficient updates
+interface NormalizedTNodeTree {
+  byId: Record<string, TNodeEntity>;
+  rootIds: string[];
+  childrenById: Record<string, string[]>;
+}
 
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
@@ -41,9 +51,11 @@ export interface FlowsContext {
   models: ModelConfig[];
   actions: ActionEntity[];
   isLoadingFormData: boolean;
+  tNodeTree?: TrackEntity[];
+  normalizedTree?: NormalizedTNodeTree;
 }
 
-type SystemEvent = OutgoingFlowsEvents
+type SystemEvent = OutgoingFlowsEvents | OutgoingBrainEvents
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -60,6 +72,50 @@ type UIEvent =
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
+
+// Helper functions for tree normalization
+function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
+  const normalized: NormalizedTNodeTree = {
+    byId: {},
+    rootIds: [],
+    childrenById: {}
+  };
+
+  function processNode(node: TrackEntity, isRoot = false) {
+    // Store the node without children
+    const { children, ...nodeWithoutChildren } = node;
+    normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
+    
+    if (isRoot) {
+      normalized.rootIds.push(node.id);
+    }
+    
+    // Process children
+    if (children && children.length > 0) {
+      normalized.childrenById[node.id] = children.map(child => child.id);
+      children.forEach(child => processNode(child, false));
+    } else {
+      normalized.childrenById[node.id] = [];
+    }
+  }
+
+  tree.forEach(node => processNode(node, true));
+  return normalized;
+}
+
+function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
+  function buildNode(id: string): TrackEntity {
+    const node = normalized.byId[id];
+    const childIds = normalized.childrenById[id] || [];
+    
+    return {
+      ...node,
+      children: childIds.map(childId => buildNode(childId))
+    } as TrackEntity;
+  }
+
+  return normalized.rootIds.map(id => buildNode(id));
+}
 
 const flowsState = setup({
   types: {
@@ -281,6 +337,89 @@ const flowsState = setup({
       };
     }),
 
+    /* ── TNode tree actions ────────────────────────────────── */
+    addTNodeToTree: assign(({ context, event }) => {
+      if (event.type !== 'TNODE_SPAWNED') return {};
+      
+      const { tNode, parentId, eventTNodeId } = event;
+      
+      if (!context.normalizedTree) {
+        // Initialize if not present
+        return {
+          normalizedTree: {
+            byId: { [tNode.id]: tNode },
+            rootIds: parentId ? [] : [tNode.id],
+            childrenById: { [tNode.id]: [] }
+          },
+          tNodeTree: [{ ...tNode, children: [] } as TrackEntity]
+        };
+      }
+
+      // Clone the normalized tree for immutability
+      const newTree = {
+        byId: { ...context.normalizedTree.byId },
+        rootIds: [...context.normalizedTree.rootIds],
+        childrenById: { ...context.normalizedTree.childrenById }
+      };
+
+      // Add the new node
+      newTree.byId[tNode.id] = tNode;
+      newTree.childrenById[tNode.id] = [];
+
+      // Update parent's children if parentId exists
+      if (parentId) {
+        if (!newTree.childrenById[parentId]) {
+          newTree.childrenById[parentId] = [];
+        } else {
+          newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
+        }
+        newTree.childrenById[parentId].push(tNode.id);
+      } else {
+        // No parent means it's a root node
+        newTree.rootIds.push(tNode.id);
+      }
+
+      // Update denormalized tree as well
+      const denormalizedTree = denormalizeTNodeTree(newTree);
+
+      return {
+        normalizedTree: newTree,
+        tNodeTree: denormalizedTree
+      };
+    }),
+    
+    updateTNodeInTree: assign(({ context, event }) => {
+      if (event.type !== 'TNODE_UPDATED') return {};
+      
+      const { data } = event;
+      const { tNodeId, status, eventTNodeId } = data;
+      
+      if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
+        return {};
+      }
+
+      // Clone the normalized tree
+      const newTree = {
+        byId: { ...context.normalizedTree.byId },
+        rootIds: [...context.normalizedTree.rootIds],
+        childrenById: { ...context.normalizedTree.childrenById }
+      };
+
+      // Update the node status
+      newTree.byId[tNodeId] = {
+        ...newTree.byId[tNodeId],
+        status
+      };
+
+      // Update denormalized tree
+      const denormalizedTree = denormalizeTNodeTree(newTree);
+
+      return {
+        normalizedTree: newTree,
+        tNodeTree: denormalizedTree
+      };
+    }),
+
     /* ── ID reconciliation actions ────────────────────────── */
     reconcileNodeId: assign(({ context, event }) => {
       const ev = typeOf('NODE_CREATED', event);
@@ -330,6 +469,8 @@ const flowsState = setup({
     models: [] as ModelConfig[],
     actions: [] as ActionEntity[],
     isLoadingFormData: false,
+    tNodeTree: undefined,
+    normalizedTree: undefined,
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
@@ -342,6 +483,15 @@ const flowsState = setup({
     },
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
+    },
+    EVENT_TNODE_SPAWNED: {
+      // Keep for backward compatibility but do nothing
+    },
+    TNODE_SPAWNED: {
+      actions: 'addTNodeToTree'
+    },
+    TNODE_UPDATED: {
+      actions: 'updateTNodeInTree'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],

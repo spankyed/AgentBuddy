@@ -206,7 +206,7 @@ export function createFlowMachine(
               : context.activeChildrenCount;
           },
         }),
-        handleChildCompletion: enqueueActions(({ context, event, enqueue }) => {
+        handleChildCompletion: enqueueActions(({ context, event, enqueue, self }) => {
           logger.debug(`Child completed in flow ${context.flowId}:`, { event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
