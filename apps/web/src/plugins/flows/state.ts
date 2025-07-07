@@ -53,6 +53,10 @@ export interface FlowsContext {
   isLoadingFormData: boolean;
   tNodeTree?: TrackEntity[];
   normalizedTree?: NormalizedTNodeTree;
+  pendingConnection?: {
+    sourceId: string;
+    targetTempId: string;
+  };
 }
 
 type SystemEvent = OutgoingFlowsEvents | OutgoingBrainEvents
@@ -61,6 +65,7 @@ type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'NODE.CREATE'; nodeType: string }
+  | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
@@ -295,6 +300,44 @@ const flowsState = setup({
       }
     }),
 
+    createConnectedNode: assign(({ context, event }) => {
+      if (!context.selectedFlowId) {
+        return { selectedNodeId: undefined }
+      }
+
+      const tempId = `temp-${randId()}`
+      const ev = typeOf('NODE.CREATE_CONNECTED', event)
+      const newNode = {
+        id: tempId,
+        nodeType: ev.nodeType,
+        label: `New ${ev.nodeType}`,
+      } as Partial<NodeEntity>
+      
+      // Send create to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NODE',
+        flowId: context.selectedFlowId,
+        tempId: tempId,
+        nodeData: {
+          nodeType: ev.nodeType,
+          label: newNode.label,
+        },
+      });
+
+      return {
+        graph: {
+          ...context.graph,
+          nodes: [...context.graph.nodes, newNode],
+        },
+        selectedNodeId: tempId as EARS.EntityId,
+        pendingConnection: {
+          sourceId: ev.sourceNodeId,
+          targetTempId: tempId
+        }
+      }
+    }),
+
     /* ── node update actions ──────────────────────────────── */
     updateNode: assign(({ context, event }) => {
       const ev = typeOf('NODE.UPDATE', event);
@@ -442,12 +485,42 @@ const flowsState = setup({
         target: edge.target === tempId ? permanentId : edge.target,
       }));
       
+      // Check if we have a pending connection for this node
+      let pendingConnection = context.pendingConnection;
+      if (pendingConnection?.targetTempId === tempId) {
+        // Create the edge now that we have the permanent ID
+        const edgeId = `Edge-${randId()}`;
+        const newEdge = {
+          id: edgeId,
+          source: pendingConnection.sourceId,
+          target: permanentId,
+          kind: 'transitions_to'
+        } as EdgeEntity;
+        
+        updatedEdges.push(newEdge);
+        
+        // Send edge creation to backend
+        if (context.selectedFlowId) {
+          trpc.bus.send.mutate({
+            systemId: id,
+            type: 'CREATE_EDGE',
+            flowId: context.selectedFlowId,
+            sourceId: pendingConnection.sourceId,
+            targetId: permanentId,
+          });
+        }
+        
+        // Clear pending connection
+        pendingConnection = undefined;
+      }
+      
       return {
         graph: {
           nodes: updatedNodes,
           edges: updatedEdges,
         },
         selectedNodeId: newSelectedNodeId,
+        pendingConnection,
       };
     }),
   },
@@ -471,6 +544,7 @@ const flowsState = setup({
     isLoadingFormData: false,
     tNodeTree: undefined,
     normalizedTree: undefined,
+    pendingConnection: undefined,
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
@@ -540,6 +614,9 @@ const flowsState = setup({
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'NODE.CREATE': {
           actions: 'createNode',
+        },
+        'NODE.CREATE_CONNECTED': {
+          actions: 'createConnectedNode',
         },
         'NODE.UPDATE': {
           actions: ['updateNode', 'sendNodeUpdate'],

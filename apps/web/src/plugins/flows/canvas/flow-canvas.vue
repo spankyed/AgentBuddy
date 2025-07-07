@@ -45,6 +45,7 @@
       @update-label="(nodeId, label) => handleNodeUpdate(nodeId, { label })"
       @update-config="(nodeId, config) => handleNodeUpdate(nodeId, config)"
       @update-node="(node) => node.id && handleNodeUpdate(node.id, node)"
+      @create-connected="handleCreateConnectedNode"
     />
 
     <!-- Label Edit Dialog -->
@@ -158,6 +159,14 @@ function handlePaletteClick(nodeType: string) {
   actor.send({
     type: 'NODE.CREATE',
     nodeType,
+  })
+}
+
+function handleCreateConnectedNode(nodeType: string, sourceNodeId: string) {
+  actor.send({
+    type: 'NODE.CREATE_CONNECTED',
+    nodeType,
+    sourceNodeId,
   })
 }
 
