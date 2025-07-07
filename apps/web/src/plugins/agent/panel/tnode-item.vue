@@ -304,7 +304,6 @@ const toggleDetails = () => {
 
 <style scoped>
 .tnode-item {
-  user-select: none;
   margin-bottom: 0.25rem;
   width: 100%;
 }
