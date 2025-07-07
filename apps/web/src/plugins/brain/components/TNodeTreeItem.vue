@@ -34,12 +34,12 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex items-center flex-1 min-w-0">
-            <span class="text-xs font-medium tracking-tight text-left truncate transition-colors duration-200 text-white/90 group-hover:text-white">
+          <div class="flex-1 min-w-0 text-left relative pr-16">
+            <span class="text-xs font-medium tracking-tight truncate transition-colors duration-200 text-white/90 group-hover:text-white block">
               {{ tnode.label }}
             </span>
-            <!-- Add timestamp for event nodes -->
-            <span v-if="tnode.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
+            <!-- Timestamp positioned absolutely -->
+            <span v-if="tnode.startedAt" class="text-[10px] text-neutral-500 absolute right-0 top-1/2 -translate-y-1/2">
               {{ formatTimestamp(tnode.startedAt) }}
             </span>
           </div>
@@ -93,7 +93,7 @@ import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import type { TrackEntity } from '@abuddy/api';
 import { 
-  getPaletteItemClasses,
+  getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
@@ -115,7 +115,7 @@ const emit = defineEmits<{
   'tnode-click': [tNodeId: string];
 }>();
 
-const expanded = ref(true);
+const expanded = ref(false);
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
@@ -141,7 +141,7 @@ const nodeIcon = computed(() => {
 });
 
 // Styling classes from node-config
-const itemClasses = computed(() => getPaletteItemClasses(effectiveNodeType.value));
+const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.value));
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
@@ -230,7 +230,7 @@ const handleClick = () => {
 
 /* Enhanced visual feedback on click */
 .tnode-header:active {
-  transform: scale(0.995);
+  /* Removed transform to prevent grab-like effect */
 }
 
 /* Smooth transitions for all interactive elements */

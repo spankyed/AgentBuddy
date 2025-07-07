@@ -36,12 +36,16 @@
           />
           
           <!-- Node label with context -->
-          <div class="flex items-center flex-1 min-w-0">
-            <span class="text-xs font-medium tracking-tight text-left truncate transition-colors duration-200 text-white/90 group-hover:text-white">
+          <div class="relative flex items-center flex-1 min-w-0 pr-16 text-left">
+            <span class="block text-xs font-medium tracking-tight truncate transition-colors duration-200 text-white/90 group-hover:text-white">
               {{ node.label || getNodeTypeLabel() }}
             </span>
-            <!-- Add timestamp for event nodes -->
-            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 ml-2 flex-shrink-0">
+            <!-- Show key attribute for step nodes -->
+            <span v-if="node.tNodeType === 'step' && keyAttribute" class="text-[10px] ml-2 mt-1 text-neutral-500 truncate block">
+              {{ keyAttribute }}
+            </span>
+            <!-- Timestamp positioned absolutely -->
+            <span v-if="node.tNodeType === 'event' && node.startedAt" class="text-[10px] text-neutral-500 absolute right-0 top-1/2 -translate-y-1/2">
               {{ formatTimestamp(node.startedAt) }}
             </span>
             <!-- Todo: Display event data e.g. message -->
@@ -53,6 +57,20 @@
             class="w-3.5 h-3.5 transition-all duration-200"
             :class="iconComponentClasses"
           />
+          
+          <!-- Details indicator -->
+          <div 
+            v-if="hasDetails"
+            class="relative flex items-center"
+            @click.stop="toggleDetails"
+          >
+            <Info 
+              :class="[
+                'w-3 h-3 transition-all duration-200',
+                showDetails ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-400'
+              ]"
+            />
+          </div>
           
           <!-- Status indicator with better sizing -->
           <div 
@@ -77,6 +95,15 @@
         />
       </button>
       
+      <!-- Node Details Section -->
+      <div v-if="showDetails && hasDetails" class="tnode-details">
+        <component
+          :is="detailComponent"
+          :node="node"
+          :node-attributes="node.nodeAttributes || {}"
+        />
+      </div>
+      
       <!-- Children nested inside parent container -->
       <div v-if="isExpanded && hasChildren" class="tnode-children">
         <TnodeItem
@@ -93,10 +120,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ChevronRight } from 'lucide-vue-next';
+import { ChevronRight, Info } from 'lucide-vue-next';
 import type { TNodeEntity, NodeKind } from '@abuddy/api';
 import { 
-  getPaletteItemClasses,
+  getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
@@ -105,7 +132,11 @@ import {
   getNodeConfig,
   nodeConfigs
 } from '@/plugins/flows/config/node-config';
-
+import LLMNodeDetails from './details/LLMNodeDetails.vue';
+import ActionNodeDetails from './details/ActionNodeDetails.vue';
+import ListenNodeDetails from './details/ListenNodeDetails.vue';
+import FireNodeDetails from './details/FireNodeDetails.vue';
+import DefaultNodeDetails from './details/DefaultNodeDetails.vue';
 
 interface Props {
   nodeId: string;
@@ -124,6 +155,7 @@ const node = computed(() => props.normalizedTree.byId[props.nodeId]);
 const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] || []);
 const hasChildren = computed(() => childIds.value.length > 0);
 const isExpanded = ref(true);
+const showDetails = ref(true);
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
@@ -177,7 +209,7 @@ const getNodeTypeLabel = () => {
 };
 
 // Styling classes from node-config
-const itemClasses = computed(() => getPaletteItemClasses(effectiveNodeType.value));
+const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.value));
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
@@ -215,11 +247,58 @@ const formatTimestamp = (timestamp: number) => {
   });
 };
 
+// Check if node has details to show
+const hasDetails = computed(() => {
+  return node.value?.tNodeType === 'step' && node.value?.nodeAttributes;
+});
+
+// Get the appropriate detail component based on node type
+const detailComponent = computed(() => {
+  console.log('node.value.stepNodeType:  ', node.value.stepNodeType);
+  if (!node.value || node.value.tNodeType !== 'step') return null;
+  
+  switch (node.value.stepNodeType) {
+    case 'llm': return LLMNodeDetails;
+    case 'action': return ActionNodeDetails;
+    case 'listen': return ListenNodeDetails;
+    case 'fire': return FireNodeDetails;
+    default: return DefaultNodeDetails;
+  }
+});
+
+// Get key attribute to display for step nodes
+const keyAttribute = computed(() => {
+  if (!node.value || node.value.tNodeType !== 'step' || !node.value.nodeAttributes) return null;
+  
+  const attrs = node.value.nodeAttributes;
+  
+  switch (node.value.stepNodeType) {
+    case 'llm':
+      if (attrs.model) return `Model: ${attrs.model}`;
+      break;
+    case 'action':
+      if (attrs.actionId) return `Action: ${attrs.actionId}`;
+      break;
+    case 'listen':
+      if (attrs.eventType) return `Listen: ${attrs.eventType}`;
+      break;
+    case 'fire':
+      if (attrs.eventType) return `Fire: ${attrs.eventType}`;
+      break;
+  }
+  
+  return null;
+});
+
 const handleClick = () => {
   if (hasChildren.value) {
     isExpanded.value = !isExpanded.value;
   }
   // TODO: Add click handler to open TNode details
+};
+
+const toggleDetails = () => {
+  showDetails.value = !showDetails.value;
 };
 </script>
 
@@ -325,5 +404,24 @@ const handleClick = () => {
 .tnode-item[style*="marginLeft: 0px"] .tnode-container:hover {
   background: rgba(59, 130, 246, 0.05);
   border-color: rgba(59, 130, 246, 0.12);
+}
+
+/* Node details section */
+.tnode-details {
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.15s ease-out;
+}
+
+/* Info icon hover effect */
+.tnode-header .info-icon {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.tnode-header .info-icon:hover {
+  opacity: 1;
 }
 </style>

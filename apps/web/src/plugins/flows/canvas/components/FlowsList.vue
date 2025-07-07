@@ -1,96 +1,60 @@
 <template>
-  <div class="flex flex-col h-full p-0 overflow-hidden">
-    <!-- Root flow section -->
-    <div v-if="rootFlow" class="flex flex-shrink-0 px-3 pt-4">
-      <div class="flex items-center flex-shrink-0 mr-2 text-neutral-500">
-        <span class="text-[0.625rem] font-medium uppercase tracking-wider pl-2">Root</span>
-      </div>
-      <button
-        class="w-full group flex items-center gap-2 px-2 py-1.5 rounded-md text-neutral-100 cursor-pointer text-[0.8125rem] transition-all duration-200 hover:bg-white/[0.03]"
-        :class="{ 
-          'bg-purple-500/10 text-purple-300 hover:bg-purple-500/15': rootFlow.id === selectedFlowId,
-          'hover:bg-white/[0.03]': rootFlow.id !== selectedFlowId
-        }"
-        @click="$emit('flow-click', rootFlow)"
-      >
-        <div class="relative flex items-center justify-center flex-shrink-0 w-6 h-6 transition-all duration-200 rounded"
-             :class="rootFlow.id === selectedFlowId ? 'bg-purple-500/15 group-hover:bg-purple-500/20' : 'bg-purple-500/10 group-hover:bg-purple-500/15'">
-          <Brain 
-            class="w-3.5 h-3.5 transition-colors text-purple-400" 
+  <div class="flex flex-col h-full bg-neutral-900/50 backdrop-blur-sm">
+
+
+    <!-- Content -->
+    <div class="flex-1 overflow-hidden">
+      <div v-if="rootFlow || filteredFlows.length > 0" class="h-full overflow-y-auto">
+        <!-- Root flow section -->
+        <div v-if="rootFlow && (!isSearchMode || rootFlowMatchesSearch)" class="p-4 pb-2">
+          <div class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 mb-2">Root flow</div>
+          <FlowItem
+            :flow="rootFlow"
+            :is-selected="rootFlow.id === selectedFlowId"
+            is-root
+            @click="$emit('flow-click', rootFlow)"
           />
         </div>
-        <div class="flex-1 min-w-0 text-left">
-          <div class="font-medium truncate">{{ rootFlow.label || 'Main Flow' }}</div>
-        </div>
-      </button>
-    </div>
 
-    <!-- Sub flows section -->
-    <div v-if="flows.length > 0 || isSearchMode" class="flex flex-col flex-1 min-h-0 px-3 pb-3 overflow-hidden">
-      <!-- Section divider -->
-      <div v-if="rootFlow" class="flex items-center gap-2 mt-3 mb-3">
-        <span class="text-[0.625rem] font-medium uppercase tracking-wider text-neutral-500 px-2">Sub-Flows</span>
-        <div class="flex-1 h-[0.0625rem] bg-gradient-to-l from-transparent to-neutral-700/30"></div>
-      </div>
-      
-      <!-- Sub flows list -->
-      <div class="flex-1 px-1 -mx-1 overflow-x-hidden overflow-y-auto">
-        <button
-          v-for="flow in filteredFlows"
-          :key="flow.id"
-          class="w-full group flex items-center gap-2 mb-0.5 px-2 py-1.5 rounded-md text-neutral-100 cursor-pointer text-[0.8125rem] transition-all duration-200 hover:bg-white/[0.03]"
-          :class="{ 
-            'bg-blue-500/10 text-blue-300 hover:bg-blue-500/15': flow.id === selectedFlowId,
-            'hover:bg-white/[0.03]': flow.id !== selectedFlowId
-          }"
-          @click="$emit('flow-click', flow)"
-        >
-          <div class="relative flex items-center justify-center flex-shrink-0 w-6 h-6 transition-all duration-200 rounded"
-               :class="flow.id === selectedFlowId ? 'bg-blue-500/15 group-hover:bg-blue-500/20' : 'bg-blue-500/10 group-hover:bg-blue-500/15'">
-            <Workflow 
-              class="w-3.5 h-3.5 transition-colors text-blue-400"
+        <!-- Sub flows section -->
+        <div v-if="filteredFlows.length > 0" class="p-4 pt-2">
+          <div v-if="rootFlow && (!isSearchMode || rootFlowMatchesSearch)" class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 mb-2">
+            Available Flows
+          </div>
+          <div class="space-y-1">
+            <FlowItem
+              v-for="flow in filteredFlows"
+              :key="flow.id"
+              :flow="flow"
+              :is-selected="flow.id === selectedFlowId"
+              @click="$emit('flow-click', flow)"
             />
           </div>
-          <div class="flex-1 min-w-0 text-left">
-            <div class="font-medium truncate">{{ flow.label || `Flow ${flow.id}` }}</div>
-            <div v-if="flow.description" class="text-[0.6875rem] text-neutral-400 truncate mt-0.5" :class="{ 'text-blue-300/60': flow.id === selectedFlowId }">
-              {{ flow.description }}
-            </div>
-          </div>
-        </button>
-        
-        <!-- No search results message -->
-        <div v-if="isSearchMode && filteredFlows.length === 0 && searchQuery.trim()" class="flex flex-col items-center justify-center h-32 gap-2 py-8 text-center">
-          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-neutral-800/50">
-            <Search class="w-5 h-5 text-neutral-500" />
-          </div>
-          <p class="m-0 text-[0.75rem] text-neutral-400">No flows match "{{ searchQuery }}"</p>
         </div>
       </div>
+
+      <!-- No search results -->
+      <div v-else-if="isSearchMode && searchQuery.trim()" class="flex flex-col items-center justify-center h-full px-6 text-center">
+        <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
+          <Search class="w-6 h-6 text-neutral-500" />
+        </div>
+        <p class="text-sm text-neutral-400">No flows match "{{ searchQuery }}"</p>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else class="flex flex-col items-center justify-center h-full px-6 text-center">
+        <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
+          <Workflow class="w-6 h-6 text-neutral-500" />
+        </div>
+        <p class="text-sm font-medium text-neutral-300">No flows yet</p>
+        <p class="mt-1 text-xs text-neutral-500">Create your first flow to get started</p>
+      </div>
     </div>
 
-    <!-- Empty state -->
-    <div v-if="!rootFlow && flows.length === 0" class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
-      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-purple-500/10">
-        <Workflow class="w-6 h-6 text-purple-400" />
-      </div>
-      <div>
-        <p class="m-0 text-[0.875rem] font-medium text-neutral-100">No flows yet</p>
-        <p class="m-0 mt-1 text-[0.75rem] text-neutral-400">Create your first flow to get started</p>
-      </div>
-    </div>
-
-    <!-- Create new flow section -->
-    <div class="flex-shrink-0 p-3">
+    <!-- Footer with Create button -->
+    <div class="flex-shrink-0 p-4 border-t border-neutral-800/50">
       <!-- Default state: Create and Search buttons -->
       <div v-if="!isSearchMode" class="flex gap-2">
-        <Button 
-          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center"
-          @click="$emit('create-flow')"
-        >
-          <Plus class="w-4 h-4" />
-          <span>New Flow</span>
-        </Button>
         <Button 
           variant="transparent"
           class="!p-2 !h-auto text-neutral-300 hover:text-white hover:bg-white/[0.03]" 
@@ -99,28 +63,35 @@
         >
           <Search class="w-4 h-4" />
         </Button>
+        <Button 
+          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center"
+          @click="$emit('create-flow')"
+        >
+          <Plus class="w-4 h-4" />
+          <span>New Flow</span>
+        </Button>
+
       </div>
       
       <!-- Search mode -->
       <div v-else class="flex items-center gap-2">
-        <div class="relative flex-1">
-          <Search class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-400 w-3.5 h-3.5" />
-          <input
-            ref="searchInput"
-            v-model="searchQuery"
-            type="text"
-            class="w-full py-2 pr-3 text-[0.8125rem] transition-all duration-200 border border-neutral-700 rounded-md outline-none pl-9 bg-neutral-800 text-neutral-100 focus:border-primary-400/50 focus:bg-neutral-900"
-            placeholder="Search flows..."
-            @keyup.escape="isSearchMode = false; searchQuery = ''"
-          />
-        </div>
-        <Button 
-          variant="transparent" 
-          class="!p-2 !h-auto text-neutral-300 hover:text-white hover:bg-white/[0.03]"
-          @click="isSearchMode = false; searchQuery = ''"
+        <div class="relative">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-3.5 h-3.5" />
+        <input
+          ref="searchInput"
+          v-model="searchQuery"
+          type="text"
+          class="w-full py-2 pr-8 text-xs transition-all duration-200 border rounded-md outline-none pl-9 bg-neutral-800/50 border-neutral-700/50 text-neutral-100 placeholder-neutral-500 focus:border-neutral-600 focus:bg-neutral-800/70"
+          placeholder="Search flows..."
+          @keyup.escape="closeSearch"
+        />
+        <button 
+          class="absolute p-1 transition-colors -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700/50 text-neutral-500 hover:text-neutral-300"
+          @click="closeSearch"
         >
-          <X class="w-4 h-4" />
-        </Button>
+          <X class="w-3 h-3" />
+        </button>
+      </div>
       </div>
     </div>
   </div>
@@ -130,8 +101,9 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import { Brain, Workflow, Search, Plus, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@abuddy/api'
-import Button from '@/core/design/button.vue'
+import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
+import Button from '@/core/design/button.vue'
 
 interface Props {
   flows: Partial<FlowEntity>[]
@@ -169,6 +141,12 @@ const handleSearchClick = () => {
   })
 }
 
+// Close search
+const closeSearch = () => {
+  isSearchMode.value = false
+  searchQuery.value = ''
+}
+
 // Watch for search mode changes to ensure focus
 watch(isSearchMode, (newValue) => {
   if (newValue) {
@@ -176,6 +154,19 @@ watch(isSearchMode, (newValue) => {
       searchInput.value?.focus()
     })
   }
+})
+
+// Check if root flow matches search
+const rootFlowMatchesSearch = computed(() => {
+  if (!searchQuery.value.trim() || !props.rootFlow) {
+    return true
+  }
+  
+  const label = props.rootFlow.label || 'Main Flow'
+  const description = props.rootFlow.description || ''
+  const searchText = `${label} ${description}`.toLowerCase()
+  
+  return searchText.includes(searchQuery.value.toLowerCase())
 })
 
 // Filtered flows based on search query
