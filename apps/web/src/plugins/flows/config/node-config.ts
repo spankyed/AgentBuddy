@@ -431,6 +431,16 @@ export const getPaletteItemClasses = (type: string): string => {
 }
 
 /**
+ * Returns node styling classes for inspection panel (without grab cursor)
+ */
+export const getInspectionItemClasses = (type: string): string => {
+  const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200'
+  const colorKey = getNodeColorKey(type)
+  
+  return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
+}
+
+/**
  * Get icon dot classes for palette items
  */
 export const getPaletteIconClasses = (type: string): string => {

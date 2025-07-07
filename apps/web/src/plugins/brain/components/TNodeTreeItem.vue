@@ -93,7 +93,7 @@ import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import type { TrackEntity } from '@abuddy/api';
 import { 
-  getPaletteItemClasses,
+  getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
@@ -141,7 +141,7 @@ const nodeIcon = computed(() => {
 });
 
 // Styling classes from node-config
-const itemClasses = computed(() => getPaletteItemClasses(effectiveNodeType.value));
+const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.value));
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
@@ -230,7 +230,7 @@ const handleClick = () => {
 
 /* Enhanced visual feedback on click */
 .tnode-header:active {
-  transform: scale(0.995);
+  /* Removed transform to prevent grab-like effect */
 }
 
 /* Smooth transitions for all interactive elements */

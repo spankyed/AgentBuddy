@@ -123,7 +123,7 @@ import { computed, ref } from 'vue';
 import { ChevronRight, Info } from 'lucide-vue-next';
 import type { TNodeEntity, NodeKind } from '@abuddy/api';
 import { 
-  getPaletteItemClasses,
+  getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
@@ -209,7 +209,7 @@ const getNodeTypeLabel = () => {
 };
 
 // Styling classes from node-config
-const itemClasses = computed(() => getPaletteItemClasses(effectiveNodeType.value));
+const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.value));
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
