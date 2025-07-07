@@ -5,7 +5,7 @@ import type { FlowEntity, NodeEntity, ListenNode } from '@/systems/flows/types';
 import { descendants } from '@/shared/ears/helpers/graph';
 
 function buildEventTracks(tNodeId: EARS.EntityId): TrackEntity[] {
-  const nodeCols = ["id", "tNodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType"] as const;
+  const nodeCols = ["id", "tNodeType", "label", "status", "startedAt", "createdAt", "eventType", "stepNodeId", "stepNodeType", "nodeAttributes"] as const;
   
   // Get the flow TNode
   const flowTNode = qx(tNodeId)
