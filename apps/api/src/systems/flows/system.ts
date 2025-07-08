@@ -97,7 +97,7 @@ export const flowsSystem = setup({
       logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
       
       try {
-        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData);
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_CREATED',
@@ -114,7 +114,7 @@ export const flowsSystem = setup({
       logger.info('Updating node:', { flowId: ev.flowId, nodeId: ev.nodeId, nodeData: ev.nodeData });
       
       try {
-        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData);
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_UPDATED',

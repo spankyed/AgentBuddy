@@ -1,6 +1,6 @@
 import { EARS } from '@/shared/ears/types';
 import { qx } from '@/shared/ears/helpers/query';
-import { getRootFlow } from './read';
+import { getRootFlow, getFlowNodes, getFlowEdges } from './read';
 import { FlowsStartupData, EdgeEntity, NodeEntity, FlowEntity } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
 import { edgeKinds } from '.';
@@ -19,38 +19,9 @@ export default function flowsStartupData(): FlowsStartupData {
     .withRole(EARS.RoleKind.Custom("root_flow"))
     .pickOne(flowCols) as Partial<FlowEntity> | undefined;
     
-  const nodeIdsList = qx(rootFlow?.id ?? 'Flow-1')
-    .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
-    .map(({ id }) => id);
-  
-  const nodes = qx(nodeIdsList).pickAll() as Partial<NodeEntity>[];
-
-  const nodeIds = nodes.map(n => n.id!).filter(Boolean);
-
-  const seen = new Set<string>();
-  const edges: EdgeEntity[] = [];
-
-  for (const source of nodeIds) {
-    qx(source)
-      .links(edgeKinds, [EARS.Entity.Node])
-      .forEach(({ relation, id: target }) => {
-        const relId = edgeStore.relIds({
-          sourceEntity: source,
-          relationType: relation,
-          targetEntity: target,
-        })[0];
-
-        if (seen.has(relId)) return;
-        seen.add(relId);
-        edges.push({
-          id: relId,
-          kind: relation,
-          source,
-          target,
-          info: {},
-        });
-      });
-  }
+  const flowId = rootFlow?.id ?? 'Flow-1';
+  const nodes = getFlowNodes(flowId);
+  const edges = getFlowEdges(flowId);
 
   const selectedFlow = qx(EARS.Entity.Flow)
     .withRole(EARS.RoleKind.Custom("root_flow"))

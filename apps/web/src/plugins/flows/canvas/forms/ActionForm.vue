@@ -177,17 +177,17 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { ActionNode, ActionEntity } from '@abuddy/api'
+import type { WithRelations, ActionNode, ActionEntity } from '@abuddy/api'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
 
 const props = defineProps<{
-  node: ActionNode
+  node: WithRelations<ActionNode>
 }>()
 
 const emit = defineEmits<{
-  'update-node': [data: Partial<ActionNode>]
+  'update-node': [data: Partial<WithRelations<ActionNode>>]
 }>()
 
 // Get flows actor and data from state
@@ -210,7 +210,7 @@ onMounted(() => {
   flowsActor.send({ type: 'FETCH_ACTION_FORM_DATA' });
   
   if (props.node.actionId) {
-    const action = actions.value.find((a: ActionEntity) => a.id === `Action-${props.node.actionId}`)
+    const action = actions.value.find((a: ActionEntity) => a.id === props.node.actionId)
     if (action) {
       selectedAction.value = action
       fieldMappings.value = props.node.fieldMappings || []
@@ -283,10 +283,10 @@ const handleActionChange = (action: ActionEntity | null) => {
   fieldMappings.value = newMappings
   directParams.value = newParams
   
-  // Update node
+  // Update node with actionId for backend to create/update relationship
   emit('update-node', {
     ...props.node,
-    actionId: action?.id.replace('Action-', '') || '',
+    actionId: action?.id || '',
     fieldMappings: newMappings.length > 0 ? newMappings : undefined,
     params: Object.keys(newParams).length > 0 ? newParams : undefined
   })

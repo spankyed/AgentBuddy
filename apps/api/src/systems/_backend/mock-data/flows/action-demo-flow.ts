@@ -39,7 +39,6 @@ export const actionDemoFlow: Rows = {
       nodeType: "action",
       label: "Save User Data",
       color: "#4CAF50", // green
-      actionId: "save-entity",
       params: {
         entityType: "User",
         data: {
@@ -58,7 +57,6 @@ export const actionDemoFlow: Rows = {
       nodeType: "action",
       label: "Send Welcome Email",
       color: "#2196F3", // blue
-      actionId: "send-email",
       fieldMappings: [
         {
           target: "to",
@@ -86,7 +84,6 @@ export const actionDemoFlow: Rows = {
       nodeType: "action",
       label: "Call External API",
       color: "#FF9800", // orange
-      actionId: "http-request",
       params: {
         method: "POST",
         url: "https://api.example.com/notify",
@@ -110,7 +107,6 @@ export const actionDemoFlow: Rows = {
       nodeType: "action",
       label: "Log Results",
       color: "#9C27B0", // purple
-      actionId: "log-message",
       params: {
         level: "info",
         message: "Demo flow completed successfully"
@@ -161,5 +157,11 @@ export const actionDemoFlow: Rows = {
     { source: "Node-ad3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-ad4" },
     { source: "Node-ad4", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-ad5" },
     { source: "Node-ad5", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-ad6" },
+
+    /* Node to Action relationships */
+    { source: "Node-ad2", kind: EARS.RelKind.INSTANCE_OF, target: "Action-save-entity" },
+    { source: "Node-ad3", kind: EARS.RelKind.INSTANCE_OF, target: "Action-send-email" },
+    { source: "Node-ad4", kind: EARS.RelKind.INSTANCE_OF, target: "Action-http-request" },
+    { source: "Node-ad5", kind: EARS.RelKind.INSTANCE_OF, target: "Action-log-message" },
   ],
 };

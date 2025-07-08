@@ -1,20 +1,24 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
-import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../types';
+import type { EdgeEntity, FlowExtendedData, NodeEntity, NodeEntityEnriched } from '../types';
 import { edgeKinds } from './index';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
+import { enrichNodeWithRelations } from './node-handlers';
 
 const ROOT_FLOW = EARS.RoleKind.Custom("root_flow");
 
 export const getRootFlow = (): EARS.EntityId | undefined =>
   qx().withRole(ROOT_FLOW).first() ?? undefined;
 
-export const getFlowNodes = (flowId: EARS.EntityId) => {
+export const getFlowNodes = (flowId: EARS.EntityId): NodeEntityEnriched[] => {
   const nodeIds = qx(flowId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }) => id);
   
-  return qx(nodeIds).pickAll();
+  const nodes = qx(nodeIds).pickAll() as unknown as NodeEntity[];
+  
+  // Enrich each node with its relational data
+  return nodes.map(node => enrichNodeWithRelations(node));
 };
 
 export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
@@ -69,7 +73,7 @@ export function getExtendedData(
         : include === k;
 
   return {
-    nodes: want("nodes") ? getFlowNodes(flowId) as Partial<NodeEntity>[] : [],
+    nodes: want("nodes") ? getFlowNodes(flowId) : [],
     edges: want("edges") ? getFlowEdges(flowId) : [],
   };
 }

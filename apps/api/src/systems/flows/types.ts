@@ -49,8 +49,6 @@ export interface UpdateNode extends NodeBase {
 
 export interface ActionNode extends NodeBase {
   nodeType: 'action';
-  actionId?: string;                    // ID of the action to execute
-  actionName?: string;                  // Legacy field, use actionId
   params?: Record<string, any>;         // Direct parameters
   fieldMappings?: Array<{               // Or map from context
     target: string;
@@ -144,6 +142,37 @@ export type FlowTypeCodes = 'variable' | 'llm' | 'decision' | 'action' | 'subflo
 export type FlowTypeShortCode = `${FlowTypeCodes}-${number}`;
 export type FlowStatus = 'draft' | 'queued' | 'active' | 'inactive';
 
+/*─────────────────────────────────────────────────────────────────
+ * Node enrichment for frontend
+ * These fields are resolved from relationships and added when
+ * sending data to the frontend
+ *─────────────────────────────────────────────────────────────────*/
+type ActionNodeRelations = {
+  actionId?: string;      // From INSTANCE_OF relation to Action
+  actionName?: string;    // From linked Action entity
+};
+
+type LLMNodeRelations = {
+  promptTemplateId?: string;    // From INSTANCE_OF relation to Prompt
+  promptTemplateName?: string;  // From linked Prompt entity
+};
+
+// Generic enrichment type that adds relational data based on node type
+export type WithRelations<T extends NodeEntity> = T & (
+  T extends ActionNode ? ActionNodeRelations :
+  T extends LLMNode ? LLMNodeRelations :
+  {}
+);
+
+// Type alias for clarity when using enriched nodes
+export type NodeEntityEnriched = WithRelations<NodeEntity>;
+
+// Input type for create/update operations that may include relational data
+export type NodeCreateInput = Partial<NodeEntity> & {
+  actionId?: string;  // Will be converted to INSTANCE_OF relationship
+  promptTemplateId?: string;  // Will be converted to relationship
+};
+
 export type EdgeEntity = {
   id: EARS.EntityId;
   kind: EARS.RelKind;
@@ -154,7 +183,7 @@ export type EdgeEntity = {
 export interface FlowsStartupData {
   selectedFlowId: EARS.EntityId;
   graph: {
-    nodes: Partial<NodeEntity>[];
+    nodes: NodeEntityEnriched[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];
@@ -183,6 +212,6 @@ export interface ModelConfig {
 // }
 
 export interface FlowExtendedData {
-  nodes: Partial<NodeEntity>[];
+  nodes: NodeEntityEnriched[];
   edges: EdgeEntity[];
 }
