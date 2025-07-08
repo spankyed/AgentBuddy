@@ -1,5 +1,4 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import { flowRows } from '@/systems/_backend/mock-data/flows';
 
 
 export interface FlowEntity extends BaseEntity {
@@ -137,10 +136,10 @@ export const isNodeKind = <K extends NodeKind>(k: K) =>
   (n: NodeEntity): n is Extract<NodeEntity, { nodeType: K }> =>
     n.nodeType === k;
 
-// --------------------------------------------------------------------------------
-export type FlowTypeCodes = 'variable' | 'llm' | 'decision' | 'action' | 'subflow';
-export type FlowTypeShortCode = `${FlowTypeCodes}-${number}`;
-export type FlowStatus = 'draft' | 'queued' | 'active' | 'inactive';
+// Type utility to ensure exhaustive node type handling
+export function assertNever(x: never): never {
+  throw new Error('Unexpected node type: ' + x);
+}
 
 /*─────────────────────────────────────────────────────────────────
  * Node enrichment for frontend
@@ -204,12 +203,6 @@ export interface ModelConfig {
   capabilities?: string[];
 }
 
-// export type FlowsStartupData = {
-//     flows: FlowEntity[];
-//     steps: StepEntity[];
-//     stepRelations: StepRelation[];
-//     events: FlowEventEntity[];
-// }
 
 export interface FlowExtendedData {
   nodes: NodeEntityEnriched[];

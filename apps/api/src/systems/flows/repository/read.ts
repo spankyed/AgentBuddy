@@ -1,14 +1,12 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { EdgeEntity, FlowExtendedData, NodeEntity, NodeEntityEnriched } from '../types';
-import { edgeKinds } from './index';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
 import { enrichNodeWithRelations } from './node-handlers';
-
-const ROOT_FLOW = EARS.RoleKind.Custom("root_flow");
+import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';
 
 export const getRootFlow = (): EARS.EntityId | undefined =>
-  qx().withRole(ROOT_FLOW).first() ?? undefined;
+  qx().withRole(FLOW_ROLES.ROOT_FLOW).first() ?? undefined;
 
 export const getFlowNodes = (flowId: EARS.EntityId): NodeEntityEnriched[] => {
   const nodeIds = qx(flowId)
@@ -31,7 +29,7 @@ export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
 
   for (const source of nodeIds) {
     qx(source)
-      .links(edgeKinds, [EARS.Entity.Node])
+      .links(FLOW_EDGE_KINDS, [EARS.Entity.Node])
       // Only include edges where target is also in this flow
       .filter(({ id: targetId }) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }) => {
@@ -61,6 +59,7 @@ export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
  * Extended data convenience
  *─────────────────────────────────────────────────────────────*/
 type Include = keyof FlowExtendedData;
+
 export function getExtendedData(
   flowId: EARS.EntityId,
   include?: Include | Include[]

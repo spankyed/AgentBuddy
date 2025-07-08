@@ -1,19 +1,21 @@
 import { tx } from "@/shared/ears/helpers/transaction";
-import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
 import type { FlowEntity, NodeEntity, NodeCreateInput } from "../types";
 import { extractNodeRelations, createNodeRelations } from "./node-handlers";
+import { getTimestamp, generateShortCode, generateLabelWithCount } from "@/shared/ears/helpers/entity-utils";
+import { NODE_DEFAULTS, FLOW_DEFAULTS, FLOW_ROLES, FLOW_ENTRY_NODE } from "./constants";
 
 export function createFlow(flow?: Partial<FlowEntity>): FlowEntity {
-  const ts = Date.now();
-  const count = qx(EARS.Entity.Flow).count() + 1;
+  const ts = getTimestamp();
+  const shortCode = generateShortCode(EARS.Entity.Flow, 'F');
+  const label = flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow);
 
   const newFlow: Omit<FlowEntity, 'id'> = {
     entityType: EARS.Entity.Flow,
-    shortCode: `F-${count}`,
-    label: `New Flow ${count}`,
-    description: '',
-    flowType: 'workflow',
+    shortCode,
+    label,
+    description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
+    flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -31,15 +33,15 @@ export function createFlowWithEntryNode(flow?: Partial<FlowEntity>): { flow: Flo
   
   // Create the entry node
   const entryNode = createNode(newFlow.id, {
-    nodeType: 'listen',
-    label: 'Flow Entry',
-    color: '#1E88E5', // blue
-    mode: 'entry',
-    eventType: 'flow.entry',
+    nodeType: FLOW_ENTRY_NODE.TYPE,
+    label: FLOW_ENTRY_NODE.LABEL,
+    color: FLOW_ENTRY_NODE.COLOR,
+    mode: FLOW_ENTRY_NODE.MODE,
+    eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
   } as Partial<NodeEntity>);
   
   // Establish entry node role
-  tx(entryNode.id).grant('entry_event').id();
+  tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT).id();
   
   // Create EVENT_TRACE relationship from flow to entry node
   tx(newFlow.id).link(EARS.RelKind.EVENT_TRACE, entryNode.id);
@@ -48,10 +50,10 @@ export function createFlowWithEntryNode(flow?: Partial<FlowEntity>): { flow: Flo
 }
 
 export function createNode(flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity {
-  const ts = Date.now();
+  const ts = getTimestamp();
   
   // Determine node type (default to 'action' if not specified)
-  const nodeType = nodeData.nodeType || 'action';
+  const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
   
   // Extract relations and attributes based on node type
   const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
@@ -60,8 +62,8 @@ export function createNode(flowId: EARS.EntityId, nodeData: NodeCreateInput): No
   const newNode: Omit<NodeEntity, 'id'> = {
     entityType: EARS.Entity.Node,
     nodeType,
-    label: attributes.label || 'New Node',
-    description: attributes.description || '',
+    label: attributes.label || NODE_DEFAULTS.LABEL,
+    description: attributes.description || NODE_DEFAULTS.DESCRIPTION,
     createdAt: ts,
     updatedAt: ts,
     ...attributes,

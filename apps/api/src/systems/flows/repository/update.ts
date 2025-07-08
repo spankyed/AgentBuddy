@@ -3,9 +3,11 @@ import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
 import type { NodeEntity, NodeCreateInput, NodeKind } from "../types";
 import { extractNodeRelations, updateNodeRelations } from "./node-handlers";
+import { getTimestamp, filterSystemFields } from "@/shared/ears/helpers/entity-utils";
+import { NodeNotFoundError } from "./errors";
 
 export function updateFlowLabel(flowId: EARS.EntityId, label: string) {
-  const ts = Date.now();
+  const ts = getTimestamp();
   
   tx(flowId)
     .merge("label", label)
@@ -15,12 +17,12 @@ export function updateFlowLabel(flowId: EARS.EntityId, label: string) {
 }
 
 export function updateNode(nodeId: EARS.EntityId, updates: NodeCreateInput) {
-  const ts = Date.now();
+  const ts = getTimestamp();
   
   // Get the current node to determine its type
   const currentNode = qx(nodeId).pickOne(['nodeType']) as { nodeType: NodeKind } | undefined;
   if (!currentNode) {
-    throw new Error(`Node ${nodeId} not found`);
+    throw new NodeNotFoundError(nodeId);
   }
   
   // Extract relations and attributes based on node type
@@ -29,18 +31,19 @@ export function updateNode(nodeId: EARS.EntityId, updates: NodeCreateInput) {
   // Update node-specific relationships
   updateNodeRelations(currentNode.nodeType, nodeId, relations);
   
+  // Filter out system fields and build updates
+  const fieldsToUpdate = filterSystemFields(attributes);
+  
   // Build the transaction for node attributes
   const transaction = tx(nodeId);
   
-  // Update each field that was provided
-  Object.entries(attributes).forEach(([key, value]) => {
-    if (value !== undefined && key !== 'id' && key !== 'entityType') {
-      transaction.merge(key as any, value);
-    }
+  // Update each field
+  Object.entries(fieldsToUpdate).forEach(([key, value]) => {
+    transaction.merge(key as any, value);
   });
   
   // Always update the timestamp
   transaction.merge("updatedAt", ts);
   
   return { success: true };
-} 
+}

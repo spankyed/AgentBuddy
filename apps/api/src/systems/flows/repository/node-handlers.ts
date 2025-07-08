@@ -1,13 +1,12 @@
-import { tx } from "@/shared/ears/helpers/transaction";
-import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
 import type { NodeKind, NodeEntity, NodeCreateInput, NodeEntityEnriched } from "../types";
+import { createInstanceOfHandler } from "./node-handler-factory";
 
 /*─────────────────────────────────────────────────────────────────
  * Node Handler Interface
  * Each handler manages the specific logic for a node type
  *─────────────────────────────────────────────────────────────────*/
-interface NodeHandler<T extends NodeEntity = NodeEntity> {
+export interface NodeHandler<T extends NodeEntity = NodeEntity> {
   // Extract relational fields from input
   extractRelations(input: NodeCreateInput): {
     relations: Record<string, any>;
@@ -23,106 +22,6 @@ interface NodeHandler<T extends NodeEntity = NodeEntity> {
   // Enrich node with relational data for frontend
   enrichNode(node: T): T & Record<string, any>;
 }
-
-/*─────────────────────────────────────────────────────────────────
- * Action Node Handler
- *─────────────────────────────────────────────────────────────────*/
-const actionNodeHandler: NodeHandler = {
-  extractRelations(input) {
-    const { actionId, ...attributes } = input;
-    return {
-      relations: { actionId },
-      attributes
-    };
-  },
-  
-  createRelations(nodeId, relations) {
-    if (relations.actionId) {
-      tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relations.actionId as EARS.EntityId);
-    }
-  },
-  
-  updateRelations(nodeId, relations) {
-    if ('actionId' in relations) {
-      // Remove existing INSTANCE_OF relationships
-      tx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
-      
-      // Add new relationship if provided
-      if (relations.actionId) {
-        tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relations.actionId as EARS.EntityId);
-      }
-    }
-  },
-  
-  enrichNode(node) {
-    // Get the linked action via INSTANCE_OF relationship
-    const actionId = qx(node.id)
-      .links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action)
-      .map(({ id }) => id)[0];
-    
-    if (actionId) {
-      const action = qx(actionId).pickOne(['id', 'label', 'description']);
-      if (action) {
-        return {
-          ...node,
-          actionId: action.id,
-          actionName: action.label
-        };
-      }
-    }
-    return node;
-  }
-};
-
-/*─────────────────────────────────────────────────────────────────
- * LLM Node Handler
- *─────────────────────────────────────────────────────────────────*/
-const llmNodeHandler: NodeHandler = {
-  extractRelations(input) {
-    const { promptTemplateId, ...attributes } = input;
-    return {
-      relations: { promptTemplateId },
-      attributes
-    };
-  },
-  
-  createRelations(nodeId, relations) {
-    if (relations.promptTemplateId) {
-      tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relations.promptTemplateId as EARS.EntityId);
-    }
-  },
-  
-  updateRelations(nodeId, relations) {
-    if ('promptTemplateId' in relations) {
-      // Remove existing INSTANCE_OF relationships
-      tx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
-      
-      // Add new relationship if provided
-      if (relations.promptTemplateId) {
-        tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relations.promptTemplateId as EARS.EntityId);
-      }
-    }
-  },
-  
-  enrichNode(node) {
-    // Get the linked prompt template via INSTANCE_OF relationship
-    const promptId = qx(node.id)
-      .links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Prompt)
-      .map(({ id }) => id)[0];
-    
-    if (promptId) {
-      const prompt = qx(promptId).pickOne(['id', 'name']);
-      if (prompt) {
-        return {
-          ...node,
-          promptTemplateId: prompt.id,
-          promptTemplateName: prompt.name
-        };
-      }
-    }
-    return node;
-  }
-};
 
 /*─────────────────────────────────────────────────────────────────
  * Default handler for nodes without special handling
@@ -147,6 +46,27 @@ const defaultNodeHandler: NodeHandler = {
     return node;
   }
 };
+
+/*─────────────────────────────────────────────────────────────────
+ * Create handlers using factory
+ *─────────────────────────────────────────────────────────────────*/
+const actionNodeHandler = createInstanceOfHandler({
+  relationField: 'actionId',
+  targetEntity: EARS.Entity.Action,
+  enrichFields: ['id', 'label', 'description'],
+  enrichMapping: {
+    label: 'actionName'
+  }
+});
+
+const llmNodeHandler = createInstanceOfHandler({
+  relationField: 'promptTemplateId',
+  targetEntity: EARS.Entity.Prompt,
+  enrichFields: ['id', 'name'],
+  enrichMapping: {
+    name: 'promptTemplateName'
+  }
+});
 
 /*─────────────────────────────────────────────────────────────────
  * Handler Registry
