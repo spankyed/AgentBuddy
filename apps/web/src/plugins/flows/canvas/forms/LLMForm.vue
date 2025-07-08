@@ -31,17 +31,21 @@
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
-          <ComboboxContent
-            class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
-            :style="{ top: '100%' }"
-          >
-            <ComboboxViewport class="overflow-y-auto max-h-60">
-              <div
-                v-if="filteredModels.length === 0 && modelQuery !== ''"
-                class="relative px-4 py-2 cursor-default select-none text-neutral-400"
-              >
-                No models found.
-              </div>
+          <ComboboxPortal>
+            <ComboboxContent
+              position="popper"
+              side="bottom"
+              align="start"
+              :side-offset="4"
+              class="z-10 max-w-[400px] overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
+            >
+              <ComboboxViewport class="overflow-y-auto max-h-60">
+                <div
+                  v-if="filteredModels.length === 0 && modelQuery !== ''"
+                  class="relative px-4 py-2 cursor-default select-none text-neutral-400"
+                >
+                  No models found.
+                </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
                 <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
                   {{ provider }}
@@ -72,8 +76,9 @@
                   </ComboboxItem>
                 </ComboboxGroup>
               </div>
-            </ComboboxViewport>
-          </ComboboxContent>
+              </ComboboxViewport>
+            </ComboboxContent>
+          </ComboboxPortal>
         </ComboboxRoot>
         <div v-if="selectedModel" class="flex items-center gap-3 mt-2 text-xs text-neutral-600">
           <span v-if="selectedModel.contextWindow" class="flex items-center gap-1">
@@ -117,17 +122,21 @@
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
-          <ComboboxContent
-            class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
-            :style="{ top: '100%' }"
-          >
-            <ComboboxViewport class="overflow-y-auto max-h-60">
-              <div
-                v-if="filteredPrompts.length === 0 && promptQuery !== ''"
-                class="relative px-4 py-2 cursor-default select-none text-neutral-400"
-              >
-                No prompts found.
-              </div>
+          <ComboboxPortal>
+            <ComboboxContent
+              position="popper"
+              side="bottom"
+              align="start"
+              :side-offset="4"
+              class="z-10 max-w-[400px] overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
+            >
+              <ComboboxViewport class="overflow-y-auto max-h-60">
+                <div
+                  v-if="filteredPrompts.length === 0 && promptQuery !== ''"
+                  class="relative px-4 py-2 cursor-default select-none text-neutral-400"
+                >
+                  No prompts found.
+                </div>
               <ComboboxGroup>
                 <ComboboxItem
                   v-for="prompt in filteredPrompts"
@@ -143,8 +152,9 @@
                   <span class="ml-6">{{ prompt.label }}</span>
                 </ComboboxItem>
               </ComboboxGroup>
-            </ComboboxViewport>
-          </ComboboxContent>
+              </ComboboxViewport>
+            </ComboboxContent>
+          </ComboboxPortal>
         </ComboboxRoot>
         <p v-if="selectedPrompt?.description" class="mt-2 text-xs text-neutral-600">
           {{ selectedPrompt.description }}
@@ -238,6 +248,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxItemIndicator,
+  ComboboxPortal,
   ComboboxRoot,
   ComboboxTrigger,
   ComboboxViewport,

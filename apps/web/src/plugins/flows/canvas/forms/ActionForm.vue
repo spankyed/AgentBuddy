@@ -31,17 +31,21 @@
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
-          <ComboboxContent
-            class="absolute z-10 w-full mt-2 overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
-            :style="{ top: '100%' }"
-          >
-            <ComboboxViewport class="overflow-y-auto max-h-60">
-              <div
-                v-if="filteredActions.length === 0 && actionQuery !== ''"
-                class="relative px-4 py-2 cursor-default select-none text-neutral-400"
-              >
-                No actions found.
-              </div>
+          <ComboboxPortal>
+            <ComboboxContent
+              position="popper"
+              side="bottom"
+              align="start"
+              :side-offset="4"
+              class="z-10 max-w-[400px] overflow-hidden border rounded-md shadow-xl bg-neutral-800 border-neutral-700"
+            >
+              <ComboboxViewport class="overflow-y-auto max-h-60">
+                <div
+                  v-if="filteredActions.length === 0 && actionQuery !== ''"
+                  class="relative px-4 py-2 cursor-default select-none text-neutral-400"
+                >
+                  No actions found.
+                </div>
               <div v-for="(group, category) in groupedActions" :key="category">
                 <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
                   {{ category || 'Uncategorized' }}
@@ -69,8 +73,9 @@
                   </ComboboxItem>
                 </ComboboxGroup>
               </div>
-            </ComboboxViewport>
-          </ComboboxContent>
+              </ComboboxViewport>
+            </ComboboxContent>
+          </ComboboxPortal>
         </ComboboxRoot>
         <p v-if="selectedAction?.description" class="mt-2 text-xs text-neutral-600">
           {{ selectedAction.description }}
@@ -165,6 +170,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxItemIndicator,
+  ComboboxPortal,
   ComboboxRoot,
   ComboboxTrigger,
   ComboboxViewport,

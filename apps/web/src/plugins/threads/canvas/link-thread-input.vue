@@ -32,10 +32,15 @@
               />
             </ComboboxAnchor>
   
-            <ComboboxContent
-              v-if="filteredOptions.length"
-              class="absolute z-10 w-full mt-1 overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
-            >
+            <ComboboxPortal>
+              <ComboboxContent
+                v-if="filteredOptions.length"
+                position="popper"
+                side="bottom"
+                align="start"
+                :side-offset="4"
+                class="z-10 min-w-[300px] max-w-[600px] overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
+              >
               <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
                 <ComboboxGroup>
                   <ComboboxItem
@@ -55,7 +60,8 @@
                   </ComboboxItem>
                 </ComboboxGroup>
               </ComboboxViewport>
-            </ComboboxContent>
+              </ComboboxContent>
+            </ComboboxPortal>
           </ComboboxRoot>
 
           <button
@@ -126,6 +132,7 @@ import {
   ComboboxItem,
   ComboboxItemIndicator,
   ComboboxLabel,
+  ComboboxPortal,
   ComboboxRoot,
   ComboboxTrigger,
   ComboboxViewport,

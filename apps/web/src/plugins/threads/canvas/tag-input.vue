@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
+import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
 import type { ThreadTagItem } from '@abuddy/api';
@@ -88,7 +88,15 @@ const filteredOptions = computed(() =>
       </ComboboxTrigger>
     </ComboboxAnchor>
 
-    <ComboboxContent v-if="filteredOptions.length" class="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-700 overflow-hidden rounded-md shadow-lg">
+    <ComboboxPortal>
+      <ComboboxContent 
+        v-if="filteredOptions.length" 
+        position="popper"
+        side="bottom"
+        align="start"
+        :side-offset="4"
+        class="z-10 min-w-[200px] max-w-[400px] bg-neutral-800 border border-neutral-700 overflow-hidden rounded-md shadow-lg"
+      >
       <ComboboxViewport class="p-2">
         <ComboboxGroup>
           <ComboboxItem
@@ -108,6 +116,7 @@ const filteredOptions = computed(() =>
           </ComboboxItem>
         </ComboboxGroup>
       </ComboboxViewport>
-    </ComboboxContent>
+      </ComboboxContent>
+    </ComboboxPortal>
   </ComboboxRoot>
 </template>
