@@ -226,6 +226,10 @@ const flowsState = setup({
       return {
         flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
+        graph: {
+          nodes: [],
+          edges: [],
+        },
       };
     }),
 
