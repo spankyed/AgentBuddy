@@ -227,8 +227,8 @@ const flowsState = setup({
         flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
         graph: {
-          nodes: [],
-          edges: [],
+          nodes: ev.data.nodes,
+          edges: ev.data.edges,
         },
       };
     }),
@@ -556,7 +556,7 @@ const flowsState = setup({
     ACTION_FORM_DATA_FETCHED: { actions: 'setActionFormData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
-      actions: ['addCreatedFlow', 'selectFlow'],
+      actions: 'addCreatedFlow',
       target: '.view'
     },
     NODE_CREATED: { 

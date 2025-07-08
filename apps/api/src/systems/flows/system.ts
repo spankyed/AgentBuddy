@@ -8,7 +8,7 @@ import { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
 import { getExtendedData } from './repository/read';
-import { createFlow, createNode, createEdge } from './repository/create';
+import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
@@ -40,7 +40,7 @@ export type FlowsInternalEvents =
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
-  | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId }
+  | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
@@ -76,12 +76,16 @@ export const flowsSystem = setup({
       }));
     },
     createFlow: ({ system }) => {
-      const newFlow = createFlow();
+      const { flow: newFlow } = createFlowWithEntryNode();
+      
+      // Get the flow data which now includes the entry node
+      const flowData = getExtendedData(newFlow.id);
 
       system.get(bus).send(emit(flows, {
         type: 'FLOW_CREATED',
         flow: newFlow,
         flowId: newFlow.id,
+        data: flowData,  // Include graph data directly
       }));
     },
     updateFlowLabel: ({ event }) => {
