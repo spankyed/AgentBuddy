@@ -6,7 +6,7 @@ import { qx } from '@/shared/ears/helpers/query';
 import { emit } from '@/shared/utils/actor-helpers';
 import { bus } from '@/systems/_backend/backend';
 import { brain } from '@/systems/brain/system';
-import { prepareNodeAttributes } from './node-attribute-mapper';
+import { prepareNodeAttributes } from './node-attribute-mappers';
 
 /**
  * Get event nodes for a specific flow
@@ -187,6 +187,7 @@ export function createStepTNode(
   
   if (executionContext && step.nodeType) {
     nodeAttributes = prepareNodeAttributes(step as NodeEntity, executionContext);
+    console.log('nodeAttributes: ', nodeAttributes);
   }
 
   const stepTNode: Partial<TNodeEntity> = {
