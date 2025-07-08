@@ -35,7 +35,7 @@
             </div>
           </DropdownMenuTrigger>
           
-          <Teleport to="body">
+          <DropdownMenuPortal>
             <DropdownMenuContent 
               side="bottom"
               align="start"
@@ -54,7 +54,7 @@
                 </DropdownMenuItem>
               </div>
             </DropdownMenuContent>
-          </Teleport>
+          </DropdownMenuPortal>
         </DropdownMenuRoot>
       </div>
       
@@ -80,6 +80,7 @@ import { getPaletteItems } from '../../config/node-config'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuRoot,
   DropdownMenuTrigger,
 } from 'reka-ui'
