@@ -22,14 +22,14 @@ function getFlowEventNodes(flowId: EARS.EntityId): ListenNode[] {
 }
 
 /**
- * Get responder node for an event node
+ * Get the first step node that transitions from an event node
  */
-export function getEventResponderNode(eventNodeId: EARS.EntityId): NodeEntity | undefined {
-  const responderLinks = qx(eventNodeId)
-    .links(EARS.RelKind.RESPONDER, [EARS.Entity.Node]);
+export function getEventFirstStep(eventNodeId: EARS.EntityId): NodeEntity | undefined {
+  const transitionLinks = qx(eventNodeId)
+    .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
   
-  if (responderLinks.length > 0) {
-    return qx(responderLinks[0].id)
+  if (transitionLinks.length > 0) {
+    return qx(transitionLinks[0].id)
       .pickAll()[0] as unknown as NodeEntity | undefined;
   }
   

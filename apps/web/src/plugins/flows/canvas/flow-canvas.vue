@@ -120,13 +120,19 @@ const plainNodes = computed(() => {
 })
 
 const plainEdges = computed(() =>
-  Object.values(edges.value).map((e, idx) => ({
-    id     : e.id,
-    source : e.source,
-    target : e.target,
-    data: { kind: e.kind },
-    animated: e.kind === 'responder',
-  })),
+  Object.values(edges.value).map((e, idx) => {
+    // Find the source node to check if it's an event node
+    const sourceNode = nodes.value.find(n => n.id === e.source)
+    const isFromEventNode = sourceNode?.nodeType === 'listen'
+    
+    return {
+      id     : e.id,
+      source : e.source,
+      target : e.target,
+      data: { kind: e.kind },
+      animated: e.kind === 'transitions_to' && isFromEventNode,
+    }
+  }),
 )
 
 const currentFlowLabel = computed(() => {
