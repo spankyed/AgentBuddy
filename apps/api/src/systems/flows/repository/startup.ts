@@ -19,18 +19,11 @@ export default function flowsStartupData(): FlowsStartupData {
     .withRole(EARS.RoleKind.Custom("root_flow"))
     .pickOne(flowCols) as Partial<FlowEntity> | undefined;
     
-  const nodes = qx(rootFlow?.id ?? 'Flow-1')
-    .linksPick(
-      EARS.RelKind.CONTAINS,
-      [
-        'label',
-        'nodeType',
-        'createdAt',
-        'x',
-        'y',
-      ] as const,
-      [EARS.Entity.Node],          // we only want the node children
-  ) as Partial<NodeEntity>[];
+  const nodeIdsList = qx(rootFlow?.id ?? 'Flow-1')
+    .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+    .map(({ id }) => id);
+  
+  const nodes = qx(nodeIdsList).pickAll() as Partial<NodeEntity>[];
 
   const nodeIds = nodes.map(n => n.id!).filter(Boolean);
 
