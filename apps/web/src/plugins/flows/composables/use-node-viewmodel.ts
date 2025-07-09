@@ -13,23 +13,20 @@ import { NODE_VIEW_MODEL_CONFIG, createNodeViewModel, type ViewModelStores } fro
 export function useNodeViewModel(nodeId: EARS.EntityId): ComputedRef<NodeViewModel | null> {
   const flowsActor = applicationState.system.get(flowsId)
   
-  // For now, we'll use the existing state structure until migration is complete
-  // This will be updated to use normalized store in the migration phase
   const nodes = useSelector(flowsActor, (state: any) => state.context.graph.nodes)
   const prompts = useSelector(flowsActor, (state: any) => state.context.prompts)
   const models = useSelector(flowsActor, (state: any) => state.context.models)
   const actions = useSelector(flowsActor, (state: any) => state.context.actions)
   
-  // Create stores object for view model transformations
-  const stores = computed<ViewModelStores>(() => ({
-    prompts: prompts.value,
-    models: models.value,
-    actions: actions.value
-  }))
-  
   return computed(() => {
     const node = nodes.value.find((n: any) => n.id === nodeId)
     if (!node) return null
+    
+    const stores: ViewModelStores = {
+      prompts: prompts.value,
+      models: models.value,
+      actions: actions.value
+    }
     
     // Base view model
     const viewModel: NodeViewModel = {
@@ -42,7 +39,7 @@ export function useNodeViewModel(nodeId: EARS.EntityId): ComputedRef<NodeViewMod
     // Get view model config for this node type
     const config = NODE_VIEW_MODEL_CONFIG[node.nodeType]
     if (config) {
-      viewModel.extension = createNodeViewModel(node, stores.value, config)
+      viewModel.extension = createNodeViewModel(node, stores, config)
     }
     
     return viewModel

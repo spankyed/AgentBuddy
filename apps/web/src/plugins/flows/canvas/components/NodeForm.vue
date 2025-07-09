@@ -63,9 +63,6 @@
         <component
           :is="getFormComponent(selectedNode.nodeType)"
           :node-id="selectedNode.id"
-          @update-label="handleUpdateLabel"
-          @update-config="handleUpdateConfig"
-          @update-node="handleUpdateNode"
         />
       </div>
     </div>
