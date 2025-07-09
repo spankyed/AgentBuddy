@@ -253,13 +253,13 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { LLMNode, LLMNodeEnriched, ModelConfig } from '@abuddy/api'
+import type { LLMNode, ModelConfig, PromptEntity } from '@abuddy/api'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
 
 const props = defineProps<{
-  node: LLMNode | LLMNodeEnriched
+  node: LLMNode
 }>()
 
 const emit = defineEmits<{
@@ -282,32 +282,51 @@ const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Check if node is enriched
-const isEnriched = computed(() => 'promptTemplate' in props.node)
-
-// Use enriched data if available, otherwise find from list
-const initialPrompt = computed(() => {
-  if (isEnriched.value && (props.node as LLMNodeEnriched).promptTemplate) {
-    return (props.node as LLMNodeEnriched).promptTemplate
+// Get prompt from normalized store using promptTemplateId
+const nodePrompt = computed(() => {
+  if (props.node.promptTemplateId) {
+    return prompts.value.find((p: PromptEntity) => p.id === props.node.promptTemplateId) || null
   }
-  // promptTemplateId is only available on enriched nodes
-  const enrichedNode = props.node as LLMNodeEnriched
-  return enrichedNode.promptTemplateId ? prompts.value.find(p => p.id === enrichedNode.promptTemplateId) : null
+  return null
 })
 
-const initialModel = computed(() => {
+const nodeModel = computed(() => {
   return availableModels.value.find(m => m.id === props.node.model)
 })
 
 // Initialize form data
 onMounted(() => {
   // Set initial values if available
-  if (initialPrompt.value) {
-    selectedPrompt.value = initialPrompt.value
+  if (nodePrompt.value) {
+    selectedPrompt.value = nodePrompt.value
     fieldMappings.value = props.node.fieldMappings || []
   }
-  if (initialModel.value) {
-    selectedModel.value = initialModel.value
+  if (nodeModel.value) {
+    selectedModel.value = nodeModel.value
+  }
+})
+
+// Watch for promptTemplateId changes to update selection
+watch(() => props.node.promptTemplateId, (newPromptId) => {
+  if (newPromptId) {
+    const prompt = prompts.value.find((p: PromptEntity) => p.id === newPromptId)
+    if (prompt) {
+      selectedPrompt.value = prompt
+    }
+  } else {
+    selectedPrompt.value = null
+  }
+})
+
+// Watch for model changes
+watch(() => props.node.model, (newModelId) => {
+  if (newModelId) {
+    const model = availableModels.value.find(m => m.id === newModelId)
+    if (model) {
+      selectedModel.value = model
+    }
+  } else {
+    selectedModel.value = null
   }
 })
 
@@ -397,8 +416,8 @@ const handlePromptChange = (prompt: any) => {
     fieldMappings: newMappings,
   }
   
-  // Add promptTemplateId only if it exists on the enriched node or if we have a prompt
-  if (prompt && (isEnriched.value || 'promptTemplateId' in props.node)) {
+  // Always include promptTemplateId when updating with a new prompt
+  if (prompt) {
     update.promptTemplateId = prompt.id
   }
   

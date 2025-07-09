@@ -176,13 +176,13 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { ActionNode, ActionNodeEnriched, ActionEntity } from '@abuddy/api'
+import type { ActionNode, ActionEntity } from '@abuddy/api'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
 
 const props = defineProps<{
-  node: ActionNode | ActionNodeEnriched
+  node: ActionNode
 }>()
 
 const emit = defineEmits<{
@@ -201,18 +201,10 @@ const isActionDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Check if node is enriched
-const isEnriched = computed(() => 'action' in props.node)
-
-// Use enriched data if available, otherwise find from list
-const initialAction = computed(() => {
-  if (isEnriched.value) {
-    const enrichedNode = props.node as ActionNodeEnriched
-    if (enrichedNode.action) {
-      return enrichedNode.action
-    }
-    // actionId is only available on enriched nodes
-    return enrichedNode.actionId ? actions.value.find(a => a.id === enrichedNode.actionId) : null
+// Get action from normalized store using actionId
+const nodeAction = computed(() => {
+  if (props.node.actionId) {
+    return actions.value.find((a: ActionEntity) => a.id === props.node.actionId) || null
   }
   return null
 })
@@ -220,9 +212,21 @@ const initialAction = computed(() => {
 // Initialize form data
 onMounted(() => {
   // Set initial value if available
-  if (initialAction.value) {
-    selectedAction.value = initialAction.value
+  if (nodeAction.value) {
+    selectedAction.value = nodeAction.value
     fieldMappings.value = props.node.fieldMappings || []
+  }
+})
+
+// Watch for actionId changes to update selection
+watch(() => props.node.actionId, (newActionId) => {
+  if (newActionId) {
+    const action = actions.value.find((a: ActionEntity) => a.id === newActionId)
+    if (action) {
+      selectedAction.value = action
+    }
+  } else {
+    selectedAction.value = null
   }
 })
 
@@ -280,14 +284,14 @@ const handleActionChange = (action: ActionEntity | null) => {
   fieldMappings.value = newMappings
   
   // Update node with actionId for backend to create/update relationship
-  // Create update object based on whether node is enriched
+  // Create update object with fieldMappings
   const update: any = {
     ...props.node,
     fieldMappings: newMappings,
   }
   
-  // Add actionId only if it exists on the enriched node or if we have an action
-  if (action && (isEnriched.value || 'actionId' in props.node)) {
+  // Always include actionId when updating with a new action
+  if (action) {
     update.actionId = action.id
   }
   

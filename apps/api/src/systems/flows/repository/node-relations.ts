@@ -1,43 +1,41 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
-import type { NodeKind, NodeEntity, NodeCreateInput, NodeEntityEnriched } from "../types";
+import type { NodeKind, NodeEntity, NodeCreateInput } from "../types";
 
 /*─────────────────────────────────────────────────────────────────
- * Configuration for nodes with INSTANCE_OF relationships
+ * Simple INSTANCE_OF relationship management
+ * No enrichment, no string manipulation, just clean CRUD
  *─────────────────────────────────────────────────────────────────*/
-const NODE_RELATIONS_CONFIG = {
+
+// Map node types to their relation fields and target entities
+const RELATION_CONFIG = {
   action: {
-    relationField: 'actionId',
-    entityField: 'action',
+    field: 'actionId',
     targetEntity: EARS.Entity.Action,
   },
   llm: {
-    relationField: 'promptTemplateId',
-    entityField: 'promptTemplate',
+    field: 'promptTemplateId',
     targetEntity: EARS.Entity.Prompt,
   }
 } as const;
 
-type RelationConfig = typeof NODE_RELATIONS_CONFIG[keyof typeof NODE_RELATIONS_CONFIG];
-
 /*─────────────────────────────────────────────────────────────────
- * Extract relational fields from node input
+ * Extract relation fields from node input
  *─────────────────────────────────────────────────────────────────*/
 export function extractNodeRelations(nodeType: NodeKind, input: NodeCreateInput) {
-  const config = NODE_RELATIONS_CONFIG[nodeType as keyof typeof NODE_RELATIONS_CONFIG];
+  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
   
   if (!config) {
-    // No special relations for this node type
     return { relations: {}, attributes: input };
   }
   
-  const relationId = (input as any)[config.relationField];
+  const relationId = (input as any)[config.field];
   const attributes = { ...input };
-  delete (attributes as any)[config.relationField];
+  delete (attributes as any)[config.field];
   
   return {
-    relations: { [config.relationField]: relationId },
+    relations: { [config.field]: relationId },
     attributes
   };
 }
@@ -46,11 +44,11 @@ export function extractNodeRelations(nodeType: NodeKind, input: NodeCreateInput)
  * Create INSTANCE_OF relationships for a node
  *─────────────────────────────────────────────────────────────────*/
 export function createNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relations: Record<string, any>) {
-  const config = NODE_RELATIONS_CONFIG[nodeType as keyof typeof NODE_RELATIONS_CONFIG];
+  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
   
-  if (!config) return; // No special relations for this node type
+  if (!config) return;
   
-  const relationId = relations[config.relationField];
+  const relationId = relations[config.field];
   if (relationId) {
     tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relationId as EARS.EntityId);
   }
@@ -60,16 +58,16 @@ export function createNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, r
  * Update INSTANCE_OF relationships for a node
  *─────────────────────────────────────────────────────────────────*/
 export function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relations: Record<string, any>) {
-  const config = NODE_RELATIONS_CONFIG[nodeType as keyof typeof NODE_RELATIONS_CONFIG];
+  const config = RELATION_CONFIG[nodeType as keyof typeof RELATION_CONFIG];
   
-  if (!config) return; // No special relations for this node type
+  if (!config) return;
   
-  if (config.relationField in relations) {
+  if (config.field in relations) {
     // Remove existing INSTANCE_OF relationships
     tx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
     
     // Add new relationship if provided
-    const relationId = relations[config.relationField];
+    const relationId = relations[config.field];
     if (relationId) {
       tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relationId as EARS.EntityId);
     }
@@ -77,36 +75,26 @@ export function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, r
 }
 
 /*─────────────────────────────────────────────────────────────────
- * Enrich node with related entities for frontend
+ * Get the related entity ID for a node (used during read)
  *─────────────────────────────────────────────────────────────────*/
-export function enrichNodeWithRelations<T extends NodeEntity>(node: T): NodeEntityEnriched {
-  const config = NODE_RELATIONS_CONFIG[node.nodeType as keyof typeof NODE_RELATIONS_CONFIG];
+export function getNodeRelation(node: NodeEntity): NodeEntity {
+  const config = RELATION_CONFIG[node.nodeType as keyof typeof RELATION_CONFIG];
   
   if (!config) {
-    // No enrichment needed for this node type
-    return node as NodeEntityEnriched;
+    return node;
   }
   
-  // Get the linked entity via INSTANCE_OF relationship
+  // Get the linked entity ID via INSTANCE_OF relationship
   const linkedId = qx(node.id)
     .links(EARS.RelKind.INSTANCE_OF, config.targetEntity)
     .map(({ id }) => id)[0];
   
-  if (!linkedId) {
-    return node as NodeEntityEnriched;
+  if (linkedId) {
+    return {
+      ...node,
+      [config.field]: linkedId
+    };
   }
-
-  // Fetch the full linked entity
-  const linkedEntity = qx(linkedId).pickAll()[0];
   
-  if (!linkedEntity) {
-    return node as NodeEntityEnriched;
-  }
-
-  // Return the node with both the relation ID and the full entity
-  return {
-    ...node,
-    [config.relationField]: linkedEntity.id,
-    [config.entityField]: linkedEntity
-  } as NodeEntityEnriched;
+  return node;
 }

@@ -1,29 +1,29 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
-import type { EdgeEntity, FlowExtendedData, NodeEntity, NodeEntityEnriched } from '../types';
+import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
-import { enrichNodeWithRelations } from './node-relations';
+import { getNodeRelation } from './node-relations';
 import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';
 
 export const getRootFlow = (): EARS.EntityId | undefined =>
   qx().withRole(FLOW_ROLES.ROOT_FLOW).first() ?? undefined;
 
-export const getNode = (nodeId: EARS.EntityId): NodeEntityEnriched | undefined => {
+export const getNode = (nodeId: EARS.EntityId): NodeEntity | undefined => {
   // Use pickAll to get all attributes including fieldMappings
   const nodes = qx([nodeId]).pickAll() as unknown as NodeEntity[];
   const node = nodes[0];
-  return node ? enrichNodeWithRelations(node) : undefined;
+  return node ? getNodeRelation(node) : undefined;
 };
 
-export const getFlowNodes = (flowId: EARS.EntityId): NodeEntityEnriched[] => {
+export const getFlowNodes = (flowId: EARS.EntityId): NodeEntity[] => {
   const nodeIds = qx(flowId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }) => id);
   
   const nodes = qx(nodeIds).pickAll() as unknown as NodeEntity[];
   
-  // Enrich each node with its relational data
-  return nodes.map(node => enrichNodeWithRelations(node));
+  // Add relation IDs to each node
+  return nodes.map(node => getNodeRelation(node));
 };
 
 export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
