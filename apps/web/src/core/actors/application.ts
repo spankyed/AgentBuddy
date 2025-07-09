@@ -70,7 +70,7 @@ export const createApplicationState = () => setup({
             console.error('Error in subscription:', error);
           },
           onData: (event) => {
-            console.log('event: ', event);
+            // console.log('event: ', event);
             const { pluginId, ...ev } = event;
             system.get(pluginId).send(ev);
           },
