@@ -1,7 +1,28 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
-import type { NodeHandler } from "./node-handlers";
+import type { NodeEntity, NodeCreateInput } from "../types";
+
+/*─────────────────────────────────────────────────────────────────
+ * Node Handler Interface
+ * Each handler manages the specific logic for a node type
+ *─────────────────────────────────────────────────────────────────*/
+export interface NodeHandler<T extends NodeEntity = NodeEntity> {
+  // Extract relational fields from input
+  extractRelations(input: NodeCreateInput): {
+    relations: Record<string, any>;
+    attributes: Partial<T>;
+  };
+  
+  // Handle creation of relationships
+  createRelations(nodeId: EARS.EntityId, relations: Record<string, any>): void;
+  
+  // Handle updating of relationships
+  updateRelations(nodeId: EARS.EntityId, relations: Record<string, any>): void;
+  
+  // Enrich node with relational data for frontend
+  enrichNode(node: T): T & Record<string, any>;
+}
 
 /*─────────────────────────────────────────────────────────────────
  * Factory for creating INSTANCE_OF relationship handlers
@@ -13,7 +34,35 @@ interface InstanceOfHandlerConfig {
   targetEntity: EARS.Entity;  // e.g., EARS.Entity.Action
 }
 
-export function createInstanceOfHandler(config: InstanceOfHandlerConfig): NodeHandler {
+/*─────────────────────────────────────────────────────────────────
+ * Default handler for nodes without special handling
+ *─────────────────────────────────────────────────────────────────*/
+export function createDefaultNodeHandler<T extends NodeEntity = NodeEntity>(): NodeHandler<T> {
+  return {
+    extractRelations(input) {
+      return {
+        relations: {},
+        attributes: input as Partial<T>
+      };
+    },
+    
+    createRelations() {
+      // No relations to create
+    },
+    
+    updateRelations() {
+      // No relations to update
+    },
+    
+    enrichNode(node) {
+      return node;
+    }
+  };
+}
+
+export function createInstanceOfHandler<T extends NodeEntity = NodeEntity>(
+  config: InstanceOfHandlerConfig
+): NodeHandler<T> {
   return {
     extractRelations(input) {
       const relationId = (input as any)[config.relationField];
@@ -22,7 +71,7 @@ export function createInstanceOfHandler(config: InstanceOfHandlerConfig): NodeHa
       
       return {
         relations: { [config.relationField]: relationId },
-        attributes
+        attributes: attributes as Partial<T>
       };
     },
     
