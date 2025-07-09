@@ -75,7 +75,7 @@ export async function actionNodeHandler(
     }
     
     logger.debug(`Found action: ${action.label}`, {
-      parameters: Object.keys(action.parameters || {}),
+      input: Object.keys(action.input || {}),
     });
     
     // Extract action parameters from nodeAttributes

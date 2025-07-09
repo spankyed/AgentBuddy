@@ -21,8 +21,23 @@ function extractValue(context: ExecutionContext, source: string | ((ctx: Executi
     }
   }
   
-  // Otherwise, treat as a path
-  return extractValueByPath(context, source);
+  // If source starts with $., treat as a JSONPath
+  if (typeof source === 'string' && source.startsWith('$.')) {
+    return extractValueByPath(context, source);
+  }
+  
+  // Otherwise, it's a literal value
+  // Try to parse as JSON first (for objects, arrays, booleans, numbers)
+  if (typeof source === 'string') {
+    try {
+      return JSON.parse(source);
+    } catch {
+      // If parsing fails, return as string literal
+      return source;
+    }
+  }
+  
+  return source;
 }
 
 /**

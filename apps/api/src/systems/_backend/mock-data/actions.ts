@@ -16,7 +16,7 @@ export const actionRows: Rows = {
       label: 'Save Entity',
       description: 'Saves an entity to the database',
       category: 'database',
-      parameters: {
+      input: {
         entityType: {
           name: 'entityType',
           type: 'string' as const,
@@ -47,7 +47,7 @@ return result;`,
       label: 'Send Email',
       description: 'Sends an email notification',
       category: 'communication',
-      parameters: {
+      input: {
         to: {
           name: 'to',
           type: 'string' as const,
@@ -84,7 +84,7 @@ return result;`,
       label: 'HTTP Request',
       description: 'Makes an HTTP request to external API',
       category: 'integration',
-      parameters: {
+      input: {
         method: {
           name: 'method',
           type: 'string' as const,
@@ -146,7 +146,7 @@ return result;`,
       label: 'Log Message',
       description: 'Logs a message with optional data',
       category: 'utility',
-      parameters: {
+      input: {
         level: {
           name: 'level',
           type: 'string' as const,
@@ -191,7 +191,7 @@ switch (level) {
       label: 'Store Data',
       description: 'Stores data in persistent storage',
       category: 'storage',
-      parameters: {
+      input: {
         key: {
           name: 'key',
           type: 'string' as const,

@@ -54,7 +54,7 @@
               </td>
               <td class="px-6 py-4 text-center">
                 <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-neutral-800 text-neutral-300">
-                  {{ Object.keys(action.parameters || {}).length }}
+                  {{ Object.keys(action.input || {}).length }}
                 </span>
               </td>
               <td class="px-6 py-4">

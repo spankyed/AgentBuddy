@@ -9,11 +9,8 @@ import type { NodeHandler } from "./node-handlers";
  *─────────────────────────────────────────────────────────────────*/
 interface InstanceOfHandlerConfig {
   relationField: string;      // e.g., 'actionId' or 'promptTemplateId'
+  entityField: string;        // e.g., 'action' or 'promptTemplate'
   targetEntity: EARS.Entity;  // e.g., EARS.Entity.Action
-  enrichFields: string[];     // Fields to pick from target entity
-  enrichMapping: {            // How to map picked fields to node
-    [pickField: string]: string;  // e.g., 'label' -> 'actionName'
-  };
 }
 
 export function createInstanceOfHandler(config: InstanceOfHandlerConfig): NodeHandler {
@@ -55,24 +52,23 @@ export function createInstanceOfHandler(config: InstanceOfHandlerConfig): NodeHa
         .links(EARS.RelKind.INSTANCE_OF, config.targetEntity)
         .map(({ id }) => id)[0];
       
-      if (linkedId) {
-        const linkedEntity = qx(linkedId).pickOne(config.enrichFields);
-        if (linkedEntity) {
-          const enrichment: Record<string, any> = {
-            [config.relationField]: linkedEntity.id
-          };
-          
-          // Map fields according to config
-          for (const [fromField, toField] of Object.entries(config.enrichMapping)) {
-            if (fromField in linkedEntity) {
-              enrichment[toField] = linkedEntity[fromField];
-            }
-          }
-          
-          return { ...node, ...enrichment };
-        }
+      if (!linkedId) {
+        return node;
       }
-      return node;
+
+      // Fetch the full linked entity
+      const linkedEntity = qx(linkedId).pickAll()[0];
+      
+      if (!linkedEntity) {
+        return node;
+      }
+
+      // Return the node with both the relation ID and the full entity
+      return {
+        ...node,
+        [config.relationField]: linkedEntity.id,
+        [config.entityField]: linkedEntity
+      };
     }
   };
 }

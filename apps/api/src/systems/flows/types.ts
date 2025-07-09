@@ -1,4 +1,6 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
+import type { ActionEntity } from '../actions/types';
+import type { PromptEntity } from '../prompts/types';
 
 
 export interface FlowEntity extends BaseEntity {
@@ -148,12 +150,12 @@ export function assertNever(x: never): never {
  *─────────────────────────────────────────────────────────────────*/
 type ActionNodeRelations = {
   actionId?: string;      // From INSTANCE_OF relation to Action
-  actionName?: string;    // From linked Action entity
+  action?: ActionEntity;  // Full linked Action entity
 };
 
 type LLMNodeRelations = {
-  promptTemplateId?: string;    // From INSTANCE_OF relation to Prompt
-  promptTemplateName?: string;  // From linked Prompt entity
+  promptTemplateId?: string;       // From INSTANCE_OF relation to Prompt  
+  promptTemplate?: PromptEntity;   // Full linked Prompt entity
 };
 
 // Generic enrichment type that adds relational data based on node type
@@ -163,7 +165,9 @@ export type WithRelations<T extends NodeEntity> = T & (
   {}
 );
 
-// Type alias for clarity when using enriched nodes
+// Type aliases for enriched nodes
+export type ActionNodeEnriched = WithRelations<ActionNode>;
+export type LLMNodeEnriched = WithRelations<LLMNode>;
 export type NodeEntityEnriched = WithRelations<NodeEntity>;
 
 // Input type for create/update operations that may include relational data
@@ -188,7 +192,8 @@ export interface FlowsStartupData {
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
   models: ModelConfig[];
-  prompts: any[]; // Will be typed as PromptEntity[] in frontend
+  prompts: PromptEntity[];
+  actions: ActionEntity[];
 }
 
 export interface ModelConfig {

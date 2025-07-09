@@ -39,7 +39,15 @@ export function updateNode(nodeId: EARS.EntityId, updates: NodeCreateInput) {
   
   // Update each field
   Object.entries(fieldsToUpdate).forEach(([key, value]) => {
-    transaction.merge(key as any, value);
+    // For arrays, we need to replace the entire value, not merge
+    if (Array.isArray(value)) {
+      // First drop the old value, then put the new one
+      // ! shouldn't need to do this, but EARS allows multiple attributes with the same key
+      transaction.drop(EARS.AttrKind.Custom(key));
+      transaction.put(key, value);
+    } else {
+      transaction.merge(key as any, value);
+    }
   });
   
   // Always update the timestamp

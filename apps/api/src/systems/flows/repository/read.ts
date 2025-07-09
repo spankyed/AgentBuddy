@@ -8,6 +8,13 @@ import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';
 export const getRootFlow = (): EARS.EntityId | undefined =>
   qx().withRole(FLOW_ROLES.ROOT_FLOW).first() ?? undefined;
 
+export const getNode = (nodeId: EARS.EntityId): NodeEntityEnriched | undefined => {
+  // Use pickAll to get all attributes including fieldMappings
+  const nodes = qx([nodeId]).pickAll() as unknown as NodeEntity[];
+  const node = nodes[0];
+  return node ? enrichNodeWithRelations(node) : undefined;
+};
+
 export const getFlowNodes = (flowId: EARS.EntityId): NodeEntityEnriched[] => {
   const nodeIds = qx(flowId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)

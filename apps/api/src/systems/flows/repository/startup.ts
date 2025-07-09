@@ -4,6 +4,7 @@ import { getRootFlow, getFlowNodes, getFlowEdges } from './read';
 import { FlowsStartupData, FlowEntity } from '../types';
 import { availableModels } from '../config/available-models';
 import { getAllPrompts } from '../../prompts/repository/read';
+import { getAllActions } from '../../actions/repository/read';
 import { FLOW_QUERY_FIELDS, FLOW_ROLES } from './constants';
 
 export default function flowsStartupData(): FlowsStartupData {
@@ -33,5 +34,6 @@ export default function flowsStartupData(): FlowsStartupData {
     selectedFlowId: selectedFlow.id,
     models: availableModels,
     prompts: getAllPrompts(),
+    actions: getAllActions(),
   };
 }

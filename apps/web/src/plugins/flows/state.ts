@@ -50,7 +50,6 @@ export interface FlowsContext {
   prompts: PromptEntity[];
   models: ModelConfig[];
   actions: ActionEntity[];
-  isLoadingFormData: boolean;
   tNodeTree?: TrackEntity[];
   normalizedTree?: NormalizedTNodeTree;
   pendingConnection?: {
@@ -72,8 +71,6 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
-  | { type: 'FETCH_LLM_FORM_DATA' }
-  | { type: 'FETCH_ACTION_FORM_DATA' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -131,34 +128,9 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      return { ...ev.data, logs: [], prompts: [], models: [], actions: [], isLoadingFormData: false }
+      return { ...ev.data, logs: [], prompts: ev.data.prompts || [], models: ev.data.models || [], actions: ev.data.actions || [] }
     }),
 
-    fetchLLMFormData: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'FETCH_LLM_FORM_DATA'
-      });
-      return { isLoadingFormData: true };
-    }),
-
-    setLLMFormData: assign(({ event }) => {
-      const ev = typeOf('LLM_FORM_DATA_FETCHED', event);
-      return { models: ev.models, prompts: ev.prompts, isLoadingFormData: false };
-    }),
-
-    fetchActionFormData: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'FETCH_ACTION_FORM_DATA'
-      });
-      return { isLoadingFormData: true };
-    }),
-
-    setActionFormData: assign(({ event }) => {
-      const ev = typeOf('ACTION_FORM_DATA_FETCHED', event);
-      return { actions: ev.actions, isLoadingFormData: false };
-    }),
 
 
     /* ── flow interactions ────────────────────────────── */
@@ -348,7 +320,7 @@ const flowsState = setup({
       return {
         graph: {
           ...context.graph,
-          nodes: context.graph.nodes.map(node =>
+          nodes: context.graph.nodes.map((node) =>
             node.id === ev.nodeId ? { ...node, ...ev.updates } : node
           ),
         },
@@ -359,8 +331,10 @@ const flowsState = setup({
       const ev = typeOf('NODE.UPDATE', event);
       if (!context.selectedFlowId) return;
       
-      const node = context.graph.nodes.find(n => n.id === ev.nodeId);
-      if (!node) return;
+      const nodeRaw = context.graph.nodes.find(n => n.id === ev.nodeId);
+      if (!nodeRaw) return;
+
+      const { x, y, ...node } = nodeRaw; // Exclude position from updates
 
       // Send update to backend
       trpc.bus.send.mutate({
@@ -545,15 +519,12 @@ const flowsState = setup({
     prompts: [] as PromptEntity[],
     models: [] as ModelConfig[],
     actions: [] as ActionEntity[],
-    isLoadingFormData: false,
     tNodeTree: undefined,
     normalizedTree: undefined,
     pendingConnection: undefined,
   },
   on: {
     FLOWS_STARTUP: { actions: 'setPluginData' },
-    LLM_FORM_DATA_FETCHED: { actions: 'setLLMFormData' },
-    ACTION_FORM_DATA_FETCHED: { actions: 'setActionFormData' },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: 'addCreatedFlow',
@@ -633,12 +604,6 @@ const flowsState = setup({
         },
         'GO.BACK': {
           target: 'list',
-        },
-        'FETCH_LLM_FORM_DATA': {
-          actions: 'fetchLLMFormData',
-        },
-        'FETCH_ACTION_FORM_DATA': {
-          actions: 'fetchActionFormData',
         },
       },
     },

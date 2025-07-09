@@ -3,22 +3,9 @@ import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { ActionEntity, ActionParameter } from '../types';
 
-const actionFields = [
-  'id',
-  'entityType', 
-  'label',
-  'description',
-  'category',
-  'parameters',
-  'actionFn',
-  'output',
-  'createdAt',
-  'updatedAt'
-] as const;
-
-function transformParameters(params: Record<string, any>): Record<string, ActionParameter> {
+function transformInput(inputParams: Record<string, any>): Record<string, ActionParameter> {
   const transformed: Record<string, ActionParameter> = {};
-  for (const [key, value] of Object.entries(params)) {
+  for (const [key, value] of Object.entries(inputParams)) {
     if (typeof value === 'object' && value !== null) {
       transformed[key] = value as ActionParameter;
     } else {
@@ -36,7 +23,7 @@ export function updateAction(
   id: EARS.EntityId,
   data: {
     label?: string;
-    parameters?: Record<string, any>;
+    input?: Record<string, any>;
     actionFn?: string;
     output?: any;
     description?: string;
@@ -59,13 +46,13 @@ export function updateAction(
   if (data.category !== undefined) updates.category = data.category;
   if (data.actionFn !== undefined) updates.actionFn = data.actionFn;
   if (data.output !== undefined) updates.output = data.output;
-  if (data.parameters !== undefined) updates.parameters = transformParameters(data.parameters);
+  if (data.input !== undefined) updates.input = transformInput(data.input);
   
   // Apply all updates in one fluent chain
   tx(id).batchPut(updates);
   
   // Return updated action
-  return qx(id).pick(actionFields) as unknown as ActionEntity;
+  return qx(id).pickAll() as unknown as ActionEntity;
 }
 
 export function deleteAction(id: EARS.EntityId): boolean {

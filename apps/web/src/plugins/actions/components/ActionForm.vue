@@ -79,10 +79,10 @@
           <!-- Parameters -->
           <div class="pt-6 border-t border-neutral-800">
             <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Parameters
+              Input Parameters
             </label>
             <ActionParametersEditor
-              :parameters="formData.parameters"
+              :parameters="formData.input"
               @update="$emit('update-parameters', $event)"
             />
           </div>
@@ -137,7 +137,7 @@ const props = defineProps<{
     label: string;
     description?: string;
     category?: string;
-    parameters: Record<string, ActionParameter>;
+    input: Record<string, ActionParameter>;
     actionFn: string;
     output?: any;
   };

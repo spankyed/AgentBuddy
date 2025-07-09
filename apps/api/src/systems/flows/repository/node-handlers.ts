@@ -52,20 +52,14 @@ const defaultNodeHandler: NodeHandler = {
  *─────────────────────────────────────────────────────────────────*/
 const actionNodeHandler = createInstanceOfHandler({
   relationField: 'actionId',
+  entityField: 'action',
   targetEntity: EARS.Entity.Action,
-  enrichFields: ['id', 'label', 'description'],
-  enrichMapping: {
-    label: 'actionName'
-  }
 });
 
 const llmNodeHandler = createInstanceOfHandler({
   relationField: 'promptTemplateId',
+  entityField: 'promptTemplate',
   targetEntity: EARS.Entity.Prompt,
-  enrichFields: ['id', 'name'],
-  enrichMapping: {
-    name: 'promptTemplateName'
-  }
 });
 
 /*─────────────────────────────────────────────────────────────────

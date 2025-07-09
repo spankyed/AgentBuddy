@@ -20,7 +20,7 @@ export const IncomingActionEvents = [
   busEvent('ACTION_SELECT', { actionId: z.string() }),
   busEvent('CREATE_ACTION', { 
     label: z.string(),
-    parameters: z.record(z.any()),
+    input: z.record(z.any()),
     actionFn: z.string(),
     output: z.any().optional(),
     description: z.string().optional(),
@@ -29,7 +29,7 @@ export const IncomingActionEvents = [
   busEvent('UPDATE_ACTION', { 
     actionId: z.string(),
     label: z.string().optional(),
-    parameters: z.record(z.any()).optional(),
+    input: z.record(z.any()).optional(),
     actionFn: z.string().optional(),
     output: z.any().optional(),
     description: z.string().optional(),
@@ -84,7 +84,7 @@ export const actionsSystem = setup({
       const ev = typeOf('CREATE_ACTION', event);
       const newAction = createAction({
         label: ev.label,
-        parameters: ev.parameters,
+        input: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
@@ -101,7 +101,7 @@ export const actionsSystem = setup({
       const ev = typeOf('UPDATE_ACTION', event);
       const updatedAction = updateAction(ev.actionId as EARS.EntityId, {
         label: ev.label,
-        parameters: ev.parameters,
+        input: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,

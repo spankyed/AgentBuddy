@@ -22,12 +22,11 @@
               <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isModelDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="isLoadingFormData ? 'Loading models...' : (selectedModel ? '' : 'Select a model...')"
+                  :placeholder="selectedModel ? '' : 'Select a model...'"
                   :value="selectedModel ? selectedModel.name : modelQuery"
                   @input="modelQuery = ($event.target as HTMLInputElement).value"
-                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
@@ -113,12 +112,11 @@
               <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="isLoadingFormData ? 'Loading prompts...' : (selectedPrompt ? '' : 'Select a prompt template...')"
+                  :placeholder="selectedPrompt ? '' : 'Select a prompt template...'"
                   :value="selectedPrompt ? selectedPrompt.label : promptQuery"
                   @input="promptQuery = ($event.target as HTMLInputElement).value"
-                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
@@ -255,24 +253,23 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { LLMNode, ModelConfig } from '@abuddy/api'
+import type { LLMNode, LLMNodeEnriched, ModelConfig } from '@abuddy/api'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
 
 const props = defineProps<{
-  node: LLMNode
+  node: LLMNode | LLMNodeEnriched
 }>()
 
 const emit = defineEmits<{
   'update-node': [data: Partial<LLMNode>]
 }>()
 
-// Get flows actor and data from state
+// Get flows actor for accessing models and prompts
 const flowsActor = applicationState.system.get(flowsId)
-const prompts = useSelector(flowsActor, (state: any) => state.context.prompts || [])
-const availableModels = useSelector(flowsActor, (state: any) => state.context.models || [])
-const isLoadingFormData = useSelector(flowsActor, (state: any) => state.context.isLoadingFormData)
+const prompts = useSelector(flowsActor, (state: any) => state.context.prompts)
+const availableModels = useSelector(flowsActor, (state: any) => state.context.models)
 
 // Local state
 const selectedPrompt = ref<any>(null)
@@ -285,31 +282,35 @@ const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Initialize from node data and fetch latest data
-onMounted(() => {
-  // Fetch latest models and prompts
-  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
-  
-  if (props.node.promptTemplateId) {
-    const prompt = prompts.value.find(p => p.id === props.node.promptTemplateId)
-    if (prompt) {
-      selectedPrompt.value = prompt
-      fieldMappings.value = props.node.fieldMappings || []
-    }
+// Check if node is enriched
+const isEnriched = computed(() => 'promptTemplate' in props.node)
+
+// Use enriched data if available, otherwise find from list
+const initialPrompt = computed(() => {
+  if (isEnriched.value && (props.node as LLMNodeEnriched).promptTemplate) {
+    return (props.node as LLMNodeEnriched).promptTemplate
   }
-  
-  if (props.node.model) {
-    const model = availableModels.value.find(m => m.id === props.node.model)
-    if (model) {
-      selectedModel.value = model
-    }
+  // promptTemplateId is only available on enriched nodes
+  const enrichedNode = props.node as LLMNodeEnriched
+  return enrichedNode.promptTemplateId ? prompts.value.find(p => p.id === enrichedNode.promptTemplateId) : null
+})
+
+const initialModel = computed(() => {
+  return availableModels.value.find(m => m.id === props.node.model)
+})
+
+// Initialize form data
+onMounted(() => {
+  // Set initial values if available
+  if (initialPrompt.value) {
+    selectedPrompt.value = initialPrompt.value
+    fieldMappings.value = props.node.fieldMappings || []
+  }
+  if (initialModel.value) {
+    selectedModel.value = initialModel.value
   }
 })
 
-// Re-fetch data when node changes
-watch(() => props.node.id, () => {
-  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
-})
 
 // Computed filtered prompts
 const filteredPrompts = computed(() => {
@@ -390,11 +391,18 @@ const handlePromptChange = (prompt: any) => {
   fieldMappings.value = newMappings
   
   // Update node
-  emit('update-node', {
+  // Create update object based on whether node is enriched
+  const update: any = {
     ...props.node,
-    promptTemplateId: prompt?.id || '',
-    fieldMappings: newMappings
-  })
+    fieldMappings: newMappings,
+  }
+  
+  // Add promptTemplateId only if it exists on the enriched node or if we have a prompt
+  if (prompt && (isEnriched.value || 'promptTemplateId' in props.node)) {
+    update.promptTemplateId = prompt.id
+  }
+  
+  emit('update-node', update)
 }
 
 const handleFieldMappingChange = (field: string, value: string) => {
