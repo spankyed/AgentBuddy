@@ -143,8 +143,6 @@ function handleCreateConnectedNode(nodeType: string) {
   // Close the menu
   showNextStepMenu.value = false
 }
-
-// Reka UI DropdownMenu handles click outside and positioning automatically
 </script>
 
 <style>
