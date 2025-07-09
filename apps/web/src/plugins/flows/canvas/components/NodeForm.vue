@@ -62,7 +62,7 @@
       <div class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-800">
         <component
           :is="getFormComponent(selectedNode.nodeType)"
-          :node="selectedNode"
+          :node-id="selectedNode.id"
           @update-label="handleUpdateLabel"
           @update-config="handleUpdateConfig"
           @update-node="handleUpdateNode"

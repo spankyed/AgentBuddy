@@ -1,7 +1,8 @@
 <template>
   <BaseForm
-    :node="node"
-    @update-label="handleUpdateLabel"
+    v-if="node"
+    :node="nodeData"
+    @update-label="updateLabel"
   >
     <div class="space-y-6">
       <!-- Action Selection -->
@@ -10,7 +11,7 @@
           Action
         </label>
         <ComboboxRoot
-          v-model="selectedAction"
+          :model-value="selectedAction"
           ignore-filter
           class="relative w-full"
           :open="isActionDropdownOpen"
@@ -114,36 +115,36 @@
         </details>
       </div>
 
-      <!-- Field Mappings -->
+      <!-- Field Mappings with Optimized Updates -->
       <div v-if="selectedAction" class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
           Field Mappings
         </label>
         <div class="border rounded-md bg-neutral-800/30 border-neutral-700">
-          <div v-if="Object.keys(selectedAction.input || {}).length === 0" class="p-4 text-sm text-neutral-600">
+          <div v-if="!actionInputKeys.length" class="p-4 text-sm text-neutral-600">
             No input fields required for this action.
           </div>
           <div v-else class="p-4 space-y-4">
             <div
-              v-for="(param, key) in selectedAction.input"
+              v-for="key in actionInputKeys"
               :key="key"
               class="flex items-center gap-3"
             >
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
-                  {{ param.name || key }}
-                  <span v-if="param.required" class="text-xs text-red-500">*</span>
-                  <span class="text-xs text-neutral-600">({{ param.type }})</span>
+                  {{ selectedAction.input[key].name || key }}
+                  <span v-if="selectedAction.input[key].required" class="text-xs text-red-500">*</span>
+                  <span class="text-xs text-neutral-600">({{ selectedAction.input[key].type }})</span>
                 </label>
                 <input
-                  :value="fieldMappings.find(m => m.target === key.toString())?.source || ''"
+                  :value="getFieldMapping(key)"
                   type="text"
-                  :placeholder="param.placeholder || `e.g. $.event.data.${key}`"
+                  :placeholder="selectedAction.input[key].placeholder || `e.g. $.event.data.${key}`"
                   class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                  @input="handleParameterChange(key.toString(), ($event.target as HTMLInputElement).value)"
+                  @input="updateFieldMapping(key, ($event.target as HTMLInputElement).value)"
                 />
-                <p v-if="param.description" class="mt-1.5 text-xs text-neutral-600">
-                  {{ param.description }}
+                <p v-if="selectedAction.input[key].description" class="mt-1.5 text-xs text-neutral-600">
+                  {{ selectedAction.input[key].description }}
                 </p>
               </div>
             </div>
@@ -160,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import {
   ComboboxAnchor,
@@ -176,65 +177,58 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { ActionNode, ActionEntity } from '@abuddy/api'
+import type { ActionEntity, EARS } from '@abuddy/api'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { flowsId } from '../../state'
+import { useNodeForm } from '../../composables/use-node-viewmodel'
+import { createDefaultMappings } from '../../types/view-models'
+import type { ActionNodeView } from '../../types/view-models'
 
 const props = defineProps<{
-  node: ActionNode
+  nodeId: EARS.EntityId
 }>()
 
-const emit = defineEmits<{
-  'update-node': [data: Partial<ActionNode>]
-}>()
+// Single source of truth - no dual updates
+const { node, extension, updateNode, updateLabel } = useNodeForm(props.nodeId)
 
-// Get flows actor for accessing actions
+// Get flows actor for accessing actions list
 const flowsActor = applicationState.system.get(flowsId)
 const actions = useSelector(flowsActor, (state: any) => state.context.actions)
 
-// Local state
-const selectedAction = ref<ActionEntity | null>(null)
+// UI state only - no data duplication
 const actionQuery = ref('')
-const fieldMappings = ref<Array<{ target: string; source: string; default?: any }>>([])
 const isActionDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Get action from normalized store using actionId
-const nodeAction = computed(() => {
-  if (props.node.actionId) {
-    return actions.value.find((a: ActionEntity) => a.id === props.node.actionId) || null
-  }
-  return null
+// Type-safe extension access
+const actionExtension = computed(() => 
+  extension.value?.type === 'action' ? extension.value as ActionNodeView : null
+)
+
+// Stable computed references
+const selectedAction = computed(() => actionExtension.value?.action)
+
+// Optimized field mappings using Map for O(1) access
+const fieldMappingsMap = computed(() => {
+  const mappings = new Map<string, string>()
+  actionExtension.value?.fieldMappings?.forEach(mapping => {
+    mappings.set(mapping.target, mapping.source)
+  })
+  return mappings
 })
 
-// Initialize form data
-onMounted(() => {
-  // Set initial value if available
-  if (nodeAction.value) {
-    selectedAction.value = nodeAction.value
-    fieldMappings.value = props.node.fieldMappings || []
-  }
-})
+// Create compatible node data for BaseForm
+const nodeData = computed(() => ({
+  id: props.nodeId,
+  nodeType: node.value?.nodeType || 'action',
+  label: node.value?.label || ''
+}))
 
-// Watch for actionId changes to update selection
-watch(() => props.node.actionId, (newActionId) => {
-  if (newActionId) {
-    const action = actions.value.find((a: ActionEntity) => a.id === newActionId)
-    if (action) {
-      selectedAction.value = action
-    }
-  } else {
-    selectedAction.value = null
-  }
-})
-
-
-// Computed filtered actions
+// Computed filtered lists
 const filteredActions = computed(() => {
   if (actionQuery.value === '') return actions.value
-  
   return actions.value.filter((action: ActionEntity) =>
     startsWith(action.label, actionQuery.value)
   )
@@ -253,65 +247,46 @@ const groupedActions = computed(() => {
   return groups
 })
 
-// Clear query when dropdown closes
-watch(isActionDropdownOpen, (newValue) => {
-  if (!newValue) {
-    actionQuery.value = ''
-  }
-})
+// Action input keys
+const actionInputKeys = computed(() => 
+  selectedAction.value?.input ? Object.keys(selectedAction.value.input) : []
+)
 
-// Handlers
-const handleUpdateLabel = (label: string) => {
-  emit('update-node', { ...props.node, label })
+// Field mapping helpers
+const getFieldMapping = (target: string): string => {
+  return fieldMappingsMap.value.get(target) || ''
 }
 
-const handleActionChange = (action: ActionEntity | null) => {
-  selectedAction.value = action
-  actionQuery.value = ''
+const updateFieldMapping = (target: string, source: string) => {
+  // Create new array with updated mapping
+  const currentMappings = actionExtension.value?.fieldMappings || []
+  const newMappings = currentMappings.filter(m => m.target !== target)
   
-  // Reset field mappings for new action
-  const newMappings: Array<{ target: string; source: string; default?: any }> = []
-  if (action?.input) {
-    Object.keys(action.input).forEach(key => {
-      const existing = fieldMappings.value.find(m => m.target === key)
-      newMappings.push({
-        target: key,
-        source: existing?.source || '',
-        default: existing?.default
-      })
+  if (source.trim()) {
+    newMappings.push({ target, source, default: undefined })
+  }
+  
+  updateNode({ fieldMappings: newMappings })
+}
+
+// Single update handlers - no emit needed
+const handleActionChange = (action: ActionEntity | null) => {
+  actionQuery.value = ''
+  isActionDropdownOpen.value = false
+  
+  if (action) {
+    const newMappings = createDefaultMappings(action.input)
+    updateNode({
+      actionId: action.id,
+      fieldMappings: newMappings
+    })
+  } else {
+    updateNode({
+      actionId: undefined,
+      fieldMappings: []
     })
   }
-  fieldMappings.value = newMappings
-  
-  // Update node with actionId for backend to create/update relationship
-  // Create update object with fieldMappings
-  const update: any = {
-    ...props.node,
-    fieldMappings: newMappings,
-  }
-  
-  // Always include actionId when updating with a new action
-  if (action) {
-    update.actionId = action.id
-  }
-  
-  emit('update-node', update)
 }
-
-const handleParameterChange = (field: string, value: string) => {
-  const index = fieldMappings.value.findIndex(m => m.target === field)
-  if (index >= 0) {
-    fieldMappings.value[index].source = value
-  } else {
-    fieldMappings.value.push({ target: field, source: value })
-  }
-  
-  emit('update-node', {
-    ...props.node,
-    fieldMappings: [...fieldMappings.value]
-  })
-}
-
 </script>
 
 <style scoped>

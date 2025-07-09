@@ -1,15 +1,16 @@
 <template>
   <BaseForm 
-    :node="node"
-    @update-label="$emit('update-label', $event)"
+    v-if="node"
+    :node="nodeData"
+    @update-label="updateLabel"
   >
     <div>
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         ENTITY TYPE
       </label>
       <select
-        :value="node.entityTypeTarget"
-        @change="updateConfig({ entityTypeTarget: ($event.target as HTMLSelectElement).value })"
+        :value="entityTypeTarget"
+        @change="updateEntityType(($event.target as HTMLSelectElement).value)"
         class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         <option value="thread">Thread</option>
@@ -23,8 +24,8 @@
         ENTITY ID (OPTIONAL)
       </label>
       <input
-        :value="node.entityId || ''"
-        @input="updateConfig({ entityId: ($event.target as HTMLInputElement).value })"
+        :value="entityId"
+        @input="updateEntityId(($event.target as HTMLInputElement).value)"
         placeholder="Auto-generated if empty"
         class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
@@ -33,8 +34,8 @@
       <label class="flex items-center text-sm text-neutral-200">
         <input
           type="checkbox"
-          :checked="node.inferLabel"
-          @change="updateConfig({ inferLabel: ($event.target as HTMLInputElement).checked })"
+          :checked="inferLabel"
+          @change="updateInferLabel(($event.target as HTMLInputElement).checked)"
           class="mr-2 rounded border-neutral-700 bg-neutral-800 text-blue-500 focus:ring-2 focus:ring-blue-500"
         />
         <span class="text-xs font-medium uppercase tracking-wider text-neutral-400">INFER LABEL</span>
@@ -44,25 +45,41 @@
 </template>
 
 <script setup lang="ts">
-import type { CreateNode, EARS } from '@abuddy/api';
-import BaseForm from './BaseForm.vue';
-import { isNodeKind } from '../../helpers/is-node-kind';
+import { computed } from 'vue'
+import type { EARS } from '@abuddy/api'
+import BaseForm from './BaseForm.vue'
+import { useNodeForm } from '../../composables/use-node-viewmodel'
+import type { CreateNodeView } from '../../types/view-models'
 
 const props = defineProps<{
-  node: CreateNode;
-}>();
+  nodeId: EARS.EntityId
+}>()
 
-const emit = defineEmits<{
-  'update-label': [label: string]
-  'update-config': [config: Record<string, any>]
-}>();
+const { node, extension, updateNode, updateLabel } = useNodeForm(props.nodeId)
 
-// Type guard to ensure we have a CreateNode
-if (!isNodeKind('create')(props.node)) {
-  throw new Error('CreateForm requires a node of type "create"');
+const createExtension = computed(() => 
+  extension.value?.type === 'create' ? extension.value as CreateNodeView : null
+)
+
+const nodeData = computed(() => ({
+  id: props.nodeId,
+  nodeType: node.value?.nodeType || 'create',
+  label: node.value?.label || ''
+}))
+
+const entityTypeTarget = computed(() => createExtension.value?.entityTypeTarget || 'thread')
+const entityId = computed(() => createExtension.value?.entityId || '')
+const inferLabel = computed(() => createExtension.value?.inferLabel ?? true)
+
+const updateEntityType = (value: string) => {
+  updateNode({ entityTypeTarget: value as EARS.Entity })
 }
 
-function updateConfig(config: Record<string, any>) {
-  emit('update-config', config);
+const updateEntityId = (value: string) => {
+  updateNode({ entityId: value || undefined })
+}
+
+const updateInferLabel = (value: boolean) => {
+  updateNode({ inferLabel: value })
 }
 </script>
