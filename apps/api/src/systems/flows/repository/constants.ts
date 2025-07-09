@@ -44,5 +44,5 @@ export const FLOW_DEFAULTS = {
  *─────────────────────────────────────────────────────────────────*/
 export const FLOW_QUERY_FIELDS = {
   LIST: ["id", "label", "flowType", "status", "createdAt"] as const,
-  // DETAIL: ["id", "label", "description", "flowType", "status", "createdAt", "updatedAt"] as const,
+  DETAIL: ["id", "label", "description", "flowType", "status", "createdAt", "updatedAt"] as const,
 } as const;

@@ -20,7 +20,7 @@ export function createAction(data: {
     if (typeof value === 'object' && value !== null) {
       transformedInput[key] = value as ActionParameter;
     } else {
-      // Simple transformation for basic parameters
+      // Simple transformation for basic input
       transformedInput[key] = {
         name: key,
         type: 'any',

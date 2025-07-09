@@ -52,7 +52,7 @@ export const runAgentBrainFlow: Rows = {
       mode: "internal",
       eventType: "database.query.prompt",
     },
-    /* Responders */
+    /* First Steps (connected via TRANSITIONS_TO) */
     {
       id: "Node-a4s",
       entityType: EARS.Entity.Node,

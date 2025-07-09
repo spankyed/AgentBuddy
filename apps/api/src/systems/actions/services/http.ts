@@ -89,7 +89,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'get',
       description: 'Make a GET request',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',
@@ -115,7 +115,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'post',
       description: 'Make a POST request',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',
@@ -145,7 +145,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'put',
       description: 'Make a PUT request',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',
@@ -174,7 +174,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'patch',
       description: 'Make a PATCH request',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',
@@ -203,7 +203,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'delete',
       description: 'Make a DELETE request',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',
@@ -226,7 +226,7 @@ export const httpServiceMetadata: ServiceMetadata = {
     {
       name: 'head',
       description: 'Make a HEAD request to get headers only',
-      parameters: [
+      input: [
         {
           name: 'url',
           type: 'string',

@@ -70,7 +70,7 @@ describe('Brain Runner - Isolated Tests', () => {
       expect(eventNodes.map(n => n.eventType)).toContain('user.action');
     });
 
-    it('demonstrates event to responder chain', () => {
+    it('demonstrates event to first step chain', () => {
       // Create event listener
       const listenerId = 'Node-listen' as EARS.EntityId;
       tx(listenerId)
@@ -89,15 +89,15 @@ describe('Brain Runner - Isolated Tests', () => {
         .put('actionName', 'processMessage')
         .put('createdAt', Date.now());
 
-      // Connect listener to action via RESPONDER
-      tx(listenerId).link(EARS.RelKind.RESPONDER, actionId);
+      // Connect listener to action via TRANSITIONS_TO
+      tx(listenerId).link(EARS.RelKind.TRANSITIONS_TO, actionId);
 
-      // Verify responder connection
-      const responders = qx(listenerId)
-        .linksTo(EARS.RelKind.RESPONDER, [EARS.Entity.Node])
+      // Verify transition connection
+      const transitions = qx(listenerId)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
         .ids();
 
-      expect(responders).toContain(actionId);
+      expect(transitions).toContain(actionId);
     });
 
     it('demonstrates sequential execution chain', () => {
@@ -537,7 +537,7 @@ function setupTestFlow() {
     .link(EARS.RelKind.CONTAINS, actionId)
     .link(EARS.RelKind.CONTAINS, fireId);
 
-  tx(entryId).link(EARS.RelKind.RESPONDER, actionId);
+  tx(entryId).link(EARS.RelKind.TRANSITIONS_TO, actionId);
   tx(actionId).link(EARS.RelKind.TRANSITIONS_TO, fireId);
 
   // Create example TNodes to show execution

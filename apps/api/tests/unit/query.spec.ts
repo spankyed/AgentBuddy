@@ -96,14 +96,14 @@ describe('qx – fluent query DSL', () => {
   it('linksTo() follows TRANSITIONS_TO to next step', () => {
     expect(
       qx('Node-b2')
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids(),
     ).toEqual(['Node-b8']);
   });
 
   it('linksPick() projects linked nodes with selected fields', () => {
     const rows = qx('Node-b1').linksPick(
-      EARS.RelKind.RESPONDER,
+      EARS.RelKind.TRANSITIONS_TO,
       ['label', 'nodeType'],
       EARS.Entity.Node,
     );
@@ -181,7 +181,7 @@ describe('qx – fluent query DSL', () => {
 
   /* ────────── edge identifiers ────────── */
   it('edgeIds() exposes raw relation identifiers', () => {
-    const edges = qx('Node-b2').edgeIds(EARS.RelKind.RESPONDER, true);
+    const edges = qx('Node-b2').edgeIds(EARS.RelKind.TRANSITIONS_TO, true);
     expect(edges).toHaveLength(1);
     expect(edges[0]).toMatch(/Relation-/);
   });

@@ -212,10 +212,10 @@ describe('Brain Runner', () => {
   });
 
   describe('Sequential Execution', () => {
-    it('should spawn step TNode for responder node', async () => {
+    it('should spawn step TNode for first step after event', async () => {
       const actor = startBrainRunner(mockSystemActor);
       
-      // Trigger entry event which has a keep_alive responder
+      // Trigger entry event which has a keep_alive as first step
       await vi.waitFor(() => {
         const stepTNodes = qx(EARS.Entity.TNode)
           .where('nodeType', 'step')
@@ -396,7 +396,7 @@ describe('Brain Runner', () => {
         .put('eventType', 'test.fired')
         .put('createdAt', Date.now());
       
-      // Connect it as a responder to an event
+      // Connect it as a transition to an event
       const testEventNodeId = 'Node-test-listen' as EARS.EntityId;
       tx(testEventNodeId)
         .put('entityType', EARS.Entity.Node)
@@ -405,7 +405,7 @@ describe('Brain Runner', () => {
         .put('eventType', 'test.trigger')
         .put('mode', 'internal')
         .put('createdAt', Date.now())
-        .link(EARS.RelKind.RESPONDER, fireNodeId);
+        .link(EARS.RelKind.TRANSITIONS_TO, fireNodeId);
       
       // Add to root flow
       const rootFlowId = qx(EARS.Entity.Flow)
@@ -443,8 +443,8 @@ describe('Brain Runner', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle missing responder nodes gracefully', async () => {
-      // Create an event node without a responder
+    it('should handle missing first step nodes gracefully', async () => {
+      // Create an event node without a first step
       const orphanEventId = 'Node-orphan-event' as EARS.EntityId;
       tx(orphanEventId)
         .put('entityType', EARS.Entity.Node)
@@ -518,7 +518,7 @@ describe('Brain Runner', () => {
       const actor = startBrainRunner(mockSystemActor);
       
       // The test flow has a flow node (Node-b11) that could be triggered
-      // if connected properly via RESPONDER relation
+      // if connected properly via TRANSITIONS_TO relation
       
       expect(actor.getSnapshot().status).toBe('active');
     });
