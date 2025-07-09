@@ -1,10 +1,10 @@
-import { createAction } from './create';
+import { actionCommands } from './index';
 import { createLogger } from '@/systems/logs/logger';
 import { services } from '../services';
 
 const logger = createLogger('actions-mock-data');
 
-// Export services for backward compatibility
+
 export { services as mockServices };
 
 export function createMockActions() {
@@ -205,7 +205,10 @@ return result;`,
   ];
   
   mockActions.forEach(action => {
-    createAction(action);
+    const result = actionCommands.create(action);
+    if (!result.success) {
+      logger.error('Failed to create mock action:', { error: result.error, action: action.label });
+    }
   });
   
   logger.info(`Created ${mockActions.length} mock actions`);

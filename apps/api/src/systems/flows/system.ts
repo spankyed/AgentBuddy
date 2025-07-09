@@ -5,15 +5,13 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
-import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
-import { getExtendedData } from './repository/read';
-import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
-import { updateFlowLabel, updateNode } from './repository/update';
+import { flowCommands, flowQueries, FLOW_EDGE_KINDS } from './repository';
+const flowsStartupData = () => flowQueries.startupData();
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
-import { getAllPrompts } from '../prompts/repository/read';
-import { getAllActions } from '../actions/repository/read';
+import { promptQueries } from '../prompts/repository';
+import { actionQueries } from '../actions/repository';
 import { availableModels } from './config/available-models';
 
 const logger = createLogger('flows');
@@ -67,7 +65,7 @@ export const flowsSystem = setup({
     },
     sendFlowData: ({ system, event }) => {
       const ev = typeOf('FLOW_SELECT', event);
-      const flow = getExtendedData(ev.flowId as EARS.EntityId);
+      const flow = flowQueries.extendedData(ev.flowId as EARS.EntityId);
       
       system.get(bus).send(emit(flows, {
         type: 'FLOW_SELECTED',
@@ -76,10 +74,15 @@ export const flowsSystem = setup({
       }));
     },
     createFlow: ({ system }) => {
-      const { flow: newFlow } = createFlowWithEntryNode();
+              const result = flowCommands.createWithEntryNode();
+        if (!result.success) {
+          console.error('Failed to create flow:', result.error);
+          return;
+        }
+        const { flow: newFlow } = result.data;
       
       // Get the flow data which now includes the entry node
-      const flowData = getExtendedData(newFlow.id);
+      const flowData = flowQueries.extendedData(newFlow.id);
 
       system.get(bus).send(emit(flows, {
         type: 'FLOW_CREATED',
@@ -88,16 +91,24 @@ export const flowsSystem = setup({
         data: flowData,  // Include graph data directly
       }));
     },
-    updateFlowLabel: ({ event }) => {
-      const ev = typeOf('UPDATE_FLOW_LABEL', event);
-      updateFlowLabel(ev.flowId as EARS.EntityId, ev.label);
-    },
+          updateFlowLabel: ({ event }) => {
+        const ev = typeOf('UPDATE_FLOW_LABEL', event);
+        const result = flowCommands.updateFlowLabel(ev.flowId as EARS.EntityId, ev.label);
+        if (!result.success) {
+          console.error('Failed to update flow label:', result.error);
+        }
+      },
     createNode: ({ system, event }) => {
       const ev = typeOf('CREATE_NODE', event);
       logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
       
       try {
-        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        const result = flowCommands.createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        if (!result.success) {
+          logger.error('Failed to create node:', { error: result.error });
+          return;
+        }
+        const newNode = result.data;
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_CREATED',
@@ -114,7 +125,11 @@ export const flowsSystem = setup({
       logger.info('Updating node:', { flowId: ev.flowId, nodeId: ev.nodeId, nodeData: ev.nodeData });
       
       try {
-        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        const result = flowCommands.updateNode(ev.nodeId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        if (!result.success) {
+          logger.error('Failed to update node:', { error: result.error });
+          return;
+        }
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_UPDATED',
@@ -129,7 +144,11 @@ export const flowsSystem = setup({
       const ev = typeOf('CREATE_EDGE', event);
       logger.info('Creating edge:', { sourceId: ev.sourceId, targetId: ev.targetId });
       
-      createEdge(ev.sourceId as EARS.EntityId, ev.targetId as EARS.EntityId);
+      const result = flowCommands.createEdge(ev.sourceId as EARS.EntityId, ev.targetId as EARS.EntityId);
+      if (!result.success) {
+        logger.error('Failed to create edge:', { error: result.error });
+        return;
+      }
       
       system.get(bus).send(emit(flows, {
         type: 'EDGE_CREATED',
@@ -138,7 +157,7 @@ export const flowsSystem = setup({
       }));
     },
     fetchLLMFormData: ({ system }) => {
-      const prompts = getAllPrompts();
+              const prompts = promptQueries.all();
       system.get(bus).send(emit(flows, {
         type: 'LLM_FORM_DATA_FETCHED',
         models: availableModels,
@@ -146,7 +165,7 @@ export const flowsSystem = setup({
       }));
     },
     fetchActionFormData: ({ system }) => {
-      const actions = getAllActions();
+              const actions = actionQueries.all();
       system.get(bus).send(emit(flows, {
         type: 'ACTION_FORM_DATA_FETCHED',
         actions

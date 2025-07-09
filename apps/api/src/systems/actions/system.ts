@@ -98,7 +98,7 @@ export const actionsSystem = setup({
           actionId: result.data.id,
         }));
       } else {
-        logger.error('Failed to create action:', result.error);
+        logger.error('Failed to create action:', { error: result.error });
       }
     },
     updateAction: ({ system, event }) => {
@@ -122,7 +122,7 @@ export const actionsSystem = setup({
           }));
         }
       } else {
-        logger.error('Failed to update action:', result.error);
+        logger.error('Failed to update action:', { error: result.error });
       }
     },
     deleteAction: ({ system, event }) => {
@@ -135,7 +135,7 @@ export const actionsSystem = setup({
           actionId: ev.actionId as EARS.EntityId,
         }));
       } else {
-        logger.error('Failed to delete action:', result.error);
+        logger.error('Failed to delete action:', { error: result.error });
       }
     },
     fetchActionsPage: ({ system, event }) => {

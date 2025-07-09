@@ -80,7 +80,8 @@ export function findFirstWithRole<T>(
   entityType: EARS.Entity,
   role: string
 ): T | undefined {
-  return qx(entityType)
+  const results = qx(entityType)
     .withRole(role)
-    .pickOne() as T | undefined;
+    .pickAll();
+  return results[0] as T | undefined;
 } 

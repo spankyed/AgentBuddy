@@ -54,7 +54,7 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
-import { getPromptById } from '@/systems/prompts/repository';
+import { promptQueries } from '@/systems/prompts/repository';
 import { executeTemplate } from '@/systems/prompts/template-executor';
 import { EARS } from '@/shared/ears/types';
 
@@ -95,7 +95,7 @@ function generatePrompt(
   if (nodeData.promptTemplateId) {
     try {
       // Get the prompt template from EARS datastore
-      const prompt = getPromptById(`Prompt-${nodeData.promptTemplateId}` as EARS.EntityId);
+      const prompt = promptQueries.byId(`Prompt-${nodeData.promptTemplateId}` as EARS.EntityId);
       if (!prompt) {
         logger.error(`Prompt template not found:`, { templateId: nodeData.promptTemplateId });
         return 'Error: Prompt template not found';

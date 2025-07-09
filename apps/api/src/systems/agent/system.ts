@@ -7,11 +7,10 @@ import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
-import { addMessageToLatestThread, getLatestMessage } from './repository';
+// import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';
 import { AgentStartupData, AgentThreadData, FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
-import { getThreadChatData } from './repository/read';
-import agentStartupData from './repository/startup';
+import { agentQueries } from './repository';
 import { createLogger } from '@/systems/logs/logger';
 import { brain } from '../brain/system';
 
@@ -69,7 +68,7 @@ export const agentSystem = setup({
     sendAgentStartupData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'AGENT_STARTUP',
-        data: agentStartupData()
+        data: agentQueries.startupData()
       }));
     },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
@@ -80,7 +79,7 @@ export const agentSystem = setup({
 
       system.get(bus).send(emit(agent, { 
         type: 'LOAD_CHAT_THREAD',
-        data: getThreadChatData(threadId),
+                  data: agentQueries.threadData(threadId),
       }));
     },
     sendToken: ({ system, event }) => {
@@ -165,7 +164,7 @@ export const agentSystem = setup({
           input: ({ context }) => ({
             messages: [
               message('system', 'You are a helpful AI assistant.'),
-              message("user", getLatestMessage()),
+              // message("user", getLatestMessage()), // TODO: Implement message retrieval
             ],
             provider: 'openai',
           }),

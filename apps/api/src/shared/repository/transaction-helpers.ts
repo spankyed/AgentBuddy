@@ -100,7 +100,7 @@ export function removeRelation(
   targetId?: EARS.EntityId
 ): void {
   if (targetId) {
-    tx(sourceId).unlink(relationType, targetId);
+    tx(sourceId).unlinkIf(relationType, targetId);
   } else {
     tx(sourceId).unlinkIf(relationType);
   }
