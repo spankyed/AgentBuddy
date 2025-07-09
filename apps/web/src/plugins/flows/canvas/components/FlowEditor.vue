@@ -18,6 +18,7 @@
       @drop="$emit('drop', $event)"
       @dragover.prevent
       @nodes-initialized="$emit('nodes-initialized')"
+      @node-drag-stop="$emit('node-drag-stop', $event)"
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -116,6 +117,7 @@ const emit = defineEmits<{
   'action-edit-label': []
   'overlay-click': []
   'nodes-initialized': []
+  'node-drag-stop': [event: NodeMouseEvent]
 }>()
 
 // Watch for selected node changes and center the node

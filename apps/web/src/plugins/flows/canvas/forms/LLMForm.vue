@@ -1,8 +1,8 @@
 <template>
   <BaseForm
     v-if="node"
-    :node="nodeData"
-    @update-label="updateLabel"
+    :node="node"
+    @update-label="$emit('update-node', { label: $event })"
   >
     <div class="space-y-6">
       <!-- Model Selection -->
@@ -255,27 +255,22 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { ModelConfig, PromptEntity, EARS } from '@abuddy/api'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
-import { flowsId } from '../../state'
-import { useNodeForm } from '../../composables/use-node-viewmodel'
-import { createDefaultMappings } from '../../types/view-models'
-import type { LLMNodeView } from '../../types/view-models'
+import type { ModelConfig, PromptEntity, NodeEntity } from '@abuddy/api'
+import type { FormResources } from '../../types/form-props'
 
 const props = defineProps<{
-  nodeId: EARS.EntityId
+  node: NodeEntity
+  resources?: FormResources
 }>()
 
-// Single source of truth - no dual updates
-const { node, extension, updateNode, updateLabel } = useNodeForm(props.nodeId)
+const emit = defineEmits<{
+  'update-node': [updates: Record<string, any>]
+}>()
 
-// Get flows actor for accessing models and prompts lists
-const flowsActor = applicationState.system.get(flowsId)
-const prompts = useSelector(flowsActor, (state: any) => state.context.prompts)
-const availableModels = useSelector(flowsActor, (state: any) => state.context.models)
+// Type assertion for llm node properties
+const nodeData = computed(() => props.node as any)
 
-// UI state only - no data duplication
+// UI state
 const promptQuery = ref('')
 const isPromptDropdownOpen = ref(false)
 const modelQuery = ref('')
@@ -283,42 +278,33 @@ const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Type-safe extension access
-const llmExtension = computed(() => 
-  extension.value?.type === 'llm' ? extension.value as LLMNodeView : null
-)
-
-// Stable computed references
-const selectedPrompt = computed(() => llmExtension.value?.promptEntity)
-const selectedModel = computed(() => llmExtension.value?.model)
-
-// Optimized field mappings using Map for O(1) access
-const fieldMappingsMap = computed(() => {
-  const mappings = new Map<string, string>()
-  llmExtension.value?.fieldMappings?.forEach(mapping => {
-    mappings.set(mapping.target, mapping.source)
-  })
-  return mappings
+// Get selected model and prompt
+const selectedModel = computed(() => {
+  if (!nodeData.value.model || !props.resources?.models) return null
+  return props.resources.models.find((m: ModelConfig) => m.id === nodeData.value.model) || null
 })
 
-// Create compatible node data for BaseForm
-const nodeData = computed(() => ({
-  id: props.nodeId,
-  nodeType: node.value?.nodeType || 'llm',
-  label: node.value?.label || ''
-}))
+const selectedPrompt = computed(() => {
+  if (!nodeData.value.promptTemplateId || !props.resources?.prompts) return null
+  return props.resources.prompts.find((p: PromptEntity) => p.id === nodeData.value.promptTemplateId) || null
+})
+
+// Field mappings
+const fieldMappings = computed(() => nodeData.value.fieldMappings || [])
 
 // Computed filtered lists
 const filteredPrompts = computed(() => {
-  if (promptQuery.value === '') return prompts.value
-  return prompts.value.filter((prompt: PromptEntity) =>
+  if (!props.resources?.prompts) return []
+  if (promptQuery.value === '') return props.resources.prompts
+  return props.resources.prompts.filter((prompt: PromptEntity) =>
     startsWith(prompt.label, promptQuery.value)
   )
 })
 
 const filteredModels = computed(() => {
-  if (modelQuery.value === '') return availableModels.value
-  return availableModels.value.filter((model: ModelConfig) =>
+  if (!props.resources?.models) return []
+  if (modelQuery.value === '') return props.resources.models
+  return props.resources.models.filter((model: ModelConfig) =>
     startsWith(model.name, modelQuery.value) ||
     startsWith(model.provider, modelQuery.value)
   )
@@ -353,34 +339,39 @@ const formatContextWindow = (tokens: number) => {
 
 // Field mapping helpers
 const getFieldMapping = (target: string): string => {
-  return fieldMappingsMap.value.get(target) || ''
+  const mapping = fieldMappings.value.find((m: any) => m.target === target)
+  return mapping?.source || ''
 }
 
 const updateFieldMapping = (target: string, source: string) => {
-  // Create new array with updated mapping
-  const currentMappings = llmExtension.value?.fieldMappings || []
-  const newMappings = currentMappings.filter(m => m.target !== target)
+  const currentMappings = fieldMappings.value.filter((m: any) => m.target !== target)
   
   if (source.trim()) {
-    newMappings.push({ target, source, default: undefined })
+    currentMappings.push({ target, source, default: undefined })
   }
   
-  updateNode({ fieldMappings: newMappings })
+  emit('update-node', { fieldMappings: currentMappings })
 }
 
-// Single update handlers - no emit needed
+// Update handlers
 const handlePromptChange = (prompt: PromptEntity | null) => {
   promptQuery.value = ''
   isPromptDropdownOpen.value = false
   
   if (prompt) {
-    const newMappings = createDefaultMappings(prompt.inputs)
-    updateNode({
+    // Create default mappings for new prompt
+    const newMappings = prompt.inputs ? Object.keys(prompt.inputs).map(key => ({
+      target: key,
+      source: `$.event.data.${key}`,
+      default: undefined
+    })) : []
+    
+    emit('update-node', {
       promptTemplateId: prompt.id,
       fieldMappings: newMappings
     })
   } else {
-    updateNode({
+    emit('update-node', {
       promptTemplateId: undefined,
       fieldMappings: []
     })
@@ -390,7 +381,7 @@ const handlePromptChange = (prompt: PromptEntity | null) => {
 const handleModelChange = (model: ModelConfig | null) => {
   modelQuery.value = ''
   isModelDropdownOpen.value = false
-  updateNode({ model: model?.id || undefined })
+  emit('update-node', { model: model?.id || undefined })
 }
 </script>
 

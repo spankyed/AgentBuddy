@@ -36,15 +36,17 @@
       @action-edit-label="openLabelDialog"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
+      @node-drag-stop="handleNodeDragStop"
     />
 
     <!-- ▸ Node form overlay -->
     <NodeForm
       :selected-node="selected"
+      :actions="actions"
+      :models="models"
+      :prompts="prompts"
       @close="handleCloseNodeEditor"
-      @update-label="(nodeId, label) => handleNodeUpdate(nodeId, { label })"
-      @update-config="(nodeId, config) => handleNodeUpdate(nodeId, config)"
-      @update-node="(node) => node.id && handleNodeUpdate(node.id, node)"
+      @update-node="handleNodeUpdate"
       @create-connected="handleCreateConnectedNode"
     />
 
@@ -99,10 +101,14 @@ const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const flows   = useSelector(actor, (s) => s.context.flows.filter((n) => n.id !== s.context.rootFlow?.id))
 const rootFlow = useSelector(actor, (s) => s.context.rootFlow)
+const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
+const actions = useSelector(actor, (s) => s.context.actions)
+const models = useSelector(actor, (s) => s.context.models)
+const prompts = useSelector(actor, (s) => s.context.prompts)
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
@@ -110,8 +116,8 @@ const plainNodes = computed(() => {
       id       : n.id!,
       type     : n.nodeType,
       position : { 
-        x: n.x ?? 0,  // Use stored position or default to 0
-        y: n.y ?? 0 
+        x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
+        y: positions.value[n.id]?.y ?? 0 
       },
       data     : n,  // The node itself is the data
     })) as VueFlowNode[]
@@ -253,8 +259,19 @@ async function handleNodesInitialized() {
   })
 }
 
-function handleNodeUpdate(nodeId: string, updates: any) {
+function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {
   actor.send({ type: 'NODE.UPDATE', nodeId: nodeId as any, updates })
+}
+
+function handleNodeDragStop(event: NodeMouseEvent) {
+  const node = event.node
+  if (node.id && node.position) {
+    actor.send({
+      type: 'NODE.UPDATE_POSITION',
+      nodeId: node.id,
+      position: { x: node.position.x, y: node.position.y }
+    })
+  }
 }
 </script>
 
