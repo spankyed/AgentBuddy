@@ -5,7 +5,7 @@ export * from './update';
 
 // Utilities and helpers
 export * from './errors';
-export * from './node-handlers';
+export * from './node-relations';
 
 // Constants
 export { FLOW_EDGE_KINDS as edgeKinds } from './constants';

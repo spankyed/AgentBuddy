@@ -2,7 +2,7 @@ import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { EdgeEntity, FlowExtendedData, NodeEntity, NodeEntityEnriched } from '../types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
-import { enrichNodeWithRelations } from './node-handlers';
+import { enrichNodeWithRelations } from './node-relations';
 import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';
 
 export const getRootFlow = (): EARS.EntityId | undefined =>
