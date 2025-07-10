@@ -2,7 +2,7 @@
  * attribute‑store.ts – single‑bucket, generic mutator + query shims
  *─────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/shared/utils";
-import { logInternal }   from "@/shared/debug/log";
+import { logInternal }   from "@/shared/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "./types";
 import { randomId } from "../utils/random-id";
