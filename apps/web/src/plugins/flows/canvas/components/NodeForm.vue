@@ -129,11 +129,6 @@ function getFormComponent(nodeType: string) {
 const showNextStepMenu = ref(false)
 const paletteItems = getPaletteItems()
 
-// Watch for selected node changes and reset menu state
-watch(() => props.selectedNode?.id, () => {
-  showNextStepMenu.value = false
-})
-
 function handleCreateConnectedNode(nodeType: string) {
   if (!props.selectedNode?.id) return
   

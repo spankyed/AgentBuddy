@@ -187,7 +187,6 @@ export function createStepTNode(
   
   if (executionContext && step.nodeType) {
     nodeAttributes = prepareNodeAttributes(step as NodeEntity, executionContext);
-    console.log('nodeAttributes: ', nodeAttributes);
   }
 
   const stepTNode: Partial<TNodeEntity> = {

@@ -95,7 +95,7 @@
           </span>
         </div>
       </div>
-      
+
       <!-- Prompt Template Dropdown -->
       <div>
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">

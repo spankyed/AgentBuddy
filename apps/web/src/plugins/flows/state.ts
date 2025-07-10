@@ -107,7 +107,6 @@ const flowsState = setup({
 
     loadFlowData: assign(({ event }) => {
       const ev = typeOf('FLOW_SELECTED', event);
-      
       return {
         selectedFlowId: ev.flowId,
         selectedNodeId: undefined,
