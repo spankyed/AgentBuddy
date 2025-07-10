@@ -22,14 +22,17 @@
 </template>
 
 <script setup lang="ts">
-import type { NodeEntity } from '@abuddy/api';
-
+// Accept partial node data since forms now compute their own nodeData
 defineProps<{
-  node: NodeEntity;
-}>();
+  node: {
+    id: string
+    nodeType: string
+    label: string
+  }
+}>()
 
 defineEmits<{
   'update-label': [label: string]
   'update-config': [config: Record<string, any>]
-}>();
+}>()
 </script>

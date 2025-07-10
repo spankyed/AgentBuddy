@@ -37,7 +37,7 @@ The entry point that:
 #### Flow Machine
 - Listens for events dynamically based on event nodes
 - Handles child completion
-- Spawns execution chains for event responders
+- Spawns execution chains for first steps after events
 
 #### Step Machine
 - Creates TNodes for step execution
@@ -62,7 +62,7 @@ Blueprint nodes can be marked as `final: true` in the flow definition to trigger
 
 #### Flow Data
 - Queries flow and node relationships
-- Gets event nodes, responders, and transitions
+- Gets event nodes, first steps, and transitions
 
 #### Child Spawning
 - Spawns appropriate machines (flow or step)
@@ -111,7 +111,7 @@ const exitNode: NodeEntity = {
 1. **Root Flow Start**: The runner creates a root flow machine
 2. **Event Trigger**: Entry event is sent to the root flow
 3. **Event Handling**: Flow machine finds matching event node
-4. **Responder Chain**: Creates event TNode and spawns responder execution
+4. **First Step Chain**: Creates event TNode and spawns first step execution
 5. **Step Execution**: Each step creates its TNode and executes
 6. **Completion**: Steps notify parents, which spawn next steps
 7. **Flow Persistence**: Flows with keep-alive nodes remain active

@@ -5,7 +5,7 @@ import type { ActionEntity, ActionParameter } from '../types';
 
 export function createAction(data: {
   label: string;
-  parameters: Record<string, any>;
+  input: Record<string, any>;
   actionFn: string;
   output?: any;
   description?: string;
@@ -14,14 +14,14 @@ export function createAction(data: {
   const ts = Date.now();
   const count = qx(EARS.Entity.Action).count() + 1;
   
-  // Transform parameters to proper ActionParameter format
-  const transformedParameters: Record<string, ActionParameter> = {};
-  for (const [key, value] of Object.entries(data.parameters)) {
+  // Transform input to proper ActionParameter format
+  const transformedInput: Record<string, ActionParameter> = {};
+  for (const [key, value] of Object.entries(data.input)) {
     if (typeof value === 'object' && value !== null) {
-      transformedParameters[key] = value as ActionParameter;
+      transformedInput[key] = value as ActionParameter;
     } else {
-      // Simple transformation for basic parameters
-      transformedParameters[key] = {
+      // Simple transformation for basic input
+      transformedInput[key] = {
         name: key,
         type: 'any',
         required: true
@@ -34,7 +34,7 @@ export function createAction(data: {
     label: data.label,
     description: data.description,
     category: data.category,
-    parameters: transformedParameters,
+    input: transformedInput,
     actionFn: data.actionFn,
     output: data.output,
     createdAt: ts,

@@ -1,20 +1,29 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../types';
-import { edgeKinds } from './index';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
-
-const ROOT_FLOW = EARS.RoleKind.Custom("root_flow");
+import { getNodeRelation } from './node-relations';
+import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';
 
 export const getRootFlow = (): EARS.EntityId | undefined =>
-  qx().withRole(ROOT_FLOW).first() ?? undefined;
+  qx().withRole(FLOW_ROLES.ROOT_FLOW).first() ?? undefined;
 
-export const getFlowNodes = (flowId: EARS.EntityId) => {
+export const getNode = (nodeId: EARS.EntityId): NodeEntity | undefined => {
+  // Use pickAll to get all attributes including fieldMappings
+  const nodes = qx([nodeId]).pickAll() as unknown as NodeEntity[];
+  const node = nodes[0];
+  return node ? getNodeRelation(node) : undefined;
+};
+
+export const getFlowNodes = (flowId: EARS.EntityId): NodeEntity[] => {
   const nodeIds = qx(flowId)
     .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }) => id);
   
-  return qx(nodeIds).pickAll();
+  const nodes = qx(nodeIds).pickAll() as unknown as NodeEntity[];
+  
+  // Add relation IDs to each node
+  return nodes.map(node => getNodeRelation(node));
 };
 
 export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
@@ -27,7 +36,7 @@ export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
 
   for (const source of nodeIds) {
     qx(source)
-      .links(edgeKinds, [EARS.Entity.Node])
+      .links(FLOW_EDGE_KINDS, [EARS.Entity.Node])
       // Only include edges where target is also in this flow
       .filter(({ id: targetId }) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }) => {
@@ -57,6 +66,7 @@ export const getFlowEdges = (flowId: EARS.EntityId): EdgeEntity[] => {
  * Extended data convenience
  *─────────────────────────────────────────────────────────────*/
 type Include = keyof FlowExtendedData;
+
 export function getExtendedData(
   flowId: EARS.EntityId,
   include?: Include | Include[]
@@ -69,7 +79,7 @@ export function getExtendedData(
         : include === k;
 
   return {
-    nodes: want("nodes") ? getFlowNodes(flowId) as Partial<NodeEntity>[] : [],
+    nodes: want("nodes") ? getFlowNodes(flowId) : [],
     edges: want("edges") ? getFlowEdges(flowId) : [],
   };
 }

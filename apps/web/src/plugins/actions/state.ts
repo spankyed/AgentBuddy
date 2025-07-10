@@ -33,7 +33,7 @@ export interface ActionsContext {
     label: string;
     description?: string;
     category?: string;
-    parameters: Record<string, ActionParameter>;
+    input: Record<string, ActionParameter>;
     actionFn: string;
     output?: any;
   };
@@ -51,7 +51,7 @@ type UIEvent =
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
-  | { type: 'FORM.UPDATE_PARAMETERS'; parameters: Record<string, ActionParameter> }
+  | { type: 'FORM.UPDATE_PARAMETERS'; input: Record<string, ActionParameter> }
   | { type: 'FORM.UPDATE_ACTION'; actionFn: string }
   | { type: 'FORM.UPDATE_OUTPUT'; output: any }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
@@ -99,7 +99,7 @@ const actionsState = setup({
         formData: {
           label: ev.data.label,
           description: ev.data.description,
-          parameters: ev.data.parameters,
+          input: ev.data.input,
           actionFn: ev.data.actionFn,
           output: ev.data.output,
         },
@@ -111,7 +111,7 @@ const actionsState = setup({
         label: '',
         description: '',
         category: '',
-        parameters: {},
+        input: {},
         actionFn: '// Your action function body here\n// Available services: logger, database, email, http\nreturn { success: true };',
         output: undefined,
       },
@@ -201,7 +201,7 @@ const actionsState = setup({
       return {
         formData: {
           ...context.formData,
-          parameters: ev.parameters,
+          input: ev.input,
         },
       };
     }),
@@ -251,7 +251,7 @@ const actionsState = setup({
       label: '',
       description: '',
       category: '',
-      parameters: {},
+      input: {},
       actionFn: '',
       output: undefined,
     },

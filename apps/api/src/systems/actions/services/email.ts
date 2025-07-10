@@ -94,7 +94,7 @@ export const emailServiceMetadata: ServiceMetadata = {
     {
       name: 'send',
       description: 'Send a simple email',
-      parameters: [
+      input: [
         {
           name: 'to',
           type: 'string | string[]',
@@ -131,7 +131,7 @@ export const emailServiceMetadata: ServiceMetadata = {
     {
       name: 'sendTemplate',
       description: 'Send an email using a pre-defined template',
-      parameters: [
+      input: [
         {
           name: 'to',
           type: 'string | string[]',
@@ -167,7 +167,7 @@ export const emailServiceMetadata: ServiceMetadata = {
     {
       name: 'sendBulk',
       description: 'Send emails to multiple recipients',
-      parameters: [
+      input: [
         {
           name: 'recipients',
           type: 'EmailRecipient[]',

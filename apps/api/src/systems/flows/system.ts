@@ -7,14 +7,11 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
-import { getExtendedData } from './repository/read';
+import { getExtendedData, getNode } from './repository/read';
 import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
-import { getAllPrompts } from '../prompts/repository/read';
-import { getAllActions } from '../actions/repository/read';
-import { availableModels } from './config/available-models';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -30,8 +27,6 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
-  busEvent('FETCH_LLM_FORM_DATA', {}),
-  busEvent('FETCH_ACTION_FORM_DATA', {}),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -44,8 +39,6 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
-  | { type: 'LLM_FORM_DATA_FETCHED'; models: any[]; prompts: any[] }
-  | { type: 'ACTION_FORM_DATA_FETCHED'; actions: any[] }
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
@@ -97,13 +90,20 @@ export const flowsSystem = setup({
       logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
       
       try {
-        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData);
+        
+        // Fetch the created node with all enrichments
+        const enrichedNode = getNode(newNode.id);
+        if (!enrichedNode) {
+          logger.error('Failed to fetch created node:', { nodeId: newNode.id });
+          return;
+        }
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_CREATED',
           tempId: ev.tempId,
           nodeId: newNode.id,
-          node: newNode,
+          node: enrichedNode,
         }));
       } catch (error) {
         logger.error('Failed to create node:', error as any);
@@ -114,12 +114,19 @@ export const flowsSystem = setup({
       logger.info('Updating node:', { flowId: ev.flowId, nodeId: ev.nodeId, nodeData: ev.nodeData });
       
       try {
-        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
+        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData);
+        
+        // Fetch the updated node with all enrichments
+        const updatedNode = getNode(ev.nodeId as EARS.EntityId);
+        if (!updatedNode) {
+          logger.error('Failed to fetch updated node:', { nodeId: ev.nodeId });
+          return;
+        }
         
         system.get(bus).send(emit(flows, {
           type: 'NODE_UPDATED',
           nodeId: ev.nodeId as EARS.EntityId,
-          node: ev.nodeData,
+          node: updatedNode,
         }));
       } catch (error) {
         logger.error('Failed to update node:', error as any);
@@ -135,21 +142,6 @@ export const flowsSystem = setup({
         type: 'EDGE_CREATED',
         sourceId: ev.sourceId as EARS.EntityId,
         targetId: ev.targetId as EARS.EntityId,
-      }));
-    },
-    fetchLLMFormData: ({ system }) => {
-      const prompts = getAllPrompts();
-      system.get(bus).send(emit(flows, {
-        type: 'LLM_FORM_DATA_FETCHED',
-        models: availableModels,
-        prompts
-      }));
-    },
-    fetchActionFormData: ({ system }) => {
-      const actions = getAllActions();
-      system.get(bus).send(emit(flows, {
-        type: 'ACTION_FORM_DATA_FETCHED',
-        actions
       }));
     },
   },
@@ -178,12 +170,6 @@ export const flowsSystem = setup({
       },
       CREATE_EDGE: {
         actions: 'createEdge',
-      },
-      FETCH_LLM_FORM_DATA: {
-        actions: 'fetchLLMFormData',
-      },
-      FETCH_ACTION_FORM_DATA: {
-        actions: 'fetchActionFormData',
       },
     },
     states: {

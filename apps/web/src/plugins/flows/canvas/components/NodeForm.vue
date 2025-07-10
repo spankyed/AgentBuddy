@@ -62,9 +62,9 @@
       <div class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-800">
         <component
           :is="getFormComponent(selectedNode.nodeType)"
+          :key="selectedNode.id"
           :node="selectedNode"
-          @update-label="handleUpdateLabel"
-          @update-config="handleUpdateConfig"
+          :resources="{ actions, models, prompts }"
           @update-node="handleUpdateNode"
         />
       </div>
@@ -73,8 +73,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { NodeEntity } from '@abuddy/api'
+import { ref, watch } from 'vue'
+import type { NodeEntity, ActionEntity, ModelConfig, PromptEntity } from '@abuddy/api'
 import { X, Plus } from 'lucide-vue-next'
 import { getPaletteItems } from '../../config/node-config'
 import {
@@ -95,32 +95,23 @@ import ActionForm from '../forms/ActionForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
+  actions?: ActionEntity[]
+  models?: ModelConfig[]
+  prompts?: PromptEntity[]
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'close': []
-  'update-label': [nodeId: string, label: string]
-  'update-config': [nodeId: string, config: Record<string, any>]
-  'update-node': [node: Partial<NodeEntity>]
+  'update-node': [nodeId: string, updates: Record<string, any>]
   'create-connected': [nodeType: string, sourceNodeId: string]
 }>()
 
-function handleUpdateLabel(label: string) {
+function handleUpdateNode(updates: Record<string, any>) {
   if (props.selectedNode?.id) {
-    emit('update-label', props.selectedNode.id, label)
+    emit('update-node', props.selectedNode.id, updates)
   }
-}
-
-function handleUpdateConfig(config: Record<string, any>) {
-  if (props.selectedNode?.id) {
-    emit('update-config', props.selectedNode.id, config)
-  }
-}
-
-function handleUpdateNode(node: Partial<NodeEntity>) {
-  emit('update-node', node)
 }
 
 function getFormComponent(nodeType: string) {
@@ -138,6 +129,11 @@ function getFormComponent(nodeType: string) {
 const showNextStepMenu = ref(false)
 const paletteItems = getPaletteItems()
 
+// Watch for selected node changes and reset menu state
+watch(() => props.selectedNode?.id, () => {
+  showNextStepMenu.value = false
+})
+
 function handleCreateConnectedNode(nodeType: string) {
   if (!props.selectedNode?.id) return
   
@@ -147,8 +143,6 @@ function handleCreateConnectedNode(nodeType: string) {
   // Close the menu
   showNextStepMenu.value = false
 }
-
-// Reka UI DropdownMenu handles click outside and positioning automatically
 </script>
 
 <style>

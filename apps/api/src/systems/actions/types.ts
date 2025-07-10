@@ -15,7 +15,7 @@ export interface ActionEntity {
   label: string;
   description?: string;
   category?: string;
-  parameters: Record<string, ActionParameter>;
+  input: Record<string, ActionParameter>;
   actionFn: string;
   output?: any;
   createdAt: number;

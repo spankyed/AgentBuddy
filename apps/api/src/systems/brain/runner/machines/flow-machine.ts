@@ -7,7 +7,7 @@ import {
   createRootFlowTNode,
   getNextNodes,
 } from '../../repository/tnode-manager';
-import { getEventResponderNode } from '../../repository/tnode-manager';
+import { getEventFirstStep } from '../../repository/tnode-manager';
 import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
@@ -150,7 +150,7 @@ export function createFlowMachine(
 
           logger.debug(`${context.flowId} received event: ${eventType}`);
 
-          const firstStep = getEventResponderNode(eventNode.id!);
+          const firstStep = getEventFirstStep(eventNode.id!);
 
           if (firstStep) {
             const eventTNode = createEventTNode(eventNode, flowTNodeId, self);
@@ -199,7 +199,7 @@ export function createFlowMachine(
               (n) => n.eventType === event.type,
             );
             const firstStep = eventNode
-              ? getEventResponderNode(eventNode.id!)
+              ? getEventFirstStep(eventNode.id!)
               : null;
             return firstStep
               ? context.activeChildrenCount + 1

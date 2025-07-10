@@ -1,21 +1,22 @@
-import { createAction } from './create';
-import { createLogger } from '@/systems/logs/logger';
-import { services } from '../services';
+import { EARS } from '@/shared/ears/types';
+import type { Rows } from '@/shared/types';
+import type { ActionEntity } from '@/systems/actions/types';
 
-const logger = createLogger('actions-mock-data');
+const nowMs = Date.now();
 
-// Export services for backward compatibility
-export { services as mockServices };
-
-export function createMockActions() {
-  logger.info('Creating mock actions...');
-  
-  const mockActions = [
+export const actionRows: Rows = {
+  entity: [
+    /*───────────────────────────────────────────────────────────────*
+     * Action entities                                               *
+     *───────────────────────────────────────────────────────────────*/
     {
+      id: 'Action-save-entity',
+      entityType: EARS.Entity.Action,
+      createdAt: nowMs - 100,
       label: 'Save Entity',
       description: 'Saves an entity to the database',
       category: 'database',
-      parameters: {
+      input: {
         entityType: {
           name: 'entityType',
           type: 'string' as const,
@@ -35,14 +36,18 @@ const { entityType, data } = params;
 const result = await services.database.insert(entityType, data);
 await services.logger.info('Entity saved', { entityType, id: result.id });
 return result;`,
-      output: { id: 'string', success: 'boolean' }
-    },
+      output: { id: 'string', success: 'boolean' },
+      updatedAt: nowMs - 100
+    } as ActionEntity,
     
     {
+      id: 'Action-send-email',
+      entityType: EARS.Entity.Action,
+      createdAt: nowMs - 90,
       label: 'Send Email',
       description: 'Sends an email notification',
       category: 'communication',
-      parameters: {
+      input: {
         to: {
           name: 'to',
           type: 'string' as const,
@@ -68,14 +73,18 @@ const { to, subject, body } = params;
 const result = await services.email.send(to, subject, body);
 await services.logger.info('Email sent', { to, messageId: result.messageId });
 return result;`,
-      output: { messageId: 'string', success: 'boolean' }
-    },
+      output: { messageId: 'string', success: 'boolean' },
+      updatedAt: nowMs - 90
+    } as ActionEntity,
     
     {
+      id: 'Action-http-request',
+      entityType: EARS.Entity.Action,
+      createdAt: nowMs - 80,
       label: 'HTTP Request',
       description: 'Makes an HTTP request to external API',
       category: 'integration',
-      parameters: {
+      input: {
         method: {
           name: 'method',
           type: 'string' as const,
@@ -126,14 +135,18 @@ switch (method.toUpperCase()) {
 
 await services.logger.info('HTTP request completed', { method, url, status: result.status });
 return result;`,
-      output: { status: 'number', data: 'any' }
-    },
+      output: { status: 'number', data: 'any' },
+      updatedAt: nowMs - 80
+    } as ActionEntity,
     
     {
+      id: 'Action-log-message',
+      entityType: EARS.Entity.Action,
+      createdAt: nowMs - 70,
       label: 'Log Message',
       description: 'Logs a message with optional data',
       category: 'utility',
-      parameters: {
+      input: {
         level: {
           name: 'level',
           type: 'string' as const,
@@ -167,14 +180,18 @@ switch (level) {
   default:
     return await services.logger.info(message, data);
 }`,
-      output: { logged: 'boolean', message: 'string' }
-    },
+      output: { logged: 'boolean', message: 'string' },
+      updatedAt: nowMs - 70
+    } as ActionEntity,
     
     {
+      id: 'Action-store-data',
+      entityType: EARS.Entity.Action,
+      createdAt: nowMs - 60,
       label: 'Store Data',
       description: 'Stores data in persistent storage',
       category: 'storage',
-      parameters: {
+      input: {
         key: {
           name: 'key',
           type: 'string' as const,
@@ -200,13 +217,18 @@ const { key, data, ttl } = params;
 const result = await services.storage.save(key, { data, ttl, timestamp: Date.now() });
 await services.logger.info('Data stored', { key, size: result.size });
 return result;`,
-      output: { key: 'string', size: 'number', success: 'boolean' }
-    }
-  ];
-  
-  mockActions.forEach(action => {
-    createAction(action);
-  });
-  
-  logger.info(`Created ${mockActions.length} mock actions`);
-}
+      output: { key: 'string', size: 'number', success: 'boolean' },
+      updatedAt: nowMs - 60
+    } as ActionEntity,
+  ],
+
+  /*───────────────────────────────────────────────────────────────*
+   * Role assignments                                              *
+   *───────────────────────────────────────────────────────────────*/
+  role: [],
+
+  /*───────────────────────────────────────────────────────────────*
+   * Relationships                                                 *
+   *───────────────────────────────────────────────────────────────*/
+  relation: [],
+};

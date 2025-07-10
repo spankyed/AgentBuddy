@@ -49,10 +49,10 @@
 
           <!-- Parameters -->
           <div class="pt-6 border-t border-neutral-800">
-            <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Parameters</h3>
-            <div v-if="action?.parameters && Object.keys(action.parameters).length > 0" class="space-y-3">
+            <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Input Parameters</h3>
+            <div v-if="action?.input && Object.keys(action.input).length > 0" class="space-y-3">
               <div
-                v-for="(param, key) in action.parameters"
+                v-for="(param, key) in action.input"
                 :key="key"
                 class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700"
               >

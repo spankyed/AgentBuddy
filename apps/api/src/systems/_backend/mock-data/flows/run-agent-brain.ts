@@ -52,7 +52,7 @@ export const runAgentBrainFlow: Rows = {
       mode: "internal",
       eventType: "database.query.prompt",
     },
-    /* Responders */
+    /* First Steps (connected via TRANSITIONS_TO) */
     {
       id: "Node-a4s",
       entityType: EARS.Entity.Node,
@@ -67,7 +67,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "action",
       label: "save to db",
-      actionName: "save_entity",
       color: "#1E88E5", // blue
     },
     {
@@ -164,11 +163,14 @@ export const runAgentBrainFlow: Rows = {
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a3", info: {} },
 
-    { source: "Node-a1", kind: EARS.RelKind.RESPONDER, target: "Node-a4s", info: {} },
-    { source: "Node-a2", kind: EARS.RelKind.RESPONDER, target: "Node-a7s", info: {} },
-    { source: "Node-a3", kind: EARS.RelKind.RESPONDER, target: "Node-a6s", info: {} },
+    { source: "Node-a1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a4s", info: {} },
+    { source: "Node-a2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a7s", info: {} },
+    { source: "Node-a3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a6s", info: {} },
 
     { source: "Node-a6s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a5s", info: {} },
     { source: "Node-a7s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a8s", info: {} },
+
+    /* Node to Action relationships */
+    { source: "Node-a5s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-save-entity", info: {} },
   ],
 }; 
