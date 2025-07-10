@@ -392,8 +392,8 @@ const flowsState = setup({
       if (context.selectedFlowId) {
         updatedEdges.forEach(edge => {
           // If this edge was just updated from temp to permanent, send it
-          const wasUpdated = (edge.source === permanentId && context.graph.edges.find(e => e.id === edge.id)?.source === tempId) ||
-                           (edge.target === permanentId && context.graph.edges.find(e => e.id === edge.id)?.target === tempId);
+          const wasUpdated = (edge.source === permanentId && context.graph.edges.find(e => e.id === edge.id)?.source === tempId)
+            || (edge.target === permanentId && context.graph.edges.find(e => e.id === edge.id)?.target === tempId);
           
           if (wasUpdated && !edge.source.startsWith('temp-') && !edge.target.startsWith('temp-')) {
             trpc.bus.send.mutate({
