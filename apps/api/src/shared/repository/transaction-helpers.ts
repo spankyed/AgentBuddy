@@ -34,7 +34,7 @@ export function createEntityWithDefaults<T extends {
   prefix?: string
 ): T & { id: EARS.EntityId } {
   const ts = getTimestamp();
-  const shortCode = data.shortCode || generateShortCode(entityType, prefix);
+  const shortCode = data.shortCode || generateShortCode(entityType, prefix || entityType.substring(0, 3).toUpperCase());
   const label = data.label || generateLabelWithCount(`New ${entityType}`, entityType);
   
   const entity: Omit<T, 'id'> = {

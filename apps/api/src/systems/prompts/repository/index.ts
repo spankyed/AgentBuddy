@@ -101,3 +101,6 @@ export const promptCommands = {
     }
   },
 };
+
+// Compatibility export for old API
+export const getAllPrompts = () => promptQueries.all();

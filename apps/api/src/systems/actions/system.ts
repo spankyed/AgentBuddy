@@ -84,7 +84,7 @@ export const actionsSystem = setup({
       const ev = typeOf('CREATE_ACTION', event);
       const result = actionCommands.create({
         label: ev.label,
-        input: ev.input,
+        parameters: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
@@ -105,7 +105,7 @@ export const actionsSystem = setup({
       const ev = typeOf('UPDATE_ACTION', event);
       const result = actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
-        input: ev.input,
+        parameters: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
