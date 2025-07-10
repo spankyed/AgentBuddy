@@ -1,7 +1,7 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
-import { getActionById } from '@/systems/actions/repository';
+import { actionQueries } from '@/systems/actions/repository';
 import { EARS } from '@/shared/ears/types';
 import type { Services } from '@/systems/actions/services';
 import { services } from '@/systems/actions/services';
@@ -69,7 +69,7 @@ export async function actionNodeHandler(
       throw new Error('No action linked to this node');
     }
     
-    const action = getActionById(actionId);
+    const action = actionQueries.byId(actionId);
     if (!action) {
       throw new Error(`Action not found: ${actionId}`);
     }

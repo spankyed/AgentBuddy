@@ -126,7 +126,3 @@ export const actionCommands = {
     }
   },
 } as const;
-
-// Compatibility exports for old API
-export const getActionById = (id: EARS.EntityId) => actionQueries.byId(id);
-export const getAllActions = () => actionQueries.all();

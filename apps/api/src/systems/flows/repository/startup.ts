@@ -3,8 +3,8 @@ import { qx } from '@/shared/ears/helpers/query';
 import { getRootFlow, getFlowNodes, getFlowEdges } from './read';
 import { FlowsStartupData, FlowEntity } from '../types';
 import { availableModels } from '../config/available-models';
-import { getAllPrompts } from '../../prompts/repository';
-import { getAllActions } from '../../actions/repository';
+import { promptQueries } from '../../prompts/repository';
+import { actionQueries } from '../../actions/repository';
 import { FLOW_QUERY_FIELDS, FLOW_ROLES } from './constants';
 
 export default function flowsStartupData(): FlowsStartupData {
@@ -33,7 +33,7 @@ export default function flowsStartupData(): FlowsStartupData {
     rootFlow,
     selectedFlowId: selectedFlow.id,
     models: availableModels,
-    prompts: getAllPrompts(),
-    actions: getAllActions(),
+    prompts: promptQueries.all(),
+    actions: actionQueries.all(),
   };
 }
