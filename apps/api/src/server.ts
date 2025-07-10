@@ -12,23 +12,25 @@ import { backendSystem, bus } from './systems/_backend/backend';
 import { initializeLogCapture } from './shared/debug/log-capture';
 import { loadMockData } from '@/systems/_backend/mock-data/load-mock-data';
 
-loadMockData();
-
-initializeLogCapture();
-
-const logsActor = createActor(logsSystem).start();
-
-logsActor.subscribe(logErrors('Logs'));
-
-// import { createSkyInspector } from '@statelyai/inspect';
-
-// const sky = createSkyInspector();
-export const backendActor = createActor(backendSystem, {
-  // inspect: sky.inspect,
-  systemId: bus,
-}).start();
-
-backendActor.subscribe(logErrors('Backend'));
+(function setupBackend() {
+  loadMockData();
+  
+  initializeLogCapture();
+  
+  const logsActor = createActor(logsSystem).start();
+  
+  logsActor.subscribe(logErrors('Logs'));
+  
+  // import { createSkyInspector } from '@statelyai/inspect';
+  
+  // const sky = createSkyInspector();
+  const backendActor = createActor(backendSystem, {
+    // inspect: sky.inspect,
+    systemId: bus,
+  }).start();
+  
+  backendActor.subscribe(logErrors('Backend'));
+})();
 
 const port = 3001;
 

@@ -1,56 +1,3 @@
-/**
- * LLM Node Handler - Clean Data-Driven Architecture
- * 
- * ## Improvements Made:
- * 
- * 1. **Cleaner Event Structure**
- *    - Before: eventPayload.payload (confusing nesting)
- *    - After: event.data.payload (clear hierarchy)
- * 
- * 2. **Type-Safe Configuration**
- *    - Before: String paths like "$.eventPayload.message"
- *    - After: Constants like ContextPaths.EVENT_MESSAGE
- * 
- * 3. **Connected Templates**
- *    - Templates declare their inputs with types and defaults
- *    - System validates mappings against template expectations
- *    - UI can show what data is needed and available
- * 
- * 4. **Simpler Mappings**
- *    - Before: targetField, sourcePath, defaultValue, transform
- *    - After: target, source, default (transforms in template if needed)
- * 
- * ## Example Configuration:
- * ```
- * {
- *   nodeType: 'llm',
- *   promptTemplateId: 'user-message-analysis',
- *   fieldMappings: [
- *     {
- *       target: 'userMessage',
- *       source: ContextPaths.EVENT_PAYLOAD,
- *       default: '[No message]'
- *     }
- *   ]
- * }
- * ```
- * 
- * ## How Templates Work:
- * ```
- * {
- *   id: 'my-template',
- *   inputs: {
- *     userMessage: {
- *       type: 'string',
- *       required: true,
- *       commonSources: ['$.event.data.message']
- *     }
- *   },
- *   templateFn: (params) => `Message: ${params.userMessage}`
- * }
- * ```
- */
-
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/shared/debug/logger';
@@ -136,7 +83,7 @@ function generatePrompt(
 export function llmNodeHandler(
   tNode: TNodeEntity,
   node: NodeEntity,
-  executionContext: ExecutionContext,
+  executionContext: ExecutionContext, // ? wonder if may no longer need here
   actor: any
 ) {
   const llmNode = node as LLMNode;
@@ -192,3 +139,44 @@ export function llmNodeHandler(
     });
   }, 1000);
 } 
+
+/**
+ * 3. **Connected Templates**
+ *    - Templates declare their inputs with types and defaults
+ *    - System validates mappings against template expectations
+ *    - UI can show what data is needed and available
+ * 
+ * 4. **Simpler Mappings**
+ *    - Before: targetField, sourcePath, defaultValue, transform
+ *    - After: target, source, default (transforms in template if needed)
+ * 
+ * ## Example Configuration:
+ * ```
+ * {
+ *   nodeType: 'llm',
+ *   promptTemplateId: 'user-message-analysis',
+ *   fieldMappings: [
+ *     {
+ *       target: 'userMessage',
+ *       source: ContextPaths.EVENT_PAYLOAD,
+ *       default: '[No message]'
+ *     }
+ *   ]
+ * }
+ * ```
+ * 
+ * ## How Templates Work:
+ * ```
+ * {
+ *   id: 'my-template',
+ *   inputs: {
+ *     userMessage: {
+ *       type: 'string',
+ *       required: true,
+ *       commonSources: ['$.event.data.message']
+ *     }
+ *   },
+ *   templateFn: (params) => `Message: ${params.userMessage}`
+ * }
+ * ```
+ */
