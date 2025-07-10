@@ -1,13 +1,6 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
-import {
-  createEventTNode,
-  createFlowTNode,
-  updateTNodeStatus,
-  createRootFlowTNode,
-  getNextNodes,
-} from '../../repository/tnode-manager';
-import { getEventFirstStep } from '../../repository/tnode-manager';
+import { brainQueries, brainCommands } from '../../repository';
 import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
@@ -97,21 +90,29 @@ export function createFlowMachine(
 
   if (isRootFlow) {
     // Create root flow TNode
+    const result = brainCommands.createRootFlowTNode(systemActor);
+    if (!result.success) {
+      throw new Error(`Failed to create root flow TNode: ${result.error}`);
+    }
     const {
       rootFlow,
       rootFlowTNode,
       eventNodes: rootEventNodes,
-    } = createRootFlowTNode(systemActor);
+    } = result.data;
     actualFlowId = rootFlow.id;
     flowTNodeId = rootFlowTNode.id || 'TNode-Root'; // 'TNode-Root'
     eventNodes = rootEventNodes;
   } else {
     // Create regular flow TNode
-    const { flowTNode, eventNodes: flowEventNodes } = createFlowTNode(
+    const result = brainCommands.createFlowTNode(
       flowId,
       eventTNodeId,
       systemActor,
     );
+    if (!result.success) {
+      throw new Error(`Failed to create flow TNode: ${result.error}`);
+    }
+    const { flowTNode, eventNodes: flowEventNodes } = result.data;
     actualFlowId = flowId;
     flowTNodeId = flowTNode.id;
     eventNodes = flowEventNodes;
@@ -150,10 +151,14 @@ export function createFlowMachine(
 
           logger.debug(`${context.flowId} received event: ${eventType}`);
 
-          const firstStep = getEventFirstStep(eventNode.id!);
+          const firstStep = brainQueries.eventFirstStep(eventNode.id!);
 
           if (firstStep) {
-            const eventTNode = createEventTNode(eventNode, flowTNodeId, self);
+            const eventTNodeResult = brainCommands.createEventTNode(eventNode, flowTNodeId, self);
+            if (!eventTNodeResult.success) {
+              throw new Error(`Failed to create event TNode: ${eventTNodeResult.error}`);
+            }
+            const eventTNode = eventTNodeResult.data;
 
             // Create execution context with cleaner structure
             const { type, ...eventData } = event;
@@ -199,7 +204,7 @@ export function createFlowMachine(
               (n) => n.eventType === event.type,
             );
             const firstStep = eventNode
-              ? getEventFirstStep(eventNode.id!)
+              ? brainQueries.eventFirstStep(eventNode.id!)
               : null;
             return firstStep
               ? context.activeChildrenCount + 1
@@ -213,7 +218,7 @@ export function createFlowMachine(
           
           // Check if this child has a next node (only for step completions)
           const hasNextNode = typedEv.eventTNodeId && typedEv.stepId
-            ? getNextNodes(typedEv.stepId).length > 0 
+            ? brainQueries.nextNodes(typedEv.stepId).length > 0 
             : false;
           
           // Update execution context if this was a step completion
@@ -259,7 +264,7 @@ export function createFlowMachine(
           
           // Spawn next node if there is one
           if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
-            const nextNodes = getNextNodes(typedEv.stepId);
+            const nextNodes = brainQueries.nextNodes(typedEv.stepId);
             const nextNode = nextNodes[0];
             
             logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
@@ -277,7 +282,7 @@ export function createFlowMachine(
           }
         }),
         markFlowCompleted: ({ context, self }) => {
-          updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
+          brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
@@ -299,7 +304,7 @@ export function createFlowMachine(
           if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
           
           // Flow is complete if there are no next nodes nor active children
-          const hasNextNode = getNextNodes(typedEv.stepId).length > 0;
+          const hasNextNode = brainQueries.nextNodes(typedEv.stepId).length > 0;
           return !hasNextNode && context.activeChildrenCount === 0;
         },
       },
