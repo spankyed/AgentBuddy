@@ -42,7 +42,7 @@ function generatePrompt(
   if (nodeData.promptTemplateId) {
     try {
       // Get the prompt template from EARS datastore
-      const prompt = promptQueries.byId(`Prompt-${nodeData.promptTemplateId}` as EARS.EntityId);
+      const prompt = promptQueries.byId(nodeData.promptTemplateId as EARS.EntityId);
       if (!prompt) {
         logger.error(`Prompt template not found:`, { templateId: nodeData.promptTemplateId });
         return 'Error: Prompt template not found';
