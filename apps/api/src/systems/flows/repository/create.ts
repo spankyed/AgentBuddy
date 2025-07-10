@@ -1,6 +1,6 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { EARS } from "@/shared/ears/types";
-import type { FlowEntity, NodeEntity, NodeCreateInput } from "../types";
+import type { FlowEntity, NodeEntity, NodeCreateInput } from "../config/types";
 import { extractNodeRelations, createNodeRelations } from "./node-relations";
 import { getTimestamp, generateShortCode, generateLabelWithCount } from "@/shared/ears/helpers/entity-utils";
 import { NODE_DEFAULTS, FLOW_DEFAULTS, FLOW_ROLES, FLOW_ENTRY_NODE } from "./constants";

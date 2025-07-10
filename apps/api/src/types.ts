@@ -13,7 +13,7 @@ export type { OutgoingThreadsEvents } from './systems/threads/system';
 export type * from './systems/threads/types';
 
 export type { OutgoingFlowsEvents } from './systems/flows/system';
-export type * from './systems/flows/types';
+export type * from './systems/flows/config/types';
 
 export type { OutgoingDatabaseEvents } from './systems/database/system';
 export type * from './systems/database/types';

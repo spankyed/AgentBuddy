@@ -6,7 +6,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
 import flowsStartupData from './repository/startup';
-import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
+import { FlowsStartupData, FlowEntity, NodeEntity } from './config/types';
 import { getExtendedData, getNode } from './repository/read';
 import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';

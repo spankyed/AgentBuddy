@@ -1,6 +1,6 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import type { ActionEntity } from '../actions/types';
-import type { PromptEntity } from '../prompts/types';
+import type { ActionEntity } from '../../actions/types';
+import type { PromptEntity } from '../../prompts/types';
 
 
 export interface FlowEntity extends BaseEntity {

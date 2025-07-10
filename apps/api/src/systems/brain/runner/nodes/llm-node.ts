@@ -51,7 +51,7 @@
  * ```
  */
 
-import type { NodeEntity } from '@/systems/flows/types';
+import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/shared/debug/logger';
 import { promptQueries } from '@/systems/prompts/repository';

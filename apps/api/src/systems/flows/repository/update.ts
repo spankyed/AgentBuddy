@@ -1,7 +1,7 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
-import type { NodeEntity, NodeCreateInput, NodeKind } from "../types";
+import type { NodeEntity, NodeCreateInput, NodeKind } from "../config/types";
 import { extractNodeRelations, updateNodeRelations } from "./node-relations";
 import { getTimestamp, filterSystemFields } from "@/shared/ears/helpers/entity-utils";
 import { NodeNotFoundError } from "./errors";

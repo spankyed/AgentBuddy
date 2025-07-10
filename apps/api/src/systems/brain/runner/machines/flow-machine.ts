@@ -1,5 +1,5 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
-import type { ListenNode, NodeEntity } from '@/systems/flows/types';
+import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import {
   createEventTNode,
   createFlowTNode,

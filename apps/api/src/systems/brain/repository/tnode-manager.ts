@@ -1,7 +1,7 @@
 import { EARS } from '@/shared/ears/types';
 import { tx } from '@/shared/ears/helpers/transaction';
 import type { TNodeEntity, ExecutionContext } from '@/systems/brain/types';
-import type { FlowEntity, FlowNode, ListenNode, NodeEntity } from '@/systems/flows/types';
+import type { FlowEntity, FlowNode, ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import { qx } from '@/shared/ears/helpers/query';
 import { emit } from '@/shared/utils/actor-helpers';
 import { bus } from '@/systems/_backend/backend';

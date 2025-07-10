@@ -1,7 +1,7 @@
 import { EARS } from '@/shared/ears/types';
 import { qx } from '@/shared/ears/helpers/query';
 import { getRootFlow, getFlowNodes, getFlowEdges } from './read';
-import { FlowsStartupData, FlowEntity } from '../types';
+import { FlowsStartupData, FlowEntity } from '../config/types';
 import { availableModels } from '../config/available-models';
 import { promptQueries } from '../../prompts/repository';
 import { actionQueries } from '../../actions/repository';

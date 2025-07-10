@@ -9,7 +9,7 @@ import type {
   EventListenerEntity,
   TNodeUpdate
 } from '../types';
-import type { ListenNode } from '@/systems/flows/types';
+import type { ListenNode } from '@/systems/flows/config/types';
 
 /**
  * Brain Repository - Manages execution traces and TNode trees

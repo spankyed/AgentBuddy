@@ -1,7 +1,7 @@
 import { tx } from "@/shared/ears/helpers/transaction";
 import { qx } from "@/shared/ears/helpers/query";
 import { EARS } from "@/shared/ears/types";
-import type { NodeKind, NodeEntity, NodeCreateInput } from "../types";
+import type { NodeKind, NodeEntity, NodeCreateInput } from "../config/types";
 
 /*─────────────────────────────────────────────────────────────────
  * Simple INSTANCE_OF relationship management

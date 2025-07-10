@@ -1,6 +1,6 @@
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
-import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../types';
+import type { EdgeEntity, FlowExtendedData, NodeEntity } from '../config/types';
 import { edgeStore } from '@/shared/ears/helpers/edge-store';
 import { getNodeRelation } from './node-relations';
 import { FLOW_ROLES, FLOW_EDGE_KINDS } from './constants';

@@ -1,4 +1,4 @@
-import type { NodeEntity } from '@/systems/flows/types';
+import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';

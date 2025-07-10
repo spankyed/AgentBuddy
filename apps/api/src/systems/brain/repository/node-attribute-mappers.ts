@@ -1,4 +1,4 @@
-import type { NodeEntity, NodeKind } from '@/systems/flows/types';
+import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
 import type { ExecutionContext } from '@/systems/brain/types';
 import { applyFieldMappings as applyFieldMappingsFn } from '@/systems/brain/runner/field-mapper';
 import { createLogger } from '@/shared/debug/logger';
