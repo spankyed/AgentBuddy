@@ -8,7 +8,7 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { EARS } from '@/shared/ears/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
-import { executeQuery } from './query-executor';
+import { executeQuery } from './execute/query';
 import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('database');

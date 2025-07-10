@@ -2,7 +2,7 @@ import { EARS } from '@/shared/ears/types';
 import { qx } from '@/shared/ears/helpers/query';
 import { getAllEntities, getAll, queryEntitiesByRelationTo } from '@/shared/ears/attribute-storage';
 import { relationIndex } from '@/shared/ears/relation-index';
-import type { DatabaseQueryResult } from './types';
+import type { DatabaseQueryResult } from '../types';
 
 /**
  * Execute a user-provided query against the EARS database
