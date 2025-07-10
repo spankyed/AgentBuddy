@@ -132,7 +132,7 @@ export const storageServiceMetadata: ServiceMetadata = {
     {
       name: 'save',
       description: 'Save data to storage with a key',
-      parameters: [
+      input: [
         {
           name: 'key',
           type: 'string',
@@ -162,7 +162,7 @@ export const storageServiceMetadata: ServiceMetadata = {
     {
       name: 'load',
       description: 'Load data from storage by key',
-      parameters: [
+      input: [
         {
           name: 'key',
           type: 'string',
@@ -179,7 +179,7 @@ if (result.found) {
     {
       name: 'delete',
       description: 'Delete data from storage',
-      parameters: [
+      input: [
         {
           name: 'key',
           type: 'string',
@@ -194,7 +194,7 @@ console.log('Deleted:', result.deleted);`
     {
       name: 'list',
       description: 'List keys in storage with optional prefix filter',
-      parameters: [
+      input: [
         {
           name: 'prefix',
           type: 'string',
@@ -217,7 +217,7 @@ console.log('Deleted:', result.deleted);`
     {
       name: 'exists',
       description: 'Check if a key exists in storage',
-      parameters: [
+      input: [
         {
           name: 'key',
           type: 'string',
@@ -234,7 +234,7 @@ if (!exists) {
     {
       name: 'getMetadata',
       description: 'Get metadata for a stored key',
-      parameters: [
+      input: [
         {
           name: 'key',
           type: 'string',

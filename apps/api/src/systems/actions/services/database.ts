@@ -64,7 +64,7 @@ export const databaseServiceMetadata: ServiceMetadata = {
     {
       name: 'query',
       description: 'Execute a SQL query and return results',
-      parameters: [
+      input: [
         {
           name: 'sql',
           type: 'string',
@@ -87,7 +87,7 @@ export const databaseServiceMetadata: ServiceMetadata = {
     {
       name: 'insert',
       description: 'Insert a new record into a table',
-      parameters: [
+      input: [
         {
           name: 'table',
           type: 'string',
@@ -110,7 +110,7 @@ export const databaseServiceMetadata: ServiceMetadata = {
     {
       name: 'update',
       description: 'Update an existing record',
-      parameters: [
+      input: [
         {
           name: 'table',
           type: 'string',
@@ -138,7 +138,7 @@ export const databaseServiceMetadata: ServiceMetadata = {
     {
       name: 'delete',
       description: 'Delete a record from a table',
-      parameters: [
+      input: [
         {
           name: 'table',
           type: 'string',
@@ -158,7 +158,7 @@ export const databaseServiceMetadata: ServiceMetadata = {
     {
       name: 'transaction',
       description: 'Execute operations within a database transaction',
-      parameters: [
+      input: [
         {
           name: 'operations',
           type: 'function',

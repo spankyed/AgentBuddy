@@ -1,7 +1,8 @@
 <template>
   <BaseForm
+    v-if="node"
     :node="node"
-    @update-label="handleUpdateLabel"
+    @update-label="$emit('update-node', { label: $event })"
   >
     <div class="space-y-6">
       <!-- Action Selection -->
@@ -10,7 +11,7 @@
           Action
         </label>
         <ComboboxRoot
-          v-model="selectedAction"
+          :model-value="selectedAction"
           ignore-filter
           class="relative w-full"
           :open="isActionDropdownOpen"
@@ -22,12 +23,11 @@
               <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isActionDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="isLoadingFormData ? 'Loading actions...' : (selectedAction ? '' : 'Select an action...')"
+                  :placeholder="selectedAction ? '' : 'Select an action...'"
                   :value="selectedAction ? selectedAction.label : actionQuery"
                   @input="actionQuery = ($event.target as HTMLInputElement).value"
-                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
@@ -48,7 +48,7 @@
                 </div>
               <div v-for="(group, category) in groupedActions" :key="category">
                 <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
-                  {{ category || 'Uncategorized' }}
+                  {{ category }}
                 </div>
                 <ComboboxGroup>
                   <ComboboxItem
@@ -115,43 +115,43 @@
         </details>
       </div>
 
-      <!-- Parameter Mappings -->
+      <!-- Field Mappings with Optimized Updates -->
       <div v-if="selectedAction" class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
-          Parameters
+          Field Mappings
         </label>
         <div class="border rounded-md bg-neutral-800/30 border-neutral-700">
-          <div v-if="Object.keys(selectedAction.parameters || {}).length === 0" class="p-4 text-sm text-neutral-600">
-            No parameters required for this action.
+          <div v-if="!actionInputKeys.length" class="p-4 text-sm text-neutral-600">
+            No input fields required for this action.
           </div>
           <div v-else class="p-4 space-y-4">
             <div
-              v-for="(param, key) in selectedAction.parameters"
+              v-for="key in actionInputKeys"
               :key="key"
               class="flex items-center gap-3"
             >
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
-                  {{ param.name || key }}
-                  <span v-if="param.required" class="text-xs text-red-500">*</span>
-                  <span class="text-xs text-neutral-600">({{ param.type }})</span>
+                  {{ selectedAction.input[key].name || key }}
+                  <span v-if="selectedAction.input[key].required" class="text-xs text-red-500">*</span>
+                  <span class="text-xs text-neutral-600">({{ selectedAction.input[key].type }})</span>
                 </label>
                 <input
-                  :value="fieldMappings.find(m => m.target === key.toString())?.source || directParams[key] || ''"
+                  :value="getFieldMapping(key)"
                   type="text"
-                  :placeholder="param.placeholder || `e.g. $.event.data.${key}`"
+                  :placeholder="selectedAction.input[key].placeholder || `e.g. $.event.data.${key}`"
                   class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                  @input="handleParameterChange(key.toString(), ($event.target as HTMLInputElement).value)"
+                  @input="updateFieldMapping(key, ($event.target as HTMLInputElement).value)"
                 />
-                <p v-if="param.description" class="mt-1.5 text-xs text-neutral-600">
-                  {{ param.description }}
+                <p v-if="selectedAction.input[key].description" class="mt-1.5 text-xs text-neutral-600">
+                  {{ selectedAction.input[key].description }}
                 </p>
               </div>
             </div>
           </div>
           <div class="px-4 py-3 border-t border-neutral-700 bg-neutral-800/50">
             <p class="text-xs text-neutral-500">
-              <span class="font-medium">Tip:</span> Use JSONPath expressions like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.event.data.text</code> for dynamic values, or enter direct values
+              <span class="font-medium">Tip:</span> Use JSONPath expressions like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.event.data.text</code> or <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.lastStep.result</code> to map values, or enter literal values like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">"hello"</code> or <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">123</code>
             </p>
           </div>
         </div>
@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import {
   ComboboxAnchor,
@@ -177,58 +177,39 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { ActionNode, ActionEntity } from '@abuddy/api'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
-import { flowsId } from '../../state'
+import type { ActionEntity, NodeEntity } from '@abuddy/api'
+import type { FormResources } from '../../types/form-props'
 
 const props = defineProps<{
-  node: ActionNode
+  node: NodeEntity
+  resources?: FormResources
 }>()
 
 const emit = defineEmits<{
-  'update-node': [data: Partial<ActionNode>]
+  'update-node': [updates: Record<string, any>]
 }>()
 
-// Get flows actor and data from state
-const flowsActor = applicationState.system.get(flowsId)
-const actions = useSelector(flowsActor, (state: any) => state.context.actions || [])
-const isLoadingFormData = useSelector(flowsActor, (state: any) => state.context.isLoadingFormData)
-
-// Local state
-const selectedAction = ref<ActionEntity | null>(null)
+// UI state only
 const actionQuery = ref('')
-const fieldMappings = ref<Array<{ target: string; source: string; default?: any }>>([])
-const directParams = ref<Record<string, any>>({})
 const isActionDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Initialize from node data and fetch latest data
-onMounted(() => {
-  // Fetch latest actions
-  flowsActor.send({ type: 'FETCH_ACTION_FORM_DATA' });
-  
-  if (props.node.actionId) {
-    const action = actions.value.find((a: ActionEntity) => a.id === `Action-${props.node.actionId}`)
-    if (action) {
-      selectedAction.value = action
-      fieldMappings.value = props.node.fieldMappings || []
-      directParams.value = props.node.params || {}
-    }
-  }
+// Get selected action from actions list
+const selectedAction = computed(() => {
+  const actionId = (props.node as any).actionId
+  if (!actionId || !props.resources?.actions) return null
+  return props.resources.actions.find(a => a.id === actionId) || null
 })
 
-// Re-fetch data when node changes
-watch(() => props.node.id, () => {
-  flowsActor.send({ type: 'FETCH_ACTION_FORM_DATA' });
-})
+// Field mappings
+const fieldMappings = computed(() => (props.node as any).fieldMappings || [])
 
-// Computed filtered actions
+// Computed filtered lists
 const filteredActions = computed(() => {
-  if (actionQuery.value === '') return actions.value
-  
-  return actions.value.filter((action: ActionEntity) =>
+  if (!props.resources?.actions) return []
+  if (actionQuery.value === '') return props.resources.actions
+  return props.resources.actions.filter((action: ActionEntity) =>
     startsWith(action.label, actionQuery.value)
   )
 })
@@ -246,78 +227,44 @@ const groupedActions = computed(() => {
   return groups
 })
 
-// Clear query when dropdown closes
-watch(isActionDropdownOpen, (newValue) => {
-  if (!newValue) {
-    actionQuery.value = ''
-  }
-})
+// Action input keys
+const actionInputKeys = computed(() => 
+  selectedAction.value?.input ? Object.keys(selectedAction.value.input) : []
+)
 
-// Handlers
-const handleUpdateLabel = (label: string) => {
-  emit('update-node', { ...props.node, label })
+// Field mapping helpers
+const getFieldMapping = (target: string): string => {
+  const mapping = fieldMappings.value.find((m: any) => m.target === target)
+  return mapping?.source || ''
 }
 
+const updateFieldMapping = (target: string, source: string) => {
+  const currentMappings = fieldMappings.value.filter((m: any) => m.target !== target)
+  
+  if (source.trim()) {
+    currentMappings.push({ target, source, default: undefined })
+  }
+  
+  emit('update-node', { fieldMappings: currentMappings })
+}
+
+// Update handlers
 const handleActionChange = (action: ActionEntity | null) => {
-  selectedAction.value = action
   actionQuery.value = ''
+  isActionDropdownOpen.value = false
   
-  // Reset mappings and params for new action
-  const newMappings: Array<{ target: string; source: string; default?: any }> = []
-  const newParams: Record<string, any> = {}
-  
-  if (action?.parameters) {
-    Object.keys(action.parameters).forEach(key => {
-      // Keep existing mapping if it exists
-      const existing = fieldMappings.value.find(m => m.target === key)
-      if (existing) {
-        newMappings.push(existing)
-      }
-      // Keep existing direct param if it exists
-      if (directParams.value[key] !== undefined) {
-        newParams[key] = directParams.value[key]
-      }
+  if (action) {
+    emit('update-node', {
+      actionId: action.id,
+      fieldMappings: []
+    })
+  } else {
+    emit('update-node', {
+      actionId: undefined,
+      fieldMappings: []
     })
   }
-  
-  fieldMappings.value = newMappings
-  directParams.value = newParams
-  
-  // Update node
-  emit('update-node', {
-    ...props.node,
-    actionId: action?.id.replace('Action-', '') || '',
-    fieldMappings: newMappings.length > 0 ? newMappings : undefined,
-    params: Object.keys(newParams).length > 0 ? newParams : undefined
-  })
 }
-
-const handleParameterChange = (param: string, value: string) => {
-  // Check if it's a JSONPath expression (starts with $.)
-  if (value.startsWith('$.')) {
-    // It's a mapping
-    const index = fieldMappings.value.findIndex(m => m.target === param)
-    if (index >= 0) {
-      fieldMappings.value[index].source = value
-    } else {
-      fieldMappings.value.push({ target: param, source: value })
-    }
-    // Remove from direct params if it was there
-    delete directParams.value[param]
-  } else {
-    // It's a direct value
-    directParams.value[param] = value
-    // Remove from mappings if it was there
-    fieldMappings.value = fieldMappings.value.filter(m => m.target !== param)
-  }
-  
-  emit('update-node', {
-    ...props.node,
-    fieldMappings: fieldMappings.value.length > 0 ? [...fieldMappings.value] : undefined,
-    params: Object.keys(directParams.value).length > 0 ? { ...directParams.value } : undefined
-  })
-}
-
 </script>
 
 <style scoped>

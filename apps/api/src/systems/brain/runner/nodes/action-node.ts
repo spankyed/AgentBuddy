@@ -1,15 +1,15 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/systems/logs/logger';
-import { actionQueries } from '@/systems/actions/repository';
+import { getActionById } from '@/systems/actions/repository';
 import { EARS } from '@/shared/ears/types';
 import type { Services } from '@/systems/actions/services';
 import { services } from '@/systems/actions/services';
+import { qx } from '@/shared/ears/helpers/query';
 
 const logger = createLogger('action-node');
 
 interface ActionNodeConfig {
-  actionId?: string;                          // ID of the action to execute
   params?: Record<string, any>;               // Direct parameters
   fieldMappings?: Array<{                     // Or map from context
     target: string;
@@ -56,34 +56,35 @@ export async function actionNodeHandler(
   const nodeData = tNode.nodeAttributes || {};
   
   logger.debug(`Executing action node: ${node.label}`, {
-    actionId: nodeData.actionId,
     nodeAttributeKeys: Object.keys(nodeData),
   });
   
   try {
-    // Get the action definition
-    if (!nodeData.actionId) {
-      throw new Error('No action ID specified');
+    // Get the linked action via INSTANCE_OF relationship
+    const actionId = qx(node.id)
+      .links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action)
+      .map(({ id }) => id)[0];
+    
+    if (!actionId) {
+      throw new Error('No action linked to this node');
     }
     
-    const action = actionQueries.byId(`Action-${nodeData.actionId}` as EARS.EntityId);
+    const action = getActionById(actionId);
     if (!action) {
-      throw new Error(`Action not found: ${nodeData.actionId}`);
+      throw new Error(`Action not found: ${actionId}`);
     }
     
     logger.debug(`Found action: ${action.label}`, {
-      parameters: Object.keys(action.parameters || {}),
+      input: Object.keys(action.input || {}),
     });
     
     // Extract action parameters from nodeAttributes
     // All params (both direct and mapped) are already resolved in nodeAttributes
     const params: Record<string, any> = {};
     
-    // The actionId is config, everything else is params
+    // Everything in nodeData is params (no actionId anymore)
     for (const [key, value] of Object.entries(nodeData)) {
-      if (key !== 'actionId') {
-        params[key] = value;
-      }
+      params[key] = value;
     }
     
     logger.debug(`Executing action with resolved params:`, params);

@@ -3,11 +3,13 @@ import { threadRows } from './mock-data/threads';
 import { flowRows } from './mock-data/flows';
 // import { brainRows } from './mock-data/brain';
 import { promptRows } from './mock-data/prompts';
+import { actionRows } from './mock-data/actions';
 
 export const rows: Rows = composeData([
   threadRows,
   flowRows,
   promptRows,
+  actionRows,
   // brainRows,
 ]);
 

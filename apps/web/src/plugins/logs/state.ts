@@ -91,7 +91,7 @@ const logsState = setup({
     active: {
       on: {
         'LOGS_STARTUP': {
-          actions: [log('hiii'), 'setStartupLogs'],
+          actions: 'setStartupLogs',
         },
         'LOGS_REFRESH': {
           actions: 'updateLogs',

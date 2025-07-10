@@ -1,7 +1,8 @@
 <template>
   <BaseForm
+    v-if="node"
     :node="node"
-    @update-label="handleUpdateLabel"
+    @update-label="$emit('update-node', { label: $event })"
   >
     <div class="space-y-6">
       <!-- Model Selection -->
@@ -10,7 +11,7 @@
           Model
         </label>
         <ComboboxRoot
-          v-model="selectedModel"
+          :model-value="selectedModel"
           ignore-filter
           class="relative w-full"
           :open="isModelDropdownOpen"
@@ -22,12 +23,11 @@
               <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isModelDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="isLoadingFormData ? 'Loading models...' : (selectedModel ? '' : 'Select a model...')"
+                  :placeholder="selectedModel ? '' : 'Select a model...'"
                   :value="selectedModel ? selectedModel.name : modelQuery"
                   @input="modelQuery = ($event.target as HTMLInputElement).value"
-                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
@@ -95,30 +95,30 @@
           </span>
         </div>
       </div>
+      
       <!-- Prompt Template Dropdown -->
       <div>
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
           Prompt Template
         </label>
         <ComboboxRoot
-          v-model="selectedPrompt"
+          :model-value="selectedPrompt"
           ignore-filter
           class="relative w-full"
-          :open="isOpen"
-          @update:open="isOpen = $event"
+          :open="isPromptDropdownOpen"
+          @update:open="isPromptDropdownOpen = $event"
           @update:model-value="handlePromptChange"
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isPromptDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
-                  :placeholder="isLoadingFormData ? 'Loading prompts...' : (selectedPrompt ? '' : 'Select a prompt template...')"
+                  :placeholder="selectedPrompt ? '' : 'Select a prompt template...'"
                   :value="selectedPrompt ? selectedPrompt.label : promptQuery"
                   @input="promptQuery = ($event.target as HTMLInputElement).value"
-                  :disabled="isLoadingFormData"
                 />
-                <ChevronDown class="w-4 h-4 text-neutral-400" :class="{ 'animate-spin': isLoadingFormData }" />
+                <ChevronDown class="w-4 h-4 text-neutral-400" />
               </div>
             </ComboboxTrigger>
           </ComboboxAnchor>
@@ -194,35 +194,35 @@
         </details>
       </div>
 
-      <!-- Field Mappings -->
+      <!-- Field Mappings with Optimized Updates -->
       <div v-if="selectedPrompt" class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
           Field Mappings
         </label>
         <div class="border rounded-md bg-neutral-800/30 border-neutral-700">
-          <div v-if="Object.keys(selectedPrompt.inputs || {}).length === 0" class="p-4 text-sm text-neutral-600">
+          <div v-if="!promptInputKeys.length" class="p-4 text-sm text-neutral-600">
             No input fields required for this prompt template.
           </div>
           <div v-else class="p-4 space-y-4">
             <div
-              v-for="(input, key) in selectedPrompt.inputs"
+              v-for="key in promptInputKeys"
               :key="key"
               class="flex items-center gap-3"
             >
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
-                  {{ input.label || key }}
-                  <span v-if="input.required" class="text-xs text-red-500">*</span>
+                  {{ selectedPrompt.inputs[key].name || key }}
+                  <span v-if="selectedPrompt.inputs[key].required" class="text-xs text-red-500">*</span>
                 </label>
                 <input
-                  :value="fieldMappings.find(m => m.target === key.toString())?.source || ''"
+                  :value="getFieldMapping(key)"
                   type="text"
-                  :placeholder="input.placeholder || `e.g. $.event.data.${key}`"
+                  :placeholder="`e.g. $.event.data.${key}`"
                   class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-                  @input="handleFieldMappingChange(key.toString(), ($event.target as HTMLInputElement).value)"
+                  @input="updateFieldMapping(key, ($event.target as HTMLInputElement).value)"
                 />
-                <p v-if="input.description" class="mt-1.5 text-xs text-neutral-600">
-                  {{ input.description }}
+                <p v-if="selectedPrompt.inputs[key].description" class="mt-1.5 text-xs text-neutral-600">
+                  {{ selectedPrompt.inputs[key].description }}
                 </p>
               </div>
             </div>
@@ -239,7 +239,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import {
   ComboboxAnchor,
@@ -255,76 +255,56 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import type { LLMNode, ModelConfig } from '@abuddy/api'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
-import { flowsId } from '../../state'
+import type { ModelConfig, PromptEntity, NodeEntity } from '@abuddy/api'
+import type { FormResources } from '../../types/form-props'
 
 const props = defineProps<{
-  node: LLMNode
+  node: NodeEntity
+  resources?: FormResources
 }>()
 
 const emit = defineEmits<{
-  'update-node': [data: Partial<LLMNode>]
+  'update-node': [updates: Record<string, any>]
 }>()
 
-// Get flows actor and data from state
-const flowsActor = applicationState.system.get(flowsId)
-const prompts = useSelector(flowsActor, (state: any) => state.context.prompts || [])
-const availableModels = useSelector(flowsActor, (state: any) => state.context.models || [])
-const isLoadingFormData = useSelector(flowsActor, (state: any) => state.context.isLoadingFormData)
+// Type assertion for llm node properties
+const nodeData = computed(() => props.node as any)
 
-// Local state
-const selectedPrompt = ref<any>(null)
+// UI state
 const promptQuery = ref('')
-const fieldMappings = ref<Array<{ target: string; source: string; default?: any }>>([])
-const isOpen = ref(false)
-const selectedModel = ref<ModelConfig | null>(null)
+const isPromptDropdownOpen = ref(false)
 const modelQuery = ref('')
 const isModelDropdownOpen = ref(false)
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
-// Initialize from node data and fetch latest data
-onMounted(() => {
-  // Fetch latest models and prompts
-  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
-  
-  if (props.node.promptTemplateId) {
-    const prompt = prompts.value.find(p => p.id === props.node.promptTemplateId)
-    if (prompt) {
-      selectedPrompt.value = prompt
-      fieldMappings.value = props.node.fieldMappings || []
-    }
-  }
-  
-  if (props.node.model) {
-    const model = availableModels.value.find(m => m.id === props.node.model)
-    if (model) {
-      selectedModel.value = model
-    }
-  }
+// Get selected model and prompt
+const selectedModel = computed(() => {
+  if (!nodeData.value.model || !props.resources?.models) return null
+  return props.resources.models.find((m: ModelConfig) => m.id === nodeData.value.model) || null
 })
 
-// Re-fetch data when node changes
-watch(() => props.node.id, () => {
-  flowsActor.send({ type: 'FETCH_LLM_FORM_DATA' });
+const selectedPrompt = computed(() => {
+  if (!nodeData.value.promptTemplateId || !props.resources?.prompts) return null
+  return props.resources.prompts.find((p: PromptEntity) => p.id === nodeData.value.promptTemplateId) || null
 })
 
-// Computed filtered prompts
+// Field mappings
+const fieldMappings = computed(() => nodeData.value.fieldMappings || [])
+
+// Computed filtered lists
 const filteredPrompts = computed(() => {
-  if (promptQuery.value === '') return prompts.value
-  
-  return prompts.value.filter((prompt) =>
+  if (!props.resources?.prompts) return []
+  if (promptQuery.value === '') return props.resources.prompts
+  return props.resources.prompts.filter((prompt: PromptEntity) =>
     startsWith(prompt.label, promptQuery.value)
   )
 })
 
-// Computed filtered models
 const filteredModels = computed(() => {
-  if (modelQuery.value === '') return availableModels.value
-  
-  return availableModels.value.filter((model) =>
+  if (!props.resources?.models) return []
+  if (modelQuery.value === '') return props.resources.models
+  return props.resources.models.filter((model: ModelConfig) =>
     startsWith(model.name, modelQuery.value) ||
     startsWith(model.provider, modelQuery.value)
   )
@@ -333,7 +313,7 @@ const filteredModels = computed(() => {
 // Group models by provider
 const groupedModels = computed(() => {
   const groups: Record<string, ModelConfig[]> = {}
-  filteredModels.value.forEach(model => {
+  filteredModels.value.forEach((model: ModelConfig) => {
     if (!groups[model.provider]) {
       groups[model.provider] = []
     }
@@ -342,7 +322,12 @@ const groupedModels = computed(() => {
   return groups
 })
 
-// Helper to format context window
+// Prompt input keys
+const promptInputKeys = computed(() => 
+  selectedPrompt.value?.inputs ? Object.keys(selectedPrompt.value.inputs) : []
+)
+
+// Helper functions
 const formatContextWindow = (tokens: number) => {
   if (tokens >= 1000000) {
     return `${(tokens / 1000000).toFixed(1)}M tokens`
@@ -352,75 +337,52 @@ const formatContextWindow = (tokens: number) => {
   return `${tokens} tokens`
 }
 
-// Clear query when dropdown closes
-watch(isOpen, (newValue) => {
-  if (!newValue) {
-    promptQuery.value = ''
-  }
-})
-
-watch(isModelDropdownOpen, (newValue) => {
-  if (!newValue) {
-    modelQuery.value = ''
-  }
-})
-
-// Handlers
-const handleUpdateLabel = (label: string) => {
-  emit('update-node', { ...props.node, label })
+// Field mapping helpers
+const getFieldMapping = (target: string): string => {
+  const mapping = fieldMappings.value.find((m: any) => m.target === target)
+  return mapping?.source || ''
 }
 
-
-const handlePromptChange = (prompt: any) => {
-  selectedPrompt.value = prompt
-  promptQuery.value = ''
+const updateFieldMapping = (target: string, source: string) => {
+  const currentMappings = fieldMappings.value.filter((m: any) => m.target !== target)
   
-  // Reset field mappings for new prompt
-  const newMappings: Array<{ target: string; source: string; default?: any }> = []
-  if (prompt?.inputs) {
-    Object.keys(prompt.inputs).forEach(key => {
-      const existing = fieldMappings.value.find(m => m.target === key)
-      newMappings.push({
-        target: key,
-        source: existing?.source || '',
-        default: existing?.default
-      })
+  if (source.trim()) {
+    currentMappings.push({ target, source, default: undefined })
+  }
+  
+  emit('update-node', { fieldMappings: currentMappings })
+}
+
+// Update handlers
+const handlePromptChange = (prompt: PromptEntity | null) => {
+  promptQuery.value = ''
+  isPromptDropdownOpen.value = false
+  
+  if (prompt) {
+    // Create default mappings for new prompt
+    const newMappings = prompt.inputs ? Object.keys(prompt.inputs).map(key => ({
+      target: key,
+      source: `$.event.data.${key}`,
+      default: undefined
+    })) : []
+    
+    emit('update-node', {
+      promptTemplateId: prompt.id,
+      fieldMappings: newMappings
+    })
+  } else {
+    emit('update-node', {
+      promptTemplateId: undefined,
+      fieldMappings: []
     })
   }
-  fieldMappings.value = newMappings
-  
-  // Update node
-  emit('update-node', {
-    ...props.node,
-    promptTemplateId: prompt?.id || '',
-    fieldMappings: newMappings
-  })
-}
-
-const handleFieldMappingChange = (field: string, value: string) => {
-  const index = fieldMappings.value.findIndex(m => m.target === field)
-  if (index >= 0) {
-    fieldMappings.value[index].source = value
-  } else {
-    fieldMappings.value.push({ target: field, source: value })
-  }
-  
-  emit('update-node', {
-    ...props.node,
-    fieldMappings: [...fieldMappings.value]
-  })
 }
 
 const handleModelChange = (model: ModelConfig | null) => {
-  selectedModel.value = model
   modelQuery.value = ''
-  
-  emit('update-node', {
-    ...props.node,
-    model: model?.id || undefined
-  })
+  isModelDropdownOpen.value = false
+  emit('update-node', { model: model?.id || undefined })
 }
-
 </script>
 
 <style scoped>
@@ -428,4 +390,4 @@ const handleModelChange = (model: ModelConfig | null) => {
 summary::-webkit-details-marker {
   display: none;
 }
-</style>
+</style> 

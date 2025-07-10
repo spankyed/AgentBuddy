@@ -30,36 +30,26 @@ export const flowsId = 'flows'
 export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
 
-// Normalized structure for efficient updates
-interface NormalizedTNodeTree {
-  byId: Record<string, TNodeEntity>;
-  rootIds: string[];
-  childrenById: Record<string, string[]>;
-}
-
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   selectedFlowId?: EARS.EntityId;
   graph: {
-    nodes: (Partial<NodeEntity> & { x?: number; y?: number })[];
+    nodes: NodeEntity[];
     edges: EdgeEntity[];
+    // Store positions separately from node data
+    positions: Record<string, { x: number; y: number }>;
   };
-  flows: Partial<FlowEntity>[];
-  rootFlow?: Partial<FlowEntity>;
-  logs: { id: number; text: string }[];
+  flows: FlowEntity[];
+  rootFlow?: FlowEntity; // Special flow with root_flow role
+  // Resources available for node configuration
   prompts: PromptEntity[];
   models: ModelConfig[];
   actions: ActionEntity[];
-  isLoadingFormData: boolean;
-  tNodeTree?: TrackEntity[];
-  normalizedTree?: NormalizedTNodeTree;
-  pendingConnection?: {
-    sourceId: string;
-    targetTempId: string;
-  };
+  // Track temporary IDs during async creation
+  tempIdMap: Record<string, string>; // tempId -> permanentId
 }
 
-type SystemEvent = OutgoingFlowsEvents | OutgoingBrainEvents
+type SystemEvent = OutgoingFlowsEvents
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -72,55 +62,9 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
-  | { type: 'FETCH_LLM_FORM_DATA' }
-  | { type: 'FETCH_ACTION_FORM_DATA' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
-
-// Helper functions for tree normalization
-function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
-  const normalized: NormalizedTNodeTree = {
-    byId: {},
-    rootIds: [],
-    childrenById: {}
-  };
-
-  function processNode(node: TrackEntity, isRoot = false) {
-    // Store the node without children
-    const { children, ...nodeWithoutChildren } = node;
-    normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
-    
-    if (isRoot) {
-      normalized.rootIds.push(node.id);
-    }
-    
-    // Process children
-    if (children && children.length > 0) {
-      normalized.childrenById[node.id] = children.map(child => child.id);
-      children.forEach(child => processNode(child, false));
-    } else {
-      normalized.childrenById[node.id] = [];
-    }
-  }
-
-  tree.forEach(node => processNode(node, true));
-  return normalized;
-}
-
-function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
-  function buildNode(id: string): TrackEntity {
-    const node = normalized.byId[id];
-    const childIds = normalized.childrenById[id] || [];
-    
-    return {
-      ...node,
-      children: childIds.map(childId => buildNode(childId))
-    } as TrackEntity;
-  }
-
-  return normalized.rootIds.map(id => buildNode(id));
-}
 
 const flowsState = setup({
   types: {
@@ -131,34 +75,20 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
       const ev = typeOf('FLOWS_STARTUP', event);
-      return { ...ev.data, logs: [], prompts: [], models: [], actions: [], isLoadingFormData: false }
+      return {
+        flows: (ev.data.flows || []) as FlowEntity[],
+        rootFlow: ev.data.rootFlow as FlowEntity | undefined,
+        prompts: ev.data.prompts || [],
+        models: ev.data.models || [],
+        actions: ev.data.actions || [],
+        selectedFlowId: ev.data.selectedFlowId,
+        graph: {
+          ...ev.data.graph,
+          positions: {}, // Start with empty positions, will be set by layout
+        },
+      }
     }),
 
-    fetchLLMFormData: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'FETCH_LLM_FORM_DATA'
-      });
-      return { isLoadingFormData: true };
-    }),
-
-    setLLMFormData: assign(({ event }) => {
-      const ev = typeOf('LLM_FORM_DATA_FETCHED', event);
-      return { models: ev.models, prompts: ev.prompts, isLoadingFormData: false };
-    }),
-
-    fetchActionFormData: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'FETCH_ACTION_FORM_DATA'
-      });
-      return { isLoadingFormData: true };
-    }),
-
-    setActionFormData: assign(({ event }) => {
-      const ev = typeOf('ACTION_FORM_DATA_FETCHED', event);
-      return { actions: ev.actions, isLoadingFormData: false };
-    }),
 
 
     /* ── flow interactions ────────────────────────────── */
@@ -177,12 +107,14 @@ const flowsState = setup({
 
     loadFlowData: assign(({ event }) => {
       const ev = typeOf('FLOW_SELECTED', event);
+      
       return {
         selectedFlowId: ev.flowId,
         selectedNodeId: undefined,
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
+          positions: {}, // Start with empty positions, will be set by layout
         },
       };
     }),
@@ -229,6 +161,7 @@ const flowsState = setup({
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
+          positions: {}, // Start with empty positions, will be set by layout
         },
       };
     }),
@@ -239,14 +172,12 @@ const flowsState = setup({
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
       const newEdge = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' } as EdgeEntity
-      context.logs.unshift({ id: Date.now(), text: `${ev.src}→${ev.tgt}` })
       
       return { 
         graph: {
           ...context.graph,
           edges: [...context.graph.edges, newEdge],
         },
-        logs: context.logs,
       }
     }),
     
@@ -277,11 +208,15 @@ const flowsState = setup({
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE', event)
+      
+      // Create a partial node that will be completed by the backend
       const newNode = {
         id: tempId,
         nodeType: ev.nodeType,
         label: `New ${ev.nodeType}`,
-      } as Partial<NodeEntity>
+        flowId: context.selectedFlowId,
+        configuration: {},
+      } as any // Will be properly typed when backend returns complete node
       
       // Send create to backend if we have a flow selected
       trpc.bus.send.mutate({
@@ -301,6 +236,10 @@ const flowsState = setup({
           nodes: [...context.graph.nodes, newNode],
         },
         selectedNodeId: tempId as EARS.EntityId,
+        tempIdMap: {
+          ...context.tempIdMap,
+          [tempId]: tempId, // Will be updated when we get permanent ID
+        }
       }
     }),
 
@@ -315,7 +254,18 @@ const flowsState = setup({
         id: tempId,
         nodeType: ev.nodeType,
         label: `New ${ev.nodeType}`,
-      } as Partial<NodeEntity>
+        flowId: context.selectedFlowId,
+        configuration: {},
+      } as any // Will be properly typed when backend returns complete node
+      
+      // Create temporary edge
+      const tempEdgeId = `Edge-${randId()}`
+      const tempEdge: EdgeEntity = {
+        id: tempEdgeId,
+        source: ev.sourceNodeId,
+        target: tempId,
+        kind: 'transitions_to'
+      } as EdgeEntity
       
       // Send create to backend
       trpc.bus.send.mutate({
@@ -333,11 +283,12 @@ const flowsState = setup({
         graph: {
           ...context.graph,
           nodes: [...context.graph.nodes, newNode],
+          edges: [...context.graph.edges, tempEdge],
         },
         selectedNodeId: tempId as EARS.EntityId,
-        pendingConnection: {
-          sourceId: ev.sourceNodeId,
-          targetTempId: tempId
+        tempIdMap: {
+          ...context.tempIdMap,
+          [tempId]: tempId,
         }
       }
     }),
@@ -348,9 +299,9 @@ const flowsState = setup({
       return {
         graph: {
           ...context.graph,
-          nodes: context.graph.nodes.map(node =>
+          nodes: context.graph.nodes.map((node) =>
             node.id === ev.nodeId ? { ...node, ...ev.updates } : node
-          ),
+          ) as any[], // Temporary fix for mixed node types
         },
       };
     }),
@@ -359,7 +310,18 @@ const flowsState = setup({
       const ev = typeOf('NODE.UPDATE', event);
       if (!context.selectedFlowId) return;
       
-      const node = context.graph.nodes.find(n => n.id === ev.nodeId);
+      // Check if this is a temporary ID
+      const nodeId = ev.nodeId.startsWith('temp-') 
+        ? context.tempIdMap[ev.nodeId] || ev.nodeId
+        : ev.nodeId;
+      
+      // If it's still temporary (not yet resolved), skip the update
+      if (nodeId.startsWith('temp-')) {
+        console.warn('Cannot update node with temporary ID:', nodeId);
+        return;
+      }
+      
+      const node = context.graph.nodes.find(n => n.id === nodeId);
       if (!node) return;
 
       // Send update to backend
@@ -367,103 +329,29 @@ const flowsState = setup({
         systemId: id,
         type: 'UPDATE_NODE',
         flowId: context.selectedFlowId,
-        nodeId: ev.nodeId,
+        nodeId: nodeId,
         nodeData: { ...node, ...ev.updates },
       });
     },
 
     updateNodePosition: assign(({ context, event }) => {
       const ev = typeOf('NODE.UPDATE_POSITION', event);
+      const nodeId = ev.nodeId;
+      
+      // Check if we need to use the permanent ID from tempIdMap
+      const permanentId = nodeId.startsWith('temp-') 
+        ? context.tempIdMap[nodeId] || nodeId
+        : nodeId;
+      
       return {
         graph: {
           ...context.graph,
-          nodes: context.graph.nodes.map(node =>
-            node.id === ev.nodeId ? { ...node, x: ev.position.x, y: ev.position.y } : node
-          ),
+          positions: {
+            ...context.graph.positions,
+            // Use the permanent ID for position storage if available
+            [permanentId]: { x: ev.position.x, y: ev.position.y }
+          }
         },
-      };
-    }),
-
-    /* ── TNode tree actions ────────────────────────────────── */
-    addTNodeToTree: assign(({ context, event }) => {
-      if (event.type !== 'TNODE_SPAWNED') return {};
-      
-      const { tNode, parentId, eventTNodeId } = event;
-      
-      if (!context.normalizedTree) {
-        // Initialize if not present
-        return {
-          normalizedTree: {
-            byId: { [tNode.id]: tNode },
-            rootIds: parentId ? [] : [tNode.id],
-            childrenById: { [tNode.id]: [] }
-          },
-          tNodeTree: [{ ...tNode, children: [] } as TrackEntity]
-        };
-      }
-
-      // Clone the normalized tree for immutability
-      const newTree = {
-        byId: { ...context.normalizedTree.byId },
-        rootIds: [...context.normalizedTree.rootIds],
-        childrenById: { ...context.normalizedTree.childrenById }
-      };
-
-      // Add the new node
-      newTree.byId[tNode.id] = tNode;
-      newTree.childrenById[tNode.id] = [];
-
-      // Update parent's children if parentId exists
-      if (parentId) {
-        if (!newTree.childrenById[parentId]) {
-          newTree.childrenById[parentId] = [];
-        } else {
-          newTree.childrenById[parentId] = [...newTree.childrenById[parentId]];
-        }
-        newTree.childrenById[parentId].push(tNode.id);
-      } else {
-        // No parent means it's a root node
-        newTree.rootIds.push(tNode.id);
-      }
-
-      // Update denormalized tree as well
-      const denormalizedTree = denormalizeTNodeTree(newTree);
-
-      return {
-        normalizedTree: newTree,
-        tNodeTree: denormalizedTree
-      };
-    }),
-    
-    updateTNodeInTree: assign(({ context, event }) => {
-      if (event.type !== 'TNODE_UPDATED') return {};
-      
-      const { data } = event;
-      const { tNodeId, status, eventTNodeId } = data;
-      
-      if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
-        return {};
-      }
-
-      // Clone the normalized tree
-      const newTree = {
-        byId: { ...context.normalizedTree.byId },
-        rootIds: [...context.normalizedTree.rootIds],
-        childrenById: { ...context.normalizedTree.childrenById }
-      };
-
-      // Update the node status
-      newTree.byId[tNodeId] = {
-        ...newTree.byId[tNodeId],
-        status
-      };
-
-      // Update denormalized tree
-      const denormalizedTree = denormalizeTNodeTree(newTree);
-
-      return {
-        normalizedTree: newTree,
-        tNodeTree: denormalizedTree
       };
     }),
 
@@ -472,9 +360,9 @@ const flowsState = setup({
       const ev = typeOf('NODE_CREATED', event);
       const { tempId, nodeId: permanentId, node } = ev;
       
-      // Update the node with permanent ID
+      // The node from backend already has the permanent ID, just replace the temp node
       const updatedNodes = context.graph.nodes.map(n => 
-        n.id === tempId ? { ...node, id: permanentId } : n
+        n.id === tempId ? node : n
       );
       
       // Update selected node ID if it was the temp one
@@ -489,42 +377,44 @@ const flowsState = setup({
         target: edge.target === tempId ? permanentId : edge.target,
       }));
       
-      // Check if we have a pending connection for this node
-      let pendingConnection = context.pendingConnection;
-      if (pendingConnection?.targetTempId === tempId) {
-        // Create the edge now that we have the permanent ID
-        const edgeId = `Edge-${randId()}`;
-        const newEdge = {
-          id: edgeId,
-          source: pendingConnection.sourceId,
-          target: permanentId,
-          kind: 'transitions_to'
-        } as EdgeEntity;
-        
-        updatedEdges.push(newEdge);
-        
-        // Send edge creation to backend
-        if (context.selectedFlowId) {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'CREATE_EDGE',
-            flowId: context.selectedFlowId,
-            sourceId: pendingConnection.sourceId,
-            targetId: permanentId,
-          });
-        }
-        
-        // Clear pending connection
-        pendingConnection = undefined;
+      // Update positions if needed
+      const updatedPositions = { ...context.graph.positions };
+      if (updatedPositions[tempId]) {
+        updatedPositions[permanentId] = updatedPositions[tempId];
+        delete updatedPositions[tempId];
+      }
+      
+      // Update tempIdMap
+      const updatedTempIdMap = { ...context.tempIdMap };
+      updatedTempIdMap[tempId] = permanentId;
+      
+      // Send edge creation to backend for any edges with the new permanent ID
+      if (context.selectedFlowId) {
+        updatedEdges.forEach(edge => {
+          // If this edge was just updated from temp to permanent, send it
+          const wasUpdated = (edge.source === permanentId && context.graph.edges.find(e => e.id === edge.id)?.source === tempId) ||
+                           (edge.target === permanentId && context.graph.edges.find(e => e.id === edge.id)?.target === tempId);
+          
+          if (wasUpdated && !edge.source.startsWith('temp-') && !edge.target.startsWith('temp-')) {
+            trpc.bus.send.mutate({
+              systemId: id,
+              type: 'CREATE_EDGE',
+              flowId: context.selectedFlowId!,
+              sourceId: edge.source,
+              targetId: edge.target,
+            });
+          }
+        });
       }
       
       return {
         graph: {
           nodes: updatedNodes,
           edges: updatedEdges,
+          positions: updatedPositions,
         },
         selectedNodeId: newSelectedNodeId,
-        pendingConnection,
+        tempIdMap: updatedTempIdMap,
       };
     }),
   },
@@ -536,24 +426,22 @@ const flowsState = setup({
     selectedNodeId: undefined,
     selectedFlowId: undefined,
     graph: {
-      nodes: [] as Partial<NodeEntity>[],
-      edges: [] as EdgeEntity[],
+      nodes: [],
+      edges: [],
+      positions: {},
     },
-    flows: [] as Partial<FlowEntity>[],
-    rootFlow: undefined as Partial<FlowEntity> | undefined,
-    logs: [] as { id: number; text: string }[],
-    prompts: [] as PromptEntity[],
-    models: [] as ModelConfig[],
-    actions: [] as ActionEntity[],
-    isLoadingFormData: false,
-    tNodeTree: undefined,
-    normalizedTree: undefined,
-    pendingConnection: undefined,
+    flows: [],
+    rootFlow: undefined,
+    prompts: [],
+    models: [],
+    actions: [],
+    tempIdMap: {},
   },
   on: {
-    FLOWS_STARTUP: { actions: 'setPluginData' },
-    LLM_FORM_DATA_FETCHED: { actions: 'setLLMFormData' },
-    ACTION_FORM_DATA_FETCHED: { actions: 'setActionFormData' },
+    FLOWS_STARTUP: { 
+      actions: 'setPluginData',
+      target: '.view' // Go directly to view since we have the selected flow's data
+    },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
       actions: 'addCreatedFlow',
@@ -561,15 +449,6 @@ const flowsState = setup({
     },
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
-    },
-    EVENT_TNODE_SPAWNED: {
-      // Keep for backward compatibility but do nothing
-    },
-    TNODE_SPAWNED: {
-      actions: 'addTNodeToTree'
-    },
-    TNODE_UPDATED: {
-      actions: 'updateTNodeInTree'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],
@@ -633,12 +512,6 @@ const flowsState = setup({
         },
         'GO.BACK': {
           target: 'list',
-        },
-        'FETCH_LLM_FORM_DATA': {
-          actions: 'fetchLLMFormData',
-        },
-        'FETCH_ACTION_FORM_DATA': {
-          actions: 'fetchActionFormData',
         },
       },
     },

@@ -5,14 +5,13 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
+import flowsStartupData from './repository/startup';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './types';
-import { flowCommands, flowQueries, FLOW_EDGE_KINDS } from './repository';
-const flowsStartupData = () => flowQueries.startupData();
+import { getExtendedData, getNode } from './repository/read';
+import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
+import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
-import { promptQueries } from '../prompts/repository';
-import { actionQueries } from '../actions/repository';
-import { availableModels } from './config/available-models';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -28,8 +27,6 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
-  busEvent('FETCH_LLM_FORM_DATA', {}),
-  busEvent('FETCH_ACTION_FORM_DATA', {}),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -42,177 +39,150 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
-  | { type: 'LLM_FORM_DATA_FETCHED'; models: any[]; prompts: any[] }
-  | { type: 'ACTION_FORM_DATA_FETCHED'; actions: any[] }
+
+type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
-type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
+
+// export type FlowEvent = EventFromLogic<typeof flowsSystem>;
 
 export const flowsSystem = setup({
   types: {
-    context: {} as {
-      flowsId: EARS.EntityId;
-    },
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
+  actors: {},
   actions: {
-    sendFlowsStartupData: ({ system }) => {
-      system.get(bus).send(emit(flows, { 
+    sendFlowsStartup: ({ system }) => {
+      const pluginId = flows;
+      const data = flowsStartupData();
+      logger.info('Sending flows startup data to client', { flows: data.flows.length });
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOWS_STARTUP',
-        data: flowsStartupData()
+        data,
       }));
     },
-    sendFlowData: ({ system, event }) => {
-      const ev = typeOf('FLOW_SELECT', event);
-      const flow = flowQueries.extendedData(ev.flowId as EARS.EntityId);
+    
+    selectFlow: ({ system, event }) => {
+      const { flowId } = typeOf('FLOW_SELECT', event);
+      const pluginId = flows;
       
-      system.get(bus).send(emit(flows, {
+      logger.info('Selecting flow', { flowId });
+      
+      const data = getExtendedData(flowId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOW_SELECTED',
-        flowId: ev.flowId as EARS.EntityId,
-        data: flow
+        flowId: flowId as EARS.EntityId,
+        data,
       }));
     },
-    createFlow: ({ system }) => {
-              const result = flowCommands.createWithEntryNode();
-        if (!result.success) {
-          console.error('Failed to create flow:', result.error);
-          return;
-        }
-        const { flow: newFlow } = result.data;
+    
+    createFlow: ({ system, event }) => {
+      const pluginId = flows;
       
-      // Get the flow data which now includes the entry node
-      const flowData = flowQueries.extendedData(newFlow.id);
-
-      system.get(bus).send(emit(flows, {
+      logger.info('Creating new flow');
+      
+      const { flow, entryNode } = createFlowWithEntryNode();
+      
+      const data = getExtendedData(flow.id);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOW_CREATED',
-        flow: newFlow,
-        flowId: newFlow.id,
-        data: flowData,  // Include graph data directly
+        flow,
+        flowId: flow.id,
+        data,
       }));
     },
-          updateFlowLabel: ({ event }) => {
-        const ev = typeOf('UPDATE_FLOW_LABEL', event);
-        const result = flowCommands.updateFlowLabel(ev.flowId as EARS.EntityId, ev.label);
-        if (!result.success) {
-          console.error('Failed to update flow label:', result.error);
-        }
-      },
+    
+    updateFlowLabel: ({ system, event }) => {
+      const { flowId, label } = typeOf('UPDATE_FLOW_LABEL', event);
+      
+      logger.info('Updating flow label', { flowId, label });
+      
+      updateFlowLabel(flowId as EARS.EntityId, label);
+    },
+    
     createNode: ({ system, event }) => {
-      const ev = typeOf('CREATE_NODE', event);
-      logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
+      const { flowId, tempId, nodeData } = typeOf('CREATE_NODE', event);
+      const pluginId = flows;
       
-      try {
-        const result = flowCommands.createNode(ev.flowId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
-        if (!result.success) {
-          logger.error('Failed to create node:', { error: result.error });
-          return;
-        }
-        const newNode = result.data;
-        
-        system.get(bus).send(emit(flows, {
-          type: 'NODE_CREATED',
-          tempId: ev.tempId,
-          nodeId: newNode.id,
-          node: newNode,
-        }));
-      } catch (error) {
-        logger.error('Failed to create node:', error as any);
-      }
+      logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
+      
+      const node = createNode(flowId as EARS.EntityId, nodeData);
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'NODE_CREATED',
+        tempId,
+        nodeId: node.id,
+        node,
+      }));
     },
+    
     updateNode: ({ system, event }) => {
-      const ev = typeOf('UPDATE_NODE', event);
-      logger.info('Updating node:', { flowId: ev.flowId, nodeId: ev.nodeId, nodeData: ev.nodeData });
+      const { flowId, nodeId, nodeData } = typeOf('UPDATE_NODE', event);
+      const pluginId = flows;
       
-      try {
-        const result = flowCommands.updateNode(ev.nodeId as EARS.EntityId, ev.nodeData as Partial<NodeEntity>);
-        if (!result.success) {
-          logger.error('Failed to update node:', { error: result.error });
-          return;
-        }
-        
-        system.get(bus).send(emit(flows, {
-          type: 'NODE_UPDATED',
-          nodeId: ev.nodeId as EARS.EntityId,
-          node: ev.nodeData,
-        }));
-      } catch (error) {
-        logger.error('Failed to update node:', error as any);
-      }
+      logger.info('Updating node', { flowId, nodeId, updates: Object.keys(nodeData) });
+      
+      updateNode(nodeId as EARS.EntityId, nodeData);
+      
+      const node = getNode(nodeId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'NODE_UPDATED',
+        nodeId: nodeId as EARS.EntityId,
+        node,
+      }));
     },
+    
     createEdge: ({ system, event }) => {
-      const ev = typeOf('CREATE_EDGE', event);
-      logger.info('Creating edge:', { sourceId: ev.sourceId, targetId: ev.targetId });
+      const { flowId, sourceId, targetId } = typeOf('CREATE_EDGE', event);
+      const pluginId = flows;
       
-      const result = flowCommands.createEdge(ev.sourceId as EARS.EntityId, ev.targetId as EARS.EntityId);
-      if (!result.success) {
-        logger.error('Failed to create edge:', { error: result.error });
-        return;
-      }
+      logger.info('Creating edge', { flowId, sourceId, targetId });
       
-      system.get(bus).send(emit(flows, {
+      createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
-        sourceId: ev.sourceId as EARS.EntityId,
-        targetId: ev.targetId as EARS.EntityId,
-      }));
-    },
-    fetchLLMFormData: ({ system }) => {
-              const prompts = promptQueries.all();
-      system.get(bus).send(emit(flows, {
-        type: 'LLM_FORM_DATA_FETCHED',
-        models: availableModels,
-        prompts
-      }));
-    },
-    fetchActionFormData: ({ system }) => {
-              const actions = actionQueries.all();
-      system.get(bus).send(emit(flows, {
-        type: 'ACTION_FORM_DATA_FETCHED',
-        actions
+        sourceId: sourceId as EARS.EntityId,
+        targetId: targetId as EARS.EntityId,
       }));
     },
   },
-}).createMachine(
-  {
-    id: flows,
-    initial: 'idle',
-    context: ({ input }) => ({
-      flowsId: input,
-    }),
-    on: {
-      FLOW_SELECT: {
-        actions: 'sendFlowData',
-      },
-      CREATE_FLOW: {
-        actions: 'createFlow',
-      },
-      UPDATE_FLOW_LABEL: {
-        actions: 'updateFlowLabel',
-      },
-      CREATE_NODE: {
-        actions: 'createNode',
-      },
-      UPDATE_NODE: {
-        actions: 'updateNode',
-      },
-      CREATE_EDGE: {
-        actions: 'createEdge',
-      },
-      FETCH_LLM_FORM_DATA: {
-        actions: 'fetchLLMFormData',
-      },
-      FETCH_ACTION_FORM_DATA: {
-        actions: 'fetchActionFormData',
-      },
-    },
-    states: {
-      idle: {
-        on: {
-          CLIENT_CONNECTED: {
-            actions: 'sendFlowsStartupData',
-          },
+  guards: {},
+  delays: {}
+}).createMachine({
+  id: flows,
+  initial: 'idle',
+  context: {},
+  states: {
+    idle: {
+      on: {
+        CLIENT_CONNECTED: {
+          actions: 'sendFlowsStartup',
         },
-      },
+        FLOW_SELECT: {
+          actions: 'selectFlow',
+        },
+        CREATE_FLOW: {
+          actions: 'createFlow',
+        },
+        UPDATE_FLOW_LABEL: {
+          actions: 'updateFlowLabel',
+        },
+        CREATE_NODE: {
+          actions: 'createNode',
+        },
+        UPDATE_NODE: {
+          actions: 'updateNode',
+        },
+        CREATE_EDGE: {
+          actions: 'createEdge',
+        },
+      }
     },
+    // Add more states as needed
   }
-);
+});

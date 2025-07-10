@@ -215,17 +215,17 @@ describe('tx – fluent mutation DSL', () => {
     });
 
     it('link() creates relations between entities', () => {
-      source.link(EARS.RelKind.RESPONDER, target.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target.id());
 
       const linkedNodes = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linkedNodes).toContain(target.id());
     });
 
     it('link() prevents self-loops', () => {
       expect(() => 
-        source.link(EARS.RelKind.RESPONDER, source.id())
+        source.link(EARS.RelKind.TRANSITIONS_TO, source.id())
       ).toThrow('source and target cannot be the same');
     });
 
@@ -241,10 +241,10 @@ describe('tx – fluent mutation DSL', () => {
       const newTarget = tx(EARS.Entity.Node);
       
       // First create a relation
-      source.link(EARS.RelKind.RESPONDER, target.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target.id());
       
       // Get the relation ID
-      const relationIds = qx(source.id()).edgeIds(EARS.RelKind.RESPONDER, true);
+      const relationIds = qx(source.id()).edgeIds(EARS.RelKind.TRANSITIONS_TO, true);
       expect(relationIds).toHaveLength(1);
       
       // Update the relation
@@ -255,22 +255,22 @@ describe('tx – fluent mutation DSL', () => {
 
       // Verify the update
       const linkedNodes = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linkedNodes).toContain(newTarget.id());
       expect(linkedNodes).not.toContain(target.id());
     });
 
     it('unlink() removes relations', () => {
-      source.link(EARS.RelKind.RESPONDER, target.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target.id());
       
-      const relationIds = qx(source.id()).edgeIds(EARS.RelKind.RESPONDER, true);
+      const relationIds = qx(source.id()).edgeIds(EARS.RelKind.TRANSITIONS_TO, true);
       expect(relationIds).toHaveLength(1);
       
       source.unlink(relationIds[0]);
       
       const linkedAfter = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linkedAfter).not.toContain(target.id());
     });
@@ -290,19 +290,19 @@ describe('tx – fluent mutation DSL', () => {
 
     it('linkOne() creates idempotent relations', () => {
       // Link to first target multiple times - should only create one
-      source.linkOne(EARS.RelKind.RESPONDER, target1.id());
-      source.linkOne(EARS.RelKind.RESPONDER, target1.id());
+      source.linkOne(EARS.RelKind.TRANSITIONS_TO, target1.id());
+      source.linkOne(EARS.RelKind.TRANSITIONS_TO, target1.id());
       
       let linked = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linked).toEqual([target1.id()]);
       
       // Link to second target - both should exist
-      source.linkOne(EARS.RelKind.RESPONDER, target2.id());
+      source.linkOne(EARS.RelKind.TRANSITIONS_TO, target2.id());
       
       linked = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids()
         .sort();
       expect(linked).toEqual([target1.id(), target2.id()].sort());
@@ -310,7 +310,7 @@ describe('tx – fluent mutation DSL', () => {
 
     it('linkOne() prevents self-loops', () => {
       expect(() => 
-        source.linkOne(EARS.RelKind.RESPONDER, source.id())
+        source.linkOne(EARS.RelKind.TRANSITIONS_TO, source.id())
       ).toThrow('source and target cannot be the same');
     });
 
@@ -329,26 +329,26 @@ describe('tx – fluent mutation DSL', () => {
     });
 
     it('unlinkIf() removes specific relations', () => {
-      source.link(EARS.RelKind.RESPONDER, target1.id());
-      source.link(EARS.RelKind.RESPONDER, target2.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target1.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target2.id());
       
-      source.unlinkIf(EARS.RelKind.RESPONDER, target1.id());
+      source.unlinkIf(EARS.RelKind.TRANSITIONS_TO, target1.id());
       
       const linked = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linked).toContain(target2.id());
       expect(linked).not.toContain(target1.id());
     });
 
     it('unlinkIf() removes all relations of a kind when no target specified', () => {
-      source.link(EARS.RelKind.RESPONDER, target1.id());
-      source.link(EARS.RelKind.RESPONDER, target2.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target1.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target2.id());
       
-      source.unlinkIf(EARS.RelKind.RESPONDER);
+      source.unlinkIf(EARS.RelKind.TRANSITIONS_TO);
       
       const linked = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(linked).toHaveLength(0);
     });
@@ -356,15 +356,15 @@ describe('tx – fluent mutation DSL', () => {
     it('unlinkWhere() removes relations by criteria', () => {
       const target3 = tx(EARS.Entity.Node);
       
-      source.link(EARS.RelKind.RESPONDER, target1.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target1.id());
       source.link(EARS.RelKind.TRANSITIONS_TO, target2.id());
-      source.link(EARS.RelKind.RESPONDER, target3.id());
+      source.link(EARS.RelKind.TRANSITIONS_TO, target3.id());
       
       // Remove all RESPONDER relations
-      source.unlinkWhere({ kind: EARS.RelKind.RESPONDER });
+      source.unlinkWhere({ kind: EARS.RelKind.TRANSITIONS_TO });
       
       const consumedBy = qx(source.id())
-        .linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node)
+        .linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node)
         .ids();
       expect(consumedBy).toHaveLength(0);
       
@@ -450,12 +450,12 @@ describe('tx – fluent mutation DSL', () => {
 
     it('safeLink() without options behaves like linkOne', () => {
       // RESPONDER without options - regular one-way link
-      node1.safeLink(EARS.RelKind.RESPONDER, node2.id());
+      node1.safeLink(EARS.RelKind.TRANSITIONS_TO, node2.id());
       
       // Check it's only one-way
-      expect(qx(node1.id()).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Thread).ids())
+      expect(qx(node1.id()).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Thread).ids())
         .toContain(node2.id());
-      expect(qx(node2.id()).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Thread).ids())
+      expect(qx(node2.id()).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Thread).ids())
         .not.toContain(node1.id());
     });
 
@@ -474,7 +474,7 @@ describe('tx – fluent mutation DSL', () => {
 
     it('safeLink() is chainable', () => {
       const result = node1
-        .safeLink(EARS.RelKind.RESPONDER, node2.id())
+        .safeLink(EARS.RelKind.TRANSITIONS_TO, node2.id())
         .put('label', 'Chained');
       
       expect(result).toBe(node1);
@@ -491,12 +491,12 @@ describe('tx – fluent mutation DSL', () => {
         .toContain(node1.id());
       
       // Case 2: Just info
-      node3.safeLink(EARS.RelKind.RESPONDER, node4.id(), { 
+      node3.safeLink(EARS.RelKind.TRANSITIONS_TO, node4.id(), { 
         info: { priority: 'high' }
       });
-      expect(qx(node3.id()).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Thread).ids())
+      expect(qx(node3.id()).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Thread).ids())
         .toContain(node4.id());
-      expect(qx(node4.id()).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Thread).ids())
+      expect(qx(node4.id()).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Thread).ids())
         .not.toContain(node3.id()); // Not symmetric
       
       // Case 3: Both info and symmetric
@@ -556,12 +556,12 @@ describe('tx – fluent mutation DSL', () => {
         .merge(EARS.AttrKind.Custom('config'), { timeout: 5000 })
         .grant('primary')
         .grant('selected_node')
-        .link(EARS.RelKind.RESPONDER, relatedNode.id())
+        .link(EARS.RelKind.TRANSITIONS_TO, relatedNode.id())
         .linkOne(EARS.RelKind.TRANSITIONS_TO, relatedNode.id());
       
       const id = complexNode.id();
       const roles = getRoles(id);
-      const consumedBy = qx(id).linksTo(EARS.RelKind.RESPONDER, EARS.Entity.Node).ids();
+      const consumedBy = qx(id).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node).ids();
       const transitionsTo = qx(id).linksTo(EARS.RelKind.TRANSITIONS_TO, EARS.Entity.Node).ids();
       
       expect(getAttr(id, EARS.AttrKind.Custom('label'))).toBe('Complex Node');

@@ -55,7 +55,7 @@ export const loggerServiceMetadata: ServiceMetadata = {
     {
       name: 'info',
       description: 'Log an informational message',
-      parameters: [
+      input: [
         {
           name: 'message',
           type: 'string',
@@ -75,7 +75,7 @@ export const loggerServiceMetadata: ServiceMetadata = {
     {
       name: 'error',
       description: 'Log an error message',
-      parameters: [
+      input: [
         {
           name: 'message',
           type: 'string',
@@ -95,7 +95,7 @@ export const loggerServiceMetadata: ServiceMetadata = {
     {
       name: 'debug',
       description: 'Log a debug message',
-      parameters: [
+      input: [
         {
           name: 'message',
           type: 'string',
@@ -115,7 +115,7 @@ export const loggerServiceMetadata: ServiceMetadata = {
     {
       name: 'warn',
       description: 'Log a warning message',
-      parameters: [
+      input: [
         {
           name: 'message',
           type: 'string',

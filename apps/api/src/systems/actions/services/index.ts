@@ -53,7 +53,7 @@ export function generateActionsFromServices(): Array<{
   label: string;
   description: string;
   category: string;
-  parameters: Record<string, any>;
+  input: Record<string, any>;
   actionFn: string;
   output?: any;
 }> {
@@ -63,7 +63,7 @@ export function generateActionsFromServices(): Array<{
     metadata.methods.forEach(method => {
       const parameterDefs: Record<string, any> = {};
       
-      method.parameters.forEach(param => {
+      method.input.forEach(param => {
         parameterDefs[param.name] = {
           name: param.name,
           type: param.type.includes('|') ? 'any' : param.type,
@@ -77,7 +77,7 @@ export function generateActionsFromServices(): Array<{
         label: `${metadata.name}.${method.name}`,
         description: method.description,
         category: metadata.category,
-        parameters: parameterDefs,
+        input: parameterDefs,
         actionFn: createActionFunction(serviceName, method),
         output: method.returns
       };
@@ -93,12 +93,12 @@ export function generateActionsFromServices(): Array<{
  * Creates an action function string from service method metadata
  */
 function createActionFunction(serviceName: string, method: any): string {
-  const paramNames = method.parameters.map((p: any) => p.name).join(', ');
-  const hasParams = method.parameters.length > 0;
+  const paramNames = method.input.map((p: any) => p.name).join(', ');
+  const hasInput = method.input.length > 0;
   
   let functionBody = `// ${method.description}\n`;
   
-  if (hasParams) {
+  if (hasInput) {
     functionBody += `const { ${paramNames} } = params;\n\n`;
   }
   
@@ -106,7 +106,7 @@ function createActionFunction(serviceName: string, method: any): string {
     functionBody += `// Example usage:\n// ${method.example.split('\n').join('\n// ')}\n\n`;
   }
   
-  functionBody += `const result = await services.${serviceName}.${method.name}(${hasParams ? paramNames : ''});\n`;
+  functionBody += `const result = await services.${serviceName}.${method.name}(${hasInput ? paramNames : ''});\n`;
   functionBody += `return result;`;
   
   return functionBody;

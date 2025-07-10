@@ -254,7 +254,6 @@ const hasDetails = computed(() => {
 
 // Get the appropriate detail component based on node type
 const detailComponent = computed(() => {
-  console.log('node.value.stepNodeType:  ', node.value.stepNodeType);
   if (!node.value || node.value.tNodeType !== 'step') return null;
   
   switch (node.value.stepNodeType) {

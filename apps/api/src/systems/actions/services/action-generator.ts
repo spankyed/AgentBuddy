@@ -45,7 +45,7 @@ export function generateActionFromServiceMethod(
   label: string;
   description: string;
   category: string;
-  parameters: Record<string, ActionParameter>;
+  input: Record<string, ActionParameter>;
   actionFn: string;
   output?: any;
 } | null {
@@ -60,9 +60,9 @@ export function generateActionFromServiceMethod(
   }
 
   // Build parameter definitions
-  const parameters: Record<string, ActionParameter> = {};
-  method.parameters.forEach(param => {
-    parameters[param.name] = {
+  const input: Record<string, ActionParameter> = {};
+  method.input.forEach(param => {
+    input[param.name] = {
       name: param.name,
       type: convertParameterType(param.type),
       required: param.required,
@@ -72,11 +72,11 @@ export function generateActionFromServiceMethod(
   });
 
   // Build action function
-  const paramNames = method.parameters.map(p => p.name).join(', ');
-  const hasParams = method.parameters.length > 0;
+  const paramNames = method.input.map(p => p.name).join(', ');
+  const hasInput = method.input.length > 0;
   
   let actionFn = `// ${method.description}\n`;
-  if (hasParams) {
+  if (hasInput) {
     actionFn += `const { ${paramNames} } = params;\n\n`;
   }
   
@@ -92,10 +92,10 @@ export function generateActionFromServiceMethod(
   
   // Add the actual service call
   actionFn += `try {\n`;
-  actionFn += `  const result = await services.${serviceName}.${method.name}(${hasParams ? paramNames : ''});\n`;
+  actionFn += `  const result = await services.${serviceName}.${method.name}(${hasInput ? paramNames : ''});\n`;
   actionFn += `  \n`;
   actionFn += `  // Log the operation\n`;
-  actionFn += `  await services.logger.info('${service.name}.${method.name} completed', { ${hasParams ? paramNames + ', ' : ''}result });\n`;
+  actionFn += `  await services.logger.info('${service.name}.${method.name} completed', { ${hasInput ? paramNames + ', ' : ''}result });\n`;
   actionFn += `  \n`;
   actionFn += `  return result;\n`;
   actionFn += `} catch (error) {\n`;
@@ -107,7 +107,7 @@ export function generateActionFromServiceMethod(
     label: `${service.name}.${method.name}`,
     description: method.description,
     category: service.category,
-    parameters,
+    input,
     actionFn,
     output: method.returns
   };
@@ -120,7 +120,7 @@ export function generateCompositeActions(): Array<{
   label: string;
   description: string;
   category: string;
-  parameters: Record<string, ActionParameter>;
+  input: Record<string, ActionParameter>;
   actionFn: string;
   output?: any;
 }> {
@@ -129,7 +129,7 @@ export function generateCompositeActions(): Array<{
       label: 'User Registration Flow',
       description: 'Complete user registration with email notification',
       category: 'composite',
-      parameters: {
+      input: {
         email: {
           name: 'email',
           type: 'string',
@@ -201,7 +201,7 @@ try {
       label: 'Fetch and Cache API Data',
       description: 'Fetch data from external API and cache it',
       category: 'composite',
-      parameters: {
+      input: {
         endpoint: {
           name: 'endpoint',
           type: 'string',

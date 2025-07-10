@@ -91,8 +91,8 @@ function handleUpdateDescription(description: string) {
   actor.send({ type: 'FORM.UPDATE_DESCRIPTION', description });
 }
 
-function handleUpdateParameters(parameters: Record<string, ActionParameter>) {
-  actor.send({ type: 'FORM.UPDATE_PARAMETERS', parameters });
+function handleUpdateParameters(input: Record<string, ActionParameter>) {
+  actor.send({ type: 'FORM.UPDATE_PARAMETERS', input });
 }
 
 function handleUpdateAction(actionFn: string) {

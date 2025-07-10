@@ -1,5 +1,6 @@
 import { BaseEntity, EARS } from '@/shared/ears/types';
-import { flowRows } from '@/systems/_backend/mock-data/flows';
+import type { ActionEntity } from '../actions/types';
+import type { PromptEntity } from '../prompts/types';
 
 
 export interface FlowEntity extends BaseEntity {
@@ -49,8 +50,7 @@ export interface UpdateNode extends NodeBase {
 
 export interface ActionNode extends NodeBase {
   nodeType: 'action';
-  actionId?: string;                    // ID of the action to execute
-  actionName?: string;
+  actionId?: string;                    // Reference to Action entity
   params?: Record<string, any>;         // Direct parameters
   fieldMappings?: Array<{               // Or map from context
     target: string;
@@ -139,10 +139,17 @@ export const isNodeKind = <K extends NodeKind>(k: K) =>
   (n: NodeEntity): n is Extract<NodeEntity, { nodeType: K }> =>
     n.nodeType === k;
 
-// --------------------------------------------------------------------------------
-export type FlowTypeCodes = 'variable' | 'llm' | 'decision' | 'action' | 'subflow';
-export type FlowTypeShortCode = `${FlowTypeCodes}-${number}`;
-export type FlowStatus = 'draft' | 'queued' | 'active' | 'inactive';
+// Type utility to ensure exhaustive node type handling
+export function assertNever(x: never): never {
+  throw new Error('Unexpected node type: ' + x);
+}
+
+
+// Input type for create/update operations that may include relational data
+export type NodeCreateInput = Partial<NodeEntity> & {
+  actionId?: string;  // Will be converted to INSTANCE_OF relationship
+  promptTemplateId?: string;  // Will be converted to relationship
+};
 
 export type EdgeEntity = {
   id: EARS.EntityId;
@@ -154,13 +161,14 @@ export type EdgeEntity = {
 export interface FlowsStartupData {
   selectedFlowId: EARS.EntityId;
   graph: {
-    nodes: Partial<NodeEntity>[];
+    nodes: NodeEntity[];
     edges: EdgeEntity[];
   };
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
   models: ModelConfig[];
-  prompts: any[]; // Will be typed as PromptEntity[] in frontend
+  prompts: PromptEntity[];
+  actions: ActionEntity[];
 }
 
 export interface ModelConfig {
@@ -175,14 +183,8 @@ export interface ModelConfig {
   capabilities?: string[];
 }
 
-// export type FlowsStartupData = {
-//     flows: FlowEntity[];
-//     steps: StepEntity[];
-//     stepRelations: StepRelation[];
-//     events: FlowEventEntity[];
-// }
 
 export interface FlowExtendedData {
-  nodes: Partial<NodeEntity>[];
+  nodes: NodeEntity[];
   edges: EdgeEntity[];
 }

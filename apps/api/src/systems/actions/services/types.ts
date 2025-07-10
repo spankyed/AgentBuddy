@@ -210,7 +210,7 @@ export interface ServiceMetadata {
 export interface ServiceMethodMetadata {
   name: string;
   description: string;
-  parameters: ServiceParameterMetadata[];
+  input: ServiceParameterMetadata[];
   returns: string;
   example?: string;
 }
