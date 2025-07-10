@@ -27,7 +27,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Flow Entry",
-      color: "#1E88E5", // blue
       mode: "entry",
       eventType: "flow.entry",
     },
@@ -37,7 +36,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      color: "#1E88E5", // blue
       mode: "internal",
       eventType: "user.message",
       // Expected event structure: { type: "user.message", payload: "message text", userId?: "123", context?: "additional info" }
@@ -48,7 +46,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Database Query Prompt",
-      color: "#1E88E5", // blue
       mode: "internal",
       eventType: "database.query.prompt",
     },
@@ -59,7 +56,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "keep_alive",
       label: "Keep Alive",
-      color: "#1E88E5", // blue
     },
     {
       id: "Node-a5s",
@@ -67,7 +63,6 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "action",
       label: "save to db",
-      color: "#1E88E5", // blue
     },
     {
       id: "Node-a6s",
@@ -75,9 +70,8 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "llm",
       label: "LLM Call",
-      model: "gpt-4.1",
-      prompt: "Respond with a query like `return qx(EARS.Entity.Thread).limit(10).pickAll();`",
-      color: "#1E88E5", // blue
+      model: "gpt-4",
+      // prompt: "Respond with a query like `return qx(EARS.Entity.Thread).limit(10).pickAll();`",
     },
     /* Process User Message - Maps event payload to template params */
     {
@@ -87,7 +81,7 @@ export const runAgentBrainFlow: Rows = {
       nodeType: "llm",
       label: "Process User Message",
       model: "gpt-4",
-      promptTemplateId: "user-message-analysis",
+      promptTemplateId: "Prompt-user-message-analysis",
       fieldMappings: [
         {
           target: "userMessage",
@@ -100,7 +94,6 @@ export const runAgentBrainFlow: Rows = {
           default: "User is interacting with the agent brain system"
         }
       ],
-      color: "#9C27B0", // purple
     },
     {
       id: "Node-a8s",
@@ -109,7 +102,7 @@ export const runAgentBrainFlow: Rows = {
       nodeType: "llm",
       label: "Format Response",
       model: "gpt-4",
-      promptTemplateId: "format-response",
+      promptTemplateId: "Prompt-format-response",
       fieldMappings: [
         {
           target: "userMessage",
@@ -125,7 +118,6 @@ export const runAgentBrainFlow: Rows = {
           default: "helpful and professional"
         }
       ],
-      color: "#4CAF50", // green
     }
 
     /* Steps */,

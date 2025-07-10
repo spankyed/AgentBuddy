@@ -177,7 +177,7 @@ export const flowsQueries = {
     for (const source of nodeIds) {
       qx(source)
         .links(FLOW_EDGE_KINDS, [EARS.Entity.Node])
-        // Only include edges where target is also in this flow
+        // Only include edges where target is also in this flow - might not be necessary if all nodes are in the flow
         .filter(({ id: targetId }) => nodeIds.includes(targetId))
         .forEach(({ relation, id: target }) => {
           const relId = edgeStore.relIds({

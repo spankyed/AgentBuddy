@@ -25,7 +25,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      color: "#1E88E5", // blue
       mode: "entry",
       eventType: "chat.message",
     },
@@ -35,7 +34,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 890,
       nodeType: "listen",
       label: "System Events",
-      color: "#1E88E5",
       mode: "internal",
       eventType: "system.*",
     },
@@ -47,7 +45,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 880,
       nodeType: "decision",
       label: "Message Type",
-      color: "#FF9800", // orange
       conditions: [
         { expr: "type === 'question'", label: "Question" },
         { expr: "type === 'command'", label: "Command" },
@@ -63,7 +60,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 870,
       nodeType: "create",
       label: "Create Context",
-      color: "#9C27B0", // purple
       entityTypeTarget: EARS.Entity.Node,
     },
     {
@@ -72,7 +68,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 860,
       nodeType: "update",
       label: "Update Context",
-      color: "#9C27B0",
       entityId: "Node-b4",
     },
 
@@ -83,7 +78,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 850,
       nodeType: "fire",
       label: "Send Response",
-      color: "#F44336", // red
       eventType: "chat.response",
       scope: "global",
     },
@@ -95,7 +89,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 830,
       nodeType: "query",
       label: "Get User Intent",
-      color: "#2196F3", // blue
       prompt: "What is the user's intent?",
       resultKey: "intent",
     },
@@ -107,7 +100,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 820,
       nodeType: "transform",
       label: "Format Response",
-      color: "#4CAF50", // green
       script: "return { response: `Intent: ${context.intent}` }",
       outputType: "json",
     },
@@ -119,7 +111,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 810,
       nodeType: "fire",
       label: "Log Intent",
-      color: "#F44336",
       eventType: "system.intent",
       scope: "global",
     },
@@ -131,7 +122,6 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 800,
       nodeType: "flow",
       label: "Command Handler",
-      color: "#9C27B0",
       flowRef: "command-flow-3",
       propagateCtx: true,
     },

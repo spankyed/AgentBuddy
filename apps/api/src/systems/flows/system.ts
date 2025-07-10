@@ -133,7 +133,7 @@ export const flowsSystem = setup({
       const { flowId, nodeId, nodeData } = typeOf('UPDATE_NODE', event);
       const pluginId = flows;
       
-      logger.info('Updating node', { flowId, nodeId, updates: Object.keys(nodeData) });
+      logger.info('Updating node', { flowId, nodeId, updates: nodeData });
       
       const updateResult = flowsCommands.updateNode(nodeId as EARS.EntityId, nodeData);
       if (!updateResult.success) {

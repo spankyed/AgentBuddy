@@ -26,7 +26,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Start Demo",
-      color: "#1E88E5",
       mode: "entry",
       eventType: "demo.start",
     },
@@ -38,7 +37,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 890,
       nodeType: "action",
       label: "Save User Data",
-      color: "#4CAF50", // green
       params: {
         entityType: "User",
         data: {
@@ -56,7 +54,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 880,
       nodeType: "action",
       label: "Send Welcome Email",
-      color: "#2196F3", // blue
       fieldMappings: [
         {
           target: "to",
@@ -83,7 +80,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 870,
       nodeType: "action",
       label: "Call External API",
-      color: "#FF9800", // orange
       params: {
         method: "POST",
         url: "https://api.example.com/notify",
@@ -106,7 +102,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 860,
       nodeType: "action",
       label: "Log Results",
-      color: "#9C27B0", // purple
       params: {
         level: "info",
         message: "Demo flow completed successfully"
@@ -127,7 +122,6 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 850,
       nodeType: "fire",
       label: "Demo Complete",
-      color: "#F44336",
       eventType: "demo.complete",
       scope: "global",
       final: true,
