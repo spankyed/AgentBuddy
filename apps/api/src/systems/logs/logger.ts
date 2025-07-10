@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { LogLevel, LogEntry } from './types';
-import { rootEvents } from './log-events';
+import { rootEvents } from '../../router/bus-emitter';
 import { originalConsole } from './log-capture';
 
 export type LogEvent = Omit<LogEntry, 'id' | 'timestamp'>

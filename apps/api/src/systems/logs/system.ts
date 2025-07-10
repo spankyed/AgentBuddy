@@ -4,9 +4,9 @@ import { emit } from '@/shared/utils/actor-helpers';
 import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
 import { randomId } from '@/shared/utils/random-id';
-import { rootEvents } from './log-events';
+import { rootEvents } from '../../router/bus-emitter';
 import { LogEvent } from './logger';
-import { IncomingSystemEvents } from '@/shared/events';
+import { IncomingSystemEvents } from '@/router/events';
 
 export const logs = 'logs' as const;
 

@@ -1,5 +1,5 @@
 import type { LogLevel } from './types';
-import { rootEvents } from './log-events';
+import { rootEvents } from '../../router/bus-emitter';
 
 // Store original console methods
 export const originalConsole = {
