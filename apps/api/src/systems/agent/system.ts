@@ -1,6 +1,4 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { v4 as uuid } from 'uuid';
-import { db, schema } from '@/db/client';
 import { chatStream, message } from '@/systems/agent/llm/runner';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';

@@ -1,7 +1,7 @@
-import { db } from '@/db/client';
+// import { db } from '@/db/client';
 
 export const createContext = () => ({
-  db,
+  // db,
 });
 
 export type Context = ReturnType<typeof createContext>;
