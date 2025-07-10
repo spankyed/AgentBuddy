@@ -5,11 +5,8 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';
-import flowsStartupData from './repository/startup';
+import { flowsQueries, flowsCommands } from './repository';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './config/types';
-import { getExtendedData, getNode } from './repository/read';
-import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
-import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
 import { createLogger } from '@/shared/debug/logger';
 
@@ -54,7 +51,7 @@ export const flowsSystem = setup({
   actions: {
     sendFlowsStartup: ({ system }) => {
       const pluginId = flows;
-      const data = flowsStartupData();
+      const data = flowsQueries.startupData();
       logger.info('Sending flows startup data to client', { flows: data.flows.length });
       
       system.get(bus).send(emit(pluginId, {
@@ -69,7 +66,7 @@ export const flowsSystem = setup({
       
       logger.info('Selecting flow', { flowId });
       
-      const data = getExtendedData(flowId as EARS.EntityId);
+      const data = flowsQueries.extendedData(flowId as EARS.EntityId);
       
       system.get(bus).send(emit(pluginId, {
         type: 'FLOW_SELECTED',
@@ -83,9 +80,14 @@ export const flowsSystem = setup({
       
       logger.info('Creating new flow');
       
-      const { flow, entryNode } = createFlowWithEntryNode();
+      const result = flowsCommands.createFlowWithEntryNode();
+      if (!result.success) {
+        logger.error('Failed to create flow', { error: result.error });
+        return;
+      }
+      const { flow, entryNode } = result.data;
       
-      const data = getExtendedData(flow.id);
+      const data = flowsQueries.extendedData(flow.id);
       
       system.get(bus).send(emit(pluginId, {
         type: 'FLOW_CREATED',
@@ -100,7 +102,10 @@ export const flowsSystem = setup({
       
       logger.info('Updating flow label', { flowId, label });
       
-      updateFlowLabel(flowId as EARS.EntityId, label);
+      const result = flowsCommands.updateFlowLabel(flowId as EARS.EntityId, label);
+      if (!result.success) {
+        logger.error('Failed to update flow label', { error: result.error });
+      }
     },
     
     createNode: ({ system, event }) => {
@@ -109,7 +114,12 @@ export const flowsSystem = setup({
       
       logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
       
-      const node = createNode(flowId as EARS.EntityId, nodeData);
+      const result = flowsCommands.createNode(flowId as EARS.EntityId, nodeData);
+      if (!result.success) {
+        logger.error('Failed to create node', { error: result.error });
+        return;
+      }
+      const node = result.data;
       
       system.get(bus).send(emit(pluginId, {
         type: 'NODE_CREATED',
@@ -125,9 +135,13 @@ export const flowsSystem = setup({
       
       logger.info('Updating node', { flowId, nodeId, updates: Object.keys(nodeData) });
       
-      updateNode(nodeId as EARS.EntityId, nodeData);
+      const updateResult = flowsCommands.updateNode(nodeId as EARS.EntityId, nodeData);
+      if (!updateResult.success) {
+        logger.error('Failed to update node', { error: updateResult.error });
+        return;
+      }
       
-      const node = getNode(nodeId as EARS.EntityId);
+      const node = flowsQueries.node(nodeId as EARS.EntityId);
       
       system.get(bus).send(emit(pluginId, {
         type: 'NODE_UPDATED',
@@ -142,7 +156,11 @@ export const flowsSystem = setup({
       
       logger.info('Creating edge', { flowId, sourceId, targetId });
       
-      createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      const result = flowsCommands.createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      if (!result.success) {
+        logger.error('Failed to create edge', { error: result.error });
+        return;
+      }
       
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
