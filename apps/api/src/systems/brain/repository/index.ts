@@ -10,6 +10,7 @@ import type {
   TNodeUpdate
 } from '../types';
 import type { ListenNode } from '@/systems/flows/config/types';
+import { RepositoryResult, RepositoryError, RepositoryErrorCode, createEntityWithDefaults, successResult, errorResult } from '@/shared/repository';
 
 /**
  * Brain Repository - Manages execution traces and TNode trees
@@ -120,4 +121,33 @@ export const brainQueries = {
   },
 } as const;
 
- 
+// Commands
+export const brainCommands = {
+  // Create a new TNode
+  createTNode: (input: {
+    label: string;
+    description?: string;
+    category?: string;
+    parameters?: Record<string, any>;
+  }): RepositoryResult<TNodeEntity> => {
+    try {
+      if (!input.label?.trim()) {
+        throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
+      }
+
+      const tNode = createEntityWithDefaults<TNodeEntity>(
+        EARS.Entity.TNode,
+        {
+          ...input,
+          input: input.parameters || {}, // Map parameters -> input
+          parameters: undefined,
+        } as any,
+        'ACT'
+      );
+
+      return successResult(tNode);
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
+} as const;
