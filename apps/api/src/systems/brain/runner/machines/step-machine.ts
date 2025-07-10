@@ -1,6 +1,6 @@
 import { setup, assign, sendParent } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
-import { executeNode } from '../nodes/node-executor';
+import { executeNode } from '../nodes';
 import { brainCommands } from '../../repository';
 import { createLogger } from '@/shared/debug/logger';
 
