@@ -7,7 +7,7 @@ import { EARS } from '@/shared/ears/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { actionQueries, actionCommands } from './repository';
 import { z } from 'zod';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();

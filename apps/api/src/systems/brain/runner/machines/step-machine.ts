@@ -5,7 +5,7 @@ import {
   createStepTNode,
   updateTNodeStatus,
 } from '../../repository/tnode-manager';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('step-machine');
 

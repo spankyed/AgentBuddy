@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('fire-node');
 

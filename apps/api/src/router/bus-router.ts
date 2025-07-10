@@ -2,7 +2,7 @@ import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingSystemEvents } from '@/router/events';
 import { procedure, router } from './trpc';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 import { rootEvents } from '@/router/bus-emitter';
 
 const logger = createLogger('bus-router');

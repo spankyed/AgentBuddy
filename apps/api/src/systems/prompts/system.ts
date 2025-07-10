@@ -7,7 +7,7 @@ import { EARS } from '@/shared/ears/types';
 import { PromptsStartupData, PromptEntity } from './types';
 import { promptQueries, promptCommands } from './repository';
 import { z } from 'zod';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('prompts');
 const typeOf = safeEvents<ReceivableEvents>();

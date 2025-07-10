@@ -11,7 +11,7 @@ import { getExtendedData, getNode } from './repository/read';
 import { createFlowWithEntryNode, createNode, createEdge } from './repository/create';
 import { updateFlowLabel, updateNode } from './repository/update';
 import { z } from 'zod';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();

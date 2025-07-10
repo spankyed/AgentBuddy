@@ -9,7 +9,7 @@ import { EARS } from '@/shared/ears/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './query-executor';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('database');
 

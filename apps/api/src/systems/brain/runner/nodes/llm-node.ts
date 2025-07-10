@@ -53,7 +53,7 @@
 
 import type { NodeEntity } from '@/systems/flows/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 import { promptQueries } from '@/systems/prompts/repository';
 import { executeTemplate } from '@/systems/prompts/template-executor';
 import { EARS } from '@/shared/ears/types';

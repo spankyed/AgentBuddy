@@ -1,4 +1,4 @@
-import type { LogLevel } from './types';
+import type { LogLevel } from '../../systems/logs/types';
 import { rootEvents } from '../../router/bus-emitter';
 
 // Store original console methods

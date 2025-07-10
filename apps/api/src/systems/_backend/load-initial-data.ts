@@ -1,7 +1,7 @@
 import { rows } from "./mock-data";
 import { tx } from "@/shared/ears/helpers/transaction";
 import { EARS } from "@/shared/ears/types";
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('load-initial-data');
 

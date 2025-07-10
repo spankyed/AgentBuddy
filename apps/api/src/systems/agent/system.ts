@@ -9,7 +9,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor
 import type { EARS } from '@/shared/ears/types';
 import { AgentStartupData, AgentThreadData, FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
 import { agentQueries } from './repository';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 import { brain } from '../brain/system';
 
 const logger = createLogger('agent');

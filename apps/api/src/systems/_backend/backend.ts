@@ -5,7 +5,7 @@ import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
 import { entries } from '@/shared/utils';
 import { EARS } from '@/shared/ears/types';
 import { createEntity } from '@/shared/ears';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 import { rootEvents } from '@/router/bus-emitter';
 
 const logger = createLogger('backend');

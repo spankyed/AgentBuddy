@@ -4,7 +4,7 @@ import type { Simplify } from '@/shared/utils/type-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/router/events';
 import { bus, type backendSystem } from '@/systems';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('actor-helpers');
 

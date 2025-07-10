@@ -1,7 +1,7 @@
 import type { NodeEntity, NodeKind } from '@/systems/flows/types';
 import type { ExecutionContext } from '@/systems/brain/types';
 import { applyFieldMappings as applyFieldMappingsFn } from '@/systems/brain/runner/field-mapper';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('node-attribute-mappers');
 

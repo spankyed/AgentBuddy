@@ -12,7 +12,7 @@ import { createStepMachine } from './step-machine';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
 import { brainBus } from '../../system';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('flow-machine');
 

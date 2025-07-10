@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import type { LogLevel, LogEntry } from './types';
+import type { LogLevel, LogEntry } from '../../systems/logs/types';
 import { rootEvents } from '../../router/bus-emitter';
 import { originalConsole } from './log-capture';
 

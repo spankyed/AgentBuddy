@@ -1,5 +1,5 @@
 import type { FieldMapping, ExecutionContext } from '@/systems/brain/types';
-import { createLogger } from '@/systems/logs/logger';
+import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('field-mapper');
 

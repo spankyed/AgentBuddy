@@ -5,7 +5,7 @@ import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
 import { randomId } from '@/shared/utils/random-id';
 import { rootEvents } from '../../router/bus-emitter';
-import { LogEvent } from './logger';
+import { LogEvent } from '../../shared/debug/logger';
 import { IncomingSystemEvents } from '@/router/events';
 
 export const logs = 'logs' as const;

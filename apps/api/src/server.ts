@@ -5,11 +5,11 @@ import { WebSocketServer } from 'ws';
 import { logErrors } from '@/shared/utils/actor-helpers';
 import { appRouter } from '@/router';
 import { createContext } from '@/router/context';
-import { logger } from '@/systems/logs/logger';
+import { logger } from '@/shared/debug/logger';
 import { createActor } from 'xstate';
 import { logsSystem } from './systems/logs/system';
 import { backendSystem, bus } from './systems/_backend/backend';
-import { initializeLogCapture } from './systems/logs/log-capture';
+import { initializeLogCapture } from './shared/debug/log-capture';
 import { loadMockData } from '@/systems/_backend/load-initial-data';
 
 loadMockData();
