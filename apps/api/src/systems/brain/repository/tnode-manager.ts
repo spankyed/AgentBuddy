@@ -92,7 +92,7 @@ export function createEventTNode(
     eventTNodeId: tNodeId  // For event nodes, they are their own eventTNodeId
   }, systemActor);
   
-  // Also emit the legacy EVENT_TNODE_SPAWNED for backward compatibility
+        // Also emit EVENT_TNODE_SPAWNED
   emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: eventTNode }, systemActor);
   
   return eventTNode;

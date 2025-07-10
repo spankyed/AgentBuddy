@@ -40,146 +40,149 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
 
+type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
+
 export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
-type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>;
+
+// export type FlowEvent = EventFromLogic<typeof flowsSystem>;
 
 export const flowsSystem = setup({
   types: {
-    context: {} as {
-      flowsId: EARS.EntityId;
-    },
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
+  actors: {},
   actions: {
-    sendFlowsStartupData: ({ system }) => {
-      system.get(bus).send(emit(flows, { 
+    sendFlowsStartup: ({ system }) => {
+      const pluginId = flows;
+      const data = flowsStartupData();
+      logger.info('Sending flows startup data to client', { flows: data.flows.length });
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOWS_STARTUP',
-        data: flowsStartupData()
+        data,
       }));
     },
-    sendFlowData: ({ system, event }) => {
-      const ev = typeOf('FLOW_SELECT', event);
-      const flow = getExtendedData(ev.flowId as EARS.EntityId);
+    
+    selectFlow: ({ system, event }) => {
+      const { flowId } = typeOf('FLOW_SELECT', event);
+      const pluginId = flows;
       
-      system.get(bus).send(emit(flows, {
+      logger.info('Selecting flow', { flowId });
+      
+      const data = getExtendedData(flowId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOW_SELECTED',
-        flowId: ev.flowId as EARS.EntityId,
-        data: flow
+        flowId: flowId as EARS.EntityId,
+        data,
       }));
     },
-    createFlow: ({ system }) => {
-      const { flow: newFlow } = createFlowWithEntryNode();
+    
+    createFlow: ({ system, event }) => {
+      const pluginId = flows;
       
-      // Get the flow data which now includes the entry node
-      const flowData = getExtendedData(newFlow.id);
-
-      system.get(bus).send(emit(flows, {
+      logger.info('Creating new flow');
+      
+      const { flow, entryNode } = createFlowWithEntryNode();
+      
+      const data = getExtendedData(flow.id);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'FLOW_CREATED',
-        flow: newFlow,
-        flowId: newFlow.id,
-        data: flowData,  // Include graph data directly
+        flow,
+        flowId: flow.id,
+        data,
       }));
     },
-    updateFlowLabel: ({ event }) => {
-      const ev = typeOf('UPDATE_FLOW_LABEL', event);
-      updateFlowLabel(ev.flowId as EARS.EntityId, ev.label);
+    
+    updateFlowLabel: ({ system, event }) => {
+      const { flowId, label } = typeOf('UPDATE_FLOW_LABEL', event);
+      
+      logger.info('Updating flow label', { flowId, label });
+      
+      updateFlowLabel(flowId as EARS.EntityId, label);
     },
+    
     createNode: ({ system, event }) => {
-      const ev = typeOf('CREATE_NODE', event);
-      logger.info('Creating node:', { flowId: ev.flowId, tempId: ev.tempId, nodeData: ev.nodeData });
+      const { flowId, tempId, nodeData } = typeOf('CREATE_NODE', event);
+      const pluginId = flows;
       
-      try {
-        const newNode = createNode(ev.flowId as EARS.EntityId, ev.nodeData);
-        
-        // Fetch the created node with all enrichments
-        const enrichedNode = getNode(newNode.id);
-        if (!enrichedNode) {
-          logger.error('Failed to fetch created node:', { nodeId: newNode.id });
-          return;
-        }
-        
-        system.get(bus).send(emit(flows, {
-          type: 'NODE_CREATED',
-          tempId: ev.tempId,
-          nodeId: newNode.id,
-          node: enrichedNode,
-        }));
-      } catch (error) {
-        logger.error('Failed to create node:', error as any);
-      }
+      logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
+      
+      const node = createNode(flowId as EARS.EntityId, nodeData);
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'NODE_CREATED',
+        tempId,
+        nodeId: node.id,
+        node,
+      }));
     },
+    
     updateNode: ({ system, event }) => {
-      const ev = typeOf('UPDATE_NODE', event);
-      logger.info('Updating node:', { flowId: ev.flowId, nodeId: ev.nodeId, nodeData: ev.nodeData });
+      const { flowId, nodeId, nodeData } = typeOf('UPDATE_NODE', event);
+      const pluginId = flows;
       
-      try {
-        updateNode(ev.nodeId as EARS.EntityId, ev.nodeData);
-        
-        // Fetch the updated node with all enrichments
-        const updatedNode = getNode(ev.nodeId as EARS.EntityId);
-        if (!updatedNode) {
-          logger.error('Failed to fetch updated node:', { nodeId: ev.nodeId });
-          return;
-        }
-        
-        system.get(bus).send(emit(flows, {
-          type: 'NODE_UPDATED',
-          nodeId: ev.nodeId as EARS.EntityId,
-          node: updatedNode,
-        }));
-      } catch (error) {
-        logger.error('Failed to update node:', error as any);
-      }
+      logger.info('Updating node', { flowId, nodeId, updates: Object.keys(nodeData) });
+      
+      updateNode(nodeId as EARS.EntityId, nodeData);
+      
+      const node = getNode(nodeId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'NODE_UPDATED',
+        nodeId: nodeId as EARS.EntityId,
+        node,
+      }));
     },
+    
     createEdge: ({ system, event }) => {
-      const ev = typeOf('CREATE_EDGE', event);
-      logger.info('Creating edge:', { sourceId: ev.sourceId, targetId: ev.targetId });
+      const { flowId, sourceId, targetId } = typeOf('CREATE_EDGE', event);
+      const pluginId = flows;
       
-      createEdge(ev.sourceId as EARS.EntityId, ev.targetId as EARS.EntityId);
+      logger.info('Creating edge', { flowId, sourceId, targetId });
       
-      system.get(bus).send(emit(flows, {
+      createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      
+      system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
-        sourceId: ev.sourceId as EARS.EntityId,
-        targetId: ev.targetId as EARS.EntityId,
+        sourceId: sourceId as EARS.EntityId,
+        targetId: targetId as EARS.EntityId,
       }));
     },
   },
-}).createMachine(
-  {
-    id: flows,
-    initial: 'idle',
-    context: ({ input }) => ({
-      flowsId: input,
-    }),
-    on: {
-      FLOW_SELECT: {
-        actions: 'sendFlowData',
-      },
-      CREATE_FLOW: {
-        actions: 'createFlow',
-      },
-      UPDATE_FLOW_LABEL: {
-        actions: 'updateFlowLabel',
-      },
-      CREATE_NODE: {
-        actions: 'createNode',
-      },
-      UPDATE_NODE: {
-        actions: 'updateNode',
-      },
-      CREATE_EDGE: {
-        actions: 'createEdge',
-      },
-    },
-    states: {
-      idle: {
-        on: {
-          CLIENT_CONNECTED: {
-            actions: 'sendFlowsStartupData',
-          },
+  guards: {},
+  delays: {}
+}).createMachine({
+  id: flows,
+  initial: 'idle',
+  context: {},
+  states: {
+    idle: {
+      on: {
+        CLIENT_CONNECTED: {
+          actions: 'sendFlowsStartup',
         },
-      },
+        FLOW_SELECT: {
+          actions: 'selectFlow',
+        },
+        CREATE_FLOW: {
+          actions: 'createFlow',
+        },
+        UPDATE_FLOW_LABEL: {
+          actions: 'updateFlowLabel',
+        },
+        CREATE_NODE: {
+          actions: 'createNode',
+        },
+        UPDATE_NODE: {
+          actions: 'updateNode',
+        },
+        CREATE_EDGE: {
+          actions: 'createEdge',
+        },
+      }
     },
+    // Add more states as needed
   }
-);
+});

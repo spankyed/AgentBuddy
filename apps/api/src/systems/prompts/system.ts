@@ -5,7 +5,7 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { PromptsStartupData, PromptEntity } from './types';
-import { promptsStartupData, getPromptById, createPrompt, updatePrompt, deletePrompt } from './repository';
+import { promptQueries, promptCommands } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
 
@@ -65,12 +65,12 @@ export const promptsSystem = setup({
     sendPromptsStartupData: ({ system }) => {
       system.get(bus).send(emit(prompts, { 
         type: 'PROMPTS_STARTUP',
-        data: promptsStartupData()
+        data: promptQueries.startupData()
       }));
     },
     sendPromptData: ({ system, event }) => {
       const ev = typeOf('PROMPT_SELECT', event);
-      const prompt = getPromptById(ev.promptId as EARS.EntityId);
+      const prompt = promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
         system.get(bus).send(emit(prompts, {
@@ -82,54 +82,63 @@ export const promptsSystem = setup({
     },
     createPrompt: ({ system, event }) => {
       const ev = typeOf('CREATE_PROMPT', event);
-      const newPrompt = createPrompt({
+      const result = promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
-        templateFn: ev.templateFn,
-        outputSchema: ev.outputSchema,
-        description: ev.description,
-        category: ev.category
+        template: ev.templateFn,
+        description: ev.description
       });
 
-      system.get(bus).send(emit(prompts, {
-        type: 'PROMPT_CREATED',
-        prompt: newPrompt,
-        promptId: newPrompt.id,
-      }));
+      if (result.success) {
+        system.get(bus).send(emit(prompts, {
+          type: 'PROMPT_CREATED',
+          prompt: result.data,
+          promptId: result.data.id,
+        }));
+      } else {
+        logger.error('Failed to create prompt:', { error: result.error });
+      }
     },
     updatePrompt: ({ system, event }) => {
       const ev = typeOf('UPDATE_PROMPT', event);
-      const updatedPrompt = updatePrompt(ev.promptId as EARS.EntityId, {
-        label: ev.label,
-        inputs: ev.inputs,
-        templateFn: ev.templateFn,
-        outputSchema: ev.outputSchema,
-        description: ev.description,
-        category: ev.category
-      });
+      const updates: Record<string, any> = {};
+      
+      if (ev.label !== undefined) updates.label = ev.label;
+      if (ev.inputs !== undefined) updates.inputs = ev.inputs;
+      if (ev.templateFn !== undefined) updates.template = ev.templateFn;
+      if (ev.description !== undefined) updates.description = ev.description;
+      
+      const result = promptCommands.update(ev.promptId as EARS.EntityId, updates);
 
-      if (updatedPrompt) {
-        system.get(bus).send(emit(prompts, {
-          type: 'PROMPT_UPDATED',
-          prompt: updatedPrompt,
-          promptId: updatedPrompt.id,
-        }));
+      if (result.success) {
+        const updatedPrompt = promptQueries.byId(ev.promptId as EARS.EntityId);
+        if (updatedPrompt) {
+          system.get(bus).send(emit(prompts, {
+            type: 'PROMPT_UPDATED',
+            prompt: updatedPrompt,
+            promptId: updatedPrompt.id,
+          }));
+        }
+      } else {
+        logger.error('Failed to update prompt:', { error: result.error });
       }
     },
     deletePrompt: ({ system, event }) => {
       const ev = typeOf('DELETE_PROMPT', event);
-      const success = deletePrompt(ev.promptId as EARS.EntityId);
+      const result = promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      if (success) {
+      if (result.success) {
         system.get(bus).send(emit(prompts, {
           type: 'PROMPT_DELETED',
           promptId: ev.promptId as EARS.EntityId,
         }));
+      } else {
+        logger.error('Failed to delete prompt:', { error: result.error });
       }
     },
     fetchPromptsPage: ({ system, event }) => {
       const ev = typeOf('FETCH_PROMPTS_PAGE', event);
-      const data = promptsStartupData(ev.page || 1);
+      const data = promptQueries.startupData(ev.page || 1);
       
       system.get(bus).send(emit(prompts, {
         type: 'PROMPTS_PAGE_LOADED',

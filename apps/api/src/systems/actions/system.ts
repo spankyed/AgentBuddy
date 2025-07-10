@@ -5,7 +5,7 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { ActionsStartupData, ActionEntity } from './types';
-import { actionsStartupData, getActionById, createAction, updateAction, deleteAction } from './repository';
+import { actionQueries, actionCommands } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/systems/logs/logger';
 
@@ -65,12 +65,12 @@ export const actionsSystem = setup({
     sendActionsStartupData: ({ system }) => {
       system.get(bus).send(emit(actions, { 
         type: 'ACTIONS_STARTUP',
-        data: actionsStartupData()
+        data: actionQueries.startupData()
       }));
     },
     sendActionData: ({ system, event }) => {
       const ev = typeOf('ACTION_SELECT', event);
-      const action = getActionById(ev.actionId as EARS.EntityId);
+      const action = actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
         system.get(bus).send(emit(actions, {
@@ -82,54 +82,65 @@ export const actionsSystem = setup({
     },
     createAction: ({ system, event }) => {
       const ev = typeOf('CREATE_ACTION', event);
-      const newAction = createAction({
+      const result = actionCommands.create({
         label: ev.label,
-        input: ev.input,
+        parameters: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
         category: ev.category
       });
 
-      system.get(bus).send(emit(actions, {
-        type: 'ACTION_CREATED',
-        action: newAction,
-        actionId: newAction.id,
-      }));
+      if (result.success) {
+        system.get(bus).send(emit(actions, {
+          type: 'ACTION_CREATED',
+          action: result.data,
+          actionId: result.data.id,
+        }));
+      } else {
+        logger.error('Failed to create action:', { error: result.error });
+      }
     },
     updateAction: ({ system, event }) => {
       const ev = typeOf('UPDATE_ACTION', event);
-      const updatedAction = updateAction(ev.actionId as EARS.EntityId, {
+      const result = actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
-        input: ev.input,
+        parameters: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
         category: ev.category
       });
 
-      if (updatedAction) {
-        system.get(bus).send(emit(actions, {
-          type: 'ACTION_UPDATED',
-          action: updatedAction,
-          actionId: updatedAction.id,
-        }));
+      if (result.success) {
+        const updatedAction = actionQueries.byId(ev.actionId as EARS.EntityId);
+        if (updatedAction) {
+          system.get(bus).send(emit(actions, {
+            type: 'ACTION_UPDATED',
+            action: updatedAction,
+            actionId: updatedAction.id,
+          }));
+        }
+      } else {
+        logger.error('Failed to update action:', { error: result.error });
       }
     },
     deleteAction: ({ system, event }) => {
       const ev = typeOf('DELETE_ACTION', event);
-      const success = deleteAction(ev.actionId as EARS.EntityId);
+      const result = actionCommands.delete(ev.actionId as EARS.EntityId);
       
-      if (success) {
+      if (result.success) {
         system.get(bus).send(emit(actions, {
           type: 'ACTION_DELETED',
           actionId: ev.actionId as EARS.EntityId,
         }));
+      } else {
+        logger.error('Failed to delete action:', { error: result.error });
       }
     },
     fetchActionsPage: ({ system, event }) => {
       const ev = typeOf('FETCH_ACTIONS_PAGE', event);
-      const data = actionsStartupData(ev.page || 1);
+      const data = actionQueries.startupData(ev.page || 1);
       
       system.get(bus).send(emit(actions, {
         type: 'ACTIONS_PAGE_LOADED',

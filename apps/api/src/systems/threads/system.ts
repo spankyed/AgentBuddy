@@ -5,11 +5,11 @@ import { bus, SystemEvents } from '@/systems/_backend/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
-import { createThread, getExtendedData, updateThreadField } from './repository';
+import { threadCommands, threadQueries } from './repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
 import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
-import threadStartupData from './repository/startup';
+const threadStartupData = () => threadQueries.startupData();
 
 export const threads = 'threads' as const;
 
@@ -85,15 +85,20 @@ export const threadsSystem = setup({
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
 
-      const { id: newThreadId, shortCode, timestamp } = createThread(
-        {
-          topic: thread.topic,
-          threadType: thread.threadType as ThreadEntity['threadType'],
-          instructions: thread.instructions,
-          tags: thread.tags as ThreadTagItem[],
-          linkedThreads: thread.linkedThreads as ThreadLinkItem[],
-        },
-      );
+      const result = threadCommands.create({
+        topic: thread.topic,
+        threadType: thread.threadType as ThreadEntity['threadType'],
+        instructions: thread.instructions,
+        tags: thread.tags as ThreadTagItem[],
+        linkedThreads: thread.linkedThreads as ThreadLinkItem[],
+      });
+
+      if (!result.success) {
+        console.error('Failed to create thread:', result.error);
+        return;
+      }
+
+      const { id: newThreadId, shortCode, timestamp } = result.data;
 
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_CREATED',
@@ -109,16 +114,17 @@ export const threadsSystem = setup({
       system.get(bus).send(emit(threads, { 
         type: 'SET_VIEW_DATA',
         id: threadId,
-        data: getExtendedData(threadId),
+        data: threadQueries.extendedData(threadId),
       }));
     },
     updateThreadField: ({ event }) => {
       const { key, value, threadId } = typeOf('UPDATE_THREAD_FIELD', event);
-      updateThreadField(
-        threadId as EARS.EntityId,
-        key as keyof ThreadEditFields,
-        value as ThreadEditFields[keyof ThreadEditFields],
-      );
+      const updates = { [key]: value };
+      const result = threadCommands.update(threadId as EARS.EntityId, updates);
+      
+      if (!result.success) {
+        console.error('Failed to update thread field:', result.error);
+      }
     },
   },
 }).createMachine(

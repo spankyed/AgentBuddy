@@ -86,7 +86,7 @@
           <Play class="w-12 h-12 mx-auto mb-4 text-neutral-600" />
           <h3 class="mb-2 text-lg font-medium text-neutral-300">No actions yet</h3>
           <p class="mb-4 text-sm text-neutral-500">Create your first action function to get started</p>
-          <Button @click="$emit('create')" variant="primary">
+          <Button @click="$emit('create')" variant="primary" class="justify-self-center">
             <Plus class="w-4 h-4" />
             <span>Create Action</span>
           </Button>
