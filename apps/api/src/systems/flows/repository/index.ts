@@ -32,8 +32,6 @@ import { actionQueries } from '../../actions/repository';
 // Constants
 export const FLOW_EDGE_KINDS = [
   EARS.RelKind.TRANSITIONS_TO,
-  EARS.RelKind.BLOCKS,
-  EARS.RelKind.DEPENDS_ON,
 ] as const;
 
 export const FLOW_ROLES = {
@@ -423,6 +421,3 @@ export const flowsCommands = {
     }
   },
 } as const;
-
-// Export the edge kinds alias that might be used elsewhere
-export const edgeKinds = FLOW_EDGE_KINDS;
