@@ -64,7 +64,7 @@
               <!-- Message -->
               <div class="flex-1 min-w-0">
                 <p class="text-sm break-words text-neutral-200">
-                  <span v-if="searchTerm" v-html="highlightSearchTerm(log.message)"></span>
+                  <span v-if="searchTerm" v-html="highlightSearchTermWrapper(log.message)"></span>
                   <span v-else>{{ log.message }}</span>
                 </p>
               </div>
@@ -167,7 +167,7 @@
                 :value="searchTerm"
                 @input="setSearch"
                 type="text"
-                placeholder="Search logs..."
+                placeholder="Search logs... (use -keyword to exclude)"
                 class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-900 placeholder-neutral-500"
                 :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
               />
@@ -286,6 +286,7 @@ import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from './data-renderer.vue';
 import { applicationState } from '../../app';
+import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();
 
@@ -321,18 +322,10 @@ const filteredLogs = computed(() => {
     filtered = filtered.filter(log => log.level === filterLevel.value);
   }
   
-  // Filter by search term - simple case-insensitive substring search
+  // Filter by search term using the search utility
   if (searchTerm.value && searchTerm.value.trim()) {
-    const search = searchTerm.value.trim().toLowerCase();
-    filtered = filtered.filter(log => {
-      // Search in message
-      if (log.message.toLowerCase().includes(search)) return true;
-      // Search in source
-      if (log.source && log.source.toLowerCase().includes(search)) return true;
-      // Search in meta (stringified)
-      if (log.meta && JSON.stringify(log.meta).toLowerCase().includes(search)) return true;
-      return false;
-    });
+    const filter = parseSearchTerm(searchTerm.value);
+    filtered = filtered.filter(log => searchLog(log, filter));
   }
   
   return filtered;
@@ -365,15 +358,9 @@ const clearLogs = () => {
   actor.send({ type: 'CLEAR_LOGS' });
 };
 
-// Helper function to highlight search term in text
-const highlightSearchTerm = (text: string): string => {
-  if (!searchTerm.value || !searchTerm.value.trim()) {
-    return text;
-  }
-  
-  const search = searchTerm.value.trim();
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  return text.replace(regex, '<mark class="text-yellow-200 bg-yellow-500/30">$1</mark>');
+// Wrapper for the imported highlight function
+const highlightSearchTermWrapper = (text: string): string => {
+  return highlightSearchTerm(text, searchTerm.value);
 };
 
 const formatTime = (timestamp: number) => {
