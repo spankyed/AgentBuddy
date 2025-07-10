@@ -1,9 +1,9 @@
 import type { Rows } from '@/shared/types';
-import { threadRows } from './mock-data/threads';
-import { flowRows } from './mock-data/flows';
+import { threadRows } from './data/threads';
+import { flowRows } from './data/flows';
 // import { brainRows } from './mock-data/brain';
-import { promptRows } from './mock-data/prompts';
-import { actionRows } from './mock-data/actions';
+import { promptRows } from './data/prompts';
+import { actionRows } from './data/actions';
 
 export const rows: Rows = composeData([
   threadRows,

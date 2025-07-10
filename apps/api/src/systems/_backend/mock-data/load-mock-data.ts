@@ -1,4 +1,4 @@
-import { rows } from "./mock-data";
+import { rows } from ".";
 import { tx } from "@/shared/ears/helpers/transaction";
 import { EARS } from "@/shared/ears/types";
 import { createLogger } from '@/shared/debug/logger';
