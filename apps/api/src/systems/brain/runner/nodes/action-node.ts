@@ -56,6 +56,8 @@ export async function actionNodeHandler(
   const nodeData = tNode.nodeAttributes || {};
   
   logger.debug(`Executing action node: ${node.label}`, {
+    tNode,
+    node,
     nodeAttributeKeys: Object.keys(nodeData),
   });
   
