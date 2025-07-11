@@ -38,11 +38,11 @@ type KanbanList = {
 /* -------------------------------------------------------------------------- */
 
 const SECTION_COLOR: Record<string, string> = {
-  backlog: 'grey',
-  inProgress: 'red',
-  inReview: 'yellow',
-  inactive: 'grey',
-  done: 'green',
+  backlog: 'bg-neutral-700',
+  inProgress: 'bg-blue-600',
+  inReview: 'bg-yellow-600',
+  inactive: 'bg-neutral-600',
+  done: 'bg-green-600',
 }
 
 const SECTION_ORDER = ['backlog', 'inProgress', 'inReview', 'inactive', 'done'] as const
@@ -82,11 +82,9 @@ const items = ref<WorkItem[]>([
 /* -------------------------------------------------------------------------- */
 
 const dropGroup = Symbol('kanban-group')
-const trashBin = Symbol('trash-bin')
 
 const arrangeableOptions = {
-  hoverClass: 'opacity-90 cursor-grabbing drop-shadow-[0_10px_15px_rgba(0,0,0,0.75)]',
-    // 'opacity-70 cursor-grabbing drop-shadow-[0_10px_15px_rgba(0,0,0,0.75)] scale-110 -rotate-3',
+  hoverClass: 'opacity-90 cursor-grabbing shadow-2xl',
   pickedItemClass: 'opacity-70',
 }
 
@@ -110,17 +108,6 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
   // no drop target => revert
   if (!moving.destination) return
 
-  // delete if dropped on trash
-  if (moving.destination.identifier === trashBin) {
-    const payloadId = moving.payload.id
-    if ('listId' in moving.payload) {
-      items.value = items.value.filter(r => r.id !== payloadId)
-    } else {
-      lists.value = lists.value.filter(r => r.id !== payloadId)
-    }
-    return
-  }
-
   // Re‑index destination items and update listId (for cards)
   if (moving.destination.listItems) {
     moving.destination.listItems.forEach((itm, idx) => {
@@ -135,70 +122,90 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 </script>
 
 <template>
-  <main class="flex flex-row items-start flex-grow py-2 overflow-auto">
-    <!-- Outer list = lists/columns -->
-    <ArrangeableList
-      :list="lists"
-      identifier="lists"
-      class="flex flex-row items-start gap-3 px-2"
-      :options="{ ...arrangeableOptions, handle: 'listHandle' }"
-      :targets="[trashBin, 'lists']"
-      @drop-item="dropItem"
-    >
-      <template #default="{ item: list }">
+  <main class="flex-grow p-6 bg-neutral-950 overflow-y-auto">
+    <div class="flex gap-4 max-w-7xl mx-auto h-full">
+      <!-- Backlog column on the left -->
+      <section
+        v-for="list in lists.filter(l => l.name.toLowerCase() === 'backlog')"
+        :key="list.id"
+        class="flex-1 flex flex-col rounded-xl shadow-sm bg-neutral-800 overflow-hidden"
+      >
+        <!-- column header -->
+        <header
+          class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white"
+          :class="list.color"
+        >
+          <span class="text-base">{{ list.name }}</span>
+        </header>
+
+        <!-- inner list = cards -->
+        <ArrangeableList
+          :identifier="list.id"
+          :group="dropGroup"
+          :targets="[dropGroup]"
+          :list="items.filter(({ listId }) => listId === list.id)"
+          class="flex-1 p-3 space-y-2 overflow-y-auto"
+          :options="arrangeableOptions"
+          @drop-item="dropItem"
+        >
+          <template #default="{ item: card }">
+            <article
+              class="p-3 rounded-lg cursor-pointer bg-neutral-900 hover:bg-neutral-950 transition-colors shadow-sm"
+              @click="onCardClick(card)"
+            >
+              <p class="text-sm font-medium text-neutral-100 leading-snug">{{ card.name }}</p>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="text-xs text-neutral-500">{{ card.date }}</span>
+                <span class="text-xs text-neutral-600">•</span>
+                <span class="text-xs text-neutral-500">{{ card.time }}</span>
+              </div>
+            </article>
+          </template>
+        </ArrangeableList>
+      </section>
+      
+      <!-- 2x2 grid for other statuses -->
+      <div class="grid grid-cols-2 gap-4 flex-[2]">
         <section
-          class="w-64 border rounded-lg shrink-0 border-neutral-700 bg-neutral-900"
+          v-for="list in lists.filter(l => l.name.toLowerCase() !== 'backlog')"
+          :key="list.id"
+          class="flex flex-col rounded-xl shadow-sm bg-neutral-800 overflow-hidden"
         >
           <!-- column header -->
           <header
-            class="flex items-center gap-2 px-3 py-2 text-sm font-semibold bg-gray-800 text-neutral-200"
+            class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white"
+            :class="list.color"
           >
-            <span data-handle="listHandle" class="select-none cursor-grab">&#x2630;</span>
-            <input
-              class="w-full bg-transparent outline-none"
-              :value="list.name"
-              @change="(e) => (list.name = (e.target as HTMLInputElement).value)"
-            />
+            <span class="text-base">{{ list.name }}</span>
           </header>
 
           <!-- inner list = cards -->
           <ArrangeableList
             :identifier="list.id"
             :group="dropGroup"
-            :targets="[trashBin, dropGroup]"
+            :targets="[dropGroup]"
             :list="items.filter(({ listId }) => listId === list.id)"
-            class="min-h-[4rem] p-3 space-y-2"
+            class="min-h-[6rem] p-3 space-y-2"
             :options="arrangeableOptions"
             @drop-item="dropItem"
           >
             <template #default="{ item: card }">
               <article
-                class="p-2 rounded cursor-pointer bg-neutral-800 text-neutral-100 hover:bg-neutral-700"
+                class="p-3 rounded-lg cursor-pointer bg-neutral-900 hover:bg-neutral-950 transition-colors shadow-sm"
                 @click="onCardClick(card)"
               >
-                <p class="text-sm font-medium leading-tight line-clamp-2">{{ card.name }}</p>
-                <p class="mt-0.5 text-xs text-neutral-400">{{ card.date }} • {{ card.time }}</p>
+                <p class="text-sm font-medium text-neutral-100 leading-snug">{{ card.name }}</p>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs text-neutral-500">{{ card.date }}</span>
+                  <span class="text-xs text-neutral-600">•</span>
+                  <span class="text-xs text-neutral-500">{{ card.time }}</span>
+                </div>
               </article>
             </template>
           </ArrangeableList>
         </section>
-      </template>
-    </ArrangeableList>
-
-    <!-- Trash -->
-    <DropZone
-      :identifier="trashBin"
-      :group="dropGroup"
-      v-slot="{ isHovering }"
-      class="flex items-center mx-4"
-    >
-      <div
-        class="flex items-center justify-center transition-all h-36 w-36 text-neutral-500 hover:text-red-500"
-        :class="isHovering ? 'text-8xl' : 'text-7xl'"
-      >
-        🗑️
       </div>
-    </DropZone>
+    </div>
   </main>
 </template>
 
