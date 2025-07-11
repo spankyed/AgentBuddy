@@ -2,10 +2,9 @@ import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/shared/debug/logger';
 import { actionQueries } from '@/systems/actions/repository';
-import { EARS } from '@/shared/ears/types';
+import { flowsQueries } from '@/systems/flows/repository';
 import type { Services } from '@/systems/actions/services';
 import { services } from '@/systems/actions/services';
-import { qx } from '@/shared/ears/helpers/query';
 
 const logger = createLogger('action-node');
 
@@ -63,9 +62,7 @@ export async function actionNodeHandler(
   
   try {
     // Get the linked action via INSTANCE_OF relationship
-    const actionId = qx(node.id)
-      .links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action)
-      .map(({ id }) => id)[0];
+    const actionId = flowsQueries.getNodeActionId(node.id);
     
     if (!actionId) {
       throw new Error('No action linked to this node');

@@ -148,6 +148,12 @@ export const flowsQueries = {
   rootFlow: (): EARS.EntityId | undefined =>
     qx().withRole(FLOW_ROLES.ROOT_FLOW).first() ?? undefined,
   
+  getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined => {
+    return qx(nodeId)
+      .links(EARS.RelKind.INSTANCE_OF, EARS.Entity.Action)
+      .map(({ id }) => id)[0];
+  },
+  
   node: (nodeId: EARS.EntityId): NodeEntity | undefined => {
     // Use pickAll to get all attributes including fieldMappings
     const nodes = qx([nodeId]).pickAll() as unknown as NodeEntity[];
