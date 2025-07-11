@@ -58,52 +58,9 @@ export const eventSchemas: Record<string, EventSchema> = {
   },
 };
 
-// Step output schemas define what data each step produces
-export const stepOutputSchemas: Record<string, StepOutputSchema> = {
-  'Process User Message': {
-    stepId: 'process-user-message',
-    stepLabel: 'Process User Message',
-    description: 'Analyzes user message and extracts intent',
-    fields: {
-      summary: {
-        name: 'summary',
-        type: 'string',
-        description: 'Summary of the user message',
-      },
-      intent: {
-        name: 'intent',
-        type: 'string',
-        description: 'Identified user intent',
-      },
-      entities: {
-        name: 'entities',
-        type: 'array',
-        description: 'Extracted entities',
-        items: {
-          name: 'entity',
-          type: 'string',
-        },
-      },
-      category: {
-        name: 'category',
-        type: 'string',
-        description: 'Message category',
-      },
-      urgency: {
-        name: 'urgency',
-        type: 'string',
-        description: 'Urgency level',
-      },
-    },
-  },
-};
 
 // Helper to get schema for an event type
 export function getEventSchema(eventType: string): EventSchema | undefined {
   return eventSchemas[eventType];
 }
 
-// Helper to get schema for a step
-export function getStepOutputSchema(stepLabel: string): StepOutputSchema | undefined {
-  return stepOutputSchemas[stepLabel];
-} 

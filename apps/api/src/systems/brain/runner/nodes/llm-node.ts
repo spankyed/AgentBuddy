@@ -31,7 +31,6 @@ function generatePrompt(
 ): string {
   // All config and resolved params are in nodeAttributes
   const nodeData = tNode.nodeAttributes || {};
-  console.log('nodeData: ', nodeData);
   
   // Direct prompt takes precedence
   if (nodeData.prompt) {
@@ -88,12 +87,10 @@ export function llmNodeHandler(
 ) {
   const llmNode = node as LLMNode;
   const nodeData = tNode.nodeAttributes || {};
-  console.log('nodeData: ', nodeData);
   
   logger.debug(`Executing LLM node: ${node.label}`, {
-    model: nodeData.model || 'default',
-    hasPrompt: !!nodeData.prompt,
-    templateId: nodeData.promptTemplateId,
+    nodeData,
+    tNode,
     nodeAttributeKeys: Object.keys(nodeData),
   });
   
