@@ -197,10 +197,13 @@ const { startsWith } = useFilter({ sensitivity: 'base' })
 
 // Get selected action from actions list
 const selectedAction = computed(() => {
+  console.log('action.node.form: ', props.node);
   const actionId = (props.node as any).actionId
   if (!actionId || !props.resources?.actions) return null
   return props.resources.actions.find(a => a.id === actionId) || null
 })
+
+
 
 // Field mappings
 const fieldMappings = computed(() => (props.node as any).fieldMappings || [])
