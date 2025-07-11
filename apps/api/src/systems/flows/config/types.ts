@@ -48,16 +48,6 @@ export interface UpdateNode extends NodeBase {
   onMissing?: 'fail' | 'ignore' | 'create';
 }
 
-export interface ActionNode extends NodeBase {
-  nodeType: 'action';
-  actionId?: string;                    // Reference to Action entity
-  params?: Record<string, any>;         // Direct parameters
-  fieldMappings?: Array<{               // Or map from context
-    target: string;
-    source: string;
-    default?: any;
-  }>;
-}
 
 export interface DecisionNode extends NodeBase {
   nodeType: 'decision';
@@ -114,6 +104,18 @@ export interface LLMNode extends NodeBase {
   maxTokens?: number;
   systemPrompt?: string;
 }
+
+export interface ActionNode extends NodeBase {
+  nodeType: 'action';
+  actionId?: string;                    // Reference to Action entity
+  params?: Record<string, any>;         // Direct parameters
+  fieldMappings?: Array<{               // Or map from context
+    target: string;
+    source: string;
+    default?: any;
+  }>;
+}
+
 
 /*─────────────────────────────────────────────────────────────────
  * 3 ▸ Union & helpers

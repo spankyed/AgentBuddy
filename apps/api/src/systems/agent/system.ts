@@ -109,7 +109,6 @@ export const agentSystem = setup({
     fireBrainEvent: ({ system, event }) => {
       const text = typeOf('USER_MSG', event).text;
       const brainActor = getActor(system, brain);
-      console.log('brainActor: ', brainActor.send);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.message',

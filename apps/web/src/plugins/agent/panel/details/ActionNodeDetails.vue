@@ -13,7 +13,7 @@
         </div>
       </div>
     </div>
-
+<!-- 
     <div v-if="hasParameters" class="detail-section">
       <h4 class="detail-label">Parameters</h4>
       <div class="detail-content">
@@ -22,7 +22,7 @@
           <Copy class="w-3 h-3" />
         </button>
       </div>
-    </div>
+    </div> -->
 
     <div v-if="hasResolvedParams" class="detail-section">
       <h4 class="detail-label">Resolved Parameters</h4>
@@ -48,7 +48,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-console.log('rops.nodeAttributes: ', props.nodeAttributes);
+console.log('rops: ', props.node);
 
 // Extract direct parameters
 const parameters = computed(() => {
@@ -70,7 +70,7 @@ const parameters = computed(() => {
   return Object.keys(params).length > 0 ? params : null;
 });
 
-const hasParameters = computed(() => parameters.value !== null);
+// const hasParameters = computed(() => parameters.value !== null);
 
 // Extract resolved parameters from field mappings
 const resolvedParams = computed(() => {

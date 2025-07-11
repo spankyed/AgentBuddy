@@ -21,7 +21,7 @@ interface NodeAttributeMapper<T extends NodeEntity = NodeEntity> {
  * Base mapper for common functionality
  *─────────────────────────────────────────────────────────────────*/
 const COMMON_FIELDS_TO_EXCLUDE = [
-  'id', 'entityType', 'nodeType', 'label', 'description', 'color', 'final', 'createdAt', 'updatedAt'
+  'id', 'entityType', 'nodeType', 'label', 'description', 'final', 'createdAt', 'updatedAt'
 ] as const;
 
 function extractBaseAttributes(node: NodeEntity): Record<string, any> {

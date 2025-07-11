@@ -98,7 +98,6 @@ export const brainSystem = setup({
       }));
     },
     triggerBrainEvent: ({ system, event, context }) => {
-      console.log('TRIGGER_BRAIN_EVENT', event);
       const ev = typeOf('TRIGGER_BRAIN_EVENT', event);
       const { eventType, payload } = ev;
       // const brainActor = getActor(system, brainBus);
