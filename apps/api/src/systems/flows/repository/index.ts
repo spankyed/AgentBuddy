@@ -116,7 +116,9 @@ function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relation
     // Add new relationship if provided
     const relationId = relations[config.field];
     if (relationId) {
-      tx(nodeId).link(EARS.RelKind.INSTANCE_OF, relationId as EARS.EntityId);
+      tx(nodeId)
+        .merge(config.field, relationId)
+        .link(EARS.RelKind.INSTANCE_OF, relationId as EARS.EntityId);
     }
   }
 }
