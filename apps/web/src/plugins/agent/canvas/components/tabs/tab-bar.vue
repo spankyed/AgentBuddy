@@ -1,16 +1,14 @@
 <template>
-  <div class="flex items-center border-b border-neutral-700 bg-neutral-900">
-    <div class="flex overflow-x-auto scrollbar-hide">
-      <TabItem
-        v-for="tab in tabs"
-        :key="tab.id"
-        :tab="tab"
-        :isActive="tab.id === activeTabId"
-        :isPinned="tab.id === 'dashboard'"
-        @select="$emit('select-tab', tab.id)"
-        @close="$emit('close-tab', tab.id)"
-      />
-    </div>
+  <div class="flex overflow-x-auto scrollbar-hide">
+    <TabItem
+      v-for="tab in tabs"
+      :key="tab.id"
+      :tab="tab"
+      :isActive="tab.id === activeTabId"
+      :isPinned="tab.id === 'dashboard'"
+      @select="$emit('select-tab', tab.id)"
+      @close="$emit('close-tab', tab.id)"
+    />
   </div>
 </template>
 

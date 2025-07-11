@@ -1,21 +1,25 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-950">
-    <!-- Tab Bar -->
-    <TabBar
-      :tabs="tabs"
-      :activeTabId="activeTabId"
-      @select-tab="selectTab"
-      @close-tab="closeTab"
-    />
-    
+    <div class="flex items-center border-b border-neutral-800 bg-neutral-900">
+      <!-- Tab Bar -->
+      <TabBar
+        :tabs="tabs"
+        :activeTabId="activeTabId"
+        @select-tab="selectTab"
+        @close-tab="closeTab"
+      />
+    </div>
+
     <!-- Content Area -->
     <div class="flex flex-1 overflow-hidden">
-      <!-- Artifact List -->
-      <ArtifactList
-        :artifacts="currentTab?.artifacts || []"
-        :selectedArtifactId="currentTab?.selectedArtifactId"
-        @select-artifact="selectArtifact"
-      />
+      <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+        <!-- Artifact List -->
+        <ArtifactList
+          :artifacts="currentTab?.artifacts || []"
+          :selectedArtifactId="currentTab?.selectedArtifactId"
+          @select-artifact="selectArtifact"
+        />
+      </div>
       
       <!-- Content Viewer -->
       <ContentViewer
@@ -24,10 +28,10 @@
     </div>
     
     <!-- Test button for opening thread tabs -->
-    <div class="absolute bottom-4 right-4 z-10">
+    <div class="absolute z-10 bottom-4 right-4">
       <button
         @click="openTestThread"
-        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+        class="px-4 py-2 text-sm text-white transition-colors bg-blue-600 rounded hover:bg-blue-700"
       >
         Open Test Thread Tab
       </button>
