@@ -153,7 +153,7 @@
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <!-- Search Input -->
-            <div class="relative flex-1">
+            <div class="relative w-96">
               <Search :size="16" class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
               <!-- <input
                 :value="searchTerm"
