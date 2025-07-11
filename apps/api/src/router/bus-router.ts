@@ -26,7 +26,7 @@ export const systemBusRouter = router({
           const skipLogging = ['EMPTY', 'REQUEST_LOGS', 'LOG_ADDED'].includes(event.type);
 
           if (!skipLogging) {
-            logger.info(`← Outgoing: "${event.type}"`);
+            // logger.info(`← Outgoing: "${event.type}"`);
             // logger.info(`← Outgoing: "${event.type}"`, { event });
           }
 
