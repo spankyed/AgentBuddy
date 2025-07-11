@@ -187,5 +187,6 @@ export const runAgentBrainFlow: Rows = {
 
     /* Node to Action relationships */
     { source: "Node-a5s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-save-entity", info: {} },
+    { source: "Node-loa8s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-log-message" },
   ],
 }; 
