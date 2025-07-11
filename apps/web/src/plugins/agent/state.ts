@@ -5,6 +5,7 @@ import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
+import type { Tab, ArtifactItem } from './canvas/types';
 
 export const id = 'agent' as const;
 
@@ -18,16 +19,21 @@ interface AgentContext {
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
+  tabs: Tab[];
+  activeTabId: string;
 }
 
 type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
-  | { type: 'VIEW_WORKLOAD'; }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_MESSAGES' }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
+  | { type: 'SELECT_TAB'; tabId: string }
+  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string }
+  | { type: 'CLOSE_TAB'; tabId: string }
+  | { type: 'SELECT_ARTIFACT'; artifactId: string }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | OutgoingAgentEvents
   | TrailClickEvent;
@@ -151,6 +157,57 @@ const agentState = setup({
       system.get('threads').send({ type: 'SELECT_THREAD', id: threadId });
       system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
     },
+    selectTab: assign(({ event }) => ({
+      activeTabId: typeOf('SELECT_TAB', event).tabId
+    })),
+    openThreadTab: assign(({ context, event }) => {
+      const { threadId, label } = typeOf('OPEN_THREAD_TAB', event);
+      const existingTab = context.tabs.find(t => t.id === threadId);
+      
+      if (existingTab) {
+        return { activeTabId: threadId };
+      }
+      
+      return {
+        tabs: [...context.tabs, {
+          id: threadId,
+          label,
+          artifacts: [],
+          selectedArtifactId: undefined
+        }],
+        activeTabId: threadId
+      };
+    }),
+    closeTab: assign(({ context, event }) => {
+      const tabId = typeOf('CLOSE_TAB', event).tabId;
+      if (tabId === 'dashboard') return {}; // Can't close dashboard
+      
+      const newTabs = context.tabs.filter(t => t.id !== tabId);
+      const newActiveTabId = context.activeTabId === tabId ? 'dashboard' : context.activeTabId;
+      
+      return {
+        tabs: newTabs,
+        activeTabId: newActiveTabId
+      };
+    }),
+    selectArtifact: assign(({ context, event }) => {
+      const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
+      const tabs = context.tabs.map(tab => 
+        tab.id === context.activeTabId 
+          ? { ...tab, selectedArtifactId: artifactId }
+          : tab
+      );
+      return { tabs };
+    }),
+    addArtifact: assign(({ context, event }) => {
+      const { tabId, artifact } = typeOf('ARTIFACT_ADDED', event);
+      const tabs = context.tabs.map(tab => 
+        tab.id === tabId 
+          ? { ...tab, artifacts: [...tab.artifacts, artifact] }
+          : tab
+      );
+      return { tabs };
+    }),
   },
   guards: {
     targetIs,
@@ -180,6 +237,16 @@ const agentState = setup({
     messageInput: "",
     pendingActionId: undefined,
     statusColor: 'bg-zinc-500' as StatusColor,
+    tabs: [{
+      id: 'dashboard',
+      label: 'Dashboard',
+      artifacts: [
+        { id: 'workload-1', type: 'workload', title: 'Workload', content: null },
+        { id: 'slack-1', type: 'slack', title: 'Slack Recap', content: null },
+      ],
+      selectedArtifactId: 'workload-1',
+    }],
+    activeTabId: 'dashboard',
   }),
   on: {
     VIEW_THREAD: {
@@ -196,7 +263,6 @@ const agentState = setup({
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],
-      ['.workload', 'workload'],
     ]),
     SEND_MESSAGE: {
       actions: [
@@ -224,6 +290,56 @@ const agentState = setup({
         spawnChild('resetStatusColorAfterDelay'),
       ]
     },
+    SELECT_TAB: {
+      actions: 'selectTab'
+    },
+    OPEN_THREAD_TAB: {
+      actions: 'openThreadTab'
+    },
+    CLOSE_TAB: {
+      actions: 'closeTab'
+    },
+    SELECT_ARTIFACT: {
+      actions: 'selectArtifact'
+    },
+    ARTIFACT_ADDED: {
+      actions: 'addArtifact'
+    },
+    THREAD_TAB_REQUESTED: {
+      actions: assign(({ context, event }) => {
+        const { threadId, artifacts } = typeOf('THREAD_TAB_REQUESTED', event);
+        
+        // Find thread to get label
+        const thread = context.threads.find(t => t.id === threadId);
+        const label = thread?.topic || `Thread ${threadId}`;
+        
+        // Check if tab already exists
+        const existingTab = context.tabs.find(t => t.id === threadId);
+        
+        if (existingTab) {
+          // Update artifacts for existing tab
+          return {
+            tabs: context.tabs.map(tab => 
+              tab.id === threadId 
+                ? { ...tab, artifacts }
+                : tab
+            ),
+            activeTabId: threadId
+          };
+        }
+        
+        // Create new tab with artifacts
+        return {
+          tabs: [...context.tabs, {
+            id: threadId,
+            label,
+            artifacts,
+            selectedArtifactId: artifacts[0]?.id
+          }],
+          activeTabId: threadId
+        };
+      })
+    },
     // UPDATE_MESSAGE_INPUT: {
     //   actions: 'updateMessageInput'
     // },
@@ -237,15 +353,7 @@ const agentState = setup({
   states: {
     'canvas': {
       meta: { ...breadcrumb('canvas', 'Agent', true) },
-      on: {
-        VIEW_WORKLOAD: {
-          target: 'workload',
-        },
-      }
     },
-    'workload': {
-      meta: { ...breadcrumb('workload', 'Workload') },
-    }
   },
 }); 
 

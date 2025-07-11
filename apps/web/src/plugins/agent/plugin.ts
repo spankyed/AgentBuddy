@@ -1,8 +1,6 @@
 import type { Plugin } from "@/core/types";
 import state, { id } from '@/plugins/agent/state.ts';
-import content from '@/plugins/agent/canvas/content.vue';
-import workload from '@/plugins/agent/canvas/workload.vue';
-// import workload from './canvas/workload.vue';
+import canvas from '@/plugins/agent/canvas.vue';
 import panel from '@/plugins/agent/panel/panel.vue';
 import chat from '@/plugins/agent/chat/chat.vue';
 import { Inbox } from "lucide-vue-next";
@@ -12,10 +10,7 @@ const agentPlugin: Plugin = {
   label: 'Agent',
   icon: Inbox,
   state,
-  canvas: {
-    content,
-    workload
-  },
+  canvas,
   panel,
   chat,
   // welcomeScreen // show this component when the app is first loaded
