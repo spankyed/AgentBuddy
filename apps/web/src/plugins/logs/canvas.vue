@@ -167,7 +167,7 @@
                 :value="searchTerm"
                 @input="setSearch"
                 type="text"
-                placeholder="Search logs... (use -keyword to exclude)"
+                placeholder="Filter logs by message, level, or source..."
                 class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-900 placeholder-neutral-500"
                 :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
               />
