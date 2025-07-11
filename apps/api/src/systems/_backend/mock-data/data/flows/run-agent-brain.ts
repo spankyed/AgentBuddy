@@ -118,10 +118,31 @@ export const runAgentBrainFlow: Rows = {
           default: "helpful and professional"
         }
       ],
-    }
+    },
 
-    /* Steps */,
-    
+    /* Log Message Action */
+    {
+      id: "Node-loa8s",
+      entityType: EARS.Entity.Node,
+      createdAt: nowMs - 860,
+      nodeType: "action",
+      label: "Log Results",
+      actionId: "Action-log-message",
+      fieldMappings: [
+        {
+          target: "level",
+          source: 'info'
+        },
+        {
+          target: "message",
+          source: ContextPaths.EVENT_PAYLOAD    // Original user message
+        },
+        {
+          target: "data",
+          source: ContextPaths.stepByLabel('Format Response')
+        },
+      ]
+    },
   ],
 
   /*──────────────────────────────────────────*
@@ -150,6 +171,7 @@ export const runAgentBrainFlow: Rows = {
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a6s", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a7s", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a8s", info: {} },
+    { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-loa8s", info: {} },
 
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a1", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
@@ -161,6 +183,7 @@ export const runAgentBrainFlow: Rows = {
 
     { source: "Node-a6s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a5s", info: {} },
     { source: "Node-a7s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a8s", info: {} },
+    { source: "Node-a8s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-loa8s", info: {} },
 
     /* Node to Action relationships */
     { source: "Node-a5s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-save-entity", info: {} },
