@@ -41,11 +41,11 @@ const SECTION_COLOR: Record<string, string> = {
   backlog: 'bg-neutral-700',
   inProgress: 'bg-blue-600',
   inReview: 'bg-yellow-600',
-  inactive: 'bg-neutral-600',
+  open: 'bg-neutral-600',
   done: 'bg-green-600',
 }
 
-const SECTION_ORDER = ['backlog', 'inProgress', 'inReview', 'inactive', 'done'] as const
+const SECTION_ORDER = ['backlog', 'inProgress', 'inReview', 'open', 'done'] as const
 
 /* -------------------------------------------------------------------------- */
 /*  State                                                                     */
@@ -122,13 +122,13 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 </script>
 
 <template>
-  <main class="flex-grow p-6 bg-neutral-950 overflow-y-auto">
-    <div class="flex gap-4 max-w-7xl mx-auto h-full">
+  <main class="flex-grow p-6 overflow-y-auto bg-neutral-950">
+    <div class="flex h-full gap-4 mx-auto max-w-7xl">
       <!-- Backlog column on the left -->
       <section
         v-for="list in lists.filter(l => l.name.toLowerCase() === 'backlog')"
         :key="list.id"
-        class="flex-1 flex flex-col rounded-xl shadow-sm bg-neutral-800 overflow-hidden"
+        class="flex flex-col flex-1 overflow-hidden shadow-sm rounded-xl bg-neutral-800"
       >
         <!-- column header -->
         <header
@@ -150,10 +150,10 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
         >
           <template #default="{ item: card }">
             <article
-              class="p-3 rounded-lg cursor-pointer bg-neutral-900 hover:bg-neutral-950 transition-colors shadow-sm"
+              class="p-3 transition-colors rounded-lg shadow-sm cursor-pointer bg-neutral-900 hover:bg-neutral-950"
               @click="onCardClick(card)"
             >
-              <p class="text-sm font-medium text-neutral-100 leading-snug">{{ card.name }}</p>
+              <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
               <div class="flex items-center gap-2 mt-2">
                 <span class="text-xs text-neutral-500">{{ card.date }}</span>
                 <span class="text-xs text-neutral-600">•</span>
@@ -169,7 +169,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
         <section
           v-for="list in lists.filter(l => l.name.toLowerCase() !== 'backlog')"
           :key="list.id"
-          class="flex flex-col rounded-xl shadow-sm bg-neutral-800 overflow-hidden"
+          class="flex flex-col overflow-hidden shadow-sm rounded-xl bg-neutral-800"
         >
           <!-- column header -->
           <header
@@ -191,10 +191,10 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
           >
             <template #default="{ item: card }">
               <article
-                class="p-3 rounded-lg cursor-pointer bg-neutral-900 hover:bg-neutral-950 transition-colors shadow-sm"
+                class="p-3 transition-colors rounded-lg shadow-sm cursor-pointer bg-neutral-900 hover:bg-neutral-950"
                 @click="onCardClick(card)"
               >
-                <p class="text-sm font-medium text-neutral-100 leading-snug">{{ card.name }}</p>
+                <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
                 <div class="flex items-center gap-2 mt-2">
                   <span class="text-xs text-neutral-500">{{ card.date }}</span>
                   <span class="text-xs text-neutral-600">•</span>
