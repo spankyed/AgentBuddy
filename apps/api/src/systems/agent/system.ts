@@ -21,6 +21,7 @@ const busEvent = systemBus(agent);
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
+  busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
   busEvent('CANCEL'),
 ] as const
 
@@ -43,6 +44,8 @@ export type OutgoingAgentEvents =
   | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
+  | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
+  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
 
 export interface AgentContext {
   agentId: EARS.EntityId;
@@ -68,6 +71,20 @@ export const agentSystem = setup({
         type: 'AGENT_STARTUP',
         data: agentQueries.startupData()
       }));
+      
+      // Send some mock artifacts after a delay
+      setTimeout(() => {
+        system.get(bus).send(emit(agent, { 
+          type: 'ARTIFACT_ADDED',
+          tabId: 'dashboard',
+          artifact: {
+            id: 'mock-text-1',
+            type: 'text',
+            title: 'Welcome Message',
+            content: 'Welcome to AgentBuddy! This is a mock text artifact sent from the backend.'
+          }
+        }));
+      }, 2000);
     },
     logError: (_, event: ErrorActorEvent<unknown, string>) => {
       logger.error('Chat stream error:', { error: event.error });
@@ -78,6 +95,41 @@ export const agentSystem = setup({
       system.get(bus).send(emit(agent, { 
         type: 'LOAD_CHAT_THREAD',
                   data: agentQueries.threadData(threadId),
+      }));
+    },
+    sendThreadTabData: ({ system, event }) => {
+      const { threadId, label } = typeOf('OPEN_THREAD_TAB', event);
+      
+      // Send mock artifacts for the thread
+      const mockArtifacts = [
+        {
+          id: `${threadId}-code-1`,
+          type: 'code',
+          title: 'Component Code',
+          content: `// ${label} Component
+import React from 'react';
+
+export function ${label.replace(/\s+/g, '')}() {
+  return (
+    <div>
+      <h1>${label}</h1>
+      <p>This is a mock code artifact for ${label}</p>
+    </div>
+  );
+}`
+        },
+        {
+          id: `${threadId}-text-1`,
+          type: 'text',
+          title: 'Documentation',
+          content: `# ${label} Documentation\n\nThis is documentation for the ${label} feature. It includes:\n\n- Overview of functionality\n- Implementation details\n- Usage examples\n- Best practices`
+        }
+      ];
+      
+      system.get(bus).send(emit(agent, { 
+        type: 'THREAD_TAB_REQUESTED',
+        threadId,
+        artifacts: mockArtifacts
       }));
     },
     sendToken: ({ system, event }) => {
@@ -130,6 +182,9 @@ export const agentSystem = setup({
       },
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',
+      },
+      OPEN_THREAD_TAB: {
+        actions: 'sendThreadTabData',
       },
       TOKEN_STREAM: {
         actions: 'sendToken',

@@ -3,6 +3,11 @@ import { ref } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
 import { id as threadsId } from '@/plugins/agent/state.ts'
+import type { ArtifactItem } from '../../../types';
+
+defineProps<{
+  artifact: ArtifactItem;
+}>();
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
