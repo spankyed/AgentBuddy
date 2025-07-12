@@ -1,4 +1,4 @@
-import type { Rows } from '@/core/types';
+import type { Rows } from '@/core/mock-data';
 import { runAgentBrainFlow } from './run-agent-brain';
 import { chatFlow } from './chat-flow';
 import { someFlowWithValidation } from './some-flow-with-validation';

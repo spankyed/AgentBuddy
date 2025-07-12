@@ -1,5 +1,5 @@
 import { EARS } from '@/core/utils/ears/types';
-import type { Rows } from '@/core/types';
+import type { Rows } from '@/core/mock-data';
 
 const nowMs = Date.now();
 

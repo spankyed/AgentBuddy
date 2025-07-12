@@ -1,11 +1,10 @@
-import type { Rows } from '@/core/types';
 import { threadRows } from './threads';
 import { flowRows } from './flows';
 // import { brainRows } from './mock-data/brain';
 import { promptRows } from './prompts';
 import { actionRows } from './actions';
 import { tx } from "@/core/utils/ears/helpers/transaction";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS, Entity } from "@/core/utils/ears/types";
 import { createLogger } from '@/core/utils/debug/logger';
 
 export const rows: Rows = composeData([
@@ -83,4 +82,20 @@ export function loadMockData(): void {
       tx(eid).grant(assignment.role);
     }
   }
+}
+
+export interface Rows {
+  entity: Entity[];
+  role: RoleAssignment[];
+  relation: Relation[];
+}
+interface RoleAssignment {
+  entityId: string;
+  role: EARS.RoleKind;
+}
+interface Relation {
+  source: string;
+  kind: EARS.RelKind;
+  target: string;
+  info?: { [key: string]: any; }
 }

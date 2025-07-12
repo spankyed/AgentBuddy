@@ -1,4 +1,4 @@
-import type { Rows } from '@/core/types';
+import type { Rows } from '@/core/mock-data';
 import { summarizeTextPrompt } from './summarize-text';
 import { codeReviewPrompt } from './code-review';
 import { qaAssistantPrompt } from './qa-assistant';
