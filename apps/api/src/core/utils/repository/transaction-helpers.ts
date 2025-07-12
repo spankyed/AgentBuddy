@@ -1,5 +1,5 @@
 import { tx } from '@/core/utils/ears/helpers/transaction';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import { getTimestamp, generateShortCode, generateLabelWithCount } from '@/core/utils/ears/helpers/entity-utils';
 
 /**

@@ -1,4 +1,4 @@
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import type { Rows } from '@/core/mock-data';
 import type { ActionEntity } from '@/systems/actions/types';
 

@@ -4,7 +4,7 @@ import { flowRows } from './flows';
 import { promptRows } from './prompts';
 import { actionRows } from './actions';
 import { tx } from "@/core/utils/ears/helpers/transaction";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 import { createLogger } from '@/core/utils/debug/logger';
 
 import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";

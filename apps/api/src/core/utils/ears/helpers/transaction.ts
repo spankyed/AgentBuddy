@@ -12,7 +12,7 @@ import {
 
 import { edgeStore } from "@/core/utils/ears/helpers/edge-store";
 import { qx } from "@/core/utils/ears/helpers/query";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 import { wouldCreateCycle, linkSymmetric } from "@/core/utils/ears/helpers/graph";
 
 export interface SafeLinkOptions {

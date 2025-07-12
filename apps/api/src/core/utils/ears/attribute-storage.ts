@@ -4,7 +4,7 @@
 import { isPlainObject } from "@/core/utils";
 import { logInternal }   from "@/core/utils/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
-import { EARS } from "./types";
+import { EARS } from "../../types";
 import { randomId } from "../random-id";
 
 export const createEntity = (t: EARS.Entity) =>

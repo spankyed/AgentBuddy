@@ -1,6 +1,6 @@
 // blueprint.ts
 import { tx } from "./transaction";
-import { EARS } from "../types";
+import { EARS } from "../../../types";
 
 export interface Blueprint {
   entity: EARS.Entity;

@@ -1,4 +1,4 @@
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { 
   getAllEntities, 

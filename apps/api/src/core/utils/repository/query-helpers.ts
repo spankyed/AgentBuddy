@@ -1,5 +1,5 @@
 import { qx } from '@/core/utils/ears/helpers/query';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 
 /**
  * Type-safe query helpers to eliminate repetitive type casting

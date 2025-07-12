@@ -8,7 +8,7 @@ import {
   updateRelation,
   removeRelation,
 } from "@/core/utils/ears/attribute-storage";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 
 /** collect relation‑IDs that satisfy all supplied fields */
 const matchIds = (

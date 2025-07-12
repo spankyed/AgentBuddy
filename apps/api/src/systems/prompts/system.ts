@@ -3,7 +3,7 @@ import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import { PromptsStartupData, PromptEntity } from './types';
 import { promptQueries, promptCommands } from './repository';
 import { z } from 'zod';

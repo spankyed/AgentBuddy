@@ -11,7 +11,7 @@ import {
 } from "@/core/utils/ears/attribute-storage";
 
 import { relationIndex } from "@/core/utils/ears/relation-index";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 import { asArr, MaybeArr } from "@/core/utils";
 
 /*──────── helpers ────────*/

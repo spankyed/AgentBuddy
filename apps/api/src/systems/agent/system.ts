@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './repository';
-import type { EARS } from '@/core/utils/ears/types';
+import type { EARS } from '@/core/types';
 import { FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
 import { agentQueries } from './repository';
 import { createLogger } from '@/core/utils/debug/logger';

@@ -3,7 +3,7 @@ import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/e
 import systems from '@/systems';
 import { safeEvents, type SystemId } from '@/core/utils/actor-helpers';
 import { entries } from '@/core/utils';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import { createEntity } from '@/core/utils/ears';
 import { createLogger } from '@/core/utils/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';

@@ -1,4 +1,4 @@
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import type { Rows } from '@/core/mock-data';
 import { FlowEntity } from '@/types';
 import { ContextPaths } from '@/systems/brain/types';

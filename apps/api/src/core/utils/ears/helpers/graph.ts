@@ -2,7 +2,7 @@
 import { qx } from "@/core/utils/ears/helpers/query";
 import { relationIndex } from "@/core/utils/ears/relation-index";
 import { edgeStore } from "@/core/utils/ears/helpers/edge-store";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 
 /* helper: iterate neighbours given a list of relation kinds */
 const neighbours = (

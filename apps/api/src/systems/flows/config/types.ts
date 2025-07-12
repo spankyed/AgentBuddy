@@ -1,4 +1,4 @@
-import { BaseEntity, EARS } from '@/core/utils/ears/types';
+import { BaseEntity, EARS } from '@/core/types';
 import type { ActionEntity } from '../../actions/types';
 import type { PromptEntity } from '../../prompts/types';
 

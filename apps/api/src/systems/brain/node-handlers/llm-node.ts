@@ -3,7 +3,7 @@ import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brai
 import { createLogger } from '@/core/utils/debug/logger';
 import { promptQueries } from '@/systems/prompts/repository';
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 
 const logger = createLogger('llm-node');
 

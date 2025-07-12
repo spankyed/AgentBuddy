@@ -5,7 +5,7 @@ import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { EARS } from '@/core/utils/ears/types';
+import { EARS } from '@/core/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';

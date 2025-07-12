@@ -9,7 +9,7 @@ import {
   getAttr, getAttrs, getRoles,
 } from "@/core/utils/ears/attribute-storage";
 import { edgeStore } from "./edge-store";
-import { EARS } from "@/core/utils/ears/types";
+import { EARS } from "@/core/types";
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('atomic-transaction');
