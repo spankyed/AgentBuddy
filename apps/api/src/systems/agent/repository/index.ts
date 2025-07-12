@@ -1,7 +1,8 @@
 import { EARS } from '@/core/utils/ears/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { Rows, rows } from '@/core/mock-data'; // ! remove asap
-import { AgentThreadData, MessageEntity, AgentStartupData, ThreadEntity } from '../types';
+import { MessageEntity, ThreadEntity } from '@/systems/threads/types';
+import { AgentThreadData, AgentStartupData } from '../types';
 
 type Row = Rows['entity'][number]
 

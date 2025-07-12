@@ -1,57 +1,20 @@
 import { BaseEntity } from "@/core/utils/ears";
 import type { EARS, ThreadExtendedData } from "@/types";
+import { ThreadEntity, ContextItemEntity, CanvasContentEntity } from "../threads/types";
 
 export type AgentThreadData = {
-  id: ThreadEntity['id'];
-  shortCode: ThreadEntity['shortCode'];
-  topic: ThreadEntity['topic'];
-  instructions: ThreadEntity['instructions'];
-  status: ThreadEntity['status'];
-  timestamp: ThreadEntity['timestamp'];
-  messages: ThreadExtendedData['messages'];
-  contextItems: ContextItemEntity[];
-  canvasContent: CanvasContentEntity;
+    id: ThreadEntity['id'];
+    shortCode: ThreadEntity['shortCode'];
+    topic: ThreadEntity['topic'];
+    instructions: ThreadEntity['instructions'];
+    status: ThreadEntity['status'];
+    timestamp: ThreadEntity['timestamp'];
+    messages: ThreadExtendedData['messages'];
+    contextItems: ContextItemEntity[];
+    canvasContent: CanvasContentEntity;
 }
 
 export type AgentStartupData = {
-  currentThread: AgentThreadData;
-  threads: Partial<ThreadEntity>[];
+    currentThread: AgentThreadData;
+    threads: Partial<ThreadEntity>[];
 };
-
-export interface MessageEntity extends BaseEntity {
-  entityType: EARS.Entity.Message;
-  text: string;
-  sender: 'user' | 'assistant' | 'system';
-  timestamp: number;
-}
-
-export interface ThreadEntity extends BaseEntity {
-  entityType: EARS.Entity.Thread;
-  topic: string;
-  instructions: string;
-  sideTopics?: string[];
-  timestamp: number;
-  shortCode?: string;
-  threadType: 'work-item' | 'project' | 'user';
-  status: 'draft' | 'queued' | 'active' | 'inactive';
-}
-
-export interface ContextItemEntity extends BaseEntity {
-  entityType: EARS.Entity.ContextItem;
-  title: string;
-  content: string;
-  itemType: 'text' | 'code' | 'image' | 'json';
-}
-
-export interface CanvasContentEntity extends BaseEntity {
-  entityType: EARS.Entity.CanvasItem;
-  contentType: 'text' | 'code' | 'image' | 'graph' | 'table';
-  // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
-  content: string | any;
-}
-
-export interface TagEntity extends BaseEntity {
-  entityType: EARS.Entity.Tag;
-  name: string;
-  color?: string;
-}

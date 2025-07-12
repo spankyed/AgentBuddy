@@ -3,7 +3,7 @@
  *───────────────────────────────────────────────────────────────────────────*/
 
 import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
-import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "@/systems/agent/types";
+import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "@/systems/threads/types";
 import { PromptEntity } from "@/systems/prompts/types";
 import { ActionEntity } from "@/systems/actions/types";
 

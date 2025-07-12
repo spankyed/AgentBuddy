@@ -15,8 +15,8 @@ import {
 } from '@/core/utils/repository';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
-import type { ThreadEntity, MessageEntity, TagEntity } from '@/types';
-import type { 
+import type {
+  ThreadEntity, MessageEntity, TagEntity,
   ThreadCreateData, 
   ThreadExtendedData, 
   ThreadTypeCodes, 
