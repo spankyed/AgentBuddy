@@ -83,14 +83,14 @@ export const brainQueries = {
   },
   
   // Get next nodes via TRANSITIONS_TO relation
-  nextNodes: (nodeId: EARS.EntityId): NodeEntity[] => {
+  nextNodeInFlowTrack: (nodeId: EARS.EntityId): NodeEntity => {
     const nextLinks = qx(nodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
     
     return nextLinks.map(link => {
       const result = qx(link.id).pickAll();
       return result[0] as unknown as NodeEntity;
-    }).filter(node => node && node.id);
+    }).filter(node => node && node.id)[0];
   },
   
   // Build event tracks for a flow TNode

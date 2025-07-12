@@ -218,7 +218,7 @@ export function createFlowMachine(
           
           // Check if this child has a next node (only for step completions)
           const hasNextNode = typedEv.eventTNodeId && typedEv.stepId
-            ? brainQueries.nextNodes(typedEv.stepId).length > 0 
+            ? brainQueries.nextNodeInFlowTrack(typedEv.stepId)
             : false;
           
           // Update execution context if this was a step completion
@@ -264,8 +264,7 @@ export function createFlowMachine(
           
           // Spawn next node if there is one
           if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
-            const nextNodes = brainQueries.nextNodes(typedEv.stepId);
-            const nextNode = nextNodes[0];
+            const nextNode = brainQueries.nextNodeInFlowTrack(typedEv.stepId);
             
             logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
               nextNodeId: nextNode?.id,
@@ -304,7 +303,7 @@ export function createFlowMachine(
           if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
           
           // Flow is complete if there are no next nodes nor active children
-          const hasNextNode = brainQueries.nextNodes(typedEv.stepId).length > 0;
+          const hasNextNode = brainQueries.nextNodeInFlowTrack(typedEv.stepId);
           return !hasNextNode && context.activeChildrenCount === 0;
         },
       },
