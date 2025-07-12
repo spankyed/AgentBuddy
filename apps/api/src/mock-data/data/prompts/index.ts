@@ -7,7 +7,7 @@ import { sentimentAnalysisPrompt } from './sentiment-analysis';
 import { brainstormIdeasPrompt } from './brainstorm-ideas';
 import { userMessageAnalysisPrompt } from './user-message-analysis';
 import { formatResponsePrompt } from './format-response';
-import { composeData } from '@/systems/_backend/mock-data';
+import { composeData } from '@/mock-data';
 
 // Combine all prompt data
 export const promptRows: Rows = composeData([

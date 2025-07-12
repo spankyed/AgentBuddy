@@ -2,7 +2,7 @@ import { EARS } from '@/shared/ears/types';
 import { qx } from '@/shared/ears/helpers/query';
 import type { AgentThreadData, AgentStartupData } from '../types';
 import type { MessageEntity, ThreadEntity } from '@/shared/types';
-import { rows } from '@/systems/_backend/mock-data';
+import { rows } from '@/mock-data'; // ! remove asap
 import { byEntityType } from '../types';
 
 /**

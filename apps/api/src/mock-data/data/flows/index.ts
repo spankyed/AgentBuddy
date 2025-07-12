@@ -3,7 +3,7 @@ import { runAgentBrainFlow } from './run-agent-brain';
 import { chatFlow } from './chat-flow';
 import { someFlowWithValidation } from './some-flow-with-validation';
 import { actionDemoFlow } from './action-demo-flow';
-import { composeData } from '@/systems/_backend/mock-data';
+import { composeData } from '@/mock-data';
 
 export const flowRows: Rows = composeData([
   runAgentBrainFlow,

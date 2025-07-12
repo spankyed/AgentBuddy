@@ -1,5 +1,5 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { chatStream, message } from '@/systems/agent/llm/runner';
+import { chatStream, message } from '@/services/llm/runner';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
