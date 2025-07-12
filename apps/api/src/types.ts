@@ -1,7 +1,7 @@
 // Export types only
 export type { AppRouter } from '@/core/router';
 export type { EARS } from '@/core/utils/ears/types';
-export type * from '@/core/types';
+// export type * from '@/core/types';
 
 export type { OutgoingAgentEvents } from './systems/agent/system';
 export type * from './systems/agent/types';

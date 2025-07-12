@@ -1,9 +1,15 @@
 import { EARS } from '@/core/utils/ears/types';
 import { qx } from '@/core/utils/ears/helpers/query';
-import type { AgentThreadData, AgentStartupData } from '../types';
-import type { MessageEntity, ThreadEntity } from '@/core/types';
-import { rows } from '@/core/mock-data'; // ! remove asap
-import { byEntityType } from '../types';
+import { Rows, rows } from '@/core/mock-data'; // ! remove asap
+import { AgentThreadData, MessageEntity, AgentStartupData, ThreadEntity } from '../types';
+
+type Row = Rows['entity'][number]
+
+export function byEntityType<
+  K extends Row['entityType']
+>(type: K): (r: Row) => r is Extract<Row, { entityType: K }> {
+  return (r): r is Extract<Row, { entityType: K }> => r.entityType === type
+}
 
 /**
  * Agent Repository - Aggregates data from threads, messages, and other entities

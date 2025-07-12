@@ -7,10 +7,11 @@ import { bus, SystemEvents } from '@/systems/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/core/utils/ears/types';
-import { AgentStartupData, AgentThreadData, FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
+import { FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
 import { agentQueries } from './repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
+import { AgentStartupData, AgentThreadData } from './types';
 
 const logger = createLogger('agent');
 
