@@ -1,12 +1,6 @@
 /*───────────────────────────────────────────────────────────────────────────
  * types.ts – EARS entities, relations, roles & attributes (rev‑4)
  *───────────────────────────────────────────────────────────────────────────*/
-
-import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
-import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "@/systems/threads/types";
-import { PromptEntity } from "@/systems/prompts/types";
-import { ActionEntity } from "@/systems/actions/types";
-
 export namespace EARS {
   /*-------------------------------------------------------------------------*\
   | 1 ▸ Entity identifiers                                                   |
@@ -134,15 +128,3 @@ export interface BaseEntity {
   updatedAt?: number;
 }
 
-// ! remove after move from mock-data
-export type Entity =
-  MessageEntity
-  | ThreadEntity
-  | ContextItemEntity
-  | CanvasContentEntity
-  | TagEntity
-  | FlowEntity
-  | NodeEntity
-  | TNodeEntity
-  | PromptEntity
-  | ActionEntity

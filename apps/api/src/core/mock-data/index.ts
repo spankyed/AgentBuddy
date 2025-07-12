@@ -4,8 +4,26 @@ import { flowRows } from './flows';
 import { promptRows } from './prompts';
 import { actionRows } from './actions';
 import { tx } from "@/core/utils/ears/helpers/transaction";
-import { EARS, Entity } from "@/core/utils/ears/types";
+import { EARS } from "@/core/utils/ears/types";
 import { createLogger } from '@/core/utils/debug/logger';
+
+import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
+import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "@/systems/threads/types";
+import { PromptEntity } from "@/systems/prompts/types";
+import { ActionEntity } from "@/systems/actions/types";
+
+// ! remove after move from mock-data
+type Entity =
+  MessageEntity
+  | ThreadEntity
+  | ContextItemEntity
+  | CanvasContentEntity
+  | TagEntity
+  | FlowEntity
+  | NodeEntity
+  | TNodeEntity
+  | PromptEntity
+  | ActionEntity
 
 export const rows: Rows = composeData([
   threadRows,
