@@ -1,7 +1,7 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import { brainQueries, brainCommands } from './repository';
-import { createStepMachine } from './step-system';
+import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
 import { brainBus } from './system';
@@ -65,8 +65,8 @@ function createChildNode(
   
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId } = isFlowNode
-    ? createFlowMachine(stepOrFlowNode.id, eventTNodeId, systemActor)
-    : createStepMachine(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, systemActor)
+    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-${stepOrFlowNode.id}-ev-${eventTNodeId}-tnode-${tNodeId}`;
 
@@ -76,7 +76,7 @@ function createChildNode(
 /**
  * Create a dynamic state machine for a flow that listens to its events
  */
-export function createFlowMachine(
+export function createFlowNodeSystem(
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
   systemActor?: any,

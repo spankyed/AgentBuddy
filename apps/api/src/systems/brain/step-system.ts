@@ -27,7 +27,7 @@ type StepMachineInput = {
 /**
  * Create a step execution machine
  */
-export function createStepMachine(
+export function createStepNodeSystem(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
