@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 import { actionQueries } from '@/systems/actions/repository';
 import { flowsQueries } from '@/systems/flows/repository';
 import type { Services } from '@/services';

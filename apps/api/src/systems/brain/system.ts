@@ -1,10 +1,10 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom, enqueueActions } from 'xstate';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import { brainQueries } from './repository';

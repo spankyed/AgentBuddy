@@ -1,9 +1,9 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 import { promptQueries } from '@/systems/prompts/repository';
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 
 const logger = createLogger('llm-node');
 

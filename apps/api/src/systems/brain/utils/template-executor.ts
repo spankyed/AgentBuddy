@@ -1,4 +1,4 @@
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('template-executor');
 

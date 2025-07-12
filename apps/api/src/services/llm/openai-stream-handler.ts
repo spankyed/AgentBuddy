@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import type { StreamHandler } from './runner';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('openai-stream');
 

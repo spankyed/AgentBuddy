@@ -1,8 +1,8 @@
-import { EARS } from '@/shared/ears/types';
-import { qx } from '@/shared/ears/helpers/query';
+import { EARS } from '@/core/utils/ears/types';
+import { qx } from '@/core/utils/ears/helpers/query';
 import type { AgentThreadData, AgentStartupData } from '../types';
-import type { MessageEntity, ThreadEntity } from '@/shared/types';
-import { rows } from '@/mock-data'; // ! remove asap
+import type { MessageEntity, ThreadEntity } from '@/core/types';
+import { rows } from '@/core/mock-data'; // ! remove asap
 import { byEntityType } from '../types';
 
 /**

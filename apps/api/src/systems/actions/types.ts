@@ -1,4 +1,4 @@
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 
 export interface ActionParameter {
   name: string;

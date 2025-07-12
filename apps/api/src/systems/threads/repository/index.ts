@@ -1,4 +1,4 @@
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 import { 
   findById, 
   findAll,
@@ -12,9 +12,9 @@ import {
   createRelation,
   type RepositoryResult,
   type OperationResult
-} from '@/shared/repository';
-import { qx } from '@/shared/ears/helpers/query';
-import { tx } from '@/shared/ears/helpers/transaction';
+} from '@/core/utils/repository';
+import { qx } from '@/core/utils/ears/helpers/query';
+import { tx } from '@/core/utils/ears/helpers/transaction';
 import type { ThreadEntity, MessageEntity, TagEntity } from '@/types';
 import type { 
   ThreadCreateData, 

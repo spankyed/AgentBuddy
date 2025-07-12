@@ -2,7 +2,7 @@
  * Prompt template types and definitions
  */
 
-import { BaseEntity, EARS } from '@/shared/ears/types';
+import { BaseEntity, EARS } from '@/core/utils/ears/types';
 
 /**
  * Defines an input parameter that a prompt template expects

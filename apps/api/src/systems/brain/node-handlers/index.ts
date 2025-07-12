@@ -4,7 +4,7 @@ import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('node-executor');
 

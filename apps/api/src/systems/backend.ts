@@ -1,12 +1,12 @@
 import { emit as notify, setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/router/events';
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import systems from '@/systems';
-import { safeEvents, type SystemId } from '@/shared/utils/actor-helpers';
-import { entries } from '@/shared/utils';
-import { EARS } from '@/shared/ears/types';
-import { createEntity } from '@/shared/ears';
-import { createLogger } from '@/shared/debug/logger';
-import { rootEvents } from '@/router/bus-emitter';
+import { safeEvents, type SystemId } from '@/core/utils/actor-helpers';
+import { entries } from '@/core/utils';
+import { EARS } from '@/core/utils/ears/types';
+import { createEntity } from '@/core/utils/ears';
+import { createLogger } from '@/core/utils/debug/logger';
+import { rootEvents } from '@/core/router/bus-emitter';
 
 const logger = createLogger('backend');
 

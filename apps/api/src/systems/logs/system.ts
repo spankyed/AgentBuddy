@@ -1,12 +1,12 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { fromSystem, systemBus, type MergeReceivable } from '@/shared/utils/event-helpers';
-import { emit } from '@/shared/utils/actor-helpers';
+import { fromSystem, systemBus, type MergeReceivable } from '@/core/utils/event-helpers';
+import { emit } from '@/core/utils/actor-helpers';
 import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
-import { randomId } from '@/shared/utils/random-id';
-import { rootEvents } from '../../router/bus-emitter';
-import { LogEvent } from '../../shared/debug/logger';
-import { IncomingSystemEvents } from '@/router/events';
+import { randomId } from '@/core/utils/random-id';
+import { rootEvents } from '../../core/router/bus-emitter';
+import { LogEvent } from '../../core/utils/debug/logger';
+import { IncomingSystemEvents } from '@/core/router/events';
 
 export const logs = 'logs' as const;
 

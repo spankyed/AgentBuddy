@@ -1,4 +1,4 @@
-import { BaseEntity, EARS } from '@/shared/ears/types';
+import { BaseEntity, EARS } from '@/core/utils/ears/types';
 
 export interface TNodeEntity extends BaseEntity {
   entityType: EARS.Entity.TNode;

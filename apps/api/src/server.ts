@@ -2,15 +2,15 @@ import 'dotenv/config'
 
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
-import { logErrors } from '@/shared/utils/actor-helpers';
-import { appRouter } from '@/router';
-import { createContext } from '@/router/context';
-import { logger } from '@/shared/debug/logger';
+import { logErrors } from '@/core/utils/actor-helpers';
+import { appRouter } from '@/core/router';
+import { createContext } from '@/core/router/context';
+import { logger } from '@/core/utils/debug/logger';
 import { createActor } from 'xstate';
 import { logsSystem } from './systems/logs/system';
 import { backendSystem, bus } from './systems/backend';
-import { initializeLogCapture } from './shared/debug/log-capture';
-import { loadMockData } from '@/mock-data';
+import { initializeLogCapture } from './core/utils/debug/log-capture';
+import { loadMockData } from '@/core/mock-data';
 
 (function setupBackend() {
   loadMockData();

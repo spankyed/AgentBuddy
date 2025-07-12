@@ -1,15 +1,15 @@
 import { setup } from 'xstate';
 import { z } from 'zod';
 import { performance } from 'node:perf_hooks';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
-import { emit, safeEvents } from '@/shared/utils/actor-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
+import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { EARS } from '@/shared/ears/types';
-import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
+import { EARS } from '@/core/utils/ears/types';
+import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('database');
 

@@ -1,15 +1,15 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { chatStream, message } from '@/services/llm/runner';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './repository';
-import type { EARS } from '@/shared/ears/types';
+import type { EARS } from '@/core/utils/ears/types';
 import { AgentStartupData, AgentThreadData, FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
 import { agentQueries } from './repository';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
 
 const logger = createLogger('agent');

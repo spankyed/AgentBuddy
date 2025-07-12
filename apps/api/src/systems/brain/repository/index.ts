@@ -1,7 +1,7 @@
-import { EARS } from '@/shared/ears/types';
-import { qx } from '@/shared/ears/helpers/query';
-import { tx } from '@/shared/ears/helpers/transaction';
-import { descendants } from '@/shared/ears/helpers/graph';
+import { EARS } from '@/core/utils/ears/types';
+import { qx } from '@/core/utils/ears/helpers/query';
+import { tx } from '@/core/utils/ears/helpers/transaction';
+import { descendants } from '@/core/utils/ears/helpers/graph';
 import type { 
   FlowTNodeData, 
   TNodeEntity, 
@@ -20,8 +20,8 @@ import {
   errorResult,
   operationSuccess,
   type OperationResult
-} from '@/shared/repository';
-import { emit } from '@/shared/utils/actor-helpers';
+} from '@/core/utils/repository';
+import { emit } from '@/core/utils/actor-helpers';
 import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
 import { prepareNodeAttributes } from './node-attribute-mappers';

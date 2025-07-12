@@ -1,14 +1,14 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
-import { EARS } from '@/shared/ears/types';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
+import { EARS } from '@/core/utils/ears/types';
 import { z } from 'zod';
 import { threadCommands, threadQueries } from './repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
-import type { MappedZodLiterals } from '@/shared/utils/type-helpers';
+import type { MappedZodLiterals } from '@/core/utils/type-helpers';
 const threadStartupData = () => threadQueries.startupData();
 
 export const threads = 'threads' as const;

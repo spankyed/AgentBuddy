@@ -1,14 +1,14 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 import { flowsQueries, flowsCommands } from './repository';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './config/types';
 import { z } from 'zod';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();

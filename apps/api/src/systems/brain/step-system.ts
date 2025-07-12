@@ -2,7 +2,7 @@ import { setup, assign, sendParent } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
 import { brainCommands } from './repository';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('step-machine');
 

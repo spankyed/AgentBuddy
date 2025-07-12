@@ -1,5 +1,5 @@
 import { NodeKind, NodeEntity } from './types';
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 
 export interface NodeMetadata {
   nodeType: NodeKind;

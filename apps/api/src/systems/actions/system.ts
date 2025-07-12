@@ -1,13 +1,13 @@
 import { assign, createMachine, setup } from 'xstate';
-import type { MergeReceivable } from '@/shared/utils/event-helpers';
-import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
+import type { MergeReceivable } from '@/core/utils/event-helpers';
+import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/shared/utils/actor-helpers';
-import { EARS } from '@/shared/ears/types';
+import { emit, safeEvents } from '@/core/utils/actor-helpers';
+import { EARS } from '@/core/utils/ears/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { actionQueries, actionCommands } from './repository';
 import { z } from 'zod';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();

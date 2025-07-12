@@ -1,4 +1,4 @@
-import { EARS } from '@/shared/ears/types';
+import { EARS } from '@/core/utils/ears/types';
 import { 
   findById, 
   findAll, 
@@ -12,7 +12,7 @@ import {
   RepositoryErrorCode,
   type RepositoryResult,
   type OperationResult
-} from '@/shared/repository';
+} from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
 
 /**

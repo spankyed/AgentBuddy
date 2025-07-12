@@ -1,4 +1,4 @@
-import type { Simplify } from "@/shared/utils/type-helpers";
+import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS, MessageEntity, TagEntity, ThreadEntity } from "@/types";
 
 export type ThreadTypeCodes = 'U' | 'P' | 'WI';

@@ -3,9 +3,9 @@ import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import { brainQueries, brainCommands } from './repository';
 import { createStepMachine } from './step-system';
 import { EARS, ExecutionContext } from '@/types';
-import { safeEvents } from '@/shared/utils/actor-helpers';
+import { safeEvents } from '@/core/utils/actor-helpers';
 import { brainBus } from './system';
-import { createLogger } from '@/shared/debug/logger';
+import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('flow-machine');
 
