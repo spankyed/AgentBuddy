@@ -1,10 +1,10 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
-import { brainQueries, brainCommands } from '../../repository';
-import { createStepMachine } from './step-machine';
+import { brainQueries, brainCommands } from './repository';
+import { createStepMachine } from './step-system';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/shared/utils/actor-helpers';
-import { brainBus } from '../../system';
+import { brainBus } from './system';
 import { createLogger } from '@/shared/debug/logger';
 
 const logger = createLogger('flow-machine');

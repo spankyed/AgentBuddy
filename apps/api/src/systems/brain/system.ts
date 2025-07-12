@@ -8,7 +8,7 @@ import { EARS } from '@/shared/ears/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import { brainQueries } from './repository';
-import { createFlowMachine } from './runner/machines/flow-machine';
+import { createFlowMachine } from './flow-system';
 import { agent } from '../agent/system';
 
 const eventsCatalog = {
