@@ -1,9 +1,9 @@
 import type { Rows } from '@/core/types';
-import { threadRows } from './data/threads';
-import { flowRows } from './data/flows';
+import { threadRows } from './threads';
+import { flowRows } from './flows';
 // import { brainRows } from './mock-data/brain';
-import { promptRows } from './data/prompts';
-import { actionRows } from './data/actions';
+import { promptRows } from './prompts';
+import { actionRows } from './actions';
 import { tx } from "@/core/utils/ears/helpers/transaction";
 import { EARS } from "@/core/utils/ears/types";
 import { createLogger } from '@/core/utils/debug/logger';
