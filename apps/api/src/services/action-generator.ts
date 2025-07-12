@@ -4,7 +4,7 @@
  */
 
 import { generateActionsFromServices, serviceMetadata } from './index';
-import type { ActionParameter } from '../types';
+import type { ActionParameter } from '../systems/actions/types';
 
 /**
  * Convert service parameter types to action parameter types
@@ -269,6 +269,7 @@ try {
  */
 export function getAllActionTemplates() {
   const serviceActions = generateActionsFromServices();
+  console.log('serviceActions: ', serviceActions);
   const compositeActions = generateCompositeActions();
   
   return {

@@ -3,8 +3,8 @@ import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/shared/debug/logger';
 import { actionQueries } from '@/systems/actions/repository';
 import { flowsQueries } from '@/systems/flows/repository';
-import type { Services } from '@/systems/actions/services';
-import { services } from '@/systems/actions/services';
+import type { Services } from '@/services';
+import { services } from '@/services';
 
 const logger = createLogger('action-node');
 
