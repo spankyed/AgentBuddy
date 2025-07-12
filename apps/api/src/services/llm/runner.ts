@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { agent, type agentSystem } from '../system';
 import { type ActorRefFrom, fromPromise } from 'xstate';
 import { handleOpenAIStream } from './openai-stream-handler';
+import { agent, agentSystem } from '@/systems/agent/system';
 
 // ! replace with ai-sdk - https://github.com/vercel/ai
 
