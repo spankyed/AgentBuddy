@@ -22,7 +22,7 @@ import {
   type OperationResult
 } from '@/shared/repository';
 import { emit } from '@/shared/utils/actor-helpers';
-import { bus } from '@/systems/_backend/backend';
+import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 

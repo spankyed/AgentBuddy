@@ -3,7 +3,7 @@ import { chatStream, message } from '@/services/llm/runner';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { z } from 'zod';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './repository';
 import type { EARS } from '@/shared/ears/types';

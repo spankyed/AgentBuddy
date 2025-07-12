@@ -8,7 +8,7 @@ import { createContext } from '@/router/context';
 import { logger } from '@/shared/debug/logger';
 import { createActor } from 'xstate';
 import { logsSystem } from './systems/logs/system';
-import { backendSystem, bus } from './systems/_backend/backend';
+import { backendSystem, bus } from './systems/backend';
 import { initializeLogCapture } from './shared/debug/log-capture';
 import { loadMockData } from '@/mock-data';
 

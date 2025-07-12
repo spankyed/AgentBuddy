@@ -1,7 +1,7 @@
 import { assign, createMachine, setup } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
 import { EARS } from '@/shared/ears/types';
 import { PromptsStartupData, PromptEntity } from './types';

@@ -1,7 +1,7 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom, enqueueActions } from 'xstate';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/backend';
 import { emit, getActor, safeEvents, sendParentSafe } from '@/shared/utils/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/shared/ears/types';

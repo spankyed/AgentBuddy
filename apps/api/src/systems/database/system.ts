@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 import type { MergeReceivable } from '@/shared/utils/event-helpers';
 import { fromSystem, systemBus } from '@/shared/utils/event-helpers';
 import { emit, safeEvents } from '@/shared/utils/actor-helpers';
-import { bus, SystemEvents } from '@/systems/_backend/backend';
+import { bus, SystemEvents } from '@/systems/backend';
 import { EARS } from '@/shared/ears/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/shared/ears/attribute-storage';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
