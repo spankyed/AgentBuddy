@@ -1,7 +1,10 @@
 import { streamText as aiStreamText, generateText as aiGenerateText, streamObject as aiStreamObject, generateObject as aiGenerateObject } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
-import { openai } from '@ai-sdk/openai';
 import type { CoreMessage } from 'ai';
+import { createOpenAI } from "@ai-sdk/openai"
+// import { openai } from '@ai-sdk/openai';
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // Supported model providers
 const providers = {
