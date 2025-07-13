@@ -8,7 +8,7 @@ import { EARS } from '@/core/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import { brainQueries } from './repository';
-import { createFlowMachine } from './flow-system';
+import { createFlowNodeSystem } from './flow-system';
 import { agent } from '../agent/system';
 
 const eventsCatalog = {
@@ -63,7 +63,7 @@ export const brainSystem = setup({
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const { machine, tNodeId } = createFlowMachine(undefined, undefined, self)
+      const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, self)
       enqueue.spawnChild(machine, {
         systemId: brainBus,
         input: {}
