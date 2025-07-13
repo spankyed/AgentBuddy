@@ -1,9 +1,13 @@
 import { loggerAction, loggerService } from './logger';
+import * as llm from './llm';
+import * as eventEmitter from './event-emitter';
 import type { ActionEntity } from '@/systems/actions/types';
-import type { EARS } from '@/core/types';
+import { EARS } from '@/core/types';
 
 const services = {
   logger: loggerService,
+  llm,
+  eventEmitter,
 }
 
 const actions = ([
@@ -13,7 +17,7 @@ const actions = ([
 ): ActionEntity {
   return {
     ...partialAction,
-    entityType: 'Action' as EARS.Entity.Action,
+    entityType: EARS.Entity.Action,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
