@@ -7,7 +7,7 @@ const nowMs = Date.now();
 const actionFn = tidyFunction(`
   const { message } = params;
 
-  const result = services.llm.streamText({
+  const result = await services.llm.streamText({
     model: { provider: 'openai', model: 'gpt-4o' },
     prompt: message,
     system: 'You are a helpful assistant.',
