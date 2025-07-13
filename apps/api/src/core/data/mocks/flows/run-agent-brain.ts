@@ -126,20 +126,12 @@ export const runAgentBrainFlow: Rows = {
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 860,
       nodeType: "action",
-      label: "Log Results",
-      actionId: "Action-log-message",
+      label: "Stream to FE",
+      actionId: "Action-stream-to-fe",
       fieldMappings: [
-        {
-          target: "level",
-          source: 'info'
-        },
         {
           target: "message",
           source: ContextPaths.EVENT_PAYLOAD    // Original user message
-        },
-        {
-          target: "data",
-          source: ContextPaths.stepByLabel('Format Response')
         },
       ]
     },
@@ -184,9 +176,5 @@ export const runAgentBrainFlow: Rows = {
     { source: "Node-a6s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a5s", info: {} },
     { source: "Node-a7s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a8s", info: {} },
     { source: "Node-a8s", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-loa8s", info: {} },
-
-    /* Node to Action relationships */
-    { source: "Node-a5s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-save-entity", info: {} },
-    { source: "Node-loa8s", kind: EARS.RelKind.INSTANCE_OF, target: "Action-log-message" },
   ],
 }; 

@@ -7,7 +7,17 @@ const nowMs = Date.now();
 const actionFn = tidyFunction(`
   const { message } = params;
 
-  services.logger.info(message)
+  const result = services.llm.streamText({
+    model: { provider: 'openai', model: 'gpt-4o' },
+    prompt: message,
+    system: 'You are a helpful assistant.',
+    temperature: 0.7,
+    maxTokens: 100,
+  });
+
+  for await (const textPart of result.textStream) {
+    services.logger.info('Streaming text to FE', { textPart });
+  }
 `);
 
 export const streamToFEAction: ActionEntity = {
