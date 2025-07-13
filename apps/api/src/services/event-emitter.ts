@@ -6,7 +6,7 @@ import type { OutgoingSystemEvents, IncomingSystemEvents } from '@/core/router/e
  * @param pluginId - The target plugin ID (or 'application' for main plugin)
  * @param event - The event to emit (without pluginId)
  * @example
- * emitToPlugin('agent', {
+ * sendToPlugin('agent', {
  *   type: 'TOKEN_STREAM',
  *   token: 'Hello'
  * });
@@ -24,7 +24,7 @@ export function sendToPlugin<T extends OutgoingSystemEvents>(
  * @param systemId - The target system ID
  * @param event - The system event to emit (without systemId)
  * @example
- * emitToSystem('threads', {
+ * sendToSystem('threads', {
  *   type: 'CREATE_THREAD',
  *   title: 'New Thread'
  * });
