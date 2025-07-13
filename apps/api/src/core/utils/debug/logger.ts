@@ -28,13 +28,13 @@ function safeStringify(obj: any): any {
 }
 
 class Logger {
-  private source?: string;
+  public source?: string;
 
   constructor(source?: string) {
     this.source = source;
   }
 
-  private log(level: LogLevel, message: string, meta?: Record<string, any>) {
+  public log(level: LogLevel, message: string, meta?: Record<string, any>) {
     // Get stack trace for errors
     let stack: string | undefined;
     if (level === 'error') {

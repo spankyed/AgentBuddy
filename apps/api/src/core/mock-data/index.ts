@@ -44,13 +44,13 @@ export function composeData(sources: Partial<Rows>[]) {
   );
 }
 
-const logger = createLogger('load-initial-data');
+const logger = createLogger('load-data');
 
 /**
  * Load mock data into the store
  */
-export function loadMockData(): void {
-  const { entity = [], relation = [], role = [] } = rows;
+export function loadData(r = rows): void {
+  const { entity = [], relation = [], role = [] } = r;
 
   if (!entity.length) {
     logger.warn("No entities found in mock data");

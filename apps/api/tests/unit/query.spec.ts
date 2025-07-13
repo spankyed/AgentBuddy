@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import { flowRows } from '@/systems/flows/repository/mock-data';
-import { loadMockData } from '@/systems/_backend/load-initial-data';
+import { loadData } from '@/systems/_backend/load-initial-data';
 
 /* ──────────────────────────────────────────────────────────────── *
  *  Boot the store ONCE for the whole suite. If you have a helper
@@ -16,7 +16,7 @@ import { loadMockData } from '@/systems/_backend/load-initial-data';
 beforeAll(() => {
   //   import { clearStore } from '@/shared/ears/attribute-storage/testing';
   //   clearStore();
-  loadMockData();
+  loadData();
 });
 
 describe('qx – fluent query DSL', () => {

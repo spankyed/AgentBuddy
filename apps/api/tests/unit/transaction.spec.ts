@@ -8,7 +8,7 @@ import { tx, SafeLinkOptions } from '@/shared/ears/helpers/transaction';
 import { qx } from '@/shared/ears/helpers/query';
 import { EARS } from '@/shared/ears/types';
 import { flowRows } from '@/systems/flows/repository/mock-data';
-import { loadMockData } from '@/systems/_backend/load-initial-data';
+import { loadData } from '@/systems/_backend/load-initial-data';
 import { getAttr, getRoles, getAll } from '@/shared/ears/attribute-storage';
 
 /* ──────────────────────────────────────────────────────────────── *
@@ -18,7 +18,7 @@ import { getAttr, getRoles, getAll } from '@/shared/ears/attribute-storage';
 beforeAll(() => {
   //   import { clearStore } from '@/shared/ears/attribute-storage/testing';
   //   clearStore();
-  loadMockData();
+  loadData();
 });
 
 describe('tx – fluent mutation DSL', () => {

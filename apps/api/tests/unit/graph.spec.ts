@@ -13,11 +13,11 @@ import {
 import { EARS } from "@/shared/ears/types";
 import { qx } from "@/shared/ears/helpers/query";
 import { tx } from "@/shared/ears/helpers/transaction";
-import { loadMockData } from "@/systems/_backend/load-initial-data";
+import { loadData } from "@/systems/_backend/load-initial-data";
 
 describe("graph.ts - comprehensive test suite", () => {
   beforeAll(() => {
-    loadMockData();
+    loadData();
   });
 
   describe("tree traversal functions", () => {

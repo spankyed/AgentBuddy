@@ -3,8 +3,7 @@ import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/core/utils/debug/logger';
 import { actionQueries } from '@/systems/actions/repository';
 import { flowsQueries } from '@/systems/flows/repository';
-import type { Services } from '@/services';
-import { services } from '@/services';
+import services from '@/services';
 
 const logger = createLogger('action-node');
 
@@ -25,7 +24,6 @@ type ActionNode = NodeEntity & ActionNodeConfig;
 async function executeActionFunction(
   actionFn: string,
   params: Record<string, any>,
-  services: Services
 ): Promise<any> {
   try {
     // Create a function that has access to services and params
@@ -92,7 +90,6 @@ export async function actionNodeHandler(
     const result = await executeActionFunction(
       action.actionFn,
       params,
-      services
     );
     
     logger.debug(`Action completed successfully:`, {
