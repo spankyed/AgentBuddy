@@ -1,7 +1,35 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { question, context = '', tone = 'professional' } = params;
+
+  if (context) {
+    // prettier-ignore
+    return \`
+      Context:
+      \${context}
+
+      Please answer the following question in a \${tone} tone:
+
+      \${question}
+
+      Provide a clear and helpful response.
+    \`;
+  }
+
+  // prettier-ignore
+  return \`
+    Please answer the following question in a \${tone} tone:
+
+    \${question}
+
+    Provide a clear and helpful response.
+  \`;
+`);
 
 export const qaAssistantPrompt: Rows = {
   entity: [
@@ -33,30 +61,7 @@ export const qaAssistantPrompt: Rows = {
           defaultValue: 'professional'
         }
       },
-      templateFn: `const { question, context = '', tone = 'professional' } = params;
-
-if (context) {
-  // prettier-ignore
-  return \`
-Context:
-\${context}
-
-Please answer the following question in a \${tone} tone:
-
-\${question}
-
-Provide a clear and helpful response.
-\`;
-}
-
-// prettier-ignore
-return \`
-Please answer the following question in a \${tone} tone:
-
-\${question}
-
-Provide a clear and helpful response.
-\`;`,
+      templateFn,
       createdAt: nowMs - 86400000 * 3,
       updatedAt: nowMs - 86400000 * 3
     }

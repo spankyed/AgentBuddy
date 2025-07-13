@@ -1,7 +1,30 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { userMessage, additionalContext = '' } = params;
+
+  // prettier-ignore
+  return \`
+    Analyze the following user message and extract key information:
+
+    User Message: "\${userMessage}"
+
+    \${additionalContext ? \`Additional Context: \${additionalContext}\n\n\` : ''}
+
+    Please provide a detailed analysis including:
+    1. Summary: A brief summary of what the user is asking or saying
+    2. Intent: The primary intent or goal of the message (e.g., question, request, feedback, etc.)
+    3. Entities: Key entities, topics, or concepts mentioned
+    4. Category: Categorize the message (e.g., technical_support, general_inquiry, feature_request, etc.)
+    5. Urgency: Assess the urgency level (low, medium, high)
+
+    Format your response as a structured analysis.
+  \`;
+`);
 
 export const userMessageAnalysisPrompt: Rows = {
   entity: [
@@ -26,25 +49,7 @@ export const userMessageAnalysisPrompt: Rows = {
           defaultValue: ''
         }
       },
-      templateFn: `const { userMessage, additionalContext = '' } = params;
-
-// prettier-ignore
-return \`
-Analyze the following user message and extract key information:
-
-User Message: "\${userMessage}"
-
-\${additionalContext ? \`Additional Context: \${additionalContext}\n\n\` : ''}
-
-Please provide a detailed analysis including:
-1. Summary: A brief summary of what the user is asking or saying
-2. Intent: The primary intent or goal of the message (e.g., question, request, feedback, etc.)
-3. Entities: Key entities, topics, or concepts mentioned
-4. Category: Categorize the message (e.g., technical_support, general_inquiry, feature_request, etc.)
-5. Urgency: Assess the urgency level (low, medium, high)
-
-Format your response as a structured analysis.
-\`;`,
+      templateFn,
       createdAt: nowMs - 86400000 * 2,
       updatedAt: nowMs - 86400000 * 2
     }

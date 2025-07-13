@@ -1,7 +1,20 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { text, maxLength = 100 } = params;
+  // prettier-ignore
+  return \`
+    Please summarize the following text in approximately \${maxLength} words:
+
+    \${text}
+
+    Provide a clear, concise summary focusing on the main points.
+  \`;
+`);
 
 export const summarizeTextPrompt: Rows = {
   entity: [
@@ -27,15 +40,7 @@ export const summarizeTextPrompt: Rows = {
           defaultValue: 100
         }
       },
-      templateFn: `const { text, maxLength = 100 } = params;
-// prettier-ignore
-return \`
-Please summarize the following text in approximately \${maxLength} words:
-
-\${text}
-
-Provide a clear, concise summary focusing on the main points.
-\`;`,
+      templateFn,
       createdAt: nowMs - 86400000 * 7,
       updatedAt: nowMs - 86400000 * 2
     }

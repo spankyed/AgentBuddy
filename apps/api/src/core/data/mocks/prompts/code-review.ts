@@ -1,7 +1,24 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;
+  // prettier-ignore
+  return \`
+    Please review the following \${language} code:
+
+    \\\`\\\`\\\`\${language}
+    \${code}
+    \\\`\\\`\\\`
+
+    Focus on: \${focusAreas.join(', ')}
+
+    Provide specific suggestions for improvements.
+  \`;
+`);
 
 export const codeReviewPrompt: Rows = {
   entity: [
@@ -33,19 +50,7 @@ export const codeReviewPrompt: Rows = {
           defaultValue: ['bugs', 'performance', 'readability']
         }
       },
-      templateFn: `const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;
-// prettier-ignore
-return \`
-Please review the following \${language} code:
-
-\\\`\\\`\\\`\${language}
-\${code}
-\\\`\\\`\\\`
-
-Focus on: \${focusAreas.join(', ')}
-
-Provide specific suggestions for improvements.
-\`;`,
+      templateFn: templateFn,
       outputSchema: {
         type: 'object',
         properties: {

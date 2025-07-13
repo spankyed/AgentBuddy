@@ -1,7 +1,34 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;
+
+  // prettier-ignore
+  return \`
+
+  Please brainstorm \${quantity} \${creativity} ideas for:
+
+  \${topic}
+
+  \${constraints ? 'Constraints/Requirements:\\n' + constraints + '\\n\\n' : ''}Guidelines:
+  - Generate \${quantity} distinct ideas
+  - Creativity level: \${creativity}
+  - Each idea should be practical and actionable
+  - Include a brief explanation for each idea
+  - Consider different perspectives and approaches
+  - Be specific rather than generic
+
+  Present each idea with:
+  1. A clear title
+  2. A 2-3 sentence description
+  3. Key benefits or potential impact
+
+  \`;
+`)
 
 export const brainstormIdeasPrompt: Rows = {
   entity: [
@@ -41,27 +68,7 @@ export const brainstormIdeasPrompt: Rows = {
           example: 'conservative, balanced, creative, wild'
         }
       },
-      templateFn: `const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;
-
-// prettier-ignore
-return \`
-Please brainstorm \${quantity} \${creativity} ideas for:
-
-\${topic}
-
-\${constraints ? 'Constraints/Requirements:\\n' + constraints + '\\n\\n' : ''}Guidelines:
-- Generate \${quantity} distinct ideas
-- Creativity level: \${creativity}
-- Each idea should be practical and actionable
-- Include a brief explanation for each idea
-- Consider different perspectives and approaches
-- Be specific rather than generic
-
-Present each idea with:
-1. A clear title
-2. A 2-3 sentence description
-3. Key benefits or potential impact
-\`;`,
+      templateFn: templateFn,
       createdAt: nowMs - 86400000 * 8,
       updatedAt: nowMs - 86400000 * 3
     }

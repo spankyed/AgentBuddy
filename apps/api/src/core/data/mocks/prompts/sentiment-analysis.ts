@@ -1,7 +1,27 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { text, detailed = false } = params;
+
+  // prettier-ignore
+  return \`
+    Please analyze the sentiment of the following text:
+
+    "\${text}"
+
+    Provide a sentiment analysis that includes:
+    - Overall sentiment (positive, negative, neutral, mixed)
+    - Confidence score (0-100%)
+    - Key emotional indicators
+    \${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}
+
+    Format your response as a clear, structured analysis.
+  \`;
+`);
 
 export const sentimentAnalysisPrompt: Rows = {
   entity: [
@@ -26,22 +46,7 @@ export const sentimentAnalysisPrompt: Rows = {
           defaultValue: false
         }
       },
-      templateFn: `const { text, detailed = false } = params;
-
-// prettier-ignore
-return \`
-Please analyze the sentiment of the following text:
-
-"\${text}"
-
-Provide a sentiment analysis that includes:
-- Overall sentiment (positive, negative, neutral, mixed)
-- Confidence score (0-100%)
-- Key emotional indicators
-\${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}
-
-Format your response as a clear, structured analysis.
-\`;`,
+      templateFn,
       outputSchema: {
         type: 'object',
         properties: {

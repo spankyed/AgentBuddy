@@ -1,7 +1,28 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
+
+const templateFn = tidyFunction(`
+  const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;
+
+  // prettier-ignore
+  return \`
+    Please translate the following text to \${targetLang}:
+
+    \${text}
+
+    Translation requirements:
+    - \${sourceLang === 'auto' ? 'Detect the source language automatically' : 'Source language: ' + sourceLang}
+    - Target language: \${targetLang}
+    - Translation style: \${style} (preserve the original tone and meaning)
+    - Maintain formatting and structure
+    - Ensure cultural appropriateness
+
+    Provide only the translated text without explanations.
+  \`;
+`);
 
 export const translateTextPrompt: Rows = {
   entity: [
@@ -40,23 +61,7 @@ export const translateTextPrompt: Rows = {
           defaultValue: 'natural'
         }
       },
-      templateFn: `const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;
-
-// prettier-ignore
-return \`
-Please translate the following text to \${targetLang}:
-
-\${text}
-
-Translation requirements:
-- \${sourceLang === 'auto' ? 'Detect the source language automatically' : 'Source language: ' + sourceLang}
-- Target language: \${targetLang}
-- Translation style: \${style} (preserve the original tone and meaning)
-- Maintain formatting and structure
-- Ensure cultural appropriateness
-
-Provide only the translated text without explanations.
-\`;`,
+      templateFn,
       createdAt: nowMs - 86400000 * 4,
       updatedAt: nowMs - 86400000 * 1
     }
