@@ -10,8 +10,8 @@ import { createActor } from 'xstate';
 import { logsSystem } from './systems/logs/system';
 import { backendSystem, bus } from './systems/backend';
 import { initializeLogCapture } from './core/utils/debug/log-capture';
-import { loadData } from '@/core/mock-data';
-import staticData from './core/static-data';
+import { loadData } from '@/core/data';
+import staticData from './core/data/static';
 
 (function setupBackend() {
   loadData();

@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
-import { Rows, rows } from '@/core/mock-data'; // ! remove asap
+import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity } from '@/systems/threads/types';
 import { AgentThreadData, AgentStartupData } from '../types';
 

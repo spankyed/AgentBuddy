@@ -1,8 +1,8 @@
-import { threadRows } from './threads';
-import { flowRows } from './flows';
+import { threadRows } from './mocks/threads';
+import { flowRows } from './mocks/flows';
 // import { brainRows } from './mock-data/brain';
-import { promptRows } from './prompts';
-import { actionRows } from './actions';
+import { promptRows } from './mocks/prompts';
+import { actionRows } from './mocks/actions';
 import { tx } from "@/core/utils/ears/helpers/transaction";
 import { EARS } from "@/core/types";
 import { createLogger } from '@/core/utils/debug/logger';
