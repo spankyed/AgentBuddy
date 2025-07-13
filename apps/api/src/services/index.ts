@@ -6,10 +6,10 @@ const services = {
   logger: loggerService,
 }
 
-const actions = [
+const actions = ([
   loggerAction,
-].map(function transformToActionEntity(
-  partialAction: Omit<ActionEntity, 'createdAt' | 'entityType'>
+] as Omit<ActionEntity, 'createdAt' | 'entityType'>[]).map(function transformToActionEntity(
+  partialAction
 ): ActionEntity {
   return {
     ...partialAction,

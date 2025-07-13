@@ -46,7 +46,7 @@ return await services.logger.info(message, data);
 }`,
   output: { logged: 'boolean', message: 'string' },
   updatedAt: nowMs - 70
-} as Omit<ActionEntity, 'createdAt' | 'entityType'>;
+};
 
 export {
   loggerService,
