@@ -11,7 +11,7 @@ import type { OutgoingSystemEvents, IncomingSystemEvents } from '@/core/router/e
  *   token: 'Hello'
  * });
  */
-export function emitToPlugin<T extends OutgoingSystemEvents>(
+export function sendToPlugin<T extends OutgoingSystemEvents>(
   pluginId: string,
   event: Omit<T, 'pluginId'>
 ): void {
@@ -29,7 +29,7 @@ export function emitToPlugin<T extends OutgoingSystemEvents>(
  *   title: 'New Thread'
  * });
  */
-export function emitToSystem<T extends IncomingSystemEvents>(
+export function sendToSystem<T extends IncomingSystemEvents>(
   systemId: string,
   event: Omit<T, 'systemId'>
 ): void {

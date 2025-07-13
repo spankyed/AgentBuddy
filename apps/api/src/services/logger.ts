@@ -1,9 +1,23 @@
 import { createLogger } from '@/core/utils/debug/logger';
-import { ActionEntity } from '@/systems/actions/types';
+import { tidyFunction } from '@/core/utils/tidy-function';
 
 const nowMs = Date.now();
 
 const loggerService = createLogger('log-service');
+
+const actionLog = tidyFunction(`
+  const { level, message, data } = params;
+
+  switch (level) {
+    case 'error':
+      return await services.logger.error(message, data);
+    case 'debug':
+      return await services.logger.debug(message, data);
+    case 'info':
+    default:
+      return await services.logger.info(message, data);
+  }
+`);
 
 const loggerAction = {
   id: 'Action-log-message',
@@ -32,18 +46,7 @@ const loggerAction = {
       description: 'Additional data to log'
     }
   },
-  actionFn: `// Log message
-const { level, message, data } = params;
-
-switch (level) {
-case 'error':
-return await services.logger.error(message, data);
-case 'debug':
-return await services.logger.debug(message, data);
-case 'info':
-default:
-return await services.logger.info(message, data);
-}`,
+  actionFn: actionLog,
   output: { logged: 'boolean', message: 'string' },
   updatedAt: nowMs - 70
 };
