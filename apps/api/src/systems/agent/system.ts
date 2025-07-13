@@ -1,5 +1,5 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { chatStream, message } from '@/services/llm/runner';
+// import { chatStream, message } from '@/services/llm/runner';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { z } from 'zod';
@@ -64,7 +64,7 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actors: {
-    chatStream
+    // chatStream
   },
   actions: {
     sendAgentStartupData: ({ system }) => {
@@ -211,25 +211,25 @@ export function ${label.replace(/\s+/g, '')}() {
         },
       },
       processMessage: {
-        invoke: {
-          id: 'chatStream',
-          src: 'chatStream',
-          input: ({ context }) => ({
-            messages: [
-              message('system', 'You are a helpful AI assistant.'),
-              // message("user", getLatestMessage()), // TODO: Implement message retrieval
-            ],
-            provider: 'openai',
-          }),
-          onDone: {
-            target: 'idle',
-            actions: 'sendLLMDone',
-          },
-          onError: {
-            target: 'idle',
-            actions: 'sendLLMError',
-          }
-        },
+        // invoke: {
+        //   id: 'chatStream',
+        //   src: 'chatStream',
+        //   input: ({ context }) => ({
+        //     messages: [
+        //       message('system', 'You are a helpful AI assistant.'),
+        //       // message("user", getLatestMessage()), // TODO: Implement message retrieval
+        //     ],
+        //     provider: 'openai',
+        //   }),
+        //   onDone: {
+        //     target: 'idle',
+        //     actions: 'sendLLMDone',
+        //   },
+        //   onError: {
+        //     target: 'idle',
+        //     actions: 'sendLLMError',
+        //   }
+        // },
         on: {
           LLM_ABORTED: 'idle',
           LLM_ERROR: {
@@ -237,7 +237,7 @@ export function ${label.replace(/\s+/g, '')}() {
             actions: 'sendLLMError',
           },
           CANCEL: {
-            actions: cancel("chatStream"),
+            // actions: cancel("chatStream"),
           }
         },
       },
