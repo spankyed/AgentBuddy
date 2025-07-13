@@ -1,4 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { config as dotenvConfig } from 'dotenv';
+
+// Load environment variables from .env file
+dotenvConfig();
 
 export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
