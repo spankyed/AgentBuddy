@@ -44,10 +44,15 @@
         <!-- Actions -->
         <div class="flex items-center gap-2">
           <Button @click="createDocument" variant="primary" size="sm">
-            <Plus class="w-4 h-4" />
+            <FileText class="w-4 h-4" />
             <span>New Document</span>
           </Button>
-          <Button @click="createFolder" variant="transparent" size="sm">
+          <Button 
+            @click="createFolder" 
+            variant="transparent" 
+            size="sm"
+            class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+          >
             <FolderPlus class="w-4 h-4" />
             <span>New Folder</span>
           </Button>
@@ -92,18 +97,33 @@
             <tr
               v-for="item in sortedItems"
               :key="item.id"
-              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
-              :class="{ 'bg-neutral-800': selectedItems.includes(item.id) }"
+              class="transition-all duration-200 cursor-pointer group"
+              :class="[
+                selectedItems.includes(item.id) ? 'bg-neutral-800' : '',
+                item.type === 'folder' ? 'hover:bg-blue-500/10' : 'hover:bg-neutral-800'
+              ]"
               @click="selectItem(item, $event)"
               @dblclick="doubleClickItem(item)"
             >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                    <Folder v-if="item.type === 'folder'" class="w-4 h-4 text-blue-400" />
-                    <FileText v-else class="w-4 h-4 text-neutral-400" />
+                  <div 
+                    class="flex items-center justify-center w-8 h-8 transition-all duration-200 rounded-lg"
+                    :class="item.type === 'folder' 
+                      ? 'bg-blue-500/20 group-hover:bg-blue-500/30' 
+                      : 'bg-neutral-800 group-hover:bg-neutral-700'"
+                  >
+                    <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
+                    <FileText v-else class="w-4 h-4 text-neutral-500" />
                   </div>
-                  <span class="font-medium text-neutral-100">{{ item.name }}</span>
+                  <span 
+                    class="transition-colors"
+                    :class="item.type === 'folder' 
+                      ? 'font-semibold text-neutral-100' 
+                      : 'font-normal text-neutral-300'"
+                  >
+                    {{ item.name }}
+                  </span>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -117,7 +137,12 @@
                 </span>
               </td>
               <td class="px-6 py-4">
-                <span class="text-sm text-neutral-300">
+                <span 
+                  class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md"
+                  :class="item.type === 'folder' 
+                    ? 'bg-blue-500/20 text-blue-400' 
+                    : 'bg-neutral-800 text-neutral-400'"
+                >
                   {{ item.kind }}
                 </span>
               </td>
@@ -152,19 +177,24 @@
         class="flex flex-col items-center justify-center h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
-          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
-            <Folder class="w-8 h-8 text-neutral-500" />
+          <div class="flex gap-4 mb-4">
+            <div class="flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20">
+              <Folder class="w-8 h-8 text-blue-400" />
+            </div>
+            <div class="flex items-center justify-center w-16 h-16 rounded-full bg-neutral-800">
+              <FileText class="w-8 h-8 text-neutral-500" />
+            </div>
           </div>
           <h3 class="mb-2 text-lg font-semibold text-neutral-100">This folder is empty</h3>
           <p class="mb-6 text-sm text-neutral-400">
-            Create your first document or folder to get started
+            Create folders to organize your content or add documents to get started
           </p>
           <div class="flex gap-3">
             <Button @click="createDocument" variant="primary">
-              <Plus class="w-4 h-4" />
+              <FileText class="w-4 h-4" />
               <span>New Document</span>
             </Button>
-            <Button @click="createFolder" variant="transparent">
+            <Button @click="createFolder" variant="transparent" class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10">
               <FolderPlus class="w-4 h-4" />
               <span>New Folder</span>
             </Button>
