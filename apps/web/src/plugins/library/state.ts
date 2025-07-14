@@ -161,6 +161,12 @@ export const libraryMachine = setup({
         }
         return []
       },
+      breadcrumbs: ({ event }) => {
+        if (event.type === 'FOLDER_CONTENTS_LOADED') {
+          return event.data.breadcrumbs || []
+        }
+        return []
+      },
     }),
     updateNavigation: assign({
       currentFolderId: ({ event }) => {

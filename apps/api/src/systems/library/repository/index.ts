@@ -636,8 +636,9 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
     })
   }
   
-  // Get current path
+  // Get current path and breadcrumbs
   const currentPath = folderId ? await getCollectionPath(`Collection-${folderId}` as EARS.EntityId) : []
+  const breadcrumbs = await getFolderPath(folderId)
   
   return {
     items: items.sort((a, b) => {
@@ -649,35 +650,43 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
     }),
     currentPath,
     currentFolderId: folderId,
+    breadcrumbs,
   }
 }
 
 export async function getFolderPath(folderId: string | null): Promise<BreadcrumbItem[]> {
   if (folderId === null) {
-    return [{ id: null, name: 'Library', path: [] }]
+    return []
   }
   
-  const path = await getCollectionPath(`Collection-${folderId}` as EARS.EntityId)
-  const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'Library', path: [] }]
+  const breadcrumbs: BreadcrumbItem[] = []
+  let currentId: EARS.EntityId | null = `Collection-${folderId}` as EARS.EntityId
   
-  // Build breadcrumbs from path
-  let currentPath: string[] = []
-  for (let i = 0; i < path.length; i++) {
-    currentPath.push(path[i])
-    // Find collection ID for this path segment
-    // This is a simplified version - in a real app you'd want to optimize this
+  // Walk up the parent chain to build breadcrumbs
+  while (currentId) {
+    const collections = await qx(currentId).pickAll()
+    const collection = collections[0]
+    if (collection) {
+      breadcrumbs.unshift({
+        id: currentId.split('-')[1],
+        name: collection.name as string,
+        path: [], // We don't need path for breadcrumbs
+      })
+    }
+    
+    // Find parent
     const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    let parentId: EARS.EntityId | null = null
     for (const col of allCollections) {
-      const colPath = await getCollectionPath(col.id as EARS.EntityId)
-      if (colPath.join('/') === currentPath.join('/')) {
-        breadcrumbs.push({
-          id: col.id.split('-')[1],
-          name: path[i],
-          path: [...currentPath],
-        })
+      const children = await qx(col.id as EARS.EntityId)
+        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+        .ids()
+      if (children.includes(currentId)) {
+        parentId = col.id as EARS.EntityId
         break
       }
     }
+    currentId = parentId
   }
   
   return breadcrumbs

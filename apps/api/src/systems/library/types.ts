@@ -67,6 +67,7 @@ export interface FolderContents {
   items: LibraryItem[]
   currentPath: string[]
   currentFolderId: string | null
+  breadcrumbs: BreadcrumbItem[]
 }
 
 export interface BreadcrumbItem {

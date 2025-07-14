@@ -1,31 +1,57 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Toolbar -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <!-- Breadcrumb Navigation -->
-      <div class="flex items-center gap-2">
-        <button 
-          @click="navigateToFolder(null)"
-          class="px-3 py-1 text-sm transition-colors rounded-md hover:bg-neutral-800 text-neutral-300"
-        >
-          Library
-        </button>
-        <span v-for="(segment, index) in currentPath" :key="index" class="flex items-center gap-2">
-          <ChevronRight class="w-4 h-4 text-neutral-500" />
-          <span class="px-3 py-1 text-sm text-neutral-400">{{ segment }}</span>
-        </span>
-      </div>
-      
-      <!-- Actions -->
-      <div class="flex items-center gap-2">
-        <Button @click="createDocument" variant="primary">
-          <Plus class="w-4 h-4" />
-          <span>New Document</span>
-        </Button>
-        <Button @click="createFolder" variant="transparent">
-          <FolderPlus class="w-4 h-4" />
-          <span>New Folder</span>
-        </Button>
+    <div class="flex flex-col gap-3 px-6 py-3 border-b border-neutral-800">
+      <!-- Navigation Row -->
+      <div class="flex items-center justify-between gap-4">
+        <!-- Back Button and Breadcrumbs -->
+        <div class="flex items-center gap-3">
+          <!-- Back Button -->
+          <button 
+            v-if="currentFolderId !== null"
+            @click="navigateBack"
+            class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-neutral-300 hover:bg-neutral-800 active:scale-95"
+            aria-label="Go back"
+            title="Go back"
+          >
+            <ChevronLeft class="w-4 h-4" />
+          </button>
+          
+          <!-- Breadcrumb Navigation -->
+          <div class="flex items-center gap-1 text-sm">
+            <button 
+              @click="navigateToFolder(null)"
+              class="px-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
+              :class="currentFolderId === null ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
+            >
+              Library
+            </button>
+            <template v-if="breadcrumbs.length > 0">
+              <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
+                <ChevronRight class="w-4 h-4 text-neutral-600" />
+                <button
+                  @click="navigateToBreadcrumb(crumb)"
+                  class="px-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
+                  :class="index === breadcrumbs.length - 1 ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
+                >
+                  {{ crumb.name }}
+                </button>
+              </template>
+            </template>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <Button @click="createDocument" variant="primary" size="sm">
+            <Plus class="w-4 h-4" />
+            <span>New Document</span>
+          </Button>
+          <Button @click="createFolder" variant="transparent" size="sm">
+            <FolderPlus class="w-4 h-4" />
+            <span>New Folder</span>
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -156,13 +182,14 @@ import {
   FolderPlus, 
   Folder, 
   FileText, 
-  ChevronRight, 
+  ChevronRight,
+  ChevronLeft, 
   ArrowUpDown,
   Edit2,
   Trash2
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
-import type { LibraryItem } from '@abuddy/api'
+import type { LibraryItem, BreadcrumbItem } from '@abuddy/api'
 
 const props = defineProps<{
   items: LibraryItem[]
@@ -170,6 +197,8 @@ const props = defineProps<{
   selectedItems: string[]
   sortBy: 'name' | 'modified' | 'size' | 'kind'
   sortDirection: 'asc' | 'desc'
+  currentFolderId: string | null
+  breadcrumbs: BreadcrumbItem[]
 }>()
 
 const emit = defineEmits<{
@@ -181,6 +210,7 @@ const emit = defineEmits<{
   CREATE_FOLDER: [{ name: string }]
   RENAME_ITEM: [{ itemId: string; name: string }]
   DELETE_SELECTED_ITEMS: []
+  BREADCRUMB_CLICK: [{ folderId: string | null }]
 }>()
 
 const sortedItems = computed(() => {
@@ -219,6 +249,21 @@ const sortedItems = computed(() => {
 
 function navigateToFolder(folderId: string | null) {
   emit('NAVIGATE_TO_FOLDER', { folderId })
+}
+
+function navigateBack() {
+  // Navigate to parent folder
+  if (props.breadcrumbs.length > 1) {
+    const parentCrumb = props.breadcrumbs[props.breadcrumbs.length - 2]
+    emit('BREADCRUMB_CLICK', { folderId: parentCrumb.id })
+  } else {
+    // Go to root
+    emit('BREADCRUMB_CLICK', { folderId: null })
+  }
+}
+
+function navigateToBreadcrumb(crumb: BreadcrumbItem) {
+  emit('BREADCRUMB_CLICK', { folderId: crumb.id })
 }
 
 function selectItem(item: LibraryItem, event: MouseEvent) {

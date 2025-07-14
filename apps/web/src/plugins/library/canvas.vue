@@ -46,6 +46,8 @@ const currentProps = computed(() => {
         selectedItems: context.value.selectedItems,
         sortBy: context.value.sortBy,
         sortDirection: context.value.sortDirection,
+        currentFolderId: context.value.currentFolderId,
+        breadcrumbs: context.value.breadcrumbs,
       }
     case 'create':
       return {
