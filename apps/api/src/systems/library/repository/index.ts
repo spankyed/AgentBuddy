@@ -564,7 +564,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     
     items.push({
       type: 'folder',
-      id: folderId,
+      id: folder.id,
       name: folder.name as string,
       parentId: folderId,
       childCount,
@@ -686,6 +686,20 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
   return breadcrumbs
 }
 
+export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.EntityId | null> {
+  // Find parent collection
+  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  for (const col of allCollections) {
+    const children = await qx(col.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .ids()
+    if (children.includes(folderId)) {
+      return col.id as EARS.EntityId
+    }
+  }
+  return null
+}
+
 export async function renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
   const entityId = id
   const now = Date.now()
@@ -714,11 +728,24 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
     const collection = collections[0]!
     const childCount = 0 // Simplified for now
     
+    // Find parent folder
+    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    let parentId: EARS.EntityId | null = null
+    for (const col of allCollections) {
+      const children = await qx(col.id as EARS.EntityId)
+        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+        .ids()
+      if (children.includes(entityId)) {
+        parentId = col.id as EARS.EntityId
+        break
+      }
+    }
+    
     return {
       type: 'folder',
       id: entityId,
       name,
-      parentId: entityId,
+      parentId,
       childCount,
       size: `${childCount} items`,
       kind: 'Folder',

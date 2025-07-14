@@ -252,13 +252,14 @@ function navigateToFolder(folderId: string | null) {
 }
 
 function navigateBack() {
-  // Navigate to parent folder
+  // Navigate to parent folder based on breadcrumbs
   if (props.breadcrumbs.length > 1) {
+    // Go to the parent folder (second to last breadcrumb)
     const parentCrumb = props.breadcrumbs[props.breadcrumbs.length - 2]
-    emit('BREADCRUMB_CLICK', { folderId: parentCrumb.id })
+    emit('NAVIGATE_TO_FOLDER', { folderId: parentCrumb.id })
   } else {
-    // Go to root
-    emit('BREADCRUMB_CLICK', { folderId: null })
+    // We're one level deep, go to root
+    emit('NAVIGATE_TO_FOLDER', { folderId: null })
   }
 }
 
