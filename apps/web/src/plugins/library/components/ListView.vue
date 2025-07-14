@@ -1,38 +1,42 @@
 <template>
-  <div class="flex flex-col h-full">
-    <div class="flex flex-col gap-4 p-4 border-b">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Documents</h2>
-        <button
-          @click="emit('CREATE_DOCUMENT')"
-          class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-        >
-          New Document
-        </button>
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
+      <div>
+        <p class="text-sm text-neutral-400">Manage your documents and collections</p>
       </div>
-      
-      <div class="flex gap-2">
+      <Button @click="emit('CREATE_DOCUMENT')" variant="primary">
+        <Plus class="w-4 h-4" />
+        <span>New Document</span>
+      </Button>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="px-6 py-4 border-b border-neutral-800">
+      <div class="flex gap-3 mb-4">
         <input
           v-model="searchQuery"
           @input="handleSearch"
           type="text"
           placeholder="Search documents..."
-          class="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="flex-1 px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
         />
-        <button
+        <Button
           @click="emit('VIEW_COLLECTIONS')"
-          class="px-4 py-2 border rounded hover:bg-gray-50 transition-colors"
+          variant="transparent"
         >
-          Manage Collections
-        </button>
+          <Folder class="w-4 h-4" />
+          <span>Collections</span>
+        </Button>
       </div>
       
-      <div v-if="currentCollection" class="flex items-center gap-2 text-sm text-gray-600">
+      <div v-if="currentCollection" class="flex items-center gap-2 text-sm text-neutral-400 mb-3">
+        <Folder class="w-4 h-4" />
         <span>Collection:</span>
-        <span class="font-medium">{{ currentCollection.path.join(' / ') }}</span>
+        <span class="font-medium text-neutral-300">{{ currentCollection.path.join(' / ') }}</span>
         <button
           @click="emit('SELECT_COLLECTION', { collectionId: undefined })"
-          class="text-blue-500 hover:underline"
+          class="ml-2 text-blue-400 hover:text-blue-300 transition-colors"
         >
           Clear
         </button>
@@ -44,10 +48,10 @@
           :key="tag"
           @click="emit('FILTER_BY_TAG', { tag })"
           :class="[
-            'px-2 py-1 text-sm rounded transition-colors',
+            'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
             selectedTags.includes(tag)
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 hover:bg-gray-300'
+              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+              : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700'
           ]"
         >
           {{ tag }}
@@ -55,46 +59,105 @@
         <button
           v-if="selectedTags.length > 0"
           @click="emit('CLEAR_FILTERS')"
-          class="px-2 py-1 text-sm text-red-500 hover:underline"
+          class="px-2 py-1 text-xs text-red-400 hover:text-red-300 transition-colors"
         >
           Clear filters
         </button>
       </div>
     </div>
     
-    <div class="flex-1 overflow-y-auto p-4">
-      <div v-if="filteredDocuments.length === 0" class="text-center text-gray-500 mt-8">
-        <p v-if="documents.length === 0">No documents yet. Create your first document!</p>
-        <p v-else>No documents match your filters.</p>
+    <!-- Documents Table -->
+    <div class="flex-1 overflow-hidden">
+      <div v-if="filteredDocuments.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+        <table class="w-full">
+          <thead class="sticky top-0 z-10 bg-neutral-900">
+            <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
+              <th class="px-6 py-3">Name</th>
+              <th class="px-6 py-3">Content Preview</th>
+              <th class="px-6 py-3">Tags</th>
+              <th class="px-6 py-3">Updated</th>
+              <th class="px-6 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            <tr
+              v-for="doc in filteredDocuments"
+              :key="doc.id"
+              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
+              @click="emit('EDIT_DOCUMENT', { documentId: doc.id })"
+            >
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
+                    <FileText class="w-4 h-4 text-neutral-400" />
+                  </div>
+                  <span class="font-medium text-neutral-100">{{ doc.name }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm text-neutral-400 line-clamp-1" :title="doc.content">
+                  {{ doc.content || 'No content' }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex flex-wrap gap-1">
+                  <span
+                    v-for="tag in doc.tags.slice(0, 3)"
+                    :key="tag"
+                    class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800 text-neutral-400 border border-neutral-700"
+                  >
+                    {{ tag }}
+                  </span>
+                  <span
+                    v-if="doc.tags.length > 3"
+                    class="inline-flex items-center px-2 py-0.5 text-xs text-neutral-500"
+                    :title="doc.tags.slice(3).join(', ')"
+                  >
+                    +{{ doc.tags.length - 3 }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm text-neutral-300">
+                  {{ formatDate(doc.updatedAt) }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click.stop="handleDelete(doc.id)"
+                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+                    aria-label="Delete document"
+                    title="Delete document"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      
-      <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="doc in filteredDocuments"
-          :key="doc.id"
-          class="p-4 border rounded hover:shadow-md transition-shadow cursor-pointer"
-          @click="emit('EDIT_DOCUMENT', { documentId: doc.id })"
-        >
-          <h3 class="font-semibold mb-2">{{ doc.name }}</h3>
-          <p class="text-sm text-gray-600 mb-2 line-clamp-3">{{ doc.content }}</p>
-          <div class="flex flex-wrap gap-1 mb-2">
-            <span
-              v-for="tag in doc.tags"
-              :key="tag"
-              class="px-2 py-1 text-xs bg-gray-200 rounded"
-            >
-              {{ tag }}
-            </span>
+
+      <!-- Empty State -->
+      <div
+        v-else
+        class="flex flex-col items-center justify-center h-full"
+      >
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
+            <FileText class="w-8 h-8 text-neutral-500" />
           </div>
-          <div class="flex justify-between items-center text-xs text-gray-500">
-            <span>{{ formatDate(doc.updatedAt) }}</span>
-            <button
-              @click.stop="handleDelete(doc.id)"
-              class="text-red-500 hover:underline"
-            >
-              Delete
-            </button>
-          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">
+            {{ documents.length === 0 ? 'No documents yet' : 'No documents match your filters' }}
+          </h3>
+          <p class="mb-6 text-sm text-neutral-400">
+            {{ documents.length === 0 ? 'Create your first document to get started' : 'Try adjusting your search or filters' }}
+          </p>
+          <Button v-if="documents.length === 0" @click="emit('CREATE_DOCUMENT')" variant="primary">
+            <Plus class="w-4 h-4" />
+            <span>Create Your First Document</span>
+          </Button>
         </div>
       </div>
     </div>
@@ -103,6 +166,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { Plus, FileText, Folder, Trash2 } from 'lucide-vue-next'
+import Button from '@/core/design/button.vue'
 import type { DocumentDTO, CollectionDTO } from '@abuddy/api'
 
 const props = defineProps<{

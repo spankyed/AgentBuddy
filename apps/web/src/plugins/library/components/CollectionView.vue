@@ -1,77 +1,109 @@
 <template>
-  <div class="flex flex-col h-full p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Collections</h2>
-      <button
-        @click="showCreateForm = true"
-        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-      >
-        New Collection
-      </button>
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
+      <div>
+        <p class="text-sm text-neutral-400">Organize documents into collections</p>
+      </div>
+      <Button @click="showCreateForm = true" variant="primary">
+        <Plus class="w-4 h-4" />
+        <span>New Collection</span>
+      </Button>
     </div>
     
-    <div v-if="showCreateForm" class="mb-6 p-4 border rounded">
-      <h3 class="font-medium mb-3">Create Collection</h3>
-      <form @submit.prevent="handleCreateCollection" class="flex flex-col gap-3">
-        <input
-          v-model="newCollection.name"
-          type="text"
-          placeholder="Collection name"
-          required
-          class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          v-model="newCollection.description"
-          type="text"
-          placeholder="Description (optional)"
-          class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          v-model="newCollection.parentId"
-          class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">No parent (root collection)</option>
-          <option
-            v-for="collection in flatCollections"
-            :key="collection.id"
-            :value="collection.id"
+    <!-- Create Form -->
+    <div v-if="showCreateForm" class="px-6 py-4 border-b border-neutral-800">
+      <h3 class="mb-4 text-sm font-medium text-neutral-100">Create Collection</h3>
+      <form @submit.prevent="handleCreateCollection" class="space-y-4">
+        <div>
+          <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
+            Name <span class="text-red-400">*</span>
+          </label>
+          <input
+            v-model="newCollection.name"
+            type="text"
+            placeholder="Collection name"
+            required
+            class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
+            Description
+          </label>
+          <input
+            v-model="newCollection.description"
+            type="text"
+            placeholder="Description (optional)"
+            class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
+            Parent Collection
+          </label>
+          <select
+            v-model="newCollection.parentId"
+            class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
           >
-            {{ collection.path.join(' / ') }}
-          </option>
-        </select>
+            <option value="">No parent (root collection)</option>
+            <option
+              v-for="collection in flatCollections"
+              :key="collection.id"
+              :value="collection.id"
+            >
+              {{ collection.path.join(' / ') }}
+            </option>
+          </select>
+        </div>
         <div class="flex gap-2">
-          <button
+          <Button
             type="submit"
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            variant="primary"
           >
             Create
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             @click="cancelCreate"
-            class="px-4 py-2 border rounded hover:bg-gray-50 transition-colors"
+            variant="transparent"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
     
+    <!-- Collections List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="collections.length === 0" class="text-center text-gray-500 mt-8">
-        No collections yet. Create your first collection!
+      <div v-if="collections.length === 0" class="flex flex-col items-center justify-center h-full">
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
+            <Folder class="w-8 h-8 text-neutral-500" />
+          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">No collections yet</h3>
+          <p class="mb-6 text-sm text-neutral-400">
+            Create your first collection to organize your documents
+          </p>
+          <Button @click="showCreateForm = true" variant="primary">
+            <Plus class="w-4 h-4" />
+            <span>Create Your First Collection</span>
+          </Button>
+        </div>
       </div>
       
-      <div v-else class="space-y-2">
-        <CollectionTreeItem
-          v-for="collection in collections"
-          :key="collection.id"
-          :collection="collection"
-          :level="0"
-          @select="handleSelectCollection"
-          @update="handleUpdateCollection"
-          @delete="handleDeleteCollection"
-        />
+      <div v-else class="p-6">
+        <div class="space-y-2">
+          <CollectionTreeItem
+            v-for="collection in collections"
+            :key="collection.id"
+            :collection="collection"
+            :level="0"
+            @select="handleSelectCollection"
+            @update="handleUpdateCollection"
+            @delete="handleDeleteCollection"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -79,6 +111,8 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
+import { Plus, Folder } from 'lucide-vue-next'
+import Button from '@/core/design/button.vue'
 import type { CollectionDTO } from '@abuddy/api'
 import CollectionTreeItem from './CollectionTreeItem.vue'
 

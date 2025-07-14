@@ -2,28 +2,29 @@
   <div>
     <div
       :style="{ paddingLeft: `${level * 20}px` }"
-      class="flex items-center justify-between p-2 hover:bg-gray-50 rounded"
+      class="flex items-center justify-between p-3 transition-colors rounded-md hover:bg-neutral-800"
     >
       <div class="flex items-center gap-2 flex-1">
         <button
           v-if="collection.childCollections.length > 0"
           @click="expanded = !expanded"
-          class="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700"
+          class="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-colors"
         >
-          <span v-if="expanded">▼</span>
-          <span v-else>▶</span>
+          <ChevronDown v-if="expanded" class="w-4 h-4" />
+          <ChevronRight v-else class="w-4 h-4" />
         </button>
         <div v-else class="w-5"></div>
         
-        <div v-if="!editing" class="flex items-center gap-2 flex-1">
+        <div v-if="!editing" class="flex items-center gap-3 flex-1">
+          <Folder class="w-4 h-4 text-neutral-400" />
           <button
             @click="emit('select', collection.id)"
-            class="font-medium hover:text-blue-500"
+            class="font-medium text-neutral-100 hover:text-blue-400 transition-colors"
           >
             {{ collection.name }}
           </button>
-          <span class="text-sm text-gray-500">({{ collection.documentCount }} docs)</span>
-          <span v-if="collection.description" class="text-sm text-gray-600">
+          <span class="text-xs text-neutral-500">({{ collection.documentCount }} docs)</span>
+          <span v-if="collection.description" class="text-xs text-neutral-500">
             - {{ collection.description }}
           </span>
         </div>
@@ -37,42 +38,46 @@
             v-model="editForm.name"
             type="text"
             required
-            class="px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="px-3 py-1 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
           />
           <input
             v-model="editForm.description"
             type="text"
             placeholder="Description"
-            class="px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="px-3 py-1 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
           />
-          <button
+          <Button
             type="submit"
-            class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            variant="primary"
           >
             Save
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             @click="cancelEdit"
-            class="px-2 py-1 border rounded hover:bg-gray-50"
+            variant="transparent"
           >
             Cancel
-          </button>
+          </Button>
         </form>
       </div>
       
       <div v-if="!editing" class="flex items-center gap-2">
         <button
           @click="startEdit"
-          class="text-sm text-blue-500 hover:underline"
+          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+          aria-label="Edit collection"
+          title="Edit collection"
         >
-          Edit
+          <Edit2 class="w-4 h-4" />
         </button>
         <button
           @click="emit('delete', collection.id)"
-          class="text-sm text-red-500 hover:underline"
+          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+          aria-label="Delete collection"
+          title="Delete collection"
         >
-          Delete
+          <Trash2 class="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -93,6 +98,8 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { ChevronDown, ChevronRight, Folder, Edit2, Trash2 } from 'lucide-vue-next'
+import Button from '@/core/design/button.vue'
 import type { CollectionDTO } from '@abuddy/api'
 
 const props = defineProps<{
