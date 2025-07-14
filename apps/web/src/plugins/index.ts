@@ -7,6 +7,7 @@ import Logs from './logs/plugin.ts';
 import Prompts from './prompts/plugin.ts';
 import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
+import Library from './library/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
   Code, 
@@ -15,7 +16,7 @@ import {
   Workflow,
   Bird,
   ListTodo,
-  Library,
+  Library as LucideLibrary,
   NotebookText,
   Play
 } from 'lucide-vue-next';
@@ -31,7 +32,6 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 
 const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
-  mockPlugin({ id: 'knowledge', label: 'Knowledge', icon: Library, }),
   // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
   mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
@@ -41,12 +41,13 @@ const mockPlugins = [
 ];
 
 export default [
-  Threads,
   Agent,
-  Brain,
-  Flows,
+  Threads,
+  Library,
   Prompts,
   Actions,
+  Flows,
+  Brain,
   Database,
   Logs,
   ...mockPlugins,

@@ -19,6 +19,8 @@ export namespace EARS {
     TNode = 'TNode',
     Prompt = 'Prompt',
     Action = 'Action',
+    Document = 'Document',
+    Collection = 'Collection',
   }
   export type EntityId = `${Entity}-${string}`;
 

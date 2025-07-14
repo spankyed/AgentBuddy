@@ -2,6 +2,7 @@ import { loggerAction, loggerService } from './logger';
 import * as llm from './llm';
 import * as emitter from './event-emitter';
 import * as database from './database';
+import { promptService } from './prompt';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
@@ -10,6 +11,7 @@ const services = {
   llm,
   emitter,
   database,
+  prompt: promptService,
 }
 
 const actions = ([
