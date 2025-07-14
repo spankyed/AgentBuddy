@@ -2,7 +2,7 @@ import { assign, setup, sendTo } from 'xstate'
 import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import type { EARS } from '@/core/types'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, BreadcrumbItem } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import * as repository from './repository'
@@ -53,6 +53,25 @@ const IncomingLibraryEvents = [
     documentId: z.string(),
     collectionId: z.string().optional(),
   }),
+  // New file browser events
+  busEvent('GET_FOLDER_CONTENTS', {
+    folderId: z.string().nullable(),
+  }),
+  busEvent('NAVIGATE_TO_FOLDER', {
+    folderId: z.string().nullable(),
+  }),
+  busEvent('RENAME_ITEM', {
+    id: z.string(),
+    name: z.string(),
+    itemType: z.enum(['document', 'folder']),
+  }),
+  busEvent('DELETE_ITEMS', {
+    ids: z.array(z.string()),
+  }),
+  busEvent('MOVE_ITEMS', {
+    ids: z.array(z.string()),
+    targetFolderId: z.string().nullable(),
+  }),
 ] as const
 
 export type OutgoingLibraryEvents =
@@ -67,13 +86,18 @@ export type OutgoingLibraryEvents =
   | { type: 'COLLECTION_UPDATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_DELETED'; data: { collectionId: string } }
   | { type: 'LIBRARY_ERROR'; data: { error: string } }
+  // New file browser events
+  | { type: 'FOLDER_CONTENTS_LOADED'; data: FolderContents }
+  | { type: 'NAVIGATION_CHANGED'; data: { folderId: string | null; path: string[] } }
+  | { type: 'ITEM_RENAMED'; data: { item: LibraryItem } }
+  | { type: 'ITEMS_DELETED'; data: { ids: string[] } }
+  | { type: 'ITEMS_MOVED'; data: { ids: string[]; targetFolderId: string | null } }
 
 // Removed OutgoingSystemEvents helper - using direct event structure instead
 
 export const LibrarySystemEvents = fromSystem(IncomingLibraryEvents)<OutgoingLibraryEvents, typeof library>()
 type LibraryInternalEvents = { type: 'CLIENT_CONNECTED' }
 type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
-const typeOf = safeEvents<ReceivableEvents>()
 
 export const libraryMachine = setup({
   types: {
@@ -83,7 +107,7 @@ export const libraryMachine = setup({
   },
   actions: {
     loadDocuments: async ({ system, event }) => {
-      const ev = typeOf('LIST_DOCUMENTS', event)
+      const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
       const documents = await repository.getDocuments(ev.collectionId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -95,7 +119,7 @@ export const libraryMachine = setup({
       })
     },
     createDocument: async ({ system, event }) => {
-      const ev = typeOf('CREATE_DOCUMENT', event)
+      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: string; tags: string[]; collectionId?: string }
       const document = await repository.createDocument(
         ev.name,
         ev.content,
@@ -112,7 +136,7 @@ export const libraryMachine = setup({
       })
     },
     updateDocument: async ({ system, event }) => {
-      const ev = typeOf('UPDATE_DOCUMENT', event)
+      const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: string; tags: string[]; collectionId?: string }
       const document = await repository.updateDocument(
         ev.id,
         ev.name,
@@ -130,7 +154,7 @@ export const libraryMachine = setup({
       })
     },
     deleteDocument: async ({ system, event }) => {
-      const ev = typeOf('DELETE_DOCUMENT', event)
+      const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       await repository.deleteDocument(ev.id)
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -142,8 +166,8 @@ export const libraryMachine = setup({
       })
     },
     getDocument: async ({ system, event }) => {
-      const ev = typeOf('GET_DOCUMENT', event)
-      const document = await repository.getDocument(ev.id)
+      const ev = event as { type: 'GET_DOCUMENT'; id: string }
+      const document = await repository.getDocument(`Document-${ev.id}` as EARS.EntityId)
       if (document) {
         system.get(bus).send({
           type: 'OUTGOING' as const,
@@ -165,7 +189,7 @@ export const libraryMachine = setup({
       }
     },
     loadCollections: async ({ system, event }) => {
-      const ev = typeOf('LIST_COLLECTIONS', event)
+      const ev = event as { type: 'LIST_COLLECTIONS' }
       const collections = await repository.getCollections()
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -177,7 +201,7 @@ export const libraryMachine = setup({
       })
     },
     createCollection: async ({ system, event }) => {
-      const ev = typeOf('CREATE_COLLECTION', event)
+      const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
       const collection = await repository.createCollection(
         ev.name,
         ev.description,
@@ -193,7 +217,7 @@ export const libraryMachine = setup({
       })
     },
     updateCollection: async ({ system, event }) => {
-      const ev = typeOf('UPDATE_COLLECTION', event)
+      const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
       const collection = await repository.updateCollection(
         ev.id,
         ev.name,
@@ -209,7 +233,7 @@ export const libraryMachine = setup({
       })
     },
     deleteCollection: async ({ system, event }) => {
-      const ev = typeOf('DELETE_COLLECTION', event)
+      const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       await repository.deleteCollection(ev.id)
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -221,7 +245,7 @@ export const libraryMachine = setup({
       })
     },
     moveDocument: async ({ system, event }) => {
-      const ev = typeOf('MOVE_DOCUMENT', event)
+      const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
       const document = await repository.moveDocument(
         ev.documentId,
         ev.collectionId
@@ -249,6 +273,76 @@ export const libraryMachine = setup({
         },
       })
     },
+    // New file browser actions
+    getFolderContents: async ({ system, event }) => {
+      const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
+      const folderContents = await repository.getFolderContents(ev.folderId)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'FOLDER_CONTENTS_LOADED' as const,
+          pluginId: 'library',
+          data: folderContents,
+        },
+      })
+    },
+    navigateToFolder: async ({ system, event }) => {
+      const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
+      const folderContents = await repository.getFolderContents(ev.folderId)
+      const breadcrumbs = await repository.getFolderPath(ev.folderId)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'FOLDER_CONTENTS_LOADED' as const,
+          pluginId: 'library',
+          data: folderContents,
+        },
+      })
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'NAVIGATION_CHANGED' as const,
+          pluginId: 'library',
+          data: { folderId: ev.folderId, path: folderContents.currentPath },
+        },
+      })
+    },
+    renameItem: async ({ system, event }) => {
+      const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
+      const item = await repository.renameItem(ev.id, ev.name, ev.itemType)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'ITEM_RENAMED' as const,
+          pluginId: 'library',
+          data: { item },
+        },
+      })
+    },
+    deleteItems: async ({ system, event }) => {
+      const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
+      await repository.deleteItems(ev.ids)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'ITEMS_DELETED' as const,
+          pluginId: 'library',
+          data: { ids: ev.ids },
+        },
+      })
+    },
+    moveItems: async ({ system, event }) => {
+      const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
+      await repository.moveItems(ev.ids, ev.targetFolderId)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'ITEMS_MOVED' as const,
+          pluginId: 'library',
+          data: { ids: ev.ids, targetFolderId: ev.targetFolderId },
+        },
+      })
+    },
   },
 }).createMachine({
   id: library,
@@ -256,6 +350,9 @@ export const libraryMachine = setup({
   context: ({ input }) => ({
     documents: [],
     collections: [],
+    currentItems: [],
+    currentFolderId: null,
+    currentPath: [],
   }),
   on: {
     CLIENT_CONNECTED: {
@@ -294,6 +391,22 @@ export const libraryMachine = setup({
         },
         MOVE_DOCUMENT: {
           actions: ['moveDocument'],
+        },
+        // New file browser events
+        GET_FOLDER_CONTENTS: {
+          actions: ['getFolderContents'],
+        },
+        NAVIGATE_TO_FOLDER: {
+          actions: ['navigateToFolder'],
+        },
+        RENAME_ITEM: {
+          actions: ['renameItem'],
+        },
+        DELETE_ITEMS: {
+          actions: ['deleteItems'],
+        },
+        MOVE_ITEMS: {
+          actions: ['moveItems'],
         },
       },
     },

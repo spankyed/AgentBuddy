@@ -3,7 +3,7 @@ import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
-import type { DocumentDTO, CollectionDTO } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
@@ -519,4 +519,244 @@ async function getCollectionPath(collectionId: EARS.EntityId): Promise<string[]>
   }
 
   return path
+}
+
+// New file browser functions
+
+export async function getFolderContents(folderId: string | null): Promise<FolderContents> {
+  const items: LibraryItem[] = []
+  
+  // Get folders (collections) in this directory
+  let folders: any[] = []
+  
+  if (folderId === null) {
+    // Root directory - get collections without parents
+    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    for (const col of allCollections) {
+      const allParents = await qx(EARS.Entity.Collection).pickAll()
+      let hasParent = false
+      for (const parent of allParents) {
+        const children = await qx(parent.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+          .ids()
+        if (children.includes(col.id as EARS.EntityId)) {
+          hasParent = true
+          break
+        }
+      }
+      if (!hasParent) {
+        folders.push(col)
+      }
+    }
+  } else {
+    // Get child collections of this folder
+    const collectionId = `Collection-${folderId}` as EARS.EntityId
+    folders = await qx(collectionId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .pick(['name', 'description', 'createdAt', 'updatedAt'])
+  }
+  
+  // Convert collections to folder items
+  for (const folder of folders) {
+    const folderId = folder.id.split('-')[1]
+    const childCollections = await qx(folder.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .pickAll()
+    const documents = await qx(folder.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .pickAll()
+    const childCount = childCollections.length + documents.length
+    
+    items.push({
+      type: 'folder',
+      id: folderId,
+      name: folder.name as string,
+      parentId: folderId,
+      childCount,
+      size: childCount === 1 ? '1 item' : `${childCount} items`,
+      kind: 'Folder',
+      createdAt: new Date(folder.createdAt as number).toISOString(),
+      updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
+    })
+  }
+  
+  // Get documents in this directory
+  let documents: any[] = []
+  
+  if (folderId === null) {
+    // Root directory - get documents not in any collection
+    const allDocuments = await qx(EARS.Entity.Document).pickAll()
+    for (const doc of allDocuments) {
+      const allCollections = await qx(EARS.Entity.Collection).pickAll()
+      let inCollection = false
+      for (const col of allCollections) {
+        const docs = await qx(col.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+          .ids()
+        if (docs.includes(doc.id as EARS.EntityId)) {
+          inCollection = true
+          break
+        }
+      }
+      if (!inCollection) {
+        documents.push(doc)
+      }
+    }
+  } else {
+    // Get documents in this collection
+    const collectionId = `Collection-${folderId}` as EARS.EntityId
+    documents = await qx(collectionId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .pick(['name', 'content', 'createdAt', 'updatedAt'])
+  }
+  
+  // Convert documents to document items
+  for (const doc of documents) {
+    const documentId = doc.id.split('-')[1]
+    const content = doc.content as string || ''
+    const contentLength = content.length
+    const size = formatFileSize(contentLength)
+    
+    // Get tags
+    const tags = await qx(doc.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
+      .pick(['name'])
+    
+    items.push({
+      type: 'document',
+      id: documentId,
+      name: doc.name as string,
+      parentId: folderId,
+      content,
+      tags: tags.map(tag => tag.name as string),
+      size,
+      kind: 'Document',
+      createdAt: new Date(doc.createdAt as number).toISOString(),
+      updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
+    })
+  }
+  
+  // Get current path
+  const currentPath = folderId ? await getCollectionPath(`Collection-${folderId}` as EARS.EntityId) : []
+  
+  return {
+    items: items.sort((a, b) => {
+      // Folders first, then documents, then alphabetical
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1
+      }
+      return a.name.localeCompare(b.name)
+    }),
+    currentPath,
+    currentFolderId: folderId,
+  }
+}
+
+export async function getFolderPath(folderId: string | null): Promise<BreadcrumbItem[]> {
+  if (folderId === null) {
+    return [{ id: null, name: 'Library', path: [] }]
+  }
+  
+  const path = await getCollectionPath(`Collection-${folderId}` as EARS.EntityId)
+  const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'Library', path: [] }]
+  
+  // Build breadcrumbs from path
+  let currentPath: string[] = []
+  for (let i = 0; i < path.length; i++) {
+    currentPath.push(path[i])
+    // Find collection ID for this path segment
+    // This is a simplified version - in a real app you'd want to optimize this
+    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    for (const col of allCollections) {
+      const colPath = await getCollectionPath(col.id as EARS.EntityId)
+      if (colPath.join('/') === currentPath.join('/')) {
+        breadcrumbs.push({
+          id: col.id.split('-')[1],
+          name: path[i],
+          path: [...currentPath],
+        })
+        break
+      }
+    }
+  }
+  
+  return breadcrumbs
+}
+
+export async function renameItem(id: string, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
+  const entityId = `${type === 'document' ? 'Document' : 'Collection'}-${id}` as EARS.EntityId
+  const now = Date.now()
+  
+  tx(entityId).batchPut({
+    name,
+    updatedAt: now,
+  })
+  
+  if (type === 'document') {
+    const doc = await getDocument(entityId)
+    return {
+      type: 'document',
+      id,
+      name,
+      parentId: doc!.collectionId || null,
+      content: doc!.content,
+      tags: doc!.tags,
+      size: formatFileSize(doc!.content.length),
+      kind: 'Document',
+      createdAt: doc!.createdAt,
+      updatedAt: new Date(now).toISOString(),
+    }
+  } else {
+    const collections = await qx(entityId).pickAll()
+    const collection = collections[0]!
+    const childCount = 0 // Simplified for now
+    
+    return {
+      type: 'folder',
+      id,
+      name,
+      parentId: id,
+      childCount,
+      size: `${childCount} items`,
+      kind: 'Folder',
+      createdAt: new Date(collection.createdAt as number).toISOString(),
+      updatedAt: new Date(now).toISOString(),
+    }
+  }
+}
+
+export async function deleteItems(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    // Try as document first
+    try {
+      await deleteDocument(id)
+    } catch {
+      // If that fails, try as collection
+      try {
+        await deleteCollection(id)
+      } catch {
+        // If both fail, item doesn't exist - continue
+      }
+    }
+  }
+}
+
+export async function moveItems(ids: string[], targetFolderId: string | null): Promise<void> {
+  for (const id of ids) {
+    // For now, only support moving documents
+    // Collections would be more complex
+    try {
+      await moveDocument(id, targetFolderId || undefined)
+    } catch {
+      // Item doesn't exist or can't be moved - continue
+    }
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
 }
