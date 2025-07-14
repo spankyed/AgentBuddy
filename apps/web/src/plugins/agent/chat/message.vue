@@ -9,8 +9,8 @@
       :class="[
         'relative rounded-xl px-4 py-3 transition-all duration-200 group',
         isUser 
-          ? 'bg-slate-700/90 text-slate-100 border border-slate-600/20 shadow-sm' 
-          : 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30 shadow-sm',
+          ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30' 
+          : 'bg-indigo-950/30 text-indigo-50 border border-indigo-900/20',
         'hover:shadow-md'
       ]"
     >
@@ -20,8 +20,8 @@
       >
         <div class="flex items-center overflow-hidden border rounded-lg shadow-lg bg-neutral-800 border-neutral-700">
           <!-- Timestamp -->
-          <span class="text-xs text-neutral-400 px-3 py-1.5 border-r border-neutral-700">
-            {{ formatTime(message.createdAt || new Date()) }}
+          <span v-if="message.createdAt" class="text-xs text-neutral-400 px-3 py-1.5 border-r border-neutral-700">
+            {{ formatTime(message.createdAt) }}
           </span>
           
           <!-- Action buttons -->
@@ -95,9 +95,20 @@ const emit = defineEmits<ChatMessageEmits>()
 
 const isUser = computed(() => props.message.sender === 'user')
 
-const formatTime = (date: Date | string) => {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const formatTime = (date: Date | string | null | undefined) => {
+  if (!date) return ''
+  
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date
+    // Check if d is a valid Date object
+    if (!(d instanceof Date) || isNaN(d.getTime())) {
+      return ''
+    }
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch (error) {
+    console.error('Error formatting time:', error, date)
+    return ''
+  }
 }
 </script>
 
