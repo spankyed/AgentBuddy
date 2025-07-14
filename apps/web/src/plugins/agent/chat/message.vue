@@ -16,7 +16,7 @@
     >
       <!-- Floating hover UI -->
       <div 
-        class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto"
+        class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto"
       >
         <div class="flex items-center bg-neutral-800 rounded-lg border border-neutral-700 shadow-lg overflow-hidden">
           <!-- Timestamp -->
