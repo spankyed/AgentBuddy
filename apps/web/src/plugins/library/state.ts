@@ -98,13 +98,18 @@ export const libraryMachine = setup({
     },
     createDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT') {
+        // Use event.collectionId if provided (and not empty string), otherwise use context.currentFolderId
+        const targetCollectionId = (event.collectionId && event.collectionId.trim() !== '') 
+          ? event.collectionId 
+          : (context.currentFolderId || undefined)
+        
         trpc.bus.send.mutate({
           systemId: id,
           type: 'CREATE_DOCUMENT',
           name: event.name,
           content: event.content,
           tags: event.tags,
-          collectionId: context.currentFolderId || undefined,
+          collectionId: targetCollectionId,
         })
       }
     },
@@ -303,10 +308,14 @@ export const libraryMachine = setup({
       actions: 'updateNavigation',
     },
     NAVIGATE_TO_FOLDER: {
-      actions: 'navigateToFolder',
+      actions: ['navigateToFolder', assign({
+        currentFolderId: ({ event }) => event.folderId
+      })],
     },
     BREADCRUMB_CLICK: {
-      actions: 'navigateToFolder',
+      actions: ['navigateToFolder', assign({
+        currentFolderId: ({ event }) => event.folderId
+      })],
     },
     DOUBLE_CLICK_ITEM: {
       actions: 'handleDoubleClick',
@@ -328,6 +337,20 @@ export const libraryMachine = setup({
     },
     CREATE_FOLDER: {
       actions: 'createFolder',
+    },
+    
+    // Creation success events - refresh current folder
+    DOCUMENT_CREATED: {
+      actions: 'requestFolderContents',
+    },
+    COLLECTION_CREATED: {
+      actions: 'requestFolderContents',
+    },
+    ITEM_RENAMED: {
+      actions: 'requestFolderContents',
+    },
+    ITEMS_DELETED: {
+      actions: 'requestFolderContents',
     },
     
     // Legacy events for backward compatibility

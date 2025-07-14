@@ -124,7 +124,7 @@ export const libraryMachine = setup({
         ev.name,
         ev.content,
         ev.tags,
-        ev.collectionId
+        ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -138,11 +138,11 @@ export const libraryMachine = setup({
     updateDocument: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: string; tags: string[]; collectionId?: string }
       const document = await repository.updateDocument(
-        ev.id,
+        ev.id as EARS.EntityId,
         ev.name,
         ev.content,
         ev.tags,
-        ev.collectionId
+        ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -155,7 +155,7 @@ export const libraryMachine = setup({
     },
     deleteDocument: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
-      await repository.deleteDocument(ev.id)
+      await repository.deleteDocument(ev.id as EARS.EntityId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -167,7 +167,7 @@ export const libraryMachine = setup({
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
-      const document = await repository.getDocument(`Document-${ev.id}` as EARS.EntityId)
+      const document = await repository.getDocument(ev.id as EARS.EntityId)
       if (document) {
         system.get(bus).send({
           type: 'OUTGOING' as const,
@@ -205,7 +205,7 @@ export const libraryMachine = setup({
       const collection = await repository.createCollection(
         ev.name,
         ev.description,
-        ev.parentId
+        ev.parentId ? ev.parentId as EARS.EntityId : undefined
       )
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -219,7 +219,7 @@ export const libraryMachine = setup({
     updateCollection: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
       const collection = await repository.updateCollection(
-        ev.id,
+        ev.id as EARS.EntityId,
         ev.name,
         ev.description
       )
@@ -234,7 +234,7 @@ export const libraryMachine = setup({
     },
     deleteCollection: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
-      await repository.deleteCollection(ev.id)
+      await repository.deleteCollection(ev.id as EARS.EntityId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -247,8 +247,8 @@ export const libraryMachine = setup({
     moveDocument: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
       const document = await repository.moveDocument(
-        ev.documentId,
-        ev.collectionId
+        ev.documentId as EARS.EntityId,
+        ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -276,7 +276,7 @@ export const libraryMachine = setup({
     // New file browser actions
     getFolderContents: async ({ system, event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
-      const folderContents = await repository.getFolderContents(ev.folderId)
+      const folderContents = await repository.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -288,8 +288,8 @@ export const libraryMachine = setup({
     },
     navigateToFolder: async ({ system, event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
-      const folderContents = await repository.getFolderContents(ev.folderId)
-      const breadcrumbs = await repository.getFolderPath(ev.folderId)
+      const folderContents = await repository.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
+      const breadcrumbs = await repository.getFolderPath(ev.folderId ? ev.folderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -309,7 +309,7 @@ export const libraryMachine = setup({
     },
     renameItem: async ({ system, event }) => {
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
-      const item = await repository.renameItem(ev.id, ev.name, ev.itemType)
+      const item = await repository.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -321,7 +321,7 @@ export const libraryMachine = setup({
     },
     deleteItems: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
-      await repository.deleteItems(ev.ids)
+      await repository.deleteItems(ev.ids.map(id => id as EARS.EntityId))
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -333,7 +333,7 @@ export const libraryMachine = setup({
     },
     moveItems: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
-      await repository.moveItems(ev.ids, ev.targetFolderId)
+      await repository.moveItems(ev.ids.map(id => id as EARS.EntityId), ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {

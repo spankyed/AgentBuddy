@@ -13,21 +13,21 @@ export interface Collection extends BaseEntity {
 }
 
 export interface DocumentDTO {
-  id: string
+  id: EARS.EntityId
   name: string
   content: string
   tags: string[]
-  collectionId?: string
+  collectionId?: EARS.EntityId
   collectionPath?: string[]
   createdAt: string
   updatedAt: string
 }
 
 export interface CollectionDTO {
-  id: string
+  id: EARS.EntityId
   name: string
   description?: string
-  parentId?: string
+  parentId?: EARS.EntityId
   path: string[]
   documentCount: number
   childCollections: CollectionDTO[]
@@ -38,9 +38,9 @@ export interface CollectionDTO {
 // New unified file browser types
 export interface FolderItem {
   type: 'folder'
-  id: string
+  id: EARS.EntityId
   name: string
-  parentId: string | null
+  parentId: EARS.EntityId | null
   childCount: number
   size: string // Display as "-- items" or "X items"
   kind: 'Folder'
@@ -50,9 +50,9 @@ export interface FolderItem {
 
 export interface DocumentItem {
   type: 'document'
-  id: string
+  id: EARS.EntityId
   name: string
-  parentId: string | null
+  parentId: EARS.EntityId | null
   content: string
   tags: string[]
   size: string // Content length formatted (e.g., "1.2 KB")
@@ -66,12 +66,12 @@ export type LibraryItem = FolderItem | DocumentItem
 export interface FolderContents {
   items: LibraryItem[]
   currentPath: string[]
-  currentFolderId: string | null
+  currentFolderId: EARS.EntityId | null
   breadcrumbs: BreadcrumbItem[]
 }
 
 export interface BreadcrumbItem {
-  id: string | null
+  id: EARS.EntityId | null
   name: string
   path: string[]
 }
@@ -79,10 +79,10 @@ export interface BreadcrumbItem {
 export interface LibrarySystemContext {
   documents: DocumentDTO[]
   collections: CollectionDTO[]
-  selectedDocumentId?: string
-  selectedCollectionId?: string
+  selectedDocumentId?: EARS.EntityId
+  selectedCollectionId?: EARS.EntityId
   // New file browser context
   currentItems: LibraryItem[]
-  currentFolderId: string | null
+  currentFolderId: EARS.EntityId | null
   currentPath: string[]
 }

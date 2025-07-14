@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import type { CollectionDTO } from '@abuddy/api'
@@ -130,6 +130,11 @@ const formData = reactive({
   content: '',
   tags: [] as string[],
   collectionId: props.selectedCollectionId,
+})
+
+// Watch for changes to selectedCollectionId prop
+watch(() => props.selectedCollectionId, (newValue) => {
+  formData.collectionId = newValue
 })
 
 const newTag = ref('')

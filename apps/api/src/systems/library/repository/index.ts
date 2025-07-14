@@ -48,11 +48,11 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         : []
 
       return {
-        id: doc.id.split('-')[1],
+        id: doc.id,
         name: doc.name as string,
         content: doc.content as string,
         tags: tags.map((t) => t.name as string),
-        collectionId: collection?.id.split('-')[1],
+        collectionId: collection?.id,
         collectionPath,
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
@@ -63,8 +63,8 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
   return documentsWithDetails
 }
 
-export async function getDocument(id: string | EARS.EntityId): Promise<DocumentDTO | null> {
-  const documentId = (id.includes('-') ? id : `Document-${id}`) as EARS.EntityId
+export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null> {
+  const documentId = id
   const documents = await qx(documentId).pickAll()
   const document = documents[0]
 
@@ -92,11 +92,11 @@ export async function getDocument(id: string | EARS.EntityId): Promise<DocumentD
     : []
 
   return {
-    id: documentId.split('-')[1],
+    id: documentId,
     name: document.name as string,
     content: document.content as string,
     tags: tags.map((t) => t.name as string),
-    collectionId: collection?.id.split('-')[1],
+    collectionId: collection?.id,
     collectionPath,
     createdAt: new Date(document.createdAt as number).toISOString(),
     updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
@@ -107,7 +107,7 @@ export async function createDocument(
   name: string,
   content: string,
   tags: string[],
-  collectionId?: string
+  collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
   const documentId = `Document-${uuid()}` as EARS.EntityId
   const now = Date.now()
@@ -126,8 +126,7 @@ export async function createDocument(
   }
 
   if (collectionId) {
-    const collId = `Collection-${collectionId}` as EARS.EntityId
-    tx(collId).link(EARS.RelKind.CONTAINS, documentId)
+    tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
   }
 
   const document = await getDocument(documentId)
@@ -135,13 +134,13 @@ export async function createDocument(
 }
 
 export async function updateDocument(
-  id: string,
+  id: EARS.EntityId,
   name: string,
   content: string,
   tags: string[],
-  collectionId?: string
+  collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
-  const documentId = `Document-${id}` as EARS.EntityId
+  const documentId = id
   const now = Date.now()
 
   tx(documentId)
@@ -184,7 +183,7 @@ export async function updateDocument(
   }
   const currentCollection = collections[0]
 
-  if (currentCollection && (!collectionId || currentCollection.id !== `Collection-${collectionId}`)) {
+  if (currentCollection && (!collectionId || currentCollection.id !== collectionId)) {
     edgeStore.unlink({
       sourceEntity: currentCollection.id as EARS.EntityId,
       relationType: EARS.RelKind.CONTAINS,
@@ -193,16 +192,15 @@ export async function updateDocument(
   }
 
   if (collectionId) {
-    const collId = `Collection-${collectionId}` as EARS.EntityId
-    tx(collId).safeLink(EARS.RelKind.CONTAINS, documentId)
+    tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
   }
 
   const document = await getDocument(documentId)
   return document!
 }
 
-export async function deleteDocument(id: string): Promise<void> {
-  const documentId = `Document-${id}` as EARS.EntityId
+export async function deleteDocument(id: EARS.EntityId): Promise<void> {
+  const documentId = id
 
   const tags = await qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
@@ -279,7 +277,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
         const path = await getCollectionPath(col.id as EARS.EntityId)
 
         return {
-          id: col.id.split('-')[1],
+          id: col.id,
           name: col.name as string,
           description: col.description as string | undefined,
           path,
@@ -298,7 +296,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
 export async function createCollection(
   name: string,
   description?: string,
-  parentId?: string
+  parentId?: EARS.EntityId
 ): Promise<CollectionDTO> {
   const collectionId = `Collection-${uuid()}` as EARS.EntityId
   const now = Date.now()
@@ -315,14 +313,13 @@ export async function createCollection(
 
   tx(collectionId).batchPut(attrs)
   if (parentId) {
-    const parentCollectionId = `Collection-${parentId}` as EARS.EntityId
-    tx(parentCollectionId).link(EARS.RelKind.PARENT_OF, collectionId)
+    tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
   }
 
   const path = await getCollectionPath(collectionId)
 
   return {
-    id: collectionId.split('-')[1],
+    id: collectionId,
     name,
     description,
     parentId,
@@ -335,11 +332,11 @@ export async function createCollection(
 }
 
 export async function updateCollection(
-  id: string,
+  id: EARS.EntityId,
   name: string,
   description?: string
 ): Promise<CollectionDTO> {
-  const collectionId = `Collection-${id}` as EARS.EntityId
+  const collectionId = id
   const now = Date.now()
 
   const attrs: Record<string, any> = {
@@ -376,7 +373,7 @@ export async function updateCollection(
           .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
         return {
-          id: child.id.split('-')[1],
+          id: child.id,
           name: child.name as string,
           description: child.description as string | undefined,
           path: childPath,
@@ -390,7 +387,7 @@ export async function updateCollection(
   }
 
   return {
-    id: collectionId.split('-')[1],
+    id: collectionId,
     name: collection!.name as string,
     description: collection!.description as string | undefined,
     path,
@@ -401,8 +398,8 @@ export async function updateCollection(
   }
 }
 
-export async function deleteCollection(id: string): Promise<void> {
-  const collectionId = `Collection-${id}` as EARS.EntityId
+export async function deleteCollection(id: EARS.EntityId): Promise<void> {
+  const collectionId = id
 
   const documents = await qx(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
@@ -456,10 +453,10 @@ export async function deleteCollection(id: string): Promise<void> {
 }
 
 export async function moveDocument(
-  documentId: string,
-  newCollectionId?: string
+  documentId: EARS.EntityId,
+  newCollectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
-  const docId = `Document-${documentId}` as EARS.EntityId
+  const docId = documentId
 
   // Find collections that contain this document
   const allCollections = await qx(EARS.Entity.Collection).pickAll()
@@ -483,8 +480,7 @@ export async function moveDocument(
   }
 
   if (newCollectionId) {
-    const collId = `Collection-${newCollectionId}` as EARS.EntityId
-    tx(collId).link(EARS.RelKind.CONTAINS, docId)
+    tx(newCollectionId).link(EARS.RelKind.CONTAINS, docId)
   }
 
   const document = await getDocument(docId)
@@ -523,7 +519,7 @@ async function getCollectionPath(collectionId: EARS.EntityId): Promise<string[]>
 
 // New file browser functions
 
-export async function getFolderContents(folderId: string | null): Promise<FolderContents> {
+export async function getFolderContents(folderId: EARS.EntityId | null): Promise<FolderContents> {
   const items: LibraryItem[] = []
   
   // Get folders (collections) in this directory
@@ -550,15 +546,14 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
     }
   } else {
     // Get child collections of this folder
-    const collectionId = `Collection-${folderId}` as EARS.EntityId
-    folders = await qx(collectionId)
+    folders = await qx(folderId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
   }
   
   // Convert collections to folder items
   for (const folder of folders) {
-    const folderId = folder.id.split('-')[1]
+    const folderId = folder.id
     const childCollections = await qx(folder.id as EARS.EntityId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pickAll()
@@ -604,15 +599,14 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
     }
   } else {
     // Get documents in this collection
-    const collectionId = `Collection-${folderId}` as EARS.EntityId
-    documents = await qx(collectionId)
+    documents = await qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pick(['name', 'content', 'createdAt', 'updatedAt'])
   }
   
   // Convert documents to document items
   for (const doc of documents) {
-    const documentId = doc.id.split('-')[1]
+    const documentId = doc.id
     const content = doc.content as string || ''
     const contentLength = content.length
     const size = formatFileSize(contentLength)
@@ -637,7 +631,7 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
   }
   
   // Get current path and breadcrumbs
-  const currentPath = folderId ? await getCollectionPath(`Collection-${folderId}` as EARS.EntityId) : []
+  const currentPath = folderId ? await getCollectionPath(folderId) : []
   const breadcrumbs = await getFolderPath(folderId)
   
   return {
@@ -654,13 +648,13 @@ export async function getFolderContents(folderId: string | null): Promise<Folder
   }
 }
 
-export async function getFolderPath(folderId: string | null): Promise<BreadcrumbItem[]> {
+export async function getFolderPath(folderId: EARS.EntityId | null): Promise<BreadcrumbItem[]> {
   if (folderId === null) {
     return []
   }
   
   const breadcrumbs: BreadcrumbItem[] = []
-  let currentId: EARS.EntityId | null = `Collection-${folderId}` as EARS.EntityId
+  let currentId: EARS.EntityId | null = folderId
   
   // Walk up the parent chain to build breadcrumbs
   while (currentId) {
@@ -668,7 +662,7 @@ export async function getFolderPath(folderId: string | null): Promise<Breadcrumb
     const collection = collections[0]
     if (collection) {
       breadcrumbs.unshift({
-        id: currentId.split('-')[1],
+        id: currentId,
         name: collection.name as string,
         path: [], // We don't need path for breadcrumbs
       })
@@ -692,8 +686,8 @@ export async function getFolderPath(folderId: string | null): Promise<Breadcrumb
   return breadcrumbs
 }
 
-export async function renameItem(id: string, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
-  const entityId = `${type === 'document' ? 'Document' : 'Collection'}-${id}` as EARS.EntityId
+export async function renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
+  const entityId = id
   const now = Date.now()
   
   tx(entityId).batchPut({
@@ -705,7 +699,7 @@ export async function renameItem(id: string, name: string, type: 'document' | 'f
     const doc = await getDocument(entityId)
     return {
       type: 'document',
-      id,
+      id: entityId,
       name,
       parentId: doc!.collectionId || null,
       content: doc!.content,
@@ -722,9 +716,9 @@ export async function renameItem(id: string, name: string, type: 'document' | 'f
     
     return {
       type: 'folder',
-      id,
+      id: entityId,
       name,
-      parentId: id,
+      parentId: entityId,
       childCount,
       size: `${childCount} items`,
       kind: 'Folder',
@@ -734,30 +728,22 @@ export async function renameItem(id: string, name: string, type: 'document' | 'f
   }
 }
 
-export async function deleteItems(ids: string[]): Promise<void> {
+export async function deleteItems(ids: EARS.EntityId[]): Promise<void> {
   for (const id of ids) {
-    // Try as document first
-    try {
-      await deleteDocument(id)
-    } catch {
-      // If that fails, try as collection
-      try {
-        await deleteCollection(id)
-      } catch {
-        // If both fail, item doesn't exist - continue
-      }
+    // Check entity type from ID prefix
+    if (id.startsWith('Document-')) {
+      await deleteDocument(id as EARS.EntityId)
+    } else if (id.startsWith('Collection-')) {
+      await deleteCollection(id)
     }
   }
 }
 
-export async function moveItems(ids: string[], targetFolderId: string | null): Promise<void> {
+export async function moveItems(ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null): Promise<void> {
   for (const id of ids) {
     // For now, only support moving documents
-    // Collections would be more complex
-    try {
+    if (id.startsWith('Document-')) {
       await moveDocument(id, targetFolderId || undefined)
-    } catch {
-      // Item doesn't exist or can't be moved - continue
     }
   }
 }
