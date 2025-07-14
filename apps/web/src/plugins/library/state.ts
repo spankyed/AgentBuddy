@@ -217,7 +217,7 @@ export const libraryMachine = setup({
   },
 }).createMachine({
   id: 'library',
-  initial: 'idle',
+  initial: 'list',
   context: {
     documents: [],
     collections: [],
