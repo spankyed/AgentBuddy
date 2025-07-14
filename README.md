@@ -1,38 +1,61 @@
+# Agent-Buddy
 
-<h1 align="center">Agent-Buddy</h1>
-<p align="center"><strong>A vibe-working platform</strong></p>
+**TL;DR**: A real-time, event-driven AI agent platform built on XState actors with pluggable UI components.
 
-<p align="center">
-Current AI agent platforms provide inconsistent experiences and struggle to scale effectively where it matters, causing users to become frustrated. Despite being young, many platforms feel outdated due to rigid prompting schemes and limited extensibility options. Agent-Buddy was built with a different approach in mind. An approach guided by a clear-eyed vision to create a tool that aligns deeply with user needs.
-</p>
+- **Full-duplex WebSocket communication** between typed backend systems and frontend plugins
+- **Composable actor architecture** enabling parallel agent execution and system orchestration
+- **Visual flow editor** for modifying agent behavior through data instead of code
 
-<p align="center"><strong>Please join us in bringing better vibes with the Agent‑Buddy platform</strong></p>
+![CI Status](https://img.shields.io/github/actions/workflow/status/agentbuddy/agentbuddy/ci.yml?branch=main)
+![License](https://img.shields.io/badge/license-Private-red)
+![TypeScript](https://img.shields.io/badge/TypeScript-≥5.7.2-blue)
+![Release](https://img.shields.io/github/v/release/agentbuddy/agentbuddy)
 
-# Systems
-```
-╔═════════════════════════════════════════════════════════════════════════════════════╗ 
-║                                        Agent                                        ║░
-╠─────────────────────────╦═══╦─────────────────────────╦═══╦─────────────────────────╣░
-│                         │░░░│                         │░░░│                         │░
-│         System A        │░  │         System B        │░  │                         │░
-│                         │░  │                         │░  │        System C         │░
-│┌─────────┐   ┌─────────┐│░┌▶│┌─────────┐   ┌─────────┐│░─▶│                         │░
-││ Sys. a1 │──▶│ Sys. a2 ││░│ ││ Sys. b1 │──▶│ Sys. b2 ││░  │                         │░
-│└─────────┘   └─────────┘│░┘ │└─────────┘   └─────────┘│░  │                         │░
-│       ┌─────────┐ │     │░  │                         │░  └─────────────────────────┘░
-│       │ Sys. a3 │◀┘     │░  └─────────────────────────┘░   ░░░░░░░░░░░░░░░░░░░░░░░░░░░
-│       └─────────┘       │░   ░░░░░░░░░░░░░░░░░░░░░░░░░░░                              
-│                         │░                                                            
-└─────────────────────────┘░                                                            
- ░░░░░░░░░░░░░░░░░░░░░░░░░░░                                                            
-```
-Systems provide the foundation for a unified agent. Want to add a new feature or integration? Add a new system.
+## Table of contents
 
-Systems should primarily be used to provide integrations for external services or to make available custom functionality that isn't currently supported by the core framework like video generation.
+- [Agent-Buddy](#agent-buddy)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Features](#features)
+  - [Architecture](#architecture)
+    - [Backend systems](#backend-systems)
+    - [Frontend plugins](#frontend-plugins)
+    - [Communication flow](#communication-flow)
+  - [Quick demo](#quick-demo)
+    - [Minimal plugin example](#minimal-plugin-example)
+  - [Setup](#setup)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Development](#development)
+  - [Contributing](#contributing)
+    - [Development workflow](#development-workflow)
+    - [Testing](#testing)
+    - [Code style](#code-style)
+  - [Project meta](#project-meta)
+    - [Comparison with alternatives](#comparison-with-alternatives)
+    - [License](#license)
 
-Systems can have child systems. Allowing developers to orchestrate and encapsulate complex functionality behind a unified interface. Functionality which can be used and interacted with by other backend systems or by plugins on the frontend.
+## Introduction
 
-Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with some parent system. However, this particular use-case is better handled using dialog steps, discussed further down. 
+Agent-Buddy provides a platform for building AI agents with consistent user experiences and 
+extensible architectures. Unlike traditional agent frameworks that rely on rigid prompting 
+schemes, Agent-Buddy uses an actor-based system architecture where both frontend and backend 
+components communicate through typed events over WebSockets.
+
+## Features
+
+- **Actor-based architecture** using XState for predictable state management
+- **Real-time bidirectional communication** via tRPC over WebSockets
+- **Plugin system** for extending UI with canvas, panel, and chat areas
+- **Hierarchical backend systems** that can spawn child actors dynamically
+- **Visual flow editor** for agent behavior modification through dialog nodes
+- **Hot-reloadable development** with Vite and TypeScript
+- **Built-in systems** for threads, prompts, database queries, and logging
+- **Time-travel debugging** through XState event replay
+- **Monorepo structure** with pnpm workspaces and Turborepo
+- **Type-safe communication** between frontend and backend
+
+## Architecture
 
 ```
                          ┌─────────┐            ┌─────────┐                                   ┌─────────┐                         
@@ -57,63 +80,56 @@ Systems can be started when the app starts up. Or a system can be spawned on the
                          │         │            │         │                                   │         │                         
                          └─────────┘            └─────────┘                                   └─────────┘                          
 ```
+![Agent-Buddy Architecture](docs/architecture.svg)
+*Alt: Diagram showing backend systems communicating through a central bus, connected via WebSocket to frontend plugins managing different UI areas*
 
-A working understanding of [Xstate](https://stately.ai/docs/state-machines-and-statecharts) and state-machines is highly recommended, as they are used ubiquitously throughout the FE and BE. Below is an example code snippet for sending a message to a frontend plugin from a backend system.
-``` js
-const pluginId = 'threads';
+### Backend systems
 
-setup({
+Backend systems are autonomous XState actors that encapsulate specific functionality. Each system:
+- Communicates through a central event bus
+- Can spawn child systems for complex orchestrations
+- Handles typed events from frontend plugins
+- Persists state using SQLite with Drizzle ORM
+
+Example system structure:
+```ts
+// systems/example/system.ts
+export const exampleSystem = setup({
   actions: {
-    sendHello: ({ system }) =>
+    notifyPlugin: ({ system, event }) =>
       system.get(bus).send(
-        emit(pluginId, { type: 'GREET', message: '🌍 Hey, User!' })
+        emit('example-plugin', { 
+          type: 'DATA_UPDATED',
+          payload: event.data 
+        })
       ),
   },
-})
-.createMachine({
-  id: 'system',
+}).createMachine({
+  id: 'example',
   initial: 'idle',
   states: {
     idle: {
-      on: { STARTUP: { target: 'working', actions: 'sendHello' } },
+      on: { 
+        PROCESS_DATA: { 
+          target: 'processing',
+          actions: ['validateData', 'notifyPlugin'] 
+        } 
+      },
     },
-    working: { },
+    processing: {
+      // Processing logic here
+    },
   },
 });
 ```
 
-# Dialogs - Flows & Steps
-Dialog flows and steps are used as the building blocks for agent modification. Most of the time we don't need to code a new system to change the behavior of the agent. Instead we rely on a robust data model for expressing and exposing the flow of the application, allowing the agent to be extended through new data, not new code.
+### Frontend plugins
 
-A way to think of this is to imagine an `agent <-> user` interaction as the user navigating some dialog tree. Then expanding that model of a dialog tree to include at times `agent <-> agent` dialog, `agent <-> application-event` dialog, and even `application-event <-> application-event` (since the core logic is built using [actors](https://stately.ai/docs/state-machine-actors#:~:text=State%20machine%20actors%20are%20actors,about%20state%20machines%20in%20depth.) and state machines).
+Plugins define UI components and state management for specific features. Each plugin includes:
+- XState machine for local state management
+- Vue 3 components for canvas, panel, and optionally chat areas
+- Event handlers for system communication
 
-In that sense, everything is composable through this node-like dialog interface, allowing users and developers full control of the application and therefore the agent by just reorganizing the flow of dialog nodes.
-```
-                                                                        
-               ╔═════════════════════════════════════════╗               
-               ║               Dialog Flow               ║               
-               ╚════════════════════╦════════════════════╝               
-                                    │                                    
-    ┌────────┬──────┬──────┬────────┼────────┬──────┬──────┬────────┐    
-    │        │      │      │        │        │      │      │        │    
-    ▼        ▼      ▼      ▼        ▼        ▼      ▼      ▼        ▼    
-    .        .      .      .        .        .      .      .        .    
-   (█)      (█)    (█)    (█)      (█)      (█)    (█)    (█)      (█)   
-    '        '      '      '        '        '      '      '        '    
-    │        │      │      │        │        │      │      │        │    
- ┌──┴──┐     ▼      ▼      ▼     ┌──┴──┐     ▼      ▼      ▼     ┌──┴──┐ 
- ▼     ▼     .      .      .     ▼     ▼     .      .      .     ▼     ▼ 
- .     .    (█)    (█)    (█)    .     .    (█)    (█)    (█)    .     . 
-(█)   (█)    '      '      '    (█)   (█)    '      '      '    (█)   (█)
- '     '            │            '     '     │      │            '     ' 
-       │            ▼            │           ▼      ▼                    
-       ▼            .            ▼           .      .                    
-       .           (█)           .          (█)    (█)                   
-      (█)           '           (█)          '      '                    
-       '                         '                                       
-```
-
-# Plugins
 ```
                         │                            │                                      
                         │                            │    ╔════════════════════════════════╗
@@ -133,112 +149,160 @@ In that sense, everything is composable through this node-like dialog interface,
                         │                            │       └─────────────────┴───────┘    
                         │                            │                                      
 ```
+![Plugin Communication Flow](docs/sequence.svg)
+*Alt: Sequence diagram showing user interaction triggering plugin event, sent via WebSocket to backend system, which processes and responds*
 
-Plugins allow developers the ability to define interfaces for a specific area of the UI. A default and an active plugin can be showing content at any given time.
+### Communication flow
 
-The "default plugin" is set to be the `agent` plugin by default. Only the default plugin can define content to be shown in the chat area. The active plugin can show content in the canvas area and in the side panel, aka inspection panel. Below is an example of a common UI arrangement you'll see, where the default plugin is displaying content in chat area and in the side panel, while the active plugin is displaying some plugin specific UI in the canvas area.
+1. User interacts with plugin UI component
+2. Plugin sends typed event through tRPC WebSocket connection
+3. Backend bus routes event to appropriate system(s)
+4. System processes event and emits response
+5. Response routed back to specific plugin(s)
+6. Plugin updates UI based on response
 
-``` yml
-Basic Plugin Skeleton:
+## Quick demo
 
-📦 _blank
- ┣ 📜 canvas.vue  -- main workspace
- ┣ 📜 panel.vue   -- sidebar panel
- ┣ 📜 plugin.ts   -- entry file; exports state & components
- ┗ 📜 state.ts    -- XState machine for plugin logic
-```
-``` js
-// plugin.ts
-export const _blankPlugin = {
-  id: '_blank',
-  label: 'Blank',
-  icon: Box,
-  state,
-  canvas,
-  panel,
-}; // Expose a plugin by defining a plugin object
-```
+![Agent-Buddy Demo](docs/demo.gif)
+*Alt: Screen recording showing real-time agent interaction with visual flow editor and live updates*
 
-### Canvas sub-routing
-With sub-routes, a plugin can display different components or pages depending on what state the plugin is currently in.
-```
-                                                                  
-╔════════════════════════════════════════╗     Bread > Crumbs     
-║        Canvas Component Routes         ║     ┌────────────┬────┐
-╠════════════╦╦════════════╦╦════════════╣     │            │████│
-│            ││            │║████████████║     │   Canvas   │████│
-│    List    ││   Create   │║███ View ███║  ┌──│   Target   │████│
-│            ││            │║████████████║  │  │            │████│
-└────────────┘└────────────┘╚════════════╝  │  ├────────────┤████│
-                                   ▲        │  │████████████│████│
-                                   │        │  │████████████│████│
-                                   └────────┘  │████████████│████│
-                                               │████████████│████│
-                                               └────────────┴────┘
-```
-To define a plugin with sub-routes, you'll need to define the route components under `plugin.canvas` where `[key is TargetName]: Value is Component`. Than add a metadata object like `{ ...breadcrumb('target', 'Title') }` to the corresponding states. Example:
-``` js
-// plugin.ts
-const plugin = {
-  id: 'plugin',
-  // ...
-  canvas: {
-    list,
-    create,
-    view,
+### Minimal plugin example
+
+```ts
+// plugins/hello/plugin.ts
+import { setup, createMachine } from 'xstate';
+import { definePlugin } from '@/core';
+import Canvas from './canvas.vue';
+
+const state = setup({
+  actions: {
+    logEvent: ({ event }) => console.log('Received:', event),
   },
-  panel,
-};
-
-// state.ts
-createMachine({
-  id: 'plugin',
-  initial: 'list',
+}).createMachine({
+  id: 'hello',
+  initial: 'ready',
   states: {
-    // ...
-    'create': {
-      meta: { ...breadcrumb('create', 'New Thread') },
+    ready: {
       on: {
-        CREATE_THREAD: { ... },
-        CANCEL_CREATE: { target: 'list' },
+        GREET: {
+          actions: ['logEvent'],
+        },
       },
     },
   },
-})
+});
+
+export default definePlugin({
+  id: 'hello',
+  label: 'Hello Plugin',
+  state,
+  canvas: Canvas,
+});
 ```
 
-# Getting Started
+## Setup
 
-From root run:
-```
+### Prerequisites
+
+- Node.js ≥ 20 LTS
+- pnpm ≥ 10.10.0
+- Git
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/agentbuddy/agentbuddy.git
+cd agentbuddy
+
+# Install dependencies
 pnpm install
-pnpm be        # tsc --watch + nodemon
-pnpm fe        # Vite + Tailwind
-pnpm run dev
+
+# Configure environment
+cp .env.example .env
+
+# Start development servers
+pnpm run dev && open http://localhost:5173
 ```
 
-# Requirements
-### tRPC TypeScript version requirement
+### Development
 
-<blockquote>
-TypeScript version >=5.7.2 is now required (non-breaking)
-tRPC now requires TypeScript version 5.7.2 or higher. This change was made in response to a bug report where we decided to take a forward-looking approach.
+Common commands:
 
-If you try to install tRPC with an unsupported TypeScript version, you'll receive a peer dependency error during installation.
+```bash
+# Build frontend only
+pnpm fe
 
-If you notice your editor showing any types, it's likely because your editor isn't using the correct TypeScript version. To fix this, you'll need to configure your editor to use the TypeScript version installed in your project's package.json.
+# Build backend with type definitions
+pnpm be
 
-For VSCode users, add these settings to your .vscode/settings.json:
-</blockquote>
+# Run all tests
+pnpm test
 
-`.vscode/settings.json`
+# Run linting
+pnpm lint
+
+# Type checking
+pnpm typecheck
 ```
+
+For VS Code users, configure TypeScript version in `.vscode/settings.json`:
+```json
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true
 }
 ```
 
-## License
+## Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+### Development workflow
+
+1. Fork the repository
+2. Create a feature branch: `feature/your-feature-name`
+3. Make your changes following our code style
+4. Write or update tests as needed
+5. Submit a pull request with clear description
+
+### Testing
+
+```bash
+# Run all tests
+pnpm test
+
+# Run backend tests only
+pnpm test:be
+
+# Run tests in watch mode (frontend)
+cd apps/web && pnpm test:watch
+
+# Run tests with UI
+cd apps/web && pnpm test:ui
+```
+
+### Code style
+
+- Follow existing patterns in the codebase
+- Use TypeScript strict mode
+- Ensure `pnpm lint` and `pnpm typecheck` pass
+- Write tests for new features
+- Keep commits focused and atomic
+
+For detailed guidelines, see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Project meta
+
+### Comparison with alternatives
+
+| Feature | Agent-Buddy | LangChain | Autogen | CrewAI |
+|---------|------------|-----------|---------|---------|
+| Real-time WebSocket | ✅ | ❌ | ❌ | ❌ |
+| Plugin UI system | ✅ | ❌ | ❌ | ❌ |
+| Event-driven architecture | ✅ | Partial | ❌ | ❌ |
+| Visual flow editor | ✅ | ❌ | ❌ | ❌ |
+
+### License
 
 Private project - All rights reserved
