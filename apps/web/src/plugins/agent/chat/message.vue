@@ -10,7 +10,7 @@
         'relative rounded-xl px-4 py-3 transition-all duration-200 group',
         isUser 
           ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30' 
-          : 'bg-indigo-950/30 text-indigo-50 border border-indigo-900/20',
+          : 'bg-indigo-950/10 text-indigo-50 border border-indigo-900/20',
         'hover:shadow-md'
       ]"
     >
