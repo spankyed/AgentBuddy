@@ -2,8 +2,8 @@
 
 ## Introduction
 
-Agent-Buddy is a fully-open, configuration based, AI-agent platform: you design an agent by connecting a
-graph of **Flows** steps (Listen → LLM → Action …) in a visual editor, and the running backend re-wires itself **instantly**—no code change, no redeploy, no restart.
+Agent-Buddy is a configuration based, AI-agent platform: you design an agent by connecting a
+graph of steps in a dialog **Flow** (Listen for event → LLM → Action …) in a visual editor. The running backend re-wires itself **instantly**—no code change, no redeploy, no restart.
 
 | Why it matters |  
 | :-------------- |  
@@ -86,14 +86,19 @@ graph of **Flows** steps (Listen → LLM → Action …) in a visual editor, and
 
 ### Backend systems
 
-Backend systems are autonomous XState actors that encapsulate specific functionality. Each system:
-- Communicates through a central event bus
+Backend systems are XState actors that encapsulate specific functionality (mostly CRUD operations for FE plugins). Each system:
+- Persists state in memory using a custom data querying architecture called EARS
+- Communicates through a central event bus to other systems or the FE
 - Can spawn child systems for complex orchestrations
-- Handles typed events from frontend plugins
-- Persists state using SQLite with Drizzle ORM
+- Expose typed events from frontend plugins
 
 Example system structure:
 ```ts
+export const IncomingEvents = [
+  busEvent('USER_MSG', { text: z.string() }),
+  busEvent('DATA_UPDATED', { threadId: z.string() }),
+] as const
+
 // systems/example/system.ts
 export const exampleSystem = setup({
   actions: {
