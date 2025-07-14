@@ -35,27 +35,27 @@ Systems can have child systems. Allowing developers to orchestrate and encapsula
 Systems can be started when the app starts up. Or a system can be spawned on the fly as needed. For example, the agent may be in the middle of working on a task, then a new task comes in. We can spin up a parallel system to handle this new task and orchestrate the two with some parent system. However, this particular use-case is better handled using dialog steps, discussed further down. 
 
 ```
-                           ┌─────────┐            ┌─────────┐                           
-                           │         │            │         │                           
-  ╔═════════╗              │         │            │         │              ╔═════════╗  
-  ║ plugins ║              │         │            │         │              ║ systems ║  
-┌─╩═════════╩─┐     ┌───── │         │            │         │ ────┐      ┌─╩═════════╩─┐
-│    Brain    │ ◀───┘      │         │            │         │     └────▶ │    Brain    │
-├─────────────┤            │         │  ◀───────  │         │            ├─────────────┤
-│    Agent    │ ───────▶   │         │            │         │   ◀─────── │    Agent    │
-├─────────────┤            │         │ ┌────────┐ │         │            ├─────────────┤
-│   Threads   │ ───────▶   │   Web   │ │  Full  │ │ Backend │   ◀─────── │   Threads   │
-├─────────────┤            │   Bus   │ │ Duplex │ │   Bus   │            ├─────────────┤
-│   Prompts   │ ───────▶   │         │ └────────┘ │         │   ◀─────── │   Prompts   │
-├─────────────┤            │         │            │         │            ├─────────────┤
-│    Files    │ ───────▶   │         │  ───────▶  │         │   ◀─────── │    Files    │
-├─────────────┤            │         │            │         │            ├─────────────┤
-│    Code     │ ───────▶   │         │            │         │   ◀─────── │    Code     │
-└─────────────┘            │         │            │         │            └─────────────┘
-                           │         │            │         │                           
-                           │         │            │         │                           
-                           │         │            │         │                           
-                           └─────────┘            └─────────┘                           
+                         ┌─────────┐            ┌─────────┐                                   ┌─────────┐                         
+                         │         │            │         │                                   │         │                         
+  ╔═════════╗            │         │            │         │            ╔═════════╗            │         │            ╔═════════╗  
+  ║ plugins ║            │         │            │         │            ║ systems ║            │         │            ║  flows  ║  
+┌─╩═════════╩─┐          │         │            │         │          ┌─╩═════════╩─┐          │         │          ┌─╩═════════╩─┐
+│    Brain    │ ◀──────▶ │         │            │         │ ◀──────▶ │    Brain    │ ◀──────▶ │         │ ◀──────▶ │  Run Brain  │
+├─────────────┤          │         │            │         │          ├─────────────┤          │         │          ├─────────────┤
+│    Agent    │ ◀──────▶ │         │  ◀───────  │         │ ◀──────▶ │    Agent    │          │         │ ◀──────▶ │ User Message│
+├─────────────┤          │         │ ┌────────┐ │         │          ├─────────────┤          │         │          └─────────────┘
+│   Threads   │ ◀──────▶ │   Web   │ │  http  │ │ Backend │ ◀──────▶ │   Threads   │          │  Brain  │                         
+├─────────────┤          │   Bus   │ └────────┘ │   Bus   │          ├─────────────┤          │   Bus   │                         
+│   Prompts   │ ◀──────▶ │         │  ───────▶  │         │ ◀──────▶ │   Prompts   │          │         │                         
+├─────────────┤          │         │            │         │          ├─────────────┤          │         │                         
+│    Files    │ ◀──────▶ │         │            │         │ ◀──────▶ │    Files    │          │         │                         
+├─────────────┤          │         │            │         │          ├─────────────┤          │         │                         
+│    Code     │ ◀──────▶ │         │            │         │ ◀──────▶ │    Code     │          │         │                         
+└─────────────┘          │         │            │         │          └─────────────┘          │         │                         
+                         │         │            │         │                                   │         │                         
+                         │         │            │         │                                   │         │                         
+                         │         │            │         │                                   │         │                         
+                         └─────────┘            └─────────┘                                   └─────────┘                          
 ```
 
 A working understanding of [Xstate](https://stately.ai/docs/state-machines-and-statecharts) and state-machines is highly recommended, as they are used ubiquitously throughout the FE and BE. Below is an example code snippet for sending a message to a frontend plugin from a backend system.
