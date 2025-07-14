@@ -3,6 +3,7 @@ import * as llm from './llm';
 import * as emitter from './event-emitter';
 import * as database from './database';
 import { promptService } from './prompt';
+import { actionService } from './action';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
@@ -12,6 +13,7 @@ const services = {
   emitter,
   database,
   prompt: promptService,
+  action: actionService,
 }
 
 const actions = ([
