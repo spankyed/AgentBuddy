@@ -244,27 +244,3 @@ export function ${label.replace(/\s+/g, '')}() {
     },
   }
 );
-
-const sendBack = sendParentSafe<AgentInternalEvents>();
-
-async function runLlm(ctx: AgentContext, signal: AbortSignal) {
-  // const runner = new LlmRunner(model);
-
-  // for await (const token of runner.stream(userPrompt, { signal })) {
-    // Persist & bubble up token events
-    // sendBack({ type: 'TOKEN', token });
-  // }
-
-  sendBack({ type: 'LLM_DONE' });
-  // Persist assistant message
-  // await db
-  //   .insert(schema.message)
-  //   .values({
-  //     id: uuid(),
-  //     sessionId,
-  //     role: 'assistant',
-  //     text: runner.buffer(),
-  //     createdAt: Date.now(),
-  //   })
-  //   .run();
-}
