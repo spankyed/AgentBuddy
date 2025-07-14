@@ -7,7 +7,7 @@
   >
     <div 
       :class="[
-        'relative max-w-[75%] rounded-xl px-4 py-3 transition-all duration-200 group',
+        'relative rounded-xl px-4 py-3 transition-all duration-200 group',
         isUser 
           ? 'bg-slate-700/90 text-slate-100 border border-slate-600/20 shadow-sm' 
           : 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30 shadow-sm',
@@ -16,9 +16,9 @@
     >
       <!-- Floating hover UI -->
       <div 
-        class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto"
+        class="absolute transition-opacity duration-200 opacity-0 pointer-events-none bottom-2 right-2 group-hover:opacity-100 group-hover:pointer-events-auto"
       >
-        <div class="flex items-center bg-neutral-800 rounded-lg border border-neutral-700 shadow-lg overflow-hidden">
+        <div class="flex items-center overflow-hidden border rounded-lg shadow-lg bg-neutral-800 border-neutral-700">
           <!-- Timestamp -->
           <span class="text-xs text-neutral-400 px-3 py-1.5 border-r border-neutral-700">
             {{ formatTime(message.createdAt || new Date()) }}
