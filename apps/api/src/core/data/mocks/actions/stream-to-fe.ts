@@ -23,6 +23,12 @@ const actionFn = tidyFunction(`
       token: textPart
     });
   }
+
+  await result.finishReason
+
+  services.emitter.sendToPlugin('agent', {
+    type: 'LLM_DONE',
+  });
 `);
 
 export const streamToFEAction: ActionEntity = {
