@@ -3,9 +3,10 @@ import type { Plugin } from '@/core/types/index.ts'
 import { librarySystem } from './state'
 import LibraryCanvas from './canvas.vue'
 import LibraryPanel from './panel.vue'
+import { id } from './state'
 
 const library: Plugin = {
-  id: 'library',
+  id,
   label: 'Library',
   icon: Library,
   state: librarySystem,
