@@ -38,11 +38,11 @@ type KanbanList = {
 /* -------------------------------------------------------------------------- */
 
 const SECTION_COLOR: Record<string, string> = {
-  backlog: 'bg-neutral-700',
-  inProgress: 'bg-blue-600',
-  inReview: 'bg-yellow-600',
-  open: 'bg-neutral-600',
-  done: 'bg-green-600',
+  backlog: 'bg-neutral-800 border-b border-neutral-700/50',
+  inProgress: 'bg-blue-900/50 border-b border-blue-800/30',
+  inReview: 'bg-amber-900/40 border-b border-amber-800/30',
+  open: 'bg-neutral-800/80 border-b border-neutral-700/50',
+  done: 'bg-emerald-900/40 border-b border-emerald-800/30',
 }
 
 const SECTION_ORDER = ['backlog', 'inProgress', 'inReview', 'open', 'done'] as const
@@ -122,7 +122,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 </script>
 
 <template>
-  <main class="flex-grow p-6 overflow-y-auto bg-neutral-950">
+  <main class="flex-grow p-6 overflow-y-auto bg-transparent">
     <div class="flex h-full gap-4 mx-auto max-w-7xl">
       <!-- Backlog column on the left -->
       <section
@@ -132,10 +132,10 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
       >
         <!-- column header -->
         <header
-          class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white"
+          class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium"
           :class="list.color"
         >
-          <span class="text-base">{{ list.name }}</span>
+          <span class="text-sm text-neutral-200">{{ list.name }}</span>
         </header>
 
         <!-- inner list = cards -->
@@ -150,7 +150,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
         >
           <template #default="{ item: card }">
             <article
-              class="p-3 transition-colors rounded-lg shadow-sm cursor-pointer bg-neutral-900 hover:bg-neutral-950"
+              class="p-3 transition-all duration-200 rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
               <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
@@ -173,10 +173,10 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
         >
           <!-- column header -->
           <header
-            class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white"
+            class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium"
             :class="list.color"
           >
-            <span class="text-base">{{ list.name }}</span>
+            <span class="text-sm text-neutral-200">{{ list.name }}</span>
           </header>
 
           <!-- inner list = cards -->
@@ -191,7 +191,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
           >
             <template #default="{ item: card }">
               <article
-                class="p-3 transition-colors rounded-lg shadow-sm cursor-pointer bg-neutral-900 hover:bg-neutral-950"
+                class="p-3 transition-all duration-200 rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border border-neutral-800/50 hover:border-neutral-700/50"
                 @click="onCardClick(card)"
               >
                 <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
