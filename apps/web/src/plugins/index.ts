@@ -41,8 +41,8 @@ const mockPlugins = [
 ];
 
 export default [
-  Threads,
   Agent,
+  Threads,
   Brain,
   Flows,
   Prompts,
