@@ -161,21 +161,19 @@
               </td>
             </tr>
             </template>
-            <!-- Empty rows for visual consistency -->
-            <template v-else>
-              <tr
-                v-for="n in 8"
-                :key="`empty-${n}`"
-                class="pointer-events-none"
-                :class="n % 2 === 0 ? 'bg-neutral-800/20' : ''"
-              >
-                <td class="px-6 py-3">&nbsp;</td>
-                <td class="px-6 py-3">&nbsp;</td>
-                <td class="px-6 py-3">&nbsp;</td>
-                <td class="px-6 py-3">&nbsp;</td>
-                <td class="px-6 py-3">&nbsp;</td>
-              </tr>
-            </template>
+            <!-- Fill remaining space with empty rows -->
+            <tr
+              v-for="n in Math.max(0, 8 - sortedItems.length)"
+              :key="`empty-${n}`"
+              class="pointer-events-none"
+              :class="(sortedItems.length + n) % 2 === 1 ? 'bg-neutral-800/20' : ''"
+            >
+              <td class="px-6 py-3">&nbsp;</td>
+              <td class="px-6 py-3">&nbsp;</td>
+              <td class="px-6 py-3">&nbsp;</td>
+              <td class="px-6 py-3">&nbsp;</td>
+              <td class="px-6 py-3">&nbsp;</td>
+            </tr>
           </tbody>
         </table>
       </div>
