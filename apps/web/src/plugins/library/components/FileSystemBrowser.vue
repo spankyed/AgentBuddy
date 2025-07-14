@@ -166,7 +166,7 @@
               v-for="n in Math.max(0, 8 - sortedItems.length)"
               :key="`empty-${n}`"
               class="pointer-events-none"
-              :class="(sortedItems.length + n) % 2 === 1 ? 'bg-neutral-800/20' : ''"
+              :class="(sortedItems.length + n - 1) % 2 === 1 ? 'bg-neutral-800/20' : ''"
             >
               <td class="px-6 py-3">&nbsp;</td>
               <td class="px-6 py-3">&nbsp;</td>
