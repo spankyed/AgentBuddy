@@ -40,7 +40,7 @@ const variantClasses = computed(() => {
       case 'transparent':
         return 'bg-transparent text-neutral-500 cursor-not-allowed'
       default:
-        return 'bg-blue-600 rounded-md disabled:opacity-50 cursor-not-allowed'
+        return 'bg-gray-600 text-gray-300 cursor-not-allowed'
     }
   }
   switch (props.variant) {
