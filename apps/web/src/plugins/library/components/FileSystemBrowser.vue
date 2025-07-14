@@ -164,7 +164,7 @@
             <!-- Empty rows for visual consistency -->
             <template v-else>
               <tr
-                v-for="n in 10"
+                v-for="n in 8"
                 :key="`empty-${n}`"
                 class="pointer-events-none"
                 :class="n % 2 === 0 ? 'bg-neutral-800/20' : ''"
