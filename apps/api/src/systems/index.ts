@@ -10,7 +10,7 @@ import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/databa
 import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
 import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
 import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
-import { library, libraryMachine, LibrarySystemEvents } from '@/systems/library/system';
+import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
 
 export default {
   [agent]: agentSystem,
@@ -20,7 +20,7 @@ export default {
   [database]: databaseSystem,
   [prompts]: promptsSystem,
   [actions]: actionsSystem,
-  [library]: libraryMachine,
+  [library]: librarySystem,
   // [logs]: logsSystem,
 } as const;
 

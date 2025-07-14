@@ -99,7 +99,7 @@ export const LibrarySystemEvents = fromSystem(IncomingLibraryEvents)<OutgoingLib
 type LibraryInternalEvents = { type: 'CLIENT_CONNECTED' }
 type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
 
-export const libraryMachine = setup({
+export const librarySystem = setup({
   types: {
     context: {} as LibrarySystemContext,
     events: {} as ReceivableEvents,

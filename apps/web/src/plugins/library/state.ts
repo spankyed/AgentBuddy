@@ -3,7 +3,7 @@ import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, Fo
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
-export type LibraryState = ActorRefFrom<typeof libraryMachine>
+export type LibraryState = ActorRefFrom<typeof librarySystem>
 
 export interface LibraryContext {
   // Legacy fields for backward compatibility
@@ -61,7 +61,7 @@ export type LibraryEvents =
   | { type: 'BREADCRUMB_CLICK'; folderId: string | null }
   | OutgoingLibraryEvents
 
-export const libraryMachine = setup({
+export const librarySystem = setup({
   types: {
     context: {} as LibraryContext,
     events: {} as LibraryEvents,
