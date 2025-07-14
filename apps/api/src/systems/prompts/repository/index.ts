@@ -10,7 +10,8 @@ import {
   RepositoryError,
   RepositoryErrorCode,
   type RepositoryResult,
-  type OperationResult
+  type OperationResult,
+  findWhere
 } from '@/core/utils/repository';
 import type { PromptEntity } from '../types';
 
@@ -25,6 +26,14 @@ export const promptQueries = {
   
   all: () => 
     findAll<PromptEntity>(EARS.Entity.Prompt),
+    
+  byLabel: (label: string): PromptEntity | undefined => {
+    return findWhere<PromptEntity>(
+      EARS.Entity.Prompt,
+      'label',
+      label
+    )[0];
+  },
     
   startupData: (page = 1, pageSize = 20) => {
     const all = findAll<PromptEntity>(EARS.Entity.Prompt);
