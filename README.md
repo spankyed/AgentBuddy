@@ -1,10 +1,17 @@
 # Agent-Buddy
 
-**TL;DR**: A real-time, event-driven AI agent platform built on XState actors with pluggable UI components.
+## Introduction
 
-- **Full-duplex WebSocket communication** between typed backend systems and frontend plugins
-- **Composable actor architecture** enabling parallel agent execution and system orchestration
-- **Visual flow editor** for modifying agent behavior through data instead of code
+Agent-Buddy is a fully-open, configuration based, AI-agent platform: you design an agent by connecting a
+graph of **Flows** steps (Listen → LLM → Action …) in a visual editor, and the running backend re-wires itself **instantly**—no code change, no redeploy, no restart.
+
+| Why it matters |  
+| :-------------- |  
+| **Visual flow editor = configuration, not code.** Non-devs can change behaviour. |  
+| **Hot-reload.** Edits are live in \<50 ms via event replay. |  
+| **Full traceability.** Every token, branch, and action is viewable from the Flow’s event trace. |
+| **Composable actor architecture** enabling parallel workflow execution and system orchestration |
+| **Full-duplex WebSocket communication** between typed backend systems and frontend plugins |
 
 ![CI Status](https://img.shields.io/github/actions/workflow/status/agentbuddy/agentbuddy/ci.yml?branch=main)
 ![License](https://img.shields.io/badge/license-Private-red)
@@ -14,8 +21,8 @@
 ## Table of contents
 
 - [Agent-Buddy](#agent-buddy)
-  - [Table of contents](#table-of-contents)
   - [Introduction](#introduction)
+  - [Table of contents](#table-of-contents)
   - [Features](#features)
   - [Architecture](#architecture)
     - [Backend systems](#backend-systems)
@@ -38,25 +45,16 @@
     - [Comparison with alternatives](#comparison-with-alternatives)
     - [License](#license)
 
-## Introduction
-
-Agent-Buddy provides a platform for building AI agents with consistent user experiences and 
-extensible architectures. Unlike traditional agent frameworks that rely on rigid prompting 
-schemes, Agent-Buddy uses an actor-based system architecture where both frontend and backend 
-components communicate through typed events over WebSockets.
 
 ## Features
 
-- **Actor-based architecture** using XState for predictable state management
-- **Real-time bidirectional communication** via tRPC over WebSockets
-- **Plugin system** for extending UI with canvas, panel, and chat areas
-- **Hierarchical backend systems** that can spawn child actors dynamically
-- **Visual flow editor** for agent behavior modification through dialog nodes
-- **Hot-reloadable development** with Vite and TypeScript
-- **Built-in systems** for threads, prompts, database queries, and logging
-- **Time-travel debugging** through XState event replay
-- **Monorepo structure** with pnpm workspaces and Turborepo
+- **Visual flow editor** to modify agent behavior with dialog flow nodes, aka more data not code
+- **Plugins** for extending UI with canvas, panel, and chat elements
+- **Backend systems** that act as CRUD endpoints for FE plugins
+- **Built-in systems** for brain, flows, threads, prompts, actions, database, logging, and more!
 - **Type-safe communication** between frontend and backend
+- **Real-time bidirectional communication** via tRPC over WebSockets
+- **Actor-based architecture** using XState for predictable state management
 
 ## Architecture
 
