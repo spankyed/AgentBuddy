@@ -27,6 +27,7 @@ export interface DatabaseContext {
     type: 'entity' | 'attribute' | 'relation';
     value: string;
   } | null;
+  snapshotMessage: string | null;
 }
 
 type SystemEvent = OutgoingDatabaseEvents
@@ -35,6 +36,7 @@ type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
   | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
   | { type: 'QUERY.UPDATE'; code: string }
+  | { type: 'DATABASE.SAVE_SNAPSHOT' }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -102,6 +104,33 @@ const databaseState = setup({
       error: null,
     }),
 
+    saveSnapshot: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_SNAPSHOT',
+      });
+    },
+
+    setSnapshotSuccess: assign(({ event }) => {
+      const ev = typeOf('SNAPSHOT_CREATED', event);
+      return {
+        snapshotMessage: `Snapshot saved: ${ev.filename}`,
+        error: null,
+      };
+    }),
+
+    setSnapshotError: assign(({ event }) => {
+      const ev = typeOf('SNAPSHOT_ERROR', event);
+      return {
+        error: `Snapshot failed: ${ev.error}`,
+        snapshotMessage: null,
+      };
+    }),
+
+    clearSnapshotMessage: assign({
+      snapshotMessage: null,
+    }),
+
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
@@ -131,11 +160,14 @@ const databaseState = setup({
     error: null,
     executionTime: null,
     selectedSchemaItem: null,
+    snapshotMessage: null,
   },
   on: {
     DATABASE_STARTUP: { actions: 'setStartupData' },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
+    SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
+    SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
   },
   states: {
     explorer: {
@@ -150,6 +182,9 @@ const databaseState = setup({
         },
         'SCHEMA.SELECT': {
           actions: 'selectSchemaItem',
+        },
+        'DATABASE.SAVE_SNAPSHOT': {
+          actions: 'saveSnapshot',
         },
       },
     },

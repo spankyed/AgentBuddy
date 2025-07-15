@@ -12,11 +12,31 @@ import { backendSystem, bus } from './systems/backend';
 import { initializeLogCapture } from './core/utils/debug/log-capture';
 import { loadData } from '@/core/data';
 import staticData from './core/data/static';
+import { loadSnapshot, listSnapshots, restoreSnapshot } from './systems/database/snapshot';
 
-(function setupBackend() {
+(async function setupBackend() {
   loadData();
 
   loadData(staticData);
+  
+  // Load the latest snapshot if available
+  try {
+    const snapshots = await listSnapshots();
+    if (snapshots.length > 0) {
+      // Sort snapshots by timestamp (newest first)
+      const sortedSnapshots = snapshots.sort((a, b) => b.localeCompare(a));
+      const latestSnapshot = sortedSnapshots[0];
+      
+      logger.info(`Loading snapshot: ${latestSnapshot}`);
+      const snapshotData = await loadSnapshot(latestSnapshot);
+      await restoreSnapshot(snapshotData);
+      logger.info(`Snapshot loaded successfully. Restored ${snapshotData.metadata.entityCount} entities.`);
+    } else {
+      logger.info('No snapshots found. Starting with empty database.');
+    }
+  } catch (error) {
+    logger.error('Failed to load snapshot:', { error });
+  }
   
   initializeLogCapture();
   

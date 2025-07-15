@@ -19,6 +19,7 @@
         @execute="$emit('execute')"
         @clear="$emit('clear')"
         @format="$emit('format')"
+        @save-snapshot="$emit('saveSnapshot')"
       />
     </div>
   </div>
@@ -43,5 +44,6 @@ defineEmits<{
   execute: [];
   clear: [];
   format: [];
+  saveSnapshot: [];
 }>();
 </script> 

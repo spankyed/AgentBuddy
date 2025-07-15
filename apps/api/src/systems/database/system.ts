@@ -7,6 +7,7 @@ import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { EARS } from '@/core/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/attribute-storage';
+import { createSnapshot } from './snapshot';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { createLogger } from '@/core/utils/debug/logger';
@@ -21,6 +22,9 @@ export const IncomingDatabaseEvents = [
   busEvent('EXECUTE_QUERY', {
     code: z.string(),
   }),
+  busEvent('CREATE_SNAPSHOT', {
+    name: z.string().optional(),
+  }),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -30,7 +34,9 @@ export type DatabaseInternalEvents =
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
-  | { type: 'QUERY_ERROR'; error: string };
+  | { type: 'QUERY_ERROR'; error: string }
+  | { type: 'SNAPSHOT_CREATED'; filename: string }
+  | { type: 'SNAPSHOT_ERROR'; error: string };
 
 export interface DatabaseContext { }
 
@@ -87,6 +93,25 @@ export const databaseSystem = setup({
         }));
       }
     },
+    createSnapshot: async ({ system, event }) => {
+      const { name } = typeOf('CREATE_SNAPSHOT', event);
+      
+      try {
+        const filename = await createSnapshot(name);
+        logger.info(`Snapshot created: ${filename}`);
+        system.get(bus).send(emit(database, { 
+          type: 'SNAPSHOT_CREATED',
+          filename
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Snapshot creation failed:', { error: errorMessage });
+        system.get(bus).send(emit(database, { 
+          type: 'SNAPSHOT_ERROR',
+          error: errorMessage
+        }));
+      }
+    },
   },
 }).createMachine({
   id: database,
@@ -102,6 +127,9 @@ export const databaseSystem = setup({
       on: {
         EXECUTE_QUERY: {
           actions: 'executeQuery',
+        },
+        CREATE_SNAPSHOT: {
+          actions: 'createSnapshot',
         },
       },
     },
