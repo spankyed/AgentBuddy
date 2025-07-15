@@ -5,7 +5,7 @@
       <div class="space-y-2 text-sm">
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Documents:</span>
-          <span class="font-medium text-neutral-200">{{ context.value.documents.length }}</span>
+          <span class="font-medium text-neutral-200">{{ documents.length }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Collections:</span>
@@ -78,19 +78,24 @@ import type { ActorRefFrom } from 'xstate'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor
-const context = useSelector(actor, (state) => state.context) as unknown as { value: LibraryContext }
+
+// Individual selectors for each context property
+const documents = useSelector(actor, (state) => state.context.documents)
+const collections = useSelector(actor, (state) => state.context.collections)
+const selectedDocumentId = useSelector(actor, (state) => state.context.selectedDocumentId)
+
 const send = (event: LibraryEvents) => actor.send(event)
 
 const selectedDocument = computed(() => {
-  if (!context.value.selectedDocumentId) return null
-  return context.value.documents.find(doc => doc.id === context.value.selectedDocumentId)
+  if (!selectedDocumentId.value) return null
+  return documents.value.find(doc => doc.id === selectedDocumentId.value)
 })
 
 const totalCollections = computed(() => {
   let count = 0
   
-  function countCollections(collections: LibraryContext['collections']) {
-    for (const col of collections) {
+  function countCollections(cols: LibraryContext['collections']) {
+    for (const col of cols) {
       count++
       if (col.childCollections.length > 0) {
         countCollections(col.childCollections)
@@ -98,13 +103,13 @@ const totalCollections = computed(() => {
     }
   }
   
-  countCollections(context.value.collections)
+  countCollections(collections.value)
   return count
 })
 
 const allTags = computed(() => {
   const tags = new Set<string>()
-  context.value.documents.forEach(doc => {
+  documents.value.forEach(doc => {
     doc.tags.forEach(tag => tags.add(tag))
   })
   return Array.from(tags).sort()
@@ -112,7 +117,7 @@ const allTags = computed(() => {
 
 const tagCounts = computed(() => {
   const counts: Record<string, number> = {}
-  context.value.documents.forEach(doc => {
+  documents.value.forEach(doc => {
     doc.tags.forEach(tag => {
       counts[tag] = (counts[tag] || 0) + 1
     })
