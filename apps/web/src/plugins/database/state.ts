@@ -32,6 +32,7 @@ export interface DatabaseContext {
 }
 
 type SystemEvent = OutgoingDatabaseEvents | 
+  { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string }
 
@@ -64,8 +65,8 @@ const databaseState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setStartupData: assign(({ event }) => {
-      const ev = typeOf('DATABASE_STARTUP', event);
+    setDatabaseRefresh: assign(({ event }) => {
+      const ev = typeOf('DATABASE_REFRESH', event);
       return {
         schema: ev.data.schema
       }
@@ -204,7 +205,7 @@ const databaseState = setup({
     mode: 'query',
   },
   on: {
-    DATABASE_STARTUP: { actions: 'setStartupData' },
+    DATABASE_REFRESH: { actions: 'setDatabaseRefresh' },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
     TRANSACTION_RESULT: { actions: 'setTransactionResult' },

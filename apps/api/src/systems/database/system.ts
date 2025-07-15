@@ -37,7 +37,7 @@ export type DatabaseInternalEvents =
   | SystemEvents;
 
 export type OutgoingDatabaseEvents = 
-  | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
+  | { type: 'DATABASE_REFRESH'; data: DatabaseStartupData }
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
   | { type: 'QUERY_ERROR'; error: string }
   | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
@@ -71,10 +71,10 @@ export const databaseSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendDatabaseStartupData: ({ system }) => {
+    sendDatabaseRefresh: ({ system }) => {
       const schema = generateSchemaInfo();
       system.get(bus).send(emit(database, { 
-        type: 'DATABASE_STARTUP',
+        type: 'DATABASE_REFRESH',
         data: { schema }
       }));
     },
@@ -113,6 +113,14 @@ export const databaseSystem = setup({
           result,
           executionTime
         }));
+        
+        // Send refresh event with updated schema
+        logger.info('Transaction completed successfully, sending database refresh');
+        const schema = generateSchemaInfo();
+        system.get(bus).send(emit(database, { 
+          type: 'DATABASE_REFRESH',
+          data: { schema }
+        }));
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Transaction execution failed:', { error: errorMessage });
@@ -150,7 +158,7 @@ export const databaseSystem = setup({
   context: ({ input }) => ({}),
   on: {
     CLIENT_CONNECTED: {
-      actions: 'sendDatabaseStartupData',
+      actions: 'sendDatabaseRefresh',
     },
   },
   states: {
