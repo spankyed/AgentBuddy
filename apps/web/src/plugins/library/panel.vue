@@ -5,7 +5,7 @@
       <div class="space-y-2 text-sm">
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Documents:</span>
-          <span class="font-medium text-neutral-200">{{ context.documents.length }}</span>
+          <span class="font-medium text-neutral-200">{{ context.value.documents.length }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Collections:</span>
@@ -73,10 +73,12 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type LibraryState, type LibraryContext, type LibraryEvents } from './state'
+import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
+import type { ActorRefFrom } from 'xstate'
 
-const actor: LibraryState = applicationState.system.get(id)
-const context = useSelector(actor, (state) => state.context)
+type LibraryActor = ActorRefFrom<typeof librarySystem>
+const actor = applicationState.system.get(id) as LibraryActor
+const context = useSelector(actor, (state) => state.context) as unknown as { value: LibraryContext }
 const send = (event: LibraryEvents) => actor.send(event)
 
 const selectedDocument = computed(() => {
@@ -87,7 +89,7 @@ const selectedDocument = computed(() => {
 const totalCollections = computed(() => {
   let count = 0
   
-  function countCollections(collections: typeof context.value.collections) {
+  function countCollections(collections: LibraryContext['collections']) {
     for (const col of collections) {
       count++
       if (col.childCollections.length > 0) {

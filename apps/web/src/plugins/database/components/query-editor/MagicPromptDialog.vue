@@ -36,7 +36,7 @@ import { useSelector } from '@xstate/vue';
 import Dialog from '@/core/design/dialog.vue';
 import Button from '@/core/design/button.vue';
 import { applicationState } from '@/app';
-import { id } from '../../state';
+import { id, type DatabaseState } from '../../state';
 
 defineProps<{
   modelValue: boolean;
@@ -48,7 +48,7 @@ const emit = defineEmits<{
   generate: [prompt: string];
 }>();
 
-const actor = applicationState.system.get(id);
+const actor: DatabaseState = applicationState.system.get(id);
 const isMagicPromptLoading = useSelector(actor, (state) => state.context.isMagicPromptLoading);
 
 const prompt = ref('');
