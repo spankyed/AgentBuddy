@@ -25,6 +25,7 @@ interface SnapshotData {
     attributeKinds: string[];
     relationKinds: string[];
     excludedTypes?: string[];
+    excludedRelations?: number;
   };
 }
 
@@ -32,20 +33,41 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
   // Ensure snapshots directory exists
   await fs.mkdir(SNAPSHOTS_DIR, { recursive: true });
 
+  // Helper function to check if an entity should be excluded
+  const shouldExcludeEntity = (entityId: EARS.EntityId): boolean => {
+    const entityType = entityId.split('-')[0] as EARS.Entity;
+    return excludeTypes.includes(entityType);
+  };
+
   // Collect all data
   const entities: Record<EARS.EntityId, Record<string, unknown>> = {};
   const allEntities = getAllEntities();
+  let excludedRelationCount = 0;
   
   for (const entityId of allEntities) {
-    // Extract entity type from entityId (format: EntityType-id)
-    const entityType = entityId.split('-')[0] as EARS.Entity;
-    
     // Skip if this entity type should be excluded
-    if (excludeTypes.includes(entityType)) {
+    if (shouldExcludeEntity(entityId)) {
       continue;
     }
     
     const entityData = getAll(entityId);
+    
+    // Special handling for Relation entities
+    if (entityId.startsWith('Relation-')) {
+      const relationDetails = entityData[EARS.AttrKind.RelationDetails] as EARS.RelationDetail | EARS.RelationDetail[] | undefined;
+      
+      if (relationDetails) {
+        // Handle both single and array values
+        const details = Array.isArray(relationDetails) ? relationDetails[0] : relationDetails;
+        
+        // Skip relations that involve excluded entity types
+        if (details && (shouldExcludeEntity(details.sourceEntity) || shouldExcludeEntity(details.targetEntity))) {
+          excludedRelationCount++;
+          continue;
+        }
+      }
+    }
+    
     if (Object.keys(entityData).length > 0) {
       entities[entityId] = entityData;
     }
@@ -61,6 +83,7 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
       attributeKinds: getAllAttributeKinds().map(k => String(k)),
       relationKinds: getAllRelationKinds(),
       excludedTypes: excludeTypes.length > 0 ? excludeTypes : undefined,
+      excludedRelations: excludedRelationCount > 0 ? excludedRelationCount : undefined,
     },
   };
 
