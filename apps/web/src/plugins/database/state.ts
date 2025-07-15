@@ -108,6 +108,7 @@ const databaseState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_SNAPSHOT',
+        excludeTypes: ['TNode'], // Exclude temporary node entities
       });
     },
 

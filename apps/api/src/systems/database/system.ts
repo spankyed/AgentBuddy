@@ -24,6 +24,7 @@ export const IncomingDatabaseEvents = [
   }),
   busEvent('CREATE_SNAPSHOT', {
     name: z.string().optional(),
+    excludeTypes: z.array(z.string()).optional(),
   }),
 ] as const;
 
@@ -94,11 +95,13 @@ export const databaseSystem = setup({
       }
     },
     createSnapshot: async ({ system, event }) => {
-      const { name } = typeOf('CREATE_SNAPSHOT', event);
+      const { name, excludeTypes } = typeOf('CREATE_SNAPSHOT', event);
       
       try {
-        const filename = await createSnapshot(name);
-        logger.info(`Snapshot created: ${filename}`);
+        const filename = await createSnapshot(name, excludeTypes as EARS.Entity[] | undefined);
+        logger.info(`Snapshot created: ${filename}${
+          excludeTypes?.length ? ` (excluded: ${excludeTypes.join(', ')})` : ''
+        }`);
         system.get(bus).send(emit(database, { 
           type: 'SNAPSHOT_CREATED',
           filename

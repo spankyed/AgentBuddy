@@ -24,10 +24,11 @@ interface SnapshotData {
     entityCount: number;
     attributeKinds: string[];
     relationKinds: string[];
+    excludedTypes?: string[];
   };
 }
 
-export async function createSnapshot(name?: string): Promise<string> {
+export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] = []): Promise<string> {
   // Ensure snapshots directory exists
   await fs.mkdir(SNAPSHOTS_DIR, { recursive: true });
 
@@ -36,6 +37,14 @@ export async function createSnapshot(name?: string): Promise<string> {
   const allEntities = getAllEntities();
   
   for (const entityId of allEntities) {
+    // Extract entity type from entityId (format: EntityType-id)
+    const entityType = entityId.split('-')[0] as EARS.Entity;
+    
+    // Skip if this entity type should be excluded
+    if (excludeTypes.includes(entityType)) {
+      continue;
+    }
+    
     const entityData = getAll(entityId);
     if (Object.keys(entityData).length > 0) {
       entities[entityId] = entityData;
@@ -48,9 +57,10 @@ export async function createSnapshot(name?: string): Promise<string> {
     timestamp: new Date().toISOString(),
     entities,
     metadata: {
-      entityCount: allEntities.length,
+      entityCount: Object.keys(entities).length,
       attributeKinds: getAllAttributeKinds().map(k => String(k)),
       relationKinds: getAllRelationKinds(),
+      excludedTypes: excludeTypes.length > 0 ? excludeTypes : undefined,
     },
   };
 
