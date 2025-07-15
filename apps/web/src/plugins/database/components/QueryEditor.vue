@@ -6,10 +6,12 @@
       :current-query="currentQuery"
       :error="error"
       :success-message="successMessage"
+      :mode="mode"
       @execute="handleExecute"
       @clear="handleClear"
       @format="handleFormat"
       @save-snapshot="handleSaveSnapshot"
+      @toggle-mode="handleToggleMode"
     />
     
     <div class="flex-1 overflow-hidden">
@@ -48,6 +50,7 @@ const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);
 const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMessage);
+const mode = useSelector(actor, (state) => state.context.mode);
 
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');
@@ -87,14 +90,14 @@ watch(snapshotMessage, (msg) => {
 function handleExecute() {
   if (!isLoading.value && editorQuery.value.trim()) {
     actor.send({
-      type: 'QUERY.EXECUTE',
+      type: mode.value === 'query' ? 'QUERY.EXECUTE' : 'TRANSACTION.EXECUTE',
       code: editorQuery.value
     });
     
     // Show success message after a delay if no error
     setTimeout(() => {
       if (!error.value) {
-        successMessage.value = 'Query executed successfully';
+        successMessage.value = mode.value === 'query' ? 'Query executed successfully' : 'Transaction executed successfully';
       }
     }, 100);
   }
@@ -125,6 +128,12 @@ function updateCursorPosition({ line, col }: { line: number; col: number }) {
 function handleSaveSnapshot() {
   actor.send({
     type: 'DATABASE.SAVE_SNAPSHOT'
+  });
+}
+
+function handleToggleMode() {
+  actor.send({
+    type: 'MODE.TOGGLE'
   });
 }
 </script> 

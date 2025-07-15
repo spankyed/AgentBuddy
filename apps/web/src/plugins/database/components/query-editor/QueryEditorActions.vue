@@ -1,6 +1,17 @@
 <template>
   <div class="flex items-center gap-2">
     <button
+      @click="$emit('toggleMode')"
+      class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors"
+      :class="mode === 'query' ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50'"
+      :title="`Switch to ${mode === 'query' ? 'Transaction' : 'Query'} mode`"
+    >
+      <component :is="mode === 'query' ? Database : Edit3" class="w-3.5 h-3.5" />
+      {{ mode === 'query' ? 'Query' : 'Transaction' }}
+    </button>
+    
+    <div class="w-px h-5 bg-neutral-200 dark:bg-neutral-700"></div>
+    <button
       @click="$emit('clear')"
       class="p-1.5 text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700 rounded transition-colors"
       title="Clear query"
@@ -50,13 +61,13 @@
       class="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
     >
       <component :is="isLoading ? Loader2 : Play" :class="['w-3.5 h-3.5', isLoading && 'animate-spin']" />
-      {{ isLoading ? 'Running...' : 'Run Query' }}
+      {{ isLoading ? 'Running...' : mode === 'query' ? 'Run Query' : 'Execute Transaction' }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Play, Loader2, FileX, Wand2, Camera, MoreVertical } from 'lucide-vue-next';
+import { Play, Loader2, FileX, Wand2, Camera, MoreVertical, Database, Edit3 } from 'lucide-vue-next';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -68,6 +79,7 @@ import {
 defineProps<{
   isLoading: boolean;
   isDisabled: boolean;
+  mode: 'query' | 'transaction';
 }>();
 
 defineEmits<{
@@ -75,5 +87,6 @@ defineEmits<{
   clear: [];
   format: [];
   saveSnapshot: [];
+  toggleMode: [];
 }>();
 </script> 

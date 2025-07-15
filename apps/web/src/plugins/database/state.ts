@@ -8,7 +8,7 @@ import type {
   EARS,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
-import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants'
+import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -28,15 +28,20 @@ export interface DatabaseContext {
     value: string;
   } | null;
   snapshotMessage: string | null;
+  mode: 'query' | 'transaction';
 }
 
-type SystemEvent = OutgoingDatabaseEvents
+type SystemEvent = OutgoingDatabaseEvents | 
+  { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
+  { type: 'TRANSACTION_ERROR'; error: string }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
+  | { type: 'TRANSACTION.EXECUTE'; code: string }
   | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
   | { type: 'QUERY.UPDATE'; code: string }
   | { type: 'DATABASE.SAVE_SNAPSHOT' }
+  | { type: 'MODE.TOGGLE' }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -76,6 +81,15 @@ const databaseState = setup({
       });
     },
 
+    executeTransaction: ({ event, context }) => {
+      const ev = typeOf('TRANSACTION.EXECUTE', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXECUTE_TRANSACTION',
+        code: ev.code,
+      });
+    },
+
     updateQuery: assign(({ event }) => {
       const ev = typeOf('QUERY.UPDATE', event);
       return { currentQuery: ev.code };
@@ -96,6 +110,32 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
+      };
+    }),
+
+    setTransactionResult: assign(({ event }) => {
+      const ev = typeOf('TRANSACTION_RESULT', event);
+      return {
+        queryResult: ev.result,
+        executionTime: ev.executionTime,
+        isLoading: false,
+        error: null,
+      };
+    }),
+
+    setTransactionError: assign(({ event }) => {
+      const ev = typeOf('TRANSACTION_ERROR', event);
+      return {
+        error: ev.error,
+        isLoading: false,
+      };
+    }),
+
+    toggleMode: assign(({ context }) => {
+      const newMode: 'query' | 'transaction' = context.mode === 'query' ? 'transaction' : 'query';
+      return {
+        mode: newMode,
+        currentQuery: newMode === 'query' ? exampleQuery : transactionExampleQuery,
       };
     }),
 
@@ -162,11 +202,14 @@ const databaseState = setup({
     executionTime: null,
     selectedSchemaItem: null,
     snapshotMessage: null,
+    mode: 'query',
   },
   on: {
     DATABASE_STARTUP: { actions: 'setStartupData' },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
+    TRANSACTION_RESULT: { actions: 'setTransactionResult' },
+    TRANSACTION_ERROR: { actions: 'setTransactionError' },
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
   },
@@ -178,8 +221,14 @@ const databaseState = setup({
         'QUERY.EXECUTE': {
           actions: ['setLoading', 'executeQuery'],
         },
+        'TRANSACTION.EXECUTE': {
+          actions: ['setLoading', 'executeTransaction'],
+        },
         'QUERY.UPDATE': {
           actions: 'updateQuery',
+        },
+        'MODE.TOGGLE': {
+          actions: 'toggleMode',
         },
         'SCHEMA.SELECT': {
           actions: 'selectSchemaItem',

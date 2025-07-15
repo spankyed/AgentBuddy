@@ -10,6 +10,7 @@ import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/att
 import { createSnapshot } from './snapshot';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
+import { executeTransaction } from './execute/transaction';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('database');
@@ -20,6 +21,9 @@ const busEvent = systemBus(database);
 
 export const IncomingDatabaseEvents = [
   busEvent('EXECUTE_QUERY', {
+    code: z.string(),
+  }),
+  busEvent('EXECUTE_TRANSACTION', {
     code: z.string(),
   }),
   busEvent('CREATE_SNAPSHOT', {
@@ -36,6 +40,8 @@ export type OutgoingDatabaseEvents =
   | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
   | { type: 'QUERY_ERROR'; error: string }
+  | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
+  | { type: 'TRANSACTION_ERROR'; error: string }
   | { type: 'SNAPSHOT_CREATED'; filename: string }
   | { type: 'SNAPSHOT_ERROR'; error: string };
 
@@ -94,6 +100,28 @@ export const databaseSystem = setup({
         }));
       }
     },
+    executeTransaction: async ({ system, event }) => {
+      const { code } = typeOf('EXECUTE_TRANSACTION', event);
+      
+      try {
+        const startTime = performance.now();
+        const result = await executeTransaction(code);
+        const executionTime = performance.now() - startTime;
+        
+        system.get(bus).send(emit(database, { 
+          type: 'TRANSACTION_RESULT',
+          result,
+          executionTime
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Transaction execution failed:', { error: errorMessage });
+        system.get(bus).send(emit(database, { 
+          type: 'TRANSACTION_ERROR',
+          error: errorMessage
+        }));
+      }
+    },
     createSnapshot: async ({ system, event }) => {
       const { name, excludeTypes } = typeOf('CREATE_SNAPSHOT', event);
       
@@ -130,6 +158,9 @@ export const databaseSystem = setup({
       on: {
         EXECUTE_QUERY: {
           actions: 'executeQuery',
+        },
+        EXECUTE_TRANSACTION: {
+          actions: 'executeTransaction',
         },
         CREATE_SNAPSHOT: {
           actions: 'createSnapshot',

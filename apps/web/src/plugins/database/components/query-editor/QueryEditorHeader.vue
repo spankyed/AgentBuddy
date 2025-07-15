@@ -16,10 +16,12 @@
       <QueryEditorActions
         :is-loading="isLoading"
         :is-disabled="!currentQuery.trim()"
+        :mode="mode"
         @execute="$emit('execute')"
         @clear="$emit('clear')"
         @format="$emit('format')"
         @save-snapshot="$emit('saveSnapshot')"
+        @toggle-mode="$emit('toggleMode')"
       />
     </div>
   </div>
@@ -37,6 +39,7 @@ defineProps<{
   currentQuery: string;
   error: string | null;
   successMessage: string;
+  mode: 'query' | 'transaction';
 }>();
 
 defineEmits<{
@@ -45,5 +48,6 @@ defineEmits<{
   clear: [];
   format: [];
   saveSnapshot: [];
+  toggleMode: [];
 }>();
 </script> 
