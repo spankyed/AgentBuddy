@@ -267,6 +267,7 @@ export const librarySystem = setup({
               id: item.id,
               name: item.name,
               content: item.content,
+              shortCode: item.shortCode,
               tags: item.tags,
               collectionId: item.parentId,
               createdAt: item.createdAt,

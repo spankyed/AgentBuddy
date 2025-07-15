@@ -1,9 +1,12 @@
 import type { EARS, BaseEntity } from '@/core/types'
 
+export type DocumentShortCode = `DOC-${number}`;
+
 export interface Document extends BaseEntity {
   _type: EARS.Entity.Document
   name: string
   content: string
+  shortCode: DocumentShortCode
 }
 
 export interface Collection extends BaseEntity {
@@ -16,6 +19,7 @@ export interface DocumentDTO {
   id: EARS.EntityId
   name: string
   content: string
+  shortCode: DocumentShortCode
   tags: string[]
   collectionId?: EARS.EntityId
   collectionPath?: string[]
@@ -52,6 +56,7 @@ export interface DocumentItem {
   type: 'document'
   id: EARS.EntityId
   name: string
+  shortCode: DocumentShortCode
   parentId: EARS.EntityId | null
   content: string
   tags: string[]
