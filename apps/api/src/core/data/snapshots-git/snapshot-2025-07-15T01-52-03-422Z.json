@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-15T03:01:30.862Z",
+  "timestamp": "2025-07-15T03:31:33.620Z",
   "entities": {
     "Thread-1": {
       "timestamp": [
@@ -90,9 +90,9 @@
         1752548153461,
         1752548153461
       ],
+      "role": "latest_message",
       "text": "I'm working on implementing a new design system for our web application, and I've heard CSS variables could help make our styles more maintainable. Can you help me understand how to use CSS variables effectively? I'm particularly interested in how they could help us maintain consistency across different components and make theme updates easier.",
-      "sender": "user",
-      "role": "latest_message"
+      "sender": "user"
     },
     "Message-2": {
       "timestamp": [
@@ -152,9 +152,9 @@
     "Flow-a": {
       "timestamp": 1752548452461,
       "shortCode": "F-a",
+      "role": "root_flow",
       "label": "Run Agent Brain",
-      "flowType": "workflow",
-      "role": "root_flow"
+      "flowType": "workflow"
     },
     "Flow-b": {
       "timestamp": 1752548452461,
@@ -177,11 +177,11 @@
     },
     "Node-a1": {
       "timestamp": 1752548452561,
+      "role": "entry_event",
       "label": "Flow Entry",
       "nodeType": "listen",
       "mode": "entry",
-      "eventType": "flow.entry",
-      "role": "entry_event"
+      "eventType": "flow.entry"
     },
     "Node-a2": {
       "timestamp": 1752548452561,
@@ -258,12 +258,10 @@
       "timestamp": 1752548452601,
       "label": "Stream to FE",
       "nodeType": "action",
-      "fieldMappings": [
-        {
-          "target": "message",
-          "source": "$.event.data.payload"
-        }
-      ],
+      "fieldMappings": {
+        "target": "message",
+        "source": "$.event.data.payload"
+      },
       "actionId": "Action-stream-to-fe"
     },
     "Node-b1": {
@@ -275,14 +273,15 @@
     },
     "Node-b2": {
       "timestamp": 1752548452571,
+      "role": "selected_node",
       "label": "System Events",
       "nodeType": "listen",
       "mode": "internal",
-      "eventType": "system.*",
-      "role": "selected_node"
+      "eventType": "system.*"
     },
     "Node-b3": {
       "timestamp": 1752548452581,
+      "role": "final_node",
       "label": "Message Type",
       "nodeType": "decision",
       "conditions": [
@@ -299,8 +298,7 @@
           "label": "Chat"
         }
       ],
-      "elseLabel": "Unknown",
-      "role": "final_node"
+      "elseLabel": "Unknown"
     },
     "Node-b4": {
       "timestamp": 1752548452591,
@@ -395,12 +393,10 @@
       "timestamp": 1752548452591,
       "label": "Call External API",
       "nodeType": "action",
-      "fieldMappings": [
-        {
-          "target": "data",
-          "source": "$.steps[1].result"
-        }
-      ],
+      "fieldMappings": {
+        "target": "data",
+        "source": "$.steps[1].result"
+      },
       "params": {
         "method": "POST",
         "url": "https://api.example.com/notify",
@@ -413,13 +409,11 @@
       "timestamp": 1752548452601,
       "label": "Log Results",
       "nodeType": "action",
-      "fieldMappings": [
-        {
-          "target": "data",
-          "source": "$.steps",
-          "default": {}
-        }
-      ],
+      "fieldMappings": {
+        "target": "data",
+        "source": "$.steps",
+        "default": {}
+      },
       "params": {
         "level": "info",
         "message": "Demo flow completed successfully"
@@ -830,7 +824,7 @@
         "message": "string"
       }
     },
-    "Relation-md3y3las2v3tje6tm46vg": {
+    "Relation-md3yloxb76hp8seflsez": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-1",
@@ -838,7 +832,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1w6ddfpm1z2fe": {
+    "Relation-md3yloxb2h70h9kh7rfd7": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-2",
@@ -846,7 +840,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las16zuf8rjizfwl": {
+    "Relation-md3yloxb14vue46rv5ur8": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-3",
@@ -854,7 +848,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2eomwfhyhumm0": {
+    "Relation-md3yloxb1x9a0ytaeh8y4": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-4",
@@ -862,7 +856,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lastp5z5h8qz9l6": {
+    "Relation-md3yloxb2bpd0882708ju": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-5",
@@ -870,7 +864,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las34dv7tvzzoj4x": {
+    "Relation-md3yloxb2fan0vlqgfdhn": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-1",
@@ -878,7 +872,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las6v955qqkaftn": {
+    "Relation-md3yloxbnacxba913fqj": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-2",
@@ -886,7 +880,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1j34zomrixo0t": {
+    "Relation-md3yloxbvb47o6mkcm41": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-3",
@@ -894,7 +888,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1b1o8l7fa0bea": {
+    "Relation-md3yloxb1a0pkiptxobve": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "CanvasItem-1",
@@ -902,7 +896,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1are30xmxt4fc": {
+    "Relation-md3yloxbjbp1ij3iruah": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-1",
@@ -910,7 +904,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las22v3h9e9alca6": {
+    "Relation-md3yloxb2h1fa2uxrcfwf": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-2",
@@ -918,7 +912,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1vi17uyuhhcym": {
+    "Relation-md3yloxb76kog0evl2le": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-3",
@@ -926,7 +920,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las32qqvwtrxkks7": {
+    "Relation-md3yloxb1wgdbdtr6a497": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-4",
@@ -934,7 +928,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1l7zh2ks2uq3t": {
+    "Relation-md3yloxb1f7xhbvgeijcf": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-3",
@@ -942,7 +936,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las8vn5wc442mhn": {
+    "Relation-md3yloxb2qlo08yqbb5lk": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-1",
@@ -950,7 +944,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las8m734vr8rtq0": {
+    "Relation-md3yloxb6mqh06dqdf6c": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-5",
@@ -958,7 +952,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lasrtr3o0rg8h0m": {
+    "Relation-md3yloxb2wkkp6vfe45bc": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-2",
@@ -966,7 +960,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las32fkjdqh7yy2c": {
+    "Relation-md3yloxb2mnbattiicif2": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-6",
@@ -974,7 +968,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1p2rr6ejd9pc": {
+    "Relation-md3yloxb3ryxh2vkpp4wk": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-7",
@@ -982,7 +976,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3mzsztn6x8xlr": {
+    "Relation-md3yloxb1yyuhkpt5lmri": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-3",
@@ -990,7 +984,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las19dkp13oqjaje": {
+    "Relation-md3yloxb13wzq78wopf2m": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-2",
@@ -998,7 +992,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3cex02lk1038k": {
+    "Relation-md3yloxbbg3cwj1stdea": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Thread-1",
@@ -1006,7 +1000,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1fs4mihztttu0": {
+    "Relation-md3yloxb3pugf645d0ad0": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1014,7 +1008,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lasa0xqxoe0xsro": {
+    "Relation-md3yloxb2drezo128rag2": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1022,7 +1016,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las175v18q7mg36y": {
+    "Relation-md3yloxb1ltqgnqalfnsm": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1030,7 +1024,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las21zbhkszg62lk": {
+    "Relation-md3yloxb18qgm3hy48mk4": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -1038,7 +1032,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2ybk6g6sr0gyj": {
+    "Relation-md3yloxb3elavcv54ez8j": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a5s",
@@ -1046,7 +1040,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1g3x3i4dw5czz": {
+    "Relation-md3yloxb2iwn208v1q9v5": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a6s",
@@ -1054,7 +1048,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las122uwx6zbditr": {
+    "Relation-md3yloxb1ncf8ztsp89eg": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a7s",
@@ -1062,7 +1056,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2hgn1spfjrxau": {
+    "Relation-md3yloxb3f0qss0eqg6n5": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a8s",
@@ -1070,7 +1064,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las15jc8ejvrqrc5": {
+    "Relation-md3yloxb33axe7xn91xqo": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-loa8s",
@@ -1078,7 +1072,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1uo2nu1tlaorj": {
+    "Relation-md3yloxb2vz9km6dzitw8": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1086,7 +1080,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1xqn3n7bdfb8j": {
+    "Relation-md3yloxbfoq98zcg9t3l": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1094,7 +1088,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las37t21qcgjmpti": {
+    "Relation-md3yloxba6ny8a6cjuyg": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1102,7 +1096,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2anb6ed497x0u": {
+    "Relation-md3yloxb3tciedzcth3zj": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -1110,7 +1104,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2zd8sovldh58j": {
+    "Relation-md3yloxb35gy2ozv3m4d8": {
       "relationDetails": {
         "sourceEntity": "Node-a2",
         "targetEntity": "Node-a7s",
@@ -1118,7 +1112,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2kdygnom4xd42": {
+    "Relation-md3yloxb3nwr35cz1lo5c": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-a6s",
@@ -1126,7 +1120,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lasozgfm9m18z38": {
+    "Relation-md3yloxbcx789kqx2hps": {
       "relationDetails": {
         "sourceEntity": "Node-a6s",
         "targetEntity": "Node-a5s",
@@ -1134,7 +1128,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2pfhgx65b0p0g": {
+    "Relation-md3yloxb3w427ldwi78wz": {
       "relationDetails": {
         "sourceEntity": "Node-a7s",
         "targetEntity": "Node-a8s",
@@ -1142,7 +1136,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2f6e1iqqkt8sx": {
+    "Relation-md3yloxbcxo7e7tpxedz": {
       "relationDetails": {
         "sourceEntity": "Node-a8s",
         "targetEntity": "Node-loa8s",
@@ -1150,7 +1144,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las27xmjluf0522c": {
+    "Relation-md3yloxbuejjdta03qde": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1158,7 +1152,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2bipzps5sgwj": {
+    "Relation-md3yloxb30ja7xque6tk2": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1166,7 +1160,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3gbswzzeu259l": {
+    "Relation-md3yloxb267skyathgp3m": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -1174,7 +1168,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las24o5zcybg0f2c": {
+    "Relation-md3yloxb1kuvc0tevahjg": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -1182,7 +1176,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3muwgwtxsie81": {
+    "Relation-md3yloxbk3znq1109t7p": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -1190,7 +1184,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2xcet7suaz7k0": {
+    "Relation-md3yloxb3gmgqd6m9z21r": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -1198,7 +1192,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3k8fhdny9ly84": {
+    "Relation-md3yloxb2cm2pag8wyx3h": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -1206,7 +1200,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las1e0d9w55e8lcj": {
+    "Relation-md3yloxb15q2zmr4wut5x": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -1214,7 +1208,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las2qh7adzwlmg5u": {
+    "Relation-md3yloxb2v26ln7sid1j7": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -1222,7 +1216,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las3d82j7a5ri2bd": {
+    "Relation-md3yloxb1wl6pd76zs0dw": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -1230,7 +1224,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las38xpn5ex6tqd2": {
+    "Relation-md3yloxbddizl91lh59m": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1238,7 +1232,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3las7xhw0o2szhaj": {
+    "Relation-md3yloxb2w1fkcmg8dii2": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1246,7 +1240,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat1hruqpt1pm92": {
+    "Relation-md3yloxc3qfwphhhue6jp": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -1254,7 +1248,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3latbqnqgve0jfil": {
+    "Relation-md3yloxc2mtjtyhg8p2x9": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -1262,7 +1256,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat3a4j2a0qz9096": {
+    "Relation-md3yloxc18bijum7j2u20": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -1272,7 +1266,7 @@
         }
       }
     },
-    "Relation-md3y3latfc8wyvhnwx15": {
+    "Relation-md3yloxc1vvl12or4xmpp": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -1282,7 +1276,7 @@
         }
       }
     },
-    "Relation-md3y3lat17ynr5tn99tr4": {
+    "Relation-md3yloxcy85o092mdvsl": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -1290,7 +1284,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat3jj86css13dr7": {
+    "Relation-md3yloxc30ithkdi9i8rq": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -1298,7 +1292,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat2vj6snf2wyd6e": {
+    "Relation-md3yloxc1rojlg361fwyc": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -1306,7 +1300,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat3au805hmr9ij5": {
+    "Relation-md3yloxc5frjbqcqow6i": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -1314,7 +1308,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat1wtufsnok3jh9": {
+    "Relation-md3yloxc1dbhkr16hm10v": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -1322,91 +1316,91 @@
         "info": {}
       }
     },
-    "Relation-md3y3lat1gcdfh34m5zlj": {
+    "Relation-md3yloxctn7dy05y7xe7": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad1",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat1h8b8j14ceovi": {
+    "Relation-md3yloxc2aqjb9f1rduro": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad2",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat27aoi2fpf7dxx": {
+    "Relation-md3yloxc39nv508pmxeu0": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad3",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat1yfxe6wvcywsg": {
+    "Relation-md3yloxckwanv98es9mx": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad4",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat1vu0cm23j24cq": {
+    "Relation-md3yloxcafcpnhh8sbco": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad5",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat2pwhzln556rn8": {
+    "Relation-md3yloxc2wxo6sk2xu6ux": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad6",
         "relationType": "contains"
       }
     },
-    "Relation-md3y3lat2a29iacumhm30": {
+    "Relation-md3yloxcjzqbjemot5l2": {
       "relationDetails": {
         "sourceEntity": "Node-ad1",
         "targetEntity": "Node-ad2",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3y3lat1yremjcc9rpda": {
+    "Relation-md3yloxcweckd28xvvmm": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Node-ad3",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3y3lat2ro68bi2m63b8": {
+    "Relation-md3yloxc33ndtkin53mzw": {
       "relationDetails": {
         "sourceEntity": "Node-ad3",
         "targetEntity": "Node-ad4",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3y3latgb9hs6n8dwt2": {
+    "Relation-md3yloxc2eyekkt4tn08p": {
       "relationDetails": {
         "sourceEntity": "Node-ad4",
         "targetEntity": "Node-ad5",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3y3lat3gy79dqminb9y": {
+    "Relation-md3yloxc38x5qj4m0zjik": {
       "relationDetails": {
         "sourceEntity": "Node-ad5",
         "targetEntity": "Node-ad6",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3y3lat3rudiiq1zndgy": {
+    "Relation-md3yloxc3mbiblpi6cz3l": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Action-save-entity",
         "relationType": "instance_of"
       }
     },
-    "Relation-md3y3lat3v6cwpfmrhuou": {
+    "Relation-md3yloxc39f8zqc591rj9": {
       "relationDetails": {
         "sourceEntity": "Node-a5s",
         "targetEntity": "Action-save-entity",
@@ -1414,7 +1408,7 @@
         "info": {}
       }
     },
-    "Relation-md3y3lata7sbylr72q0u": {
+    "Relation-md3yloxc13fwpj0zdl539": {
       "relationDetails": {
         "sourceEntity": "Node-loa8s",
         "targetEntity": "Action-stream-to-fe",
@@ -1423,7 +1417,7 @@
     }
   },
   "metadata": {
-    "entityCount": 138,
+    "entityCount": 135,
     "attributeKinds": [
       "timestamp",
       "topic",
@@ -1431,6 +1425,7 @@
       "shortCode",
       "threadType",
       "status",
+      "role",
       "name",
       "color",
       "text",
@@ -1441,6 +1436,7 @@
       "contentType",
       "label",
       "flowType",
+      "description",
       "nodeType",
       "mode",
       "eventType",
@@ -1459,7 +1455,6 @@
       "outputType",
       "flowRef",
       "propagateCtx",
-      "description",
       "params",
       "final",
       "category",
@@ -1471,7 +1466,6 @@
       "actionFn",
       "output",
       "relationDetails",
-      "role",
       "createdAt",
       "entityType",
       "tNodeType",
@@ -1492,8 +1486,8 @@
       "spawned"
     ],
     "excludedTypes": [
-      "TNode",
       "TNode"
-    ]
+    ],
+    "excludedRelations": 3
   }
 }
