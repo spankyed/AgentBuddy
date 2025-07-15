@@ -135,7 +135,6 @@ const databaseState = setup({
       const newMode: 'query' | 'transaction' = context.mode === 'query' ? 'transaction' : 'query';
       return {
         mode: newMode,
-        currentQuery: newMode === 'query' ? exampleQuery : transactionExampleQuery,
       };
     }),
 
