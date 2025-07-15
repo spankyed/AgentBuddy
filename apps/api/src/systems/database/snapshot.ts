@@ -13,7 +13,8 @@ import {
   destroyEntity
 } from '@/core/utils/ears/attribute-storage';
 
-const SNAPSHOTS_DIR = path.join(process.cwd(), 'apps/api/src/core/data/snapshots');
+const SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots');
+const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots-git');
 
 interface SnapshotData {
   version: string;
@@ -133,4 +134,20 @@ export async function restoreSnapshot(snapshotData: SnapshotData): Promise<void>
       }
     }
   }
+}
+
+export async function listGitSnapshots(): Promise<string[]> {
+  try {
+    const files = await fs.readdir(GIT_SNAPSHOTS_DIR);
+    return files.filter(f => f.endsWith('.json') && f !== 'README.md');
+  } catch (error) {
+    // Directory doesn't exist yet
+    return [];
+  }
+}
+
+export async function loadGitSnapshot(filename: string): Promise<SnapshotData> {
+  const filepath = path.join(GIT_SNAPSHOTS_DIR, filename);
+  const content = await fs.readFile(filepath, 'utf-8');
+  return JSON.parse(content) as SnapshotData;
 }
