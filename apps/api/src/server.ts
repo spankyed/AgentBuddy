@@ -15,10 +15,7 @@ import staticData from './core/data/static';
 
 (async function setupBackend() {
   // loadData();
-
-  loadData(staticData);
-  
-  // Load the latest snapshot if available
+  // loadData(staticData);
   await loadSnapshot();
   
   initializeLogCapture();
