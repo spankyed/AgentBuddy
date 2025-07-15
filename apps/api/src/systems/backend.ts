@@ -74,12 +74,7 @@ export const backendSystem = setup({
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {
-        const inputs = {
-          agent: createEntity(EARS.Entity.Agent),
-          brain: createEntity(EARS.Entity.Brain),
-        } as const;
-
-        enqueue.spawnChild(state, { input: inputs[id as keyof typeof inputs], systemId: id as SystemId });
+        enqueue.spawnChild(state, { systemId: id as SystemId });
       }
     }),
   }

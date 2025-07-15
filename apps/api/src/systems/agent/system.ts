@@ -49,7 +49,6 @@ export type OutgoingAgentEvents =
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
 
 export interface AgentContext {
-  agentId: EARS.EntityId;
   userPrompt?: string;
 }
 
@@ -59,7 +58,6 @@ const typeOf = safeEvents<ReceivableEvents>();
 
 export const agentSystem = setup({
   types: {
-    input: {} as EARS.EntityId,
     context: {} as AgentContext,
     events: {} as ReceivableEvents,
   },
@@ -174,7 +172,6 @@ export function ${label.replace(/\s+/g, '')}() {
     id: agent,
     initial: 'idle',
     context: ({ input }) => ({
-      agentId: input,
       userPrompt: undefined,
     }),
     on: {

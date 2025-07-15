@@ -32,9 +32,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
   | { type: 'QUERY_ERROR'; error: string };
 
-export interface DatabaseContext {
-  databaseId: EARS.EntityId;
-}
+export interface DatabaseContext { }
 
 export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingDatabaseEvents, typeof database>();
 type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
@@ -58,7 +56,6 @@ export const databaseSystem = setup({
   types: {
     context: {} as DatabaseContext,
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     sendDatabaseStartupData: ({ system }) => {
@@ -94,9 +91,7 @@ export const databaseSystem = setup({
 }).createMachine({
   id: database,
   initial: 'idle',
-  context: ({ input }) => ({
-    databaseId: input,
-  }),
+  context: ({ input }) => ({}),
   on: {
     CLIENT_CONNECTED: {
       actions: 'sendDatabaseStartupData',

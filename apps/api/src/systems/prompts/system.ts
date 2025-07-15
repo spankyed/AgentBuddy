@@ -55,11 +55,8 @@ type ReceivableEvents = MergeReceivable<typeof IncomingPromptEvents, PromptsInte
 
 export const promptsSystem = setup({
   types: {
-    context: {} as {
-      promptsId: EARS.EntityId;
-    },
+    context: {} as {},
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     sendPromptsStartupData: ({ system }) => {
@@ -154,9 +151,7 @@ export const promptsSystem = setup({
   {
     id: prompts,
     initial: 'idle',
-    context: ({ input }) => ({
-      promptsId: input,
-    }),
+    context: ({ input }) => ({}),
     on: {
       PROMPT_SELECT: {
         actions: 'sendPromptData',
