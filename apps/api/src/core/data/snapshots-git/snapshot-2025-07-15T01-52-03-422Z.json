@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-15T01:52:03.422Z",
+  "timestamp": "2025-07-15T03:01:30.862Z",
   "entities": {
     "Thread-1": {
       "timestamp": [
-        1752543767568,
-        1752543776568
+        1752547904461,
+        1752547913461
       ],
       "topic": "UI Layout Reorganization Instructions",
       "instructions": "Please reorganize the UI layout of the application to make it more user-friendly.",
@@ -19,8 +19,8 @@
     },
     "Thread-2": {
       "timestamp": [
-        1752540656568,
-        1752540656568
+        1752544793461,
+        1752544793461
       ],
       "topic": "Adding Padding to Scrollbar in CSS",
       "instructions": "Please add padding to the scrollbar of the application to make it more user-friendly.",
@@ -30,8 +30,8 @@
     },
     "Thread-3": {
       "timestamp": [
-        1752540716568,
-        1752540716568
+        1752544853461,
+        1752544853461
       ],
       "topic": "Enhancing Chat Interface Design",
       "instructions": "Please enhance the chat interface of the application to make it more user-friendly.",
@@ -41,8 +41,8 @@
     },
     "Thread-4": {
       "timestamp": [
-        1752540716568,
-        1752540716568
+        1752544853461,
+        1752544853461
       ],
       "topic": "Project X",
       "instructions": "Please create a project X.",
@@ -51,44 +51,44 @@
       "status": "inactive"
     },
     "Tag-1": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "ui",
       "color": "yellow"
     },
     "Tag-2": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "design",
       "color": "blue"
     },
     "Tag-3": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "frontend",
       "color": "green"
     },
     "Tag-4": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "css",
       "color": "orange"
     },
     "Tag-5": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "chat",
       "color": "purple"
     },
     "Tag-6": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "project",
       "color": "red"
     },
     "Tag-7": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "name": "backend",
       "color": "pink"
     },
     "Message-1": {
       "timestamp": [
-        1752544016568,
-        1752544016568
+        1752548153461,
+        1752548153461
       ],
       "text": "I'm working on implementing a new design system for our web application, and I've heard CSS variables could help make our styles more maintainable. Can you help me understand how to use CSS variables effectively? I'm particularly interested in how they could help us maintain consistency across different components and make theme updates easier.",
       "sender": "user",
@@ -96,87 +96,87 @@
     },
     "Message-2": {
       "timestamp": [
-        1752544076568,
-        1752544076568
+        1752548213461,
+        1752548213461
       ],
       "text": "CSS variables, also known as custom properties, are a powerful feature for building maintainable design systems. They allow you to define reusable values that can be referenced throughout your stylesheets. The syntax follows this pattern: `--variable-name: value;` when defining, and `var(--variable-name)` when using them.\n\nOne of the biggest advantages is that you can update these values in one place and see the changes reflect across your entire application. They also support features like fallback values and can be modified dynamically using JavaScript. Let me show you a practical example in the canvas area above.",
       "sender": "assistant"
     },
     "Message-3": {
       "timestamp": [
-        1752544136568,
-        1752544136568
+        1752548273461,
+        1752548273461
       ],
       "text": "That explanation really helps! I think I see how this could improve our codebase. Could you show me a specific example of how we might implement a color palette using CSS variables? We currently have different shades of blue scattered throughout our CSS files, and it's becoming hard to maintain consistency.",
       "sender": "user"
     },
     "Message-4": {
       "timestamp": [
-        1752544196568,
-        1752544196568
+        1752548333461,
+        1752548333461
       ],
       "text": "I've updated the canvas with a comprehensive color palette example using CSS variables. You can define your colors once in the :root selector like this:\n\n:root {\n  --primary-100: #e3f2fd;\n  --primary-500: #2196f3;\n  --primary-900: #0d47a1;\n}\n\nThen use them throughout your CSS with var(--primary-500) for your main brand color, var(--primary-100) for lighter variants, and var(--primary-900) for darker accents. This makes it much easier to maintain a consistent color scheme and update colors globally when needed.",
       "sender": "assistant"
     },
     "Message-5": {
       "timestamp": [
-        1752544256568,
-        1752544256568
+        1752548393461,
+        1752548393461
       ],
       "text": "This is exactly what we need! Could you help me refactor our current CSS code to use these variables from our design system? I want to make sure we're following best practices and maintaining consistency across all components.",
       "sender": "user"
     },
     "ContextItem-1": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "title": "Project Overview",
       "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
       "itemType": "text"
     },
     "ContextItem-2": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "title": "CSS Variables Example",
       "content": "\n:root {\n  --primary-color: #3B4D6C;\n  --accent-color: #38B2AC;\n  --text-color: #333;\n  --background-color: #f9f9f9;\n}\n\n.button {\n  background-color: var(--primary-color);\n  color: white;\n  padding: 8px 16px;\n  border-radius: 4px;\n}\n\n.button.accent {\n  background-color: var(--accent-color);\n}\n    ",
       "itemType": "code"
     },
     "ContextItem-3": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "title": "Color Palette",
       "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
       "itemType": "text"
     },
     "CanvasItem-1": {
-      "timestamp": 1752544316568,
+      "timestamp": 1752548453461,
       "content": "/* Before: Using hardcoded colors */\n.header {\n  background-color: #333;\n  color: white;\n}\n\n.sidebar {\n  background-color: #444;\n  border-right: 1px solid #555;\n}\n\n.button {\n  background-color: #0066cc;\n  color: white;\n}\n\n.button.secondary {\n  background-color: #6c757d;\n}\n\n/* Please rewrite this code using css variables from our design systems */",
       "contentType": "code"
     },
     "Flow-a": {
-      "timestamp": 1752544315568,
+      "timestamp": 1752548452461,
       "shortCode": "F-a",
       "label": "Run Agent Brain",
       "flowType": "workflow",
       "role": "root_flow"
     },
     "Flow-b": {
-      "timestamp": 1752544315568,
+      "timestamp": 1752548452461,
       "shortCode": "F-b",
       "label": "Chat Flow",
       "flowType": "workflow"
     },
     "Flow-c": {
-      "timestamp": 1752544315568,
+      "timestamp": 1752548452461,
       "shortCode": "F-c",
       "label": "Some flow with validation",
       "flowType": "workflow"
     },
     "Flow-action-demo": {
-      "timestamp": 1752544315568,
+      "timestamp": 1752548452461,
       "shortCode": "F-action-demo",
       "label": "Action Demo Flow",
       "flowType": "workflow",
       "description": "Demonstrates various action nodes"
     },
     "Node-a1": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Flow Entry",
       "nodeType": "listen",
       "mode": "entry",
@@ -184,37 +184,37 @@
       "role": "entry_event"
     },
     "Node-a2": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "User Message",
       "nodeType": "listen",
       "mode": "internal",
       "eventType": "user.message"
     },
     "Node-a3": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Database Query Prompt",
       "nodeType": "listen",
       "mode": "internal",
       "eventType": "database.query.prompt"
     },
     "Node-a4s": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Keep Alive",
       "nodeType": "keep_alive"
     },
     "Node-a5s": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "save to db",
       "nodeType": "action"
     },
     "Node-a6s": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "LLM Call",
       "nodeType": "llm",
       "model": "gpt-4"
     },
     "Node-a7s": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Process User Message",
       "nodeType": "llm",
       "model": "gpt-4",
@@ -233,7 +233,7 @@
       ]
     },
     "Node-a8s": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Format Response",
       "nodeType": "llm",
       "model": "gpt-4",
@@ -255,7 +255,7 @@
       ]
     },
     "Node-loa8s": {
-      "timestamp": 1752544315708,
+      "timestamp": 1752548452601,
       "label": "Stream to FE",
       "nodeType": "action",
       "fieldMappings": [
@@ -267,14 +267,14 @@
       "actionId": "Action-stream-to-fe"
     },
     "Node-b1": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "User Message",
       "nodeType": "listen",
       "mode": "entry",
       "eventType": "chat.message"
     },
     "Node-b2": {
-      "timestamp": 1752544315678,
+      "timestamp": 1752548452571,
       "label": "System Events",
       "nodeType": "listen",
       "mode": "internal",
@@ -282,7 +282,7 @@
       "role": "selected_node"
     },
     "Node-b3": {
-      "timestamp": 1752544315688,
+      "timestamp": 1752548452581,
       "label": "Message Type",
       "nodeType": "decision",
       "conditions": [
@@ -303,61 +303,61 @@
       "role": "final_node"
     },
     "Node-b4": {
-      "timestamp": 1752544315698,
+      "timestamp": 1752548452591,
       "label": "Create Context",
       "nodeType": "create",
       "entityTypeTarget": "Node"
     },
     "Node-b5": {
-      "timestamp": 1752544315708,
+      "timestamp": 1752548452601,
       "label": "Update Context",
       "nodeType": "update",
       "entityId": "Node-b4"
     },
     "Node-b6": {
-      "timestamp": 1752544315718,
+      "timestamp": 1752548452611,
       "label": "Send Response",
       "nodeType": "fire",
       "eventType": "chat.response",
       "scope": "global"
     },
     "Node-b8": {
-      "timestamp": 1752544315738,
+      "timestamp": 1752548452631,
       "label": "Get User Intent",
       "nodeType": "query",
       "prompt": "What is the user's intent?",
       "resultKey": "intent"
     },
     "Node-b9": {
-      "timestamp": 1752544315748,
+      "timestamp": 1752548452641,
       "label": "Format Response",
       "nodeType": "transform",
       "script": "return { response: `Intent: ${context.intent}` }",
       "outputType": "json"
     },
     "Node-b10": {
-      "timestamp": 1752544315758,
+      "timestamp": 1752548452651,
       "label": "Log Intent",
       "nodeType": "fire",
       "eventType": "system.intent",
       "scope": "global"
     },
     "Node-b11": {
-      "timestamp": 1752544315768,
+      "timestamp": 1752548452661,
       "label": "Command Handler",
       "nodeType": "flow",
       "flowRef": "command-flow-3",
       "propagateCtx": true
     },
     "Node-ad1": {
-      "timestamp": 1752544315668,
+      "timestamp": 1752548452561,
       "label": "Start Demo",
       "nodeType": "listen",
       "mode": "entry",
       "eventType": "demo.start"
     },
     "Node-ad2": {
-      "timestamp": 1752544315678,
+      "timestamp": 1752548452571,
       "label": "Save User Data",
       "nodeType": "action",
       "params": {
@@ -365,12 +365,12 @@
         "data": {
           "name": "Demo User",
           "email": "demo@example.com",
-          "timestamp": 1752544316568
+          "timestamp": 1752548453461
         }
       }
     },
     "Node-ad3": {
-      "timestamp": 1752544315688,
+      "timestamp": 1752548452581,
       "label": "Send Welcome Email",
       "nodeType": "action",
       "fieldMappings": [
@@ -392,7 +392,7 @@
       ]
     },
     "Node-ad4": {
-      "timestamp": 1752544315698,
+      "timestamp": 1752548452591,
       "label": "Call External API",
       "nodeType": "action",
       "fieldMappings": [
@@ -410,7 +410,7 @@
       }
     },
     "Node-ad5": {
-      "timestamp": 1752544315708,
+      "timestamp": 1752548452601,
       "label": "Log Results",
       "nodeType": "action",
       "fieldMappings": [
@@ -426,7 +426,7 @@
       }
     },
     "Node-ad6": {
-      "timestamp": 1752544315718,
+      "timestamp": 1752548452611,
       "label": "Demo Complete",
       "nodeType": "fire",
       "eventType": "demo.complete",
@@ -434,7 +434,7 @@
       "final": true
     },
     "Prompt-1": {
-      "timestamp": 1751939516568,
+      "timestamp": 1751943653461,
       "label": "Summarize Text",
       "description": "Summarizes long text into key points",
       "category": "text-processing",
@@ -455,10 +455,10 @@
         }
       },
       "templateFn": "const { text, maxLength = 100 } = params;\n// prettier-ignore\nreturn `\n  Please summarize the following text in approximately ${maxLength} words:\n\n  ${text}\n\n  Provide a clear, concise summary focusing on the main points.\n`;",
-      "updatedAt": 1752371516568
+      "updatedAt": 1752375653461
     },
     "Prompt-2": {
-      "timestamp": 1752112316568,
+      "timestamp": 1752116453461,
       "label": "Code Review",
       "description": "Reviews code for quality and suggestions",
       "category": "development",
@@ -489,7 +489,7 @@
         }
       },
       "templateFn": "const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;\n// prettier-ignore\nreturn `\n  Please review the following ${language} code:\n\n  \\`\\`\\`${language}\n  ${code}\n  \\`\\`\\`\n\n  Focus on: ${focusAreas.join(', ')}\n\n  Provide specific suggestions for improvements.\n`;",
-      "updatedAt": 1752457916568,
+      "updatedAt": 1752462053461,
       "outputSchema": {
         "type": "object",
         "properties": {
@@ -525,7 +525,7 @@
       }
     },
     "Prompt-3": {
-      "timestamp": 1752285116568,
+      "timestamp": 1752289253461,
       "label": "Q&A Assistant",
       "description": "Answers questions based on context",
       "category": "assistant",
@@ -552,10 +552,10 @@
         }
       },
       "templateFn": "const { question, context = '', tone = 'professional' } = params;\n\nif (context) {\n  // prettier-ignore\n  return `\n    Context:\n    ${context}\n\n    Please answer the following question in a ${tone} tone:\n\n    ${question}\n\n    Provide a clear and helpful response.\n  `;\n}\n\n// prettier-ignore\nreturn `\n  Please answer the following question in a ${tone} tone:\n\n  ${question}\n\n  Provide a clear and helpful response.\n`;",
-      "updatedAt": 1752285116568
+      "updatedAt": 1752289253461
     },
     "Prompt-4": {
-      "timestamp": 1752198716568,
+      "timestamp": 1752202853461,
       "label": "Translate Text",
       "description": "Translates text between languages",
       "category": "text-processing",
@@ -589,10 +589,10 @@
         }
       },
       "templateFn": "const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;\n\n// prettier-ignore\nreturn `\n  Please translate the following text to ${targetLang}:\n\n  ${text}\n\n  Translation requirements:\n  - ${sourceLang === 'auto' ? 'Detect the source language automatically' : 'Source language: ' + sourceLang}\n  - Target language: ${targetLang}\n  - Translation style: ${style} (preserve the original tone and meaning)\n  - Maintain formatting and structure\n  - Ensure cultural appropriateness\n\n  Provide only the translated text without explanations.\n`;",
-      "updatedAt": 1752457916568
+      "updatedAt": 1752462053461
     },
     "Prompt-5": {
-      "timestamp": 1752025916568,
+      "timestamp": 1752030053461,
       "label": "Sentiment Analysis",
       "description": "Analyzes sentiment and emotion in text",
       "category": "analysis",
@@ -612,7 +612,7 @@
         }
       },
       "templateFn": "const { text, detailed = false } = params;\n\n// prettier-ignore\nreturn `\n  Please analyze the sentiment of the following text:\n\n  \"${text}\"\n\n  Provide a sentiment analysis that includes:\n  - Overall sentiment (positive, negative, neutral, mixed)\n  - Confidence score (0-100%)\n  - Key emotional indicators\n  ${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}\n\n  Format your response as a clear, structured analysis.\n`;",
-      "updatedAt": 1752371516568,
+      "updatedAt": 1752375653461,
       "outputSchema": {
         "type": "object",
         "properties": {
@@ -660,7 +660,7 @@
       }
     },
     "Prompt-6": {
-      "timestamp": 1751853116569,
+      "timestamp": 1751857253461,
       "label": "Brainstorm Ideas",
       "description": "Generates creative ideas for a given topic",
       "category": "creative",
@@ -695,10 +695,10 @@
         }
       },
       "templateFn": "const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;\n\n// prettier-ignore\nreturn `\n\nPlease brainstorm ${quantity} ${creativity} ideas for:\n\n${topic}\n\n${constraints ? 'Constraints/Requirements:\\n' + constraints + '\\n\\n' : ''}Guidelines:\n- Generate ${quantity} distinct ideas\n- Creativity level: ${creativity}\n- Each idea should be practical and actionable\n- Include a brief explanation for each idea\n- Consider different perspectives and approaches\n- Be specific rather than generic\n\nPresent each idea with:\n1. A clear title\n2. A 2-3 sentence description\n3. Key benefits or potential impact\n\n`;",
-      "updatedAt": 1752285116569
+      "updatedAt": 1752289253461
     },
     "Prompt-user-message-analysis": {
-      "timestamp": 1752371516569,
+      "timestamp": 1752375653461,
       "label": "User Message Analysis",
       "description": "Analyzes user messages to extract intent, entities, and sentiment",
       "category": "analysis",
@@ -718,10 +718,10 @@
         }
       },
       "templateFn": "const { userMessage, additionalContext = '' } = params;\n\n// prettier-ignore\nreturn `\n  Analyze the following user message and extract key information:\n\n  User Message: \"${userMessage}\"\n\n  ${additionalContext ? `Additional Context: ${additionalContext}\n\n` : ''}\n\n  Please provide a detailed analysis including:\n  1. Summary: A brief summary of what the user is asking or saying\n  2. Intent: The primary intent or goal of the message (e.g., question, request, feedback, etc.)\n  3. Entities: Key entities, topics, or concepts mentioned\n  4. Category: Categorize the message (e.g., technical_support, general_inquiry, feature_request, etc.)\n  5. Urgency: Assess the urgency level (low, medium, high)\n\n  Format your response as a structured analysis.\n`;",
-      "updatedAt": 1752371516569
+      "updatedAt": 1752375653461
     },
     "Prompt-format-response": {
-      "timestamp": 1752371516569,
+      "timestamp": 1752375653461,
       "label": "Format Response",
       "description": "Formats AI responses based on analysis results and style preferences",
       "category": "formatting",
@@ -747,14 +747,14 @@
         }
       },
       "templateFn": "const { userMessage, analysisResult, responseStyle = 'helpful and professional' } = params;\n\n// prettier-ignore\nreturn `\n  Based on the following analysis of the user's message, craft an appropriate response.\n\n  Original User Message: \"${userMessage}\"\n\n  Analysis Result:\n  ${JSON.stringify(analysisResult, null, 2)}\n\n  Please format a response that is ${responseStyle}.\n\n  The response should:\n  1. Address the user's primary intent as identified in the analysis\n  2. Be clear, concise, and helpful\n  3. Include any relevant suggestions or next steps\n  4. Maintain a ${responseStyle} tone throughout\n\n  Format your response as a natural, conversational message.\n`;",
-      "updatedAt": 1752371516569
+      "updatedAt": 1752375653461
     },
     "Action-stream-to-fe": {
-      "timestamp": 1752544316499,
+      "timestamp": 1752548453391,
       "label": "Stream to FE",
       "description": "Streams a message to the front-end",
       "category": "utility",
-      "updatedAt": 1752544316499,
+      "updatedAt": 1752548453391,
       "input": {
         "message": {
           "name": "message",
@@ -770,11 +770,11 @@
       }
     },
     "Action-save-entity": {
-      "timestamp": 1752544316469,
+      "timestamp": 1752548453361,
       "label": "Save Entity",
       "description": "Saves an entity to the database",
       "category": "database",
-      "updatedAt": 1752544316469,
+      "updatedAt": 1752548453361,
       "input": {
         "entityType": {
           "name": "entityType",
@@ -797,11 +797,11 @@
       }
     },
     "Action-log-message": {
-      "timestamp": 1752544316623,
+      "timestamp": 1752548453513,
       "label": "Log Message",
       "description": "Logs a message with optional data",
       "category": "utility",
-      "updatedAt": 1752544316623,
+      "updatedAt": 1752548453513,
       "input": {
         "level": {
           "name": "level",
@@ -830,7 +830,7 @@
         "message": "string"
       }
     },
-    "Relation-md3vmx98mtk6ljevus9c": {
+    "Relation-md3y3las2v3tje6tm46vg": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-1",
@@ -838,7 +838,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98o7ftj523g6qs": {
+    "Relation-md3y3las1w6ddfpm1z2fe": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-2",
@@ -846,7 +846,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982c87rnrkhdxv8": {
+    "Relation-md3y3las16zuf8rjizfwl": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-3",
@@ -854,7 +854,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx983gz3mibo88qht": {
+    "Relation-md3y3las2eomwfhyhumm0": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-4",
@@ -862,7 +862,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981pehhmhpnueoh": {
+    "Relation-md3y3lastp5z5h8qz9l6": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-5",
@@ -870,7 +870,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982tlazdo1t7qhu": {
+    "Relation-md3y3las34dv7tvzzoj4x": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-1",
@@ -878,7 +878,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx983twgttr4sxtiz": {
+    "Relation-md3y3las6v955qqkaftn": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-2",
@@ -886,7 +886,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981uh5r8o9o1qww": {
+    "Relation-md3y3las1j34zomrixo0t": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-3",
@@ -894,7 +894,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9815jwpi967x6h4": {
+    "Relation-md3y3las1b1o8l7fa0bea": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "CanvasItem-1",
@@ -902,7 +902,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98140tyiyb332ff": {
+    "Relation-md3y3las1are30xmxt4fc": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-1",
@@ -910,7 +910,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981cvh0k7b993ym": {
+    "Relation-md3y3las22v3h9e9alca6": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-2",
@@ -918,7 +918,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98sylh68pz1vpf": {
+    "Relation-md3y3las1vi17uyuhhcym": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-3",
@@ -926,7 +926,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx986qa3b7k4hgeb": {
+    "Relation-md3y3las32qqvwtrxkks7": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-4",
@@ -934,7 +934,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98273e4ehklp8bt": {
+    "Relation-md3y3las1l7zh2ks2uq3t": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-3",
@@ -942,7 +942,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98353bksti80zvp": {
+    "Relation-md3y3las8vn5wc442mhn": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-1",
@@ -950,7 +950,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9829qlsajnk8fzm": {
+    "Relation-md3y3las8m734vr8rtq0": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-5",
@@ -958,7 +958,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9829q70d21vxir2": {
+    "Relation-md3y3lasrtr3o0rg8h0m": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-2",
@@ -966,7 +966,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981uqw0mtpow4sc": {
+    "Relation-md3y3las32fkjdqh7yy2c": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-6",
@@ -974,7 +974,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982dtqgu3yd4sfs": {
+    "Relation-md3y3las1p2rr6ejd9pc": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-7",
@@ -982,7 +982,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98jelimmfwmmza": {
+    "Relation-md3y3las3mzsztn6x8xlr": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-3",
@@ -990,7 +990,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98nwamix8rwuoh": {
+    "Relation-md3y3las19dkp13oqjaje": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-2",
@@ -998,7 +998,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982thk19ssof3cq": {
+    "Relation-md3y3las3cex02lk1038k": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Thread-1",
@@ -1006,7 +1006,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx983afyrtjx3k7t8": {
+    "Relation-md3y3las1fs4mihztttu0": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1014,7 +1014,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98qy70bzuew2er": {
+    "Relation-md3y3lasa0xqxoe0xsro": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1022,7 +1022,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx98369onjt2a3xar": {
+    "Relation-md3y3las175v18q7mg36y": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1030,7 +1030,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx988380tddasati": {
+    "Relation-md3y3las21zbhkszg62lk": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -1038,7 +1038,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx983r4g4vrxhyjy4": {
+    "Relation-md3y3las2ybk6g6sr0gyj": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a5s",
@@ -1046,7 +1046,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982vlqk8y8h9hts": {
+    "Relation-md3y3las1g3x3i4dw5czz": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a6s",
@@ -1054,7 +1054,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982zaa4q92vl52z": {
+    "Relation-md3y3las122uwx6zbditr": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a7s",
@@ -1062,7 +1062,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982jxtlqyq1b9gc": {
+    "Relation-md3y3las2hgn1spfjrxau": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a8s",
@@ -1070,7 +1070,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx982tsl2ms2w0xe1": {
+    "Relation-md3y3las15jc8ejvrqrc5": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-loa8s",
@@ -1078,7 +1078,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981jl3f7n79swoh": {
+    "Relation-md3y3las1uo2nu1tlaorj": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1086,7 +1086,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx981qhjwd3cxq24z": {
+    "Relation-md3y3las1xqn3n7bdfb8j": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1094,7 +1094,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx983hpyshssoa1e6": {
+    "Relation-md3y3las37t21qcgjmpti": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1102,7 +1102,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99z1x265w68n3y": {
+    "Relation-md3y3las2anb6ed497x0u": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -1110,7 +1110,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx993uqawwmdm1q9z": {
+    "Relation-md3y3las2zd8sovldh58j": {
       "relationDetails": {
         "sourceEntity": "Node-a2",
         "targetEntity": "Node-a7s",
@@ -1118,7 +1118,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9926q902pk71rrc": {
+    "Relation-md3y3las2kdygnom4xd42": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-a6s",
@@ -1126,7 +1126,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9917zzkds9ayksi": {
+    "Relation-md3y3lasozgfm9m18z38": {
       "relationDetails": {
         "sourceEntity": "Node-a6s",
         "targetEntity": "Node-a5s",
@@ -1134,7 +1134,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9929pzmy21elhgq": {
+    "Relation-md3y3las2pfhgx65b0p0g": {
       "relationDetails": {
         "sourceEntity": "Node-a7s",
         "targetEntity": "Node-a8s",
@@ -1142,7 +1142,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992t48c5ekjmuo4": {
+    "Relation-md3y3las2f6e1iqqkt8sx": {
       "relationDetails": {
         "sourceEntity": "Node-a8s",
         "targetEntity": "Node-loa8s",
@@ -1150,7 +1150,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx993kc3qcvcy62bd": {
+    "Relation-md3y3las27xmjluf0522c": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1158,7 +1158,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx9928chep2cstjbw": {
+    "Relation-md3y3las2bipzps5sgwj": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1166,7 +1166,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx991wozwpviocrl7": {
+    "Relation-md3y3las3gbswzzeu259l": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -1174,7 +1174,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992tm860g6hv3ew": {
+    "Relation-md3y3las24o5zcybg0f2c": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -1182,7 +1182,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx991dus8c8k64nv4": {
+    "Relation-md3y3las3muwgwtxsie81": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -1190,7 +1190,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992hxamcula9ji0": {
+    "Relation-md3y3las2xcet7suaz7k0": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -1198,7 +1198,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx991fcerp3e39qhx": {
+    "Relation-md3y3las3k8fhdny9ly84": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -1206,7 +1206,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99aoh7i7tbei4l": {
+    "Relation-md3y3las1e0d9w55e8lcj": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -1214,7 +1214,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx991vbg8ab538ga2": {
+    "Relation-md3y3las2qh7adzwlmg5u": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -1222,7 +1222,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992ub41xokx2w2c": {
+    "Relation-md3y3las3d82j7a5ri2bd": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -1230,7 +1230,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx993my00h2o4oznr": {
+    "Relation-md3y3las38xpn5ex6tqd2": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1238,7 +1238,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992xxvr31psxni7": {
+    "Relation-md3y3las7xhw0o2szhaj": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1246,7 +1246,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992w3qggtxgg927": {
+    "Relation-md3y3lat1hruqpt1pm92": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -1254,7 +1254,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99icdj9xbl4ss4": {
+    "Relation-md3y3latbqnqgve0jfil": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -1262,7 +1262,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx992meesfsc25h2m": {
+    "Relation-md3y3lat3a4j2a0qz9096": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -1272,7 +1272,7 @@
         }
       }
     },
-    "Relation-md3vmx99jkxxdzuflsfn": {
+    "Relation-md3y3latfc8wyvhnwx15": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -1282,7 +1282,7 @@
         }
       }
     },
-    "Relation-md3vmx9947ngxcmyu2pz": {
+    "Relation-md3y3lat17ynr5tn99tr4": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -1290,7 +1290,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99237xd3es1jqkz": {
+    "Relation-md3y3lat3jj86css13dr7": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -1298,7 +1298,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99116wnuigkfvri": {
+    "Relation-md3y3lat2vj6snf2wyd6e": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -1306,7 +1306,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx991lowiaiow3bo3": {
+    "Relation-md3y3lat3au805hmr9ij5": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -1314,7 +1314,7 @@
         "info": {}
       }
     },
-    "Relation-md3vmx993k7xes4b1sag9": {
+    "Relation-md3y3lat1wtufsnok3jh9": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -1322,91 +1322,91 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99d53twbc1tu3h": {
+    "Relation-md3y3lat1gcdfh34m5zlj": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad1",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx99v7k5o2vdus24": {
+    "Relation-md3y3lat1h8b8j14ceovi": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad2",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx99qe2gqtgjn7pm": {
+    "Relation-md3y3lat27aoi2fpf7dxx": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad3",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx9928ckvengv8hi0": {
+    "Relation-md3y3lat1yfxe6wvcywsg": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad4",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx992h8ou429lop3e": {
+    "Relation-md3y3lat1vu0cm23j24cq": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad5",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx992d4dm0l3nq77b": {
+    "Relation-md3y3lat2pwhzln556rn8": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad6",
         "relationType": "contains"
       }
     },
-    "Relation-md3vmx993h96ldkwt3ufy": {
+    "Relation-md3y3lat2a29iacumhm30": {
       "relationDetails": {
         "sourceEntity": "Node-ad1",
         "targetEntity": "Node-ad2",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3vmx9916893bnbejpec": {
+    "Relation-md3y3lat1yremjcc9rpda": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Node-ad3",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3vmx99133zznr7lkqn7": {
+    "Relation-md3y3lat2ro68bi2m63b8": {
       "relationDetails": {
         "sourceEntity": "Node-ad3",
         "targetEntity": "Node-ad4",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3vmx992tgjw6586aktu": {
+    "Relation-md3y3latgb9hs6n8dwt2": {
       "relationDetails": {
         "sourceEntity": "Node-ad4",
         "targetEntity": "Node-ad5",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3vmx991su48axk3jjpf": {
+    "Relation-md3y3lat3gy79dqminb9y": {
       "relationDetails": {
         "sourceEntity": "Node-ad5",
         "targetEntity": "Node-ad6",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md3vmx993r1khtdgga7qu": {
+    "Relation-md3y3lat3rudiiq1zndgy": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Action-save-entity",
         "relationType": "instance_of"
       }
     },
-    "Relation-md3vmx992tmzlqu5hok14": {
+    "Relation-md3y3lat3v6cwpfmrhuou": {
       "relationDetails": {
         "sourceEntity": "Node-a5s",
         "targetEntity": "Action-save-entity",
@@ -1414,66 +1414,16 @@
         "info": {}
       }
     },
-    "Relation-md3vmx99qyudqyssiy00": {
+    "Relation-md3y3lata7sbylr72q0u": {
       "relationDetails": {
         "sourceEntity": "Node-loa8s",
         "targetEntity": "Action-stream-to-fe",
         "relationType": "instance_of"
       }
-    },
-    "Relation-md3vmyoo1uadlc6v3maas": {
-      "relationDetails": {
-        "sourceEntity": "TNode-Root",
-        "targetEntity": "Flow-a",
-        "relationType": "instance_of"
-      }
-    },
-    "Relation-md3vmyoq1j22rgicvjqju": {
-      "relationDetails": {
-        "sourceEntity": "TNode-Root",
-        "targetEntity": "TNode-md3vmyoq1ap0dki2gyiay",
-        "relationType": "tracked"
-      }
-    },
-    "Relation-md3vmyos1i1z8sqhfwk7m": {
-      "relationDetails": {
-        "sourceEntity": "TNode-md3vmyoq1ap0dki2gyiay",
-        "targetEntity": "TNode-md3vmyos32r60cks99rdx",
-        "relationType": "spawned"
-      }
-    },
-    "TNode-Root": {
-      "status": "active",
-      "label": "Run Agent Brain",
-      "role": "root_trace_node",
-      "createdAt": 1752544318488,
-      "entityType": "TNode",
-      "tNodeType": "flow",
-      "startedAt": 1752544318488
-    },
-    "TNode-md3vmyoq1ap0dki2gyiay": {
-      "status": "active",
-      "label": "Flow Entry",
-      "eventType": "flow.entry",
-      "createdAt": 1752544318490,
-      "tNodeType": "event",
-      "startedAt": 1752544318490
-    },
-    "TNode-md3vmyos32r60cks99rdx": {
-      "status": "active",
-      "label": "Keep Alive",
-      "createdAt": 1752544318492,
-      "tNodeType": "step",
-      "startedAt": 1752544318491,
-      "stepNodeId": "Node-a4s",
-      "stepNodeType": "keep_alive",
-      "nodeAttributes": {
-        "timestamp": 1752544315668
-      }
     }
   },
   "metadata": {
-    "entityCount": 141,
+    "entityCount": 138,
     "attributeKinds": [
       "timestamp",
       "topic",
@@ -1540,6 +1490,10 @@
       "instance_of",
       "tracked",
       "spawned"
+    ],
+    "excludedTypes": [
+      "TNode",
+      "TNode"
     ]
   }
 }
