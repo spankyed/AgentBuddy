@@ -7,6 +7,7 @@ import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { EARS } from '@/core/types';
 import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/attribute-storage';
+import { createSnapshot } from './snapshot';
 import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { createLogger } from '@/core/utils/debug/logger';
@@ -21,6 +22,10 @@ export const IncomingDatabaseEvents = [
   busEvent('EXECUTE_QUERY', {
     code: z.string(),
   }),
+  busEvent('CREATE_SNAPSHOT', {
+    name: z.string().optional(),
+    excludeTypes: z.array(z.string()).optional(),
+  }),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -30,11 +35,11 @@ export type DatabaseInternalEvents =
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_STARTUP'; data: DatabaseStartupData }
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
-  | { type: 'QUERY_ERROR'; error: string };
+  | { type: 'QUERY_ERROR'; error: string }
+  | { type: 'SNAPSHOT_CREATED'; filename: string }
+  | { type: 'SNAPSHOT_ERROR'; error: string };
 
-export interface DatabaseContext {
-  databaseId: EARS.EntityId;
-}
+export interface DatabaseContext { }
 
 export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingDatabaseEvents, typeof database>();
 type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
@@ -58,7 +63,6 @@ export const databaseSystem = setup({
   types: {
     context: {} as DatabaseContext,
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     sendDatabaseStartupData: ({ system }) => {
@@ -90,13 +94,32 @@ export const databaseSystem = setup({
         }));
       }
     },
+    createSnapshot: async ({ system, event }) => {
+      const { name, excludeTypes } = typeOf('CREATE_SNAPSHOT', event);
+      
+      try {
+        const filename = await createSnapshot(name, excludeTypes as EARS.Entity[] | undefined);
+        logger.info(`Snapshot created: ${filename}${
+          excludeTypes?.length ? ` (excluded: ${excludeTypes.join(', ')})` : ''
+        }`);
+        system.get(bus).send(emit(database, { 
+          type: 'SNAPSHOT_CREATED',
+          filename
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Snapshot creation failed:', { error: errorMessage });
+        system.get(bus).send(emit(database, { 
+          type: 'SNAPSHOT_ERROR',
+          error: errorMessage
+        }));
+      }
+    },
   },
 }).createMachine({
   id: database,
   initial: 'idle',
-  context: ({ input }) => ({
-    databaseId: input,
-  }),
+  context: ({ input }) => ({}),
   on: {
     CLIENT_CONNECTED: {
       actions: 'sendDatabaseStartupData',
@@ -107,6 +130,9 @@ export const databaseSystem = setup({
       on: {
         EXECUTE_QUERY: {
           actions: 'executeQuery',
+        },
+        CREATE_SNAPSHOT: {
+          actions: 'createSnapshot',
         },
       },
     },

@@ -14,3 +14,7 @@ dist/
 build/
 */build
 **/build
+
+# Database snapshots (runtime)
+apps/api/src/core/data/snapshots/
+# Note: Git-tracked snapshots are in snapshots-git/ directory

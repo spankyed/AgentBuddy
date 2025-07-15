@@ -103,7 +103,6 @@ export const librarySystem = setup({
   types: {
     context: {} as LibrarySystemContext,
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     loadDocuments: async ({ system, event }) => {

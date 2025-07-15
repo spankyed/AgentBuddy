@@ -83,7 +83,7 @@ function extractValueByPath(source: any, path: string): any {
 /**
  * Apply field mappings to create template parameters
  */
-export function applyFieldMappings(
+export function mapTemplateFields(
   mappings: FieldMapping[],
   context: ExecutionContext
 ): Record<string, any> {

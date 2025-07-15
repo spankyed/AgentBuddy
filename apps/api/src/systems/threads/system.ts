@@ -61,9 +61,7 @@ export type OutgoingThreadsEvents =
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number }
 
-export interface ThreadsContext {
-  threadsId: EARS.EntityId;
-}
+export interface ThreadsContext {}
 
 export const ThreadsSystemEvents = fromSystem(IncomingThreadsEvents)<OutgoingThreadsEvents, typeof threads>()
 type ReceivableEvents = MergeReceivable<typeof IncomingThreadsEvents, ThreadsInternalEvents>;
@@ -73,7 +71,6 @@ export const threadsSystem = setup({
   types: {
     context: {} as ThreadsContext,
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     sendThreadsStartupData: ({ system }) => {
@@ -131,9 +128,7 @@ export const threadsSystem = setup({
   {
     id: threads,
     initial: 'idle',
-    context: ({ input }) => ({
-      threadsId: input,
-    }),
+    context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
         actions: 'sendThreadsStartupData',

@@ -1,6 +1,6 @@
 import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
-import type { ExecutionContext } from '@/systems/brain/types';
-import { applyFieldMappings as applyFieldMappingsFn } from '@/systems/brain/utils/field-mapper';
+import type { ExecutionContext, FieldMapping } from '@/systems/brain/types';
+import { mapTemplateFields } from '@/systems/brain/utils/field-mapper';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('node-attribute-mappers');
@@ -53,11 +53,7 @@ const defaultMapper: NodeAttributeMapper = {
  * Types for nodes with field mappings
  *─────────────────────────────────────────────────────────────────*/
 type NodeWithFieldMappings = NodeEntity & {
-  fieldMappings?: Array<{
-    target: string;
-    source: string;
-    default?: any;
-  }>;
+  fieldMappings?: FieldMapping[] | FieldMapping;
 };
 
 /*─────────────────────────────────────────────────────────────────
@@ -79,9 +75,19 @@ function createFieldMappingMapper(nodeTypeName: string, excludeFields: string[])
     },
     
     applyFieldMappings(node: NodeWithFieldMappings, context: ExecutionContext) {
-      if (node.fieldMappings && node.fieldMappings.length > 0) {
-        logger.debug(`Applying field mappings for ${nodeTypeName} node: ${node.label}`);
-        return applyFieldMappingsFn(node.fieldMappings, context);
+      if (node.fieldMappings) {
+        // Normalize fieldMappings to always be an array
+        const mappings = Array.isArray(node.fieldMappings) 
+          ? node.fieldMappings 
+          : [node.fieldMappings];
+        
+        if (mappings.length > 0) {
+          logger.debug(`Applying field mappings for ${nodeTypeName} node: ${node.label}`, {
+            mappingsCount: mappings.length,
+            isArray: Array.isArray(node.fieldMappings)
+          });
+          return mapTemplateFields(mappings, context);
+        }
       }
       return undefined;
     }

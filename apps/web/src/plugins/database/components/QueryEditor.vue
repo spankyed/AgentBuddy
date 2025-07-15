@@ -9,6 +9,7 @@
       @execute="handleExecute"
       @clear="handleClear"
       @format="handleFormat"
+      @save-snapshot="handleSaveSnapshot"
     />
     
     <div class="flex-1 overflow-hidden">
@@ -46,6 +47,7 @@ const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);
+const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMessage);
 
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');
@@ -72,6 +74,13 @@ watch(successMessage, (msg) => {
     setTimeout(() => {
       successMessage.value = '';
     }, 3000);
+  }
+});
+
+// Handle snapshot messages
+watch(snapshotMessage, (msg) => {
+  if (msg) {
+    successMessage.value = msg;
   }
 });
 
@@ -111,5 +120,11 @@ function handleExampleSelect(query: string) {
 function updateCursorPosition({ line, col }: { line: number; col: number }) {
   // cursorLine.value = line;
   // cursorCol.value = col;
+}
+
+function handleSaveSnapshot() {
+  actor.send({
+    type: 'DATABASE.SAVE_SNAPSHOT'
+  });
 }
 </script> 

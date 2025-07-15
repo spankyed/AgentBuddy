@@ -52,11 +52,8 @@ type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInterna
 
 export const brainSystem = setup({
   types: {
-    context: {} as {
-      brainId: EARS.EntityId;
-    },
+    context: {} as {},
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     logError: ({ event }) => {
@@ -134,9 +131,7 @@ export const brainSystem = setup({
   {
     id: brain,
     initial: 'idle',
-    context: ({ input }) => ({
-      brainId: input,
-    }),
+    context: ({ input }) => ({}),
     on: {},
     states: {
       idle: {

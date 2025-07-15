@@ -10,12 +10,12 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useState } from '@/core/composables/plugins'
-import { id, type LibraryState, type LibraryContext, type LibraryEvents } from './state'
+import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
-const actor = useState<LibraryState>(id)
+const actor = useState<typeof librarySystem>(id)
 const context = useSelector(actor, (state) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 

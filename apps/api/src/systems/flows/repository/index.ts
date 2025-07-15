@@ -242,7 +242,7 @@ export const flowsQueries = {
 
     const selectedFlow = qx(EARS.Entity.Flow)
       .withRole(FLOW_ROLES.ROOT_FLOW)
-      .pickOne(["id"]) as { id: EARS.EntityId };
+      .pickOne(["id"]) as { id: EARS.EntityId } | undefined;
 
     return {
       graph: {
@@ -251,7 +251,7 @@ export const flowsQueries = {
       },
       flows,
       rootFlow,
-      selectedFlowId: selectedFlow.id,
+      selectedFlowId: selectedFlow?.id ?? flowId,
       models: availableModels,
       prompts: promptQueries.all(),
       actions: actionQueries.all(),

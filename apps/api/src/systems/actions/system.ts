@@ -55,11 +55,8 @@ type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInte
 
 export const actionsSystem = setup({
   types: {
-    context: {} as {
-      actionsId: EARS.EntityId;
-    },
+    context: {} as {},
     events: {} as ReceivableEvents,
-    input: {} as EARS.EntityId,
   },
   actions: {
     sendActionsStartupData: ({ system }) => {
@@ -156,9 +153,7 @@ export const actionsSystem = setup({
   {
     id: actions,
     initial: 'idle',
-    context: ({ input }) => ({
-      actionsId: input,
-    }),
+    context: ({ input }) => ({}),
     on: {
       ACTION_SELECT: {
         actions: 'sendActionData',
