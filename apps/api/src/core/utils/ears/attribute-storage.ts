@@ -274,6 +274,8 @@ export const getAllAttributeKinds = (): EARS.AttrKind[] => Array.from(store.keys
 
 export const getAllRelationKinds = (): string[] => Object.keys(relationIndex);
 
+export const getAllEntityTypes = (): EARS.Entity[] => Array.from(entityIndex.keys());
+
 export const getAttributeStats = (kind: EARS.AttrKind) => {
   const b = bucket(kind);
   let totalValues = 0;

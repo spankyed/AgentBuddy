@@ -6,11 +6,11 @@ import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { EARS } from '@/core/types';
-import { getAllAttributeKinds, getAllRelationKinds } from '@/core/utils/ears/attribute-storage';
 import { createSnapshot } from './snapshot';
-import type { DatabaseSchemaInfo, DatabaseStartupData } from './types';
+import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
+import { generateSchemaInfo } from './repository/schema';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('database');
@@ -50,20 +50,6 @@ export interface DatabaseContext { }
 export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingDatabaseEvents, typeof database>();
 type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
 const typeOf = safeEvents<ReceivableEvents>();
-
-function generateSchemaInfo(): DatabaseSchemaInfo {
-  const entities = Object.values(EARS.Entity).map(type => ({ type }));
-  
-  const attributes = getAllAttributeKinds().map(kind => ({
-    kind: typeof kind === 'string' ? kind : String(kind),
-  }));
-  
-  const relations = getAllRelationKinds().map(kind => ({
-    kind: kind as EARS.RelKind,
-  }));
-
-  return { entities, attributes, relations };
-}
 
 export const databaseSystem = setup({
   types: {
