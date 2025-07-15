@@ -9,7 +9,7 @@
       :mode="mode"
       @execute="handleExecute"
       @clear="handleClear"
-      @format="handleFormat"
+      @magic-prompt="showMagicPrompt = true"
       @save-snapshot="handleSaveSnapshot"
       @toggle-mode="handleToggleMode"
     />
@@ -19,7 +19,6 @@
         v-if="activeMode === 'query'"
         v-model="editorQuery"
         @execute="handleExecute"
-        @cursor-change="updateCursorPosition"
       />
       
       <QueryEditorExamples
@@ -28,22 +27,24 @@
       />
     </div>
     
-    <!-- <QueryEditorStatusBar
-      :cursor-line="cursorLine"
-      :cursor-col="cursorCol"
-    /> -->
+    
+    <MagicPromptDialog
+      v-model="showMagicPrompt"
+      @generate="handleMagicPrompt"
+      @cancel="showMagicPrompt = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/app';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import CodeMirrorEditor from './query-editor/CodeMirrorEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
-// import QueryEditorStatusBar from './query-editor/QueryEditorStatusBar.vue';
+import MagicPromptDialog from './query-editor/MagicPromptDialog.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
@@ -55,8 +56,7 @@ const mode = useSelector(actor, (state) => state.context.mode);
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');
 const successMessage = ref('');
-// const cursorLine = ref(1);
-// const cursorCol = ref(1);
+const showMagicPrompt = ref(false);
 const editorQuery = ref(currentQuery.value);
 
 // Sync editor query with state
@@ -76,7 +76,7 @@ watch(successMessage, (msg) => {
   if (msg) {
     setTimeout(() => {
       successMessage.value = '';
-    }, 3000);
+    }, SUCCESS_MESSAGE_TIMEOUT);
   }
 });
 
@@ -86,6 +86,14 @@ watch(snapshotMessage, (msg) => {
     successMessage.value = msg;
   }
 });
+
+const SUCCESS_MESSAGES = {
+  query: 'Query executed successfully',
+  transaction: 'Transaction executed successfully'
+} as const;
+
+const SUCCESS_MESSAGE_DELAY = 100;
+const SUCCESS_MESSAGE_TIMEOUT = 3000;
 
 function handleExecute() {
   if (!isLoading.value && editorQuery.value.trim()) {
@@ -97,9 +105,9 @@ function handleExecute() {
     // Show success message after a delay if no error
     setTimeout(() => {
       if (!error.value) {
-        successMessage.value = mode.value === 'query' ? 'Query executed successfully' : 'Transaction executed successfully';
+        successMessage.value = SUCCESS_MESSAGES[mode.value];
       }
-    }, 100);
+    }, SUCCESS_MESSAGE_DELAY);
   }
 }
 
@@ -107,12 +115,12 @@ function handleClear() {
   editorQuery.value = '';
 }
 
-function handleFormat() {
-  // Simple formatting - in real implementation, use a proper formatter
-  editorQuery.value = editorQuery.value
-    .replace(/\s+/g, ' ')
-    .replace(/;\s*/g, ';\n')
-    .trim();
+function handleMagicPrompt(prompt: string) {
+  showMagicPrompt.value = false;
+  actor.send({
+    type: 'MAGIC_PROMPT.GENERATE',
+    prompt
+  });
 }
 
 function handleExampleSelect(query: string) {
@@ -120,10 +128,6 @@ function handleExampleSelect(query: string) {
   activeMode.value = 'query';
 }
 
-function updateCursorPosition({ line, col }: { line: number; col: number }) {
-  // cursorLine.value = line;
-  // cursorCol.value = col;
-}
 
 function handleSaveSnapshot() {
   actor.send({

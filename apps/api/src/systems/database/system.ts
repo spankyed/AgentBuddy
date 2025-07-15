@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { performance } from 'node:perf_hooks';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
-import { emit, safeEvents } from '@/core/utils/actor-helpers';
+import { emit, safeEvents, getActor } from '@/core/utils/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
+import { brain } from '@/systems/brain/system';
 import { EARS } from '@/core/types';
 import { createSnapshot } from './snapshot';
 import type { DatabaseStartupData } from './types';
@@ -30,6 +31,9 @@ export const IncomingDatabaseEvents = [
     name: z.string().optional(),
     excludeTypes: z.array(z.string()).optional(),
   }),
+  busEvent('GENERATE_MAGIC_PROMPT', {
+    prompt: z.string(),
+  }),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -43,7 +47,8 @@ export type OutgoingDatabaseEvents =
   | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
   | { type: 'TRANSACTION_ERROR'; error: string }
   | { type: 'SNAPSHOT_CREATED'; filename: string }
-  | { type: 'SNAPSHOT_ERROR'; error: string };
+  | { type: 'SNAPSHOT_ERROR'; error: string }
+  | { type: 'MAGIC_PROMPT_GENERATED'; query: string };
 
 export interface DatabaseContext { }
 
@@ -137,6 +142,27 @@ export const databaseSystem = setup({
         }));
       }
     },
+    handleMagicPrompt: ({ system, event }) => {
+      const { prompt } = typeOf('GENERATE_MAGIC_PROMPT', event);
+      
+      if (!prompt?.trim()) {
+        logger.error('Invalid prompt provided for magic prompt generation');
+        system.get(bus).send(emit(database, { 
+          type: 'QUERY_ERROR',
+          error: 'Please provide a valid prompt'
+        }));
+        return;
+      }
+      
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'database.query.prompt',
+        payload: prompt.trim(),
+      });
+      
+      logger.info('Sent magic prompt to brain:', { prompt: prompt.trim() });
+    },
   },
 }).createMachine({
   id: database,
@@ -158,6 +184,9 @@ export const databaseSystem = setup({
         },
         CREATE_SNAPSHOT: {
           actions: 'createSnapshot',
+        },
+        GENERATE_MAGIC_PROMPT: {
+          actions: 'handleMagicPrompt',
         },
       },
     },

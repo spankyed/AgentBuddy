@@ -29,12 +29,14 @@ export interface DatabaseContext {
   } | null;
   snapshotMessage: string | null;
   mode: 'query' | 'transaction';
+  isMagicPromptLoading: boolean;
 }
 
 type SystemEvent = OutgoingDatabaseEvents | 
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
-  { type: 'TRANSACTION_ERROR'; error: string }
+  { type: 'TRANSACTION_ERROR'; error: string } |
+  { type: 'MAGIC_PROMPT_GENERATED'; query: string }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -43,6 +45,7 @@ type UIEvent =
   | { type: 'QUERY.UPDATE'; code: string }
   | { type: 'DATABASE.SAVE_SNAPSHOT' }
   | { type: 'MODE.TOGGLE' }
+  | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -172,6 +175,33 @@ const databaseState = setup({
       snapshotMessage: null,
     }),
 
+    /* ── magic prompt ───────────────────────────────── */
+    generateMagicPrompt: ({ event }) => {
+      const ev = typeOf('MAGIC_PROMPT.GENERATE', event);
+      if (!ev.prompt?.trim()) {
+        console.error('Invalid prompt provided for magic prompt generation');
+        return;
+      }
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GENERATE_MAGIC_PROMPT',
+        prompt: ev.prompt.trim(),
+      });
+    },
+
+    setMagicPromptLoading: assign({
+      isMagicPromptLoading: true,
+    }),
+
+    setMagicPromptResult: assign(({ event }) => {
+      const ev = typeOf('MAGIC_PROMPT_GENERATED', event);
+      return {
+        currentQuery: ev.query,
+        isMagicPromptLoading: false,
+      };
+    }),
+
+
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
@@ -203,6 +233,7 @@ const databaseState = setup({
     selectedSchemaItem: null,
     snapshotMessage: null,
     mode: 'query',
+    isMagicPromptLoading: false,
   },
   on: {
     DATABASE_REFRESH: { actions: 'setDatabaseRefresh' },
@@ -212,6 +243,7 @@ const databaseState = setup({
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
+    MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
   },
   states: {
     explorer: {
@@ -235,6 +267,9 @@ const databaseState = setup({
         },
         'DATABASE.SAVE_SNAPSHOT': {
           actions: 'saveSnapshot',
+        },
+        'MAGIC_PROMPT.GENERATE': {
+          actions: ['setMagicPromptLoading', 'generateMagicPrompt'],
         },
       },
     },

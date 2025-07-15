@@ -17,9 +17,9 @@
       </button>
       
       <button
-        @click="$emit('format')"
+        @click="$emit('magic-prompt')"
         class="p-1.5 text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700 rounded transition-colors"
-        title="Format query"
+        title="Generate query with AI"
       >
         <Wand2 class="w-4 h-4" />
       </button>
@@ -97,7 +97,7 @@ defineEmits<{
   'update:activeMode': [mode: 'query' | 'examples'];
   execute: [];
   clear: [];
-  format: [];
+  'magic-prompt': [];
   saveSnapshot: [];
   toggleMode: [];
 }>();

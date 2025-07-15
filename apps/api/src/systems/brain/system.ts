@@ -10,6 +10,7 @@ import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './t
 import { brainQueries } from './repository';
 import { createFlowNodeSystem } from './flow-system';
 import { agent } from '../agent/system';
+import { database } from '../database/system';
 
 const eventsCatalog = {
   'user.message': z.object({
