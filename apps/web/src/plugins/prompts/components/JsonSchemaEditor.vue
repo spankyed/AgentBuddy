@@ -25,6 +25,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { EditorView, basicSetup } from 'codemirror';
+import { keymap } from '@codemirror/view';
+import { indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState } from '@codemirror/state';
@@ -96,6 +98,7 @@ const createEditorTheme = () => EditorView.theme({
 
 const createExtensions = () => [
   basicSetup,
+  keymap.of([indentWithTab]),
   javascript({ typescript: false }),
   oneDark,
   createEditorTheme(),
