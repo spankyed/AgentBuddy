@@ -3,7 +3,9 @@ import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, Fo
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
-export type LibraryState = ActorRefFrom<typeof librarySystem>
+import type { SnapshotFrom } from 'xstate'
+
+export type LibraryState = SnapshotFrom<typeof librarySystem>
 
 export interface LibraryContext {
   // Legacy fields for backward compatibility
