@@ -1,0 +1,1545 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2025-07-15T01:52:03.422Z",
+  "entities": {
+    "Thread-1": {
+      "timestamp": [
+        1752543767568,
+        1752543776568
+      ],
+      "topic": "UI Layout Reorganization Instructions",
+      "instructions": "Please reorganize the UI layout of the application to make it more user-friendly.",
+      "shortCode": "U-182",
+      "threadType": "work-item",
+      "status": "active",
+      "role": [
+        "latest_thread",
+        "selected_thread"
+      ]
+    },
+    "Thread-2": {
+      "timestamp": [
+        1752540656568,
+        1752540656568
+      ],
+      "topic": "Adding Padding to Scrollbar in CSS",
+      "instructions": "Please add padding to the scrollbar of the application to make it more user-friendly.",
+      "shortCode": "WI-45",
+      "threadType": "work-item",
+      "status": "queued"
+    },
+    "Thread-3": {
+      "timestamp": [
+        1752540716568,
+        1752540716568
+      ],
+      "topic": "Enhancing Chat Interface Design",
+      "instructions": "Please enhance the chat interface of the application to make it more user-friendly.",
+      "shortCode": "U-67",
+      "threadType": "work-item",
+      "status": "draft"
+    },
+    "Thread-4": {
+      "timestamp": [
+        1752540716568,
+        1752540716568
+      ],
+      "topic": "Project X",
+      "instructions": "Please create a project X.",
+      "shortCode": "P-13",
+      "threadType": "project",
+      "status": "inactive"
+    },
+    "Tag-1": {
+      "timestamp": 1752544316568,
+      "name": "ui",
+      "color": "yellow"
+    },
+    "Tag-2": {
+      "timestamp": 1752544316568,
+      "name": "design",
+      "color": "blue"
+    },
+    "Tag-3": {
+      "timestamp": 1752544316568,
+      "name": "frontend",
+      "color": "green"
+    },
+    "Tag-4": {
+      "timestamp": 1752544316568,
+      "name": "css",
+      "color": "orange"
+    },
+    "Tag-5": {
+      "timestamp": 1752544316568,
+      "name": "chat",
+      "color": "purple"
+    },
+    "Tag-6": {
+      "timestamp": 1752544316568,
+      "name": "project",
+      "color": "red"
+    },
+    "Tag-7": {
+      "timestamp": 1752544316568,
+      "name": "backend",
+      "color": "pink"
+    },
+    "Message-1": {
+      "timestamp": [
+        1752544016568,
+        1752544016568
+      ],
+      "text": "I'm working on implementing a new design system for our web application, and I've heard CSS variables could help make our styles more maintainable. Can you help me understand how to use CSS variables effectively? I'm particularly interested in how they could help us maintain consistency across different components and make theme updates easier.",
+      "sender": "user",
+      "role": "latest_message"
+    },
+    "Message-2": {
+      "timestamp": [
+        1752544076568,
+        1752544076568
+      ],
+      "text": "CSS variables, also known as custom properties, are a powerful feature for building maintainable design systems. They allow you to define reusable values that can be referenced throughout your stylesheets. The syntax follows this pattern: `--variable-name: value;` when defining, and `var(--variable-name)` when using them.\n\nOne of the biggest advantages is that you can update these values in one place and see the changes reflect across your entire application. They also support features like fallback values and can be modified dynamically using JavaScript. Let me show you a practical example in the canvas area above.",
+      "sender": "assistant"
+    },
+    "Message-3": {
+      "timestamp": [
+        1752544136568,
+        1752544136568
+      ],
+      "text": "That explanation really helps! I think I see how this could improve our codebase. Could you show me a specific example of how we might implement a color palette using CSS variables? We currently have different shades of blue scattered throughout our CSS files, and it's becoming hard to maintain consistency.",
+      "sender": "user"
+    },
+    "Message-4": {
+      "timestamp": [
+        1752544196568,
+        1752544196568
+      ],
+      "text": "I've updated the canvas with a comprehensive color palette example using CSS variables. You can define your colors once in the :root selector like this:\n\n:root {\n  --primary-100: #e3f2fd;\n  --primary-500: #2196f3;\n  --primary-900: #0d47a1;\n}\n\nThen use them throughout your CSS with var(--primary-500) for your main brand color, var(--primary-100) for lighter variants, and var(--primary-900) for darker accents. This makes it much easier to maintain a consistent color scheme and update colors globally when needed.",
+      "sender": "assistant"
+    },
+    "Message-5": {
+      "timestamp": [
+        1752544256568,
+        1752544256568
+      ],
+      "text": "This is exactly what we need! Could you help me refactor our current CSS code to use these variables from our design system? I want to make sure we're following best practices and maintaining consistency across all components.",
+      "sender": "user"
+    },
+    "ContextItem-1": {
+      "timestamp": 1752544316568,
+      "title": "Project Overview",
+      "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
+      "itemType": "text"
+    },
+    "ContextItem-2": {
+      "timestamp": 1752544316568,
+      "title": "CSS Variables Example",
+      "content": "\n:root {\n  --primary-color: #3B4D6C;\n  --accent-color: #38B2AC;\n  --text-color: #333;\n  --background-color: #f9f9f9;\n}\n\n.button {\n  background-color: var(--primary-color);\n  color: white;\n  padding: 8px 16px;\n  border-radius: 4px;\n}\n\n.button.accent {\n  background-color: var(--accent-color);\n}\n    ",
+      "itemType": "code"
+    },
+    "ContextItem-3": {
+      "timestamp": 1752544316568,
+      "title": "Color Palette",
+      "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
+      "itemType": "text"
+    },
+    "CanvasItem-1": {
+      "timestamp": 1752544316568,
+      "content": "/* Before: Using hardcoded colors */\n.header {\n  background-color: #333;\n  color: white;\n}\n\n.sidebar {\n  background-color: #444;\n  border-right: 1px solid #555;\n}\n\n.button {\n  background-color: #0066cc;\n  color: white;\n}\n\n.button.secondary {\n  background-color: #6c757d;\n}\n\n/* Please rewrite this code using css variables from our design systems */",
+      "contentType": "code"
+    },
+    "Flow-a": {
+      "timestamp": 1752544315568,
+      "shortCode": "F-a",
+      "label": "Run Agent Brain",
+      "flowType": "workflow",
+      "role": "root_flow"
+    },
+    "Flow-b": {
+      "timestamp": 1752544315568,
+      "shortCode": "F-b",
+      "label": "Chat Flow",
+      "flowType": "workflow"
+    },
+    "Flow-c": {
+      "timestamp": 1752544315568,
+      "shortCode": "F-c",
+      "label": "Some flow with validation",
+      "flowType": "workflow"
+    },
+    "Flow-action-demo": {
+      "timestamp": 1752544315568,
+      "shortCode": "F-action-demo",
+      "label": "Action Demo Flow",
+      "flowType": "workflow",
+      "description": "Demonstrates various action nodes"
+    },
+    "Node-a1": {
+      "timestamp": 1752544315668,
+      "label": "Flow Entry",
+      "nodeType": "listen",
+      "mode": "entry",
+      "eventType": "flow.entry",
+      "role": "entry_event"
+    },
+    "Node-a2": {
+      "timestamp": 1752544315668,
+      "label": "User Message",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "user.message"
+    },
+    "Node-a3": {
+      "timestamp": 1752544315668,
+      "label": "Database Query Prompt",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "database.query.prompt"
+    },
+    "Node-a4s": {
+      "timestamp": 1752544315668,
+      "label": "Keep Alive",
+      "nodeType": "keep_alive"
+    },
+    "Node-a5s": {
+      "timestamp": 1752544315668,
+      "label": "save to db",
+      "nodeType": "action"
+    },
+    "Node-a6s": {
+      "timestamp": 1752544315668,
+      "label": "LLM Call",
+      "nodeType": "llm",
+      "model": "gpt-4"
+    },
+    "Node-a7s": {
+      "timestamp": 1752544315668,
+      "label": "Process User Message",
+      "nodeType": "llm",
+      "model": "gpt-4",
+      "promptTemplateId": "Prompt-user-message-analysis",
+      "fieldMappings": [
+        {
+          "target": "userMessage",
+          "source": "$.event.data.payload",
+          "default": "[No message provided]"
+        },
+        {
+          "target": "additionalContext",
+          "source": "$.event.data.context",
+          "default": "User is interacting with the agent brain system"
+        }
+      ]
+    },
+    "Node-a8s": {
+      "timestamp": 1752544315668,
+      "label": "Format Response",
+      "nodeType": "llm",
+      "model": "gpt-4",
+      "promptTemplateId": "Prompt-format-response",
+      "fieldMappings": [
+        {
+          "target": "userMessage",
+          "source": "$.event.data.payload"
+        },
+        {
+          "target": "analysisResult",
+          "source": "$.steps[label=Process User Message].result"
+        },
+        {
+          "target": "responseStyle",
+          "source": "$.event.data.responseStyle",
+          "default": "helpful and professional"
+        }
+      ]
+    },
+    "Node-loa8s": {
+      "timestamp": 1752544315708,
+      "label": "Stream to FE",
+      "nodeType": "action",
+      "fieldMappings": [
+        {
+          "target": "message",
+          "source": "$.event.data.payload"
+        }
+      ],
+      "actionId": "Action-stream-to-fe"
+    },
+    "Node-b1": {
+      "timestamp": 1752544315668,
+      "label": "User Message",
+      "nodeType": "listen",
+      "mode": "entry",
+      "eventType": "chat.message"
+    },
+    "Node-b2": {
+      "timestamp": 1752544315678,
+      "label": "System Events",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "system.*",
+      "role": "selected_node"
+    },
+    "Node-b3": {
+      "timestamp": 1752544315688,
+      "label": "Message Type",
+      "nodeType": "decision",
+      "conditions": [
+        {
+          "expr": "type === 'question'",
+          "label": "Question"
+        },
+        {
+          "expr": "type === 'command'",
+          "label": "Command"
+        },
+        {
+          "expr": "type === 'chat'",
+          "label": "Chat"
+        }
+      ],
+      "elseLabel": "Unknown",
+      "role": "final_node"
+    },
+    "Node-b4": {
+      "timestamp": 1752544315698,
+      "label": "Create Context",
+      "nodeType": "create",
+      "entityTypeTarget": "Node"
+    },
+    "Node-b5": {
+      "timestamp": 1752544315708,
+      "label": "Update Context",
+      "nodeType": "update",
+      "entityId": "Node-b4"
+    },
+    "Node-b6": {
+      "timestamp": 1752544315718,
+      "label": "Send Response",
+      "nodeType": "fire",
+      "eventType": "chat.response",
+      "scope": "global"
+    },
+    "Node-b8": {
+      "timestamp": 1752544315738,
+      "label": "Get User Intent",
+      "nodeType": "query",
+      "prompt": "What is the user's intent?",
+      "resultKey": "intent"
+    },
+    "Node-b9": {
+      "timestamp": 1752544315748,
+      "label": "Format Response",
+      "nodeType": "transform",
+      "script": "return { response: `Intent: ${context.intent}` }",
+      "outputType": "json"
+    },
+    "Node-b10": {
+      "timestamp": 1752544315758,
+      "label": "Log Intent",
+      "nodeType": "fire",
+      "eventType": "system.intent",
+      "scope": "global"
+    },
+    "Node-b11": {
+      "timestamp": 1752544315768,
+      "label": "Command Handler",
+      "nodeType": "flow",
+      "flowRef": "command-flow-3",
+      "propagateCtx": true
+    },
+    "Node-ad1": {
+      "timestamp": 1752544315668,
+      "label": "Start Demo",
+      "nodeType": "listen",
+      "mode": "entry",
+      "eventType": "demo.start"
+    },
+    "Node-ad2": {
+      "timestamp": 1752544315678,
+      "label": "Save User Data",
+      "nodeType": "action",
+      "params": {
+        "entityType": "User",
+        "data": {
+          "name": "Demo User",
+          "email": "demo@example.com",
+          "timestamp": 1752544316568
+        }
+      }
+    },
+    "Node-ad3": {
+      "timestamp": 1752544315688,
+      "label": "Send Welcome Email",
+      "nodeType": "action",
+      "fieldMappings": [
+        {
+          "target": "to",
+          "source": "$.lastStep.result.email",
+          "default": "fallback@example.com"
+        },
+        {
+          "target": "subject",
+          "source": "$.event.data.emailSubject",
+          "default": "Welcome to AgentBuddy!"
+        },
+        {
+          "target": "body",
+          "source": "$.event.data.emailBody",
+          "default": "Thank you for joining us!"
+        }
+      ]
+    },
+    "Node-ad4": {
+      "timestamp": 1752544315698,
+      "label": "Call External API",
+      "nodeType": "action",
+      "fieldMappings": [
+        {
+          "target": "data",
+          "source": "$.steps[1].result"
+        }
+      ],
+      "params": {
+        "method": "POST",
+        "url": "https://api.example.com/notify",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    "Node-ad5": {
+      "timestamp": 1752544315708,
+      "label": "Log Results",
+      "nodeType": "action",
+      "fieldMappings": [
+        {
+          "target": "data",
+          "source": "$.steps",
+          "default": {}
+        }
+      ],
+      "params": {
+        "level": "info",
+        "message": "Demo flow completed successfully"
+      }
+    },
+    "Node-ad6": {
+      "timestamp": 1752544315718,
+      "label": "Demo Complete",
+      "nodeType": "fire",
+      "eventType": "demo.complete",
+      "scope": "global",
+      "final": true
+    },
+    "Prompt-1": {
+      "timestamp": 1751939516568,
+      "label": "Summarize Text",
+      "description": "Summarizes long text into key points",
+      "category": "text-processing",
+      "inputs": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "description": "The text to summarize",
+          "required": true,
+          "example": "Long article or document text..."
+        },
+        "maxLength": {
+          "name": "maxLength",
+          "type": "number",
+          "description": "Maximum length of summary in words",
+          "required": false,
+          "defaultValue": 100
+        }
+      },
+      "templateFn": "const { text, maxLength = 100 } = params;\n// prettier-ignore\nreturn `\n  Please summarize the following text in approximately ${maxLength} words:\n\n  ${text}\n\n  Provide a clear, concise summary focusing on the main points.\n`;",
+      "updatedAt": 1752371516568
+    },
+    "Prompt-2": {
+      "timestamp": 1752112316568,
+      "label": "Code Review",
+      "description": "Reviews code for quality and suggestions",
+      "category": "development",
+      "inputs": {
+        "code": {
+          "name": "code",
+          "type": "string",
+          "description": "The code to review",
+          "required": true
+        },
+        "language": {
+          "name": "language",
+          "type": "string",
+          "description": "Programming language",
+          "required": true,
+          "example": "javascript"
+        },
+        "focusAreas": {
+          "name": "focusAreas",
+          "type": "array",
+          "description": "Specific areas to focus on",
+          "required": false,
+          "defaultValue": [
+            "bugs",
+            "performance",
+            "readability"
+          ]
+        }
+      },
+      "templateFn": "const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;\n// prettier-ignore\nreturn `\n  Please review the following ${language} code:\n\n  \\`\\`\\`${language}\n  ${code}\n  \\`\\`\\`\n\n  Focus on: ${focusAreas.join(', ')}\n\n  Provide specific suggestions for improvements.\n`;",
+      "updatedAt": 1752457916568,
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "line": {
+                  "type": "number"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "warning",
+                    "info"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Prompt-3": {
+      "timestamp": 1752285116568,
+      "label": "Q&A Assistant",
+      "description": "Answers questions based on context",
+      "category": "assistant",
+      "inputs": {
+        "question": {
+          "name": "question",
+          "type": "string",
+          "description": "The user's question",
+          "required": true
+        },
+        "context": {
+          "name": "context",
+          "type": "string",
+          "description": "Additional context or knowledge base",
+          "required": false,
+          "defaultValue": ""
+        },
+        "tone": {
+          "name": "tone",
+          "type": "string",
+          "description": "Response tone",
+          "required": false,
+          "defaultValue": "professional"
+        }
+      },
+      "templateFn": "const { question, context = '', tone = 'professional' } = params;\n\nif (context) {\n  // prettier-ignore\n  return `\n    Context:\n    ${context}\n\n    Please answer the following question in a ${tone} tone:\n\n    ${question}\n\n    Provide a clear and helpful response.\n  `;\n}\n\n// prettier-ignore\nreturn `\n  Please answer the following question in a ${tone} tone:\n\n  ${question}\n\n  Provide a clear and helpful response.\n`;",
+      "updatedAt": 1752285116568
+    },
+    "Prompt-4": {
+      "timestamp": 1752198716568,
+      "label": "Translate Text",
+      "description": "Translates text between languages",
+      "category": "text-processing",
+      "inputs": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "description": "The text to translate",
+          "required": true
+        },
+        "sourceLang": {
+          "name": "sourceLang",
+          "type": "string",
+          "description": "Source language (e.g., \"en\", \"es\", \"fr\")",
+          "required": false,
+          "defaultValue": "auto"
+        },
+        "targetLang": {
+          "name": "targetLang",
+          "type": "string",
+          "description": "Target language (e.g., \"en\", \"es\", \"fr\")",
+          "required": true,
+          "example": "en"
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "description": "Translation style",
+          "required": false,
+          "defaultValue": "natural"
+        }
+      },
+      "templateFn": "const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;\n\n// prettier-ignore\nreturn `\n  Please translate the following text to ${targetLang}:\n\n  ${text}\n\n  Translation requirements:\n  - ${sourceLang === 'auto' ? 'Detect the source language automatically' : 'Source language: ' + sourceLang}\n  - Target language: ${targetLang}\n  - Translation style: ${style} (preserve the original tone and meaning)\n  - Maintain formatting and structure\n  - Ensure cultural appropriateness\n\n  Provide only the translated text without explanations.\n`;",
+      "updatedAt": 1752457916568
+    },
+    "Prompt-5": {
+      "timestamp": 1752025916568,
+      "label": "Sentiment Analysis",
+      "description": "Analyzes sentiment and emotion in text",
+      "category": "analysis",
+      "inputs": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "description": "The text to analyze",
+          "required": true
+        },
+        "detailed": {
+          "name": "detailed",
+          "type": "boolean",
+          "description": "Include detailed emotion breakdown",
+          "required": false,
+          "defaultValue": false
+        }
+      },
+      "templateFn": "const { text, detailed = false } = params;\n\n// prettier-ignore\nreturn `\n  Please analyze the sentiment of the following text:\n\n  \"${text}\"\n\n  Provide a sentiment analysis that includes:\n  - Overall sentiment (positive, negative, neutral, mixed)\n  - Confidence score (0-100%)\n  - Key emotional indicators\n  ${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}\n\n  Format your response as a clear, structured analysis.\n`;",
+      "updatedAt": 1752371516568,
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "neutral",
+              "mixed"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "emotions": {
+            "type": "object",
+            "properties": {
+              "joy": {
+                "type": "number"
+              },
+              "anger": {
+                "type": "number"
+              },
+              "fear": {
+                "type": "number"
+              },
+              "sadness": {
+                "type": "number"
+              },
+              "surprise": {
+                "type": "number"
+              }
+            }
+          },
+          "keyPhrases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Prompt-6": {
+      "timestamp": 1751853116569,
+      "label": "Brainstorm Ideas",
+      "description": "Generates creative ideas for a given topic",
+      "category": "creative",
+      "inputs": {
+        "topic": {
+          "name": "topic",
+          "type": "string",
+          "description": "The topic to brainstorm about",
+          "required": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "number",
+          "description": "Number of ideas to generate",
+          "required": false,
+          "defaultValue": 5
+        },
+        "constraints": {
+          "name": "constraints",
+          "type": "string",
+          "description": "Any constraints or requirements",
+          "required": false,
+          "defaultValue": ""
+        },
+        "creativity": {
+          "name": "creativity",
+          "type": "string",
+          "description": "Creativity level",
+          "required": false,
+          "defaultValue": "balanced",
+          "example": "conservative, balanced, creative, wild"
+        }
+      },
+      "templateFn": "const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;\n\n// prettier-ignore\nreturn `\n\nPlease brainstorm ${quantity} ${creativity} ideas for:\n\n${topic}\n\n${constraints ? 'Constraints/Requirements:\\n' + constraints + '\\n\\n' : ''}Guidelines:\n- Generate ${quantity} distinct ideas\n- Creativity level: ${creativity}\n- Each idea should be practical and actionable\n- Include a brief explanation for each idea\n- Consider different perspectives and approaches\n- Be specific rather than generic\n\nPresent each idea with:\n1. A clear title\n2. A 2-3 sentence description\n3. Key benefits or potential impact\n\n`;",
+      "updatedAt": 1752285116569
+    },
+    "Prompt-user-message-analysis": {
+      "timestamp": 1752371516569,
+      "label": "User Message Analysis",
+      "description": "Analyzes user messages to extract intent, entities, and sentiment",
+      "category": "analysis",
+      "inputs": {
+        "userMessage": {
+          "name": "userMessage",
+          "type": "string",
+          "description": "The user's message to analyze",
+          "required": true
+        },
+        "additionalContext": {
+          "name": "additionalContext",
+          "type": "string",
+          "description": "Additional context about the conversation",
+          "required": false,
+          "defaultValue": ""
+        }
+      },
+      "templateFn": "const { userMessage, additionalContext = '' } = params;\n\n// prettier-ignore\nreturn `\n  Analyze the following user message and extract key information:\n\n  User Message: \"${userMessage}\"\n\n  ${additionalContext ? `Additional Context: ${additionalContext}\n\n` : ''}\n\n  Please provide a detailed analysis including:\n  1. Summary: A brief summary of what the user is asking or saying\n  2. Intent: The primary intent or goal of the message (e.g., question, request, feedback, etc.)\n  3. Entities: Key entities, topics, or concepts mentioned\n  4. Category: Categorize the message (e.g., technical_support, general_inquiry, feature_request, etc.)\n  5. Urgency: Assess the urgency level (low, medium, high)\n\n  Format your response as a structured analysis.\n`;",
+      "updatedAt": 1752371516569
+    },
+    "Prompt-format-response": {
+      "timestamp": 1752371516569,
+      "label": "Format Response",
+      "description": "Formats AI responses based on analysis results and style preferences",
+      "category": "formatting",
+      "inputs": {
+        "userMessage": {
+          "name": "userMessage",
+          "type": "string",
+          "description": "The original user message",
+          "required": true
+        },
+        "analysisResult": {
+          "name": "analysisResult",
+          "type": "object",
+          "description": "The analysis result from the previous step",
+          "required": true
+        },
+        "responseStyle": {
+          "name": "responseStyle",
+          "type": "string",
+          "description": "The desired response style",
+          "required": false,
+          "defaultValue": "helpful and professional"
+        }
+      },
+      "templateFn": "const { userMessage, analysisResult, responseStyle = 'helpful and professional' } = params;\n\n// prettier-ignore\nreturn `\n  Based on the following analysis of the user's message, craft an appropriate response.\n\n  Original User Message: \"${userMessage}\"\n\n  Analysis Result:\n  ${JSON.stringify(analysisResult, null, 2)}\n\n  Please format a response that is ${responseStyle}.\n\n  The response should:\n  1. Address the user's primary intent as identified in the analysis\n  2. Be clear, concise, and helpful\n  3. Include any relevant suggestions or next steps\n  4. Maintain a ${responseStyle} tone throughout\n\n  Format your response as a natural, conversational message.\n`;",
+      "updatedAt": 1752371516569
+    },
+    "Action-stream-to-fe": {
+      "timestamp": 1752544316499,
+      "label": "Stream to FE",
+      "description": "Streams a message to the front-end",
+      "category": "utility",
+      "updatedAt": 1752544316499,
+      "input": {
+        "message": {
+          "name": "message",
+          "type": "string",
+          "required": true,
+          "description": "User message"
+        }
+      },
+      "actionFn": "const { message } = params;\n\nconst result = await services.llm.streamText({\n  model: { provider: 'openai', model: 'gpt-4o' },\n  prompt: message,\n  system: 'You are a helpful assistant.',\n  temperature: 0.7,\n  maxTokens: 100,\n});\n\nfor await (const textPart of result.textStream) {\n  services.logger.info('Streaming text to FE', { textPart });\n\n  services.emitter.sendToPlugin('agent', {\n    type: 'TOKEN_STREAM',\n    token: textPart\n  });\n}\n\nawait result.finishReason\n\nservices.emitter.sendToPlugin('agent', {\n  type: 'LLM_DONE',\n});",
+      "output": {
+        "logged": "boolean",
+        "message": "string"
+      }
+    },
+    "Action-save-entity": {
+      "timestamp": 1752544316469,
+      "label": "Save Entity",
+      "description": "Saves an entity to the database",
+      "category": "database",
+      "updatedAt": 1752544316469,
+      "input": {
+        "entityType": {
+          "name": "entityType",
+          "type": "string",
+          "required": true,
+          "description": "The type of entity to save",
+          "placeholder": "e.g., User, Post, Comment"
+        },
+        "data": {
+          "name": "data",
+          "type": "object",
+          "required": true,
+          "description": "The entity data to save"
+        }
+      },
+      "actionFn": "const { entityType, data } = params;\n\nconst result = await services.database.insert(entityType, data);\nawait services.logger.info('Entity saved', { entityType, id: result.id });\n\nreturn result;",
+      "output": {
+        "id": "string",
+        "success": "boolean"
+      }
+    },
+    "Action-log-message": {
+      "timestamp": 1752544316623,
+      "label": "Log Message",
+      "description": "Logs a message with optional data",
+      "category": "utility",
+      "updatedAt": 1752544316623,
+      "input": {
+        "level": {
+          "name": "level",
+          "type": "string",
+          "required": true,
+          "description": "Log level",
+          "placeholder": "info, error, debug",
+          "default": "info"
+        },
+        "message": {
+          "name": "message",
+          "type": "string",
+          "required": true,
+          "description": "Log message"
+        },
+        "data": {
+          "name": "data",
+          "type": "object",
+          "required": false,
+          "description": "Additional data to log"
+        }
+      },
+      "actionFn": "const { level, message, data } = params;\n\nswitch (level) {\n  case 'error':\n    return await services.logger.error(message, data);\n  case 'debug':\n    return await services.logger.debug(message, data);\n  case 'info':\n  default:\n    return await services.logger.info(message, data);\n}",
+      "output": {
+        "logged": "boolean",
+        "message": "string"
+      }
+    },
+    "Relation-md3vmx98mtk6ljevus9c": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Message-1",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98o7ftj523g6qs": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Message-2",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982c87rnrkhdxv8": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Message-3",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx983gz3mibo88qht": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Message-4",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981pehhmhpnueoh": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Message-5",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982tlazdo1t7qhu": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "ContextItem-1",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx983twgttr4sxtiz": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "ContextItem-2",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981uh5r8o9o1qww": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "ContextItem-3",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9815jwpi967x6h4": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "CanvasItem-1",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98140tyiyb332ff": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Tag-1",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981cvh0k7b993ym": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Tag-2",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98sylh68pz1vpf": {
+      "relationDetails": {
+        "sourceEntity": "Thread-1",
+        "targetEntity": "Tag-3",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx986qa3b7k4hgeb": {
+      "relationDetails": {
+        "sourceEntity": "Thread-2",
+        "targetEntity": "Tag-4",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98273e4ehklp8bt": {
+      "relationDetails": {
+        "sourceEntity": "Thread-2",
+        "targetEntity": "Tag-3",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98353bksti80zvp": {
+      "relationDetails": {
+        "sourceEntity": "Thread-3",
+        "targetEntity": "Tag-1",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9829qlsajnk8fzm": {
+      "relationDetails": {
+        "sourceEntity": "Thread-3",
+        "targetEntity": "Tag-5",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9829q70d21vxir2": {
+      "relationDetails": {
+        "sourceEntity": "Thread-3",
+        "targetEntity": "Tag-2",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981uqw0mtpow4sc": {
+      "relationDetails": {
+        "sourceEntity": "Thread-4",
+        "targetEntity": "Tag-6",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982dtqgu3yd4sfs": {
+      "relationDetails": {
+        "sourceEntity": "Thread-4",
+        "targetEntity": "Tag-7",
+        "relationType": "has",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98jelimmfwmmza": {
+      "relationDetails": {
+        "sourceEntity": "Thread-4",
+        "targetEntity": "Thread-3",
+        "relationType": "parent_of",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98nwamix8rwuoh": {
+      "relationDetails": {
+        "sourceEntity": "Thread-4",
+        "targetEntity": "Thread-2",
+        "relationType": "parent_of",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982thk19ssof3cq": {
+      "relationDetails": {
+        "sourceEntity": "Thread-2",
+        "targetEntity": "Thread-1",
+        "relationType": "parent_of",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx983afyrtjx3k7t8": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a1",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98qy70bzuew2er": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a2",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx98369onjt2a3xar": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a3",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx988380tddasati": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a4s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx983r4g4vrxhyjy4": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a5s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982vlqk8y8h9hts": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a6s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982zaa4q92vl52z": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a7s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982jxtlqyq1b9gc": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a8s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx982tsl2ms2w0xe1": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-loa8s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981jl3f7n79swoh": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a1",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx981qhjwd3cxq24z": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a2",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx983hpyshssoa1e6": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a3",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99z1x265w68n3y": {
+      "relationDetails": {
+        "sourceEntity": "Node-a1",
+        "targetEntity": "Node-a4s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx993uqawwmdm1q9z": {
+      "relationDetails": {
+        "sourceEntity": "Node-a2",
+        "targetEntity": "Node-a7s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9926q902pk71rrc": {
+      "relationDetails": {
+        "sourceEntity": "Node-a3",
+        "targetEntity": "Node-a6s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9917zzkds9ayksi": {
+      "relationDetails": {
+        "sourceEntity": "Node-a6s",
+        "targetEntity": "Node-a5s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9929pzmy21elhgq": {
+      "relationDetails": {
+        "sourceEntity": "Node-a7s",
+        "targetEntity": "Node-a8s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992t48c5ekjmuo4": {
+      "relationDetails": {
+        "sourceEntity": "Node-a8s",
+        "targetEntity": "Node-loa8s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx993kc3qcvcy62bd": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b1",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx9928chep2cstjbw": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b2",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx991wozwpviocrl7": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b3",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992tm860g6hv3ew": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b4",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx991dus8c8k64nv4": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b5",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992hxamcula9ji0": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b6",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx991fcerp3e39qhx": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b8",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99aoh7i7tbei4l": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b9",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx991vbg8ab538ga2": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b10",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992ub41xokx2w2c": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b11",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx993my00h2o4oznr": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b1",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992xxvr31psxni7": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b2",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992w3qggtxgg927": {
+      "relationDetails": {
+        "sourceEntity": "Node-b1",
+        "targetEntity": "Node-b3",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99icdj9xbl4ss4": {
+      "relationDetails": {
+        "sourceEntity": "Node-b2",
+        "targetEntity": "Node-b8",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx992meesfsc25h2m": {
+      "relationDetails": {
+        "sourceEntity": "Node-b3",
+        "targetEntity": "Node-b4",
+        "relationType": "transitions_to",
+        "info": {
+          "condition": "Question"
+        }
+      }
+    },
+    "Relation-md3vmx99jkxxdzuflsfn": {
+      "relationDetails": {
+        "sourceEntity": "Node-b3",
+        "targetEntity": "Node-b11",
+        "relationType": "transitions_to",
+        "info": {
+          "condition": "Command"
+        }
+      }
+    },
+    "Relation-md3vmx9947ngxcmyu2pz": {
+      "relationDetails": {
+        "sourceEntity": "Node-b11",
+        "targetEntity": "Node-b5",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99237xd3es1jqkz": {
+      "relationDetails": {
+        "sourceEntity": "Node-b4",
+        "targetEntity": "Node-b5",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99116wnuigkfvri": {
+      "relationDetails": {
+        "sourceEntity": "Node-b5",
+        "targetEntity": "Node-b6",
+        "relationType": "emits",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx991lowiaiow3bo3": {
+      "relationDetails": {
+        "sourceEntity": "Node-b8",
+        "targetEntity": "Node-b9",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx993k7xes4b1sag9": {
+      "relationDetails": {
+        "sourceEntity": "Node-b9",
+        "targetEntity": "Node-b10",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99d53twbc1tu3h": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad1",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx99v7k5o2vdus24": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad2",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx99qe2gqtgjn7pm": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad3",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx9928ckvengv8hi0": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad4",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx992h8ou429lop3e": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad5",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx992d4dm0l3nq77b": {
+      "relationDetails": {
+        "sourceEntity": "Flow-action-demo",
+        "targetEntity": "Node-ad6",
+        "relationType": "contains"
+      }
+    },
+    "Relation-md3vmx993h96ldkwt3ufy": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad1",
+        "targetEntity": "Node-ad2",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-md3vmx9916893bnbejpec": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad2",
+        "targetEntity": "Node-ad3",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-md3vmx99133zznr7lkqn7": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad3",
+        "targetEntity": "Node-ad4",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-md3vmx992tgjw6586aktu": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad4",
+        "targetEntity": "Node-ad5",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-md3vmx991su48axk3jjpf": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad5",
+        "targetEntity": "Node-ad6",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-md3vmx993r1khtdgga7qu": {
+      "relationDetails": {
+        "sourceEntity": "Node-ad2",
+        "targetEntity": "Action-save-entity",
+        "relationType": "instance_of"
+      }
+    },
+    "Relation-md3vmx992tmzlqu5hok14": {
+      "relationDetails": {
+        "sourceEntity": "Node-a5s",
+        "targetEntity": "Action-save-entity",
+        "relationType": "instance_of",
+        "info": {}
+      }
+    },
+    "Relation-md3vmx99qyudqyssiy00": {
+      "relationDetails": {
+        "sourceEntity": "Node-loa8s",
+        "targetEntity": "Action-stream-to-fe",
+        "relationType": "instance_of"
+      }
+    },
+    "Relation-md3vmyoo1uadlc6v3maas": {
+      "relationDetails": {
+        "sourceEntity": "TNode-Root",
+        "targetEntity": "Flow-a",
+        "relationType": "instance_of"
+      }
+    },
+    "Relation-md3vmyoq1j22rgicvjqju": {
+      "relationDetails": {
+        "sourceEntity": "TNode-Root",
+        "targetEntity": "TNode-md3vmyoq1ap0dki2gyiay",
+        "relationType": "tracked"
+      }
+    },
+    "Relation-md3vmyos1i1z8sqhfwk7m": {
+      "relationDetails": {
+        "sourceEntity": "TNode-md3vmyoq1ap0dki2gyiay",
+        "targetEntity": "TNode-md3vmyos32r60cks99rdx",
+        "relationType": "spawned"
+      }
+    },
+    "TNode-Root": {
+      "status": "active",
+      "label": "Run Agent Brain",
+      "role": "root_trace_node",
+      "createdAt": 1752544318488,
+      "entityType": "TNode",
+      "tNodeType": "flow",
+      "startedAt": 1752544318488
+    },
+    "TNode-md3vmyoq1ap0dki2gyiay": {
+      "status": "active",
+      "label": "Flow Entry",
+      "eventType": "flow.entry",
+      "createdAt": 1752544318490,
+      "tNodeType": "event",
+      "startedAt": 1752544318490
+    },
+    "TNode-md3vmyos32r60cks99rdx": {
+      "status": "active",
+      "label": "Keep Alive",
+      "createdAt": 1752544318492,
+      "tNodeType": "step",
+      "startedAt": 1752544318491,
+      "stepNodeId": "Node-a4s",
+      "stepNodeType": "keep_alive",
+      "nodeAttributes": {
+        "timestamp": 1752544315668
+      }
+    }
+  },
+  "metadata": {
+    "entityCount": 141,
+    "attributeKinds": [
+      "timestamp",
+      "topic",
+      "instructions",
+      "shortCode",
+      "threadType",
+      "status",
+      "name",
+      "color",
+      "text",
+      "sender",
+      "title",
+      "content",
+      "itemType",
+      "contentType",
+      "label",
+      "flowType",
+      "nodeType",
+      "mode",
+      "eventType",
+      "model",
+      "promptTemplateId",
+      "fieldMappings",
+      "actionId",
+      "conditions",
+      "elseLabel",
+      "entityTypeTarget",
+      "entityId",
+      "scope",
+      "prompt",
+      "resultKey",
+      "script",
+      "outputType",
+      "flowRef",
+      "propagateCtx",
+      "description",
+      "params",
+      "final",
+      "category",
+      "inputs",
+      "templateFn",
+      "updatedAt",
+      "outputSchema",
+      "input",
+      "actionFn",
+      "output",
+      "relationDetails",
+      "role",
+      "createdAt",
+      "entityType",
+      "tNodeType",
+      "startedAt",
+      "stepNodeId",
+      "stepNodeType",
+      "nodeAttributes"
+    ],
+    "relationKinds": [
+      "contains",
+      "has",
+      "parent_of",
+      "event_trace",
+      "transitions_to",
+      "emits",
+      "instance_of",
+      "tracked",
+      "spawned"
+    ]
+  }
+}
