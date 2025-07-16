@@ -37,10 +37,19 @@ export interface InterceptOptions {
 export async function launch(options: LaunchOptions = {}) {
   const { defaultViewport, ...browserOptions } = options;
   
-  await taiko.openBrowser(browserOptions);
-  
-  if (defaultViewport) {
-    await taiko.setViewPort(defaultViewport);
+  try {
+    await taiko.openBrowser(browserOptions);
+    
+    if (defaultViewport) {
+      await taiko.setViewPort(defaultViewport);
+    }
+  } catch (error: any) {
+    if (error.message?.includes('Chromium revision is not downloaded')) {
+      throw new Error(
+        'Chromium is not installed. Please run: node node_modules/taiko/lib/install.js'
+      );
+    }
+    throw error;
   }
 }
 
