@@ -354,6 +354,11 @@ export const flowsCommands = {
       // Create node-specific relationships
       createNodeRelations(nodeType, nodeId, relations);
       
+      // If this is a 'listen' node, create EVENT_TRACE relation from flow to node
+      if (nodeType === 'listen') {
+        tx(flowId).link(EARS.RelKind.EVENT_TRACE, nodeId);
+      }
+      
       return successResult({ id: nodeId, ...newNode } as NodeEntity);
     } catch (error) {
       return errorResult(error);
