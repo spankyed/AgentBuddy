@@ -202,17 +202,6 @@
       "label": "Keep Alive",
       "nodeType": "keep_alive"
     },
-    "Node-a5s": {
-      "timestamp": 1752548452561,
-      "label": "save to db",
-      "nodeType": "action"
-    },
-    "Node-a6s": {
-      "timestamp": 1752548452561,
-      "label": "LLM Call",
-      "nodeType": "llm",
-      "model": "gpt-4"
-    },
     "Node-a7s": {
       "timestamp": 1752548452561,
       "label": "Process User Message",
@@ -1053,22 +1042,7 @@
         "info": {}
       }
     },
-    "Relation-md5g61683hiynrqtqh2cu": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a5s",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md5g61683mjr5lxj79ysg": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a6s",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
+
     "Relation-md5g61682hb0m9phui09k": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
@@ -1129,22 +1103,6 @@
       "relationDetails": {
         "sourceEntity": "Node-a2",
         "targetEntity": "Node-a7s",
-        "relationType": "transitions_to",
-        "info": {}
-      }
-    },
-    "Relation-md5g61683qk0ablobze8y": {
-      "relationDetails": {
-        "sourceEntity": "Node-a3",
-        "targetEntity": "Node-a6s",
-        "relationType": "transitions_to",
-        "info": {}
-      }
-    },
-    "Relation-md5g61682l6aa9kc09nr8": {
-      "relationDetails": {
-        "sourceEntity": "Node-a6s",
-        "targetEntity": "Node-a5s",
         "relationType": "transitions_to",
         "info": {}
       }
@@ -1419,14 +1377,6 @@
         "sourceEntity": "Node-ad2",
         "targetEntity": "Action-save-entity",
         "relationType": "instance_of"
-      }
-    },
-    "Relation-md5g61682bevthwl26egv": {
-      "relationDetails": {
-        "sourceEntity": "Node-a5s",
-        "targetEntity": "Action-save-entity",
-        "relationType": "instance_of",
-        "info": {}
       }
     },
     "Relation-md5g6168brsp264s9r03": {
