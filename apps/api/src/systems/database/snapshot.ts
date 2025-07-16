@@ -87,8 +87,16 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
     },
   };
 
-  // Generate filename
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  // Generate filename with human-readable timestamp
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
   const filename = name 
     ? `snapshot-${name}-${timestamp}.json`
     : `snapshot-${timestamp}.json`;
