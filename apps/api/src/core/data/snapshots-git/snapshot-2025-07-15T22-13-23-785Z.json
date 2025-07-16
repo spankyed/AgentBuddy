@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-15T21:51:45.117Z",
+  "timestamp": "2025-07-15T22:13:23.785Z",
   "entities": {
     "Thread-1": {
       "timestamp": [
@@ -824,7 +824,28 @@
         "message": "string"
       }
     },
-    "Relation-md51ts8719942ufpo93ad": {
+    "Action-md52nfbn25xw7tivi4r1f": {
+      "shortCode": "ACT-4",
+      "label": "Generate db query",
+      "description": "Generate db query from a user prompt",
+      "category": "",
+      "updatedAt": 1752617507243,
+      "input": {
+        "param1": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Database query or transaction prompt"
+        }
+      },
+      "actionFn": "  import { z } from 'zod';\n\n  const { message } = params;\n\n  try {\n    // Get documents from library service\n    const [doc1, doc2] = await Promise.all([\n      services.library.getDocByCode('DOC-1'),\n      services.library.getDocByCode('DOC-2')\n    ]);\n\n    // Check if documents were found\n    if (!doc1) {\n      throw new Error('Document DOC-1 not found');\n    }\n    if (!doc2) {\n      throw new Error('Document DOC-2 not found');\n    }\n\n    const queryDoc = doc1.content;\n    const transactionDoc = doc2.content;\n\n    // Define schema for message classification\n    const MessageClassificationSchema = z.object({\n      type: z.enum(['query', 'transaction']).describe('Whether the message is a read operation (query) or write operation (transaction)'),\n      reasoning: z.string().describe('Brief explanation of why this classification was chosen')\n    });\n\n    // Classify the user's message\n    const classificationResult = await services.llm.generateObject({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      schema: MessageClassificationSchema,\n      prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):\n\n  Message: \"${message}\"\n\n  A query is any operation that reads or retrieves data without modifying it.\n  A transaction is any operation that creates, updates, or deletes data.`,\n      temperature: 0.3,\n    });\n\n    const classification = classificationResult.object;\n\n    // Select appropriate document based on classification\n    const selectedDoc = classification.type === 'query' ? queryDoc : transactionDoc;\n\n    services.logger.info('Message classified', {\n      type: classification.type,\n      reasoning: classification.reasoning\n    });\n\n    // Generate the database operation code\n    const result = await services.llm.generateText({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      prompt: message,\n      system: selectedDoc,\n      temperature: 0.7,\n      maxTokens: 1000,\n    });\n\n    // Emit the generated code to database plugin\n    services.emitter.sendToPlugin('database', {\n      type: 'MAGIC_PROMPT_GENERATED',\n      query: result.text\n    });\n\n  } catch (error) {\n    services.logger.error('Error generating database operation', { error });\n\n    // Emit error to database plugin - note: this event type might not exist\n    // You may need to handle errors differently based on your system\n    services.emitter.sendToPlugin('database', {\n      type: 'QUERY_ERROR',\n      error: error instanceof Error ? error.message : 'Unknown error occurred'\n    });\n  }",
+      "createdAt": [
+        1752616563539,
+        1752616563539
+      ],
+      "entityType": "Action"
+    },
+    "Relation-md52kmv62ro3cb7znl8id": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-1",
@@ -832,7 +853,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873ps4sy2zwde9m": {
+    "Relation-md52kmv63bn0fbkj0d7vi": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-2",
@@ -840,7 +861,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8729j3jc0vf4nx4": {
+    "Relation-md52kmv63mn1rsnuqitaw": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-3",
@@ -848,7 +869,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8729xi876i1roz6": {
+    "Relation-md52kmv6qf0yxkh11c02": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-4",
@@ -856,7 +877,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87qs9hg9f899ur": {
+    "Relation-md52kmv61nej995048ddu": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-5",
@@ -864,7 +885,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87n87k204velm8": {
+    "Relation-md52kmv62g6139bkqy512": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-1",
@@ -872,7 +893,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8723m36g7q2k0s2": {
+    "Relation-md52kmv63b9cuoevb5508": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-2",
@@ -880,7 +901,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8738n60g604olm6": {
+    "Relation-md52kmv61t7y27rscyb4j": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-3",
@@ -888,7 +909,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87y4hdcvdxvihg": {
+    "Relation-md52kmv61h4z1366r4lw6": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "CanvasItem-1",
@@ -896,7 +917,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873vpw5dplb3bcv": {
+    "Relation-md52kmv61wv0xycwsmplv": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-1",
@@ -904,7 +925,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8727s5bb15duggb": {
+    "Relation-md52kmv611smcevsegnf5": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-2",
@@ -912,7 +933,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts871285nm9kp5fby": {
+    "Relation-md52kmv61d58alfuob4df": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-3",
@@ -920,7 +941,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87ulbe0jfwceuc": {
+    "Relation-md52kmv63717rv9pvvw7m": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-4",
@@ -928,7 +949,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873a6gkk1fkajiu": {
+    "Relation-md52kmv6l70z0l2wzewx": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-3",
@@ -936,7 +957,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873qp0d72lhr7nx": {
+    "Relation-md52kmv6wrnj6wsgwxkw": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-1",
@@ -944,7 +965,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873vc047ifmkske": {
+    "Relation-md52kmv61rocj1qhdjxoq": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-5",
@@ -952,7 +973,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872uecsqkt3s3sd": {
+    "Relation-md52kmv62vh4jzw0pudny": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-2",
@@ -960,7 +981,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87omycatawswda": {
+    "Relation-md52kmv63rokf0zzxfq7y": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-6",
@@ -968,7 +989,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8711ylnl5ra11fv": {
+    "Relation-md52kmv63k8skhqhizwm6": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-7",
@@ -976,7 +997,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872l1ap54now9nu": {
+    "Relation-md52kmv63967ewzj22ec7": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-3",
@@ -984,7 +1005,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87rgrybuyb9ptt": {
+    "Relation-md52kmv63d7cdz9sxz8zu": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-2",
@@ -992,7 +1013,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8739qycqfe1glt7": {
+    "Relation-md52kmv6w1lkvman7i2h": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Thread-1",
@@ -1000,7 +1021,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872gtlhnujg8h79": {
+    "Relation-md52kmv6rhcmtek25lfv": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1008,7 +1029,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8734cgb5crrn92m": {
+    "Relation-md52kmv6220s4zkdxkta6": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1016,7 +1037,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872j3jsqfcq04th": {
+    "Relation-md52kmv629g8sr7jk4zku": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1024,7 +1045,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873h7r3h7dh8gep": {
+    "Relation-md52kmv61xdayo8oku85q": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -1032,7 +1053,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873qcpnp1zdt9ga": {
+    "Relation-md52kmv61ghmhjofgyqtf": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a5s",
@@ -1040,7 +1061,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87n18oljqamwt4": {
+    "Relation-md52kmv61a9toe7901vnn": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a6s",
@@ -1048,7 +1069,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8732vn2fhkpynmz": {
+    "Relation-md52kmv637z66tcvgn9bl": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a7s",
@@ -1056,7 +1077,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8732bvysu2g9qdy": {
+    "Relation-md52kmv6e1xhbvc10eoh": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a8s",
@@ -1064,7 +1085,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87wncoqct14fw2": {
+    "Relation-md52kmv64q25xg4zjfxu": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-loa8s",
@@ -1072,7 +1093,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87xoxnf0ml86v6": {
+    "Relation-md52kmv62iyyy3h1unayo": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1080,7 +1101,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872kd2bgxr2dx5j": {
+    "Relation-md52kmv61jdjehxi3ok4z": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1088,7 +1109,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts871nsdprrdzm5om": {
+    "Relation-md52kmv62hukpwnpia0e8": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1096,7 +1117,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872n8mt553dgtw1": {
+    "Relation-md52kmv62tbgbe16ex3c9": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -1104,7 +1125,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8720mh47pg7ix3b": {
+    "Relation-md52kmv67qh6x9yqgxhv": {
       "relationDetails": {
         "sourceEntity": "Node-a2",
         "targetEntity": "Node-a7s",
@@ -1112,7 +1133,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872e39s70bz4gsv": {
+    "Relation-md52kmv6341phba0970d3": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-a6s",
@@ -1120,7 +1141,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872ewqrx7bl5lv7": {
+    "Relation-md52kmv621s9oin35394y": {
       "relationDetails": {
         "sourceEntity": "Node-a6s",
         "targetEntity": "Node-a5s",
@@ -1128,7 +1149,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87320wuogmh97z7": {
+    "Relation-md52kmv620a1g1btmn90u": {
       "relationDetails": {
         "sourceEntity": "Node-a7s",
         "targetEntity": "Node-a8s",
@@ -1136,7 +1157,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873dlnl77hu045l": {
+    "Relation-md52kmv6nyq3u98hyqpw": {
       "relationDetails": {
         "sourceEntity": "Node-a8s",
         "targetEntity": "Node-loa8s",
@@ -1144,7 +1165,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873ih2c0rdt8ad5": {
+    "Relation-md52kmv624vct08wb9j8i": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1152,7 +1173,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872flt9dczrfgg8": {
+    "Relation-md52kmv63l03kipf8o7ci": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1160,7 +1181,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87ha3scnnn8qhh": {
+    "Relation-md52kmv63poy7v3qofno8": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -1168,7 +1189,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87k5rbx58xv8sm": {
+    "Relation-md52kmv61q5nij3kmrj30": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -1176,7 +1197,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8736vmnljtka3hj": {
+    "Relation-md52kmv62h9f48dj1ozn8": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -1184,7 +1205,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873uqqgvvc5n204": {
+    "Relation-md52kmv620mxb1vilchxk": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -1192,7 +1213,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872esx0wqfqzk3h": {
+    "Relation-md52kmv63d1el0invqgsp": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -1200,7 +1221,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87jmq8g0gd1n0u": {
+    "Relation-md52kmv63nmxmz3eko4ml": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -1208,7 +1229,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87waarkkojuwyt": {
+    "Relation-md52kmv63bneqjikolaxo": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -1216,7 +1237,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872kka8fah3xur4": {
+    "Relation-md52kmv62tw36t33ugz3u": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -1224,7 +1245,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87bfautf27nkan": {
+    "Relation-md52kmv63cyse6jdw20n1": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1232,7 +1253,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts87x3pau6t9zuh2": {
+    "Relation-md52kmv63e07h7l18hk9v": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1240,7 +1261,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873pxt53oavonz6": {
+    "Relation-md52kmv63sumn8zcqqm": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -1248,7 +1269,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872pci9mhewti07": {
+    "Relation-md52kmv6rck0ung5434h": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -1256,7 +1277,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8732q0xm06wvq13": {
+    "Relation-md52kmv63a6hpngo5duoc": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -1266,7 +1287,7 @@
         }
       }
     },
-    "Relation-md51ts871qqlridd7ccb4": {
+    "Relation-md52kmv612fyujxgwwp1l": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -1276,7 +1297,7 @@
         }
       }
     },
-    "Relation-md51ts87g2pln0dp1dxz": {
+    "Relation-md52kmv630kg6seiezfxu": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -1284,7 +1305,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts872k3pa4vx6rawz": {
+    "Relation-md52kmv6133wrfchlptzt": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -1292,7 +1313,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8739cxkmoss6cgy": {
+    "Relation-md52kmv62yugb6wtts7mg": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -1300,7 +1321,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts8733uju9puooogf": {
+    "Relation-md52kmv62vu8ocq1o7fu7": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -1308,7 +1329,7 @@
         "info": {}
       }
     },
-    "Relation-md51ts873qihbai9wh944": {
+    "Relation-md52kmv61bhwg1takh6gi": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -1316,91 +1337,91 @@
         "info": {}
       }
     },
-    "Relation-md51ts873dxtznvgh7yv5": {
+    "Relation-md52kmv61is4g7rdh9qz": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad1",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts872sb7qu9h3ncm4": {
+    "Relation-md52kmv6129xbvssorvlh": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad2",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts87yxgnf31r7uns": {
+    "Relation-md52kmv6o3fcjfl476zy": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad3",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts871a6p9480rfasd": {
+    "Relation-md52kmv617l7pj126d4zq": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad4",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts8710ktmzvn6d22j": {
+    "Relation-md52kmv62ywx3qu9lk1rn": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad5",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts872rqj7bhr6zync": {
+    "Relation-md52kmv6h4tarzvnq539": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad6",
         "relationType": "contains"
       }
     },
-    "Relation-md51ts871bzrfigaxjfq8": {
+    "Relation-md52kmv61n5qj6j049els": {
       "relationDetails": {
         "sourceEntity": "Node-ad1",
         "targetEntity": "Node-ad2",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md51ts8730w9bhsxd10cu": {
+    "Relation-md52kmv6si3lyv9sea2o": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Node-ad3",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md51ts878kp0aash1mp3": {
+    "Relation-md52kmv6238cbqjbub60o": {
       "relationDetails": {
         "sourceEntity": "Node-ad3",
         "targetEntity": "Node-ad4",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md51ts872gfe5p8zf4d6k": {
+    "Relation-md52kmv63nw4udoein9qv": {
       "relationDetails": {
         "sourceEntity": "Node-ad4",
         "targetEntity": "Node-ad5",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md51ts875dity9o5ytzg": {
+    "Relation-md52kmv62pl87f5lhx5x6": {
       "relationDetails": {
         "sourceEntity": "Node-ad5",
         "targetEntity": "Node-ad6",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md51ts871e2fp5c091678": {
+    "Relation-md52kmv68f8rvifyi657": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Action-save-entity",
         "relationType": "instance_of"
       }
     },
-    "Relation-md51ts8714dabwdry3cnx": {
+    "Relation-md52kmv61pznxx4eexsa8": {
       "relationDetails": {
         "sourceEntity": "Node-a5s",
         "targetEntity": "Action-save-entity",
@@ -1408,21 +1429,21 @@
         "info": {}
       }
     },
-    "Relation-md51ts8738hj6lzzozmvs": {
+    "Relation-md52kmv61jx6v6oo69e1p": {
       "relationDetails": {
         "sourceEntity": "Node-loa8s",
         "targetEntity": "Action-stream-to-fe",
         "relationType": "instance_of"
       }
     },
-    "Relation-md52d3j22gukjob57j5nz": {
+    "Relation-md52kmv62ud646ohz6sll": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-md52hm08hdial7ey530k": {
+    "Relation-md52kmv6za6s4wae0wfp": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
@@ -1450,7 +1471,7 @@
     }
   },
   "metadata": {
-    "entityCount": 140,
+    "entityCount": 141,
     "attributeKinds": [
       "timestamp",
       "topic",
@@ -1505,7 +1526,8 @@
       "startedAt",
       "stepNodeId",
       "stepNodeType",
-      "nodeAttributes"
+      "nodeAttributes",
+      "parameters"
     ],
     "relationKinds": [
       "contains",
