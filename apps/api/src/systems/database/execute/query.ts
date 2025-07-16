@@ -12,6 +12,7 @@ import {
   queryEntitiesInRelationTo
 } from '@/core/utils/ears/attribute-storage';
 import { relationIndex } from '@/core/utils/ears/relation-index';
+import { getSchemaStats } from '../repository/schema';
 
 /**
  * Execute a user-provided query against the EARS database
@@ -45,6 +46,7 @@ export async function executeQuery(code: string): Promise<any> {
       'queryEntitiesByAttribute',
       'queryEntitiesInRelationTo',
       'relationIndex',
+      'getSchemaStats',
       functionBody
     );
     
@@ -60,7 +62,8 @@ export async function executeQuery(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex
+      relationIndex,
+      getSchemaStats
     );
     
     // Return whatever the query produces

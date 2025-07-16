@@ -86,7 +86,7 @@ export const librarySystem = setup({
         })
       }
     },
-    handleDoubleClick: ({ event }) => {
+    handleDoubleClick: ({ event, self }) => {
       if (event.type === 'DOUBLE_CLICK_ITEM') {
         if (event.item.type === 'folder') {
           trpc.bus.send.mutate({
@@ -94,8 +94,10 @@ export const librarySystem = setup({
             type: 'NAVIGATE_TO_FOLDER',
             folderId: event.item.id,
           })
+        } else if (event.item.type === 'document') {
+          // Open edit view for documents
+          self.send({ type: 'EDIT_DOCUMENT', documentId: event.item.id })
         }
-        // For documents, we could open an edit view
       }
     },
     createDocument: ({ context, event }) => {
@@ -251,7 +253,27 @@ export const librarySystem = setup({
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
-          return context.documents.find((doc) => doc.id === event.documentId)
+          // First try to find in legacy documents array
+          const legacyDoc = context.documents.find((doc) => doc.id === event.documentId)
+          if (legacyDoc) {
+            return legacyDoc
+          }
+          
+          // Otherwise, look in the new items array and convert to DocumentDTO format
+          const item = context.items.find((item) => item.id === event.documentId && item.type === 'document')
+          if (item && item.type === 'document') {
+            // Convert DocumentItem to DocumentDTO format for compatibility with EditView
+            return {
+              id: item.id,
+              name: item.name,
+              content: item.content,
+              shortCode: item.shortCode,
+              tags: item.tags,
+              collectionId: item.parentId,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            } as DocumentDTO
+          }
         }
         return undefined
       },

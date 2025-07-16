@@ -211,7 +211,7 @@
             >
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
-                  {{ selectedPrompt.inputs[key].name || key }}
+                  {{ key }}
                   <span v-if="selectedPrompt.inputs[key].required" class="text-xs text-red-500">*</span>
                 </label>
                 <input
@@ -290,7 +290,11 @@ const selectedPrompt = computed(() => {
 })
 
 // Field mappings
-const fieldMappings = computed(() => nodeData.value.fieldMappings || [])
+const fieldMappings = computed(() => {
+  const mappings = nodeData.value.fieldMappings
+  if (!mappings) return []
+  return Array.isArray(mappings) ? mappings : [mappings]
+})
 
 // Computed filtered lists
 const filteredPrompts = computed(() => {

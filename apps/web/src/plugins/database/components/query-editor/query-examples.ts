@@ -198,5 +198,18 @@ return {
   availableRelations: Array.from(allRelations),
   count: allRelations.size
 };`
+  },
+  
+  // Schema Statistics
+  {
+    title: 'Database Schema Statistics',
+    description: 'Get comprehensive statistics about entities, attributes, and relations',
+    query: `// Get detailed schema statistics from actual data
+return getSchemaStats();
+
+// This returns:
+// - entities: Count of each entity type
+// - attributes: Count and distribution of each attribute kind
+// - relations: Count and connectivity info for each relation type`
   }
 ]; 

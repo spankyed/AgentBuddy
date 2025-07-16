@@ -106,6 +106,8 @@ const currentEvents = computed(() => {
       send({ type: 'RENAME_ITEM', ...payload }),
     DELETE_SELECTED_ITEMS: () => 
       send({ type: 'DELETE_SELECTED_ITEMS' }),
+    BREADCRUMB_CLICK: (payload: { folderId: string | null }) =>
+      send({ type: 'BREADCRUMB_CLICK', ...payload }),
   }
 
   return {

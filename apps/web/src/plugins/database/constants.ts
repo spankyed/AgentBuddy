@@ -48,3 +48,36 @@ for (const entityId of allEntities) {
 }
 
 return results.slice(0, 20);`
+
+export const transactionExampleQuery = 
+  `// Create a new agent entity
+const agentId = tx(EARS.Entity.Agent)
+  .put('name', 'My Assistant')
+  .put('description', 'A helpful AI agent')
+  .put('status', 'active')
+  .grant('primary')
+  .id();
+
+// Update existing entity
+tx(agentId)
+  .put('lastActive', Date.now())
+  .merge('capabilities', ['chat', 'analysis']);
+
+// Create relationships
+const threadId = tx(EARS.Entity.Thread)
+  .put('title', 'New Conversation')
+  .put('createdAt', Date.now())
+  .link(EARS.RelKind.belongs_to, agentId)
+  .id();
+
+return { 
+  created: { agentId, threadId },
+  message: 'Successfully created agent and thread'
+};
+
+// More transaction examples:
+// Delete an entity: tx(entityId).destroy();
+// Grant/revoke roles: tx(entityId).grant('admin').revoke('user');
+// Create symmetric relations: tx(id1).link(EARS.RelKind.relates_to, id2, { symmetric: true });
+// Batch operations: tx(id).batchPut({ name: 'New Name', status: 'updated' });
+`

@@ -217,6 +217,7 @@ const emit = defineEmits<{
   RENAME_ITEM: [{ itemId: string; name: string }]
   DELETE_SELECTED_ITEMS: []
   BREADCRUMB_CLICK: [{ folderId: string | null }]
+  EDIT_DOCUMENT: [{ documentId: string }]
 }>()
 
 const sortedItems = computed(() => {
@@ -306,9 +307,15 @@ function createFolder() {
 }
 
 function renameItem(item: LibraryItem) {
-  const name = prompt('New name:', item.name)
-  if (name?.trim() && name !== item.name) {
-    emit('RENAME_ITEM', { itemId: item.id, name: name.trim() })
+  if (item.type === 'document') {
+    // For documents, emit edit document event
+    emit('EDIT_DOCUMENT', { documentId: item.id })
+  } else {
+    // For folders, rename inline
+    const name = prompt('New name:', item.name)
+    if (name?.trim() && name !== item.name) {
+      emit('RENAME_ITEM', { itemId: item.id, name: name.trim() })
+    }
   }
 }
 

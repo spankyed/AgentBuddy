@@ -8,7 +8,7 @@ import type {
   EARS,
 } from '@abuddy/api'
 import { trpc } from '@/core/trpc'
-import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate } from './constants'
+import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -28,15 +28,24 @@ export interface DatabaseContext {
     value: string;
   } | null;
   snapshotMessage: string | null;
+  mode: 'query' | 'transaction';
+  isMagicPromptLoading: boolean;
 }
 
-type SystemEvent = OutgoingDatabaseEvents
+type SystemEvent = OutgoingDatabaseEvents | 
+  { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
+  { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
+  { type: 'TRANSACTION_ERROR'; error: string } |
+  { type: 'MAGIC_PROMPT_GENERATED'; query: string }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
+  | { type: 'TRANSACTION.EXECUTE'; code: string }
   | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
   | { type: 'QUERY.UPDATE'; code: string }
   | { type: 'DATABASE.SAVE_SNAPSHOT' }
+  | { type: 'MODE.TOGGLE' }
+  | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -59,8 +68,8 @@ const databaseState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setStartupData: assign(({ event }) => {
-      const ev = typeOf('DATABASE_STARTUP', event);
+    setDatabaseRefresh: assign(({ event }) => {
+      const ev = typeOf('DATABASE_REFRESH', event);
       return {
         schema: ev.data.schema
       }
@@ -72,6 +81,15 @@ const databaseState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'EXECUTE_QUERY',
+        code: ev.code,
+      });
+    },
+
+    executeTransaction: ({ event, context }) => {
+      const ev = typeOf('TRANSACTION.EXECUTE', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
     },
@@ -96,6 +114,31 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
+      };
+    }),
+
+    setTransactionResult: assign(({ event }) => {
+      const ev = typeOf('TRANSACTION_RESULT', event);
+      return {
+        queryResult: ev.result,
+        executionTime: ev.executionTime,
+        isLoading: false,
+        error: null,
+      };
+    }),
+
+    setTransactionError: assign(({ event }) => {
+      const ev = typeOf('TRANSACTION_ERROR', event);
+      return {
+        error: ev.error,
+        isLoading: false,
+      };
+    }),
+
+    toggleMode: assign(({ context }) => {
+      const newMode: 'query' | 'transaction' = context.mode === 'query' ? 'transaction' : 'query';
+      return {
+        mode: newMode,
       };
     }),
 
@@ -132,6 +175,33 @@ const databaseState = setup({
       snapshotMessage: null,
     }),
 
+    /* ── magic prompt ───────────────────────────────── */
+    generateMagicPrompt: ({ event }) => {
+      const ev = typeOf('MAGIC_PROMPT.GENERATE', event);
+      if (!ev.prompt?.trim()) {
+        console.error('Invalid prompt provided for magic prompt generation');
+        return;
+      }
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GENERATE_MAGIC_PROMPT',
+        prompt: ev.prompt.trim(),
+      });
+    },
+
+    setMagicPromptLoading: assign({
+      isMagicPromptLoading: true,
+    }),
+
+    setMagicPromptResult: assign(({ event }) => {
+      const ev = typeOf('MAGIC_PROMPT_GENERATED', event);
+      return {
+        currentQuery: ev.query,
+        isMagicPromptLoading: false,
+      };
+    }),
+
+
     /* ── schema interactions ───────────────────────────────── */
     selectSchemaItem: assign(({ event, context }) => {
       const ev = typeOf('SCHEMA.SELECT', event);
@@ -162,13 +232,18 @@ const databaseState = setup({
     executionTime: null,
     selectedSchemaItem: null,
     snapshotMessage: null,
+    mode: 'query',
+    isMagicPromptLoading: false,
   },
   on: {
-    DATABASE_STARTUP: { actions: 'setStartupData' },
+    DATABASE_REFRESH: { actions: 'setDatabaseRefresh' },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
+    TRANSACTION_RESULT: { actions: 'setTransactionResult' },
+    TRANSACTION_ERROR: { actions: 'setTransactionError' },
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
+    MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
   },
   states: {
     explorer: {
@@ -178,14 +253,23 @@ const databaseState = setup({
         'QUERY.EXECUTE': {
           actions: ['setLoading', 'executeQuery'],
         },
+        'TRANSACTION.EXECUTE': {
+          actions: ['setLoading', 'executeTransaction'],
+        },
         'QUERY.UPDATE': {
           actions: 'updateQuery',
+        },
+        'MODE.TOGGLE': {
+          actions: 'toggleMode',
         },
         'SCHEMA.SELECT': {
           actions: 'selectSchemaItem',
         },
         'DATABASE.SAVE_SNAPSHOT': {
           actions: 'saveSnapshot',
+        },
+        'MAGIC_PROMPT.GENERATE': {
+          actions: ['setMagicPromptLoading', 'generateMagicPrompt'],
         },
       },
     },

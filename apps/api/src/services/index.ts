@@ -4,6 +4,7 @@ import * as emitter from './event-emitter';
 import * as database from './database';
 import { promptService } from './prompt';
 import { actionService } from './action';
+import { libraryService } from './library';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
@@ -14,6 +15,7 @@ const services = {
   database,
   prompt: promptService,
   action: actionService,
+  library: libraryService,
 }
 
 const actions = ([

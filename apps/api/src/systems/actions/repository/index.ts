@@ -14,6 +14,7 @@ import {
   type OperationResult
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
+import { tx } from '@/services/database';
 
 /**
  * Action Repository - Dead simple CRUD operations
@@ -102,10 +103,23 @@ export const actionCommands = {
       }
       
       const { parameters, ...rest } = updates;
-      updateEntity(id, {
-        ...rest,
-        ...(parameters && { input: parameters }),
-      });
+      
+      // If parameters are provided, we need to replace the entire input object
+      if (parameters !== undefined) {
+        // First, drop the existing input to ensure complete replacement
+        const transaction = tx(id);
+        transaction.drop(EARS.AttrKind.Custom('input'));
+        transaction.put('input', parameters);
+        transaction.merge('updatedAt', Date.now());
+        
+        // Update other fields normally
+        if (Object.keys(rest).length > 0) {
+          updateEntity(id, rest);
+        }
+      } else {
+        // No parameters update, just update other fields
+        updateEntity(id, rest);
+      }
       
       return operationSuccess();
     } catch (error) {

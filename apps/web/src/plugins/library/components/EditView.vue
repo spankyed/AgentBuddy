@@ -58,6 +58,35 @@
                 </select>
               </div>
             </div>
+            
+            <!-- Shortcode Section -->
+            <div class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700">
+              <div class="flex items-center gap-4">
+                <div class="flex-1">
+                  <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                    Document Code
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      :value="props.document.shortCode"
+                      type="text"
+                      readonly
+                      class="px-3 py-2 font-mono text-sm font-medium transition-colors border rounded-md bg-neutral-900 border-neutral-700 text-blue-400 focus:outline-none cursor-text select-all"
+                    />
+                    <button
+                      type="button"
+                      @click="copyShortCode"
+                      class="px-3 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600 focus:outline-none"
+                      title="Copy shortcode"
+                    >
+                      <Copy v-if="!copied" class="w-4 h-4" />
+                      <Check v-else class="w-4 h-4 text-green-400" />
+                    </button>
+                  </div>
+                  <p class="mt-1 text-xs text-neutral-500">Use this code to reference the document in actions and prompts</p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <!-- Tags Section -->
@@ -111,7 +140,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, Copy, Check } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import type { DocumentDTO, CollectionDTO } from '@abuddy/api'
 
@@ -133,6 +162,7 @@ const formData = reactive({
 })
 
 const newTag = ref('')
+const copied = ref(false)
 
 const isValid = computed(() => {
   return formData.name.trim() !== '' && formData.content.trim() !== ''
@@ -180,5 +210,13 @@ function handleSave() {
     tags: formData.tags,
     collectionId: formData.collectionId,
   })
+}
+
+function copyShortCode() {
+  navigator.clipboard.writeText(props.document.shortCode)
+  copied.value = true
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 </script>

@@ -259,6 +259,9 @@ export const librarySystem = setup({
       })
     },
     sendInitialData: async ({ system }) => {
+      // Run migration for documents without shortcodes
+      await repository.migrateDocumentShortCodes()
+      
       const [documents, collections] = await Promise.all([
         repository.getDocuments(),
         repository.getCollections(),

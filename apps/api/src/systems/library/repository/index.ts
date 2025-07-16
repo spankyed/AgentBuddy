@@ -3,7 +3,7 @@ import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode } from '../types'
 
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
@@ -22,7 +22,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
     return documents.filter((doc): doc is DocumentDTO => doc !== null)
   }
 
-  const documents = await query.pick(['name', 'content', 'createdAt', 'updatedAt'])
+  const documents = await query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
 
   const documentsWithDetails = await Promise.all(
     documents.map(async (doc) => {
@@ -51,6 +51,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         id: doc.id,
         name: doc.name as string,
         content: doc.content as string,
+        shortCode: doc.shortCode as DocumentShortCode,
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
         collectionPath,
@@ -95,12 +96,25 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     id: documentId,
     name: document.name as string,
     content: document.content as string,
+    shortCode: document.shortCode as DocumentShortCode,
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
     collectionPath,
     createdAt: new Date(document.createdAt as number).toISOString(),
     updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
   }
+}
+
+export async function getDocumentByShortCode(shortCode: DocumentShortCode): Promise<DocumentDTO | null> {
+  const documents = await qx(EARS.Entity.Document)
+    .where('shortCode', shortCode)
+    .pickAll()
+  
+  if (documents.length === 0) {
+    return null
+  }
+  
+  return getDocument(documents[0].id as EARS.EntityId)
 }
 
 export async function createDocument(
@@ -111,10 +125,15 @@ export async function createDocument(
 ): Promise<DocumentDTO> {
   const documentId = `Document-${uuid()}` as EARS.EntityId
   const now = Date.now()
+  
+  // Generate shortcode
+  const documentCount = qx(EARS.Entity.Document).count() + 1
+  const shortCode = `DOC-${documentCount}` as DocumentShortCode
 
   tx(documentId).batchPut({
     name,
     content,
+    shortCode,
     createdAt: now,
     updatedAt: now,
   })
@@ -601,7 +620,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Get documents in this collection
     documents = await qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pick(['name', 'content', 'createdAt', 'updatedAt'])
+      .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
   }
   
   // Convert documents to document items
@@ -620,6 +639,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       type: 'document',
       id: documentId,
       name: doc.name as string,
+      shortCode: doc.shortCode as DocumentShortCode,
       parentId: folderId,
       content,
       tags: tags.map(tag => tag.name as string),
@@ -700,6 +720,27 @@ export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.E
   return null
 }
 
+export async function migrateDocumentShortCodes(): Promise<void> {
+  // Get all documents
+  const allDocuments = await qx(EARS.Entity.Document).pickAll()
+  
+  let migratedCount = 0
+  for (let i = 0; i < allDocuments.length; i++) {
+    const doc = allDocuments[i]
+    
+    // Check if document already has a shortCode
+    if (!doc.shortCode) {
+      const shortCode = `DOC-${i + 1}` as DocumentShortCode
+      tx(doc.id as EARS.EntityId).put('shortCode', shortCode)
+      migratedCount++
+    }
+  }
+  
+  if (migratedCount > 0) {
+    console.log(`Migrated ${migratedCount} documents with shortcodes`)
+  }
+}
+
 export async function renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
   const entityId = id
   const now = Date.now()
@@ -715,6 +756,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       type: 'document',
       id: entityId,
       name,
+      shortCode: doc!.shortCode,
       parentId: doc!.collectionId || null,
       content: doc!.content,
       tags: doc!.tags,

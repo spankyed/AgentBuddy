@@ -11,13 +11,13 @@
           <div class="flex-1 space-y-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block mb-1 text-xs font-medium text-neutral-400">Name</label>
+                <label class="block mb-1 text-xs font-medium text-neutral-400">Key</label>
                 <input
-                  :value="param.name"
-                  @input="updateParameter(key.toString(), { ...param, name: ($event.target as HTMLInputElement).value })"
+                  :value="key"
+                  @input="updateParameterKey(key.toString(), ($event.target as HTMLInputElement).value)"
                   type="text"
                   class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                  placeholder="Parameter name"
+                  placeholder="Parameter key"
                 />
               </div>
               <div>
@@ -113,6 +113,20 @@ function updateParameter(key: string, param: ActionParameter) {
   emit('update', updated);
 }
 
+function updateParameterKey(oldKey: string, newKey: string) {
+  if (!newKey.trim() || oldKey === newKey) return;
+  
+  // Create new parameters object with updated key
+  const updated = { ...props.parameters };
+  const param = updated[oldKey];
+  
+  // Remove old key and add with new key
+  delete updated[oldKey];
+  updated[newKey] = param;
+  
+  emit('update', updated);
+}
+
 function removeParameter(key: string) {
   const updated = { ...props.parameters };
   delete updated[key];
@@ -132,7 +146,6 @@ function addParameter() {
   const updated = {
     ...props.parameters,
     [newKey]: {
-      name: newKey,
       type: 'string' as const,
       required: true,
       description: ''
