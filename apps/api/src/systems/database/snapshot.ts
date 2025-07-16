@@ -98,8 +98,8 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
   
   const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
   const filename = name 
-    ? `snapshot-${name}-${timestamp}.json`
-    : `snapshot-${timestamp}.json`;
+    ? `snapshot_${name}-${timestamp}.json`
+    : `snapshot_${timestamp}.json`;
   const filepath = path.join(SNAPSHOTS_DIR, filename);
 
   // Write snapshot to file
