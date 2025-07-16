@@ -188,7 +188,7 @@
       "label": "User Message",
       "nodeType": "listen",
       "mode": "internal",
-      "eventType": "user.message"
+      "eventType": "user.message.old"
     },
     "Node-a3": {
       "timestamp": 1752548452561,
