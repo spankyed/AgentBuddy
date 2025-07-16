@@ -4,6 +4,7 @@ import { createLogger } from '@/core/utils/debug/logger';
 import { actionQueries } from '@/systems/actions/repository';
 import { flowsQueries } from '@/systems/flows/repository';
 import services from '@/services';
+import { z } from 'zod';
 
 const logger = createLogger('action-node');
 
@@ -26,12 +27,12 @@ async function executeActionFunction(
   params: Record<string, any>,
 ): Promise<any> {
   try {
-    // Create a function that has access to services and params
+    // Create a function that has access to services, params, and zod
     const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-    const func = new AsyncFunction('params', 'services', actionFn);
+    const func = new AsyncFunction('params', 'services', 'z', actionFn);
     
-    // Execute the function with params and services
-    const result = await func(params, services);
+    // Execute the function with params, services, and zod
+    const result = await func(params, services, z);
     
     return result;
   } catch (error) {
