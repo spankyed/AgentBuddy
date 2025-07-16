@@ -40,7 +40,6 @@ export const streamToFEAction: ActionEntity = {
   category: 'utility',
   input: {
     message: {
-      name: 'message',
       type: 'string' as const,
       required: true,
       description: 'User message'

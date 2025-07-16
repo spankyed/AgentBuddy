@@ -59,7 +59,7 @@
                 <div class="flex items-start justify-between">
                   <div class="space-y-1">
                     <div class="flex items-center gap-2">
-                      <span class="font-medium text-neutral-100">{{ param.name }}</span>
+                      <span class="font-medium text-neutral-100">{{ key }}</span>
                       <span class="text-xs text-neutral-500">({{ param.type }})</span>
                       <span v-if="param.required" class="text-xs text-red-400">required</span>
                     </div>

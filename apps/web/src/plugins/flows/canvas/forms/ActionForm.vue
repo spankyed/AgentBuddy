@@ -132,7 +132,7 @@
             >
               <div class="flex-1">
                 <label class="flex items-baseline gap-1 mb-2 text-sm font-medium text-neutral-400">
-                  {{ selectedAction.input[key].name || key }}
+                  {{ key }}
                   <span v-if="selectedAction.input[key].required" class="text-xs text-red-500">*</span>
                   <span class="text-xs text-neutral-600">({{ selectedAction.input[key].type }})</span>
                 </label>

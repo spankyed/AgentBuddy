@@ -22,14 +22,12 @@ export const saveEntityAction: ActionEntity = {
   category: 'database',
   input: {
     entityType: {
-      name: 'entityType',
       type: 'string' as const,
       required: true,
       description: 'The type of entity to save',
       placeholder: 'e.g., User, Post, Comment'
     },
     data: {
-      name: 'data',
       type: 'object' as const,
       required: true,
       description: 'The entity data to save'
