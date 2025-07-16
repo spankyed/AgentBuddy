@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-16T06:41:41.836Z",
+  "timestamp": "2025-07-16T07:17:07.076Z",
   "entities": {
     "Thread-1": {
       "timestamp": [
@@ -420,12 +420,14 @@
       "label": "Generate db query",
       "description": "",
       "nodeType": "action",
-      "fieldMappings": {
-        "target": "prompt",
-        "source": "$.event.data.payload"
-      },
+      "fieldMappings": [
+        {
+          "target": "dbPrompt",
+          "source": "$.event.data.payload"
+        }
+      ],
       "actionId": "Action-md52nfbn25xw7tivi4r1f",
-      "updatedAt": 1752647300265,
+      "updatedAt": 1752649999575,
       "createdAt": [
         1752647249590,
         1752647249589
@@ -833,7 +835,7 @@
       "shortCode": "ACT-4",
       "label": "Generate db query",
       "description": "Generate db query from a user prompt",
-      "updatedAt": 1752648063533,
+      "updatedAt": 1752650219980,
       "createdAt": [
         1752616563539,
         1752616563539
@@ -841,16 +843,16 @@
       "entityType": "Action",
       "category": "",
       "input": {
-        "prompt": {
+        "dbPrompt": {
           "name": "prompt",
           "type": "string",
           "required": true,
           "description": "Database query or transaction prompt"
         }
       },
-      "actionFn": "  const { prompt } = params;\n\n  try {\n    // Get documents from library service\n    const [doc1, doc2] = await Promise.all([\n      services.library.getDocByCode('DOC-1'),\n      services.library.getDocByCode('DOC-2')\n    ]);\n\n    services.logger.info('db example docs', { prompt, doc1, doc2 })\n\n    // Check if documents were found\n    if (!doc1) {\n      throw new Error('Document DOC-1 not found');\n    }\n    if (!doc2) {\n      throw new Error('Document DOC-2 not found');\n    }\n\n    const queryDoc = doc1.content;\n    const transactionDoc = doc2.content;\n\n    // Define schema for message classification\n    const MessageClassificationSchema = z.object({\n      type: z.enum(['query', 'transaction']).describe('Whether the message is a read operation (query) or write operation (transaction)'),\n      reasoning: z.string().describe('Brief explanation of why this classification was chosen')\n    });\n\n    // Classify the user's message\n    const classificationResult = await services.llm.generateObject({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      schema: MessageClassificationSchema,\n      prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):\n\n  Message: \"${prompt}\"\n\n  A query is any operation that reads or retrieves data without modifying it.\n  A transaction is any operation that creates, updates, or deletes data.`,\n      temperature: 0.3,\n    });\n\n    services.logger.info('classificationResult', classificationResult)\n    const classification = classificationResult.object;\n\n    // Select appropriate document based on classification\n    const selectedDoc = classification.type === 'query' ? queryDoc : transactionDoc;\n\n    services.logger.info('Message classified', {\n      type: classification.type,\n      reasoning: classification.reasoning\n    });\n\n    // Generate the database operation code\n    const result = await services.llm.generateText({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      prompt,\n      system: `\n        <examples>\n        ${selectedDoc}\n        </examples>\n\n        Use the provided examples to write the code to satisfy the user message. Only respond with code (no codeblock backticks).\n      `,\n      temperature: 0.7,\n      maxTokens: 1000,\n    });\n\n    // Emit the generated code to database plugin\n    services.emitter.sendToPlugin('database', {\n      type: 'MAGIC_PROMPT_GENERATED',\n      query: result.text\n    });\n\n  } catch (error) {\n    services.logger.error('Error generating database operation', { error });\n\n    // Emit error to database plugin - note: this event type might not exist\n    // You may need to handle errors differently based on your system\n    services.emitter.sendToPlugin('database', {\n      type: 'QUERY_ERROR',\n      error: error instanceof Error ? error.message : 'Unknown error occurred'\n    });\n  }"
+      "actionFn": "  const { dbPrompt } = params;\n\n  try {\n    // Get documents from library service\n    const [doc1, doc2] = await Promise.all([\n      services.library.getDocByCode('DOC-1'),\n      services.library.getDocByCode('DOC-2')\n    ]);\n\n    services.logger.info('db example docs', { dbPrompt, doc1, doc2 })\n\n    // Check if documents were found\n    if (!doc1) {\n      throw new Error('Document DOC-1 not found');\n    }\n    if (!doc2) {\n      throw new Error('Document DOC-2 not found');\n    }\n\n    const queryDoc = doc1.content;\n    const transactionDoc = doc2.content;\n\n    // Define schema for message classification\n    const MessageClassificationSchema = z.object({\n      type: z.enum(['query', 'transaction']).describe('Whether the message is a read operation (query) or write operation (transaction)'),\n      reasoning: z.string().describe('Brief explanation of why this classification was chosen')\n    });\n\n    // Classify the user's message\n    const classificationResult = await services.llm.generateObject({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      schema: MessageClassificationSchema,\n      prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):\n\n  Message: \"${dbPrompt}\"\n\n  A query is any operation that reads or retrieves data without modifying it.\n  A transaction is any operation that creates, updates, or deletes data.`,\n      temperature: 0.3,\n    });\n\n    services.logger.info('classificationResult', classificationResult)\n    const classification = classificationResult.object;\n\n    // Select appropriate document based on classification\n    const selectedDoc = classification.type === 'query' ? queryDoc : transactionDoc;\n\n    services.logger.info('Message classified', {\n      type: classification.type,\n      reasoning: classification.reasoning\n    });\n\n    // Generate the database operation code\n    const result = await services.llm.generateText({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      prompt: dbPrompt,\n      system: `\n        <examples>\n        ${selectedDoc}\n        </examples>\n\n        Use the provided examples to write the code to satisfy the user message. Only respond with code (no codeblock backticks).\n      `,\n      temperature: 0.7,\n      maxTokens: 1000,\n    });\n\n    // Emit the generated code to database plugin\n    services.emitter.sendToPlugin('database', {\n      type: 'MAGIC_PROMPT_GENERATED',\n      query: result.text\n    });\n\n  } catch (error) {\n    services.logger.error('Error generating database operation', { error });\n\n    // Emit error to database plugin - note: this event type might not exist\n    // You may need to handle errors differently based on your system\n    services.emitter.sendToPlugin('database', {\n      type: 'QUERY_ERROR',\n      error: error instanceof Error ? error.message : 'Unknown error occurred'\n    });\n  }"
     },
-    "Relation-md5lc43l2s3ijig1lh5ss": {
+    "Relation-md5mmt7e33w6hv75q8p3y": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-1",
@@ -858,7 +860,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2i7eay7tyq1q5": {
+    "Relation-md5mmt7fuy9b7quu494a": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-2",
@@ -866,7 +868,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l11ugfvlb4a9jw": {
+    "Relation-md5mmt7f1jrf38xp6jhcp": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-3",
@@ -874,7 +876,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l287mevdp1ef04": {
+    "Relation-md5mmt7f3bin6h4m90v1c": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-4",
@@ -882,7 +884,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43ljr7ub6khhzet": {
+    "Relation-md5mmt7f3e2o3b7669isa": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Message-5",
@@ -890,7 +892,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lpvgl7r5gnlk9": {
+    "Relation-md5mmt7fa2pzuhh5cl8y": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-1",
@@ -898,7 +900,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l279zie855u4u1": {
+    "Relation-md5mmt7f3hr09lumxe9ul": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-2",
@@ -906,7 +908,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3gnx82c0qsysp": {
+    "Relation-md5mmt7f3mq7tzluehr56": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "ContextItem-3",
@@ -914,7 +916,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l74zrv9jiyi6m": {
+    "Relation-md5mmt7f3pziqiwhptizu": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "CanvasItem-1",
@@ -922,7 +924,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3ap3gbl6jonft": {
+    "Relation-md5mmt7f20m8muz0ma45h": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-1",
@@ -930,7 +932,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l21lmnop3j88vo": {
+    "Relation-md5mmt7f1bkusez0buca6": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-2",
@@ -938,7 +940,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1nasql201ad48": {
+    "Relation-md5mmt7f2zvhy8d2zymrz": {
       "relationDetails": {
         "sourceEntity": "Thread-1",
         "targetEntity": "Tag-3",
@@ -946,7 +948,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2j98qeslzdind": {
+    "Relation-md5mmt7fe4rd5t1mhvtw": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-4",
@@ -954,7 +956,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1b7d7821vq1v8": {
+    "Relation-md5mmt7f3n38ccet4729e": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Tag-3",
@@ -962,7 +964,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2p8kko92qqktc": {
+    "Relation-md5mmt7f2wp2bd2wvhf26": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-1",
@@ -970,7 +972,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3gfpknwhg1kdh": {
+    "Relation-md5mmt7fyox9kwy6oh5j": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-5",
@@ -978,7 +980,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lp12vr753pelc": {
+    "Relation-md5mmt7f317a7msaz8dg8": {
       "relationDetails": {
         "sourceEntity": "Thread-3",
         "targetEntity": "Tag-2",
@@ -986,7 +988,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l12ksaxp10de3r": {
+    "Relation-md5mmt7f3fsegtzp99ynu": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-6",
@@ -994,7 +996,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lnsfr019bldvi": {
+    "Relation-md5mmt7ffzkkifllrm0k": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Tag-7",
@@ -1002,7 +1004,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2g1erycc69qyv": {
+    "Relation-md5mmt7f1ztu97eifsqrt": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-3",
@@ -1010,7 +1012,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2hh7mdmgif59y": {
+    "Relation-md5mmt7f3aa300wibp388": {
       "relationDetails": {
         "sourceEntity": "Thread-4",
         "targetEntity": "Thread-2",
@@ -1018,7 +1020,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l35ypcfuk8d4um": {
+    "Relation-md5mmt7f2plstz4jak76x": {
       "relationDetails": {
         "sourceEntity": "Thread-2",
         "targetEntity": "Thread-1",
@@ -1026,7 +1028,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l14xzpiea5i023": {
+    "Relation-md5mmt7f1f4kzlqcy5z0k": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1034,7 +1036,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l14ulqtcddd74k": {
+    "Relation-md5mmt7f1697afqoo51f5": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1042,7 +1044,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l39018poe95vzj": {
+    "Relation-md5mmt7fnaq7uoraittn": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1050,7 +1052,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1hyv4mejjcasw": {
+    "Relation-md5mmt7f1q4jfscyy3z6x": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -1058,7 +1060,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l32dj3qllbeesx": {
+    "Relation-md5mmt7f3rgeamlqcmwiz": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a7s",
@@ -1066,7 +1068,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2vz6i6b18syl8": {
+    "Relation-md5mmt7f1uac15ct0lemd": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a8s",
@@ -1074,7 +1076,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l34uhpxgenaw58": {
+    "Relation-md5mmt7f1n46qu0rqm6k4": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-loa8s",
@@ -1082,7 +1084,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1ubc7itg7t346": {
+    "Relation-md5mmt7f3vwueumkqneeo": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -1090,7 +1092,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lej8tv0yuyhxw": {
+    "Relation-md5mmt7foxeq97hfp065": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a2",
@@ -1098,7 +1100,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l37zuojopwcqny": {
+    "Relation-md5mmt7f326y2sojoh3h2": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -1106,7 +1108,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1vpkngzvukq9r": {
+    "Relation-md5mmt7f14p7u1p4vmbzq": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -1114,7 +1116,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2lidff69pf6rg": {
+    "Relation-md5mmt7f1uaptrwkvvr7n": {
       "relationDetails": {
         "sourceEntity": "Node-a2",
         "targetEntity": "Node-a7s",
@@ -1122,7 +1124,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1fi7f4ofz812v": {
+    "Relation-md5mmt7f135ad6pal5009": {
       "relationDetails": {
         "sourceEntity": "Node-a7s",
         "targetEntity": "Node-a8s",
@@ -1130,7 +1132,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l27tjl5ltb01hp": {
+    "Relation-md5mmt7f2357q964hsqni": {
       "relationDetails": {
         "sourceEntity": "Node-a8s",
         "targetEntity": "Node-loa8s",
@@ -1138,7 +1140,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l45gu8zy9wg76": {
+    "Relation-md5mmt7f3snb2c31uzv8a": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1146,7 +1148,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3jgxg25tansg2": {
+    "Relation-md5mmt7f2g1xjfv235nw0": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1154,7 +1156,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43ldfqi4bswfia8": {
+    "Relation-md5mmt7f10sjlbdqu67lq": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -1162,7 +1164,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l6uqd8xhpfbay": {
+    "Relation-md5mmt7fys76ymo14r1k": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -1170,7 +1172,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l176rf83qzoj3y": {
+    "Relation-md5mmt7f1c0saoxqluqmy": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -1178,7 +1180,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l2ig7u0vvmg2yw": {
+    "Relation-md5mmt7f3sb4i9gd6iurr": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -1186,7 +1188,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l223c6bll95vbm": {
+    "Relation-md5mmt7flho683sqtyvx": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -1194,7 +1196,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3meve9kjrx8hf": {
+    "Relation-md5mmt7fd52ur0n7es5s": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -1202,7 +1204,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1vcavl3t4pdvm": {
+    "Relation-md5mmt7f2s2rgwpotticm": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -1210,7 +1212,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1xqgda3ojgiwh": {
+    "Relation-md5mmt7f29gcrbm16it95": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -1218,7 +1220,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1kywfmzmiu6c9": {
+    "Relation-md5mmt7f20dy1o604jukl": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -1226,7 +1228,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l12bpohdhm1jeg": {
+    "Relation-md5mmt7f2nvip9hyu7c1p": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -1234,7 +1236,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l8y6irr44oi8a": {
+    "Relation-md5mmt7f2nexrbaodjopd": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -1242,7 +1244,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lf834p6wz6brp": {
+    "Relation-md5mmt7f1a3udwdzvoak3": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -1250,7 +1252,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lhomgtii1m0u": {
+    "Relation-md5mmt7f3hm69nmhkvk11": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -1260,7 +1262,7 @@
         }
       }
     },
-    "Relation-md5lc43lhdgc43wqpdse": {
+    "Relation-md5mmt7f2n2y2ambqmk8n": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -1270,7 +1272,7 @@
         }
       }
     },
-    "Relation-md5lc43l132lw080p5uyi": {
+    "Relation-md5mmt7f3c181401bw1f8": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -1278,7 +1280,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3ry2fon2jwrml": {
+    "Relation-md5mmt7f21vt0mtl655eh": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -1286,7 +1288,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43lwmw4i446bdig": {
+    "Relation-md5mmt7f2bu39qkew5y6n": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -1294,7 +1296,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l299ksta7y6ipn": {
+    "Relation-md5mmt7fdbilug2i8v0r": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -1302,7 +1304,7 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l1h4o8xejt7oqx": {
+    "Relation-md5mmt7f3vmq8ct00w6px": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -1310,126 +1312,126 @@
         "info": {}
       }
     },
-    "Relation-md5lc43l3ro3gzpwd66tv": {
+    "Relation-md5mmt7fhougkyiwwm6r": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad1",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l2xb6uoaa930h8": {
+    "Relation-md5mmt7f26b9bqq41nh9g": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad2",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43lhzid1asqhdju": {
+    "Relation-md5mmt7f15juvxanszx1m": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad3",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l1428kup09hblz": {
+    "Relation-md5mmt7f2hcepszm7fohe": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad4",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l3o928e41fzcok": {
+    "Relation-md5mmt7fgba9qc4gjb6j": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad5",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l1ga7es0lry2na": {
+    "Relation-md5mmt7f22f2bmelm5zl": {
       "relationDetails": {
         "sourceEntity": "Flow-action-demo",
         "targetEntity": "Node-ad6",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l3k1vsvb5i910z": {
+    "Relation-md5mmt7f1ityghsw0b19c": {
       "relationDetails": {
         "sourceEntity": "Node-ad1",
         "targetEntity": "Node-ad2",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43l2t0hexa64f9tq": {
+    "Relation-md5mmt7f1w29cvchm6xku": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Node-ad3",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43lwa1ezplazbz8": {
+    "Relation-md5mmt7f14gpa8ofaaai0": {
       "relationDetails": {
         "sourceEntity": "Node-ad3",
         "targetEntity": "Node-ad4",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43l20p07jz9s0er5": {
+    "Relation-md5mmt7fvwb2faw1jk0g": {
       "relationDetails": {
         "sourceEntity": "Node-ad4",
         "targetEntity": "Node-ad5",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43l1w3fg8wo8g6a2": {
+    "Relation-md5mmt7fqk126l3nhfg0": {
       "relationDetails": {
         "sourceEntity": "Node-ad5",
         "targetEntity": "Node-ad6",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43lgjnc65mplg5l": {
+    "Relation-md5mmt7f3hkztsvqyucjq": {
       "relationDetails": {
         "sourceEntity": "Node-ad2",
         "targetEntity": "Action-save-entity",
         "relationType": "instance_of"
       }
     },
-    "Relation-md5lc43l7q6tn2qe0mu4": {
+    "Relation-md5mmt7f2ligkcde2ndfe": {
       "relationDetails": {
         "sourceEntity": "Node-loa8s",
         "targetEntity": "Action-stream-to-fe",
         "relationType": "instance_of"
       }
     },
-    "Relation-md5lc43l1b1eerwg65v11": {
+    "Relation-md5mmt7f34ggek8434y68": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l2oqadvbkqs2e6": {
+    "Relation-md5mmt7f1j5ie53q33b05": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43l56qe9uy0l715": {
+    "Relation-md5mmt7f2orl8i8u1mp95": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-md5lc43lspf8r8dh5xbm": {
+    "Relation-md5mmt7f2nhn3c7xmzc0i": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-md5lc43lwen4a9xid0eg": {
+    "Relation-md5mmt7f3u4u4yh92epxf": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
@@ -1528,6 +1530,6 @@
     "excludedTypes": [
       "TNode"
     ],
-    "excludedRelations": 3
+    "excludedRelations": 5
   }
 }
