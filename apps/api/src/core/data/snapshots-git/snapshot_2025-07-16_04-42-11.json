@@ -257,8 +257,8 @@
       "timestamp": 1752548452561,
       "label": "User Message",
       "nodeType": "listen",
-      "mode": "entry",
-      "eventType": "chat.message"
+      "mode": "internal",
+      "eventType": "user.message"
     },
     "Node-b2": {
       "timestamp": 1752548452571,
