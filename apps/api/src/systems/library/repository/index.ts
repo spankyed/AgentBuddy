@@ -291,7 +291,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
 
         const documentCount = (await qx(col.id as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .pickAll()).length
+          .ids()).length
 
         const path = await getCollectionPath(col.id as EARS.EntityId)
 
@@ -823,4 +823,52 @@ function formatFileSize(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
+}
+
+export async function getCollectionByName(name: string): Promise<CollectionDTO | null> {
+  const collections = await qx(EARS.Entity.Collection)
+    .where('name', name)
+    .pickAll()
+  
+  if (collections.length === 0) {
+    return null
+  }
+  
+  const collection = collections[0]
+  const documentCount = (await qx(collection.id as EARS.EntityId)
+    .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+    .ids()).length
+  
+  const childCollections = await qx(collection.id as EARS.EntityId)
+    .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+    .pickAll()
+  
+  const path = await getCollectionPath(collection.id as EARS.EntityId)
+  
+  return {
+    id: collection.id as EARS.EntityId,
+    name: collection.name as string,
+    description: collection.description as string | undefined,
+    path,
+    documentCount,
+    childCollections: childCollections as unknown as CollectionDTO[],
+    createdAt: new Date(collection.createdAt as number).toISOString(),
+    updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
+  }
+}
+
+export async function getDocumentsInCollection(collectionId: EARS.EntityId): Promise<DocumentDTO[]> {
+  const documentIds = await qx(collectionId)
+    .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+    .ids()
+  
+  if (documentIds.length === 0) {
+    return []
+  }
+  
+  const documents = await Promise.all(
+    documentIds.map((id) => getDocument(id))
+  )
+  
+  return documents.filter((doc): doc is DocumentDTO => doc !== null)
 }

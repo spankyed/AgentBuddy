@@ -1,4 +1,4 @@
-import { getDocument, getDocumentByShortCode } from '@/systems/library/repository';
+import { getDocument, getDocumentByShortCode, getDocuments, getCollectionByName, getDocumentsInCollection } from '@/systems/library/repository';
 import type { DocumentDTO, DocumentShortCode } from '@/systems/library/types';
 import { EARS } from '@/core/types';
 
@@ -14,11 +14,18 @@ export class LibraryService {
   }
 
   async getByName(name: string): Promise<DocumentDTO | undefined> {
-    // For now, we'll need to search through all documents to find by name
-    // In a future iteration, we could add a more efficient query method
-    const { getDocuments } = await import('@/systems/library/repository');
     const allDocuments = await getDocuments();
     return allDocuments.find(doc => doc.name === name);
+  }
+
+  async getWithinFolder(folderName: string): Promise<DocumentDTO[]> {
+    const collection = await getCollectionByName(folderName);
+    
+    if (!collection) {
+      return [];
+    }
+    
+    return await getDocumentsInCollection(collection.id);
   }
 }
 
