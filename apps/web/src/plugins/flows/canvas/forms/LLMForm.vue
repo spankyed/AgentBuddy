@@ -290,7 +290,11 @@ const selectedPrompt = computed(() => {
 })
 
 // Field mappings
-const fieldMappings = computed(() => nodeData.value.fieldMappings || [])
+const fieldMappings = computed(() => {
+  const mappings = nodeData.value.fieldMappings
+  if (!mappings) return []
+  return Array.isArray(mappings) ? mappings : [mappings]
+})
 
 // Computed filtered lists
 const filteredPrompts = computed(() => {

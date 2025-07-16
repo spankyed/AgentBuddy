@@ -206,7 +206,11 @@ const selectedAction = computed(() => {
 
 
 // Field mappings
-const fieldMappings = computed(() => (props.node as any).fieldMappings || [])
+const fieldMappings = computed(() => {
+  const mappings = (props.node as any).fieldMappings
+  if (!mappings) return []
+  return Array.isArray(mappings) ? mappings : [mappings]
+})
 
 // Computed filtered lists
 const filteredActions = computed(() => {
