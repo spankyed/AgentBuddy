@@ -5,6 +5,7 @@ import * as database from './database';
 import { promptService } from './prompt';
 import { actionService } from './action';
 import { libraryService } from './library';
+import * as browser from './browser';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
@@ -16,6 +17,7 @@ const services = {
   prompt: promptService,
   action: actionService,
   library: libraryService,
+  browser,
 }
 
 const actions = ([
