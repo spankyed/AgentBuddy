@@ -38,7 +38,7 @@ export type OutgoingCodeEvents =
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
-type CodeInternalEvents = SystemEvents
+type CodeInternalEvents = SystemEvents | { type: 'ASSIGN_DIRECTORY'; path: string }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
@@ -240,9 +240,20 @@ export const systemMachine = setup({
       }
     },
     
-    changeDirectory: assign({
+    changeDirectory: ({ system, event, self }) => {
+      const ev = typeOf('CHANGE_DIRECTORY', event)
+      const pluginId = id
+      // Update the context
+      self.send({ type: 'ASSIGN_DIRECTORY', path: ev.path })
+      // Send event to frontend
+      system.get(bus).send(emit(pluginId, {
+        type: 'DIRECTORY_CHANGED',
+        data: { path: ev.path },
+      }))
+    },
+    assignDirectory: assign({
       currentDirectory: ({ event }) => {
-        const ev = typeOf('CHANGE_DIRECTORY', event)
+        const ev = event as { type: 'ASSIGN_DIRECTORY'; path: string }
         return ev.path
       },
     }),
@@ -286,6 +297,9 @@ export const systemMachine = setup({
         },
         CHANGE_DIRECTORY: {
           actions: ['changeDirectory'],
+        },
+        ASSIGN_DIRECTORY: {
+          actions: ['assignDirectory'],
         },
       },
     },

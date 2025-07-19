@@ -105,7 +105,7 @@ const codeState = setup({
     }),
     assignCurrentDirectory: assign({
       currentDirectory: ({ event }) => {
-        const ev = event as { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+        const ev = event as { type: 'CURRENT_DIRECTORY' | 'DIRECTORY_CHANGED'; data: { path: string } }
         return ev.data.path
       }
     }),
@@ -183,6 +183,9 @@ const codeState = setup({
           actions: ['setLoading']
         },
         CURRENT_DIRECTORY: {
+          actions: ['assignCurrentDirectory']
+        },
+        DIRECTORY_CHANGED: {
           actions: ['assignCurrentDirectory']
         },
         FILES_LISTED: {
