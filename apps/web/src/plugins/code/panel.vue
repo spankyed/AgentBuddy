@@ -31,10 +31,13 @@
             >
               <button
                 @click="navigateToSegment(index)"
-                class="px-1 py-0.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
-                :class="{ 'font-medium text-neutral-200': index === directorySegments.length - 1 }"
+                class="flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all min-h-[28px]"
+                :class="{ 
+                  'font-medium text-neutral-200': index === directorySegments.length - 1
+                }"
               >
-                {{ segment.name }}
+                <Home v-if="segment.name === '.'" class="w-3.5 h-3.5" />
+                <span>{{ segment.name === '.' ? 'Project' : segment.name }}</span>
               </button>
               <span v-if="index < directorySegments.length - 1" class="text-neutral-600 mx-0.5">/</span>
             </span>
@@ -113,7 +116,8 @@ import {
   FileCode,
   FileJson,
   FileText,
-  Image
+  Image,
+  Home
 } from 'lucide-vue-next'
 
 const actor: CodeState = applicationState.system.get(id)
