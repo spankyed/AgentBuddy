@@ -8,9 +8,10 @@ import Prompts from './prompts/plugin.ts';
 import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
+import Code from './code/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import { 
-  Code, 
+  Code as CodeIcon, 
   AtSign, 
   Sparkle,
   Workflow,
@@ -34,7 +35,6 @@ const mockPlugins = [
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
   mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
-  mockPlugin({ id: 'code', label: 'Code', icon: Code, }),
   mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
   mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
   mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
@@ -50,6 +50,7 @@ export default [
   Brain,
   Database,
   Logs,
+  Code,
   ...mockPlugins,
   Blank,
 ];

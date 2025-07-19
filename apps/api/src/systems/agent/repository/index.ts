@@ -1,10 +1,11 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
-import { Rows, rows } from '@/core/data'; // ! remove asap
-import { MessageEntity, ThreadEntity } from '@/systems/threads/types';
+// import { Rows, rows } from '@/core/data'; // ! remove asap
+import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/systems/threads/types';
 import { AgentThreadData, AgentStartupData } from '../types';
 
-type Row = Rows['entity'][number]
+// type Row = Rows['entity'][number]
+type Row = any // Temporary fix until Rows type is available
 
 export function byEntityType<
   K extends Row['entityType']
@@ -39,8 +40,8 @@ export const agentQueries = {
           ["id", "text", "sender", "timestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
-      contextItems: rows.entity.filter(byEntityType(EARS.Entity.ContextItem)),
-      canvasContent: rows.entity.filter(byEntityType(EARS.Entity.CanvasItem))[0],
+      contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
+      canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
     };
   },
   
@@ -68,8 +69,8 @@ export const agentQueries = {
             ["id", "text", "sender", "timestamp"] as const,
             EARS.Entity.Message,
           ) ?? [] as Partial<MessageEntity>[],
-        contextItems: rows.entity.filter(byEntityType(EARS.Entity.ContextItem)),
-        canvasContent: rows.entity.filter(byEntityType(EARS.Entity.CanvasItem))[0],
+        contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
+        canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
       } as AgentThreadData,
       threads: fourMostRecentThreads,
     };

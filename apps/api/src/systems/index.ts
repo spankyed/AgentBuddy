@@ -11,6 +11,7 @@ import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
 import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
 import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
 import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
+import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
 
 export default {
   [agent]: agentSystem,
@@ -21,6 +22,7 @@ export default {
   [prompts]: promptsSystem,
   [actions]: actionsSystem,
   [library]: librarySystem,
+  [code]: codeSystem,
   // [logs]: logsSystem,
 } as const;
 
@@ -33,7 +35,8 @@ export const events = mergeSystems(
   LogsSystemEvents,
   PromptsSystemEvents,
   ActionsSystemEvents,
-  LibrarySystemEvents
+  LibrarySystemEvents,
+  CodeSystemEvents
 );
 
 export { backendSystem } from "@/systems/backend";
