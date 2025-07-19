@@ -23,7 +23,22 @@
       <!-- Explorer Panel -->
       <div v-if="selectedPanel === 'explorer'" class="h-full flex flex-col">
         <div class="p-2 border-b border-neutral-800">
-          <div class="text-xs text-neutral-400 truncate">{{ currentDirectory }}</div>
+          <div class="flex items-center gap-1 text-xs overflow-x-auto whitespace-nowrap">
+            <span
+              v-for="(segment, index) in directorySegments"
+              :key="index"
+              class="flex items-center flex-shrink-0"
+            >
+              <button
+                @click="navigateToSegment(index)"
+                class="px-1 py-0.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
+                :class="{ 'font-medium text-neutral-200': index === directorySegments.length - 1 }"
+              >
+                {{ segment.name }}
+              </button>
+              <span v-if="index < directorySegments.length - 1" class="text-neutral-600 mx-0.5">/</span>
+            </span>
+          </div>
         </div>
         
         <div v-if="isLoading" class="flex-1 flex items-center justify-center">
@@ -83,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted } from 'vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from './state'
@@ -117,9 +133,55 @@ const panels = [
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest }
 ] as const
 
+// Computed properties
+const directorySegments = computed(() => {
+  const path = currentDirectory.value
+  if (!path || path === '.') return [{ name: '.', path: '.' }]
+  
+  // Handle absolute paths
+  const isAbsolute = path.startsWith('/')
+  const segments = path.split('/').filter(Boolean)
+  
+  const result: Array<{ name: string; path: string }> = []
+  let currentPath = isAbsolute ? '' : '.'
+  
+  // Add root for absolute paths
+  if (isAbsolute) {
+    result.push({ name: '/', path: '/' })
+  } else if (path !== '.') {
+    result.push({ name: '.', path: '.' })
+  }
+  
+  // Build up the path segments
+  segments.forEach((segment, index) => {
+    currentPath = isAbsolute 
+      ? (index === 0 ? `/${segment}` : `${currentPath}/${segment}`)
+      : (currentPath === '.' ? segment : `${currentPath}/${segment}`)
+    result.push({ name: segment, path: currentPath })
+  })
+  
+  return result
+})
+
 // Event handlers
 const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr') => {
   actor.send({ type: 'SELECT_PANEL', panel })
+}
+
+const navigateToSegment = async (index: number) => {
+  const segment = directorySegments.value[index]
+  if (segment && segment.path !== currentDirectory.value) {
+    await trpc.bus.send.mutate({
+      systemId: id as any,
+      type: 'CHANGE_DIRECTORY' as any,
+      path: segment.path
+    } as any)
+    await trpc.bus.send.mutate({
+      systemId: id as any,
+      type: 'LIST_FILES' as any,
+      path: segment.path
+    } as any)
+  }
 }
 
 const handleFileClick = async (file: typeof files.value[0]) => {
@@ -186,8 +248,6 @@ const formatFileSize = (bytes: number) => {
 }
 
 // Request initial file list when plugin is activated
-import { onMounted, onUnmounted } from 'vue'
-
 onMounted(() => {
   // Request initial file list
   trpc.bus.send.mutate({
