@@ -32,17 +32,21 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
 }
 
 const mockPlugins = [
+  // wont do
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
-  mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
-  mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
-  mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
+  // mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
+
+  // planned
+  // mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
+  // mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
   mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
 ];
 
 export default [
   Agent,
   Threads,
+  Code,
   Library,
   Prompts,
   Actions,
@@ -50,7 +54,6 @@ export default [
   Brain,
   Database,
   Logs,
-  Code,
   ...mockPlugins,
   Blank,
 ];
