@@ -37,19 +37,18 @@ export class FileSystemRepository {
       const files: FileInfo[] = await Promise.all(
         entries.map(async (entry) => {
           const fullPath = path.join(validPath, entry.name)
-          const relativePath = path.relative(PROJECT_ROOT, fullPath)
           
           if (entry.isDirectory()) {
             return {
               name: entry.name,
-              path: relativePath,
+              path: fullPath,
               type: 'directory' as const,
             }
           } else {
             const stats = await fs.stat(fullPath)
             return {
               name: entry.name,
-              path: relativePath,
+              path: fullPath,
               type: 'file' as const,
               size: stats.size,
               modifiedAt: stats.mtime,
@@ -67,7 +66,7 @@ export class FileSystemRepository {
       })
       
       return {
-        path: path.relative(PROJECT_ROOT, validPath),
+        path: validPath,
         files,
       }
     } catch (error: any) {
@@ -96,7 +95,7 @@ export class FileSystemRepository {
       const content = await fs.readFile(validPath, 'utf-8')
       
       return {
-        path: path.relative(PROJECT_ROOT, validPath),
+        path: validPath,
         content,
         encoding: 'utf-8',
       }
@@ -196,7 +195,7 @@ export class FileSystemRepository {
       
       return {
         name,
-        path: path.relative(PROJECT_ROOT, validPath),
+        path: validPath,
         type: stats.isDirectory() ? 'directory' : 'file',
         size: stats.size,
         modifiedAt: stats.mtime,

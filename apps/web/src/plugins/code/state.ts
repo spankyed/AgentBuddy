@@ -167,7 +167,7 @@ const codeState = setup({
   id,
   initial: 'canvas',
   context: {
-    currentDirectory: '.',
+    currentDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy/',
     files: [],
     openFiles: [],
     activeFilePath: null,

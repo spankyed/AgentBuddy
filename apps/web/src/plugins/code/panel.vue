@@ -31,13 +31,13 @@
             >
               <button
                 @click="navigateToSegment(index)"
-                class="flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all min-h-[28px]"
+                class="px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
                 :class="{ 
                   'font-medium text-neutral-200': index === directorySegments.length - 1
                 }"
+                :title="segment.path"
               >
-                <Home v-if="segment.name === '.'" class="w-3.5 h-3.5" />
-                <span>{{ segment.name === '.' ? 'Project' : segment.name }}</span>
+                {{ segment.name }}
               </button>
               <span v-if="index < directorySegments.length - 1" class="text-neutral-600 mx-0.5">/</span>
             </span>
@@ -117,7 +117,8 @@ import {
   FileJson,
   FileText,
   Image,
-  Home
+  Home,
+  HardDrive
 } from 'lucide-vue-next'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -140,29 +141,40 @@ const panels = [
 // Computed properties
 const directorySegments = computed(() => {
   const path = currentDirectory.value
-  if (!path || path === '.') return [{ name: '.', path: '.' }]
+  if (!path) return []
+  
+  // Normalize the path - remove trailing slash except for root
+  const normalizedPath = path.endsWith('/') && path.length > 1 
+    ? path.slice(0, -1) 
+    : path
+    
+  const result: Array<{ name: string; path: string; isClickable: boolean }> = []
   
   // Handle absolute paths
-  const isAbsolute = path.startsWith('/')
-  const segments = path.split('/').filter(Boolean)
-  
-  const result: Array<{ name: string; path: string }> = []
-  let currentPath = isAbsolute ? '' : '.'
-  
-  // Add root for absolute paths
-  if (isAbsolute) {
-    result.push({ name: '/', path: '/' })
-  } else if (path !== '.') {
-    result.push({ name: '.', path: '.' })
+  if (normalizedPath.startsWith('/')) {
+    // Add root
+    result.push({ name: '/', path: '/', isClickable: true })
+    
+    // Split path and build segments
+    const segments = normalizedPath.slice(1).split('/').filter(Boolean)
+    
+    segments.forEach((segment, index) => {
+      const segmentPath = '/' + segments.slice(0, index + 1).join('/')
+      result.push({ name: segment, path: segmentPath, isClickable: true })
+    })
+  } else if (normalizedPath === '.') {
+    // Just current directory
+    result.push({ name: '.', path: '.', isClickable: true })
+  } else {
+    // Relative path starting with .
+    result.push({ name: '.', path: '.', isClickable: true })
+    
+    const segments = normalizedPath.split('/').filter(Boolean)
+    segments.forEach((segment, index) => {
+      const segmentPath = './' + segments.slice(0, index + 1).join('/')
+      result.push({ name: segment, path: segmentPath, isClickable: true })
+    })
   }
-  
-  // Build up the path segments
-  segments.forEach((segment, index) => {
-    currentPath = isAbsolute 
-      ? (index === 0 ? `/${segment}` : `${currentPath}/${segment}`)
-      : (currentPath === '.' ? segment : `${currentPath}/${segment}`)
-    result.push({ name: segment, path: currentPath })
-  })
   
   return result
 })

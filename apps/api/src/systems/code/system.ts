@@ -262,7 +262,7 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: {
-    currentDirectory: '.',
+    currentDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy/',
     repository: new FileSystemRepository(),
   },
   states: {
