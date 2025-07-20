@@ -84,4 +84,6 @@ export interface GitDiff {
   path: string
   diff: string
   staged: boolean
+  originalContent?: string
+  modifiedContent?: string
 }

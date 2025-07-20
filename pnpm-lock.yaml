@@ -157,6 +157,9 @@ importers:
       dagre:
         specifier: ^0.8.5
         version: 0.8.5
+      gitdiff-parser:
+        specifier: ^0.3.1
+        version: 0.3.1
       lucide-vue-next:
         specifier: ^0.503.0
         version: 0.503.0(vue@3.5.13(typescript@5.8.3))
@@ -2261,6 +2264,9 @@ packages:
 
   get-tsconfig@4.10.0:
     resolution: {integrity: sha512-kGzZ3LWWQcGIAmg6iWvXn0ei6WDtV26wzHRMwDSzmAbcXrTEXxHy6IehI6/4eT6VRKyMP1eF1VqwrVUmE/LR7A==}
+
+  gitdiff-parser@0.3.1:
+    resolution: {integrity: sha512-YQJnY8aew65id8okGxKCksH3efDCJ9HzV7M9rsvd65habf39Pkh4cgYJ27AaoDMqo1X98pgNJhNMrm/kpV7UVQ==}
 
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
@@ -6012,6 +6018,8 @@ snapshots:
   get-tsconfig@4.10.0:
     dependencies:
       resolve-pkg-maps: 1.0.0
+
+  gitdiff-parser@0.3.1: {}
 
   github-from-package@0.0.0: {}
 

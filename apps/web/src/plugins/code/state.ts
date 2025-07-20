@@ -95,6 +95,8 @@ export interface GitDiff {
   path: string
   diff: string
   staged: boolean
+  originalContent?: string
+  modifiedContent?: string
 }
 
 export type Context = {
@@ -157,7 +159,8 @@ export type Event =
   | { type: 'UNSTAGE_FILES'; paths: string[] }
   | { type: 'UPDATE_COMMIT_MESSAGE'; message: string }
   | { type: 'COMMIT' }
-  | { type: 'VIEW_DIFF'; path: string; staged: boolean };
+  | { type: 'VIEW_DIFF'; path: string; staged: boolean }
+  | { type: 'CLEAR_GIT_DIFF' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -418,7 +421,11 @@ const codeState = setup({
       selectedGitFile: null,
       gitDiff: null
     }),
-    setGitLoading: assign({ isGitLoading: true })
+    setGitLoading: assign({ isGitLoading: true }),
+    clearGitDiff: assign({
+      selectedGitFile: null,
+      gitDiff: null
+    })
   }
 }).createMachine({
   id,
@@ -568,6 +575,9 @@ const codeState = setup({
         },
         COMMIT_SUCCESS: {
           actions: ['handleCommitSuccess', 'refreshGitStatus']
+        },
+        CLEAR_GIT_DIFF: {
+          actions: ['clearGitDiff']
         }
       }
     }

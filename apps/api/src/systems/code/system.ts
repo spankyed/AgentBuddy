@@ -316,6 +316,7 @@ export const systemMachine = setup({
       },
       gitRepository: ({ event }) => {
         const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        // Use the new root directory path for git operations
         return new GitRepository(ev.path)
       }
     }),
@@ -407,6 +408,16 @@ export const systemMachine = setup({
       const pluginId = id
       const context = self.getSnapshot().context
       try {
+        // First check if we're in a git repository
+        const isGitRepo = await context.gitRepository.isGitRepository()
+        if (!isGitRepo) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'GIT_ERROR',
+            data: { message: 'Not a git repository' }
+          }))
+          return
+        }
+        
         const [status, branch] = await Promise.all([
           context.gitRepository.getStatus(),
           context.gitRepository.getCurrentBranch()
@@ -416,9 +427,17 @@ export const systemMachine = setup({
           data: { files: status, branch }
         }))
       } catch (error: any) {
+        // Handle specific git errors
+        let errorMessage = error.message
+        if (error.message.includes('git: command not found') || error.message.includes('\'git\' is not recognized')) {
+          errorMessage = 'Git is not installed. Please install Git to use version control features.'
+        } else if (error.message.includes('not a git repository')) {
+          errorMessage = 'This directory is not a Git repository. Initialize with "git init" first.'
+        }
+        
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_ERROR',
-          data: { message: error.message }
+          data: { message: errorMessage }
         }))
       }
     },
@@ -429,9 +448,39 @@ export const systemMachine = setup({
       const context = self.getSnapshot().context
       try {
         const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
+        
+        // Get the file status to determine what content to fetch
+        const status = await context.gitRepository.getStatus()
+        const fileStatus = status.find(f => f.path === ev.path)
+        
+        let originalContent = ''
+        let modifiedContent = ''
+        
+        if (fileStatus) {
+          if (fileStatus.status === 'added' || fileStatus.status === 'untracked') {
+            // New file - original is empty, modified is current file
+            originalContent = ''
+            modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+          } else if (fileStatus.status === 'deleted') {
+            // Deleted file - original is from HEAD, modified is empty
+            originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
+            modifiedContent = ''
+          } else {
+            // Modified file - get both versions
+            originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
+            modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+          }
+        }
+        
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_DIFF',
-          data: { path: ev.path || 'all', diff, staged: ev.staged || false }
+          data: { 
+            path: ev.path || 'all', 
+            diff, 
+            staged: ev.staged || false,
+            originalContent,
+            modifiedContent
+          }
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
@@ -486,6 +535,16 @@ export const systemMachine = setup({
       const pluginId = id
       const context = self.getSnapshot().context
       try {
+        // Check if there are any staged files
+        const stagedFiles = await context.gitRepository.getStagedFiles()
+        if (stagedFiles.length === 0) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'GIT_ERROR',
+            data: { message: 'No files staged for commit. Please stage files before committing.' }
+          }))
+          return
+        }
+        
         await context.gitRepository.commit(ev.message)
         system.get(bus).send(emit(pluginId, {
           type: 'COMMIT_SUCCESS',
@@ -494,9 +553,16 @@ export const systemMachine = setup({
         // Also send updated status
         self.send({ type: 'GET_GIT_STATUS' })
       } catch (error: any) {
+        let errorMessage = error.message
+        if (error.message.includes('nothing to commit')) {
+          errorMessage = 'No changes to commit. Stage your changes first.'
+        } else if (error.message.includes('Please tell me who you are')) {
+          errorMessage = 'Git user not configured. Run "git config --global user.email" and "git config --global user.name"'
+        }
+        
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_ERROR',
-          data: { message: error.message }
+          data: { message: errorMessage }
         }))
       }
     },
@@ -525,7 +591,7 @@ export const systemMachine = setup({
     currentDirectory: process.cwd(),
     rootDirectory: process.cwd(),
     repository: new FileSystemRepository(),
-    gitRepository: new GitRepository(process.cwd()),
+    gitRepository: new GitRepository(process.cwd().includes('/apps/api') ? process.cwd().replace('/apps/api', '') : process.cwd()),
   },
   states: {
     idle: {

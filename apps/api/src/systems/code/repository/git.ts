@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import * as path from 'path'
+import * as fs from 'fs/promises'
 
 interface GitStatusFile {
   path: string
@@ -91,13 +92,16 @@ export class GitRepository {
         })
       }
       
-      // Handle untracked files
+      // Handle untracked files - don't duplicate them
       if (indexStatus === '?' && workingStatus === '?') {
-        files.push({
-          path: fileName,
-          status: 'untracked',
-          staged: false
-        })
+        // Only add if not already added
+        if (!files.some(f => f.path === fileName)) {
+          files.push({
+            path: fileName,
+            status: 'untracked',
+            staged: false
+          })
+        }
       }
     }
     
@@ -117,6 +121,34 @@ export class GitRepository {
   }
 
   async getDiff(filePath?: string, staged: boolean = false): Promise<string> {
+    // For untracked files, we need to show the file content as an addition
+    if (filePath) {
+      const status = await this.getStatus()
+      const fileStatus = status.find(f => f.path === filePath)
+      
+      if (fileStatus?.status === 'untracked') {
+        // Read the file content and format it as a diff
+        try {
+          const fullPath = path.join(this.workingDirectory, filePath)
+          const content = await fs.readFile(fullPath, 'utf8')
+          const lines = content.split('\n')
+          
+          // Format as a git diff for a new file
+          let diff = `diff --git a/${filePath} b/${filePath}\n`
+          diff += `new file mode 100644\n`
+          diff += `index 0000000..0000000\n`
+          diff += `--- /dev/null\n`
+          diff += `+++ b/${filePath}\n`
+          diff += `@@ -0,0 +1,${lines.length} @@\n`
+          diff += lines.map(line => `+${line}`).join('\n')
+          
+          return diff
+        } catch (error) {
+          throw new Error(`Failed to read untracked file: ${error}`)
+        }
+      }
+    }
+    
     const args = ['diff']
     if (staged) {
       args.push('--cached')
@@ -131,6 +163,33 @@ export class GitRepository {
     }
     
     return result.output || ''
+  }
+
+  async getFileContent(filePath: string, version: 'HEAD' | 'working' = 'working'): Promise<string> {
+    if (version === 'working') {
+      // Get current working file content
+      try {
+        // Ensure the file path is relative to the working directory
+        const relativePath = filePath.startsWith(this.workingDirectory) 
+          ? filePath.slice(this.workingDirectory.length + 1)
+          : filePath
+        const fullPath = path.join(this.workingDirectory, relativePath)
+        return await fs.readFile(fullPath, 'utf8')
+      } catch (error) {
+        throw new Error(`Failed to read file: ${error}`)
+      }
+    } else {
+      // Get file content from HEAD
+      const relativePath = filePath.startsWith(this.workingDirectory) 
+        ? filePath.slice(this.workingDirectory.length + 1)
+        : filePath
+      const result = await this.executeGitCommand(['show', `HEAD:${relativePath}`])
+      if (!result.success) {
+        // File might be new (not in HEAD)
+        return ''
+      }
+      return result.output || ''
+    }
   }
 
   async stageFiles(filePaths: string[]): Promise<void> {
@@ -165,5 +224,15 @@ export class GitRepository {
   async isGitRepository(): Promise<boolean> {
     const result = await this.executeGitCommand(['rev-parse', '--git-dir'])
     return result.success
+  }
+
+  async hasUncommittedChanges(): Promise<boolean> {
+    const status = await this.getStatus()
+    return status.length > 0
+  }
+
+  async getStagedFiles(): Promise<GitStatusFile[]> {
+    const status = await this.getStatus()
+    return status.filter(file => file.staged)
   }
 }
