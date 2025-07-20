@@ -2,10 +2,6 @@
   <div class="flex flex-col h-full">
     <!-- Search Input Section -->
     <div class="p-4 border-b border-neutral-800">
-      <!-- Search Location Indicator -->
-      <div class="px-1 mb-2 text-xs text-neutral-500">
-        Searching in: {{ searchOptions.searchInCurrentDir ? getRelativePath(currentDirectory) || currentDirectory : '~/' + rootDirectory.split('/').pop() }}
-      </div>
 
 
       <!-- Search Options -->
@@ -54,7 +50,7 @@
           v-model="searchQuery"
           @keyup.enter="performSearch"
           type="text"
-          placeholder="Search"
+          :placeholder="searchPlaceholder"
           class="flex-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
         />
         <button
@@ -202,6 +198,13 @@ const expandedResults = ref(new Set<string>())
 // Computed
 const totalMatches = computed(() => {
   return searchResults.value.reduce((sum, result) => sum + result.matches.length, 0)
+})
+
+const searchPlaceholder = computed(() => {
+  const location = searchOptions.value.searchInCurrentDir 
+    ? getRelativePath(currentDirectory.value) || 'current directory'
+    : '~/' + rootDirectory.value.split('/').pop()
+  return `Search in ${location}`
 })
 
 // Methods
