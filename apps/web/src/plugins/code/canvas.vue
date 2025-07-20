@@ -1,31 +1,31 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Tabs -->
-    <div v-if="openFiles.length > 0" class="flex items-center bg-neutral-850 border-b border-neutral-800 overflow-x-auto">
+    <div v-if="openFiles.length > 0" class="flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800">
       <div
         v-for="file in openFiles"
         :key="file.path"
         class="flex items-center group"
         :class="[
           'border-r border-neutral-800',
-          activeFilePath === file.path ? 'bg-neutral-900' : 'bg-neutral-850'
+          activeFilePath === file.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800'
         ]"
       >
         <button
           @click="selectFile(file.path)"
-          class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-800 transition-colors"
+          class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
           :class="activeFilePath === file.path ? 'text-neutral-100' : 'text-neutral-400'"
         >
           <component 
             :is="getFileIcon(getFileExtension(file.path))"
-            class="w-4 h-4 flex-shrink-0"
+            class="flex-shrink-0 w-4 h-4"
           />
           <span class="max-w-[150px] truncate">{{ getFileName(file.path) }}</span>
           <span v-if="file.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
         </button>
         <button
           @click.stop="closeFile(file.path)"
-          class="p-1 opacity-0 group-hover:opacity-100 hover:bg-neutral-700 transition-all"
+          class="p-1 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
         >
           <X class="w-3 h-3" />
         </button>
@@ -33,15 +33,15 @@
     </div>
 
     <!-- Editor Container -->
-    <div class="flex-1 relative">
+    <div class="relative flex-1 pt-2 bg-neutral-850">
       <div v-if="openFiles.length === 0" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
-          <FileCode class="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+          <FileCode class="w-16 h-16 mx-auto mb-4 text-neutral-600" />
           <p class="text-neutral-400">Open a file from the explorer to start editing</p>
         </div>
       </div>
       
-      <div v-else-if="activeFile" class="h-full">
+      <div v-else-if="activeFile" class="h-full pt-2">
         <VueMonacoEditor
           :value="activeFile.content"
           @update:value="handleContentChange"
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="flex items-center justify-between px-4 py-1 bg-neutral-850 border-t border-neutral-800 text-xs">
+    <div class="flex items-center justify-between px-4 py-1 text-xs border-t bg-neutral-850 border-neutral-800">
       <div class="flex items-center gap-4">
         <span v-if="activeFile" class="text-neutral-400">
           {{ getFileName(activeFile.path) }}
