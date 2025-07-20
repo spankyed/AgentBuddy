@@ -39,6 +39,13 @@ type OutgoingCodeEvents =
   | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
   | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
   | { type: 'SEARCH_ERROR'; data: { message: string } }
+  | { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'GIT_DIFF'; data: GitDiff }
+  | { type: 'FILES_STAGED'; data: { paths: string[] } }
+  | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
+  | { type: 'COMMIT_SUCCESS'; data: { message: string } }
+  | { type: 'GIT_ERROR'; data: { message: string } }
+  | { type: 'CURRENT_BRANCH'; data: { branch: string } }
 
 export const id = 'code' as const;
 
@@ -77,6 +84,19 @@ export interface OpenFile {
   modified: boolean
 }
 
+// Git types
+export interface GitStatusFile {
+  path: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied'
+  staged: boolean
+}
+
+export interface GitDiff {
+  path: string
+  diff: string
+  staged: boolean
+}
+
 export type Context = {
   rootDirectory: string
   currentDirectory: string
@@ -100,6 +120,14 @@ export type Context = {
     useRegex: boolean
     searchInCurrentDir: boolean
   }
+  // Git related
+  gitStatus: GitStatusFile[]
+  gitBranch: string
+  gitError: string | null
+  isGitLoading: boolean
+  selectedGitFile: GitStatusFile | null
+  gitDiff: GitDiff | null
+  commitMessage: string
 }
 
 export type Event = 
@@ -121,7 +149,15 @@ export type Event =
   | { type: 'CANCEL_SEARCH' }
   | { type: 'CLEAR_SEARCH' }
   | { type: 'UPDATE_SEARCH_OPTIONS'; options: Partial<Context['searchOptions']> }
-  | { type: 'OPEN_SEARCH_RESULT'; result: SearchResult; matchIndex: number };
+  | { type: 'OPEN_SEARCH_RESULT'; result: SearchResult; matchIndex: number }
+  // Git events
+  | { type: 'REFRESH_GIT_STATUS' }
+  | { type: 'SELECT_GIT_FILE'; file: GitStatusFile }
+  | { type: 'STAGE_FILES'; paths: string[] }
+  | { type: 'UNSTAGE_FILES'; paths: string[] }
+  | { type: 'UPDATE_COMMIT_MESSAGE'; message: string }
+  | { type: 'COMMIT' }
+  | { type: 'VIEW_DIFF'; path: string; staged: boolean };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -219,6 +255,12 @@ const codeState = setup({
         return ev.panel
       }
     }),
+    refreshGitStatusIfCommitPanel: ({ event }) => {
+      const ev = event as { type: 'SELECT_PANEL'; panel: PanelType }
+      if (ev.panel === 'commit') {
+        sendToBackend('GET_GIT_STATUS', {})
+      }
+    },
     setLoading: assign({ isLoading: true, error: null }),
     navigateToDirectory: ({ event }) => {
       const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
@@ -312,7 +354,71 @@ const codeState = setup({
     openSearchResult: ({ event }) => {
       const ev = event as { type: 'OPEN_SEARCH_RESULT'; result: SearchResult; matchIndex: number }
       sendToBackend('READ_FILE', { path: ev.result.path })
-    }
+    },
+    // Git actions
+    refreshGitStatus: () => {
+      sendToBackend('GET_GIT_STATUS', {})
+    },
+    assignGitStatus: assign({
+      gitStatus: ({ event }) => {
+        const ev = event as { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        return ev.data.files
+      },
+      gitBranch: ({ event }) => {
+        const ev = event as { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        return ev.data.branch
+      },
+      isGitLoading: false,
+      gitError: null
+    }),
+    assignGitError: assign({
+      gitError: ({ event }) => {
+        const ev = event as { type: 'GIT_ERROR'; data: { message: string } }
+        return ev.data.message
+      },
+      isGitLoading: false
+    }),
+    selectGitFile: assign({
+      selectedGitFile: ({ event }) => {
+        const ev = event as { type: 'SELECT_GIT_FILE'; file: GitStatusFile }
+        return ev.file
+      }
+    }),
+    stageFiles: ({ event }) => {
+      const ev = event as { type: 'STAGE_FILES'; paths: string[] }
+      sendToBackend('STAGE_FILES', { paths: ev.paths })
+    },
+    unstageFiles: ({ event }) => {
+      const ev = event as { type: 'UNSTAGE_FILES'; paths: string[] }
+      sendToBackend('UNSTAGE_FILES', { paths: ev.paths })
+    },
+    assignGitDiff: assign({
+      gitDiff: ({ event }) => {
+        const ev = event as { type: 'GIT_DIFF'; data: GitDiff }
+        return ev.data
+      }
+    }),
+    viewDiff: ({ event }) => {
+      const ev = event as { type: 'VIEW_DIFF'; path: string; staged: boolean }
+      sendToBackend('GET_GIT_DIFF', { path: ev.path, staged: ev.staged })
+    },
+    updateCommitMessage: assign({
+      commitMessage: ({ event }) => {
+        const ev = event as { type: 'UPDATE_COMMIT_MESSAGE'; message: string }
+        return ev.message
+      }
+    }),
+    commit: ({ context }) => {
+      if (context.commitMessage.trim()) {
+        sendToBackend('COMMIT', { message: context.commitMessage })
+      }
+    },
+    handleCommitSuccess: assign({
+      commitMessage: '',
+      selectedGitFile: null,
+      gitDiff: null
+    }),
+    setGitLoading: assign({ isGitLoading: true })
   }
 }).createMachine({
   id,
@@ -339,7 +445,15 @@ const codeState = setup({
       wholeWord: false,
       useRegex: false,
       searchInCurrentDir: false
-    }
+    },
+    // Git related
+    gitStatus: [],
+    gitBranch: '',
+    gitError: null,
+    isGitLoading: false,
+    selectedGitFile: null,
+    gitDiff: null,
+    commitMessage: ''
   },
   states: {
     canvas: {
@@ -376,7 +490,7 @@ const codeState = setup({
           actions: ['updateFileContent']
         },
         SELECT_PANEL: {
-          actions: ['selectPanel']
+          actions: ['selectPanel', 'refreshGitStatusIfCommitPanel']
         },
         NAVIGATE_TO_DIRECTORY: {
           actions: ['navigateToDirectory']
@@ -414,6 +528,46 @@ const codeState = setup({
         },
         OPEN_SEARCH_RESULT: {
           actions: ['openSearchResult']
+        },
+        // Git events
+        REFRESH_GIT_STATUS: {
+          actions: ['setGitLoading', 'refreshGitStatus']
+        },
+        GIT_STATUS: {
+          actions: ['assignGitStatus']
+        },
+        GIT_ERROR: {
+          actions: ['assignGitError']
+        },
+        SELECT_GIT_FILE: {
+          actions: ['selectGitFile']
+        },
+        STAGE_FILES: {
+          actions: ['stageFiles']
+        },
+        UNSTAGE_FILES: {
+          actions: ['unstageFiles']
+        },
+        FILES_STAGED: {
+          actions: ['refreshGitStatus']
+        },
+        FILES_UNSTAGED: {
+          actions: ['refreshGitStatus']
+        },
+        VIEW_DIFF: {
+          actions: ['viewDiff']
+        },
+        GIT_DIFF: {
+          actions: ['assignGitDiff']
+        },
+        UPDATE_COMMIT_MESSAGE: {
+          actions: ['updateCommitMessage']
+        },
+        COMMIT: {
+          actions: ['commit']
+        },
+        COMMIT_SUCCESS: {
+          actions: ['handleCommitSuccess', 'refreshGitStatus']
         }
       }
     }

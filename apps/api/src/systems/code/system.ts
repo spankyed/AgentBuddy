@@ -2,7 +2,8 @@ import { assign, setup } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { FileSystemRepository } from './repository/filesystem'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress } from './types'
+import { GitRepository } from './repository/git'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
@@ -33,6 +34,12 @@ const IncomingCodeEvents = [
     maxResults: z.number().optional()
   }),
   busEvent('CANCEL_SEARCH', {}),
+  busEvent('GET_GIT_STATUS', {}),
+  busEvent('GET_GIT_DIFF', { path: z.string().optional(), staged: z.boolean().optional() }),
+  busEvent('STAGE_FILES', { paths: z.array(z.string()) }),
+  busEvent('UNSTAGE_FILES', { paths: z.array(z.string()) }),
+  busEvent('COMMIT', { message: z.string() }),
+  busEvent('GET_CURRENT_BRANCH', {}),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -51,6 +58,13 @@ export type OutgoingCodeEvents =
   | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
   | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
   | { type: 'SEARCH_ERROR'; data: { message: string } }
+  | { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'GIT_DIFF'; data: GitDiff }
+  | { type: 'FILES_STAGED'; data: { paths: string[] } }
+  | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
+  | { type: 'COMMIT_SUCCESS'; data: { message: string } }
+  | { type: 'GIT_ERROR'; data: { message: string } }
+  | { type: 'CURRENT_BRANCH'; data: { branch: string } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -65,6 +79,7 @@ export interface Context {
   currentDirectory: string
   rootDirectory: string
   repository: FileSystemRepository
+  gitRepository: GitRepository
   activeSearchController?: AbortController
 }
 
@@ -298,6 +313,10 @@ export const systemMachine = setup({
       currentDirectory: ({ event }) => {
         const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
         return ev.path
+      },
+      gitRepository: ({ event }) => {
+        const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        return new GitRepository(ev.path)
       }
     }),
     searchFiles: async ({ system, event, self }) => {
@@ -382,7 +401,122 @@ export const systemMachine = setup({
     }),
     clearSearchController: assign({
       activeSearchController: undefined
-    })
+    }),
+    
+    getGitStatus: async ({ system, self }) => {
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const [status, branch] = await Promise.all([
+          context.gitRepository.getStatus(),
+          context.gitRepository.getCurrentBranch()
+        ])
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_STATUS',
+          data: { files: status, branch }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    getGitDiff: async ({ system, event, self }) => {
+      const ev = typeOf('GET_GIT_DIFF', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_DIFF',
+          data: { path: ev.path || 'all', diff, staged: ev.staged || false }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    stageFiles: async ({ system, event, self }) => {
+      const ev = typeOf('STAGE_FILES', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        await context.gitRepository.stageFiles(ev.paths)
+        system.get(bus).send(emit(pluginId, {
+          type: 'FILES_STAGED',
+          data: { paths: ev.paths }
+        }))
+        // Also send updated status
+        self.send({ type: 'GET_GIT_STATUS' })
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    unstageFiles: async ({ system, event, self }) => {
+      const ev = typeOf('UNSTAGE_FILES', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        await context.gitRepository.unstageFiles(ev.paths)
+        system.get(bus).send(emit(pluginId, {
+          type: 'FILES_UNSTAGED',
+          data: { paths: ev.paths }
+        }))
+        // Also send updated status
+        self.send({ type: 'GET_GIT_STATUS' })
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    commit: async ({ system, event, self }) => {
+      const ev = typeOf('COMMIT', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        await context.gitRepository.commit(ev.message)
+        system.get(bus).send(emit(pluginId, {
+          type: 'COMMIT_SUCCESS',
+          data: { message: ev.message }
+        }))
+        // Also send updated status
+        self.send({ type: 'GET_GIT_STATUS' })
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    getCurrentBranch: async ({ system, self }) => {
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const branch = await context.gitRepository.getCurrentBranch()
+        system.get(bus).send(emit(pluginId, {
+          type: 'CURRENT_BRANCH',
+          data: { branch }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    }
   },
 }).createMachine({
   id,
@@ -391,6 +525,7 @@ export const systemMachine = setup({
     currentDirectory: process.cwd(),
     rootDirectory: process.cwd(),
     repository: new FileSystemRepository(),
+    gitRepository: new GitRepository(process.cwd()),
   },
   states: {
     idle: {
@@ -445,6 +580,24 @@ export const systemMachine = setup({
         },
         CLEAR_SEARCH_CONTROLLER: {
           actions: ['clearSearchController'],
+        },
+        GET_GIT_STATUS: {
+          actions: ['getGitStatus'],
+        },
+        GET_GIT_DIFF: {
+          actions: ['getGitDiff'],
+        },
+        STAGE_FILES: {
+          actions: ['stageFiles'],
+        },
+        UNSTAGE_FILES: {
+          actions: ['unstageFiles'],
+        },
+        COMMIT: {
+          actions: ['commit'],
+        },
+        GET_CURRENT_BRANCH: {
+          actions: ['getCurrentBranch'],
         },
       },
     },

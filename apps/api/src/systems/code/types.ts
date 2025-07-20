@@ -61,3 +61,27 @@ export interface SearchProgress {
   totalFiles: number
   currentFile?: string
 }
+
+// Git types
+export interface GitStatusFile {
+  path: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied'
+  staged: boolean
+}
+
+export interface GitBranch {
+  name: string
+  current: boolean
+}
+
+export interface GitCommitInfo {
+  message: string
+  author?: string
+  date?: Date
+}
+
+export interface GitDiff {
+  path: string
+  diff: string
+  staged: boolean
+}
