@@ -82,6 +82,9 @@ export interface OpenFile {
   path: string
   content: string
   modified: boolean
+  isDiff?: boolean
+  gitDiff?: GitDiff
+  gitFile?: GitStatusFile
 }
 
 // Git types
@@ -160,7 +163,8 @@ export type Event =
   | { type: 'UPDATE_COMMIT_MESSAGE'; message: string }
   | { type: 'COMMIT' }
   | { type: 'VIEW_DIFF'; path: string; staged: boolean }
-  | { type: 'CLEAR_GIT_DIFF' };
+  | { type: 'CLEAR_GIT_DIFF' }
+  | { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -425,6 +429,37 @@ const codeState = setup({
     clearGitDiff: assign({
       selectedGitFile: null,
       gitDiff: null
+    }),
+    openDiffTab: assign({
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+        const diffTabId = `diff:${ev.file.path}:${ev.file.staged ? 'staged' : 'unstaged'}`
+        
+        // Check if diff tab already exists
+        const existingTab = context.openFiles.find(f => f.path === diffTabId)
+        if (existingTab) {
+          // Update the diff content
+          return context.openFiles.map(f => 
+            f.path === diffTabId 
+              ? { ...f, gitDiff: ev.diff, gitFile: ev.file }
+              : f
+          )
+        }
+        
+        // Add new diff tab
+        return [...context.openFiles, {
+          path: diffTabId,
+          content: '', // Not used for diffs
+          modified: false,
+          isDiff: true,
+          gitDiff: ev.diff,
+          gitFile: ev.file
+        }]
+      },
+      activeFilePath: ({ event }) => {
+        const ev = event as { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+        return `diff:${ev.file.path}:${ev.file.staged ? 'staged' : 'unstaged'}`
+      }
     })
   }
 }).createMachine({
@@ -565,7 +600,20 @@ const codeState = setup({
           actions: ['viewDiff']
         },
         GIT_DIFF: {
-          actions: ['assignGitDiff']
+          actions: [({ self, event }) => {
+            const ev = event as { type: 'GIT_DIFF'; data: GitDiff }
+            const context = self.getSnapshot().context
+            if (context.selectedGitFile) {
+              self.send({ 
+                type: 'OPEN_DIFF_TAB', 
+                file: context.selectedGitFile, 
+                diff: ev.data 
+              })
+            }
+          }]
+        },
+        OPEN_DIFF_TAB: {
+          actions: ['openDiffTab']
         },
         UPDATE_COMMIT_MESSAGE: {
           actions: ['updateCommitMessage']

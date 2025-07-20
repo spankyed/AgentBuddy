@@ -13,15 +13,15 @@
       >
         <button
           @click="selectFile(file.path)"
-          class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
+          class="flex items-center gap-2 pl-3 text-sm transition-colors py-2"
           :class="activeFilePath === file.path ? 'text-neutral-100' : 'text-neutral-400'"
         >
           <component 
-            :is="getFileIcon(getFileExtension(file.path))"
+            :is="file.isDiff ? GitCompare : getFileIcon(getFileExtension(file.path))"
             class="flex-shrink-0 w-4 h-4"
           />
-          <span class="max-w-[150px] truncate">{{ getFileName(file.path) }}</span>
-          <span v-if="file.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          <span class="max-w-[150px] truncate">{{ getTabLabel(file) }}</span>
+          <span v-if="file.modified && !file.isDiff" class="w-2 h-2 bg-blue-500 rounded-full"></span>
         </button>
         <button
           @click.stop="closeFile(file.path)"
@@ -42,7 +42,16 @@
       </div>
       
       <div v-else-if="activeFile" class="h-full">
+        <!-- Diff viewer for diff tabs -->
+        <DiffViewer
+          v-if="activeFile.isDiff"
+          :selected-git-file="activeFile.gitFile!"
+          :git-diff="activeFile.gitDiff!"
+          class="h-full"
+        />
+        <!-- Regular editor for normal files -->
         <VueMonacoEditor
+          v-else
           :value="activeFile.content"
           @update:value="handleContentChange"
           :options="editorOptions"
@@ -57,8 +66,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X, FileCode, File, FileJson, FileText, Image } from 'lucide-vue-next'
+import { X, FileCode, File, FileJson, FileText, Image, GitCompare } from 'lucide-vue-next'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
+import DiffViewer from './DiffViewer.vue'
 import type { OpenFile } from '../state'
 
 // Props
@@ -111,6 +121,15 @@ const handleContentChange = (value: string) => {
 // Helper functions
 const getFileName = (path: string) => {
   return path.split('/').pop() || path
+}
+
+const getTabLabel = (file: OpenFile) => {
+  if (file.isDiff && file.gitFile) {
+    const fileName = getFileName(file.gitFile.path)
+    const status = file.gitFile.staged ? 'staged' : 'unstaged'
+    return `${fileName} (${status})`
+  }
+  return getFileName(file.path)
 }
 
 const getFileExtension = (path: string) => {
