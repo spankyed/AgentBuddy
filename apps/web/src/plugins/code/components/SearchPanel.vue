@@ -51,6 +51,26 @@
         </button>
       </div>
 
+      <!-- Search Location Toggle -->
+      <div class="flex items-center gap-2 mb-3">
+        <button
+          @click="toggleOption('searchInCurrentDir')"
+          :class="[
+            'flex items-center gap-2 px-3 py-1 text-xs rounded transition-colors',
+            searchOptions.searchInCurrentDir 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+          ]"
+          :title="searchOptions.searchInCurrentDir ? 'Searching in current directory' : 'Searching in root directory'"
+        >
+          <FolderOpen class="w-3 h-3" />
+          <span>{{ searchOptions.searchInCurrentDir ? 'Current Directory' : 'Root Directory' }}</span>
+        </button>
+        <span class="text-xs text-neutral-500 truncate flex-1">
+          {{ searchOptions.searchInCurrentDir ? getRelativePath(currentDirectory) || 'Current' : '~/' + rootDirectory.split('/').pop() }}
+        </span>
+      </div>
+
       <!-- Include/Exclude Patterns -->
       <div class="space-y-2">
         <div class="flex items-center gap-2">
@@ -157,7 +177,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id, type CodeState } from '../state'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, FolderOpen } from 'lucide-vue-next'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -169,6 +189,7 @@ const searchError = useSelector(actor, (state) => state.context.searchError)
 const searchProgress = useSelector(actor, (state) => state.context.searchProgress)
 const searchOptions = useSelector(actor, (state) => state.context.searchOptions)
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
+const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)
@@ -197,7 +218,7 @@ const cancelSearch = () => {
   actor.send({ type: 'CANCEL_SEARCH' })
 }
 
-const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex') => {
+const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'searchInCurrentDir') => {
   actor.send({
     type: 'UPDATE_SEARCH_OPTIONS',
     options: {
@@ -233,6 +254,11 @@ const openMatch = (result: typeof searchResults.value[0], matchIndex: number) =>
 }
 
 const getRelativePath = (path: string) => {
+  // If searching in current directory, show paths relative to current directory
+  if (searchOptions.value.searchInCurrentDir && currentDirectory.value && path.startsWith(currentDirectory.value)) {
+    return path.slice(currentDirectory.value.length + 1)
+  }
+  // Otherwise show paths relative to root directory
   if (rootDirectory.value && path.startsWith(rootDirectory.value)) {
     return path.slice(rootDirectory.value.length + 1)
   }
