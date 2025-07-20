@@ -2,7 +2,7 @@ import { assign, setup } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { FileSystemRepository } from './repository/filesystem'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError } from './types'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
@@ -22,6 +22,17 @@ const IncomingCodeEvents = [
   busEvent('GET_FILE_INFO', { path: z.string() }),
   busEvent('CHANGE_DIRECTORY', { path: z.string() }),
   busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
+  busEvent('SEARCH_FILES', { 
+    query: z.string(),
+    path: z.string(),
+    includePattern: z.string().optional(),
+    excludePattern: z.string().optional(),
+    caseSensitive: z.boolean().optional(),
+    wholeWord: z.boolean().optional(),
+    useRegex: z.boolean().optional(),
+    maxResults: z.number().optional()
+  }),
+  busEvent('CANCEL_SEARCH', {}),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -36,15 +47,23 @@ export type OutgoingCodeEvents =
   | { type: 'DIRECTORY_CHANGED'; data: { path: string } }
   | { type: 'CODE_ERROR'; data: CodeSystemError }
   | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+  | { type: 'SEARCH_RESULT'; data: SearchResult }
+  | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
+  | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
+  | { type: 'SEARCH_ERROR'; data: { message: string } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
-type CodeInternalEvents = SystemEvents | { type: 'ASSIGN_DIRECTORY'; path: string }
+type CodeInternalEvents = SystemEvents 
+  | { type: 'ASSIGN_DIRECTORY'; path: string }
+  | { type: 'ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
+  | { type: 'CLEAR_SEARCH_CONTROLLER' }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
   currentDirectory: string
   repository: FileSystemRepository
+  activeSearchController?: AbortController
 }
 
 const typeOf = safeEvents<ReceivableEvents>()
@@ -269,6 +288,89 @@ export const systemMachine = setup({
         data: { path: ev.path },
       }))
     },
+    searchFiles: async ({ system, event, self }) => {
+      const ev = typeOf('SEARCH_FILES', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      
+      // Cancel any existing search
+      if (context.activeSearchController) {
+        context.activeSearchController.abort()
+      }
+      
+      // Create new abort controller
+      const controller = new AbortController()
+      self.send({ type: 'ASSIGN_SEARCH_CONTROLLER', controller })
+      
+      try {
+        const searchOptions: SearchOptions = {
+          query: ev.query,
+          path: ev.path || context.currentDirectory,
+          includePattern: ev.includePattern,
+          excludePattern: ev.excludePattern,
+          caseSensitive: ev.caseSensitive,
+          wholeWord: ev.wholeWord,
+          useRegex: ev.useRegex,
+          maxResults: ev.maxResults
+        }
+        
+        let totalMatches = 0
+        
+        const results = await context.repository.searchFiles(
+          searchOptions,
+          // Progress callback
+          (filesSearched, totalFiles, currentFile) => {
+            if (!controller.signal.aborted) {
+              system.get(bus).send(emit(pluginId, {
+                type: 'SEARCH_PROGRESS',
+                data: { filesSearched, totalFiles, currentFile }
+              }))
+            }
+          },
+          // Result callback (incremental results)
+          (result) => {
+            if (!controller.signal.aborted) {
+              totalMatches += result.matches.length
+              system.get(bus).send(emit(pluginId, {
+                type: 'SEARCH_RESULT',
+                data: result
+              }))
+            }
+          }
+        )
+        
+        if (!controller.signal.aborted) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'SEARCH_COMPLETE',
+            data: { results, totalMatches }
+          }))
+        }
+      } catch (error: any) {
+        if (!controller.signal.aborted) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'SEARCH_ERROR',
+            data: { message: error.message }
+          }))
+        }
+      } finally {
+        self.send({ type: 'CLEAR_SEARCH_CONTROLLER' })
+      }
+    },
+    cancelSearch: ({ self }) => {
+      const context = self.getSnapshot().context
+      if (context.activeSearchController) {
+        context.activeSearchController.abort()
+      }
+    },
+    assignSearchController: assign({
+      activeSearchController: ({ event }) => {
+        const ev = event as { type: 'ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
+        return ev.controller
+      }
+    }),
+    clearSearchController: assign({
+      activeSearchController: undefined
+    })
   },
 }).createMachine({
   id,
@@ -315,6 +417,18 @@ export const systemMachine = setup({
         },
         SET_ROOT_DIRECTORY: {
           actions: ['setRootDirectory'],
+        },
+        SEARCH_FILES: {
+          actions: ['searchFiles'],
+        },
+        CANCEL_SEARCH: {
+          actions: ['cancelSearch'],
+        },
+        ASSIGN_SEARCH_CONTROLLER: {
+          actions: ['assignSearchController'],
+        },
+        CLEAR_SEARCH_CONTROLLER: {
+          actions: ['clearSearchController'],
         },
       },
     },

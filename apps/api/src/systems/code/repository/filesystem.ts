@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { FileInfo, DirectoryContent, FileContent, CodeSystemError } from '../types'
+import { spawn } from 'child_process'
+import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch } from '../types'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const PROJECT_ROOT = process.cwd()
@@ -212,6 +213,141 @@ export class FileSystemRepository {
         throw error
       }
       throw this.createError('IO_ERROR', error.message, filePath)
+    }
+  }
+
+  async searchFiles(
+    options: SearchOptions,
+    onProgress?: (filesSearched: number, totalFiles: number, currentFile?: string) => void,
+    onResult?: (result: SearchResult) => void
+  ): Promise<SearchResult[]> {
+    try {
+      const validPath = this.validatePath(options.path)
+      const results: SearchResult[] = []
+      
+      // Build ripgrep command arguments
+      const args: string[] = []
+      
+      // Add search pattern
+      if (options.useRegex) {
+        args.push('-e', options.query)
+      } else {
+        // Escape special regex characters if not using regex mode
+        const escapedQuery = options.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        args.push('-F', escapedQuery)
+      }
+      
+      // Add options
+      if (!options.caseSensitive) args.push('-i')
+      if (options.wholeWord) args.push('-w')
+      
+      // Add line numbers and column info
+      args.push('--line-number', '--column', '--with-filename')
+      
+      // JSON output for easier parsing
+      args.push('--json')
+      
+      // Include/exclude patterns
+      if (options.includePattern) {
+        args.push('-g', options.includePattern)
+      }
+      if (options.excludePattern) {
+        args.push('-g', `!${options.excludePattern}`)
+      }
+      
+      // Limit results if specified
+      if (options.maxResults) {
+        args.push('--max-count', options.maxResults.toString())
+      }
+      
+      // Search path
+      args.push(validPath)
+      
+      return new Promise((resolve, reject) => {
+        const rg = spawn('rg', args)
+        
+        let currentResult: SearchResult | null = null
+        let filesSearched = 0
+        let errorOutput = ''
+        
+        rg.stdout.on('data', (data) => {
+          const lines = data.toString().split('\n').filter(Boolean)
+          
+          for (const line of lines) {
+            try {
+              const json = JSON.parse(line)
+              
+              if (json.type === 'match') {
+                const filePath = json.data.path.text
+                const lineNum = json.data.line_number
+                const lineText = json.data.lines.text.trimEnd()
+                const match = json.data.submatches[0]
+                
+                if (!currentResult || currentResult.path !== filePath) {
+                  if (currentResult) {
+                    results.push(currentResult)
+                    onResult?.(currentResult)
+                  }
+                  
+                  currentResult = {
+                    path: filePath,
+                    matches: []
+                  }
+                  
+                  filesSearched++
+                  onProgress?.(filesSearched, -1, filePath)
+                }
+                
+                currentResult.matches.push({
+                  line: lineNum,
+                  column: match.start + 1,
+                  lineText: lineText,
+                  matchStart: match.start,
+                  matchEnd: match.end
+                })
+              }
+            } catch (err) {
+              // Ignore JSON parse errors
+            }
+          }
+        })
+        
+        rg.stderr.on('data', (data) => {
+          errorOutput += data.toString()
+        })
+        
+        rg.on('close', (code) => {
+          if (currentResult) {
+            results.push(currentResult)
+            onResult?.(currentResult)
+          }
+          
+          if (code === 0 || code === 1) {
+            // Code 0: matches found, Code 1: no matches found
+            resolve(results)
+          } else {
+            // Check if ripgrep is not installed
+            if (errorOutput.includes('command not found') || errorOutput.includes('not recognized')) {
+              reject(this.createError('SEARCH_ERROR', 'ripgrep (rg) is not installed. Please install it to use search functionality.'))
+            } else {
+              reject(this.createError('SEARCH_ERROR', `Search failed: ${errorOutput}`))
+            }
+          }
+        })
+        
+        rg.on('error', (err) => {
+          if (err.message.includes('ENOENT')) {
+            reject(this.createError('SEARCH_ERROR', 'ripgrep (rg) is not installed. Please install it to use search functionality.'))
+          } else {
+            reject(this.createError('SEARCH_ERROR', `Failed to start search: ${err.message}`))
+          }
+        })
+      })
+    } catch (error: any) {
+      if (error.code === 'SEARCH_ERROR') {
+        throw error
+      }
+      throw this.createError('SEARCH_ERROR', error.message)
     }
   }
 }

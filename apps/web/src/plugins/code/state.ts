@@ -2,6 +2,27 @@ import { setup, type ActorRefFrom, assign } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 
+// Search types
+export interface SearchMatch {
+  line: number
+  column: number
+  lineText: string
+  matchStart: number
+  matchEnd: number
+}
+
+export interface SearchResult {
+  path: string
+  matches: SearchMatch[]
+  fileSize?: number
+}
+
+export interface SearchProgress {
+  filesSearched: number
+  totalFiles: number
+  currentFile?: string
+}
+
 type OutgoingCodeEvents =
   | { type: 'FILES_LISTED'; data: DirectoryContent }
   | { type: 'FILE_CONTENT'; data: FileContent }
@@ -14,6 +35,10 @@ type OutgoingCodeEvents =
   | { type: 'DIRECTORY_CHANGED'; data: { path: string } }
   | { type: 'CODE_ERROR'; data: { code: string; message: string; path?: string } }
   | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+  | { type: 'SEARCH_RESULT'; data: SearchResult }
+  | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
+  | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
+  | { type: 'SEARCH_ERROR'; data: { message: string } }
 
 export const id = 'code' as const;
 
@@ -61,6 +86,19 @@ export type Context = {
   isLoading: boolean
   error: string | null
   selectedPanel: PanelType
+  // Search related
+  searchQuery: string
+  searchResults: SearchResult[]
+  isSearching: boolean
+  searchError: string | null
+  searchProgress: SearchProgress | null
+  searchOptions: {
+    includePattern: string
+    excludePattern: string
+    caseSensitive: boolean
+    wholeWord: boolean
+    useRegex: boolean
+  }
 }
 
 export type Event = 
@@ -76,7 +114,13 @@ export type Event =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
   | { type: 'OPEN_FILE'; path: string }
-  | { type: 'SET_ROOT_DIRECTORY'; path: string };
+  | { type: 'SET_ROOT_DIRECTORY'; path: string }
+  // Search events
+  | { type: 'START_SEARCH'; query: string }
+  | { type: 'CANCEL_SEARCH' }
+  | { type: 'CLEAR_SEARCH' }
+  | { type: 'UPDATE_SEARCH_OPTIONS'; options: Partial<Context['searchOptions']> }
+  | { type: 'OPEN_SEARCH_RESULT'; result: SearchResult; matchIndex: number };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -202,6 +246,71 @@ const codeState = setup({
     },
     requestInitialFiles: ({ context }) => {
       sendToBackend('LIST_FILES', { path: context.currentDirectory })
+    },
+    // Search actions
+    startSearch: ({ event, context }) => {
+      const ev = event as { type: 'START_SEARCH'; query: string }
+      sendToBackend('SEARCH_FILES', {
+        query: ev.query,
+        path: context.currentDirectory,
+        includePattern: context.searchOptions.includePattern || undefined,
+        excludePattern: context.searchOptions.excludePattern || undefined,
+        caseSensitive: context.searchOptions.caseSensitive,
+        wholeWord: context.searchOptions.wholeWord,
+        useRegex: context.searchOptions.useRegex
+      })
+    },
+    cancelSearch: () => {
+      sendToBackend('CANCEL_SEARCH', {})
+    },
+    assignSearchQuery: assign({
+      searchQuery: ({ event }) => {
+        const ev = event as { type: 'START_SEARCH'; query: string }
+        return ev.query
+      },
+      isSearching: true,
+      searchError: null,
+      searchResults: []
+    }),
+    assignSearchResult: assign({
+      searchResults: ({ context, event }) => {
+        const ev = event as { type: 'SEARCH_RESULT'; data: SearchResult }
+        return [...context.searchResults, ev.data]
+      }
+    }),
+    assignSearchProgress: assign({
+      searchProgress: ({ event }) => {
+        const ev = event as { type: 'SEARCH_PROGRESS'; data: SearchProgress }
+        return ev.data
+      }
+    }),
+    assignSearchComplete: assign({
+      isSearching: false,
+      searchProgress: null
+    }),
+    assignSearchError: assign({
+      searchError: ({ event }) => {
+        const ev = event as { type: 'SEARCH_ERROR'; data: { message: string } }
+        return ev.data.message
+      },
+      isSearching: false,
+      searchProgress: null
+    }),
+    clearSearch: assign({
+      searchQuery: '',
+      searchResults: [],
+      searchError: null,
+      searchProgress: null
+    }),
+    updateSearchOptions: assign({
+      searchOptions: ({ context, event }) => {
+        const ev = event as { type: 'UPDATE_SEARCH_OPTIONS'; options: Partial<Context['searchOptions']> }
+        return { ...context.searchOptions, ...ev.options }
+      }
+    }),
+    openSearchResult: ({ event }) => {
+      const ev = event as { type: 'OPEN_SEARCH_RESULT'; result: SearchResult; matchIndex: number }
+      sendToBackend('READ_FILE', { path: ev.result.path })
     }
   }
 }).createMachine({
@@ -215,7 +324,20 @@ const codeState = setup({
     activeFilePath: null,
     isLoading: false,
     error: null,
-    selectedPanel: 'explorer'
+    selectedPanel: 'explorer',
+    // Search related
+    searchQuery: '',
+    searchResults: [],
+    isSearching: false,
+    searchError: null,
+    searchProgress: null,
+    searchOptions: {
+      includePattern: '',
+      excludePattern: '',
+      caseSensitive: false,
+      wholeWord: false,
+      useRegex: false
+    }
   },
   states: {
     canvas: {
@@ -262,6 +384,34 @@ const codeState = setup({
         },
         SET_ROOT_DIRECTORY: {
           actions: ['assignRootDirectory', 'setRootDirectory']
+        },
+        // Search events
+        START_SEARCH: {
+          actions: ['assignSearchQuery', 'startSearch']
+        },
+        CANCEL_SEARCH: {
+          actions: ['cancelSearch']
+        },
+        CLEAR_SEARCH: {
+          actions: ['clearSearch']
+        },
+        UPDATE_SEARCH_OPTIONS: {
+          actions: ['updateSearchOptions']
+        },
+        SEARCH_RESULT: {
+          actions: ['assignSearchResult']
+        },
+        SEARCH_PROGRESS: {
+          actions: ['assignSearchProgress']
+        },
+        SEARCH_COMPLETE: {
+          actions: ['assignSearchComplete']
+        },
+        SEARCH_ERROR: {
+          actions: ['assignSearchError']
+        },
+        OPEN_SEARCH_RESULT: {
+          actions: ['openSearchResult']
         }
       }
     }
