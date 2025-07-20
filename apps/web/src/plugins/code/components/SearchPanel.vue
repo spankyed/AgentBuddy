@@ -1,7 +1,54 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="flex flex-col h-full">
     <!-- Search Input Section -->
     <div class="p-4 border-b border-neutral-800">
+      <!-- Search Location Indicator -->
+      <div class="px-1 mb-2 text-xs text-neutral-500">
+        Searching in: {{ searchOptions.searchInCurrentDir ? getRelativePath(currentDirectory) || currentDirectory : '~/' + rootDirectory.split('/').pop() }}
+      </div>
+
+
+      <!-- Search Options -->
+      <div class="flex items-center gap-2 mb-3">
+        <button
+          @click="toggleOption('searchInCurrentDir')"
+          :class="[
+            'flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors',
+            searchOptions.searchInCurrentDir 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+          ]"
+          :title="searchOptions.searchInCurrentDir ? 'Searching in current directory' : 'Searching in root directory'"
+        >
+          <FolderOpen class="w-3 h-3" />
+          <span>{{ searchOptions.searchInCurrentDir ? 'Current' : 'Root' }}</span>
+        </button>
+                <div class="w-px h-4 mx-1 bg-neutral-700"></div>
+        <button
+          @click="toggleOption('caseSensitive')"
+          :class="optionButtonClass(searchOptions.caseSensitive)"
+          title="Match Case"
+        >
+          Aa
+        </button>
+        <button
+          @click="toggleOption('wholeWord')"
+          :class="optionButtonClass(searchOptions.wholeWord)"
+          title="Match Whole Word"
+        >
+          ab
+        </button>
+        <button
+          @click="toggleOption('useRegex')"
+          :class="optionButtonClass(searchOptions.useRegex)"
+          title="Use Regular Expression"
+        >
+          .*
+        </button>
+
+      </div>
+
+
       <div class="flex items-center gap-2 mb-3">
         <input
           v-model="searchQuery"
@@ -26,71 +73,27 @@
         </button>
       </div>
 
-      <!-- Search Options -->
-      <div class="flex items-center gap-4 mb-3">
-        <button
-          @click="toggleOption('caseSensitive')"
-          :class="optionButtonClass(searchOptions.caseSensitive)"
-          title="Match Case"
-        >
-          Aa
-        </button>
-        <button
-          @click="toggleOption('wholeWord')"
-          :class="optionButtonClass(searchOptions.wholeWord)"
-          title="Match Whole Word"
-        >
-          ab
-        </button>
-        <button
-          @click="toggleOption('useRegex')"
-          :class="optionButtonClass(searchOptions.useRegex)"
-          title="Use Regular Expression"
-        >
-          .*
-        </button>
-      </div>
-
-      <!-- Search Location Toggle -->
-      <div class="flex items-center gap-2 mb-3">
-        <button
-          @click="toggleOption('searchInCurrentDir')"
-          :class="[
-            'flex items-center gap-2 px-3 py-1 text-xs rounded transition-colors',
-            searchOptions.searchInCurrentDir 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-          ]"
-          :title="searchOptions.searchInCurrentDir ? 'Searching in current directory' : 'Searching in root directory'"
-        >
-          <FolderOpen class="w-3 h-3" />
-          <span>{{ searchOptions.searchInCurrentDir ? 'Current Directory' : 'Root Directory' }}</span>
-        </button>
-        <span class="text-xs text-neutral-500 truncate flex-1">
-          {{ searchOptions.searchInCurrentDir ? getRelativePath(currentDirectory) || 'Current' : '~/' + rootDirectory.split('/').pop() }}
-        </span>
-      </div>
 
       <!-- Include/Exclude Patterns -->
       <div class="space-y-2">
         <div class="flex items-center gap-2">
-          <label class="text-xs text-neutral-400 w-20">Include:</label>
+          <label class="w-20 text-xs text-neutral-400">Include:</label>
           <input
             v-model="includePattern"
             @change="updateOptions"
             type="text"
             placeholder="e.g., *.ts, *.vue"
-            class="flex-1 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-neutral-400 w-20">Exclude:</label>
+          <label class="w-20 text-xs text-neutral-400">Exclude:</label>
           <input
             v-model="excludePattern"
             @change="updateOptions"
             type="text"
             placeholder="e.g., node_modules, *.test.js"
-            class="flex-1 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>
@@ -101,7 +104,7 @@
       <!-- Progress -->
       <div v-if="searchProgress" class="p-4 text-sm text-neutral-400">
         <div class="mb-1">Searching... {{ searchProgress.filesSearched }} files</div>
-        <div v-if="searchProgress.currentFile" class="text-xs text-neutral-500 truncate">
+        <div v-if="searchProgress.currentFile" class="text-xs truncate text-neutral-500">
           {{ searchProgress.currentFile }}
         </div>
       </div>
@@ -120,16 +123,16 @@
         >
           <div
             @click="toggleResultExpanded(result.path)"
-            class="px-4 py-2 hover:bg-neutral-800 cursor-pointer flex items-center justify-between"
+            class="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-neutral-800"
           >
-            <div class="flex items-center gap-2 flex-1 min-w-0">
+            <div class="flex items-center flex-1 min-w-0 gap-2">
               <ChevronRight
                 :class="[
                   'w-3 h-3 text-neutral-400 transition-transform',
                   expandedResults.has(result.path) && 'rotate-90'
                 ]"
               />
-              <span class="text-sm text-neutral-100 truncate">{{ getRelativePath(result.path) }}</span>
+              <span class="text-sm truncate text-neutral-100">{{ getRelativePath(result.path) }}</span>
               <span class="text-xs text-neutral-500">({{ result.matches.length }} matches)</span>
             </div>
           </div>
@@ -139,13 +142,13 @@
               v-for="(match, index) in result.matches"
               :key="`${result.path}-${index}`"
               @click="openMatch(result, index)"
-              class="px-4 py-1 hover:bg-neutral-800 cursor-pointer"
+              class="px-4 py-1 cursor-pointer hover:bg-neutral-800"
             >
               <div class="flex items-baseline gap-2">
                 <span class="text-xs text-neutral-500 min-w-[3em]">{{ match.line }}:</span>
-                <div class="text-xs text-neutral-300 font-mono overflow-hidden">
+                <div class="overflow-hidden font-mono text-xs text-neutral-300">
                   <span>{{ match.lineText.substring(0, match.matchStart) }}</span>
-                  <span class="bg-yellow-600/30 text-yellow-200">{{ match.lineText.substring(match.matchStart, match.matchEnd) }}</span>
+                  <span class="text-yellow-200 bg-yellow-600/30">{{ match.lineText.substring(match.matchStart, match.matchEnd) }}</span>
                   <span>{{ match.lineText.substring(match.matchEnd) }}</span>
                 </div>
               </div>
@@ -166,7 +169,7 @@
     </div>
 
     <!-- Results Summary -->
-    <div v-if="searchResults.length > 0" class="p-2 border-t border-neutral-800 text-xs text-neutral-400">
+    <div v-if="searchResults.length > 0" class="p-2 text-xs border-t border-neutral-800 text-neutral-400">
       {{ totalMatches }} results in {{ searchResults.length }} files
     </div>
   </div>
