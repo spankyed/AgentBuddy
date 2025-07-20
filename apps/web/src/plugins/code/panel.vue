@@ -32,10 +32,10 @@
               <ContextMenuRoot>
                 <ContextMenuTrigger as-child>
                   <button
-                    @click="navigateToSegment(index)"
+                    @click="navigateToSegment(segment.path)"
                     class="px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
                     :class="{ 
-                      'font-medium text-neutral-200': index === directorySegments.length - 1
+                      'font-medium text-neutral-200': segment.path === currentDirectory
                     }"
                     :title="segment.path"
                   >
@@ -147,8 +147,8 @@ import {
 const actor: CodeState = applicationState.system.get(id)
 
 // State selectors
-const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
+const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
 const files = useSelector(actor, (state) => state.context.files)
 const isLoading = useSelector(actor, (state) => state.context.isLoading)
 const error = useSelector(actor, (state) => state.context.error)
@@ -166,55 +166,50 @@ const panels = [
 
 // Computed properties
 const directorySegments = computed(() => {
-  const current = currentDirectory.value
   const root = rootDirectory.value
+  const current = currentDirectory.value
   
-  if (!current) return []
+  if (!root || !current) return []
   
   // Normalize paths - remove trailing slashes except for root "/"
-  const normalizedCurrent = current.endsWith('/') && current.length > 1 
-    ? current.slice(0, -1) 
-    : current
   const normalizedRoot = root.endsWith('/') && root.length > 1 
     ? root.slice(0, -1) 
     : root
+  const normalizedCurrent = current.endsWith('/') && current.length > 1 
+    ? current.slice(0, -1) 
+    : current
     
-  const result: Array<{ name: string; path: string; isClickable: boolean }> = []
+  const result: Array<{ name: string; path: string }> = []
   
-  // Check if current directory is within or equal to the root
+  // Get root directory name
+  const rootName = normalizedRoot.split('/').filter(Boolean).pop() || '/'
+  
+  // If current is within root, show relative path
   if (normalizedCurrent.startsWith(normalizedRoot)) {
-    // Get the root directory name
-    const rootName = normalizedRoot.split('/').filter(Boolean).pop() || '/'
+    // Add root segment
+    result.push({ name: `~/${rootName}`, path: normalizedRoot })
     
-    // If we're exactly at the root, just show ~/rootName
-    if (normalizedCurrent === normalizedRoot) {
-      result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
-    } else {
-      // We're in a subdirectory of root
-      result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
-      
-      // Get the relative path from root
-      const relativePath = normalizedCurrent.slice(normalizedRoot.length)
+    // Add path segments from root to current
+    const relativePath = normalizedCurrent.slice(normalizedRoot.length)
+    if (relativePath) {
       const segments = relativePath.split('/').filter(Boolean)
       let currentPath = normalizedRoot
       
-      segments.forEach((segment) => {
+      segments.forEach(segment => {
         currentPath = currentPath + '/' + segment
-        result.push({ name: segment, path: currentPath, isClickable: true })
+        result.push({ name: segment, path: currentPath })
       })
     }
   } else {
     // Current is outside root, show full path
-    if (normalizedCurrent.startsWith('/')) {
-      result.push({ name: '/', path: '/', isClickable: true })
-      const segments = normalizedCurrent.slice(1).split('/').filter(Boolean)
-      segments.forEach((segment, index) => {
-        const segmentPath = '/' + segments.slice(0, index + 1).join('/')
-        result.push({ name: segment, path: segmentPath, isClickable: true })
-      })
-    } else {
-      result.push({ name: '.', path: '.', isClickable: true })
-    }
+    result.push({ name: '/', path: '/' })
+    const segments = normalizedCurrent.slice(1).split('/').filter(Boolean)
+    let currentPath = ''
+    
+    segments.forEach(segment => {
+      currentPath = currentPath + '/' + segment
+      result.push({ name: segment, path: currentPath })
+    })
   }
   
   return result
@@ -225,15 +220,13 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr') => {
   actor.send({ type: 'SELECT_PANEL', panel })
 }
 
-const navigateToSegment = (index: number) => {
-  const segment = directorySegments.value[index]
-  if (segment && segment.path !== currentDirectory.value) {
-    actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path: segment.path })
+const navigateToSegment = (path: string) => {
+  if (path !== currentDirectory.value) {
+    actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path })
   }
 }
 
 const setAsRoot = (path: string) => {
-  // Send event to state machine - it will handle the API calls
   actor.send({ type: 'SET_ROOT_DIRECTORY', path })
 }
 
@@ -246,9 +239,9 @@ const handleFileClick = (file: typeof files.value[0]) => {
 }
 
 const changeDirectory = () => {
-  const newPath = prompt('Enter directory path:', currentDirectory.value)
-  if (newPath && newPath !== currentDirectory.value) {
-    actor.send({ type: 'REQUEST_DIRECTORY_CHANGE', path: newPath })
+  const newPath = prompt('Enter new root directory path:', rootDirectory.value)
+  if (newPath && newPath !== rootDirectory.value) {
+    actor.send({ type: 'SET_ROOT_DIRECTORY', path: newPath })
   }
 }
 

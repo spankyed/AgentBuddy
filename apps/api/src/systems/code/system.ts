@@ -261,7 +261,7 @@ export const systemMachine = setup({
     setRootDirectory: ({ system, event, self }) => {
       const ev = typeOf('SET_ROOT_DIRECTORY', event)
       const pluginId = id
-      // Update the context
+      // Update the context to the new root directory
       self.send({ type: 'ASSIGN_DIRECTORY', path: ev.path })
       // Send event to frontend
       system.get(bus).send(emit(pluginId, {

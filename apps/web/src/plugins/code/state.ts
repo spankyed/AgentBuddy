@@ -53,8 +53,8 @@ export interface OpenFile {
 }
 
 export type Context = {
-  currentDirectory: string
   rootDirectory: string
+  currentDirectory: string
   files: FileInfo[]
   openFiles: OpenFile[]
   activeFilePath: string | null
@@ -74,18 +74,17 @@ export type Event =
   | { type: 'SELECT_PANEL'; panel: PanelType }
   | { type: 'FILE_MODIFIED'; path: string; content: string }
   | { type: 'PLUGIN_ACTIVATED' }
-  | { type: 'SET_ROOT_DIRECTORY'; path: string }
   | { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
   | { type: 'OPEN_FILE'; path: string }
-  | { type: 'REQUEST_DIRECTORY_CHANGE'; path: string };
+  | { type: 'SET_ROOT_DIRECTORY'; path: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
 type PanelType = 'explorer' | 'search' | 'commit' | 'pr';
 
 const STORAGE_KEY = 'code-plugin-root-directory'
-const DEFAULT_ROOT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
-const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || DEFAULT_ROOT_DIR
+const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
+const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || DEFAULT_DIR
 
 const codeState = setup({
   types: {
@@ -176,9 +175,15 @@ const codeState = setup({
       }
     }),
     setLoading: assign({ isLoading: true, error: null }),
+    navigateToDirectory: ({ event }) => {
+      const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
+      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
+      sendToBackend('LIST_FILES', { path: ev.path })
+    },
     setRootDirectory: ({ event }) => {
       const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
       localStorage.setItem(STORAGE_KEY, ev.path)
+      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
       sendToBackend('LIST_FILES', { path: ev.path })
     },
     assignRootDirectory: assign({
@@ -191,19 +196,9 @@ const codeState = setup({
         return ev.path
       }
     }),
-    navigateToDirectory: ({ event }) => {
-      const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
-      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('LIST_FILES', { path: ev.path })
-    },
     openFile: ({ event }) => {
       const ev = event as { type: 'OPEN_FILE'; path: string }
       sendToBackend('READ_FILE', { path: ev.path })
-    },
-    requestDirectoryChange: ({ event }) => {
-      const ev = event as { type: 'REQUEST_DIRECTORY_CHANGE'; path: string }
-      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('LIST_FILES', { path: ev.path })
     },
     requestInitialFiles: ({ context }) => {
       sendToBackend('LIST_FILES', { path: context.currentDirectory })
@@ -213,8 +208,8 @@ const codeState = setup({
   id,
   initial: 'canvas',
   context: {
-    currentDirectory: savedRootDirectory,
     rootDirectory: savedRootDirectory,
+    currentDirectory: savedRootDirectory,
     files: [],
     openFiles: [],
     activeFilePath: null,
@@ -259,17 +254,14 @@ const codeState = setup({
         SELECT_PANEL: {
           actions: ['selectPanel']
         },
-        SET_ROOT_DIRECTORY: {
-          actions: ['assignRootDirectory', 'setRootDirectory']
-        },
         NAVIGATE_TO_DIRECTORY: {
           actions: ['navigateToDirectory']
         },
         OPEN_FILE: {
           actions: ['openFile']
         },
-        REQUEST_DIRECTORY_CHANGE: {
-          actions: ['requestDirectoryChange']
+        SET_ROOT_DIRECTORY: {
+          actions: ['assignRootDirectory', 'setRootDirectory']
         }
       }
     }
