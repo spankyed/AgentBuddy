@@ -252,7 +252,7 @@ const codeState = setup({
       const ev = event as { type: 'START_SEARCH'; query: string }
       sendToBackend('SEARCH_FILES', {
         query: ev.query,
-        path: context.currentDirectory,
+        path: context.rootDirectory,
         includePattern: context.searchOptions.includePattern || undefined,
         excludePattern: context.searchOptions.excludePattern || undefined,
         caseSensitive: context.searchOptions.caseSensitive,

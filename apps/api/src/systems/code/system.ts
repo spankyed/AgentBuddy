@@ -56,12 +56,14 @@ export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeE
 
 type CodeInternalEvents = SystemEvents 
   | { type: 'ASSIGN_DIRECTORY'; path: string }
+  | { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
   | { type: 'ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
   | { type: 'CLEAR_SEARCH_CONTROLLER' }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
   currentDirectory: string
+  rootDirectory: string
   repository: FileSystemRepository
   activeSearchController?: AbortController
 }
@@ -280,14 +282,24 @@ export const systemMachine = setup({
     setRootDirectory: ({ system, event, self }) => {
       const ev = typeOf('SET_ROOT_DIRECTORY', event)
       const pluginId = id
-      // Update the context to the new root directory
-      self.send({ type: 'ASSIGN_DIRECTORY', path: ev.path })
+      // Update both current and root directory
+      self.send({ type: 'ASSIGN_ROOT_DIRECTORY', path: ev.path })
       // Send event to frontend
       system.get(bus).send(emit(pluginId, {
         type: 'DIRECTORY_CHANGED',
         data: { path: ev.path },
       }))
     },
+    assignRootDirectory: assign({
+      rootDirectory: ({ event }) => {
+        const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        return ev.path
+      },
+      currentDirectory: ({ event }) => {
+        const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        return ev.path
+      }
+    }),
     searchFiles: async ({ system, event, self }) => {
       const ev = typeOf('SEARCH_FILES', event)
       const pluginId = id
@@ -377,6 +389,7 @@ export const systemMachine = setup({
   initial: 'idle',
   context: {
     currentDirectory: process.cwd(),
+    rootDirectory: process.cwd(),
     repository: new FileSystemRepository(),
   },
   states: {
@@ -417,6 +430,9 @@ export const systemMachine = setup({
         },
         SET_ROOT_DIRECTORY: {
           actions: ['setRootDirectory'],
+        },
+        ASSIGN_ROOT_DIRECTORY: {
+          actions: ['assignRootDirectory'],
         },
         SEARCH_FILES: {
           actions: ['searchFiles'],

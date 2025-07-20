@@ -168,7 +168,7 @@ const isSearching = useSelector(actor, (state) => state.context.isSearching)
 const searchError = useSelector(actor, (state) => state.context.searchError)
 const searchProgress = useSelector(actor, (state) => state.context.searchProgress)
 const searchOptions = useSelector(actor, (state) => state.context.searchOptions)
-const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
+const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)
@@ -233,8 +233,8 @@ const openMatch = (result: typeof searchResults.value[0], matchIndex: number) =>
 }
 
 const getRelativePath = (path: string) => {
-  if (currentDirectory.value && path.startsWith(currentDirectory.value)) {
-    return path.slice(currentDirectory.value.length + 1)
+  if (rootDirectory.value && path.startsWith(rootDirectory.value)) {
+    return path.slice(rootDirectory.value.length + 1)
   }
   return path
 }
