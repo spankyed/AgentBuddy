@@ -1,0 +1,181 @@
+<template>
+  <div class="flex flex-col h-full">
+    <!-- Tabs -->
+    <div v-if="openFiles.length > 0" class="flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800">
+      <div
+        v-for="file in openFiles"
+        :key="file.path"
+        class="flex items-center group"
+        :class="[
+          'border-r border-neutral-800',
+          activeFilePath === file.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800'
+        ]"
+      >
+        <button
+          @click="selectFile(file.path)"
+          class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
+          :class="activeFilePath === file.path ? 'text-neutral-100' : 'text-neutral-400'"
+        >
+          <component 
+            :is="getFileIcon(getFileExtension(file.path))"
+            class="flex-shrink-0 w-4 h-4"
+          />
+          <span class="max-w-[150px] truncate">{{ getFileName(file.path) }}</span>
+          <span v-if="file.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+        </button>
+        <button
+          @click.stop="closeFile(file.path)"
+          class="p-1 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+        >
+          <X class="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div class="relative flex-1 bg-neutral-850">
+      <div v-if="openFiles.length === 0" class="absolute inset-0 flex items-center justify-center">
+        <div class="text-center">
+          <FileCode class="w-16 h-16 mx-auto mb-4 text-neutral-600" />
+          <p class="text-neutral-400">Open a file from the explorer to start editing</p>
+        </div>
+      </div>
+      
+      <div v-else-if="activeFile" class="h-full">
+        <VueMonacoEditor
+          :value="activeFile.content"
+          @update:value="handleContentChange"
+          :options="editorOptions"
+          theme="vs-dark"
+          :language="getLanguage(activeFilePath)"
+          class="h-full"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { X, FileCode, File, FileJson, FileText, Image } from 'lucide-vue-next'
+import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
+import type { OpenFile } from '../state'
+
+// Props
+const props = defineProps<{
+  openFiles: OpenFile[]
+  activeFilePath: string | null
+}>()
+
+// Emits
+const emit = defineEmits<{
+  selectFile: [path: string]
+  closeFile: [path: string]
+  contentChange: [path: string, content: string]
+}>()
+
+// Computed
+const activeFile = computed(() => 
+  props.openFiles.find(f => f.path === props.activeFilePath)
+)
+
+// Monaco editor options
+const editorOptions = {
+  fontSize: 14,
+  lineNumbers: 'on' as const,
+  minimap: { enabled: false },
+  automaticLayout: true,
+  scrollBeyondLastLine: false,
+  wordWrap: 'on' as const,
+  tabSize: 2,
+  insertSpaces: true,
+  formatOnPaste: true,
+  formatOnType: true,
+}
+
+// Event handlers
+const selectFile = (path: string) => {
+  emit('selectFile', path)
+}
+
+const closeFile = (path: string) => {
+  emit('closeFile', path)
+}
+
+const handleContentChange = (value: string) => {
+  if (props.activeFilePath) {
+    emit('contentChange', props.activeFilePath, value)
+  }
+}
+
+// Helper functions
+const getFileName = (path: string) => {
+  return path.split('/').pop() || path
+}
+
+const getFileExtension = (path: string) => {
+  const parts = path.split('.')
+  return parts.length > 1 ? parts.pop() : ''
+}
+
+const getLanguage = (path: string | null) => {
+  if (!path) return 'plaintext'
+  
+  const ext = getFileExtension(path)
+  const languageMap: Record<string, string> = {
+    js: 'javascript',
+    jsx: 'javascript',
+    ts: 'typescript',
+    tsx: 'typescript',
+    vue: 'html',
+    py: 'python',
+    java: 'java',
+    c: 'c',
+    cpp: 'cpp',
+    go: 'go',
+    rs: 'rust',
+    php: 'php',
+    rb: 'ruby',
+    swift: 'swift',
+    json: 'json',
+    html: 'html',
+    css: 'css',
+    scss: 'scss',
+    sass: 'sass',
+    less: 'less',
+    xml: 'xml',
+    yaml: 'yaml',
+    yml: 'yaml',
+    md: 'markdown',
+    sql: 'sql',
+    sh: 'shell',
+    bash: 'shell',
+    ps1: 'powershell',
+    dockerfile: 'dockerfile',
+    makefile: 'makefile',
+  }
+  
+  return languageMap[ext || ''] || 'plaintext'
+}
+
+const getFileIcon = (extension?: string) => {
+  if (!extension) return File
+  
+  const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
+  const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
+  const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
+  
+  if (codeExtensions.includes(extension)) return FileCode
+  if (extension === 'json') return FileJson
+  if (textExtensions.includes(extension)) return FileText
+  if (imageExtensions.includes(extension)) return Image
+  
+  return File
+}
+</script>
+
+<style>
+.bg-neutral-850 {
+  background-color: rgb(28, 28, 30);
+}
+</style>
