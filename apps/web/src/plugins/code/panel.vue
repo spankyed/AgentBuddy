@@ -171,7 +171,7 @@ const directorySegments = computed(() => {
   
   if (!current) return []
   
-  // Normalize paths
+  // Normalize paths - remove trailing slashes except for root "/"
   const normalizedCurrent = current.endsWith('/') && current.length > 1 
     ? current.slice(0, -1) 
     : current
@@ -181,15 +181,20 @@ const directorySegments = computed(() => {
     
   const result: Array<{ name: string; path: string; isClickable: boolean }> = []
   
-  // Check if current directory is within the root
+  // Check if current directory is within or equal to the root
   if (normalizedCurrent.startsWith(normalizedRoot)) {
-    // Add root as ~
+    // Get the root directory name
     const rootName = normalizedRoot.split('/').filter(Boolean).pop() || '/'
-    result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
     
-    // Get the relative path from root
-    const relativePath = normalizedCurrent.slice(normalizedRoot.length)
-    if (relativePath && relativePath !== '/') {
+    // If we're exactly at the root, just show ~/rootName
+    if (normalizedCurrent === normalizedRoot) {
+      result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
+    } else {
+      // We're in a subdirectory of root
+      result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
+      
+      // Get the relative path from root
+      const relativePath = normalizedCurrent.slice(normalizedRoot.length)
       const segments = relativePath.split('/').filter(Boolean)
       let currentPath = normalizedRoot
       
