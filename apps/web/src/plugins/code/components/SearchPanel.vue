@@ -201,10 +201,70 @@ const totalMatches = computed(() => {
 })
 
 const searchPlaceholder = computed(() => {
-  const location = searchOptions.value.searchInCurrentDir 
-    ? getRelativePath(currentDirectory.value) || 'current directory'
-    : '~/' + rootDirectory.value.split('/').pop()
-  return `Search in ${location}`
+  if (searchOptions.value.searchInCurrentDir) {
+    const path = currentDirectory.value
+    if (!path) return 'Search in current directory'
+    
+    // Get relative path from root
+    const relativePath = rootDirectory.value && path.startsWith(rootDirectory.value) 
+      ? path.slice(rootDirectory.value.length + 1) || '.'
+      : path
+    
+    // Truncate long paths in the middle
+    const maxLength = 35
+    if (relativePath.length > maxLength) {
+      const parts = relativePath.split('/')
+      if (parts.length > 2) {
+        // Build path from both ends until we exceed maxLength
+        let leftParts: string[] = []
+        let rightParts: string[] = []
+        let leftIndex = 0
+        let rightIndex = parts.length - 1
+        let currentLength = 3 // for "..."
+        
+        // Always include first and last
+        leftParts.push(parts[leftIndex++])
+        rightParts.unshift(parts[rightIndex--])
+        currentLength += leftParts[0].length + rightParts[0].length + 2 // +2 for slashes
+        
+        // Add parts from both sides while we have space
+        while (leftIndex <= rightIndex && currentLength < maxLength) {
+          // Try adding from left
+          if (leftIndex <= rightIndex) {
+            const nextLeft = parts[leftIndex]
+            if (currentLength + nextLeft.length + 1 <= maxLength) {
+              leftParts.push(nextLeft)
+              currentLength += nextLeft.length + 1
+              leftIndex++
+            } else {
+              break
+            }
+          }
+          
+          // Try adding from right
+          if (leftIndex <= rightIndex) {
+            const nextRight = parts[rightIndex]
+            if (currentLength + nextRight.length + 1 <= maxLength) {
+              rightParts.unshift(nextRight)
+              currentLength += nextRight.length + 1
+              rightIndex--
+            } else {
+              break
+            }
+          }
+        }
+        
+        // Only show ellipsis if we actually skipped parts
+        if (leftIndex <= rightIndex) {
+          return `Search in ${leftParts.join('/')}/.../${rightParts.join('/')}`
+        }
+      }
+    }
+    
+    return `Search in ${relativePath}`
+  } else {
+    return `Search in ~/${rootDirectory.value.split('/').pop()}`
+  }
 })
 
 // Methods
