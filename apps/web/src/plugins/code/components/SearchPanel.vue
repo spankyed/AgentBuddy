@@ -207,7 +207,7 @@ const searchPlaceholder = computed(() => {
     
     // Get relative path from root
     const relativePath = rootDirectory.value && path.startsWith(rootDirectory.value) 
-      ? path.slice(rootDirectory.value.length + 1) || '.'
+      ? path.slice(rootDirectory.value.length + 1) || `~/${rootDirectory.value.split('/').pop()}`
       : path
     
     // Truncate long paths in the middle
