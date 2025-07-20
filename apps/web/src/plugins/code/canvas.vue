@@ -11,9 +11,9 @@
     />
 
     <!-- Status Bar -->
-    <div class="flex items-center justify-between px-4 py-1 text-xs border-t bg-neutral-850 border-neutral-800">
+    <div class="flex items-center justify-between px-4 py-1 text-xs border-t bg-neutral-800/80 border-neutral-800">
       <div class="flex items-center gap-4">
-        <span v-if="activeFile" class="text-neutral-400 flex items-center gap-2">
+        <span v-if="activeFile" class="flex items-center gap-2 text-neutral-400">
           <component :is="activeFile.isDiff ? GitCompare : FileCode" class="w-3 h-3" />
           {{ getFileName(activeFile.isDiff && activeFile.gitFile ? activeFile.gitFile.path : activeFile.path) }}
         </span>

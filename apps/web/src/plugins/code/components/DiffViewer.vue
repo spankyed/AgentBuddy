@@ -1,12 +1,12 @@
 <template>
-  <div class="h-full flex flex-col">
-    <div class="flex items-center gap-2 px-4 py-2 bg-neutral-800 border-b border-neutral-700">
+  <div class="flex flex-col h-full">
+    <!-- <div class="flex items-center gap-2 px-4 py-2 border-b bg-neutral-800 border-neutral-700">
       <GitCompare class="w-4 h-4 text-neutral-400" />
       <span class="text-sm text-neutral-300">{{ selectedGitFile.path }}</span>
       <span class="text-xs px-2 py-0.5 rounded" :class="selectedGitFile.staged ? 'bg-green-900 text-green-400' : 'bg-yellow-900 text-yellow-400'">
         {{ selectedGitFile.staged ? 'Staged' : 'Unstaged' }}
       </span>
-    </div>
+    </div> -->
     <div v-if="gitDiff" class="flex-1">
       <VueMonacoDiffEditor
         :original="gitDiff.originalContent || ''"
@@ -17,7 +17,7 @@
         class="h-full"
       />
     </div>
-    <div v-else class="flex-1 flex items-center justify-center">
+    <div v-else class="flex items-center justify-center flex-1">
       <div class="text-neutral-400">Loading diff...</div>
     </div>
   </div>
