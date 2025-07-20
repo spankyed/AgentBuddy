@@ -2,7 +2,6 @@ import { setup, type ActorRefFrom, assign } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 
-// Temporary type definition until backend builds
 type OutgoingCodeEvents =
   | { type: 'FILES_LISTED'; data: DirectoryContent }
   | { type: 'FILE_CONTENT'; data: FileContent }
@@ -17,6 +16,15 @@ type OutgoingCodeEvents =
   | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
 
 export const id = 'code' as const;
+
+// Helper function to send events to backend
+const sendToBackend = (type: string, data: any) => {
+  trpc.bus.send.mutate({
+    systemId: id as any,
+    type: type as any,
+    ...data
+  } as any)
+}
 
 export interface FileInfo {
   name: string
@@ -52,7 +60,7 @@ export type Context = {
   activeFilePath: string | null
   isLoading: boolean
   error: string | null
-  selectedPanel: 'explorer' | 'search' | 'commit' | 'pr'
+  selectedPanel: PanelType
 }
 
 export type Event = 
@@ -63,12 +71,9 @@ export type Event =
   | { type: 'CREATE_FILE'; name: string }
   | { type: 'DELETE_FILE'; path: string }
   | { type: 'RENAME_FILE'; oldPath: string; newPath: string }
-  | { type: 'CHANGE_DIRECTORY'; path: string }
-  | { type: 'SELECT_PANEL'; panel: 'explorer' | 'search' | 'commit' | 'pr' }
+  | { type: 'SELECT_PANEL'; panel: PanelType }
   | { type: 'FILE_MODIFIED'; path: string; content: string }
-  | { type: 'REFRESH_FILES' }
   | { type: 'PLUGIN_ACTIVATED' }
-  | { type: 'PLUGIN_DEACTIVATED' }
   | { type: 'SET_ROOT_DIRECTORY'; path: string }
   | { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
   | { type: 'OPEN_FILE'; path: string }
@@ -76,9 +81,11 @@ export type Event =
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-// Load root directory from localStorage
+type PanelType = 'explorer' | 'search' | 'commit' | 'pr';
+
 const STORAGE_KEY = 'code-plugin-root-directory'
-const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || '/Users/spankyed/Develop/Projects/AgentBuddy/'
+const DEFAULT_ROOT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
+const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || DEFAULT_ROOT_DIR
 
 const codeState = setup({
   types: {
@@ -164,24 +171,15 @@ const codeState = setup({
     }),
     selectPanel: assign({
       selectedPanel: ({ event }) => {
-        const ev = event as { type: 'SELECT_PANEL'; panel: 'explorer' | 'search' | 'commit' | 'pr' }
+        const ev = event as { type: 'SELECT_PANEL'; panel: PanelType }
         return ev.panel
       }
     }),
-    setLoading: assign({
-      isLoading: true,
-      error: null
-    }),
+    setLoading: assign({ isLoading: true, error: null }),
     setRootDirectory: ({ event }) => {
       const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
-      // Save to localStorage
       localStorage.setItem(STORAGE_KEY, ev.path)
-      // Send to backend to list files in the new root
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'LIST_FILES' as any,
-        path: ev.path
-      } as any)
+      sendToBackend('LIST_FILES', { path: ev.path })
     },
     assignRootDirectory: assign({
       rootDirectory: ({ event }) => {
@@ -193,54 +191,22 @@ const codeState = setup({
         return ev.path
       }
     }),
-    // Action to navigate to a directory
     navigateToDirectory: ({ event }) => {
       const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
-      // Change directory
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'CHANGE_DIRECTORY' as any,
-        path: ev.path
-      } as any)
-      // List files
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'LIST_FILES' as any,
-        path: ev.path
-      } as any)
+      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
+      sendToBackend('LIST_FILES', { path: ev.path })
     },
-    // Action to open a file or directory
     openFile: ({ event }) => {
       const ev = event as { type: 'OPEN_FILE'; path: string }
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'READ_FILE' as any,
-        path: ev.path
-      } as any)
+      sendToBackend('READ_FILE', { path: ev.path })
     },
-    // Action to request directory change
     requestDirectoryChange: ({ event }) => {
       const ev = event as { type: 'REQUEST_DIRECTORY_CHANGE'; path: string }
-      // Change directory
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'CHANGE_DIRECTORY' as any,
-        path: ev.path
-      } as any)
-      // List files
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'LIST_FILES' as any,
-        path: ev.path
-      } as any)
+      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
+      sendToBackend('LIST_FILES', { path: ev.path })
     },
-    // Action to list files on plugin activation
     requestInitialFiles: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'LIST_FILES' as any,
-        path: context.currentDirectory
-      } as any)
+      sendToBackend('LIST_FILES', { path: context.currentDirectory })
     }
   }
 }).createMachine({
