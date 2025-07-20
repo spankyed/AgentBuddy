@@ -21,9 +21,9 @@
     <!-- Panel Content -->
     <div class="flex-1 overflow-hidden">
       <!-- Explorer Panel -->
-      <div v-if="selectedPanel === 'explorer'" class="h-full flex flex-col">
+      <div v-if="selectedPanel === 'explorer'" class="flex flex-col h-full">
         <div class="p-2 border-b border-neutral-800">
-          <div class="flex items-center gap-1 text-xs overflow-x-auto whitespace-nowrap">
+          <div class="flex items-center gap-1 overflow-x-auto text-xs whitespace-nowrap">
             <span
               v-for="(segment, index) in directorySegments"
               :key="index"
@@ -33,7 +33,7 @@
                 <ContextMenuTrigger as-child>
                   <button
                     @click="navigateToSegment(segment.path)"
-                    class="px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
+                    class="px-2 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
                     :class="{ 
                       'font-medium text-neutral-200': segment.path === currentDirectory
                     }"
@@ -48,7 +48,7 @@
                   >
                     <ContextMenuItem
                       @select="() => setAsRoot(segment.path)"
-                      class="px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer focus:bg-neutral-800 focus:outline-none"
+                      class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
                     >
                       Set as Root Directory
                     </ContextMenuItem>
@@ -60,7 +60,7 @@
           </div>
         </div>
         
-        <div v-if="isLoading" class="flex-1 flex items-center justify-center">
+        <div v-if="isLoading" class="flex items-center justify-center flex-1">
           <div class="text-sm text-neutral-400">Loading...</div>
         </div>
         
@@ -73,15 +73,15 @@
             v-for="file in files"
             :key="file.path"
             @click="handleFileClick(file)"
-            class="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-neutral-800 transition-colors"
+            class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer hover:bg-neutral-800"
           >
             <component 
               :is="file.type === 'directory' ? Folder : getFileIcon(file.extension)"
-              class="w-4 h-4 flex-shrink-0"
+              class="flex-shrink-0 w-4 h-4"
               :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
             />
-            <span class="text-sm text-neutral-200 truncate">{{ file.name }}</span>
-            <span v-if="file.type === 'file' && file.size" class="text-xs text-neutral-500 ml-auto">
+            <span class="text-sm truncate text-neutral-200">{{ file.name }}</span>
+            <span v-if="file.type === 'file' && file.size" class="ml-auto text-xs text-neutral-500">
               {{ formatFileSize(file.size) }}
             </span>
           </div>
