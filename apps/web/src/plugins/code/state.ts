@@ -1,5 +1,6 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
+import { trpc } from '@/core/trpc';
 
 // Temporary type definition until backend builds
 type OutgoingCodeEvents =
@@ -45,6 +46,7 @@ export interface OpenFile {
 
 export type Context = {
   currentDirectory: string
+  rootDirectory: string
   files: FileInfo[]
   openFiles: OpenFile[]
   activeFilePath: string | null
@@ -66,9 +68,17 @@ export type Event =
   | { type: 'FILE_MODIFIED'; path: string; content: string }
   | { type: 'REFRESH_FILES' }
   | { type: 'PLUGIN_ACTIVATED' }
-  | { type: 'PLUGIN_DEACTIVATED' };
+  | { type: 'PLUGIN_DEACTIVATED' }
+  | { type: 'SET_ROOT_DIRECTORY'; path: string }
+  | { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
+  | { type: 'OPEN_FILE'; path: string }
+  | { type: 'REQUEST_DIRECTORY_CHANGE'; path: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
+
+// Load root directory from localStorage
+const STORAGE_KEY = 'code-plugin-root-directory'
+const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || '/Users/spankyed/Develop/Projects/AgentBuddy/'
 
 const codeState = setup({
   types: {
@@ -161,13 +171,84 @@ const codeState = setup({
     setLoading: assign({
       isLoading: true,
       error: null
-    })
+    }),
+    setRootDirectory: ({ event }) => {
+      const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEY, ev.path)
+      // Send to backend to list files in the new root
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'LIST_FILES' as any,
+        path: ev.path
+      } as any)
+    },
+    assignRootDirectory: assign({
+      rootDirectory: ({ event }) => {
+        const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
+        return ev.path
+      },
+      currentDirectory: ({ event }) => {
+        const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
+        return ev.path
+      }
+    }),
+    // Action to navigate to a directory
+    navigateToDirectory: ({ event }) => {
+      const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
+      // Change directory
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'CHANGE_DIRECTORY' as any,
+        path: ev.path
+      } as any)
+      // List files
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'LIST_FILES' as any,
+        path: ev.path
+      } as any)
+    },
+    // Action to open a file or directory
+    openFile: ({ event }) => {
+      const ev = event as { type: 'OPEN_FILE'; path: string }
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'READ_FILE' as any,
+        path: ev.path
+      } as any)
+    },
+    // Action to request directory change
+    requestDirectoryChange: ({ event }) => {
+      const ev = event as { type: 'REQUEST_DIRECTORY_CHANGE'; path: string }
+      // Change directory
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'CHANGE_DIRECTORY' as any,
+        path: ev.path
+      } as any)
+      // List files
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'LIST_FILES' as any,
+        path: ev.path
+      } as any)
+    },
+    // Action to list files on plugin activation
+    requestInitialFiles: ({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'LIST_FILES' as any,
+        path: context.currentDirectory
+      } as any)
+    }
   }
 }).createMachine({
   id,
   initial: 'canvas',
   context: {
-    currentDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy/',
+    currentDirectory: savedRootDirectory,
+    rootDirectory: savedRootDirectory,
     files: [],
     openFiles: [],
     activeFilePath: null,
@@ -180,7 +261,7 @@ const codeState = setup({
       meta: breadcrumb('canvas', 'Editor', true),
       on: {
         PLUGIN_ACTIVATED: {
-          actions: ['setLoading']
+          actions: ['setLoading', 'requestInitialFiles']
         },
         CURRENT_DIRECTORY: {
           actions: ['assignCurrentDirectory']
@@ -211,6 +292,18 @@ const codeState = setup({
         },
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        SET_ROOT_DIRECTORY: {
+          actions: ['assignRootDirectory', 'setRootDirectory']
+        },
+        NAVIGATE_TO_DIRECTORY: {
+          actions: ['navigateToDirectory']
+        },
+        OPEN_FILE: {
+          actions: ['openFile']
+        },
+        REQUEST_DIRECTORY_CHANGE: {
+          actions: ['requestDirectoryChange']
         }
       }
     }

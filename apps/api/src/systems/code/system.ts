@@ -21,6 +21,7 @@ const IncomingCodeEvents = [
   busEvent('CREATE_DIRECTORY', { path: z.string() }),
   busEvent('GET_FILE_INFO', { path: z.string() }),
   busEvent('CHANGE_DIRECTORY', { path: z.string() }),
+  busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -257,12 +258,23 @@ export const systemMachine = setup({
         return ev.path
       },
     }),
+    setRootDirectory: ({ system, event, self }) => {
+      const ev = typeOf('SET_ROOT_DIRECTORY', event)
+      const pluginId = id
+      // Update the context
+      self.send({ type: 'ASSIGN_DIRECTORY', path: ev.path })
+      // Send event to frontend
+      system.get(bus).send(emit(pluginId, {
+        type: 'DIRECTORY_CHANGED',
+        data: { path: ev.path },
+      }))
+    },
   },
 }).createMachine({
   id,
   initial: 'idle',
   context: {
-    currentDirectory: '/Users/spankyed/Develop/Projects/AgentBuddy/',
+    currentDirectory: process.cwd(),
     repository: new FileSystemRepository(),
   },
   states: {
@@ -300,6 +312,9 @@ export const systemMachine = setup({
         },
         ASSIGN_DIRECTORY: {
           actions: ['assignDirectory'],
+        },
+        SET_ROOT_DIRECTORY: {
+          actions: ['setRootDirectory'],
         },
       },
     },

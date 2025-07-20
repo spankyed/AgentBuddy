@@ -29,16 +29,32 @@
               :key="index"
               class="flex items-center flex-shrink-0"
             >
-              <button
-                @click="navigateToSegment(index)"
-                class="px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
-                :class="{ 
-                  'font-medium text-neutral-200': index === directorySegments.length - 1
-                }"
-                :title="segment.path"
-              >
-                {{ segment.name }}
-              </button>
+              <ContextMenuRoot>
+                <ContextMenuTrigger as-child>
+                  <button
+                    @click="navigateToSegment(index)"
+                    class="px-2 py-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-all"
+                    :class="{ 
+                      'font-medium text-neutral-200': index === directorySegments.length - 1
+                    }"
+                    :title="segment.path"
+                  >
+                    {{ segment.name }}
+                  </button>
+                </ContextMenuTrigger>
+                <ContextMenuPortal>
+                  <ContextMenuContent
+                    class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+                  >
+                    <ContextMenuItem
+                      @select="() => setAsRoot(segment.path)"
+                      class="px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer focus:bg-neutral-800 focus:outline-none"
+                    >
+                      Set as Root Directory
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenuPortal>
+              </ContextMenuRoot>
               <span v-if="index < directorySegments.length - 1" class="text-neutral-600 mx-0.5">/</span>
             </span>
           </div>
@@ -98,14 +114,14 @@
       </button>
     </div>
   </div>
+  
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from './state'
-import { trpc } from '@/core/trpc'
 import { 
   FolderOpen, 
   Search, 
@@ -120,15 +136,25 @@ import {
   Home,
   HardDrive
 } from 'lucide-vue-next'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+} from 'reka-ui'
 
 const actor: CodeState = applicationState.system.get(id)
 
 // State selectors
 const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
+const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 const files = useSelector(actor, (state) => state.context.files)
 const isLoading = useSelector(actor, (state) => state.context.isLoading)
 const error = useSelector(actor, (state) => state.context.error)
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
+
+
 
 // Panel configuration
 const panels = [
@@ -140,40 +166,50 @@ const panels = [
 
 // Computed properties
 const directorySegments = computed(() => {
-  const path = currentDirectory.value
-  if (!path) return []
+  const current = currentDirectory.value
+  const root = rootDirectory.value
   
-  // Normalize the path - remove trailing slash except for root
-  const normalizedPath = path.endsWith('/') && path.length > 1 
-    ? path.slice(0, -1) 
-    : path
+  if (!current) return []
+  
+  // Normalize paths
+  const normalizedCurrent = current.endsWith('/') && current.length > 1 
+    ? current.slice(0, -1) 
+    : current
+  const normalizedRoot = root.endsWith('/') && root.length > 1 
+    ? root.slice(0, -1) 
+    : root
     
   const result: Array<{ name: string; path: string; isClickable: boolean }> = []
   
-  // Handle absolute paths
-  if (normalizedPath.startsWith('/')) {
-    // Add root
-    result.push({ name: '/', path: '/', isClickable: true })
+  // Check if current directory is within the root
+  if (normalizedCurrent.startsWith(normalizedRoot)) {
+    // Add root as ~
+    const rootName = normalizedRoot.split('/').filter(Boolean).pop() || '/'
+    result.push({ name: `~/${rootName}`, path: normalizedRoot, isClickable: true })
     
-    // Split path and build segments
-    const segments = normalizedPath.slice(1).split('/').filter(Boolean)
-    
-    segments.forEach((segment, index) => {
-      const segmentPath = '/' + segments.slice(0, index + 1).join('/')
-      result.push({ name: segment, path: segmentPath, isClickable: true })
-    })
-  } else if (normalizedPath === '.') {
-    // Just current directory
-    result.push({ name: '.', path: '.', isClickable: true })
+    // Get the relative path from root
+    const relativePath = normalizedCurrent.slice(normalizedRoot.length)
+    if (relativePath && relativePath !== '/') {
+      const segments = relativePath.split('/').filter(Boolean)
+      let currentPath = normalizedRoot
+      
+      segments.forEach((segment) => {
+        currentPath = currentPath + '/' + segment
+        result.push({ name: segment, path: currentPath, isClickable: true })
+      })
+    }
   } else {
-    // Relative path starting with .
-    result.push({ name: '.', path: '.', isClickable: true })
-    
-    const segments = normalizedPath.split('/').filter(Boolean)
-    segments.forEach((segment, index) => {
-      const segmentPath = './' + segments.slice(0, index + 1).join('/')
-      result.push({ name: segment, path: segmentPath, isClickable: true })
-    })
+    // Current is outside root, show full path
+    if (normalizedCurrent.startsWith('/')) {
+      result.push({ name: '/', path: '/', isClickable: true })
+      const segments = normalizedCurrent.slice(1).split('/').filter(Boolean)
+      segments.forEach((segment, index) => {
+        const segmentPath = '/' + segments.slice(0, index + 1).join('/')
+        result.push({ name: segment, path: segmentPath, isClickable: true })
+      })
+    } else {
+      result.push({ name: '.', path: '.', isClickable: true })
+    }
   }
   
   return result
@@ -184,60 +220,30 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr') => {
   actor.send({ type: 'SELECT_PANEL', panel })
 }
 
-const navigateToSegment = async (index: number) => {
+const navigateToSegment = (index: number) => {
   const segment = directorySegments.value[index]
   if (segment && segment.path !== currentDirectory.value) {
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'CHANGE_DIRECTORY' as any,
-      path: segment.path
-    } as any)
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'LIST_FILES' as any,
-      path: segment.path
-    } as any)
+    actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path: segment.path })
   }
 }
 
-const handleFileClick = async (file: typeof files.value[0]) => {
+const setAsRoot = (path: string) => {
+  // Send event to state machine - it will handle the API calls
+  actor.send({ type: 'SET_ROOT_DIRECTORY', path })
+}
+
+const handleFileClick = (file: typeof files.value[0]) => {
   if (file.type === 'directory') {
-    // Change to the directory
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'CHANGE_DIRECTORY' as any,
-      path: file.path
-    } as any)
-    // List files in the new directory
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'LIST_FILES' as any,
-      path: file.path
-    } as any)
+    actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path: file.path })
   } else {
-    // Read the file content
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'READ_FILE' as any,
-      path: file.path
-    } as any)
+    actor.send({ type: 'OPEN_FILE', path: file.path })
   }
 }
 
-const changeDirectory = async () => {
-  // TODO: Implement directory picker dialog
+const changeDirectory = () => {
   const newPath = prompt('Enter directory path:', currentDirectory.value)
   if (newPath && newPath !== currentDirectory.value) {
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'CHANGE_DIRECTORY' as any,
-      path: newPath
-    } as any)
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'LIST_FILES' as any,
-      path: newPath
-    } as any)
+    actor.send({ type: 'REQUEST_DIRECTORY_CHANGE', path: newPath })
   }
 }
 
@@ -263,13 +269,8 @@ const formatFileSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Request initial file list when plugin is activated
+// Plugin activation is handled by the state machine
 onMounted(() => {
-  // Request initial file list
-  trpc.bus.send.mutate({
-    systemId: id as any,
-    type: 'LIST_FILES' as any,
-    path: currentDirectory.value
-  } as any)
+  actor.send({ type: 'PLUGIN_ACTIVATED' })
 })
 </script>
