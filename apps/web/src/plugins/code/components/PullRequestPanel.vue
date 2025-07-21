@@ -1,5 +1,5 @@
 <template>
-  <div class="pr-panel-container">
+  <div class="pr-panel-container bg-neutral-900">
     <div class="pr-header">
       <h3 class="text-sm font-medium">Pull Request Changes</h3>
       <button
@@ -25,7 +25,7 @@
     <div v-else-if="prFiles.length === 0" class="empty-state">
       <GitBranch class="w-5 h-5 text-neutral-500" />
       <p class="text-sm text-neutral-400">No changes found</p>
-      <p class="text-xs text-neutral-500 mt-1">
+      <p class="mt-1 text-xs text-neutral-500">
         Comparing with {{ prBaseBranch || 'base branch' }}
       </p>
     </div>
@@ -98,7 +98,6 @@ const handleFileSelect = (file: TreeNode) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #18181b;
 }
 
 .pr-header {
