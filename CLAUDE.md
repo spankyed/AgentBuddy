@@ -12,9 +12,6 @@ AgentBuddy is a "vibe-working platform" - an AI agent platform built with a focu
 # Install dependencies (use pnpm v10.10.0)
 pnpm install
 
-# Run both frontend and backend in parallel (usually already running and not needed)
-pnpm dev
-
 # re-build frontend only (ensure app compiles without type errors)
 pnpm fe
 
