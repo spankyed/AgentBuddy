@@ -116,6 +116,8 @@ export class GitRepository {
       case 'R': return 'renamed'
       case 'C': return 'copied'
       case '?': return 'untracked'
+      case 'T': return 'modified' // Type change (e.g., file to symlink)
+      case 'U': return 'modified' // Unmerged (conflict)
       default: return 'modified'
     }
   }
@@ -149,7 +151,7 @@ export class GitRepository {
       }
     }
     
-    const args = ['diff']
+    const args = ['diff', '--binary']
     if (staged) {
       args.push('--cached')
     }
@@ -237,9 +239,29 @@ export class GitRepository {
   }
 
   async getBaseBranch(): Promise<string> {
-    // Try to find the main branch (could be 'main' or 'master')
+    // First, try to get the upstream branch of the current HEAD
+    const upstreamResult = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    if (upstreamResult.success && upstreamResult.output) {
+      // Extract branch name from refs/remotes/origin/branch-name
+      const match = upstreamResult.output.trim().match(/^[^\/]+\/(.+)$/)
+      if (match) {
+        return match[1]
+      }
+    }
+    
+    // Fallback: get the default branch from origin
+    const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+    if (originHeadResult.success && originHeadResult.output) {
+      // This returns "origin/main" or similar, extract just the branch name
+      const match = originHeadResult.output.trim().match(/^origin\/(.+)$/)
+      if (match) {
+        return match[1]
+      }
+    }
+    
+    // Last resort: check for common default branch names
     const checkBranch = async (branch: string): Promise<boolean> => {
-      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
+      const result = await this.executeGitCommand(['rev-parse', '--verify', `origin/${branch}`])
       return result.success
     }
     
@@ -249,39 +271,45 @@ export class GitRepository {
       return 'master'
     }
     
-    // Fallback: get the default branch from origin
-    const result = await this.executeGitCommand(['symbolic-ref', 'refs/remotes/origin/HEAD'])
-    if (result.success && result.output) {
-      const match = result.output.match(/refs\/remotes\/origin\/(.+)/)
-      if (match) {
-        return match[1].trim()
-      }
-    }
-    
-    throw new Error('Could not determine base branch')
+    throw new Error('Could not determine base branch. Please ensure you have a remote configured.')
   }
 
   async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
     const target = targetBranch || 'HEAD'
     
-    // Get the list of changed files between branches
-    const result = await this.executeGitCommand(['diff', '--name-status', `${baseBranch}...${target}`])
+    // Get the list of changed files between branches with null-delimiter for safety
+    const result = await this.executeGitCommand(['diff', '--name-status', '-z', `${baseBranch}...${target}`])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get branch diff')
     }
     
     const files: GitStatusFile[] = []
-    const lines = (result.output || '').split('\n').filter(Boolean)
+    const records = (result.output || '').split('\0').filter(Boolean)
     
-    for (const line of lines) {
-      const match = line.match(/^([AMDRC])\s+(.+)$/)
+    for (let i = 0; i < records.length; i++) {
+      // Parse status with optional similarity score (e.g., R100, C85)
+      const match = records[i].match(/^([A-Z])(\d{1,3})?\s+(.+)$/)
       if (match) {
-        const [, status, filePath] = match
-        files.push({
-          path: filePath,
-          status: this.mapGitStatus(status),
-          staged: false // Not applicable for branch diffs
-        })
+        const [, statusCode, , filePath] = match
+        
+        // Handle rename/copy which have two paths (old\tnew)
+        if (statusCode === 'R' || statusCode === 'C') {
+          const paths = filePath.split('\t')
+          if (paths.length === 2) {
+            // For rename/copy, we show the new path
+            files.push({
+              path: paths[1],
+              status: this.mapGitStatus(statusCode),
+              staged: false
+            })
+          }
+        } else {
+          files.push({
+            path: filePath,
+            status: this.mapGitStatus(statusCode),
+            staged: false
+          })
+        }
       }
     }
     
@@ -291,7 +319,7 @@ export class GitRepository {
   async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
     const target = targetBranch || 'HEAD'
     
-    const result = await this.executeGitCommand(['diff', `${baseBranch}...${target}`, '--', filePath])
+    const result = await this.executeGitCommand(['diff', '--binary', `${baseBranch}...${target}`, '--', filePath])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get file diff between branches')
     }
@@ -306,5 +334,45 @@ export class GitRepository {
       return ''
     }
     return result.output || ''
+  }
+
+  async getMergeBase(baseBranch: string, targetBranch: string = 'HEAD'): Promise<string> {
+    const result = await this.executeGitCommand(['merge-base', baseBranch, targetBranch])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to find merge base')
+    }
+    return result.output?.trim() || ''
+  }
+
+  // Optimized method to get all diffs at once
+  async getAllBranchDiffs(baseBranch: string, targetBranch?: string): Promise<{ path: string; diff: string }[]> {
+    const target = targetBranch || 'HEAD'
+    const mergeBase = await this.getMergeBase(baseBranch, target)
+    
+    // Get the full patch diff with binary support and null delimiters
+    const result = await this.executeGitCommand(['diff', '-p', '--binary', '-z', `${mergeBase}..${target}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get branch diffs')
+    }
+    
+    const diffs: { path: string; diff: string }[] = []
+    const output = result.output || ''
+    
+    // Split by diff headers (starts with "diff --git")
+    const diffPattern = /diff --git a\/.+ b\/.+/
+    const parts = output.split(diffPattern)
+    
+    // Skip the first empty part
+    for (let i = 1; i < parts.length; i++) {
+      // Extract filename from the diff header
+      const headerMatch = output.match(new RegExp(`(diff --git a/(.+) b/.+)(?=${parts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`))
+      if (headerMatch) {
+        const path = headerMatch[2]
+        const diff = headerMatch[1] + parts[i]
+        diffs.push({ path, diff })
+      }
+    }
+    
+    return diffs
   }
 }
