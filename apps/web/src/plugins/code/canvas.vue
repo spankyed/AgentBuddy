@@ -27,25 +27,23 @@
           File refreshed
         </span>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <button
+          v-if="activeFile && activeFile.pendingSaveConflict && !activeFile.isDiff"
+          @click="loadExternalChanges"
+          class="px-2 py-0.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded transition-colors"
+        >
+          Load Changes
+        </button>
         <button
           v-if="activeFile && activeFile.modified && !activeFile.isDiff"
           @click="() => saveFile()"
           class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
         >
-          Save
+          {{ activeFile.pendingSaveConflict ? 'Override' : 'Save' }}
         </button>
       </div>
     </div>
-    
-    <!-- File Override Dialog -->
-    <FileOverrideDialog
-      v-model="showOverrideDialog"
-      :file-path="conflictFilePath"
-      @override="handleOverride"
-      @load-external="handleLoadExternal"
-      @show-diff="handleShowDiff"
-    />
   </div>
 </template>
 
@@ -57,7 +55,6 @@ import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode } from 'lucide-vue-next'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import FileEditor from './components/FileEditor.vue'
-import FileOverrideDialog from './components/FileOverrideDialog.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -69,10 +66,6 @@ const activeFilePath = useSelector(actor, (state) => state.context.activeFilePat
 const activeFile = computed(() => 
   openFiles.value.find(f => f.path === activeFilePath.value)
 )
-
-// Dialog state
-const showOverrideDialog = ref(false)
-const conflictFilePath = ref('')
 
 // Notification state
 const refreshNotification = ref(false)
@@ -120,15 +113,9 @@ const handleContentChange = (path: string, content: string) => {
   })
 }
 
-const saveFile = async (force = false) => {
+const saveFile = async () => {
   if (activeFile.value && !activeFile.value.isDiff) {
-    // Check for external modification conflict
-    if (!force && activeFile.value.pendingSaveConflict) {
-      conflictFilePath.value = activeFile.value.path
-      showOverrideDialog.value = true
-      return
-    }
-    
+    // Just save/override regardless of conflict
     await trpc.bus.send.mutate({
       systemId: id as any,
       type: 'WRITE_FILE' as any,
@@ -138,25 +125,15 @@ const saveFile = async (force = false) => {
   }
 }
 
-// Dialog handlers
-const handleOverride = () => {
-  saveFile(true)
-}
-
-const handleLoadExternal = () => {
-  if (conflictFilePath.value) {
+const loadExternalChanges = () => {
+  if (activeFile.value && activeFile.value.pendingSaveConflict) {
     // Reload the file from disk
     trpc.bus.send.mutate({
       systemId: id as any,
       type: 'READ_FILE' as any,
-      path: conflictFilePath.value
+      path: activeFile.value.path
     } as any)
   }
-}
-
-const handleShowDiff = () => {
-  // TODO: Implement diff view between current and external version
-  console.log('Show diff not yet implemented')
 }
 
 // Helper functions
