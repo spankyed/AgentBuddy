@@ -46,8 +46,8 @@
         <!-- Terminal for terminal tabs -->
         <TerminalView
           v-if="activeFile && isTerminal(activeFile)"
-          :ref="el => { if (el && activeFile && isTerminal(activeFile)) terminalRefs[activeFile.terminalId] = el as InstanceType<typeof TerminalView> }"
           :terminal-info="(activeFile as TerminalTab).terminalInfo"
+          :outputs="terminalOutputs[(activeFile as TerminalTab).terminalId]"
           class="h-full"
         />
         <!-- Diff viewer for diff tabs -->
@@ -72,7 +72,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useSelector } from '@xstate/vue'
 import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
@@ -96,22 +97,29 @@ const emit = defineEmits<{
 // Get actor for terminal output
 const actor: CodeState = applicationState.system.get(id)
 
-// Refs for terminal components
-const terminalRefs = ref<Record<string, InstanceType<typeof TerminalView>>>({})
+// Get terminal outputs from state
+const terminalOutputs = useSelector(actor, (state) => state.context.terminalOutputs)
+
+// Computed
+const activeFile = computed(() => 
+  props.openFiles.find(f => f.path === props.activeFilePath)
+)
 
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
-// Subscribe to terminal output
+// Subscribe to terminal output and focus
 let unsubscribe: (() => void) | null = null
 
+// Terminal focus is handled within TerminalView component
+
 onMounted(() => {
-  // Subscribe to state changes to handle terminal output
-  const subscription = actor.subscribe((state) => {
-    // This approach avoids direct event handling - the parent component
-    // or a dedicated terminal manager would handle the actual output events
+  // Subscribe to state changes
+  // Terminal output will be handled in TerminalView directly
+  const subscription = actor.subscribe(() => {
+    // State updates will trigger re-renders
   })
   unsubscribe = () => subscription.unsubscribe()
 })
@@ -120,23 +128,7 @@ onUnmounted(() => {
   unsubscribe?.()
 })
 
-// Method to handle terminal output (called by parent or terminal manager)
-const handleTerminalOutput = (terminalId: string, data: string) => {
-  const terminal = terminalRefs.value[terminalId]
-  if (terminal) {
-    terminal.writeData(data)
-  }
-}
-
-// Expose method for parent to use
-defineExpose({
-  handleTerminalOutput
-})
-
-// Computed
-const activeFile = computed(() => 
-  props.openFiles.find(f => f.path === props.activeFilePath)
-)
+// Terminal output is now handled via props
 
 // Using SimpleMonacoEditor for basic syntax highlighting
 

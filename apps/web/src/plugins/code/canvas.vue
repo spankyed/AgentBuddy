@@ -54,7 +54,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from './state'
 import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import FileEditor from './components/FileEditor.vue'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -184,34 +184,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 }
 
-// Terminal output handling
-let terminalUnsubscribe: (() => void) | null = null
-
-onMounted(() => {
-  // Subscribe to actor state to handle terminal output
-  const subscription = actor.subscribe((state) => {
-    // Handle terminal output events by checking the recent event
-    // This is a simplified approach - in a production app, you might want
-    // to use a more sophisticated event handling system
-    
-    // Check if we have any state changes that might include terminal output
-    // In a real implementation, you'd want to use a proper event bus
-    // For now, we'll rely on the state machine handling the events
-  })
-  terminalUnsubscribe = () => subscription.unsubscribe()
-  
-  // Also handle terminal output events directly
-  // This would be connected to your event system
-  const handleEvent = (event: any) => {
-    if (event.type === 'TERMINAL_OUTPUT' && event.data) {
-      const { terminalId, data } = event.data
-      handleTerminalOutput(terminalId, data)
-    }
-  }
-  
-  // In a real app, you'd connect this to your event bus
-  // For now, it's just demonstrating the pattern
-})
+// Terminal output is now handled via props in TerminalView component
 
 // Add keyboard event listener
 window.addEventListener('keydown', handleKeyDown)
@@ -222,20 +195,9 @@ onUnmounted(() => {
   if (refreshTimeout) {
     clearTimeout(refreshTimeout)
   }
-  terminalUnsubscribe?.()
 })
 
-// Handle terminal output from backend
-// This would typically be called by the event system
-const handleTerminalOutput = (terminalId: string, data: string) => {
-  fileEditorRef.value?.handleTerminalOutput(terminalId, data)
-}
-
-// Watch for TERMINAL_OUTPUT events
-// Note: In a real implementation, you'd want to use a more robust event system
-// This is a simplified approach for demonstration
-// The terminal output is actually handled in the subscription above
-// Here we just demonstrate how it would be integrated
+// Terminal output is handled via state management and props
 </script>
 
 <style>
