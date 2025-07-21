@@ -12,13 +12,11 @@ class TerminalService {
 
   create(options: TerminalCreate): TerminalInfo {
     const id = options.id || uuidv4()
-    const shell = options.shell || process.env.SHELL || '/bin/bash'
+    const shell = options.shell || process.env.SHELL || 'bash'
     const cwd = options.cwd || process.cwd()
     const cols = options.cols || 80
     const rows = options.rows || 24
     const title = options.title || `Terminal ${this.terminals.size + 1}`
-
-    console.log(`Creating terminal with shell: ${shell}, cwd: ${cwd}`)
 
     const ptyProcess = pty.spawn(shell, [], {
       name: 'xterm-color',
@@ -27,8 +25,6 @@ class TerminalService {
       cwd,
       env: process.env as { [key: string]: string }
     })
-    
-    console.log(`Terminal created with PID: ${ptyProcess.pid}`)
 
     const info: TerminalInfo = {
       id,
@@ -104,11 +100,7 @@ class TerminalService {
     const terminal = this.terminals.get(id)
     if (!terminal) return
 
-    console.log(`Setting up onData handler for terminal ${id}`)
-    terminal.pty.onData((data) => {
-      console.log(`Terminal ${id} raw output:`, JSON.stringify(data))
-      callback(data)
-    })
+    terminal.pty.onData(callback)
   }
 
   onExit(id: string, callback: (exitCode: number, signal?: number) => void): void {

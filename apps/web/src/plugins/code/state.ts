@@ -184,7 +184,6 @@ export type Context = {
   // Terminal related
   terminals: TerminalInfo[]
   terminalError: string | null
-  terminalOutputs: Record<string, string[]> // Store outputs per terminal
 }
 
 export type Event = 
@@ -692,7 +691,6 @@ const codeState = setup({
     },
     sendTerminalInput: ({ event }) => {
       const ev = event as { type: 'TERMINAL_INPUT'; terminalId: string; data: string }
-      console.log('Sending terminal input to backend:', ev.terminalId, JSON.stringify(ev.data))
       sendToBackend('TERMINAL_INPUT', { terminalId: ev.terminalId, data: ev.data })
     },
     resizeTerminal: ({ event }) => {
@@ -739,12 +737,6 @@ const codeState = setup({
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.terminals.filter(t => t.id !== ev.data.terminalId)
       },
-      terminalOutputs: ({ context, event }) => {
-        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
-        const outputs = { ...context.terminalOutputs }
-        delete outputs[ev.data.terminalId]
-        return outputs
-      },
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.openFiles.filter(f => {
@@ -773,19 +765,6 @@ const codeState = setup({
       terminalError: ({ event }) => {
         const ev = event as { type: 'TERMINAL_ERROR'; data: { message: string } }
         return ev.data.message
-      }
-    }),
-    handleTerminalOutput: assign({
-      terminalOutputs: ({ context, event }) => {
-        const ev = event as { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
-        console.log('Handling TERMINAL_OUTPUT event:', ev.data)
-        const outputs = { ...context.terminalOutputs }
-        if (!outputs[ev.data.terminalId]) {
-          outputs[ev.data.terminalId] = []
-        }
-        outputs[ev.data.terminalId].push(ev.data.data)
-        console.log('Updated terminal outputs:', outputs[ev.data.terminalId].length, 'items')
-        return outputs
       }
     }),
     selectTerminal: assign({
@@ -838,8 +817,7 @@ const codeState = setup({
     prDiff: null,
     // Terminal related
     terminals: [],
-    terminalError: null,
-    terminalOutputs: {}
+    terminalError: null
   },
   states: {
     canvas: {
@@ -1046,7 +1024,7 @@ const codeState = setup({
           actions: ['removeTerminal']
         },
         TERMINAL_OUTPUT: {
-          actions: ['handleTerminalOutput']
+          // Terminal output is handled directly in the TerminalView component
         },
         TERMINAL_ERROR: {
           actions: ['assignTerminalError']

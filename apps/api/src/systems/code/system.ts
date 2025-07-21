@@ -784,18 +784,11 @@ export const systemMachine = setup({
         
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
-          console.log(`Terminal ${terminalInfo.id} output:`, JSON.stringify(data))
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_OUTPUT',
             data: { terminalId: terminalInfo.id, data }
           }))
         })
-        
-        // Send initial prompt by simulating Enter key
-        setTimeout(() => {
-          console.log(`Sending initial newline to terminal ${terminalInfo.id}`)
-          terminalService.write(terminalInfo.id, '\r')
-        }, 100)
         
         // Set up exit handler
         terminalService.onExit(terminalInfo.id, (exitCode, signal) => {

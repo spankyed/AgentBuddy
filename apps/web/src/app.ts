@@ -5,7 +5,6 @@ import logErrors from '@/core/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
 import { createApp } from 'vue'
-import { createTerminal } from 'vue-web-terminal'
 import './style.css'
 import App from './app.vue';
 
@@ -22,9 +21,7 @@ export const applicationState = createActor(createApplicationState(), {
 
 applicationState.subscribe(logErrors('Application'));
 
-const app = createApp(App)
-app.use(createTerminal())
-app.mount('#root')
+createApp(App).mount('#root')
 
 declare global {
   interface Window {
