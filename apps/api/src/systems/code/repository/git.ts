@@ -67,6 +67,30 @@ export class GitRepository {
   clearCache(): void {
     this.cache.clear()
   }
+  
+  // Invalidate specific cache entries when files change
+  invalidateCache(paths?: string[]): void {
+    if (!paths || paths.length === 0) {
+      // Clear everything if no specific paths
+      this.clearCache()
+      return
+    }
+    
+    // Always invalidate status when any file changes
+    this.cache.delete('status')
+    
+    // If .git files changed, invalidate branch-related caches
+    if (paths.some(p => p.includes('.git'))) {
+      this.cache.delete('baseBranch')
+      this.cache.delete('prBaseBranch')
+      this.cache.delete('gitRepoValidated')
+    }
+    
+    // Invalidate binary file cache for changed files
+    paths.forEach(path => {
+      this.cache.delete(`binary:${path}`)
+    })
+  }
 
   private async executeGitCommand(args: string[]): Promise<GitCommandResult> {
     // Always add --color=never to prevent ANSI codes
@@ -207,20 +231,81 @@ export class GitRepository {
   }
 
   private async isBinaryFile(filePath: string): Promise<boolean> {
+    // Check cache first
+    const cacheKey = `binary:${filePath}`
+    const cached = this.getCached<boolean>(cacheKey)
+    if (cached !== null) return cached
+    
+    // First, try git's built-in binary detection
+    const gitResult = await this.executeGitCommand(['check-attr', 'diff', '--', filePath])
+    if (gitResult.success && gitResult.output) {
+      // Git attributes format: "path: diff: value"
+      const isBinary = gitResult.output.includes(': diff: binary') || 
+                      gitResult.output.includes(': diff: -diff')
+      if (isBinary) {
+        this.setCached(cacheKey, true)
+        return true
+      }
+    }
+    
+    // If git doesn't say it's binary, check if it's text according to git
+    const diffStatResult = await this.executeGitCommand(['diff', '--numstat', '/dev/null', filePath])
+    if (diffStatResult.success && diffStatResult.output) {
+      // Binary files show as "-\t-\tfilename" in numstat
+      if (diffStatResult.output.startsWith('-\t-\t')) {
+        this.setCached(cacheKey, true)
+        return true
+      }
+    }
+    
+    // Fallback to quick heuristic for untracked files
     try {
       const stats = await fs.stat(filePath)
       // Large files are likely binary
-      if (stats.size > 1024 * 1024) return true // > 1MB
+      if (stats.size > 1024 * 1024) {
+        this.setCached(cacheKey, true)
+        return true // > 1MB
+      }
       
-      // Read first 8KB to check for binary content
-      const buffer = Buffer.alloc(8192)
+      // Only read first 512 bytes for performance
+      const buffer = Buffer.alloc(512)
       const fd = await fs.open(filePath, 'r')
       try {
-        const { bytesRead } = await fd.read(buffer, 0, 8192, 0)
+        const { bytesRead } = await fd.read(buffer, 0, 512, 0)
+        if (bytesRead === 0) {
+          this.setCached(cacheKey, false)
+          return false
+        }
         
-        // Check for null bytes (common in binary files)
+        // Check for BOM (Byte Order Mark) for UTF-16/UTF-32
+        if (bytesRead >= 2) {
+          const bom16LE = buffer[0] === 0xFF && buffer[1] === 0xFE
+          const bom16BE = buffer[0] === 0xFE && buffer[1] === 0xFF
+          if (bom16LE || bom16BE) {
+            this.setCached(cacheKey, false)
+            return false // UTF-16 text file
+          }
+        }
+        
+        if (bytesRead >= 4) {
+          const bom32LE = buffer[0] === 0xFF && buffer[1] === 0xFE && buffer[2] === 0x00 && buffer[3] === 0x00
+          const bom32BE = buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0xFE && buffer[3] === 0xFF
+          if (bom32LE || bom32BE) {
+            this.setCached(cacheKey, false)
+            return false // UTF-32 text file
+          }
+        }
+        
+        // Check for null bytes (but skip if it might be UTF-16/32)
+        let nullCount = 0
         for (let i = 0; i < bytesRead; i++) {
-          if (buffer[i] === 0) return true
+          if (buffer[i] === 0) nullCount++
+        }
+        
+        // If many nulls but not in UTF-16/32 pattern, it's binary
+        if (nullCount > bytesRead * 0.3) {
+          this.setCached(cacheKey, true)
+          return true
         }
         
         // Check for high ratio of non-printable characters
@@ -232,11 +317,14 @@ export class GitRepository {
           }
         }
         
-        return nonPrintable / bytesRead > 0.3
+        const isBinary = nonPrintable / bytesRead > 0.3
+        this.setCached(cacheKey, isBinary)
+        return isBinary
       } finally {
         await fd.close()
       }
     } catch {
+      this.setCached(cacheKey, false)
       return false
     }
   }

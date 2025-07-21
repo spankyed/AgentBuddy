@@ -9,7 +9,7 @@
         :class="[
           'p-1.5 rounded transition-colors',
           selectedPanel === panel.id
-            ? 'bg-neutral-700 text-neutral-100'
+            ? 'bg-primary-700 text-neutral-100'
             : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
         ]"
         :title="panel.label"

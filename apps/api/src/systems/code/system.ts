@@ -617,6 +617,9 @@ export const systemMachine = setup({
       
       // Set up the callback for file changes
       context.fileWatcher.setChangeCallback((change: FileChangeInfo) => {
+        // Invalidate git cache for changed files
+        context.gitRepository.invalidateCache([change.path])
+        
         system.get(bus).send(emit(pluginId, {
           type: 'FILE_CHANGED_EXTERNALLY',
           data: change
@@ -630,6 +633,9 @@ export const systemMachine = setup({
       
       // Set up the callback for git changes
       context.gitWatcher.setChangeCallback(() => {
+        // Clear git cache when git status changes
+        context.gitRepository.clearCache()
+        
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_STATUS_CHANGED',
           data: { timestamp: new Date() }
