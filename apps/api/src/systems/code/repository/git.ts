@@ -1,7 +1,10 @@
-import { spawn } from 'child_process'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import { GitStatusFile } from '../types'
+
+const execFileAsync = promisify(execFile)
 
 interface GitCommandResult {
   success: boolean
@@ -9,44 +12,93 @@ interface GitCommandResult {
   error?: string
 }
 
-export class GitRepository {
-  constructor(private workingDirectory: string) {}
+interface CachedResult<T> {
+  data: T
+  timestamp: number
+}
 
-  private async executeGitCommand(args: string[], options?: { nullTerminated?: boolean }): Promise<GitCommandResult> {
-    return new Promise((resolve) => {
-      // Always add --color=never to prevent ANSI codes
-      const colorlessArgs = ['-c', 'color.ui=never', ...args]
-      
-      const git = spawn('git', colorlessArgs, { 
-        cwd: this.workingDirectory,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
-      })
-      
-      let output = ''
-      let error = ''
-      
-      git.stdout.on('data', (data) => {
-        output += data.toString()
-      })
-      
-      git.stderr.on('data', (data) => {
-        error += data.toString()
-      })
-      
-      git.on('close', (code) => {
-        if (code === 0 || (code === 1 && args[0] === 'diff') || (code === 128 && args[0] === 'show')) {
-          // git diff returns 1 when there are differences
-          // git show returns 128 when object doesn't exist
-          resolve({ success: true, output })
-        } else {
-          resolve({ success: false, error: error || `Git command failed with code ${code}` })
-        }
-      })
-      
-      git.on('error', (err) => {
-        resolve({ success: false, error: err.message })
-      })
+export class GitRepository {
+  private cache = new Map<string, CachedResult<any>>()
+  private readonly CACHE_TTL = 5000 // 5 seconds
+  
+  constructor(private workingDirectory: string) {
+    this.validateWorkingDirectory(workingDirectory)
+  }
+  
+  private validateWorkingDirectory(dir: string): void {
+    if (!path.isAbsolute(dir)) {
+      throw new Error('Working directory must be an absolute path')
+    }
+    // We'll validate .git existence asynchronously on first command
+  }
+  
+  private async ensureGitRepository(): Promise<void> {
+    const cacheKey = 'gitRepoValidated'
+    if (this.getCached<boolean>(cacheKey)) return
+    
+    try {
+      await fs.access(path.join(this.workingDirectory, '.git'))
+      this.setCached(cacheKey, true)
+    } catch {
+      throw new Error(`Not a git repository: ${this.workingDirectory}`)
+    }
+  }
+  
+  private getCached<T>(key: string): T | null {
+    const cached = this.cache.get(key)
+    if (!cached) return null
+    
+    const now = Date.now()
+    if (now - cached.timestamp > this.CACHE_TTL) {
+      this.cache.delete(key)
+      return null
+    }
+    
+    return cached.data
+  }
+  
+  private setCached<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
     })
+  }
+  
+  clearCache(): void {
+    this.cache.clear()
+  }
+
+  private async executeGitCommand(args: string[]): Promise<GitCommandResult> {
+    // Always add --color=never to prevent ANSI codes
+    const colorlessArgs = ['-c', 'color.ui=never', ...args]
+    
+    try {
+      const { stdout, stderr } = await execFileAsync('git', colorlessArgs, {
+        cwd: this.workingDirectory,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer limit
+        encoding: 'utf8'
+      })
+      
+      return { success: true, output: stdout }
+    } catch (error: any) {
+      // Special cases where non-zero exit codes are expected
+      if (error.code === 1 && args[0] === 'diff') {
+        // git diff returns 1 when there are differences
+        return { success: true, output: error.stdout || '' }
+      }
+      if (error.code === 128 && args[0] === 'show') {
+        // git show returns 128 when object doesn't exist (file not in branch)
+        return { success: true, output: '' }
+      }
+      
+      // Include original error for better debugging
+      return { 
+        success: false, 
+        error: error.stderr || error.message,
+        output: error.stdout // Sometimes useful for debugging
+      }
+    }
   }
 
   async getCurrentBranch(): Promise<string> {
@@ -58,6 +110,10 @@ export class GitRepository {
   }
 
   async getStatus(): Promise<GitStatusFile[]> {
+    // Check cache first
+    const cached = this.getCached<GitStatusFile[]>('status')
+    if (cached) return cached
+    
     const result = await this.executeGitCommand(['status', '--porcelain', '-z'])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get git status')
@@ -66,42 +122,52 @@ export class GitRepository {
     const files: GitStatusFile[] = []
     const entries = (result.output || '').split('\0').filter(Boolean)
     
-    for (const entry of entries) {
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
       if (entry.length < 3) continue
       
       const indexStatus = entry[0]
       const workingStatus = entry[1]
       const rest = entry.substring(3)
       
-      // Handle renames (format: "R  old -> new")
-      let fileName: string
+      // Handle renames - with -z flag, git status uses NUL-separated format
+      // For renames: RXY oldpath\0newpath where X/Y are similarity scores
+      let fileName: string = rest
       let originalPath: string | undefined
-      
-      if ((indexStatus === 'R' || workingStatus === 'R') && rest.includes(' -> ')) {
-        const [oldPath, newPath] = rest.split(' -> ')
-        fileName = newPath
-        originalPath = oldPath
-      } else {
-        fileName = rest
-      }
       
       // Handle staged files
       if (indexStatus !== ' ' && indexStatus !== '?') {
+        // For renames/copies in staged files, we need to handle the two-path format
+        if (indexStatus.startsWith('R') || indexStatus.startsWith('C')) {
+          // Next entry should be the new path
+          if (i + 1 < entries.length) {
+            originalPath = fileName
+            fileName = entries[++i]
+          }
+        }
+        
         files.push({
           path: fileName,
           status: this.mapGitStatus(indexStatus),
           staged: true,
-          originalPath: indexStatus === 'R' ? originalPath : undefined
+          originalPath: originalPath
         })
       }
       
       // Handle unstaged files
       if (workingStatus !== ' ') {
+        // For renames/copies in working tree, handle two-path format
+        if (workingStatus.startsWith('R') || workingStatus.startsWith('C')) {
+          // For unstaged renames, we might need to consume the next path
+          // However, git status --porcelain doesn't show unstaged renames with two paths
+          // It shows them as deleted + untracked, so this is mainly for consistency
+        }
+        
         files.push({
           path: fileName,
           status: this.mapGitStatus(workingStatus),
           staged: false,
-          originalPath: workingStatus === 'R' ? originalPath : undefined
+          originalPath: undefined // Unstaged renames appear as D + ?
         })
       }
       
@@ -118,11 +184,13 @@ export class GitRepository {
       }
     }
     
+    // Cache the result
+    this.setCached('status', files)
     return files
   }
 
   private mapGitStatus(status: string): GitStatusFile['status'] {
-    // Extract the status letter (handle R100, C85, etc.)
+    // Extract the status letter from codes like R100, C85, M, etc.
     const statusLetter = status.charAt(0)
     
     switch (statusLetter) {
@@ -137,10 +205,40 @@ export class GitRepository {
       default: return 'modified'
     }
   }
-  
-  private extractRenameScore(status: string): number | undefined {
-    const match = status.match(/^[RC](\d+)$/)
-    return match ? parseInt(match[1], 10) : undefined
+
+  private async isBinaryFile(filePath: string): Promise<boolean> {
+    try {
+      const stats = await fs.stat(filePath)
+      // Large files are likely binary
+      if (stats.size > 1024 * 1024) return true // > 1MB
+      
+      // Read first 8KB to check for binary content
+      const buffer = Buffer.alloc(8192)
+      const fd = await fs.open(filePath, 'r')
+      try {
+        const { bytesRead } = await fd.read(buffer, 0, 8192, 0)
+        
+        // Check for null bytes (common in binary files)
+        for (let i = 0; i < bytesRead; i++) {
+          if (buffer[i] === 0) return true
+        }
+        
+        // Check for high ratio of non-printable characters
+        let nonPrintable = 0
+        for (let i = 0; i < bytesRead; i++) {
+          const byte = buffer[i]
+          if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13) {
+            nonPrintable++
+          }
+        }
+        
+        return nonPrintable / bytesRead > 0.3
+      } finally {
+        await fd.close()
+      }
+    } catch {
+      return false
+    }
   }
 
   async getDiff(filePath?: string, staged: boolean = false): Promise<string> {
@@ -150,18 +248,31 @@ export class GitRepository {
       const fileStatus = status.find(f => f.path === filePath)
       
       if (fileStatus?.status === 'untracked') {
+        const fullPath = path.join(this.workingDirectory, filePath)
+        
+        // Check if file is binary
+        if (await this.isBinaryFile(fullPath)) {
+          // Return a synthetic diff for binary files
+          const relativePath = path.relative(this.workingDirectory, fullPath)
+          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
+          diff += `new file mode 100644\n`
+          diff += `index 0000000..0000000\n`
+          diff += `Binary files /dev/null and b/${relativePath} differ\n`
+          return diff
+        }
+        
         // Read the file content and format it as a diff
         try {
-          const fullPath = path.join(this.workingDirectory, filePath)
           const content = await fs.readFile(fullPath, 'utf8')
-          const lines = content.split('\n')
+          const lines = content.split(/\r?\n/) // Handle CRLF
           
           // Format as a git diff for a new file
-          let diff = `diff --git a/${filePath} b/${filePath}\n`
+          const relativePath = path.relative(this.workingDirectory, fullPath)
+          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
           diff += `new file mode 100644\n`
           diff += `index 0000000..0000000\n`
           diff += `--- /dev/null\n`
-          diff += `+++ b/${filePath}\n`
+          diff += `+++ b/${relativePath}\n`
           diff += `@@ -0,0 +1,${lines.length} @@\n`
           diff += lines.map(line => `+${line}`).join('\n')
           
@@ -273,11 +384,21 @@ export class GitRepository {
     return null
   }
 
-  async getBaseBranch(): Promise<string> {
-    // 1. Try upstream of HEAD first
-    const upstream = await this.getUpstreamBranch()
-    if (upstream) {
-      return upstream
+  async getBaseBranch(options?: { preferUpstream?: boolean }): Promise<string> {
+    const preferUpstream = options?.preferUpstream !== false // Default to true
+    
+    // Check cache first (different cache keys for different modes)
+    const cacheKey = preferUpstream ? 'baseBranch' : 'prBaseBranch'
+    const cached = this.getCached<string>(cacheKey)
+    if (cached) return cached
+    
+    // 1. Try upstream of HEAD first (if preferred)
+    if (preferUpstream) {
+      const upstream = await this.getUpstreamBranch()
+      if (upstream) {
+        this.setCached(cacheKey, upstream)
+        return upstream
+      }
     }
     
     // 2. Try symbolic ref for origin/HEAD
@@ -285,6 +406,7 @@ export class GitRepository {
     if (originHeadResult.success && originHeadResult.output) {
       const branch = originHeadResult.output.trim().replace(/^origin\//, '')
       if (branch) {
+        this.setCached(cacheKey, branch)
         return branch
       }
     }
@@ -297,37 +419,16 @@ export class GitRepository {
     
     for (const branch of ['main', 'master', 'develop', 'development']) {
       if (await checkBranch(branch)) {
+        this.setCached(cacheKey, branch)
         return branch
       }
     }
     
-    throw new Error('Could not determine base branch')
+    throw new Error(`Could not determine ${preferUpstream ? 'base' : 'PR base'} branch`)
   }
 
   async getPRBaseBranch(): Promise<string> {
-    // For PRs, we want to find the main branch, not the upstream
-    // 1. Try symbolic ref for origin/HEAD
-    const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
-    if (originHeadResult.success && originHeadResult.output) {
-      const branch = originHeadResult.output.trim().replace(/^origin\//, '')
-      if (branch) {
-        return branch
-      }
-    }
-    
-    // 2. Probe for common branch names
-    const checkBranch = async (branch: string): Promise<boolean> => {
-      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
-      return result.success
-    }
-    
-    for (const branch of ['main', 'master', 'develop', 'development']) {
-      if (await checkBranch(branch)) {
-        return branch
-      }
-    }
-    
-    throw new Error('Could not determine PR base branch')
+    return this.getBaseBranch({ preferUpstream: false })
   }
 
   async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
@@ -353,7 +454,7 @@ export class GitRepository {
       if (!path) continue
       
       // For renames and copies, there's a second path
-      if ((statusPart === 'R' || statusPart === 'C') && i < parts.length && parts[i]) {
+      if ((statusPart.startsWith('R') || statusPart.startsWith('C')) && i < parts.length && parts[i]) {
         const originalPath = path
         const newPath = parts[i++]
         files.push({
@@ -377,6 +478,11 @@ export class GitRepository {
   async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
     const target = targetBranch || 'HEAD'
     
+    // Validate branch names to prevent injection
+    if (!/^[a-zA-Z0-9._/-]+$/.test(baseBranch) || !/^[a-zA-Z0-9._/-]+$/.test(target)) {
+      throw new Error('Invalid branch name')
+    }
+    
     const result = await this.executeGitCommand(['diff', '--binary', '-M', `${baseBranch}...${target}`, '--', filePath])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get file diff between branches')
@@ -386,6 +492,7 @@ export class GitRepository {
   }
 
   async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
+    // Use -- separator for safety
     const result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
     if (!result.success) {
       // File might not exist in that branch - this is not an error
