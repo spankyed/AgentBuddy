@@ -30,4 +30,7 @@ export type * from './systems/actions/types';
 export type { OutgoingLibraryEvents } from './systems/library/system';
 export type * from './systems/library/types';
 
+export type { OutgoingCodeEvents } from './systems/code/system';
+export type * from './systems/code/types';
+
 // todo, we should probably export all the entities from here
