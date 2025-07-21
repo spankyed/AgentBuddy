@@ -5,8 +5,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as monaco from 'monaco-editor'
-import { initializeMonaco, createEditor, getLanguageId, loadProjectFiles } from '../utils/simple-monaco-config'
-import { trpc } from '@/core/trpc'
+import { initializeMonaco, createEditor, getLanguageId } from '../utils/simple-monaco-config'
 
 // Props
 const props = defineProps<{
@@ -28,33 +27,7 @@ const editorContainer = ref<HTMLDivElement>()
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 let isUpdatingModel = false
 
-// Load project files once
-let projectFilesLoaded = false
-
-async function loadProjectFilesOnce() {
-  if (projectFilesLoaded) return
-  
-  try {
-    // Subscribe to receive project files
-    const subscription = trpc.bus.sub.subscribe(undefined, {
-      onData(event) {
-        if (event.type === 'PROJECT_TEXT_FILES') {
-          loadProjectFiles(event.data.files)
-          projectFilesLoaded = true
-          subscription.unsubscribe()
-        }
-      }
-    })
-    
-    // Request project files
-    await trpc.bus.send.mutate({
-      systemId: 'code' as any,
-      type: 'GET_PROJECT_TEXT_FILES' as any
-    } as any)
-  } catch (error) {
-    console.warn('Failed to load project files:', error)
-  }
-}
+// Removed project file loading - keeping Monaco simple
 
 // Lifecycle
 onMounted(async () => {
@@ -62,9 +35,6 @@ onMounted(async () => {
   
   // Initialize Monaco
   await initializeMonaco()
-  
-  // Load project files for IntelliSense
-  loadProjectFilesOnce()
   
   // Determine language
   const language = props.language || (props.filePath ? getLanguageId(props.filePath) : 'typescript')

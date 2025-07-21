@@ -1,6 +1,5 @@
 import 'dotenv/config'
 
-
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
 import { logErrors } from '@/core/utils/actor-helpers';

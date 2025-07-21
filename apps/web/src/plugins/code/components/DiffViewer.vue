@@ -28,7 +28,6 @@ import { onMounted } from 'vue'
 import { GitCompare } from 'lucide-vue-next'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import type { GitStatusFile, GitDiff } from '../state'
-import { setupMonacoEnvironment, getMonacoLanguage } from '../utils/monaco-setup'
 
 // Props
 defineProps<{
@@ -36,10 +35,7 @@ defineProps<{
   gitDiff: GitDiff | null
 }>()
 
-// Setup Monaco environment on mount
-onMounted(() => {
-  setupMonacoEnvironment()
-})
+// No setup needed - using basic Monaco
 
 // Monaco diff editor options with enhanced features
 const diffEditorOptions = {
@@ -72,6 +68,27 @@ const diffEditorOptions = {
 
 // Helper function
 const getLanguage = (path: string) => {
-  return getMonacoLanguage(path)
+  const ext = path.split('.').pop()?.toLowerCase() || ''
+  const languageMap: Record<string, string> = {
+    ts: 'typescript',
+    tsx: 'typescript',
+    js: 'javascript',
+    jsx: 'javascript',
+    json: 'json',
+    css: 'css',
+    scss: 'scss',
+    html: 'html',
+    xml: 'xml',
+    yaml: 'yaml',
+    yml: 'yaml',
+    md: 'markdown',
+    py: 'python',
+    java: 'java',
+    go: 'go',
+    rs: 'rust',
+    php: 'php',
+    rb: 'ruby',
+  }
+  return languageMap[ext] || 'plaintext'
 }
 </script>

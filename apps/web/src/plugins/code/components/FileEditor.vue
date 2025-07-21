@@ -89,7 +89,7 @@ const activeFile = computed(() =>
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
 
-// No setup needed - monaco-editor-wrapper handles everything
+// Using SimpleMonacoEditor for basic syntax highlighting
 
 // Event handlers
 const selectFile = (path: string) => {
@@ -125,7 +125,7 @@ const getFileExtension = (path: string) => {
   return parts.length > 1 ? parts.pop() : ''
 }
 
-// Language detection is handled by MonacoLanguageEditor
+// Language detection is handled by SimpleMonacoEditor
 
 const getFileIcon = (extension?: string) => {
   if (!extension) return File
