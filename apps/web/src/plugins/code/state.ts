@@ -51,6 +51,12 @@ type OutgoingCodeEvents =
   | { type: 'BASE_BRANCH'; data: { branch: string } }
   | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
+  // Terminal events
+  | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+  | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+  | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
+  | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
 
 export const id = 'code' as const;
 
@@ -119,11 +125,29 @@ export interface FileChangeInfo {
   changeType: 'add' | 'change' | 'unlink'
 }
 
+// Terminal types
+export interface TerminalInfo {
+  id: string
+  title: string
+  pid: number
+  shell?: string
+  cwd: string
+  active: boolean
+  cols: number
+  rows: number
+}
+
+export interface TerminalTab extends OpenFile {
+  isTerminal: true
+  terminalId: string
+  terminalInfo: TerminalInfo
+}
+
 export type Context = {
   rootDirectory: string
   currentDirectory: string
   files: FileInfo[]
-  openFiles: OpenFile[]
+  openFiles: (OpenFile | TerminalTab)[]
   activeFilePath: string | null
   isLoading: boolean
   error: string | null
@@ -157,6 +181,9 @@ export type Context = {
   isPrLoading: boolean
   selectedPrFile: GitStatusFile | null
   prDiff: GitDiff | null
+  // Terminal related
+  terminals: TerminalInfo[]
+  terminalError: string | null
 }
 
 export type Event = 
@@ -194,11 +221,18 @@ export type Event =
   | { type: 'SELECT_PR_FILE'; file: GitStatusFile }
   | { type: 'VIEW_PR_DIFF'; path: string }
   | { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
-  | { type: 'CLEAR_GIT_STATE' };
+  | { type: 'CLEAR_GIT_STATE' }
+  // Terminal events
+  | { type: 'CREATE_TERMINAL'; title?: string }
+  | { type: 'CLOSE_TERMINAL'; terminalId: string }
+  | { type: 'SELECT_TERMINAL'; terminalId: string }
+  | { type: 'TERMINAL_INPUT'; terminalId: string; data: string }
+  | { type: 'RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
+  | { type: 'REQUEST_TERMINALS_LIST' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr';
+type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal';
 
 const STORAGE_KEY = 'code-plugin-root-directory'
 const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
@@ -323,6 +357,8 @@ const codeState = setup({
       } else if (ev.panel === 'pr') {
         sendToBackend('GET_BASE_BRANCH', {})
         sendToBackend('GET_BRANCH_DIFF', {})
+      } else if (ev.panel === 'terminal') {
+        sendToBackend('LIST_TERMINALS', {})
       }
     },
     refreshGitPanelsIfActive: ({ context, self }) => {
@@ -640,6 +676,102 @@ const codeState = setup({
         const ev = event as { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
         return `pr-diff:${ev.file.path}:${context.prBaseBranch}`
       }
+    }),
+    // Terminal actions
+    createTerminal: ({ event, context }) => {
+      const ev = event as { type: 'CREATE_TERMINAL'; title?: string }
+      sendToBackend('CREATE_TERMINAL', {
+        title: ev.title,
+        cwd: context.currentDirectory
+      })
+    },
+    closeTerminal: ({ event }) => {
+      const ev = event as { type: 'CLOSE_TERMINAL'; terminalId: string }
+      sendToBackend('CLOSE_TERMINAL', { terminalId: ev.terminalId })
+    },
+    sendTerminalInput: ({ event }) => {
+      const ev = event as { type: 'TERMINAL_INPUT'; terminalId: string; data: string }
+      sendToBackend('TERMINAL_INPUT', { terminalId: ev.terminalId, data: ev.data })
+    },
+    resizeTerminal: ({ event }) => {
+      const ev = event as { type: 'RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
+      sendToBackend('RESIZE_TERMINAL', { 
+        terminalId: ev.terminalId, 
+        cols: ev.cols, 
+        rows: ev.rows 
+      })
+    },
+    requestTerminalsList: () => {
+      sendToBackend('LIST_TERMINALS', {})
+    },
+    assignTerminals: assign({
+      terminals: ({ event }) => {
+        const ev = event as { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
+        return ev.data
+      }
+    }),
+    assignTerminalCreated: assign({
+      terminals: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+        return [...context.terminals, ev.data]
+      },
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+        const terminalTab: TerminalTab = {
+          path: `terminal:${ev.data.id}`,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalId: ev.data.id,
+          terminalInfo: ev.data
+        }
+        return [...context.openFiles, terminalTab]
+      },
+      activeFilePath: ({ event }) => {
+        const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+        return `terminal:${ev.data.id}`
+      }
+    }),
+    removeTerminal: assign({
+      terminals: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+        return context.terminals.filter(t => t.id !== ev.data.terminalId)
+      },
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+        return context.openFiles.filter(f => {
+          if ('isTerminal' in f && f.isTerminal) {
+            return f.terminalId !== ev.data.terminalId
+          }
+          return true
+        })
+      },
+      activeFilePath: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+        const terminalPath = `terminal:${ev.data.terminalId}`
+        if (context.activeFilePath === terminalPath) {
+          const remainingFiles = context.openFiles.filter(f => {
+            if ('isTerminal' in f && f.isTerminal) {
+              return f.terminalId !== ev.data.terminalId
+            }
+            return true
+          })
+          return remainingFiles.length > 0 ? remainingFiles[0].path : null
+        }
+        return context.activeFilePath
+      }
+    }),
+    assignTerminalError: assign({
+      terminalError: ({ event }) => {
+        const ev = event as { type: 'TERMINAL_ERROR'; data: { message: string } }
+        return ev.data.message
+      }
+    }),
+    selectTerminal: assign({
+      activeFilePath: ({ event }) => {
+        const ev = event as { type: 'SELECT_TERMINAL'; terminalId: string }
+        return `terminal:${ev.terminalId}`
+      }
     })
   }
 }).createMachine({
@@ -682,7 +814,10 @@ const codeState = setup({
     prError: null,
     isPrLoading: false,
     selectedPrFile: null,
-    prDiff: null
+    prDiff: null,
+    // Terminal related
+    terminals: [],
+    terminalError: null
   },
   states: {
     canvas: {
@@ -859,6 +994,40 @@ const codeState = setup({
         },
         CLEAR_GIT_STATE: {
           actions: ['clearGitState']
+        },
+        // Terminal events
+        CREATE_TERMINAL: {
+          actions: ['createTerminal']
+        },
+        CLOSE_TERMINAL: {
+          actions: ['closeTerminal']
+        },
+        SELECT_TERMINAL: {
+          actions: ['selectTerminal']
+        },
+        TERMINAL_INPUT: {
+          actions: ['sendTerminalInput']
+        },
+        RESIZE_TERMINAL: {
+          actions: ['resizeTerminal']
+        },
+        REQUEST_TERMINALS_LIST: {
+          actions: ['requestTerminalsList']
+        },
+        TERMINALS_LIST: {
+          actions: ['assignTerminals']
+        },
+        TERMINAL_CREATED: {
+          actions: ['assignTerminalCreated']
+        },
+        TERMINAL_CLOSED: {
+          actions: ['removeTerminal']
+        },
+        TERMINAL_OUTPUT: {
+          // Terminal output is handled directly in the TerminalView component
+        },
+        TERMINAL_ERROR: {
+          actions: ['assignTerminalError']
         }
       }
     }

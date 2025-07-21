@@ -5,7 +5,8 @@ import { FileSystemRepository } from './repository/filesystem'
 import { GitRepository } from './repository/git'
 import { FileWatcherService } from './repository/filewatcher'
 import { GitWatcherService } from './repository/gitwatcher'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo } from './types'
+import { terminalService } from './repository/terminal'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo, TerminalInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
@@ -46,6 +47,18 @@ const IncomingCodeEvents = [
   busEvent('GET_BASE_BRANCH', {}),
   busEvent('GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
   busEvent('GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
+  // Terminal events
+  busEvent('CREATE_TERMINAL', { 
+    title: z.string().optional(), 
+    cwd: z.string().optional(),
+    shell: z.string().optional(),
+    cols: z.number().optional(),
+    rows: z.number().optional()
+  }),
+  busEvent('CLOSE_TERMINAL', { terminalId: z.string() }),
+  busEvent('TERMINAL_INPUT', { terminalId: z.string(), data: z.string() }),
+  busEvent('RESIZE_TERMINAL', { terminalId: z.string(), cols: z.number(), rows: z.number() }),
+  busEvent('LIST_TERMINALS', {}),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -76,6 +89,12 @@ export type OutgoingCodeEvents =
   | { type: 'BASE_BRANCH'; data: { branch: string } }
   | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
+  // Terminal events
+  | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+  | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+  | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
+  | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -747,6 +766,125 @@ export const systemMachine = setup({
           data: { message: error.message }
         }))
       }
+    },
+    
+    // Terminal actions
+    createTerminal: async ({ system, event, self }) => {
+      const ev = typeOf('CREATE_TERMINAL', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const terminalInfo = terminalService.create({
+          title: ev.title,
+          cwd: ev.cwd || context.currentDirectory,
+          shell: ev.shell,
+          cols: ev.cols || 80,
+          rows: ev.rows || 24
+        })
+        
+        // Set up output handler
+        terminalService.onData(terminalInfo.id, (data) => {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_OUTPUT',
+            data: { terminalId: terminalInfo.id, data }
+          }))
+        })
+        
+        // Set up exit handler
+        terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_CLOSED',
+            data: { terminalId: terminalInfo.id }
+          }))
+        })
+        
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_CREATED',
+          data: terminalInfo
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    closeTerminal: ({ system, event }) => {
+      const ev = typeOf('CLOSE_TERMINAL', event)
+      const pluginId = id
+      try {
+        const success = terminalService.kill(ev.terminalId)
+        if (!success) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_ERROR',
+            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+          }))
+        }
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_ERROR',
+          data: { message: error.message, terminalId: ev.terminalId }
+        }))
+      }
+    },
+    
+    sendTerminalInput: ({ system, event }) => {
+      const ev = typeOf('TERMINAL_INPUT', event)
+      const pluginId = id
+      try {
+        const success = terminalService.write(ev.terminalId, ev.data)
+        if (!success) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_ERROR',
+            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+          }))
+        }
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_ERROR',
+          data: { message: error.message, terminalId: ev.terminalId }
+        }))
+      }
+    },
+    
+    resizeTerminal: ({ system, event }) => {
+      const ev = typeOf('RESIZE_TERMINAL', event)
+      const pluginId = id
+      try {
+        const success = terminalService.resize(ev.terminalId, ev.cols, ev.rows)
+        if (!success) {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_ERROR',
+            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+          }))
+        }
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_ERROR',
+          data: { message: error.message, terminalId: ev.terminalId }
+        }))
+      }
+    },
+    
+    listTerminals: ({ system }) => {
+      const pluginId = id
+      try {
+        const terminals = terminalService.list()
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINALS_LIST',
+          data: terminals
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINAL_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    cleanupTerminals: () => {
+      terminalService.killAll()
     }
   },
 }).createMachine({
@@ -851,7 +989,24 @@ export const systemMachine = setup({
         RESTART_GIT_WATCHER: {
           actions: ['restartGitWatcher'],
         },
+        // Terminal events
+        CREATE_TERMINAL: {
+          actions: ['createTerminal'],
+        },
+        CLOSE_TERMINAL: {
+          actions: ['closeTerminal'],
+        },
+        TERMINAL_INPUT: {
+          actions: ['sendTerminalInput'],
+        },
+        RESIZE_TERMINAL: {
+          actions: ['resizeTerminal'],
+        },
+        LIST_TERMINALS: {
+          actions: ['listTerminals'],
+        },
       },
     },
   },
+  exit: ['cleanupTerminals'],
 })

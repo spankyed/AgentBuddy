@@ -96,3 +96,44 @@ export interface FileChangeInfo {
   modifiedAt: Date
   changeType: 'add' | 'change' | 'unlink'
 }
+
+// Terminal types
+export interface TerminalInfo {
+  id: string
+  title: string
+  pid: number
+  shell?: string
+  cwd: string
+  active: boolean
+  cols: number
+  rows: number
+}
+
+export interface TerminalOutput {
+  terminalId: string
+  data: string
+}
+
+export interface TerminalInput {
+  terminalId: string
+  data: string
+}
+
+export interface TerminalResize {
+  terminalId: string
+  cols: number
+  rows: number
+}
+
+export interface TerminalCreate {
+  id?: string
+  title?: string
+  cwd?: string
+  shell?: string
+  cols?: number
+  rows?: number
+}
+
+export interface TerminalClose {
+  terminalId: string
+}

@@ -17,12 +17,12 @@
           :class="activeFilePath === file.path ? 'text-neutral-100' : 'text-neutral-400'"
         >
           <component 
-            :is="file.isDiff ? GitCompare : getFileIcon(getFileExtension(file.path))"
+            :is="getTabIcon(file)"
             class="flex-shrink-0 w-4 h-4"
           />
           <span class="max-w-[150px] truncate">{{ getTabLabel(file) }}</span>
-          <span v-if="file.pendingSaveConflict && !file.isDiff" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-          <span v-else-if="file.modified && !file.isDiff" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          <span v-if="!isTerminal(file) && !file.isDiff && file.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+          <span v-else-if="!isTerminal(file) && !file.isDiff && file.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
         </button>
         <button
           @click.stop="closeFile(file.path)"
@@ -43,9 +43,16 @@
       </div>
       
       <div v-else-if="activeFile" class="h-full">
+        <!-- Terminal for terminal tabs -->
+        <TerminalView
+          v-if="activeFile && isTerminal(activeFile)"
+          :ref="el => { if (el && activeFile && isTerminal(activeFile)) terminalRefs[activeFile.terminalId] = el as InstanceType<typeof TerminalView> }"
+          :terminal-info="(activeFile as TerminalTab).terminalInfo"
+          class="h-full"
+        />
         <!-- Diff viewer for diff tabs -->
         <DiffViewer
-          v-if="activeFile.isDiff"
+          v-else-if="activeFile.isDiff"
           :selected-git-file="activeFile.gitFile!"
           :git-diff="activeFile.gitDiff!"
           class="h-full"
@@ -65,15 +72,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare } from 'lucide-vue-next'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
-import type { OpenFile } from '../state'
+import TerminalView from './TerminalView.vue'
+import { applicationState } from '@/app'
+import { id, type CodeState, type OpenFile, type TerminalTab } from '../state'
 
 // Props
 const props = defineProps<{
-  openFiles: OpenFile[]
+  openFiles: (OpenFile | TerminalTab)[]
   activeFilePath: string | null
 }>()
 
@@ -83,6 +92,46 @@ const emit = defineEmits<{
   closeFile: [path: string]
   contentChange: [path: string, content: string]
 }>()
+
+// Get actor for terminal output
+const actor: CodeState = applicationState.system.get(id)
+
+// Refs for terminal components
+const terminalRefs = ref<Record<string, InstanceType<typeof TerminalView>>>({})
+
+// Helper to check if a file is a terminal
+const isTerminal = (file: OpenFile | TerminalTab): file is TerminalTab => {
+  return 'isTerminal' in file && file.isTerminal === true
+}
+
+// Subscribe to terminal output
+let unsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  // Subscribe to state changes to handle terminal output
+  const subscription = actor.subscribe((state) => {
+    // This approach avoids direct event handling - the parent component
+    // or a dedicated terminal manager would handle the actual output events
+  })
+  unsubscribe = () => subscription.unsubscribe()
+})
+
+onUnmounted(() => {
+  unsubscribe?.()
+})
+
+// Method to handle terminal output (called by parent or terminal manager)
+const handleTerminalOutput = (terminalId: string, data: string) => {
+  const terminal = terminalRefs.value[terminalId]
+  if (terminal) {
+    terminal.writeData(data)
+  }
+}
+
+// Expose method for parent to use
+defineExpose({
+  handleTerminalOutput
+})
 
 // Computed
 const activeFile = computed(() => 
@@ -111,13 +160,26 @@ const getFileName = (path: string) => {
   return path.split('/').pop() || path
 }
 
-const getTabLabel = (file: OpenFile) => {
-  if (file.isDiff && file.gitFile) {
+const getTabLabel = (file: OpenFile | TerminalTab) => {
+  if (isTerminal(file)) {
+    return file.terminalInfo.title
+  }
+  if ('isDiff' in file && file.isDiff && file.gitFile) {
     const fileName = getFileName(file.gitFile.path)
     const status = file.gitFile.staged ? 'staged' : 'unstaged'
     return `${fileName} (${status})`
   }
   return getFileName(file.path)
+}
+
+const getTabIcon = (file: OpenFile | TerminalTab) => {
+  if (isTerminal(file)) {
+    return Terminal
+  }
+  if ('isDiff' in file && file.isDiff) {
+    return GitCompare
+  }
+  return getFileIcon(getFileExtension(file.path))
 }
 
 const getFileExtension = (path: string) => {

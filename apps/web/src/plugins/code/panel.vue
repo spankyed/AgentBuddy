@@ -37,6 +37,8 @@
       <CommitPanel v-else-if="selectedPanel === 'commit'" />
       
       <PullRequestPanel v-else-if="selectedPanel === 'pr'" />
+      
+      <TerminalPanel v-else-if="selectedPanel === 'terminal'" />
     </div>
 
     <!-- Change Directory Button -->
@@ -62,11 +64,13 @@ import {
   Search, 
   GitCommit, 
   GitPullRequest,
+  Terminal,
 } from 'lucide-vue-next'
 import ExplorerPanel from './components/ExplorerPanel.vue'
 import SearchPanel from './components/SearchPanel.vue'
 import CommitPanel from './components/CommitPanel.vue'
 import PullRequestPanel from './components/PullRequestPanel.vue'
+import TerminalPanel from './components/TerminalPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -85,11 +89,12 @@ const panels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },
   { id: 'search', label: 'Search', icon: Search },
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
-  { id: 'pr', label: 'Pull Request', icon: GitPullRequest }
+  { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
+  { id: 'terminal', label: 'Terminal', icon: Terminal }
 ] as const
 
 // Event handlers
-const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr') => {
+const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal') => {
   actor.send({ type: 'SELECT_PANEL', panel })
 }
 
