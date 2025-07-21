@@ -65,8 +65,10 @@ export interface SearchProgress {
 // Git types
 export interface GitStatusFile {
   path: string
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied'
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged'
   staged: boolean
+  originalPath?: string // For renames and copies
+  score?: number // Rename/copy similarity score (0-100)
 }
 
 export interface GitBranch {

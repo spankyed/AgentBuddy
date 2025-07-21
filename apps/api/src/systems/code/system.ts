@@ -644,7 +644,7 @@ export const systemMachine = setup({
       const pluginId = id
       const context = self.getSnapshot().context
       try {
-        const branch = await context.gitRepository.getBaseBranch()
+        const branch = await context.gitRepository.getPRBaseBranch()
         system.get(bus).send(emit(pluginId, {
           type: 'BASE_BRANCH',
           data: { branch }
@@ -662,7 +662,7 @@ export const systemMachine = setup({
       const pluginId = id
       const context = self.getSnapshot().context
       try {
-        const baseBranch = ev.baseBranch || await context.gitRepository.getBaseBranch()
+        const baseBranch = ev.baseBranch || await context.gitRepository.getPRBaseBranch()
         const files = await context.gitRepository.getBranchDiff(baseBranch)
         system.get(bus).send(emit(pluginId, {
           type: 'BRANCH_DIFF',

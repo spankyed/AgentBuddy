@@ -180,6 +180,8 @@ const getStatusIcon = (status: GitStatusFile['status']) => {
     case 'renamed': return 'R'
     case 'untracked': return 'U'
     case 'copied': return 'C'
+    case 'typechange': return 'T'
+    case 'unmerged': return 'U'
     default: return '?'
   }
 }
@@ -192,6 +194,8 @@ const getStatusColor = (status: GitStatusFile['status']) => {
     case 'renamed': return 'text-blue-500'
     case 'untracked': return 'text-neutral-500'
     case 'copied': return 'text-purple-500'
+    case 'typechange': return 'text-orange-500'
+    case 'unmerged': return 'text-red-600'
     default: return 'text-neutral-400'
   }
 }

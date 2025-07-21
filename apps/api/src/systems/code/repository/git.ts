@@ -1,12 +1,7 @@
 import { spawn } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-
-interface GitStatusFile {
-  path: string
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied'
-  staged: boolean
-}
+import { GitStatusFile } from '../types'
 
 interface GitCommandResult {
   success: boolean
@@ -17,9 +12,12 @@ interface GitCommandResult {
 export class GitRepository {
   constructor(private workingDirectory: string) {}
 
-  private async executeGitCommand(args: string[]): Promise<GitCommandResult> {
+  private async executeGitCommand(args: string[], options?: { nullTerminated?: boolean }): Promise<GitCommandResult> {
     return new Promise((resolve) => {
-      const git = spawn('git', args, { 
+      // Always add --color=never to prevent ANSI codes
+      const colorlessArgs = ['-c', 'color.ui=never', ...args]
+      
+      const git = spawn('git', colorlessArgs, { 
         cwd: this.workingDirectory,
         env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
       })
@@ -36,8 +34,9 @@ export class GitRepository {
       })
       
       git.on('close', (code) => {
-        if (code === 0 || (code === 1 && args[0] === 'diff')) {
-          // git diff returns 1 when there are differences, which is not an error
+        if (code === 0 || (code === 1 && args[0] === 'diff') || (code === 128 && args[0] === 'show')) {
+          // git diff returns 1 when there are differences
+          // git show returns 128 when object doesn't exist
           resolve({ success: true, output })
         } else {
           resolve({ success: false, error: error || `Git command failed with code ${code}` })
@@ -59,27 +58,40 @@ export class GitRepository {
   }
 
   async getStatus(): Promise<GitStatusFile[]> {
-    const result = await this.executeGitCommand(['status', '--porcelain'])
+    const result = await this.executeGitCommand(['status', '--porcelain', '-z'])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get git status')
     }
     
     const files: GitStatusFile[] = []
-    const lines = (result.output || '').split('\n').filter(Boolean)
+    const entries = (result.output || '').split('\0').filter(Boolean)
     
-    for (const line of lines) {
-      if (line.length < 3) continue
+    for (const entry of entries) {
+      if (entry.length < 3) continue
       
-      const indexStatus = line[0]
-      const workingStatus = line[1]
-      const fileName = line.substring(3)
+      const indexStatus = entry[0]
+      const workingStatus = entry[1]
+      const rest = entry.substring(3)
+      
+      // Handle renames (format: "R  old -> new")
+      let fileName: string
+      let originalPath: string | undefined
+      
+      if ((indexStatus === 'R' || workingStatus === 'R') && rest.includes(' -> ')) {
+        const [oldPath, newPath] = rest.split(' -> ')
+        fileName = newPath
+        originalPath = oldPath
+      } else {
+        fileName = rest
+      }
       
       // Handle staged files
       if (indexStatus !== ' ' && indexStatus !== '?') {
         files.push({
           path: fileName,
           status: this.mapGitStatus(indexStatus),
-          staged: true
+          staged: true,
+          originalPath: indexStatus === 'R' ? originalPath : undefined
         })
       }
       
@@ -88,7 +100,8 @@ export class GitRepository {
         files.push({
           path: fileName,
           status: this.mapGitStatus(workingStatus),
-          staged: false
+          staged: false,
+          originalPath: workingStatus === 'R' ? originalPath : undefined
         })
       }
       
@@ -109,15 +122,25 @@ export class GitRepository {
   }
 
   private mapGitStatus(status: string): GitStatusFile['status'] {
-    switch (status) {
+    // Extract the status letter (handle R100, C85, etc.)
+    const statusLetter = status.charAt(0)
+    
+    switch (statusLetter) {
       case 'M': return 'modified'
       case 'A': return 'added'
       case 'D': return 'deleted'
       case 'R': return 'renamed'
       case 'C': return 'copied'
       case '?': return 'untracked'
+      case 'T': return 'typechange'
+      case 'U': return 'unmerged'
       default: return 'modified'
     }
+  }
+  
+  private extractRenameScore(status: string): number | undefined {
+    const match = status.match(/^[RC](\d+)$/)
+    return match ? parseInt(match[1], 10) : undefined
   }
 
   async getDiff(filePath?: string, staged: boolean = false): Promise<string> {
@@ -149,7 +172,7 @@ export class GitRepository {
       }
     }
     
-    const args = ['diff']
+    const args = ['diff', '--binary']
     if (staged) {
       args.push('--cached')
     }
@@ -236,51 +259,114 @@ export class GitRepository {
     return status.filter(file => file.staged)
   }
 
+  async getUpstreamBranch(): Promise<string | null> {
+    // Get the upstream branch of HEAD
+    const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    if (result.success && result.output) {
+      const upstream = result.output.trim()
+      // Extract branch name from remote/branch format
+      const parts = upstream.split('/')
+      if (parts.length >= 2) {
+        return parts.slice(1).join('/')
+      }
+    }
+    return null
+  }
+
   async getBaseBranch(): Promise<string> {
-    // Try to find the main branch (could be 'main' or 'master')
+    // 1. Try upstream of HEAD first
+    const upstream = await this.getUpstreamBranch()
+    if (upstream) {
+      return upstream
+    }
+    
+    // 2. Try symbolic ref for origin/HEAD
+    const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+    if (originHeadResult.success && originHeadResult.output) {
+      const branch = originHeadResult.output.trim().replace(/^origin\//, '')
+      if (branch) {
+        return branch
+      }
+    }
+    
+    // 3. Probe for common branch names
     const checkBranch = async (branch: string): Promise<boolean> => {
       const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
       return result.success
     }
     
-    if (await checkBranch('main')) {
-      return 'main'
-    } else if (await checkBranch('master')) {
-      return 'master'
-    }
-    
-    // Fallback: get the default branch from origin
-    const result = await this.executeGitCommand(['symbolic-ref', 'refs/remotes/origin/HEAD'])
-    if (result.success && result.output) {
-      const match = result.output.match(/refs\/remotes\/origin\/(.+)/)
-      if (match) {
-        return match[1].trim()
+    for (const branch of ['main', 'master', 'develop', 'development']) {
+      if (await checkBranch(branch)) {
+        return branch
       }
     }
     
     throw new Error('Could not determine base branch')
   }
 
+  async getPRBaseBranch(): Promise<string> {
+    // For PRs, we want to find the main branch, not the upstream
+    // 1. Try symbolic ref for origin/HEAD
+    const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+    if (originHeadResult.success && originHeadResult.output) {
+      const branch = originHeadResult.output.trim().replace(/^origin\//, '')
+      if (branch) {
+        return branch
+      }
+    }
+    
+    // 2. Probe for common branch names
+    const checkBranch = async (branch: string): Promise<boolean> => {
+      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
+      return result.success
+    }
+    
+    for (const branch of ['main', 'master', 'develop', 'development']) {
+      if (await checkBranch(branch)) {
+        return branch
+      }
+    }
+    
+    throw new Error('Could not determine PR base branch')
+  }
+
   async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
     const target = targetBranch || 'HEAD'
     
-    // Get the list of changed files between branches
-    const result = await this.executeGitCommand(['diff', '--name-status', `${baseBranch}...${target}`])
+    // Get the list of changed files between branches with NUL termination and rename detection
+    const result = await this.executeGitCommand(['diff', '--name-status', '-z', '-M', '-C', `${baseBranch}...${target}`])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get branch diff')
     }
     
     const files: GitStatusFile[] = []
-    const lines = (result.output || '').split('\n').filter(Boolean)
+    const parts = (result.output || '').split('\0').filter(Boolean)
     
-    for (const line of lines) {
-      const match = line.match(/^([AMDRC])\s+(.+)$/)
-      if (match) {
-        const [, status, filePath] = match
+    for (let i = 0; i < parts.length; ) {
+      const statusPart = parts[i++]
+      if (!statusPart || i >= parts.length) break
+      
+      // Status is just a letter (M, A, D, R, C, T, U)
+      const status = this.mapGitStatus(statusPart)
+      const path = parts[i++]
+      
+      if (!path) continue
+      
+      // For renames and copies, there's a second path
+      if ((statusPart === 'R' || statusPart === 'C') && i < parts.length && parts[i]) {
+        const originalPath = path
+        const newPath = parts[i++]
         files.push({
-          path: filePath,
-          status: this.mapGitStatus(status),
-          staged: false // Not applicable for branch diffs
+          path: newPath,
+          status,
+          staged: false,
+          originalPath
+        })
+      } else {
+        files.push({
+          path,
+          status,
+          staged: false
         })
       }
     }
@@ -291,7 +377,7 @@ export class GitRepository {
   async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
     const target = targetBranch || 'HEAD'
     
-    const result = await this.executeGitCommand(['diff', `${baseBranch}...${target}`, '--', filePath])
+    const result = await this.executeGitCommand(['diff', '--binary', '-M', `${baseBranch}...${target}`, '--', filePath])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get file diff between branches')
     }
@@ -302,7 +388,7 @@ export class GitRepository {
   async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
     const result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
     if (!result.success) {
-      // File might not exist in that branch
+      // File might not exist in that branch - this is not an error
       return ''
     }
     return result.output || ''
