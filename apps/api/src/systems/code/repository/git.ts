@@ -12,6 +12,12 @@ interface GitCommandResult {
   error?: string
 }
 
+interface GitCommandError extends Error {
+  code?: number | string
+  stdout?: string
+  stderr?: string
+}
+
 interface CachedResult<T> {
   data: T
   timestamp: number
@@ -105,13 +111,15 @@ export class GitRepository {
       })
       
       return { success: true, output: stdout }
-    } catch (error: any) {
+    } catch (error) {
+      const gitError = error as GitCommandError
+      
       // Special cases where non-zero exit codes are expected
-      if (error.code === 1 && args[0] === 'diff') {
+      if (gitError.code === 1 && args[0] === 'diff') {
         // git diff returns 1 when there are differences
-        return { success: true, output: error.stdout || '' }
+        return { success: true, output: gitError.stdout || '' }
       }
-      if (error.code === 128 && args[0] === 'show') {
+      if (gitError.code === 128 && args[0] === 'show') {
         // git show returns 128 when object doesn't exist (file not in branch)
         return { success: true, output: '' }
       }
@@ -119,8 +127,8 @@ export class GitRepository {
       // Include original error for better debugging
       return { 
         success: false, 
-        error: error.stderr || error.message,
-        output: error.stdout // Sometimes useful for debugging
+        error: gitError.stderr || gitError.message,
+        output: gitError.stdout // Sometimes useful for debugging
       }
     }
   }
@@ -461,7 +469,19 @@ export class GitRepository {
   async getUpstreamBranch(): Promise<string | null> {
     // Get the upstream branch of HEAD
     const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
-    if (result.success && result.output) {
+    
+    if (!result.success) {
+      // Check if it's because there's no upstream configured
+      if (result.error?.includes('no upstream configured') || 
+          result.error?.includes('@{u}') ||
+          result.error?.includes('HEAD has no upstream')) {
+        return null // This is expected, not an error
+      }
+      // Otherwise, it's a real error
+      throw new Error(`Failed to get upstream branch: ${result.error}`)
+    }
+    
+    if (result.output) {
       const upstream = result.output.trim()
       // Extract branch name from remote/branch format
       const parts = upstream.split('/')
@@ -482,10 +502,15 @@ export class GitRepository {
     
     // 1. Try upstream of HEAD first (if preferred)
     if (preferUpstream) {
-      const upstream = await this.getUpstreamBranch()
-      if (upstream) {
-        this.setCached(cacheKey, upstream)
-        return upstream
+      try {
+        const upstream = await this.getUpstreamBranch()
+        if (upstream) {
+          this.setCached(cacheKey, upstream)
+          return upstream
+        }
+      } catch (error) {
+        // Log but continue with other methods
+        console.warn('Failed to get upstream branch:', error)
       }
     }
     
@@ -580,8 +605,18 @@ export class GitRepository {
   }
 
   async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
-    // Use -- separator for safety
-    const result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
+    // For files with special characters, we need to be careful
+    // If the path contains colons or starts with -, we need special handling
+    let result: GitCommandResult
+    
+    if (filePath.includes(':') || filePath.startsWith('-')) {
+      // Use the rev:./path syntax which is safer for special characters
+      result = await this.executeGitCommand(['show', `${branch}:./${filePath}`])
+    } else {
+      // Standard format for normal paths
+      result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
+    }
+    
     if (!result.success) {
       // File might not exist in that branch - this is not an error
       return ''
