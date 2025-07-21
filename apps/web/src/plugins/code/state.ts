@@ -193,7 +193,8 @@ export type Event =
   | { type: 'REFRESH_PR_STATUS' }
   | { type: 'SELECT_PR_FILE'; file: GitStatusFile }
   | { type: 'VIEW_PR_DIFF'; path: string }
-  | { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff };
+  | { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+  | { type: 'CLEAR_GIT_STATE' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -324,6 +325,33 @@ const codeState = setup({
         sendToBackend('GET_BRANCH_DIFF', {})
       }
     },
+    refreshGitPanelsIfActive: ({ context, self }) => {
+      // Clear git-related state to ensure fresh data
+      self.send({ type: 'CLEAR_GIT_STATE' })
+      
+      // If commit panel is active, refresh git status
+      if (context.selectedPanel === 'commit') {
+        sendToBackend('GET_GIT_STATUS', {})
+      }
+      // If PR panel is active, refresh PR data
+      else if (context.selectedPanel === 'pr') {
+        sendToBackend('GET_BASE_BRANCH', {})
+        sendToBackend('GET_BRANCH_DIFF', {})
+      }
+    },
+    clearGitState: assign({
+      gitStatus: [],
+      gitBranch: '',
+      commitMessage: '',
+      selectedGitFile: null,
+      gitDiff: null,
+      gitError: null,
+      prFiles: [],
+      prBaseBranch: '',
+      prError: null,
+      selectedPrFile: null,
+      prDiff: null
+    }),
     setLoading: assign({ isLoading: true, error: null }),
     navigateToDirectory: ({ event }) => {
       const ev = event as { type: 'NAVIGATE_TO_DIRECTORY'; path: string }
@@ -667,7 +695,7 @@ const codeState = setup({
           actions: ['assignCurrentDirectory']
         },
         DIRECTORY_CHANGED: {
-          actions: ['assignCurrentDirectory']
+          actions: ['assignCurrentDirectory', 'refreshGitPanelsIfActive']
         },
         FILES_LISTED: {
           actions: ['assignFiles']
@@ -828,6 +856,9 @@ const codeState = setup({
         },
         OPEN_PR_DIFF_TAB: {
           actions: ['openPrDiffTab']
+        },
+        CLEAR_GIT_STATE: {
+          actions: ['clearGitState']
         }
       }
     }

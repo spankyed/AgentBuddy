@@ -84,6 +84,7 @@ type CodeInternalEvents = SystemEvents
   | { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
   | { type: 'ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
   | { type: 'CLEAR_SEARCH_CONTROLLER' }
+  | { type: 'RESTART_GIT_WATCHER' }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
@@ -315,6 +316,8 @@ export const systemMachine = setup({
       const pluginId = id
       // Update both current and root directory
       self.send({ type: 'ASSIGN_ROOT_DIRECTORY', path: ev.path })
+      // Restart git watcher with new directory
+      self.send({ type: 'RESTART_GIT_WATCHER' })
       // Send event to frontend
       system.get(bus).send(emit(pluginId, {
         type: 'DIRECTORY_CHANGED',
@@ -330,10 +333,23 @@ export const systemMachine = setup({
         const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
         return ev.path
       },
-      gitRepository: ({ event }) => {
+      gitRepository: ({ event, context }) => {
         const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        // Clear the old repository's cache before creating new one
+        if (context.gitRepository) {
+          context.gitRepository.clearCache()
+        }
         // Use the new root directory path for git operations
         return new GitRepository(ev.path)
+      },
+      gitWatcher: ({ event, context }) => {
+        const ev = event as { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
+        // Stop the old watcher before creating new one
+        if (context.gitWatcher) {
+          context.gitWatcher.stopWatching()
+        }
+        // Create new watcher for the new directory
+        return new GitWatcherService(ev.path)
       }
     }),
     searchFiles: async ({ system, event, self }) => {
@@ -646,6 +662,25 @@ export const systemMachine = setup({
       await context.gitWatcher.startWatching()
     },
     
+    restartGitWatcher: async ({ system, self }) => {
+      const context = self.getSnapshot().context
+      const pluginId = id
+      
+      // Set up the callback for git changes (same as setup)
+      context.gitWatcher.setChangeCallback(() => {
+        // Clear git cache when git status changes
+        context.gitRepository.clearCache()
+        
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_STATUS_CHANGED',
+          data: { timestamp: new Date() }
+        }))
+      })
+      
+      // Start watching git changes in the new directory
+      await context.gitWatcher.startWatching()
+    },
+    
     getBaseBranch: async ({ system, self }) => {
       const pluginId = id
       const context = self.getSnapshot().context
@@ -809,6 +844,9 @@ export const systemMachine = setup({
         },
         GET_BRANCH_FILE_DIFF: {
           actions: ['getBranchFileDiff'],
+        },
+        RESTART_GIT_WATCHER: {
+          actions: ['restartGitWatcher'],
         },
       },
     },
