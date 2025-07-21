@@ -47,6 +47,7 @@ type OutgoingCodeEvents =
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+  | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
 
 export const id = 'code' as const;
 
@@ -691,6 +692,14 @@ const codeState = setup({
         },
         FILE_CHANGED_EXTERNALLY: {
           actions: ['handleFileChangedExternally', 'refreshExternallyModifiedFile']
+        },
+        GIT_STATUS_CHANGED: {
+          actions: [({ context }) => {
+            // Only refresh git status if commit panel is active
+            if (context.selectedPanel === 'commit') {
+              sendToBackend('GET_GIT_STATUS', {})
+            }
+          }]
         }
       }
     }

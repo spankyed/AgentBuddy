@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { FileSystemRepository } from './repository/filesystem'
 import { GitRepository } from './repository/git'
 import { FileWatcherService } from './repository/filewatcher'
+import { GitWatcherService } from './repository/gitwatcher'
 import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
@@ -68,6 +69,7 @@ export type OutgoingCodeEvents =
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+  | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -84,6 +86,7 @@ export interface Context {
   repository: FileSystemRepository
   gitRepository: GitRepository
   fileWatcher: FileWatcherService
+  gitWatcher: GitWatcherService
   activeSearchController?: AbortController
 }
 
@@ -613,19 +616,39 @@ export const systemMachine = setup({
           data: change
         }))
       })
+    },
+    
+    setupGitWatcher: async ({ system, self }) => {
+      const context = self.getSnapshot().context
+      const pluginId = id
+      
+      // Set up the callback for git changes
+      context.gitWatcher.setChangeCallback(() => {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_STATUS_CHANGED',
+          data: { timestamp: new Date() }
+        }))
+      })
+      
+      // Start watching git changes
+      await context.gitWatcher.startWatching()
     }
   },
 }).createMachine({
   id,
   initial: 'idle',
-  context: {
-    currentDirectory: process.cwd(),
-    rootDirectory: process.cwd(),
-    repository: new FileSystemRepository(),
-    gitRepository: new GitRepository(process.cwd().includes('/apps/api') ? process.cwd().replace('/apps/api', '') : process.cwd()),
-    fileWatcher: new FileWatcherService(),
-  },
-  entry: ['setupFileWatcher'],
+  context: (() => {
+    const rootDir = process.cwd().includes('/apps/api') ? process.cwd().replace('/apps/api', '') : process.cwd()
+    return {
+      currentDirectory: rootDir,
+      rootDirectory: rootDir,
+      repository: new FileSystemRepository(),
+      gitRepository: new GitRepository(rootDir),
+      fileWatcher: new FileWatcherService(),
+      gitWatcher: new GitWatcherService(rootDir),
+    }
+  })(),
+  entry: ['setupFileWatcher', 'setupGitWatcher'],
   states: {
     idle: {
       on: {

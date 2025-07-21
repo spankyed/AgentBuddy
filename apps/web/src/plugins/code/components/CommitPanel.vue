@@ -196,6 +196,7 @@ const getStatusColor = (status: GitStatusFile['status']) => {
   }
 }
 
-// Trigger initial load
+// Trigger initial load when panel is mounted
+// Git watcher will handle subsequent updates
 refreshStatus()
 </script>
