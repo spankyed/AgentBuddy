@@ -235,4 +235,76 @@ export class GitRepository {
     const status = await this.getStatus()
     return status.filter(file => file.staged)
   }
+
+  async getBaseBranch(): Promise<string> {
+    // Try to find the main branch (could be 'main' or 'master')
+    const checkBranch = async (branch: string): Promise<boolean> => {
+      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
+      return result.success
+    }
+    
+    if (await checkBranch('main')) {
+      return 'main'
+    } else if (await checkBranch('master')) {
+      return 'master'
+    }
+    
+    // Fallback: get the default branch from origin
+    const result = await this.executeGitCommand(['symbolic-ref', 'refs/remotes/origin/HEAD'])
+    if (result.success && result.output) {
+      const match = result.output.match(/refs\/remotes\/origin\/(.+)/)
+      if (match) {
+        return match[1].trim()
+      }
+    }
+    
+    throw new Error('Could not determine base branch')
+  }
+
+  async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
+    const target = targetBranch || 'HEAD'
+    
+    // Get the list of changed files between branches
+    const result = await this.executeGitCommand(['diff', '--name-status', `${baseBranch}...${target}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get branch diff')
+    }
+    
+    const files: GitStatusFile[] = []
+    const lines = (result.output || '').split('\n').filter(Boolean)
+    
+    for (const line of lines) {
+      const match = line.match(/^([AMDRC])\s+(.+)$/)
+      if (match) {
+        const [, status, filePath] = match
+        files.push({
+          path: filePath,
+          status: this.mapGitStatus(status),
+          staged: false // Not applicable for branch diffs
+        })
+      }
+    }
+    
+    return files
+  }
+
+  async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
+    const target = targetBranch || 'HEAD'
+    
+    const result = await this.executeGitCommand(['diff', `${baseBranch}...${target}`, '--', filePath])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get file diff between branches')
+    }
+    
+    return result.output || ''
+  }
+
+  async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
+    const result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
+    if (!result.success) {
+      // File might not exist in that branch
+      return ''
+    }
+    return result.output || ''
+  }
 }

@@ -48,6 +48,9 @@ type OutgoingCodeEvents =
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
   | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'BASE_BRANCH'; data: { branch: string } }
+  | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+  | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
 
 export const id = 'code' as const;
 
@@ -145,6 +148,13 @@ export type Context = {
   selectedGitFile: GitStatusFile | null
   gitDiff: GitDiff | null
   commitMessage: string
+  // PR related
+  prFiles: GitStatusFile[]
+  prBaseBranch: string
+  prError: string | null
+  isPrLoading: boolean
+  selectedPrFile: GitStatusFile | null
+  prDiff: GitDiff | null
 }
 
 export type Event = 
@@ -176,7 +186,12 @@ export type Event =
   | { type: 'COMMIT' }
   | { type: 'VIEW_DIFF'; path: string; staged: boolean }
   | { type: 'CLEAR_GIT_DIFF' }
-  | { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff };
+  | { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+  // PR events
+  | { type: 'REFRESH_PR_STATUS' }
+  | { type: 'SELECT_PR_FILE'; file: GitStatusFile }
+  | { type: 'VIEW_PR_DIFF'; path: string }
+  | { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -302,6 +317,9 @@ const codeState = setup({
       const ev = event as { type: 'SELECT_PANEL'; panel: PanelType }
       if (ev.panel === 'commit') {
         sendToBackend('GET_GIT_STATUS', {})
+      } else if (ev.panel === 'pr') {
+        sendToBackend('GET_BASE_BRANCH', {})
+        sendToBackend('GET_BRANCH_DIFF', {})
       }
     },
     setLoading: assign({ isLoading: true, error: null }),
@@ -523,7 +541,76 @@ const codeState = setup({
       if (file && !file.modified && !file.isDiff) {
         sendToBackend('READ_FILE', { path: ev.data.path })
       }
-    }
+    },
+    // PR actions
+    refreshPrStatus: () => {
+      sendToBackend('GET_BASE_BRANCH', {})
+      sendToBackend('GET_BRANCH_DIFF', {})
+    },
+    assignBaseBranch: assign({
+      prBaseBranch: ({ event }) => {
+        const ev = event as { type: 'BASE_BRANCH'; data: { branch: string } }
+        return ev.data.branch
+      },
+      isPrLoading: false,
+      prError: null
+    }),
+    assignBranchDiff: assign({
+      prFiles: ({ event }) => {
+        const ev = event as { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        return ev.data.files
+      },
+      prBaseBranch: ({ event }) => {
+        const ev = event as { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        return ev.data.baseBranch
+      },
+      isPrLoading: false
+    }),
+    selectPrFile: assign({
+      selectedPrFile: ({ event }) => {
+        const ev = event as { type: 'SELECT_PR_FILE'; file: GitStatusFile }
+        return ev.file
+      }
+    }),
+    viewPrDiff: ({ event, context }) => {
+      const ev = event as { type: 'VIEW_PR_DIFF'; path: string }
+      sendToBackend('GET_BRANCH_FILE_DIFF', { 
+        path: ev.path, 
+        baseBranch: context.prBaseBranch 
+      })
+    },
+    setPrLoading: assign({ isPrLoading: true }),
+    openPrDiffTab: assign({
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+        const diffTabId = `pr-diff:${ev.file.path}:${context.prBaseBranch}`
+        
+        // Check if diff tab already exists
+        const existingTab = context.openFiles.find(f => f.path === diffTabId)
+        if (existingTab) {
+          // Update the diff content
+          return context.openFiles.map(f => 
+            f.path === diffTabId 
+              ? { ...f, gitDiff: ev.diff, gitFile: ev.file }
+              : f
+          )
+        }
+        
+        // Add new diff tab
+        return [...context.openFiles, {
+          path: diffTabId,
+          content: '', // Not used for diffs
+          modified: false,
+          isDiff: true,
+          gitDiff: ev.diff,
+          gitFile: ev.file
+        }]
+      },
+      activeFilePath: ({ event, context }) => {
+        const ev = event as { type: 'OPEN_PR_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+        return `pr-diff:${ev.file.path}:${context.prBaseBranch}`
+      }
+    })
   }
 }).createMachine({
   id,
@@ -558,7 +645,14 @@ const codeState = setup({
     isGitLoading: false,
     selectedGitFile: null,
     gitDiff: null,
-    commitMessage: ''
+    commitMessage: '',
+    // PR related
+    prFiles: [],
+    prBaseBranch: '',
+    prError: null,
+    isPrLoading: false,
+    selectedPrFile: null,
+    prDiff: null
   },
   states: {
     canvas: {
@@ -700,6 +794,38 @@ const codeState = setup({
               sendToBackend('GET_GIT_STATUS', {})
             }
           }]
+        },
+        // PR events
+        REFRESH_PR_STATUS: {
+          actions: ['setPrLoading', 'refreshPrStatus']
+        },
+        BASE_BRANCH: {
+          actions: ['assignBaseBranch']
+        },
+        BRANCH_DIFF: {
+          actions: ['assignBranchDiff']
+        },
+        SELECT_PR_FILE: {
+          actions: ['selectPrFile']
+        },
+        VIEW_PR_DIFF: {
+          actions: ['viewPrDiff']
+        },
+        BRANCH_FILE_DIFF: {
+          actions: [({ self, event }) => {
+            const ev = event as { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
+            const context = self.getSnapshot().context
+            if (context.selectedPrFile) {
+              self.send({ 
+                type: 'OPEN_PR_DIFF_TAB', 
+                file: context.selectedPrFile, 
+                diff: ev.data 
+              })
+            }
+          }]
+        },
+        OPEN_PR_DIFF_TAB: {
+          actions: ['openPrDiffTab']
         }
       }
     }

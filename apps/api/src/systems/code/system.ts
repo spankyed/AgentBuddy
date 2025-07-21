@@ -43,6 +43,9 @@ const IncomingCodeEvents = [
   busEvent('COMMIT', { message: z.string() }),
   busEvent('GET_CURRENT_BRANCH', {}),
   busEvent('CLOSE_FILE', { path: z.string() }),
+  busEvent('GET_BASE_BRANCH', {}),
+  busEvent('GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
+  busEvent('GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -70,6 +73,9 @@ export type OutgoingCodeEvents =
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
   | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'BASE_BRANCH'; data: { branch: string } }
+  | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+  | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -632,6 +638,71 @@ export const systemMachine = setup({
       
       // Start watching git changes
       await context.gitWatcher.startWatching()
+    },
+    
+    getBaseBranch: async ({ system, self }) => {
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const branch = await context.gitRepository.getBaseBranch()
+        system.get(bus).send(emit(pluginId, {
+          type: 'BASE_BRANCH',
+          data: { branch }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    getBranchDiff: async ({ system, event, self }) => {
+      const ev = typeOf('GET_BRANCH_DIFF', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const baseBranch = ev.baseBranch || await context.gitRepository.getBaseBranch()
+        const files = await context.gitRepository.getBranchDiff(baseBranch)
+        system.get(bus).send(emit(pluginId, {
+          type: 'BRANCH_DIFF',
+          data: { files, baseBranch }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+    
+    getBranchFileDiff: async ({ system, event, self }) => {
+      const ev = typeOf('GET_BRANCH_FILE_DIFF', event)
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        const diff = await context.gitRepository.getFileDiffBetweenBranches(ev.path, ev.baseBranch)
+        
+        // Get file content from both branches
+        const originalContent = await context.gitRepository.getFileContentFromBranch(ev.path, ev.baseBranch)
+        const modifiedContent = await context.gitRepository.getFileContentFromBranch(ev.path, 'HEAD')
+        
+        system.get(bus).send(emit(pluginId, {
+          type: 'BRANCH_FILE_DIFF',
+          data: { 
+            path: ev.path, 
+            diff, 
+            staged: false,
+            originalContent,
+            modifiedContent
+          }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
     }
   },
 }).createMachine({
@@ -723,6 +794,15 @@ export const systemMachine = setup({
         },
         CLOSE_FILE: {
           actions: ['closeFile'],
+        },
+        GET_BASE_BRANCH: {
+          actions: ['getBaseBranch'],
+        },
+        GET_BRANCH_DIFF: {
+          actions: ['getBranchDiff'],
+        },
+        GET_BRANCH_FILE_DIFF: {
+          actions: ['getBranchFileDiff'],
         },
       },
     },
