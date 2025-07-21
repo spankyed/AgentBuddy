@@ -3,7 +3,8 @@ import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { FileSystemRepository } from './repository/filesystem'
 import { GitRepository } from './repository/git'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff } from './types'
+import { FileWatcherService } from './repository/filewatcher'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
@@ -40,6 +41,7 @@ const IncomingCodeEvents = [
   busEvent('UNSTAGE_FILES', { paths: z.array(z.string()) }),
   busEvent('COMMIT', { message: z.string() }),
   busEvent('GET_CURRENT_BRANCH', {}),
+  busEvent('CLOSE_FILE', { path: z.string() }),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -65,6 +67,7 @@ export type OutgoingCodeEvents =
   | { type: 'COMMIT_SUCCESS'; data: { message: string } }
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
+  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -80,6 +83,7 @@ export interface Context {
   rootDirectory: string
   repository: FileSystemRepository
   gitRepository: GitRepository
+  fileWatcher: FileWatcherService
   activeSearchController?: AbortController
 }
 
@@ -133,6 +137,9 @@ export const systemMachine = setup({
           type: 'FILE_CONTENT',
           data: content,
         }))
+        
+        // Start watching the file for external changes
+        await context.fileWatcher.watchFile(ev.path)
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
           type: 'CODE_ERROR',
@@ -582,6 +589,30 @@ export const systemMachine = setup({
           data: { message: error.message }
         }))
       }
+    },
+    
+    closeFile: async ({ event, self }) => {
+      const ev = typeOf('CLOSE_FILE', event)
+      const context = self.getSnapshot().context
+      try {
+        // Stop watching the file when it's closed
+        await context.fileWatcher.unwatchFile(ev.path)
+      } catch (error) {
+        console.error('Failed to unwatch file:', error)
+      }
+    },
+    
+    setupFileWatcher: ({ system, self }) => {
+      const context = self.getSnapshot().context
+      const pluginId = id
+      
+      // Set up the callback for file changes
+      context.fileWatcher.setChangeCallback((change: FileChangeInfo) => {
+        system.get(bus).send(emit(pluginId, {
+          type: 'FILE_CHANGED_EXTERNALLY',
+          data: change
+        }))
+      })
     }
   },
 }).createMachine({
@@ -592,7 +623,9 @@ export const systemMachine = setup({
     rootDirectory: process.cwd(),
     repository: new FileSystemRepository(),
     gitRepository: new GitRepository(process.cwd().includes('/apps/api') ? process.cwd().replace('/apps/api', '') : process.cwd()),
+    fileWatcher: new FileWatcherService(),
   },
+  entry: ['setupFileWatcher'],
   states: {
     idle: {
       on: {
@@ -664,6 +697,9 @@ export const systemMachine = setup({
         },
         GET_CURRENT_BRANCH: {
           actions: ['getCurrentBranch'],
+        },
+        CLOSE_FILE: {
+          actions: ['closeFile'],
         },
       },
     },

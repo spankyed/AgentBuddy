@@ -46,6 +46,7 @@ type OutgoingCodeEvents =
   | { type: 'COMMIT_SUCCESS'; data: { message: string } }
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
+  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
 
 export const id = 'code' as const;
 
@@ -85,6 +86,9 @@ export interface OpenFile {
   isDiff?: boolean
   gitDiff?: GitDiff
   gitFile?: GitStatusFile
+  externallyModified?: boolean
+  externalModificationTime?: Date
+  pendingSaveConflict?: boolean
 }
 
 // Git types
@@ -100,6 +104,13 @@ export interface GitDiff {
   staged: boolean
   originalContent?: string
   modifiedContent?: string
+}
+
+// File watching types
+export interface FileChangeInfo {
+  path: string
+  modifiedAt: Date
+  changeType: 'add' | 'change' | 'unlink'
 }
 
 export type Context = {
@@ -193,7 +204,19 @@ const codeState = setup({
         const ev = event as { type: 'FILE_CONTENT'; data: FileContent }
         const existingFile = context.openFiles.find(f => f.path === ev.data.path)
         if (existingFile) {
-          return context.openFiles
+          // Update content for existing file (used for external refresh)
+          return context.openFiles.map(f => 
+            f.path === ev.data.path 
+              ? { 
+                  ...f, 
+                  content: ev.data.content,
+                  externallyModified: false,
+                  externalModificationTime: undefined,
+                  // Keep pendingSaveConflict if file was modified
+                  pendingSaveConflict: f.modified ? f.pendingSaveConflict : false
+                }
+              : f
+          )
         }
         return [...context.openFiles, {
           path: ev.data.path,
@@ -240,6 +263,10 @@ const codeState = setup({
         return context.activeFilePath
       }
     }),
+    closeFileOnBackend: ({ event }) => {
+      const ev = event as { type: 'CLOSE_FILE'; path: string }
+      sendToBackend('CLOSE_FILE', { path: ev.path })
+    },
     updateFileContent: assign({
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'FILE_MODIFIED'; path: string; content: string }
@@ -252,7 +279,15 @@ const codeState = setup({
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'FILE_SAVED'; data: { path: string } }
         return context.openFiles.map(f => 
-          f.path === ev.data.path ? { ...f, modified: false } : f
+          f.path === ev.data.path 
+            ? { 
+                ...f, 
+                modified: false,
+                pendingSaveConflict: false,
+                externallyModified: false,
+                externalModificationTime: undefined
+              } 
+            : f
         )
       }
     }),
@@ -460,7 +495,43 @@ const codeState = setup({
         const ev = event as { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
         return `diff:${ev.file.path}:${ev.file.staged ? 'staged' : 'unstaged'}`
       }
-    })
+    }),
+    handleFileChangedExternally: assign({
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+        return context.openFiles.map(f => {
+          if (f.path === ev.data.path && !f.isDiff) {
+            // If file is not modified, we can update the content automatically
+            if (!f.modified) {
+              // Content will be updated when we read the file
+              return {
+                ...f,
+                externallyModified: true,
+                externalModificationTime: ev.data.modifiedAt
+              }
+            } else {
+              // If file has unsaved changes, mark it as having a conflict
+              return {
+                ...f,
+                externallyModified: true,
+                externalModificationTime: ev.data.modifiedAt,
+                pendingSaveConflict: true
+              }
+            }
+          }
+          return f
+        })
+      }
+    }),
+    refreshExternallyModifiedFile: ({ event, context }) => {
+      const ev = event as { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+      const file = context.openFiles.find(f => f.path === ev.data.path)
+      
+      // Only refresh if file is not modified by user
+      if (file && !file.modified && !file.isDiff) {
+        sendToBackend('READ_FILE', { path: ev.data.path })
+      }
+    }
   }
 }).createMachine({
   id,
@@ -526,7 +597,7 @@ const codeState = setup({
           actions: ['setActiveFile']
         },
         CLOSE_FILE: {
-          actions: ['closeFile']
+          actions: ['closeFile', 'closeFileOnBackend']
         },
         FILE_MODIFIED: {
           actions: ['updateFileContent']
@@ -626,6 +697,9 @@ const codeState = setup({
         },
         CLEAR_GIT_DIFF: {
           actions: ['clearGitDiff']
+        },
+        FILE_CHANGED_EXTERNALLY: {
+          actions: ['handleFileChangedExternally', 'refreshExternallyModifiedFile']
         }
       }
     }

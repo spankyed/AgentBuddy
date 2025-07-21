@@ -87,3 +87,10 @@ export interface GitDiff {
   originalContent?: string
   modifiedContent?: string
 }
+
+// File watching types
+export interface FileChangeInfo {
+  path: string
+  modifiedAt: Date
+  changeType: 'add' | 'change' | 'unlink'
+}

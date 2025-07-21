@@ -21,7 +21,8 @@
             class="flex-shrink-0 w-4 h-4"
           />
           <span class="max-w-[150px] truncate">{{ getTabLabel(file) }}</span>
-          <span v-if="file.modified && !file.isDiff" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          <span v-if="file.pendingSaveConflict && !file.isDiff" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+          <span v-else-if="file.modified && !file.isDiff" class="w-2 h-2 bg-blue-500 rounded-full"></span>
         </button>
         <button
           @click.stop="closeFile(file.path)"
