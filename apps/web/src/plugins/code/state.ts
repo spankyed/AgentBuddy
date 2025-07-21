@@ -210,10 +210,10 @@ const codeState = setup({
               ? { 
                   ...f, 
                   content: ev.data.content,
+                  modified: false, // File is no longer modified after loading external content
                   externallyModified: false,
                   externalModificationTime: undefined,
-                  // Keep pendingSaveConflict if file was modified
-                  pendingSaveConflict: f.modified ? f.pendingSaveConflict : false
+                  pendingSaveConflict: false // Clear conflict after loading external changes
                 }
               : f
           )
@@ -501,22 +501,13 @@ const codeState = setup({
         const ev = event as { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
         return context.openFiles.map(f => {
           if (f.path === ev.data.path && !f.isDiff) {
-            // If file is not modified, we can update the content automatically
-            if (!f.modified) {
-              // Content will be updated when we read the file
-              return {
-                ...f,
-                externallyModified: true,
-                externalModificationTime: ev.data.modifiedAt
-              }
-            } else {
-              // If file has unsaved changes, mark it as having a conflict
-              return {
-                ...f,
-                externallyModified: true,
-                externalModificationTime: ev.data.modifiedAt,
-                pendingSaveConflict: true
-              }
+            // Mark file as externally modified
+            // If file has unsaved changes, also mark it as having a conflict
+            return {
+              ...f,
+              externallyModified: true,
+              externalModificationTime: ev.data.modifiedAt,
+              pendingSaveConflict: f.modified // Only set conflict if file was modified
             }
           }
           return f
