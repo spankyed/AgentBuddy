@@ -350,4 +350,213 @@ export class FileSystemRepository {
       throw this.createError('SEARCH_ERROR', error.message)
     }
   }
+
+  async findTypeScriptFiles(rootPath: string): Promise<string[]> {
+    // Now finds all text files, not just TypeScript
+    return this.findProjectTextFiles(rootPath)
+  }
+
+  async findProjectTextFiles(rootPath: string): Promise<string[]> {
+    try {
+      const validPath = this.validatePath(rootPath)
+      const files: string[] = []
+      
+      // Use ripgrep to find all text files
+      const args = [
+        '--files', // List files only, don't search content
+        // TypeScript/JavaScript
+        '--glob', '*.ts',
+        '--glob', '*.tsx',
+        '--glob', '*.js',
+        '--glob', '*.jsx',
+        '--glob', '*.mjs',
+        '--glob', '*.cjs',
+        '--glob', '*.d.ts',
+        // Vue
+        '--glob', '*.vue',
+        // JSON/Config
+        '--glob', '*.json',
+        '--glob', '*.jsonc',
+        '--glob', '*.json5',
+        // CSS/Styles
+        '--glob', '*.css',
+        '--glob', '*.scss',
+        '--glob', '*.sass',
+        '--glob', '*.less',
+        // HTML/Markup
+        '--glob', '*.html',
+        '--glob', '*.htm',
+        '--glob', '*.xml',
+        '--glob', '*.svg',
+        // YAML
+        '--glob', '*.yaml',
+        '--glob', '*.yml',
+        // Markdown
+        '--glob', '*.md',
+        '--glob', '*.mdx',
+        // Config files
+        '--glob', '*.env',
+        '--glob', '*.env.*',
+        '--glob', '.eslintrc*',
+        '--glob', '.prettierrc*',
+        '--glob', 'tsconfig*.json',
+        '--glob', 'package.json',
+        '--glob', 'Dockerfile',
+        '--glob', '*.dockerfile',
+        '--glob', 'Makefile',
+        '--glob', '*.toml',
+        '--glob', '*.ini',
+        '--glob', '*.cfg',
+        '--glob', '*.conf',
+        // Shell scripts
+        '--glob', '*.sh',
+        '--glob', '*.bash',
+        '--glob', '*.zsh',
+        // Other common text files
+        '--glob', '*.py',
+        '--glob', '*.rb',
+        '--glob', '*.go',
+        '--glob', '*.rs',
+        '--glob', '*.java',
+        '--glob', '*.kt',
+        '--glob', '*.php',
+        '--glob', '*.c',
+        '--glob', '*.cpp',
+        '--glob', '*.h',
+        '--glob', '*.hpp',
+        // Exclude common directories
+        '--glob', '!node_modules/**',
+        '--glob', '!dist/**',
+        '--glob', '!build/**',
+        '--glob', '!coverage/**',
+        '--glob', '!.git/**',
+        '--glob', '!*.min.js',
+        '--glob', '!*.min.css',
+        '--glob', '!vendor/**',
+        '--glob', '!.next/**',
+        '--glob', '!.nuxt/**',
+        '--glob', '!out/**',
+        validPath
+      ]
+      
+      return new Promise((resolve, reject) => {
+        const rg = spawn('rg', args)
+        let output = ''
+        let errorOutput = ''
+        
+        rg.stdout.on('data', (data) => {
+          output += data.toString()
+        })
+        
+        rg.stderr.on('data', (data) => {
+          errorOutput += data.toString()
+        })
+        
+        rg.on('close', (code) => {
+          if (code === 0 || code === 1) {
+            const fileList = output
+              .split('\n')
+              .filter(Boolean)
+              .map(file => file.trim())
+            resolve(fileList)
+          } else {
+            if (errorOutput.includes('command not found') || errorOutput.includes('not recognized')) {
+              // Fallback to using find command if ripgrep is not available
+              this.findTypeScriptFilesWithFind(validPath).then(resolve).catch(reject)
+            } else {
+              reject(this.createError('IO_ERROR', `Failed to find TypeScript files: ${errorOutput}`))
+            }
+          }
+        })
+        
+        rg.on('error', (err) => {
+          // Fallback to using find command
+          this.findTypeScriptFilesWithFind(validPath).then(resolve).catch(reject)
+        })
+      })
+    } catch (error: any) {
+      throw this.createError('IO_ERROR', error.message)
+    }
+  }
+
+  private async findTypeScriptFilesWithFind(rootPath: string): Promise<string[]> {
+    // Fallback implementation using Node.js fs
+    const files: string[] = []
+    const excludeDirs = ['node_modules', 'dist', 'build', 'coverage', '.git', 'vendor', '.next', '.nuxt', 'out']
+    const excludeFiles = ['.min.js', '.min.css']
+    
+    // All text file extensions we want to include
+    const extensions = new Set([
+      // TypeScript/JavaScript
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.d.ts',
+      // Vue
+      '.vue',
+      // JSON/Config
+      '.json', '.jsonc', '.json5',
+      // CSS/Styles
+      '.css', '.scss', '.sass', '.less',
+      // HTML/Markup
+      '.html', '.htm', '.xml', '.svg',
+      // YAML
+      '.yaml', '.yml',
+      // Markdown
+      '.md', '.mdx',
+      // Shell
+      '.sh', '.bash', '.zsh',
+      // Other languages
+      '.py', '.rb', '.go', '.rs', '.java', '.kt', '.php', '.c', '.cpp', '.h', '.hpp',
+      // Config files
+      '.env', '.toml', '.ini', '.cfg', '.conf'
+    ])
+    
+    // Special files without extensions or with special names
+    const specialFiles = new Set([
+      'dockerfile', 'makefile', 'gnumakefile', 'cmakelists.txt',
+      '.eslintrc', '.prettierrc', '.gitignore', '.dockerignore'
+    ])
+    
+    async function walk(dir: string) {
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true })
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name)
+          const lowerName = entry.name.toLowerCase()
+          
+          if (entry.isDirectory()) {
+            if (!excludeDirs.includes(entry.name) && !entry.name.startsWith('.')) {
+              await walk(fullPath)
+            }
+          } else if (entry.isFile()) {
+            // Check if it's excluded
+            const isExcluded = excludeFiles.some(exc => entry.name.endsWith(exc))
+            if (isExcluded) continue
+            
+            // Check if it's a special file
+            if (specialFiles.has(lowerName) || lowerName.startsWith('dockerfile.') || lowerName.endsWith('.dockerfile')) {
+              files.push(fullPath)
+              continue
+            }
+            
+            // Check extensions
+            const ext = path.extname(entry.name).toLowerCase()
+            if (extensions.has(ext)) {
+              files.push(fullPath)
+            }
+            
+            // Also include .env.* files
+            if (entry.name.startsWith('.env') || entry.name.startsWith('tsconfig') || entry.name.startsWith('.eslintrc') || entry.name.startsWith('.prettierrc')) {
+              files.push(fullPath)
+            }
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+        console.warn(`Skipping directory ${dir}:`, error)
+      }
+    }
+    
+    await walk(rootPath)
+    return files
+  }
 }

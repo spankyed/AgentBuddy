@@ -46,6 +46,7 @@ const IncomingCodeEvents = [
   busEvent('GET_BASE_BRANCH', {}),
   busEvent('GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
   busEvent('GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
+  busEvent('GET_PROJECT_TEXT_FILES', {}),
 ] as const
 
 export type OutgoingCodeEvents =
@@ -59,7 +60,7 @@ export type OutgoingCodeEvents =
   | { type: 'FILE_INFO'; data: FileInfo }
   | { type: 'DIRECTORY_CHANGED'; data: { path: string } }
   | { type: 'CODE_ERROR'; data: CodeSystemError }
-  | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+  | { type: 'CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
   | { type: 'SEARCH_RESULT'; data: SearchResult }
   | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
   | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
@@ -76,6 +77,7 @@ export type OutgoingCodeEvents =
   | { type: 'BASE_BRANCH'; data: { branch: string } }
   | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
+  | { type: 'PROJECT_TEXT_FILES'; data: { files: Array<{ path: string; content: string }>; rootDirectory: string } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -110,7 +112,10 @@ export const systemMachine = setup({
       const context = self.getSnapshot().context
       system.get(bus).send(emit(pluginId, {
         type: 'CURRENT_DIRECTORY',
-        data: { path: context.currentDirectory },
+        data: { 
+          path: context.currentDirectory,
+          rootDirectory: context.rootDirectory 
+        },
       }))
     },
     
@@ -744,6 +749,47 @@ export const systemMachine = setup({
           data: { message: error.message }
         }))
       }
+    },
+    
+    getProjectTextFiles: async ({ system, self }) => {
+      const pluginId = id
+      const context = self.getSnapshot().context
+      try {
+        // Get all text files in the project (JS, TS, JSON, CSS, HTML, etc.)
+        const files = await context.repository.findProjectTextFiles(context.rootDirectory)
+        
+        // Read content for each file
+        const filesWithContent = await Promise.all(
+          files.map(async (filePath) => {
+            try {
+              const content = await context.repository.readFile(filePath)
+              return { path: filePath, content: content.content }
+            } catch (error) {
+              console.warn(`Failed to read file ${filePath}:`, error)
+              return null
+            }
+          })
+        )
+        
+        // Filter out files that failed to read
+        const validFiles = filesWithContent.filter(f => f !== null) as Array<{ path: string; content: string }>
+        
+        system.get(bus).send(emit(pluginId, {
+          type: 'PROJECT_TEXT_FILES',
+          data: { 
+            files: validFiles,
+            rootDirectory: context.rootDirectory 
+          }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'CODE_ERROR',
+          data: {
+            code: 'IO_ERROR',
+            message: error.message
+          }
+        }))
+      }
     }
   },
 }).createMachine({
@@ -847,6 +893,9 @@ export const systemMachine = setup({
         },
         RESTART_GIT_WATCHER: {
           actions: ['restartGitWatcher'],
+        },
+        GET_PROJECT_TEXT_FILES: {
+          actions: ['getProjectTextFiles'],
         },
       },
     },

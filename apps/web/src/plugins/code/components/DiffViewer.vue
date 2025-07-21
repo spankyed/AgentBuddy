@@ -24,9 +24,11 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { GitCompare } from 'lucide-vue-next'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import type { GitStatusFile, GitDiff } from '../state'
+import { setupMonacoEnvironment, getMonacoLanguage } from '../utils/monaco-setup'
 
 // Props
 defineProps<{
@@ -34,7 +36,12 @@ defineProps<{
   gitDiff: GitDiff | null
 }>()
 
-// Monaco diff editor options
+// Setup Monaco environment on mount
+onMounted(() => {
+  setupMonacoEnvironment()
+})
+
+// Monaco diff editor options with enhanced features
 const diffEditorOptions = {
   fontSize: 14,
   lineNumbers: 'on' as const,
@@ -45,44 +52,26 @@ const diffEditorOptions = {
   readOnly: true,
   renderSideBySide: true,
   enableSplitViewResizing: true,
+  // Enhanced options for better diff viewing
+  diffWordWrap: 'on' as const,
+  ignoreTrimWhitespace: false,
+  renderIndicators: true,
+  originalEditable: false,
+  // Enable folding in diff view
+  folding: true,
+  // Bracket matching
+  bracketPairColorization: {
+    enabled: true
+  },
+  // Hover
+  hover: {
+    enabled: true,
+    delay: 300
+  },
 }
 
 // Helper function
 const getLanguage = (path: string) => {
-  const ext = path.split('.').pop() || ''
-  const languageMap: Record<string, string> = {
-    js: 'javascript',
-    jsx: 'javascript',
-    ts: 'typescript',
-    tsx: 'typescript',
-    vue: 'html',
-    py: 'python',
-    java: 'java',
-    c: 'c',
-    cpp: 'cpp',
-    go: 'go',
-    rs: 'rust',
-    php: 'php',
-    rb: 'ruby',
-    swift: 'swift',
-    json: 'json',
-    html: 'html',
-    css: 'css',
-    scss: 'scss',
-    sass: 'sass',
-    less: 'less',
-    xml: 'xml',
-    yaml: 'yaml',
-    yml: 'yaml',
-    md: 'markdown',
-    sql: 'sql',
-    sh: 'shell',
-    bash: 'shell',
-    ps1: 'powershell',
-    dockerfile: 'dockerfile',
-    makefile: 'makefile',
-  }
-  
-  return languageMap[ext] || 'plaintext'
+  return getMonacoLanguage(path)
 }
 </script>

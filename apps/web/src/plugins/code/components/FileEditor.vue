@@ -51,13 +51,12 @@
           class="h-full"
         />
         <!-- Regular editor for normal files -->
-        <VueMonacoEditor
+        <SimpleMonacoEditor
           v-else
-          :value="activeFile.content"
-          @update:value="handleContentChange"
-          :options="editorOptions"
+          :model-value="activeFile.content"
+          @update:model-value="handleContentChange"
+          :file-path="activeFilePath || undefined"
           theme="vs-dark"
-          :language="getLanguage(activeFilePath)"
           class="h-full"
         />
       </div>
@@ -68,8 +67,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { X, FileCode, File, FileJson, FileText, Image, GitCompare } from 'lucide-vue-next'
-import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import DiffViewer from './DiffViewer.vue'
+import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import type { OpenFile } from '../state'
 
 // Props
@@ -90,19 +89,7 @@ const activeFile = computed(() =>
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
 
-// Monaco editor options
-const editorOptions = {
-  fontSize: 14,
-  lineNumbers: 'on' as const,
-  minimap: { enabled: false },
-  automaticLayout: true,
-  scrollBeyondLastLine: false,
-  wordWrap: 'on' as const,
-  tabSize: 2,
-  insertSpaces: true,
-  formatOnPaste: true,
-  formatOnType: true,
-}
+// No setup needed - monaco-editor-wrapper handles everything
 
 // Event handlers
 const selectFile = (path: string) => {
@@ -138,45 +125,7 @@ const getFileExtension = (path: string) => {
   return parts.length > 1 ? parts.pop() : ''
 }
 
-const getLanguage = (path: string | null) => {
-  if (!path) return 'plaintext'
-  
-  const ext = getFileExtension(path)
-  const languageMap: Record<string, string> = {
-    js: 'javascript',
-    jsx: 'javascript',
-    ts: 'typescript',
-    tsx: 'typescript',
-    vue: 'html',
-    py: 'python',
-    java: 'java',
-    c: 'c',
-    cpp: 'cpp',
-    go: 'go',
-    rs: 'rust',
-    php: 'php',
-    rb: 'ruby',
-    swift: 'swift',
-    json: 'json',
-    html: 'html',
-    css: 'css',
-    scss: 'scss',
-    sass: 'sass',
-    less: 'less',
-    xml: 'xml',
-    yaml: 'yaml',
-    yml: 'yaml',
-    md: 'markdown',
-    sql: 'sql',
-    sh: 'shell',
-    bash: 'shell',
-    ps1: 'powershell',
-    dockerfile: 'dockerfile',
-    makefile: 'makefile',
-  }
-  
-  return languageMap[ext || ''] || 'plaintext'
-}
+// Language detection is handled by MonacoLanguageEditor
 
 const getFileIcon = (extension?: string) => {
   if (!extension) return File
