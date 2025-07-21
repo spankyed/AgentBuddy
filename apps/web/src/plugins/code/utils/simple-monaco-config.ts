@@ -96,6 +96,8 @@ export function getLanguageId(filePath: string): string {
     jsx: 'javascript',
     mjs: 'javascript',
     cjs: 'javascript',
+    // Vue - using HTML for basic highlighting
+    vue: 'html',
     // Web
     html: 'html',
     htm: 'html',
