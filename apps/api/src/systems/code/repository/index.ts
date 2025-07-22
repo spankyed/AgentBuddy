@@ -2,6 +2,7 @@ import { EARS } from '@/core/types'
 import { tx, qx } from '@/services/database'
 import { createEntityWithDefaults, updateEntity, findById, findAll, exists } from '@/core/utils/repository'
 import type { TerminalInfo } from '../types'
+import { terminalService } from '../services/terminal'
 
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
@@ -18,6 +19,11 @@ export interface TerminalEntity {
   createdAt: number
   updatedAt: number
   closedAt?: number
+}
+
+export interface StartupData {
+  terminals: TerminalInfo[]
+  terminalOutputs: Record<string, string>
 }
 
 export const terminalQueries = {
@@ -39,6 +45,27 @@ export const terminalQueries = {
     const result = qx(id).pickOne(['output', 'title', 'cwd'])
     if (!result) return undefined
     return result as Pick<TerminalEntity, 'output' | 'title' | 'cwd'>
+  },
+
+
+  getStartupData: (): StartupData => {
+    // ! Get all active terminals (bad practice to call service directly in queries, but for simplicity)
+    const terminals = terminalService.getAllActiveTerminals()
+    
+    // ! Get output for each terminal
+    const terminalOutputs: Record<string, string> = {}
+    
+    terminals.forEach(terminal => {
+      const output = terminalService.getOutput(terminal.id)
+      if (output) {
+        terminalOutputs[terminal.id] = output
+      }
+    })
+    
+    return {
+      terminals,
+      terminalOutputs
+    }
   }
 }
 

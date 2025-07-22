@@ -1,13 +1,12 @@
 import { assign, setup } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { FileSystemRepository } from './repository/filesystem'
-import { GitRepository } from './repository/git'
-import { FileWatcherService } from './repository/filewatcher'
-import { GitWatcherService } from './repository/gitwatcher'
-import { terminalService } from './repository/terminal'
-import { terminalCommands } from './repository/terminal-storage'
-import { getStartupData } from './repository/startup'
+import { FileSystemRepository } from './services/filesystem'
+import { GitRepository } from './services/git'
+import { FileWatcherService } from './services/filewatcher'
+import { GitWatcherService } from './services/gitwatcher'
+import { terminalService } from './services/terminal'
+import { terminalCommands, terminalQueries } from './repository'
 import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo, TerminalInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
@@ -140,7 +139,7 @@ export const systemMachine = setup({
 
     // sendStartupData: ({ system }) => {
     //   const pluginId = id
-    //   const { terminals, terminalOutputs } = getStartupData()
+    //   const { terminals, terminalOutputs } = terminalQueries.getStartupData()
 
     //   // Send list of terminals
     //   if (terminals.length > 0) {

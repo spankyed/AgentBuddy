@@ -1,7 +1,7 @@
 import * as pty from 'node-pty-prebuilt-multiarch'
 import { v4 as uuidv4 } from 'uuid'
 import { EARS } from '@/core/types'
-import { terminalCommands, terminalQueries } from './terminal-storage'
+import { terminalCommands, terminalQueries } from '../repository'
 import type { TerminalInfo, TerminalCreate } from '../types'
 
 interface Terminal {
