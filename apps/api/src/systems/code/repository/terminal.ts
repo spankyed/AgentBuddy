@@ -10,7 +10,7 @@ interface Terminal {
 class TerminalService {
   private terminals: Map<string, Terminal> = new Map()
 
-  create(options: TerminalCreate): TerminalInfo {
+  async create(options: TerminalCreate): Promise<TerminalInfo> {
     const id = options.id || uuidv4()
     const shell = options.shell || process.env.SHELL || 'bash'
     const cwd = options.cwd || process.cwd()

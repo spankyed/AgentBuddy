@@ -128,10 +128,7 @@ onMounted(() => {
   })
   resizeObserver.observe(container.value)
 
-  /* 6. Kick the shell so we get a prompt */
-  setTimeout(() => actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data: '\r' }), 150)
-
-  /** Focus as soon as we are mounted */
+  /* 6. Focus terminal - shell initialization now happens on backend */
   term.focus()
 })
 

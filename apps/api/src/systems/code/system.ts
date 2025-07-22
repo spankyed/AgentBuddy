@@ -774,7 +774,7 @@ export const systemMachine = setup({
       const pluginId = id
       const context = self.getSnapshot().context
       try {
-        const terminalInfo = terminalService.create({
+        const terminalInfo = await terminalService.create({
           title: ev.title,
           cwd: ev.cwd || context.currentDirectory,
           shell: ev.shell,
