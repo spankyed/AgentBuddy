@@ -86,6 +86,7 @@ const createNewTerminal = () => {
 
 // Select a terminal
 const selectTerminal = (terminal: TerminalInfo) => {
+  console.log('Selecting terminal:', terminal.id, terminal.title)
   actor.send({ type: 'SELECT_TERMINAL', terminalId: terminal.id })
 }
 

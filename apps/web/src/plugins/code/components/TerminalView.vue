@@ -1,140 +1,174 @@
 <template>
-  <div ref="terminalContainer" class="h-full w-full bg-black"></div>
+  <!-- Fills available space; Tailwind-coloured background for consistency -->
+  <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { applicationState } from '@/app'
 import { id, type CodeState, type TerminalInfo } from '../state'
 import '@xterm/xterm/css/xterm.css'
 
+/* --------------------------------------------------------------------------
+ * Props & actor -------------------------------------------------------------------------- */
 const props = defineProps<{
   terminalInfo: TerminalInfo
+  /**
+   * Streamed stdout/stderr chunks from the backend.  Each entry is the raw byte
+   * string *exactly* as it should be written to the PTY.
+   */
+  outputs?: string[]
 }>()
 
 const actor: CodeState = applicationState.system.get(id)
-const terminalContainer = ref<HTMLElement>()
-let terminal: Terminal | null = null
+
+/* --------------------------------------------------------------------------
+ * Refs / Singletons ---------------------------------------------------------------------- */
+const container = ref<HTMLElement>() // mount point for xterm
+let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 
-// Initialize terminal
-onMounted(() => {
-  if (!terminalContainer.value) return
+// Track how many output entries we've already rendered so that we only write
+// new chunks as they arrive.
+let processedCount = 0
 
-  // Create terminal instance
-  terminal = new Terminal({
-    theme: {
-      background: '#0a0a0a',
-      foreground: '#e4e4e7',
-      cursor: '#e4e4e7',
-      black: '#0a0a0a',
-      red: '#ef4444',
-      green: '#10b981',
-      yellow: '#f59e0b',
-      blue: '#3b82f6',
-      magenta: '#8b5cf6',
-      cyan: '#06b6d4',
-      white: '#e4e4e7',
-      brightBlack: '#52525b',
-      brightRed: '#f87171',
-      brightGreen: '#34d399',
-      brightYellow: '#fbbf24',
-      brightBlue: '#60a5fa',
-      brightMagenta: '#a78bfa',
-      brightCyan: '#22d3ee',
-      brightWhite: '#f4f4f5'
-    },
+/* --------------------------------------------------------------------------
+ * Helpers ------------------------------------------------------------------------------- */
+const fit = () => fitAddon?.fit()
+
+const sendResize = () => {
+  if (!term) return
+  actor.send({
+    type: 'RESIZE_TERMINAL',
+    terminalId: props.terminalInfo.id,
+    cols: term.cols,
+    rows: term.rows
+  })
+}
+
+/**
+ * Write a batch of data chunks to the terminal.
+ */
+const writeChunks = (chunks: string[]) => {
+  for (const chunk of chunks) term?.write(chunk)
+}
+
+/* --------------------------------------------------------------------------
+ * Lifecycle --------------------------------------------------------------------------- */
+onMounted(() => {
+  if (!container.value) return
+
+  /* 1. Construct terminal + addons */
+  term = new Terminal({
+    fontFamily: 'JetBrains Mono, Cascadia Code, Fira Code, Menlo, monospace',
     fontSize: 14,
-    fontFamily: '"JetBrains Mono", "Cascadia Code", "Fira Code", monospace',
+    convertEol: true,
     cursorBlink: true,
     cursorStyle: 'bar',
-    scrollback: 10000,
-    cols: props.terminalInfo.cols,
-    rows: props.terminalInfo.rows
+    scrollback: 10_000,
+    cols: props.terminalInfo.cols || 80,
+    rows: props.terminalInfo.rows || 24,
+    theme: {
+      background: '#1e1e1e',
+      foreground: '#d4d4d4',
+      cursor: '#d4d4d4',
+      cursorAccent: '#1e1e1e',
+      black: '#000000',
+      red: '#cd3131',
+      green: '#0dbc79',
+      yellow: '#e5e510',
+      blue: '#2472c8',
+      magenta: '#bc3fbc',
+      cyan: '#11a8cd',
+      white: '#e5e5e5',
+      brightBlack: '#666666',
+      brightRed: '#f14c4c',
+      brightGreen: '#23d18b',
+      brightYellow: '#f5f543',
+      brightBlue: '#3b8eea',
+      brightMagenta: '#d670d6',
+      brightCyan: '#29b8db',
+      brightWhite: '#e5e5e5'
+    }
   })
 
-  // Initialize fit addon
   fitAddon = new FitAddon()
-  terminal.loadAddon(fitAddon)
+  term.loadAddon(fitAddon)
+  term.loadAddon(new WebLinksAddon())
 
-  // Open terminal in container
-  terminal.open(terminalContainer.value)
-  
-  // Initial fit
-  setTimeout(() => {
-    fitAddon?.fit()
-    // Send resize event to backend
-    if (terminal) {
-      actor.send({
-        type: 'RESIZE_TERMINAL',
-        terminalId: props.terminalInfo.id,
-        cols: terminal.cols,
-        rows: terminal.rows
-      })
-    }
-  }, 0)
+  /* 2. Mount & fit */
+  term.open(container.value)
+  term.element!.style.height = '100%'
+  fit()
+  sendResize()
 
-  // Handle terminal input
-  terminal.onData((data) => {
-    actor.send({
-      type: 'TERMINAL_INPUT',
-      terminalId: props.terminalInfo.id,
-      data
-    })
+  /* 3. Stream existing buffered output (if any) */
+  if (props.outputs?.length) {
+    writeChunks(props.outputs)
+    processedCount = props.outputs.length
+  }
+
+  /* 4. PTY -> FE communication */
+  term.onData(data => {
+    actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data })
   })
 
-  // Handle resize
-  terminal.onResize(({ cols, rows }) => {
-    actor.send({
-      type: 'RESIZE_TERMINAL',
-      terminalId: props.terminalInfo.id,
-      cols,
-      rows
-    })
+  term.onResize(({ cols, rows }) => {
+    actor.send({ type: 'RESIZE_TERMINAL', terminalId: props.terminalInfo.id, cols, rows })
   })
 
-  // Set up resize observer
+  /* 5. Keep the terminal sized with its container */
   resizeObserver = new ResizeObserver(() => {
-    if (fitAddon && terminal) {
-      fitAddon.fit()
+    fit()
+    sendResize()
+  })
+  resizeObserver.observe(container.value)
+
+  /* 6. Kick the shell so we get a prompt */
+  setTimeout(() => actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data: '\r' }), 150)
+
+  /** Focus as soon as we are mounted */
+  term.focus()
+})
+
+/**
+ * Stream new output chunks into xterm (reactive).
+ */
+watch(
+  () => props.outputs,
+  (newVal) => {
+    if (!term || !newVal) return
+    const unprocessed = newVal.slice(processedCount)
+    if (unprocessed.length) {
+      writeChunks(unprocessed)
+      processedCount = newVal.length
     }
-  })
-  resizeObserver.observe(terminalContainer.value)
+  },
+  { deep: true }
+)
 
-  // Listen for terminal output
-  const unsubscribe = actor.subscribe((state) => {
-    // This is a simplified approach - in production, you might want to use a more sophisticated event system
-    // Listen for TERMINAL_OUTPUT events in the parent component and pass data as props
-  })
-})
-
-// Handle terminal output (called from parent component)
-const writeData = (data: string) => {
-  terminal?.write(data)
-}
-
-// Focus terminal
-const focus = () => {
-  terminal?.focus()
-}
-
-// Expose methods to parent
-defineExpose({
-  writeData,
-  focus
-})
-
-// Cleanup
-onUnmounted(() => {
+onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  terminal?.dispose()
+  term?.dispose()
 })
+
+/* --------------------------------------------------------------------------
+ * Public API (exposed to parent via refs) ---------------------------------- */
+function focus() {
+  term?.focus()
+}
+
+// expose allows parent components using `ref="child"` to access focus()
+// eslint-disable-next-line vue/no-setup-props-destructure
+defineExpose({ focus })
 </script>
 
 <style scoped>
+/* Slight padding inside the terminal for aesthetics */
 :deep(.xterm) {
   height: 100%;
   padding: 8px;

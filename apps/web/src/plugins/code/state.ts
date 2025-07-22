@@ -139,7 +139,6 @@ export interface TerminalInfo {
 
 export interface TerminalTab extends OpenFile {
   isTerminal: true
-  terminalId: string
   terminalInfo: TerminalInfo
 }
 
@@ -184,6 +183,7 @@ export type Context = {
   // Terminal related
   terminals: TerminalInfo[]
   terminalError: string | null
+  terminalOutputs: Record<string, string[]>
 }
 
 export type Event = 
@@ -228,7 +228,8 @@ export type Event =
   | { type: 'SELECT_TERMINAL'; terminalId: string }
   | { type: 'TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
-  | { type: 'REQUEST_TERMINALS_LIST' };
+  | { type: 'REQUEST_TERMINALS_LIST' }
+  | { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -244,6 +245,37 @@ const codeState = setup({
     events: {} as Event
   },
   actions: {
+    openTerminalTab: assign({
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo }
+        const terminalPath = `terminal:${ev.terminalInfo.id}`
+        
+        // Check if terminal tab already exists
+        const existingTab = context.openFiles.find(f => f.path === terminalPath)
+        if (existingTab) {
+          // Update terminal info if it exists
+          return context.openFiles.map(f => 
+            f.path === terminalPath && 'isTerminal' in f && f.isTerminal
+              ? { ...f, terminalInfo: ev.terminalInfo }
+              : f
+          )
+        }
+        
+        // Add new terminal tab
+        const terminalTab: TerminalTab = {
+          path: terminalPath,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: ev.terminalInfo
+        }
+        return [...context.openFiles, terminalTab]
+      },
+      activeFilePath: ({ event }) => {
+        const ev = event as { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo }
+        return `terminal:${ev.terminalInfo.id}`
+      }
+    }),
     assignFiles: assign({
       files: ({ event }) => {
         const ev = event as { type: 'FILES_LISTED'; data: DirectoryContent }
@@ -358,6 +390,7 @@ const codeState = setup({
         sendToBackend('GET_BASE_BRANCH', {})
         sendToBackend('GET_BRANCH_DIFF', {})
       } else if (ev.panel === 'terminal') {
+        console.log('Terminal panel selected, requesting terminal list')
         sendToBackend('LIST_TERMINALS', {})
       }
     },
@@ -714,22 +747,6 @@ const codeState = setup({
       terminals: ({ context, event }) => {
         const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
         return [...context.terminals, ev.data]
-      },
-      openFiles: ({ context, event }) => {
-        const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
-        const terminalTab: TerminalTab = {
-          path: `terminal:${ev.data.id}`,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalId: ev.data.id,
-          terminalInfo: ev.data
-        }
-        return [...context.openFiles, terminalTab]
-      },
-      activeFilePath: ({ event }) => {
-        const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
-        return `terminal:${ev.data.id}`
       }
     }),
     removeTerminal: assign({
@@ -737,11 +754,17 @@ const codeState = setup({
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.terminals.filter(t => t.id !== ev.data.terminalId)
       },
+      terminalOutputs: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+        const outputs = { ...context.terminalOutputs }
+        delete outputs[ev.data.terminalId]
+        return outputs
+      },
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.openFiles.filter(f => {
           if ('isTerminal' in f && f.isTerminal) {
-            return f.terminalId !== ev.data.terminalId
+            return f.terminalInfo.id !== ev.data.terminalId
           }
           return true
         })
@@ -752,7 +775,7 @@ const codeState = setup({
         if (context.activeFilePath === terminalPath) {
           const remainingFiles = context.openFiles.filter(f => {
             if ('isTerminal' in f && f.isTerminal) {
-              return f.terminalId !== ev.data.terminalId
+              return f.terminalInfo.id !== ev.data.terminalId
             }
             return true
           })
@@ -767,10 +790,26 @@ const codeState = setup({
         return ev.data.message
       }
     }),
-    selectTerminal: assign({
-      activeFilePath: ({ event }) => {
-        const ev = event as { type: 'SELECT_TERMINAL'; terminalId: string }
-        return `terminal:${ev.terminalId}`
+    selectTerminal: ({ context, event, self }) => {
+      const ev = event as { type: 'SELECT_TERMINAL'; terminalId: string }
+      const terminalInfo = context.terminals.find(t => t.id === ev.terminalId)
+      if (!terminalInfo) {
+        console.error('Terminal not found:', ev.terminalId)
+        return
+      }
+      
+      // Use the openTerminalTab action
+      self.send({ type: 'OPEN_TERMINAL_TAB', terminalInfo })
+    },
+    handleTerminalOutput: assign({
+      terminalOutputs: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+        const outputs = { ...context.terminalOutputs }
+        if (!outputs[ev.data.terminalId]) {
+          outputs[ev.data.terminalId] = []
+        }
+        outputs[ev.data.terminalId].push(ev.data.data)
+        return outputs
       }
     })
   }
@@ -817,7 +856,8 @@ const codeState = setup({
     prDiff: null,
     // Terminal related
     terminals: [],
-    terminalError: null
+    terminalError: null,
+    terminalOutputs: {}
   },
   states: {
     canvas: {
@@ -1018,13 +1058,19 @@ const codeState = setup({
           actions: ['assignTerminals']
         },
         TERMINAL_CREATED: {
-          actions: ['assignTerminalCreated']
+          actions: ['assignTerminalCreated', ({ self, event }) => {
+            const ev = event as { type: 'TERMINAL_CREATED'; data: TerminalInfo }
+            self.send({ type: 'OPEN_TERMINAL_TAB', terminalInfo: ev.data })
+          }]
+        },
+        OPEN_TERMINAL_TAB: {
+          actions: ['openTerminalTab']
         },
         TERMINAL_CLOSED: {
           actions: ['removeTerminal']
         },
         TERMINAL_OUTPUT: {
-          // Terminal output is handled directly in the TerminalView component
+          actions: ['handleTerminalOutput']
         },
         TERMINAL_ERROR: {
           actions: ['assignTerminalError']

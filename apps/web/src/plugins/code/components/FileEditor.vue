@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
-    <!-- Tabs -->
+    <!-- Tabs (for both files and terminals) -->
     <div v-if="openFiles.length > 0" class="flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800">
       <div
         v-for="file in openFiles"
@@ -42,17 +42,17 @@
         </div>
       </div>
       
-      <div v-else-if="activeFile" class="h-full">
+      <div v-else-if="activeFile" class="relative h-full">
         <!-- Terminal for terminal tabs -->
         <TerminalView
-          v-if="activeFile && isTerminal(activeFile)"
-          :ref="el => { if (el && activeFile && isTerminal(activeFile)) terminalRefs[activeFile.terminalId] = el as InstanceType<typeof TerminalView> }"
+          v-if="isTerminal(activeFile)"
           :terminal-info="(activeFile as TerminalTab).terminalInfo"
+          :outputs="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || []"
           class="h-full"
         />
         <!-- Diff viewer for diff tabs -->
         <DiffViewer
-          v-else-if="activeFile.isDiff"
+          v-else-if="'isDiff' in activeFile && activeFile.isDiff"
           :selected-git-file="activeFile.gitFile!"
           :git-diff="activeFile.gitDiff!"
           class="h-full"
@@ -72,7 +72,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, watch } from 'vue'
+import { useSelector } from '@xstate/vue'
 import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
@@ -86,6 +87,20 @@ const props = defineProps<{
   activeFilePath: string | null
 }>()
 
+// Debug log
+watch(() => props.openFiles, (newFiles) => {
+  console.log('FileEditor - openFiles changed:', newFiles.length, newFiles.map(f => ({ 
+    path: f.path, 
+    isTerminal: 'isTerminal' in f && f.isTerminal,
+    terminalId: 'isTerminal' in f && f.isTerminal && 'terminalInfo' in f ? (f as TerminalTab).terminalInfo.id : undefined
+  })))
+  console.log('FileEditor - activeFilePath:', props.activeFilePath)
+}, { immediate: true, deep: true })
+
+watch(() => props.activeFilePath, (newPath) => {
+  console.log('FileEditor - activeFilePath changed to:', newPath)
+}, { immediate: true })
+
 // Emits
 const emit = defineEmits<{
   selectFile: [path: string]
@@ -96,42 +111,15 @@ const emit = defineEmits<{
 // Get actor for terminal output
 const actor: CodeState = applicationState.system.get(id)
 
-// Refs for terminal components
-const terminalRefs = ref<Record<string, InstanceType<typeof TerminalView>>>({})
+// Get terminal outputs from state
+const terminalOutputs = useSelector(actor, (state) => state.context.terminalOutputs)
 
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
-// Subscribe to terminal output
-let unsubscribe: (() => void) | null = null
-
-onMounted(() => {
-  // Subscribe to state changes to handle terminal output
-  const subscription = actor.subscribe((state) => {
-    // This approach avoids direct event handling - the parent component
-    // or a dedicated terminal manager would handle the actual output events
-  })
-  unsubscribe = () => subscription.unsubscribe()
-})
-
-onUnmounted(() => {
-  unsubscribe?.()
-})
-
-// Method to handle terminal output (called by parent or terminal manager)
-const handleTerminalOutput = (terminalId: string, data: string) => {
-  const terminal = terminalRefs.value[terminalId]
-  if (terminal) {
-    terminal.writeData(data)
-  }
-}
-
-// Expose method for parent to use
-defineExpose({
-  handleTerminalOutput
-})
+// Terminal output is handled via props
 
 // Computed
 const activeFile = computed(() => 
