@@ -6,6 +6,8 @@ import { GitRepository } from './repository/git'
 import { FileWatcherService } from './repository/filewatcher'
 import { GitWatcherService } from './repository/gitwatcher'
 import { terminalService } from './repository/terminal'
+import { terminalCommands } from './repository/terminal-storage'
+import { getStartupData } from './repository/startup'
 import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo, TerminalInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
@@ -26,7 +28,7 @@ const IncomingCodeEvents = [
   busEvent('GET_FILE_INFO', { path: z.string() }),
   busEvent('CHANGE_DIRECTORY', { path: z.string() }),
   busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
-  busEvent('SEARCH_FILES', { 
+  busEvent('SEARCH_FILES', {
     query: z.string(),
     path: z.string(),
     includePattern: z.string().optional(),
@@ -48,8 +50,8 @@ const IncomingCodeEvents = [
   busEvent('GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
   busEvent('GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
   // Terminal events
-  busEvent('CREATE_TERMINAL', { 
-    title: z.string().optional(), 
+  busEvent('CREATE_TERMINAL', {
+    title: z.string().optional(),
     cwd: z.string().optional(),
     shell: z.string().optional(),
     cols: z.number().optional(),
@@ -98,7 +100,7 @@ export type OutgoingCodeEvents =
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
-type CodeInternalEvents = SystemEvents 
+type CodeInternalEvents = SystemEvents
   | { type: 'ASSIGN_DIRECTORY'; path: string }
   | { type: 'ASSIGN_ROOT_DIRECTORY'; path: string }
   | { type: 'ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
@@ -129,13 +131,36 @@ export const systemMachine = setup({
       const context = self.getSnapshot().context
       system.get(bus).send(emit(pluginId, {
         type: 'CURRENT_DIRECTORY',
-        data: { 
+        data: {
           path: context.currentDirectory,
-          rootDirectory: context.rootDirectory 
+          rootDirectory: context.rootDirectory
         },
       }))
     },
-    
+
+    // sendStartupData: ({ system }) => {
+    //   const pluginId = id
+    //   const { terminals, terminalOutputs } = getStartupData()
+
+    //   // Send list of terminals
+    //   if (terminals.length > 0) {
+    //     system.get(bus).send(emit(pluginId, {
+    //       type: 'TERMINALS_LIST',
+    //       data: terminals
+    //     }))
+
+    //     // Send output for each terminal
+    //     Object.entries(terminalOutputs).forEach(([terminalId, output]) => {
+    //       if (output) {
+    //         system.get(bus).send(emit(pluginId, {
+    //           type: 'TERMINAL_OUTPUT',
+    //           data: { terminalId, data: output }
+    //         }))
+    //       }
+    //     })
+    //   }
+    // },
+
     listFiles: async ({ system, event, self }) => {
       const ev = typeOf('LIST_FILES', event)
       const pluginId = id
@@ -158,7 +183,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     readFile: async ({ system, event, self }) => {
       const ev = typeOf('READ_FILE', event)
       const pluginId = id
@@ -169,7 +194,7 @@ export const systemMachine = setup({
           type: 'FILE_CONTENT',
           data: content,
         }))
-        
+
         // Start watching the file for external changes
         await context.fileWatcher.watchFile(ev.path)
       } catch (error: any) {
@@ -183,7 +208,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     writeFile: async ({ system, event, self }) => {
       const ev = typeOf('WRITE_FILE', event)
       const pluginId = id
@@ -205,7 +230,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     createFile: async ({ system, event, self }) => {
       const ev = typeOf('CREATE_FILE', event)
       const pluginId = id
@@ -227,7 +252,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     deleteFile: async ({ system, event, self }) => {
       const ev = typeOf('DELETE_FILE', event)
       const pluginId = id
@@ -249,7 +274,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     renameFile: async ({ system, event, self }) => {
       const ev = typeOf('RENAME_FILE', event)
       const pluginId = id
@@ -271,7 +296,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     createDirectory: async ({ system, event, self }) => {
       const ev = typeOf('CREATE_DIRECTORY', event)
       const pluginId = id
@@ -293,7 +318,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     getFileInfo: async ({ system, event, self }) => {
       const ev = typeOf('GET_FILE_INFO', event)
       const pluginId = id
@@ -315,7 +340,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     changeDirectory: ({ system, event, self }) => {
       const ev = typeOf('CHANGE_DIRECTORY', event)
       const pluginId = id
@@ -378,16 +403,16 @@ export const systemMachine = setup({
       const ev = typeOf('SEARCH_FILES', event)
       const pluginId = id
       const context = self.getSnapshot().context
-      
+
       // Cancel any existing search
       if (context.activeSearchController) {
         context.activeSearchController.abort()
       }
-      
+
       // Create new abort controller
       const controller = new AbortController()
       self.send({ type: 'ASSIGN_SEARCH_CONTROLLER', controller })
-      
+
       try {
         const searchOptions: SearchOptions = {
           query: ev.query,
@@ -399,9 +424,9 @@ export const systemMachine = setup({
           useRegex: ev.useRegex,
           maxResults: ev.maxResults
         }
-        
+
         let totalMatches = 0
-        
+
         const results = await context.repository.searchFiles(
           searchOptions,
           // Progress callback
@@ -424,7 +449,7 @@ export const systemMachine = setup({
             }
           }
         )
-        
+
         if (!controller.signal.aborted) {
           system.get(bus).send(emit(pluginId, {
             type: 'SEARCH_COMPLETE',
@@ -457,7 +482,7 @@ export const systemMachine = setup({
     clearSearchController: assign({
       activeSearchController: undefined
     }),
-    
+
     getGitStatus: async ({ system, self }) => {
       const pluginId = id
       const context = self.getSnapshot().context
@@ -471,7 +496,7 @@ export const systemMachine = setup({
           }))
           return
         }
-        
+
         const [status, branch] = await Promise.all([
           context.gitRepository.getStatus(),
           context.gitRepository.getCurrentBranch()
@@ -488,28 +513,28 @@ export const systemMachine = setup({
         } else if (error.message.includes('not a git repository')) {
           errorMessage = 'This directory is not a Git repository. Initialize with "git init" first.'
         }
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_ERROR',
           data: { message: errorMessage }
         }))
       }
     },
-    
+
     getGitDiff: async ({ system, event, self }) => {
       const ev = typeOf('GET_GIT_DIFF', event)
       const pluginId = id
       const context = self.getSnapshot().context
       try {
         const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
-        
+
         // Get the file status to determine what content to fetch
         const status = await context.gitRepository.getStatus()
         const fileStatus = status.find(f => f.path === ev.path)
-        
+
         let originalContent = ''
         let modifiedContent = ''
-        
+
         if (fileStatus) {
           if (fileStatus.status === 'added' || fileStatus.status === 'untracked') {
             // New file - original is empty, modified is current file
@@ -525,12 +550,12 @@ export const systemMachine = setup({
             modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
           }
         }
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_DIFF',
-          data: { 
-            path: ev.path || 'all', 
-            diff, 
+          data: {
+            path: ev.path || 'all',
+            diff,
             staged: ev.staged || false,
             originalContent,
             modifiedContent
@@ -543,7 +568,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     stageFiles: async ({ system, event, self }) => {
       const ev = typeOf('STAGE_FILES', event)
       const pluginId = id
@@ -563,7 +588,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     unstageFiles: async ({ system, event, self }) => {
       const ev = typeOf('UNSTAGE_FILES', event)
       const pluginId = id
@@ -583,7 +608,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     commit: async ({ system, event, self }) => {
       const ev = typeOf('COMMIT', event)
       const pluginId = id
@@ -598,7 +623,7 @@ export const systemMachine = setup({
           }))
           return
         }
-        
+
         await context.gitRepository.commit(ev.message)
         system.get(bus).send(emit(pluginId, {
           type: 'COMMIT_SUCCESS',
@@ -613,14 +638,14 @@ export const systemMachine = setup({
         } else if (error.message.includes('Please tell me who you are')) {
           errorMessage = 'Git user not configured. Run "git config --global user.email" and "git config --global user.name"'
         }
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_ERROR',
           data: { message: errorMessage }
         }))
       }
     },
-    
+
     getCurrentBranch: async ({ system, self }) => {
       const pluginId = id
       const context = self.getSnapshot().context
@@ -637,7 +662,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     closeFile: async ({ event, self }) => {
       const ev = typeOf('CLOSE_FILE', event)
       const context = self.getSnapshot().context
@@ -648,61 +673,61 @@ export const systemMachine = setup({
         console.error('Failed to unwatch file:', error)
       }
     },
-    
+
     setupFileWatcher: ({ system, self }) => {
       const context = self.getSnapshot().context
       const pluginId = id
-      
+
       // Set up the callback for file changes
       context.fileWatcher.setChangeCallback((change: FileChangeInfo) => {
         // Invalidate git cache for changed files
         context.gitRepository.invalidateCache([change.path])
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'FILE_CHANGED_EXTERNALLY',
           data: change
         }))
       })
     },
-    
+
     setupGitWatcher: async ({ system, self }) => {
       const context = self.getSnapshot().context
       const pluginId = id
-      
+
       // Set up the callback for git changes
       context.gitWatcher.setChangeCallback(() => {
         // Clear git cache when git status changes
         context.gitRepository.clearCache()
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_STATUS_CHANGED',
           data: { timestamp: new Date() }
         }))
       })
-      
+
       // Start watching git changes
       await context.gitWatcher.startWatching()
     },
-    
+
     restartGitWatcher: async ({ system, self }) => {
       const context = self.getSnapshot().context
       const pluginId = id
-      
+
       // Set up the callback for git changes (same as setup)
       context.gitWatcher.setChangeCallback(() => {
         // Clear git cache when git status changes
         context.gitRepository.clearCache()
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'GIT_STATUS_CHANGED',
           data: { timestamp: new Date() }
         }))
       })
-      
+
       // Start watching git changes in the new directory
       await context.gitWatcher.startWatching()
     },
-    
+
     getBaseBranch: async ({ system, self }) => {
       const pluginId = id
       const context = self.getSnapshot().context
@@ -719,7 +744,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     getBranchDiff: async ({ system, event, self }) => {
       const ev = typeOf('GET_BRANCH_DIFF', event)
       const pluginId = id
@@ -738,23 +763,23 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     getBranchFileDiff: async ({ system, event, self }) => {
       const ev = typeOf('GET_BRANCH_FILE_DIFF', event)
       const pluginId = id
       const context = self.getSnapshot().context
       try {
         const diff = await context.gitRepository.getFileDiffBetweenBranches(ev.path, ev.baseBranch)
-        
+
         // Get file content from both branches
         const originalContent = await context.gitRepository.getFileContentFromBranch(ev.path, ev.baseBranch)
         const modifiedContent = await context.gitRepository.getFileContentFromBranch(ev.path, 'HEAD')
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'BRANCH_FILE_DIFF',
-          data: { 
-            path: ev.path, 
-            diff, 
+          data: {
+            path: ev.path,
+            diff,
             staged: false,
             originalContent,
             modifiedContent
@@ -767,7 +792,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     // Terminal actions
     createTerminal: async ({ system, event, self }) => {
       const ev = typeOf('CREATE_TERMINAL', event)
@@ -781,15 +806,19 @@ export const systemMachine = setup({
           cols: ev.cols || 80,
           rows: ev.rows || 24
         })
-        
+
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
+          // Save output to EARS
+          terminalCommands.appendOutput(terminalInfo.id, data)
+
+          // Send to frontend
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_OUTPUT',
             data: { terminalId: terminalInfo.id, data }
           }))
         })
-        
+
         // Set up exit handler
         terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
           system.get(bus).send(emit(pluginId, {
@@ -797,7 +826,7 @@ export const systemMachine = setup({
             data: { terminalId: terminalInfo.id }
           }))
         })
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'TERMINAL_CREATED',
           data: terminalInfo
@@ -809,7 +838,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     closeTerminal: ({ system, event }) => {
       const ev = typeOf('CLOSE_TERMINAL', event)
       const pluginId = id
@@ -828,7 +857,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     sendTerminalInput: ({ system, event }) => {
       const ev = typeOf('TERMINAL_INPUT', event)
       const pluginId = id
@@ -847,7 +876,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     resizeTerminal: ({ system, event }) => {
       const ev = typeOf('RESIZE_TERMINAL', event)
       const pluginId = id
@@ -866,7 +895,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     listTerminals: ({ system }) => {
       const pluginId = id
       try {
@@ -882,7 +911,7 @@ export const systemMachine = setup({
         }))
       }
     },
-    
+
     cleanupTerminals: () => {
       terminalService.killAll()
     }
@@ -906,6 +935,7 @@ export const systemMachine = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: {
+          // actions: ['sendCurrentDirectory', 'sendStartupData'],
           actions: ['sendCurrentDirectory'],
         },
         LIST_FILES: {
