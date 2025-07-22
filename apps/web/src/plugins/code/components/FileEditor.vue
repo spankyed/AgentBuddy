@@ -43,29 +43,41 @@
       </div>
       
       <div v-else-if="activeFile" class="relative h-full">
+        <!-- Single instance of each component type -->
         <!-- Terminal for terminal tabs -->
-        <TerminalView
-          v-if="isTerminal(activeFile)"
-          :terminal-info="(activeFile as TerminalTab).terminalInfo"
-          :outputs="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || []"
-          class="h-full"
-        />
+        <div v-show="isTerminal(activeFile)" class="h-full">
+          <TerminalView
+            v-if="isTerminal(activeFile)"
+            :key="(activeFile as TerminalTab).terminalInfo.id"
+            :terminal-info="(activeFile as TerminalTab).terminalInfo"
+            :outputs="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || []"
+            class="h-full"
+          />
+        </div>
+        
         <!-- Diff viewer for diff tabs -->
-        <DiffViewer
-          v-else-if="'isDiff' in activeFile && activeFile.isDiff"
-          :selected-git-file="activeFile.gitFile!"
-          :git-diff="activeFile.gitDiff!"
-          class="h-full"
-        />
+        <div v-show="'isDiff' in activeFile && activeFile.isDiff" class="h-full">
+          <DiffViewer
+            v-if="'isDiff' in activeFile && activeFile.isDiff"
+            :key="activeFile.path"
+            :selected-git-file="activeFile.gitFile!"
+            :git-diff="activeFile.gitDiff!"
+            class="h-full"
+          />
+        </div>
+        
         <!-- Regular editor for normal files -->
-        <SimpleMonacoEditor
-          v-else
-          :model-value="activeFile.content"
-          @update:model-value="handleContentChange"
-          :file-path="activeFilePath || undefined"
-          theme="vs-dark"
-          class="h-full"
-        />
+        <div v-show="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)" class="h-full">
+          <SimpleMonacoEditor
+            v-if="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)"
+            :key="activeFile.path"
+            :model-value="activeFile.content"
+            @update:model-value="handleContentChange"
+            :file-path="activeFilePath || undefined"
+            theme="vs-dark"
+            class="h-full"
+          />
+        </div>
       </div>
     </div>
   </div>
