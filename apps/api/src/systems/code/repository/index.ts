@@ -129,6 +129,17 @@ export const terminalCommands = {
       .put('updatedAt', Date.now())
   },
   
+  updatePid: (id: EARS.EntityId, pid: number): void => {
+    if (!exists(id)) {
+      console.error(`Terminal ${id} not found`)
+      return
+    }
+    
+    tx(id)
+      .put('pid', pid)
+      .put('updatedAt', Date.now())
+  },
+  
   markClosed: (id: EARS.EntityId): void => {
     if (!exists(id)) {
       console.error(`Terminal ${id} not found`)
