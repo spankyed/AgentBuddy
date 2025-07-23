@@ -807,16 +807,10 @@ export const systemMachine = setup({
 
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
-          // Process the data
-          terminalService.processIncomingData(terminalInfo.id, data)
-          
-          // Save processed output to EARS
-          const processedOutput = terminalService.getProcessedOutput(terminalInfo.id)
-          if (processedOutput) {
-            terminalCommands.updateOutput(terminalInfo.id, processedOutput)
-          }
+          // Save output to EARS
+          terminalCommands.appendOutput(terminalInfo.id, data)
 
-          // Send raw data to frontend (xterm needs raw data)
+          // Send to frontend
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_OUTPUT',
             data: { terminalId: terminalInfo.id, data }
@@ -926,16 +920,10 @@ export const systemMachine = setup({
       await terminalService.restoreAll((terminalInfo) => {
         // Set up output handler for restored terminal
         terminalService.onData(terminalInfo.id, (data) => {
-          // Process the data
-          terminalService.processIncomingData(terminalInfo.id, data)
+          // Save output to EARS
+          terminalCommands.appendOutput(terminalInfo.id, data)
           
-          // Save processed output to EARS
-          const processedOutput = terminalService.getProcessedOutput(terminalInfo.id)
-          if (processedOutput) {
-            terminalCommands.updateOutput(terminalInfo.id, processedOutput)
-          }
-          
-          // Send raw data to frontend
+          // Send to frontend
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_OUTPUT',
             data: { terminalId: terminalInfo.id, data }
