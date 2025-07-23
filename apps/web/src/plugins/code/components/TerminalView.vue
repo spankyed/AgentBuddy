@@ -28,6 +28,7 @@ let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 let unsubscribe: (() => void) | null = null
+let isShowingLoadingContent = false
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
@@ -41,6 +42,16 @@ const sendResize = () => {
     cols: term.cols,
     rows: term.rows
   })
+}
+
+const showLoadingContent = () => {
+  if (!term) return
+  
+  term.write('\x1b[1;36m🚀 Starting terminal...\x1b[0m\r\n')
+  term.write('\x1b[90mConnecting to shell: \x1b[0m' + (props.terminalInfo.shell || 'default') + '\r\n')
+  term.write('\x1b[90mWorking directory: \x1b[0m' + props.terminalInfo.cwd + '\r\n\r\n')
+  
+  isShowingLoadingContent = true
 }
 
 /* --------------------------------------------------------------------------
@@ -92,17 +103,25 @@ onMounted(() => {
   fit()
   sendResize()
 
-  /* 3. Load any stored output and subscribe to new events */
+  /* 3. Load any stored output or show loading content */
   const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
-  if (storedOutput && term) {
+  if (storedOutput) {
     term.write(storedOutput)
+  } else {
+    showLoadingContent()
   }
   
   /* 4. Subscribe to terminal output events */
   unsubscribe = terminalEventBus.subscribe(props.terminalInfo.id, (terminalId, data) => {
-    if (term) {
-      term.write(data)
+    if (!term) return
+    
+    // Clear loading content on first real output
+    if (isShowingLoadingContent) {
+      term.clear()
+      isShowingLoadingContent = false
     }
+    
+    term.write(data)
   })
 
   /* 5. PTY -> FE communication */
