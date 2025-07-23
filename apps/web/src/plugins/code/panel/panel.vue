@@ -60,7 +60,7 @@
 import { onMounted } from 'vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState } from './state'
+import { id, type CodeState } from '../state'
 import { 
   FolderOpen, 
   Search, 
@@ -68,11 +68,11 @@ import {
   GitPullRequest,
   Terminal,
 } from 'lucide-vue-next'
-import ExplorerPanel from './components/panel/ExplorerPanel.vue'
-import SearchPanel from './components/panel/SearchPanel.vue'
-import CommitPanel from './components/panel/CommitPanel.vue'
-import PullRequestPanel from './components/panel/PullRequestPanel.vue'
-import TerminalPanel from './components/panel/TerminalPanel.vue'
+import ExplorerPanel from '@/plugins/code/panel/ExplorerPanel.vue'
+import SearchPanel from '@/plugins/code/panel/SearchPanel.vue'
+import CommitPanel from '@/plugins/code/panel/CommitPanel.vue'
+import PullRequestPanel from '@/plugins/code/panel/PullRequestPanel.vue'
+import TerminalPanel from '@/plugins/code/panel/TerminalPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 

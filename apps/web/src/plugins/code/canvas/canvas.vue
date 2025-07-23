@@ -50,7 +50,7 @@
 <script setup lang="ts">
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState } from './state'
+import { id, type CodeState } from '../state'
 import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onUnmounted, ref, watch } from 'vue'
