@@ -49,16 +49,16 @@ export const terminalQueries = {
 
 
   getStartupData: (): StartupData => {
-    // ! Get all active terminals (bad practice to call service directly in queries, but for simplicity)
-    const terminals = terminalService.getAllActiveTerminals()
+    // Get all terminals from the service (only in-memory terminals)
+    const terminals = terminalService.list()
     
-    // ! Get output for each terminal
+    // Get output for each terminal from EARS
     const terminalOutputs: Record<string, string> = {}
     
     terminals.forEach(terminal => {
-      const output = terminalService.getOutput(terminal.id)
-      if (output) {
-        terminalOutputs[terminal.id] = output
+      const terminalData = terminalQueries.withOutput(terminal.id as EARS.EntityId)
+      if (terminalData?.output) {
+        terminalOutputs[terminal.id] = terminalData.output
       }
     })
     
@@ -70,12 +70,12 @@ export const terminalQueries = {
 }
 
 export const terminalCommands = {
-  create: (terminalInfo: TerminalInfo & { output?: string }): EARS.EntityId => {
+  create: (terminalInfo: Partial<TerminalInfo> & { output?: string }): EARS.EntityId => {
     const now = Date.now()
     
     // Create terminal entity with all required attributes
     const id = tx(EARS.Entity.Terminal)
-      .put('id', terminalInfo.id) // Use provided EARS ID
+      // .put('id', terminalInfo.id) // Use provided EARS ID
       .put('title', terminalInfo.title)
       .put('pid', terminalInfo.pid)
       .put('shell', terminalInfo.shell || '/bin/bash')
@@ -109,7 +109,7 @@ export const terminalCommands = {
       return
     }
     
-    // Append new output to existing output
+    // ! Append new output to existing output
     const updatedOutput = terminal.output + newOutput
     
     tx(id)

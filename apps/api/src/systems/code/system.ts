@@ -11,6 +11,7 @@ import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
+import { EARS } from '@/core/types'
 
 export const id = 'code' as const
 
@@ -125,9 +126,8 @@ export const systemMachine = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendCurrentDirectory: ({ system, event, self }) => {
+    sendCurrentDirectory: ({ system, event, context }) => {
       const pluginId = id
-      const context = self.getSnapshot().context
       system.get(bus).send(emit(pluginId, {
         type: 'CURRENT_DIRECTORY',
         data: {
@@ -137,28 +137,28 @@ export const systemMachine = setup({
       }))
     },
 
-    // sendStartupData: ({ system }) => {
-    //   const pluginId = id
-    //   const { terminals, terminalOutputs } = terminalQueries.getStartupData()
+    sendStartupData: ({ system }) => {
+      const pluginId = id
+      const { terminals, terminalOutputs } = terminalQueries.getStartupData()
 
-    //   // Send list of terminals
-    //   if (terminals.length > 0) {
-    //     system.get(bus).send(emit(pluginId, {
-    //       type: 'TERMINALS_LIST',
-    //       data: terminals
-    //     }))
+      // Send list of terminals
+      if (terminals.length > 0) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'TERMINALS_LIST',
+          data: terminals
+        }))
 
-    //     // Send output for each terminal
-    //     Object.entries(terminalOutputs).forEach(([terminalId, output]) => {
-    //       if (output) {
-    //         system.get(bus).send(emit(pluginId, {
-    //           type: 'TERMINAL_OUTPUT',
-    //           data: { terminalId, data: output }
-    //         }))
-    //       }
-    //     })
-    //   }
-    // },
+        // Send output for each terminal
+        Object.entries(terminalOutputs).forEach(([terminalId, output]) => {
+          if (output) {
+            system.get(bus).send(emit(pluginId, {
+              type: 'TERMINAL_OUTPUT',
+              data: { terminalId, data: output }
+            }))
+          }
+        })
+      }
+    },
 
     listFiles: async ({ system, event, self }) => {
       const ev = typeOf('LIST_FILES', event)
@@ -793,10 +793,9 @@ export const systemMachine = setup({
     },
 
     // Terminal actions
-    createTerminal: async ({ system, event, self }) => {
+    createTerminal: async ({ system, event, context }) => {
       const ev = typeOf('CREATE_TERMINAL', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const terminalInfo = await terminalService.create({
           title: ev.title,
@@ -846,7 +845,7 @@ export const systemMachine = setup({
         if (!success) {
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_ERROR',
-            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
@@ -865,7 +864,7 @@ export const systemMachine = setup({
         if (!success) {
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_ERROR',
-            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
@@ -884,7 +883,7 @@ export const systemMachine = setup({
         if (!success) {
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_ERROR',
-            data: { message: 'Terminal not found', terminalId: ev.terminalId }
+            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
@@ -913,6 +912,32 @@ export const systemMachine = setup({
 
     cleanupTerminals: () => {
       terminalService.killAll()
+    },
+
+    restoreTerminals: async ({ system }) => {
+      const pluginId = id
+      
+      await terminalService.restoreAll((terminalInfo) => {
+        // Set up output handler for restored terminal
+        terminalService.onData(terminalInfo.id, (data) => {
+          // Save output to EARS
+          terminalCommands.appendOutput(terminalInfo.id, data)
+          
+          // Send to frontend
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_OUTPUT',
+            data: { terminalId: terminalInfo.id, data }
+          }))
+        })
+        
+        // Set up exit handler
+        terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_CLOSED',
+            data: { terminalId: terminalInfo.id }
+          }))
+        })
+      })
     }
   },
 }).createMachine({
@@ -929,13 +954,12 @@ export const systemMachine = setup({
       gitWatcher: new GitWatcherService(rootDir),
     }
   })(),
-  entry: ['setupFileWatcher', 'setupGitWatcher'],
+  entry: ['setupFileWatcher', 'setupGitWatcher', 'restoreTerminals'],
   states: {
     idle: {
       on: {
         CLIENT_CONNECTED: {
-          // actions: ['sendCurrentDirectory', 'sendStartupData'],
-          actions: ['sendCurrentDirectory'],
+          actions: ['sendCurrentDirectory', 'sendStartupData'],
         },
         LIST_FILES: {
           actions: ['listFiles'],

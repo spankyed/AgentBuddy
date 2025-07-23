@@ -14,7 +14,6 @@ class TerminalService {
 
   async create(options: TerminalCreate): Promise<TerminalInfo> {
     // Generate EARS EntityId
-    const id = options.id || `${EARS.Entity.Terminal}-${uuidv4()}` as EARS.EntityId
     const shell = options.shell || process.env.SHELL || 'bash'
     const cwd = options.cwd || process.cwd()
     const cols = options.cols || 80
@@ -30,7 +29,6 @@ class TerminalService {
     })
 
     const info: TerminalInfo = {
-      id,
       title,
       pid: ptyProcess.pid,
       shell,
@@ -38,15 +36,18 @@ class TerminalService {
       active: true,
       cols,
       rows
-    }
+    } as TerminalInfo
 
-    this.terminals.set(id, {
+    // Save terminal to EARS storage
+    info.id = terminalCommands.create(info)
+
+    this.terminals.set(info.id, {
       info,
       pty: ptyProcess
     })
-
-    // Save terminal to EARS storage
-    terminalCommands.create(info)
+    
+    // Mark that handlers will be set up by the caller
+    // (we don't set them up here since the create method doesn't have access to the bus)
 
     return info
   }
@@ -56,35 +57,7 @@ class TerminalService {
   }
 
   list(): TerminalInfo[] {
-    // Get active terminals from memory
-    const memoryTerminals = Array.from(this.terminals.values()).map(t => t.info)
-    
-    // Get persisted terminals from EARS
-    const persistedTerminals = terminalQueries.active()
-    
-    // Merge and deduplicate based on ID
-    const terminalMap = new Map<string, TerminalInfo>()
-    
-    // Add memory terminals first (they have the most up-to-date info)
-    memoryTerminals.forEach(t => terminalMap.set(t.id, t))
-    
-    // Add persisted terminals that aren't in memory
-    persistedTerminals.forEach(t => {
-      if (!terminalMap.has(t.id)) {
-        terminalMap.set(t.id, {
-          id: t.id,
-          title: t.title,
-          pid: t.pid,
-          shell: t.shell,
-          cwd: t.cwd,
-          active: t.active,
-          cols: t.cols,
-          rows: t.rows
-        })
-      }
-    })
-    
-    return Array.from(terminalMap.values())
+    return Array.from(this.terminals.values()).map(t => t.info)
   }
 
   write(id: string, data: string): boolean {
@@ -163,16 +136,58 @@ class TerminalService {
   }
 
   getAllActiveTerminals(): TerminalInfo[] {
-    return terminalQueries.active().map(t => ({
-      id: t.id,
-      title: t.title,
-      pid: t.pid,
-      shell: t.shell,
-      cwd: t.cwd,
-      active: t.active,
-      cols: t.cols,
-      rows: t.rows
-    }))
+    return this.list()
+  }
+
+  async restoreAll(setupHandlers: (terminalInfo: TerminalInfo) => void): Promise<void> {
+    // Get all active terminals from EARS
+    const persistedTerminals = terminalQueries.active()
+    
+    for (const persistedTerminal of persistedTerminals) {
+      try {
+        // Skip if already in memory
+        if (this.terminals.has(persistedTerminal.id)) {
+          continue
+        }
+        
+        // Spawn new pty process for the terminal
+        const ptyProcess = pty.spawn(persistedTerminal.shell, [], {
+          name: 'xterm-color',
+          cols: persistedTerminal.cols,
+          rows: persistedTerminal.rows,
+          cwd: persistedTerminal.cwd,
+          env: process.env as { [key: string]: string }
+        })
+        
+        const terminalInfo: TerminalInfo = {
+          id: persistedTerminal.id,
+          title: persistedTerminal.title,
+          pid: ptyProcess.pid,
+          shell: persistedTerminal.shell,
+          cwd: persistedTerminal.cwd,
+          active: persistedTerminal.active,
+          cols: persistedTerminal.cols,
+          rows: persistedTerminal.rows
+        }
+        
+        this.terminals.set(persistedTerminal.id, {
+          info: terminalInfo,
+          pty: ptyProcess
+        })
+        
+        // Update PID in EARS since we have a new process
+        terminalCommands.updatePid(persistedTerminal.id, ptyProcess.pid)
+        
+        // Set up handlers for this terminal
+        setupHandlers(terminalInfo)
+        
+        console.log(`Restored terminal: ${persistedTerminal.title} (${persistedTerminal.id})`)
+      } catch (error) {
+        console.error(`Failed to restore terminal ${persistedTerminal.id}:`, error)
+        // Mark as closed if restoration fails
+        terminalCommands.markClosed(persistedTerminal.id)
+      }
+    }
   }
 }
 
