@@ -46,6 +46,7 @@ type OutgoingCodeEvents =
   | { type: 'FILES_STAGED'; data: { paths: string[] } }
   | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
   | { type: 'COMMIT_SUCCESS'; data: { message: string } }
+  | { type: 'FILE_REVERTED'; data: { path: string } }
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
@@ -176,6 +177,7 @@ export type Context = {
   selectedGitFile: GitStatusFile | null
   gitDiff: GitDiff | null
   commitMessage: string
+  revertDialogFile: GitStatusFile | null
   // PR related
   prFiles: GitStatusFile[]
   prBaseBranch: string
@@ -218,6 +220,8 @@ export type Event =
   | { type: 'VIEW_DIFF'; path: string; staged: boolean }
   | { type: 'CLEAR_GIT_DIFF' }
   | { type: 'OPEN_DIFF_TAB'; file: GitStatusFile; diff: GitDiff }
+  | { type: 'REVERT_FILE'; path: string }
+  | { type: 'TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
   // PR events
   | { type: 'REFRESH_PR_STATUS' }
   | { type: 'SELECT_PR_FILE'; file: GitStatusFile }
@@ -600,6 +604,20 @@ const codeState = setup({
       selectedGitFile: null,
       gitDiff: null
     }),
+    toggleRevertDialog: assign({
+      revertDialogFile: ({ event }) => {
+        const ev = event as { type: 'TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
+        return ev.file || null
+      }
+    }),
+    revertFile: ({ context }) => {
+      if (context.revertDialogFile) {
+        sendToBackend('REVERT_FILE', { path: context.revertDialogFile.path })
+      }
+    },
+    handleFileReverted: assign({
+      revertDialogFile: null
+    }),
     setGitLoading: assign({ isGitLoading: true }),
     clearGitDiff: assign({
       selectedGitFile: null,
@@ -859,6 +877,7 @@ const codeState = setup({
     selectedGitFile: null,
     gitDiff: null,
     commitMessage: '',
+    revertDialogFile: null,
     // PR related
     prFiles: [],
     prBaseBranch: '',
@@ -995,6 +1014,15 @@ const codeState = setup({
         },
         COMMIT_SUCCESS: {
           actions: ['handleCommitSuccess', 'refreshGitStatus']
+        },
+        TOGGLE_REVERT_DIALOG: {
+          actions: ['toggleRevertDialog']
+        },
+        REVERT_FILE: {
+          actions: ['revertFile', 'toggleRevertDialog']
+        },
+        FILE_REVERTED: {
+          actions: ['handleFileReverted', 'refreshGitStatus']
         },
         CLEAR_GIT_DIFF: {
           actions: ['clearGitDiff']

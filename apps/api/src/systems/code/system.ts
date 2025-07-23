@@ -603,8 +603,8 @@ export const systemMachine = setup({
           type: 'FILE_CHANGED_EXTERNALLY',
           data: {
             path: ev.path,
-            type: 'modified',
-            timestamp: new Date()
+            changeType: 'change',
+            modifiedAt: new Date()
           }
         }))
       } catch (error: any) {

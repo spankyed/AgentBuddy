@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col overflow-hidden">
+  <div class="flex flex-col h-full overflow-hidden">
     <!-- Revert Dialog -->
     <RevertDialog
       :show="!!revertDialogFile"
@@ -17,7 +17,7 @@
         <button
           @click="refreshStatus"
           :disabled="isGitLoading"
-          class="p-1 rounded hover:bg-neutral-800 transition-colors"
+          class="p-1 transition-colors rounded hover:bg-neutral-800"
           title="Refresh"
         >
           <RefreshCw :class="['w-4 h-4 text-neutral-400', { 'animate-spin': isGitLoading }]" />
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Git Error -->
-    <div v-if="gitError" class="p-3 bg-red-900/20 border-b border-red-800">
+    <div v-if="gitError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ gitError }}</div>
     </div>
 
@@ -38,7 +38,7 @@
           v-model="commitMessage"
           @input="updateCommitMessage"
           placeholder="Enter commit message..."
-          class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 resize-none"
+          class="w-full px-3 py-2 text-sm border rounded resize-none bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
           rows="3"
         />
         <button
@@ -58,21 +58,21 @@
 
     <!-- File Changes -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="gitStatus.length === 0" class="p-4 text-center text-sm text-neutral-500">
+      <div v-if="gitStatus.length === 0" class="p-4 text-sm text-center text-neutral-500">
         No changes to commit
       </div>
       
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
         <div v-if="stagedFiles.length > 0" class="p-3">
-          <div class="text-xs font-medium text-neutral-400 mb-2">STAGED CHANGES</div>
+          <div class="mb-2 text-xs font-medium text-neutral-400">STAGED CHANGES</div>
           <div class="space-y-1">
             <div
               v-for="file in stagedFiles"
               :key="`staged-${file.path}`"
               @click="selectFile(file)"
               :class="[
-                'flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
+                'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
                   ? 'bg-neutral-800'
                   : 'hover:bg-neutral-800/50'
@@ -85,17 +85,24 @@
               >
                 <Minus class="w-3 h-3 text-neutral-400" />
               </button>
-              <span :class="getStatusColor(file.status)" class="text-xs font-medium w-4">
+              <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="text-sm text-neutral-200 flex-1 truncate">{{ file.path }}</span>
+              <span class="flex-1 text-sm truncate text-neutral-200">{{ file.path }}</span>
+              <button
+                @click.stop="openFile(file)"
+                class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Open file"
+              >
+                <FileText class="w-3 h-3 text-neutral-400" />
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Unstaged Changes -->
         <div v-if="unstagedFiles.length > 0" class="p-3">
-          <div class="text-xs font-medium text-neutral-400 mb-2">CHANGES</div>
+          <div class="mb-2 text-xs font-medium text-neutral-400">CHANGES</div>
           <div class="space-y-1">
             <div
               v-for="file in unstagedFiles"
@@ -108,23 +115,32 @@
                   : 'hover:bg-neutral-800/50'
               ]"
             >
-              <button
-                @click.stop="stageFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded"
-                title="Stage"
-              >
-                <Plus class="w-3 h-3 text-neutral-400" />
-              </button>
-              <span :class="getStatusColor(file.status)" class="text-xs font-medium w-4">
+              <div class="flex items-center gap-1">
+                <button
+                  @click.stop="stageFile(file)"
+                  class="p-0.5 hover:bg-neutral-700 rounded"
+                  title="Stage"
+                >
+                  <Plus class="w-3 h-3 text-neutral-400" />
+                </button>
+                <button
+                  @click.stop="openRevertDialog(file)"
+                  class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Discard changes"
+                >
+                  <RotateCcw class="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+              <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="text-sm text-neutral-200 flex-1 truncate">{{ file.path }}</span>
+              <span class="flex-1 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <button
-                @click.stop="openRevertDialog(file)"
+                @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Discard changes"
+                title="Open file"
               >
-                <RotateCcw class="w-3 h-3 text-red-400" />
+                <FileText class="w-3 h-3 text-neutral-400" />
               </button>
             </div>
           </div>
@@ -139,7 +155,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type GitStatusFile } from '../state'
-import { GitBranch, RefreshCw, Plus, Minus, RotateCcw } from 'lucide-vue-next'
+import { GitBranch, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
 import RevertDialog from './RevertDialog.vue'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -197,6 +213,22 @@ const confirmRevert = () => {
 
 const cancelRevert = () => {
   actor.send({ type: 'TOGGLE_REVERT_DIALOG' })
+}
+
+const openFile = (file: GitStatusFile) => {
+  // Get the root directory from state
+  const state = actor.getSnapshot()
+  const rootDirectory = state.context.rootDirectory
+  
+  // Construct the full path
+  const fullPath = rootDirectory.endsWith('/') 
+    ? rootDirectory + file.path 
+    : rootDirectory + '/' + file.path
+  
+  // First switch to explorer panel
+  actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
+  // Then open the file with full path
+  actor.send({ type: 'OPEN_FILE', path: fullPath })
 }
 
 // Helper functions
