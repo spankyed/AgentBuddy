@@ -2,6 +2,7 @@ import { setup, type ActorRefFrom, assign } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from './utils/terminal-events';
+import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 
 // Search types
 export interface SearchMatch {
@@ -58,6 +59,7 @@ type OutgoingCodeEvents =
   | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
   | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
+  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
 export const id = 'code' as const;
 
@@ -228,7 +230,6 @@ export type Event =
   | { type: 'SELECT_TERMINAL'; terminalId: string }
   | { type: 'TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
-  | { type: 'REQUEST_TERMINALS_LIST' }
   | { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
@@ -245,6 +246,9 @@ const codeState = setup({
     events: {} as Event
   },
   actions: {
+    saveTabsAction: ({ context }) => {
+      saveOpenTabs(context.openFiles)
+    },
     openTerminalTab: assign({
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo }
@@ -441,7 +445,9 @@ const codeState = setup({
       currentDirectory: ({ event }) => {
         const ev = event as { type: 'SET_ROOT_DIRECTORY'; path: string }
         return ev.path
-      }
+      },
+      // openFiles: () => [],  // Clear open files when changing root directory
+      // activeFilePath: null
     }),
     openFile: ({ event }) => {
       const ev = event as { type: 'OPEN_FILE'; path: string }
@@ -449,6 +455,22 @@ const codeState = setup({
     },
     requestInitialFiles: ({ context }) => {
       sendToBackend('LIST_FILES', { path: context.currentDirectory })
+    },
+    loadPersistedTabs: ({ context, self }) => {
+      const persistedTabs = loadPersistedTabs()
+      
+      persistedTabs.forEach(tab => {
+        if (tab.type === 'file') {
+          // Let the backend handle missing files - it will send CODE_ERROR if file doesn't exist
+          sendToBackend('READ_FILE', { path: tab.path })
+        } else if (tab.type === 'terminal' && tab.terminalId) {
+          // Only restore if terminal still exists
+          const terminal = context.terminals.find(t => t.id === tab.terminalId)
+          if (terminal) {
+            self.send({ type: 'OPEN_TERMINAL_TAB', terminalInfo: terminal })
+          }
+        }
+      })
     },
     // Search actions
     startSearch: ({ event, context }) => {
@@ -734,13 +756,14 @@ const codeState = setup({
         rows: ev.rows 
       })
     },
-    requestTerminalsList: () => {
-      sendToBackend('LIST_TERMINALS', {})
-    },
     assignTerminals: assign({
       terminals: ({ event }) => {
-        const ev = event as { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
-        return ev.data
+        const ev = event as { type: 'TERMINALS_LIST' | 'CODE_STARTUP'; data: TerminalInfo[] | { terminals: TerminalInfo[] } }
+        // Handle both TERMINALS_LIST and CODE_STARTUP events
+        if (ev.type === 'CODE_STARTUP') {
+          return (ev.data as { terminals: TerminalInfo[] }).terminals
+        }
+        return ev.data as TerminalInfo[]
       }
     }),
     assignTerminalCreated: assign({
@@ -852,7 +875,7 @@ const codeState = setup({
       meta: breadcrumb('canvas', 'Editor', true),
       on: {
         PLUGIN_ACTIVATED: {
-          actions: ['setLoading', 'requestInitialFiles']
+          actions: ['setLoading', 'requestInitialFiles', 'loadPersistedTabs']
         },
         CURRENT_DIRECTORY: {
           actions: ['assignCurrentDirectory']
@@ -864,22 +887,22 @@ const codeState = setup({
           actions: ['assignFiles']
         },
         FILE_CONTENT: {
-          actions: ['assignFileContent']
+          actions: ['assignFileContent', 'saveTabsAction']
         },
         CODE_ERROR: {
           actions: ['assignError']
         },
         FILE_SAVED: {
-          actions: ['markFileSaved']
+          actions: ['markFileSaved', 'saveTabsAction']
         },
         SELECT_FILE: {
           actions: ['setActiveFile']
         },
         CLOSE_FILE: {
-          actions: ['closeFile', 'closeFileOnBackend']
+          actions: ['closeFile', 'closeFileOnBackend', 'saveTabsAction']
         },
         FILE_MODIFIED: {
-          actions: ['updateFileContent']
+          actions: ['updateFileContent', 'saveTabsAction']
         },
         SELECT_PANEL: {
           actions: ['selectPanel', 'refreshGitStatusIfCommitPanel']
@@ -1037,11 +1060,11 @@ const codeState = setup({
         RESIZE_TERMINAL: {
           actions: ['resizeTerminal']
         },
-        REQUEST_TERMINALS_LIST: {
-          actions: ['requestTerminalsList']
-        },
         TERMINALS_LIST: {
           actions: ['assignTerminals']
+        },
+        CODE_STARTUP: {
+          actions: ['assignTerminals', 'loadPersistedTabs']
         },
         TERMINAL_CREATED: {
           actions: ['assignTerminalCreated', ({ self, event }) => {
@@ -1050,10 +1073,10 @@ const codeState = setup({
           }]
         },
         OPEN_TERMINAL_TAB: {
-          actions: ['openTerminalTab']
+          actions: ['openTerminalTab', 'saveTabsAction']
         },
         TERMINAL_CLOSED: {
-          actions: ['removeTerminal', 'cleanupTerminalOutput']
+          actions: ['removeTerminal', 'cleanupTerminalOutput', 'saveTabsAction']
         },
         TERMINAL_OUTPUT: {
           actions: ({ event }) => {

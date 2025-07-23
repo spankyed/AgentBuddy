@@ -98,6 +98,7 @@ export type OutgoingCodeEvents =
   | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
   | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
+  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -141,15 +142,13 @@ export const systemMachine = setup({
     sendStartupData: ({ system }) => {
       const pluginId = id
       
-      // Send terminal list
+      // Send terminal list and trigger tab restoration
       const terminals = terminalService.list()
       
-      if (terminals.length > 0) {
-        system.get(bus).send(emit(pluginId, {
-          type: 'TERMINALS_LIST',
-          data: terminals
-        }))
-      }
+      system.get(bus).send(emit(pluginId, {
+        type: 'CODE_STARTUP',
+        data: { terminals }
+      }))
     },
 
     listFiles: async ({ system, event, context }) => {
