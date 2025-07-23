@@ -171,21 +171,18 @@ export const brainSystem = setup({
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
-              system.get(bus).send(emit(agent, event));
             }
           },
           TNODE_SPAWNED: {
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
-              system.get(bus).send(emit(agent, event));
             }
           },
           TNODE_UPDATED: {
             actions: ({ system, event }) => {
               // Forward to frontend
               system.get(bus).send(emit(brain, event));
-              system.get(bus).send(emit(agent, event));
             }
           },
         },

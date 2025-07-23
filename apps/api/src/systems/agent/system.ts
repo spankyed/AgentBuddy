@@ -1,17 +1,14 @@
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-// import { chatStream, message } from '@/services/llm/runner';
+import { setup, type ErrorActorEvent } from 'xstate';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
-// import { addMessageToLatestThread, getLatestMessage } from './repository';
-import type { EARS } from '@/core/types';
-import { FlowTNodeData, ThreadExtendedData, TNodeEntity, TNodeUpdate } from '@/types';
+import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
 import { agentQueries } from './repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
 import { AgentStartupData, AgentThreadData } from './types';
+import type { EARS } from '@/core/types';
 
 const logger = createLogger('agent');
 
@@ -26,31 +23,15 @@ export const IncomingAgentEvents = [
   busEvent('CANCEL'),
 ] as const
 
-export type AgentInternalEvents = 
-  | { type: 'LLM_DONE' }
-  | { type: 'LLM_ABORTED' }
-  | { type: 'LLM_ERROR'; error: unknown }
-  | { type: 'TOKEN_STREAM'; token: string }
-  | SystemEvents
+export type AgentInternalEvents = SystemEvents
 
 export type OutgoingAgentEvents =
   | { type: 'AGENT_STARTUP'; data: AgentStartupData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
-  | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
-  | { type: 'LLM_DONE' }
-  | { type: 'LLM_ABORTED' }
-  | { type: 'LLM_ERROR'; error: unknown }
-  | { type: 'TOKEN_STREAM'; token: string }
-  | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
-  | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
-  | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
 
-export interface AgentContext {
-  userPrompt?: string;
-}
+export interface AgentContext {}
 
 export const AgentSystemEvents = fromSystem(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
 type ReceivableEvents = MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>;
@@ -61,33 +42,14 @@ export const agentSystem = setup({
     context: {} as AgentContext,
     events: {} as ReceivableEvents,
   },
-  actors: {
-    // chatStream
-  },
   actions: {
     sendAgentStartupData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'AGENT_STARTUP',
         data: agentQueries.startupData()
       }));
-      
-      // Send some mock artifacts after a delay
-      setTimeout(() => {
-        system.get(bus).send(emit(agent, { 
-          type: 'ARTIFACT_ADDED',
-          tabId: 'dashboard',
-          artifact: {
-            id: 'mock-text-1',
-            type: 'text',
-            title: 'Welcome Message',
-            content: 'Welcome to AgentBuddy! This is a mock text artifact sent from the backend.'
-          }
-        }));
-      }, 2000);
     },
-    logError: (_, event: ErrorActorEvent<unknown, string>) => {
-      logger.error('Chat stream error:', { error: event.error });
-    },
+
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
@@ -131,32 +93,6 @@ export function ${label.replace(/\s+/g, '')}() {
         artifacts: mockArtifacts
       }));
     },
-    sendToken: ({ system, event }) => {
-      system.get(bus).send(emit(agent, { 
-        type: 'TOKEN_STREAM',
-        token: typeOf('TOKEN_STREAM', event).token
-      }));
-    },
-    sendLLMDone: ({ system, event }) => {
-      system.get(bus).send(emit(agent, { 
-        type: 'LLM_DONE',
-      }));
-    },
-    sendLLMAborted: ({ system }) => {
-      system.get(bus).send(emit(agent, { 
-        type: 'LLM_ABORTED',
-      }));
-    },
-    sendLLMError: ({ system, event }) => {
-      system.get(bus).send(emit(agent, { 
-        type: 'LLM_ERROR',
-        error: typeOf('LLM_ERROR', event).error
-      }));
-    },
-    // storeUserMessage: ({ context, event }) => {
-    //   const text = typeOf('USER_MSG', event).text;
-    //   addMessageToLatestThread(text);
-    // },
     fireBrainEvent: ({ system, event }) => {
       const text = typeOf('USER_MSG', event).text;
       const brainActor = getActor(system, brain);
@@ -171,9 +107,7 @@ export function ${label.replace(/\s+/g, '')}() {
   {
     id: agent,
     initial: 'idle',
-    context: ({ input }) => ({
-      userPrompt: undefined,
-    }),
+    context: ({}),
     on: {
       CLIENT_CONNECTED: {
         actions: 'sendAgentStartupData',
@@ -184,58 +118,13 @@ export function ${label.replace(/\s+/g, '')}() {
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
       },
-      TOKEN_STREAM: {
-        actions: 'sendToken',
-      },
-      LLM_ABORTED: {
-        actions: 'sendLLMAborted',
-      },
-      LLM_ERROR: {
-        actions: 'sendLLMError',
-      },
     },
     states: {
       idle: {
         on: {
-          // USER_MSG: {
-          //   target: 'processMessage',
-          //   actions: 'storeUserMessage',
-          // },
           USER_MSG: {
-            // target: 'processMessage',
             actions: 'fireBrainEvent',
           },
-        },
-      },
-      processMessage: {
-        // invoke: {
-        //   id: 'chatStream',
-        //   src: 'chatStream',
-        //   input: ({ context }) => ({
-        //     messages: [
-        //       message('system', 'You are a helpful AI assistant.'),
-        //       // message("user", getLatestMessage()), // TODO: Implement message retrieval
-        //     ],
-        //     provider: 'openai',
-        //   }),
-        //   onDone: {
-        //     target: 'idle',
-        //     actions: 'sendLLMDone',
-        //   },
-        //   onError: {
-        //     target: 'idle',
-        //     actions: 'sendLLMError',
-        //   }
-        // },
-        on: {
-          LLM_ABORTED: 'idle',
-          LLM_ERROR: {
-            target: 'idle',
-            actions: 'sendLLMError',
-          },
-          CANCEL: {
-            // actions: cancel("chatStream"),
-          }
         },
       },
     },
