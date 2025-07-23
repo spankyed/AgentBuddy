@@ -4,22 +4,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { applicationState } from '@/app'
 import { id, type CodeState, type TerminalInfo } from '../state'
+import { terminalEventBus } from '../utils/terminal-events'
 import '@xterm/xterm/css/xterm.css'
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */
 const props = defineProps<{
   terminalInfo: TerminalInfo
-  /**
-   * Terminal output as a single string containing all the text
-   */
-  output?: string
 }>()
 
 const actor: CodeState = applicationState.system.get(id)
@@ -30,9 +27,7 @@ const container = ref<HTMLElement>() // mount point for xterm
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
-
-// Track the last output content to avoid re-writing everything
-let lastOutput = ''
+let unsubscribe: (() => void) | null = null
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
@@ -46,26 +41,6 @@ const sendResize = () => {
     cols: term.cols,
     rows: term.rows
   })
-}
-
-/**
- * Write new content to the terminal.
- */
-const writeNewContent = (content: string) => {
-  if (!content || !term) return
-  
-  // Only write the new part (everything after what we've already written)
-  if (content.startsWith(lastOutput)) {
-    const newPart = content.slice(lastOutput.length)
-    if (newPart) {
-      term.write(newPart)
-    }
-  } else {
-    // If content doesn't start with lastOutput, clear and rewrite everything
-    term.clear()
-    term.write(content)
-  }
-  lastOutput = content
 }
 
 /* --------------------------------------------------------------------------
@@ -117,12 +92,20 @@ onMounted(() => {
   fit()
   sendResize()
 
-  /* 3. Write existing output (if any) */
-  if (props.output) {
-    writeNewContent(props.output)
+  /* 3. Load any stored output and subscribe to new events */
+  const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
+  if (storedOutput && term) {
+    term.write(storedOutput)
   }
+  
+  /* 4. Subscribe to terminal output events */
+  unsubscribe = terminalEventBus.subscribe(props.terminalInfo.id, (terminalId, data) => {
+    if (term) {
+      term.write(data)
+    }
+  })
 
-  /* 4. PTY -> FE communication */
+  /* 5. PTY -> FE communication */
   term.onData(data => {
     actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data })
   })
@@ -131,31 +114,21 @@ onMounted(() => {
     actor.send({ type: 'RESIZE_TERMINAL', terminalId: props.terminalInfo.id, cols, rows })
   })
 
-  /* 5. Keep the terminal sized with its container */
+  /* 6. Keep the terminal sized with its container */
   resizeObserver = new ResizeObserver(() => {
     fit()
     sendResize()
   })
   resizeObserver.observe(container.value)
 
-  /* 6. Focus terminal - shell initialization now happens on backend */
+  /* 7. Focus terminal - shell initialization now happens on backend */
   term.focus()
 })
-
-/**
- * Update terminal when output changes (reactive).
- */
-watch(
-  () => props.output,
-  (newOutput) => {
-    if (!term || !newOutput) return
-    writeNewContent(newOutput)
-  }
-)
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   term?.dispose()
+  if (unsubscribe) unsubscribe()
 })
 
 /* --------------------------------------------------------------------------
