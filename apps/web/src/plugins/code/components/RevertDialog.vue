@@ -14,8 +14,10 @@
           <p class="text-sm text-neutral-300 mb-4">
             Are you sure you want to discard all changes to:
           </p>
-          <div class="bg-neutral-800 rounded px-3 py-2 mb-4">
-            <code class="text-sm text-neutral-100">{{ file?.path }}</code>
+          <div class="bg-neutral-800 rounded px-3 py-2 mb-4 overflow-hidden">
+            <code class="text-sm text-neutral-100 block truncate" dir="rtl">
+              <span dir="ltr">{{ file?.path }}</span>
+            </code>
           </div>
           <p class="text-sm text-yellow-500">
             <AlertCircle class="inline w-4 h-4 mr-1" />
