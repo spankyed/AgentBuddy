@@ -30,6 +30,8 @@
         @navigate-to-directory="navigateToDirectory"
         @set-root-directory="setRootDirectory"
         @file-click="handleFileClick"
+        @rename-file="handleRenameFile"
+        @delete-file="handleDeleteFile"
       />
       
       <SearchPanel v-else-if="selectedPanel === 'search'" />
@@ -119,6 +121,21 @@ const changeDirectory = () => {
   if (newPath && newPath !== rootDirectory.value) {
     actor.send({ type: 'SET_ROOT_DIRECTORY', path: newPath })
   }
+}
+
+const handleRenameFile = (oldPath: string, newName: string) => {
+  // Construct the new path
+  const pathParts = oldPath.split('/')
+  pathParts[pathParts.length - 1] = newName
+  const newPath = pathParts.join('/')
+  
+  // Send rename event to state machine
+  actor.send({ type: 'RENAME_FILE', oldPath, newPath })
+}
+
+const handleDeleteFile = (path: string) => {
+  // Send delete event to state machine
+  actor.send({ type: 'DELETE_FILE', path })
 }
 
 // Plugin activation is handled by the state machine

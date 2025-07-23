@@ -253,6 +253,14 @@ const codeState = setup({
     saveTabsAction: ({ context }) => {
       saveOpenTabs(context.openFiles)
     },
+    deleteFile: ({ event }) => {
+      const ev = event as { type: 'DELETE_FILE'; path: string }
+      sendToBackend('DELETE_FILE', { path: ev.path })
+    },
+    renameFile: ({ event }) => {
+      const ev = event as { type: 'RENAME_FILE'; oldPath: string; newPath: string }
+      sendToBackend('RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
+    },
     openTerminalTab: assign({
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'OPEN_TERMINAL_TAB'; terminalInfo: TerminalInfo }
@@ -366,6 +374,32 @@ const codeState = setup({
         return context.openFiles.map(f => 
           f.path === ev.path ? { ...f, content: ev.content, modified: true } : f
         )
+      }
+    }),
+    handleFileDeleted: ({ context, event, self }) => {
+      const ev = event as { type: 'FILE_DELETED'; data: { path: string } }
+      // Refresh file list
+      sendToBackend('LIST_FILES', { path: context.currentDirectory })
+      // Close tab if file is open
+      if (context.openFiles.find(f => f.path === ev.data.path)) {
+        self.send({ type: 'CLOSE_FILE', path: ev.data.path })
+      }
+    },
+    handleFileRenamed: ({ context, event }) => {
+      const ev = event as { type: 'FILE_RENAMED'; data: { oldPath: string; newPath: string } }
+      // Refresh file list
+      sendToBackend('LIST_FILES', { path: context.currentDirectory })
+    },
+    updateOpenFilePathsAfterRename: assign({
+      openFiles: ({ context, event }) => {
+        const ev = event as { type: 'FILE_RENAMED'; data: { oldPath: string; newPath: string } }
+        return context.openFiles.map(f => 
+          f.path === ev.data.oldPath ? { ...f, path: ev.data.newPath } : f
+        )
+      },
+      activeFilePath: ({ context, event }) => {
+        const ev = event as { type: 'FILE_RENAMED'; data: { oldPath: string; newPath: string } }
+        return context.activeFilePath === ev.data.oldPath ? ev.data.newPath : context.activeFilePath
       }
     }),
     markFileSaved: assign({
@@ -934,6 +968,18 @@ const codeState = setup({
         },
         SET_ROOT_DIRECTORY: {
           actions: ['assignRootDirectory', 'setRootDirectory']
+        },
+        DELETE_FILE: {
+          actions: ['deleteFile']
+        },
+        RENAME_FILE: {
+          actions: ['renameFile']
+        },
+        FILE_DELETED: {
+          actions: ['handleFileDeleted', 'saveTabsAction']
+        },
+        FILE_RENAMED: {
+          actions: ['updateOpenFilePathsAfterRename', 'handleFileRenamed', 'saveTabsAction']
         },
         // Search events
         START_SEARCH: {

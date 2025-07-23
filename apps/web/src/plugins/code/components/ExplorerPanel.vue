@@ -1,5 +1,25 @@
 <template>
   <div class="flex flex-col h-full">
+    <!-- Rename Dialog -->
+    <RenameDialog
+      v-model="showRenameDialog"
+      :current-name="fileToRename?.name || ''"
+      :item-type="fileToRename?.type === 'directory' ? 'Directory' : 'File'"
+      :item-path="fileToRename?.path || ''"
+      @rename="handleRename"
+      @cancel="cancelRename"
+    />
+    
+    <!-- Delete Confirmation Dialog -->
+    <Dialog
+      v-model="showDeleteDialog"
+      :title="`Delete ${fileToDelete?.type === 'directory' ? 'Directory' : 'File'}`"
+      :description="`Are you sure you want to delete '${fileToDelete?.name}'? This action cannot be undone.`"
+      show-default-actions
+      confirm-text="Delete"
+      @confirm="handleDelete"
+      @cancel="cancelDelete"
+    />
     <div class="p-2 border-b border-neutral-800">
       <div class="flex items-center gap-1 overflow-x-auto text-xs whitespace-nowrap">
         <span
@@ -76,28 +96,54 @@
     </div>
     
     <div v-else class="flex-1 overflow-auto">
-      <div
+      <ContextMenuRoot
         v-for="file in files"
         :key="file.path"
-        @click="$emit('file-click', file)"
-        class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer hover:bg-neutral-800"
       >
-        <component 
-          :is="file.type === 'directory' ? Folder : getFileIcon(file.extension)"
-          class="flex-shrink-0 w-4 h-4"
-          :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
-        />
-        <span class="text-sm truncate text-neutral-200">{{ file.name }}</span>
-        <span v-if="file.type === 'file' && file.size" class="ml-auto text-xs text-neutral-500">
-          {{ formatFileSize(file.size) }}
-        </span>
-      </div>
+        <ContextMenuTrigger as-child>
+          <div
+            @click="$emit('file-click', file)"
+            class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer hover:bg-neutral-800"
+          >
+            <component 
+              :is="file.type === 'directory' ? Folder : getFileIcon(file.extension)"
+              class="flex-shrink-0 w-4 h-4"
+              :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
+            />
+            <span class="text-sm truncate text-neutral-200">{{ file.name }}</span>
+            <span v-if="file.type === 'file' && file.size" class="ml-auto text-xs text-neutral-500">
+              {{ formatFileSize(file.size) }}
+            </span>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuPortal>
+          <ContextMenuContent
+            class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+          >
+            <ContextMenuItem
+              @select="startRename(file)"
+              class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none flex items-center gap-2"
+            >
+              <Edit2 class="w-4 h-4" />
+              Rename
+            </ContextMenuItem>
+            <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+            <ContextMenuItem
+              @select="confirmDelete(file)"
+              class="px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none flex items-center gap-2"
+            >
+              <Trash2 class="w-4 h-4" />
+              Delete
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenuPortal>
+      </ContextMenuRoot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   Folder,
   File,
@@ -105,6 +151,8 @@ import {
   FileJson,
   FileText,
   Image,
+  Edit2,
+  Trash2,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -112,12 +160,15 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
+  ContextMenuSeparator,
   DropdownMenuRoot,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
 } from 'reka-ui'
+import Dialog from '@/core/design/dialog.vue'
+import RenameDialog from './RenameDialog.vue'
 
 interface FileItem {
   path: string
@@ -135,10 +186,12 @@ const props = defineProps<{
   error: string | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'navigate-to-directory': [path: string]
   'set-root-directory': [path: string]
   'file-click': [file: FileItem]
+  'rename-file': [oldPath: string, newName: string]
+  'delete-file': [path: string]
 }>()
 
 interface BreadcrumbSegment {
@@ -232,5 +285,49 @@ const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// Rename functionality
+const showRenameDialog = ref(false)
+const fileToRename = ref<FileItem | null>(null)
+
+const startRename = (file: FileItem) => {
+  fileToRename.value = file
+  showRenameDialog.value = true
+}
+
+const handleRename = (newName: string) => {
+  if (fileToRename.value) {
+    emit('rename-file', fileToRename.value.path, newName)
+    showRenameDialog.value = false
+    fileToRename.value = null
+  }
+}
+
+const cancelRename = () => {
+  showRenameDialog.value = false
+  fileToRename.value = null
+}
+
+// Delete functionality
+const showDeleteDialog = ref(false)
+const fileToDelete = ref<FileItem | null>(null)
+
+const confirmDelete = (file: FileItem) => {
+  fileToDelete.value = file
+  showDeleteDialog.value = true
+}
+
+const handleDelete = () => {
+  if (fileToDelete.value) {
+    emit('delete-file', fileToDelete.value.path)
+    showDeleteDialog.value = false
+    fileToDelete.value = null
+  }
+}
+
+const cancelDelete = () => {
+  showDeleteDialog.value = false
+  fileToDelete.value = null
 }
 </script>
