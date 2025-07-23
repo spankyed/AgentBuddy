@@ -3,10 +3,12 @@ import { v4 as uuidv4 } from 'uuid'
 import { EARS } from '@/core/types'
 import { terminalCommands, terminalQueries } from '../repository'
 import type { TerminalInfo, TerminalCreate } from '../types'
+import { TerminalOutputProcessor } from './terminal-output-processor'
 
 interface Terminal {
   info: TerminalInfo
   pty: pty.IPty
+  processor: TerminalOutputProcessor
 }
 
 class TerminalService {
@@ -43,7 +45,8 @@ class TerminalService {
 
     this.terminals.set(info.id, {
       info,
-      pty: ptyProcess
+      pty: ptyProcess,
+      processor: new TerminalOutputProcessor()
     })
     
     // Mark that handlers will be set up by the caller
@@ -135,6 +138,23 @@ class TerminalService {
     return terminal?.output
   }
 
+  getProcessedOutput(id: string): string | undefined {
+    const terminal = this.terminals.get(id)
+    if (!terminal) {
+      // Try to get from storage if not in memory
+      const stored = terminalQueries.withOutput(id as EARS.EntityId)
+      return stored?.output
+    }
+    return terminal.processor.getStorageSummary()
+  }
+
+  processIncomingData(id: string, data: string): void {
+    const terminal = this.terminals.get(id)
+    if (terminal) {
+      terminal.processor.processOutput(data)
+    }
+  }
+
   getAllActiveTerminals(): TerminalInfo[] {
     return this.list()
   }
@@ -170,9 +190,15 @@ class TerminalService {
           rows: persistedTerminal.rows
         }
         
+        // Restore processor with existing output
+        const processor = persistedTerminal.output 
+          ? TerminalOutputProcessor.fromStoredData(persistedTerminal.output)
+          : new TerminalOutputProcessor()
+        
         this.terminals.set(persistedTerminal.id, {
           info: terminalInfo,
-          pty: ptyProcess
+          pty: ptyProcess,
+          processor
         })
         
         // Update PID in EARS since we have a new process

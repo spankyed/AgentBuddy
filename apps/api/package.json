@@ -34,6 +34,7 @@
     "node-pty-prebuilt-multiarch": "0.10.1-pre.5",
     "openai": "^4.100.0",
     "playwright": "^1.54.1",
+    "strip-ansi": "^6.0.1",
     "uuid": "^11.1.0",
     "vitest": "^3.2.2",
     "ws": "^8.18.2",
