@@ -4,23 +4,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { applicationState } from '@/app'
 import { id, type CodeState, type TerminalInfo } from '../state'
+import { terminalEventBus } from '../utils/terminal-events'
 import '@xterm/xterm/css/xterm.css'
 
 /* --------------------------------------------------------------------------
  * Props & actor -------------------------------------------------------------------------- */
 const props = defineProps<{
   terminalInfo: TerminalInfo
-  /**
-   * Streamed stdout/stderr chunks from the backend.  Each entry is the raw byte
-   * string *exactly* as it should be written to the PTY.
-   */
-  outputs?: string[]
 }>()
 
 const actor: CodeState = applicationState.system.get(id)
@@ -31,10 +27,7 @@ const container = ref<HTMLElement>() // mount point for xterm
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
-
-// Track how many output entries we've already rendered so that we only write
-// new chunks as they arrive.
-let processedCount = 0
+let unsubscribe: (() => void) | null = null
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
@@ -48,13 +41,6 @@ const sendResize = () => {
     cols: term.cols,
     rows: term.rows
   })
-}
-
-/**
- * Write a batch of data chunks to the terminal.
- */
-const writeChunks = (chunks: string[]) => {
-  for (const chunk of chunks) term?.write(chunk)
 }
 
 /* --------------------------------------------------------------------------
@@ -106,13 +92,20 @@ onMounted(() => {
   fit()
   sendResize()
 
-  /* 3. Stream existing buffered output (if any) */
-  if (props.outputs?.length) {
-    writeChunks(props.outputs)
-    processedCount = props.outputs.length
+  /* 3. Load any stored output and subscribe to new events */
+  const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
+  if (storedOutput && term) {
+    term.write(storedOutput)
   }
+  
+  /* 4. Subscribe to terminal output events */
+  unsubscribe = terminalEventBus.subscribe(props.terminalInfo.id, (terminalId, data) => {
+    if (term) {
+      term.write(data)
+    }
+  })
 
-  /* 4. PTY -> FE communication */
+  /* 5. PTY -> FE communication */
   term.onData(data => {
     actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data })
   })
@@ -121,36 +114,21 @@ onMounted(() => {
     actor.send({ type: 'RESIZE_TERMINAL', terminalId: props.terminalInfo.id, cols, rows })
   })
 
-  /* 5. Keep the terminal sized with its container */
+  /* 6. Keep the terminal sized with its container */
   resizeObserver = new ResizeObserver(() => {
     fit()
     sendResize()
   })
   resizeObserver.observe(container.value)
 
-  /* 6. Focus terminal - shell initialization now happens on backend */
+  /* 7. Focus terminal - shell initialization now happens on backend */
   term.focus()
 })
-
-/**
- * Stream new output chunks into xterm (reactive).
- */
-watch(
-  () => props.outputs,
-  (newVal) => {
-    if (!term || !newVal) return
-    const unprocessed = newVal.slice(processedCount)
-    if (unprocessed.length) {
-      writeChunks(unprocessed)
-      processedCount = newVal.length
-    }
-  },
-  { deep: true }
-)
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   term?.dispose()
+  if (unsubscribe) unsubscribe()
 })
 
 /* --------------------------------------------------------------------------

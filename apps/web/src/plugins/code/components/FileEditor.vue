@@ -50,7 +50,6 @@
             v-if="isTerminal(activeFile)"
             :key="(activeFile as TerminalTab).terminalInfo.id"
             :terminal-info="(activeFile as TerminalTab).terminalInfo"
-            :outputs="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || []"
             class="h-full"
           />
         </div>
@@ -120,11 +119,7 @@ const emit = defineEmits<{
   contentChange: [path: string, content: string]
 }>()
 
-// Get actor for terminal output
-const actor: CodeState = applicationState.system.get(id)
-
-// Get terminal outputs from state
-const terminalOutputs = useSelector(actor, (state) => state.context.terminalOutputs)
+// Terminal output is now handled directly in TerminalView
 
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab): file is TerminalTab => {

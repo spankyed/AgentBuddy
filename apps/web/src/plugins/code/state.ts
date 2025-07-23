@@ -1,6 +1,7 @@
 import { setup, type ActorRefFrom, assign } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
+import { terminalEventBus } from './utils/terminal-events';
 
 // Search types
 export interface SearchMatch {
@@ -183,7 +184,6 @@ export type Context = {
   // Terminal related
   terminals: TerminalInfo[]
   terminalError: string | null
-  terminalOutputs: Record<string, string[]>
 }
 
 export type Event = 
@@ -754,12 +754,7 @@ const codeState = setup({
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.terminals.filter(t => t.id !== ev.data.terminalId)
       },
-      terminalOutputs: ({ context, event }) => {
-        const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
-        const outputs = { ...context.terminalOutputs }
-        delete outputs[ev.data.terminalId]
-        return outputs
-      },
+      // Terminal output cleanup not needed - handled by component,
       openFiles: ({ context, event }) => {
         const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
         return context.openFiles.filter(f => {
@@ -801,17 +796,11 @@ const codeState = setup({
       // Use the openTerminalTab action
       self.send({ type: 'OPEN_TERMINAL_TAB', terminalInfo })
     },
-    handleTerminalOutput: assign({
-      terminalOutputs: ({ context, event }) => {
-        const ev = event as { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
-        const outputs = { ...context.terminalOutputs }
-        if (!outputs[ev.data.terminalId]) {
-          outputs[ev.data.terminalId] = []
-        }
-        outputs[ev.data.terminalId].push(ev.data.data)
-        return outputs
-      }
-    })
+    cleanupTerminalOutput: ({ event }) => {
+      const ev = event as { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
+      terminalEventBus.clearOutput(ev.data.terminalId)
+    },
+    // Terminal output is now handled directly in TerminalView component
   }
 }).createMachine({
   id,
@@ -856,8 +845,7 @@ const codeState = setup({
     prDiff: null,
     // Terminal related
     terminals: [],
-    terminalError: null,
-    terminalOutputs: {}
+    terminalError: null
   },
   states: {
     canvas: {
@@ -1067,10 +1055,13 @@ const codeState = setup({
           actions: ['openTerminalTab']
         },
         TERMINAL_CLOSED: {
-          actions: ['removeTerminal']
+          actions: ['removeTerminal', 'cleanupTerminalOutput']
         },
         TERMINAL_OUTPUT: {
-          actions: ['handleTerminalOutput']
+          actions: ({ event }) => {
+            const ev = event as { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+            terminalEventBus.emit(ev.data.terminalId, ev.data.data)
+          }
         },
         TERMINAL_ERROR: {
           actions: ['assignTerminalError']

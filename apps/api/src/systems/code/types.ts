@@ -1,3 +1,5 @@
+import { EARS } from '@/core/types'
+
 export interface FileInfo {
   name: string
   path: string
@@ -99,7 +101,7 @@ export interface FileChangeInfo {
 
 // Terminal types
 export interface TerminalInfo {
-  id: string
+  id: EARS.EntityId
   title: string
   pid: number
   shell?: string
@@ -110,23 +112,23 @@ export interface TerminalInfo {
 }
 
 export interface TerminalOutput {
-  terminalId: string
+  terminalId: EARS.EntityId
   data: string
 }
 
 export interface TerminalInput {
-  terminalId: string
+  terminalId: EARS.EntityId
   data: string
 }
 
 export interface TerminalResize {
-  terminalId: string
+  terminalId: EARS.EntityId
   cols: number
   rows: number
 }
 
 export interface TerminalCreate {
-  id?: string
+  id?: EARS.EntityId
   title?: string
   cwd?: string
   shell?: string

@@ -71,7 +71,7 @@ defineEmits<{
   'select-file': [file: TreeNode]
 }>()
 
-const expanded = ref(props.level === 0)
+const expanded = ref(true)
 
 const sortedChildren = computed(() => {
   if (!props.item.children) return []
