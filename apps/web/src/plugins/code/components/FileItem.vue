@@ -3,6 +3,7 @@
     <ContextMenuTrigger as-child>
       <div
         @click="handleClick"
+        @dblclick="handleDoubleClick"
         class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer"
         :class="{
           'bg-neutral-800': isEditing,
@@ -22,7 +23,7 @@
           @keydown.esc.stop="cancelRename"
           @blur="confirmRename"
           @click.stop
-          class="flex-1 px-1 -mx-1 py-0 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-200 focus:outline-none focus:border-blue-500 focus:bg-neutral-800"
+          class="flex-1 px-1 py-0 -mx-1 text-sm border rounded bg-neutral-900 border-neutral-600 text-neutral-200 focus:outline-none focus:border-blue-500 focus:bg-neutral-800"
           ref="renameInput"
         />
         <span v-else class="text-sm truncate text-neutral-200">{{ file.name }}</span>
@@ -42,17 +43,17 @@
       >
         <ContextMenuItem
           @select="startRename"
-          class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none flex items-center gap-2"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
         >
           <Edit2 class="w-4 h-4" />
           Rename
         </ContextMenuItem>
         
-        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         
         <ContextMenuItem
           @select="$emit('delete', file)"
-          class="px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none flex items-center gap-2"
+          class="flex items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors cursor-pointer hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
         >
           <Trash2 class="w-4 h-4" />
           Delete
@@ -63,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import {
   Folder,
   File,
@@ -106,6 +107,10 @@ const isEditing = ref(false)
 const editingName = ref('')
 const renameInput = ref<HTMLInputElement | null>(null)
 
+// Click handling
+let clickTimer: number | null = null
+const DOUBLE_CLICK_DELAY = 160
+
 // Computed icon based on file type/extension
 const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
@@ -136,8 +141,31 @@ watch(isEditing, async (editing) => {
 
 const handleClick = () => {
   if (!isEditing.value) {
-    emit('click', props.file)
+    // Clear any existing timer
+    if (clickTimer) {
+      clearTimeout(clickTimer)
+      clickTimer = null
+    }
+    
+    // Set a new timer to delay the single click
+    clickTimer = setTimeout(() => {
+      emit('click', props.file)
+      clickTimer = null
+    }, DOUBLE_CLICK_DELAY) as unknown as number
   }
+}
+
+const handleDoubleClick = (e: MouseEvent) => {
+  e.preventDefault()
+  e.stopPropagation()
+  
+  // Clear the single click timer
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+    clickTimer = null
+  }
+  
+  startRename()
 }
 
 const startRename = () => {
@@ -166,4 +194,11 @@ const formatFileSize = (bytes: number) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+// Cleanup timer on unmount
+onUnmounted(() => {
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+  }
+})
 </script>
