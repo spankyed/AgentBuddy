@@ -78,9 +78,9 @@ export const terminalCommands = {
     }
     
     tx(id)
-      .put('cols', cols)
-      .put('rows', rows)
-      .put('updatedAt', Date.now())
+      .merge('cols', cols)
+      .merge('rows', rows)
+      .merge('updatedAt', Date.now())
   },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
@@ -90,8 +90,8 @@ export const terminalCommands = {
     }
     
     tx(id)
-      .put('pid', pid)
-      .put('updatedAt', Date.now())
+      .merge('pid', pid)
+      .merge('updatedAt', Date.now())
   },
   
   markClosed: (id: EARS.EntityId): void => {
@@ -102,9 +102,9 @@ export const terminalCommands = {
     
     const now = Date.now()
     tx(id)
-      .put('active', false)
-      .put('closedAt', now)
-      .put('updatedAt', now)
+      .merge('active', false)
+      .merge('closedAt', now)
+      .merge('updatedAt', now)
   },
   
   delete: (id: EARS.EntityId): void => {
@@ -116,9 +116,9 @@ export const terminalCommands = {
     // Mark terminal as deleted instead of actually deleting
     const now = Date.now()
     tx(id)
-      .put('active', false)
-      .put('deleted', true)
-      .put('deletedAt', now)
-      .put('updatedAt', now)
+      .merge('active', false)
+      .merge('deleted', true)
+      .merge('deletedAt', now)
+      .merge('updatedAt', now)
   }
 }
