@@ -90,7 +90,7 @@ import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import { applicationState } from '@/app'
-import { id, type CodeState, type OpenFile, type TerminalTab } from '../../state'
+import { id, type CodeState, type OpenFile, type TerminalTab } from '@/plugins/code/state'
 
 // Props
 const props = defineProps<{
