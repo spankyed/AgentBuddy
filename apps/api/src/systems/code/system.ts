@@ -152,10 +152,9 @@ export const systemMachine = setup({
       }
     },
 
-    listFiles: async ({ system, event, self }) => {
+    listFiles: async ({ system, event, context }) => {
       const ev = typeOf('LIST_FILES', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const path = ev.path || context.currentDirectory
         const content = await context.repository.listDirectory(path)
@@ -175,10 +174,9 @@ export const systemMachine = setup({
       }
     },
 
-    readFile: async ({ system, event, self }) => {
+    readFile: async ({ system, event, context }) => {
       const ev = typeOf('READ_FILE', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const content = await context.repository.readFile(ev.path)
         system.get(bus).send(emit(pluginId, {
@@ -200,10 +198,9 @@ export const systemMachine = setup({
       }
     },
 
-    writeFile: async ({ system, event, self }) => {
+    writeFile: async ({ system, event, context }) => {
       const ev = typeOf('WRITE_FILE', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.repository.writeFile(ev.path, ev.content)
         system.get(bus).send(emit(pluginId, {
@@ -222,10 +219,9 @@ export const systemMachine = setup({
       }
     },
 
-    createFile: async ({ system, event, self }) => {
+    createFile: async ({ system, event, context }) => {
       const ev = typeOf('CREATE_FILE', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
         system.get(bus).send(emit(pluginId, {
@@ -244,10 +240,9 @@ export const systemMachine = setup({
       }
     },
 
-    deleteFile: async ({ system, event, self }) => {
+    deleteFile: async ({ system, event, context }) => {
       const ev = typeOf('DELETE_FILE', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.repository.deleteFile(ev.path)
         system.get(bus).send(emit(pluginId, {
@@ -266,10 +261,9 @@ export const systemMachine = setup({
       }
     },
 
-    renameFile: async ({ system, event, self }) => {
+    renameFile: async ({ system, event, context }) => {
       const ev = typeOf('RENAME_FILE', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
         system.get(bus).send(emit(pluginId, {
@@ -288,10 +282,9 @@ export const systemMachine = setup({
       }
     },
 
-    createDirectory: async ({ system, event, self }) => {
+    createDirectory: async ({ system, event, context }) => {
       const ev = typeOf('CREATE_DIRECTORY', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.repository.createDirectory(ev.path)
         system.get(bus).send(emit(pluginId, {
@@ -310,10 +303,9 @@ export const systemMachine = setup({
       }
     },
 
-    getFileInfo: async ({ system, event, self }) => {
+    getFileInfo: async ({ system, event, context }) => {
       const ev = typeOf('GET_FILE_INFO', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const info = await context.repository.getFileInfo(ev.path)
         system.get(bus).send(emit(pluginId, {
@@ -390,10 +382,9 @@ export const systemMachine = setup({
         return new GitWatcherService(ev.path)
       }
     }),
-    searchFiles: async ({ system, event, self }) => {
+    searchFiles: async ({ system, event, context, self }) => {
       const ev = typeOf('SEARCH_FILES', event)
       const pluginId = id
-      const context = self.getSnapshot().context
 
       // Cancel any existing search
       if (context.activeSearchController) {
@@ -458,8 +449,7 @@ export const systemMachine = setup({
         self.send({ type: 'CLEAR_SEARCH_CONTROLLER' })
       }
     },
-    cancelSearch: ({ self }) => {
-      const context = self.getSnapshot().context
+    cancelSearch: ({ context }) => {
       if (context.activeSearchController) {
         context.activeSearchController.abort()
       }
@@ -474,9 +464,8 @@ export const systemMachine = setup({
       activeSearchController: undefined
     }),
 
-    getGitStatus: async ({ system, self }) => {
+    getGitStatus: async ({ system, context }) => {
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         // First check if we're in a git repository
         const isGitRepo = await context.gitRepository.isGitRepository()
@@ -512,10 +501,9 @@ export const systemMachine = setup({
       }
     },
 
-    getGitDiff: async ({ system, event, self }) => {
+    getGitDiff: async ({ system, event, context }) => {
       const ev = typeOf('GET_GIT_DIFF', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
 
@@ -560,10 +548,9 @@ export const systemMachine = setup({
       }
     },
 
-    stageFiles: async ({ system, event, self }) => {
+    stageFiles: async ({ system, event, context, self }) => {
       const ev = typeOf('STAGE_FILES', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.gitRepository.stageFiles(ev.paths)
         system.get(bus).send(emit(pluginId, {
@@ -580,10 +567,9 @@ export const systemMachine = setup({
       }
     },
 
-    unstageFiles: async ({ system, event, self }) => {
+    unstageFiles: async ({ system, event, context, self }) => {
       const ev = typeOf('UNSTAGE_FILES', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         await context.gitRepository.unstageFiles(ev.paths)
         system.get(bus).send(emit(pluginId, {
@@ -600,10 +586,9 @@ export const systemMachine = setup({
       }
     },
 
-    commit: async ({ system, event, self }) => {
+    commit: async ({ system, event, context, self }) => {
       const ev = typeOf('COMMIT', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         // Check if there are any staged files
         const stagedFiles = await context.gitRepository.getStagedFiles()
@@ -637,9 +622,8 @@ export const systemMachine = setup({
       }
     },
 
-    getCurrentBranch: async ({ system, self }) => {
+    getCurrentBranch: async ({ system, context }) => {
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const branch = await context.gitRepository.getCurrentBranch()
         system.get(bus).send(emit(pluginId, {
@@ -654,9 +638,8 @@ export const systemMachine = setup({
       }
     },
 
-    closeFile: async ({ event, self }) => {
+    closeFile: async ({ event, context }) => {
       const ev = typeOf('CLOSE_FILE', event)
-      const context = self.getSnapshot().context
       try {
         // Stop watching the file when it's closed
         await context.fileWatcher.unwatchFile(ev.path)
@@ -665,8 +648,7 @@ export const systemMachine = setup({
       }
     },
 
-    setupFileWatcher: ({ system, self }) => {
-      const context = self.getSnapshot().context
+    setupFileWatcher: ({ system, context }) => {
       const pluginId = id
 
       // Set up the callback for file changes
@@ -681,8 +663,7 @@ export const systemMachine = setup({
       })
     },
 
-    setupGitWatcher: async ({ system, self }) => {
-      const context = self.getSnapshot().context
+    setupGitWatcher: async ({ system, context }) => {
       const pluginId = id
 
       // Set up the callback for git changes
@@ -700,8 +681,7 @@ export const systemMachine = setup({
       await context.gitWatcher.startWatching()
     },
 
-    restartGitWatcher: async ({ system, self }) => {
-      const context = self.getSnapshot().context
+    restartGitWatcher: async ({ system, context }) => {
       const pluginId = id
 
       // Set up the callback for git changes (same as setup)
@@ -719,9 +699,8 @@ export const systemMachine = setup({
       await context.gitWatcher.startWatching()
     },
 
-    getBaseBranch: async ({ system, self }) => {
+    getBaseBranch: async ({ system, context }) => {
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const branch = await context.gitRepository.getPRBaseBranch()
         system.get(bus).send(emit(pluginId, {
@@ -736,10 +715,9 @@ export const systemMachine = setup({
       }
     },
 
-    getBranchDiff: async ({ system, event, self }) => {
+    getBranchDiff: async ({ system, event, context }) => {
       const ev = typeOf('GET_BRANCH_DIFF', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const baseBranch = ev.baseBranch || await context.gitRepository.getPRBaseBranch()
         const files = await context.gitRepository.getBranchDiff(baseBranch)
@@ -755,10 +733,9 @@ export const systemMachine = setup({
       }
     },
 
-    getBranchFileDiff: async ({ system, event, self }) => {
+    getBranchFileDiff: async ({ system, event, context }) => {
       const ev = typeOf('GET_BRANCH_FILE_DIFF', event)
       const pluginId = id
-      const context = self.getSnapshot().context
       try {
         const diff = await context.gitRepository.getFileDiffBetweenBranches(ev.path, ev.baseBranch)
 

@@ -950,9 +950,8 @@ const codeState = setup({
           actions: ['viewDiff']
         },
         GIT_DIFF: {
-          actions: [({ self, event }) => {
+          actions: [({ self, event, context }) => {
             const ev = event as { type: 'GIT_DIFF'; data: GitDiff }
-            const context = self.getSnapshot().context
             if (context.selectedGitFile) {
               self.send({ 
                 type: 'OPEN_DIFF_TAB', 
@@ -1005,9 +1004,8 @@ const codeState = setup({
           actions: ['viewPrDiff']
         },
         BRANCH_FILE_DIFF: {
-          actions: [({ self, event }) => {
+          actions: [({ self, event, context }) => {
             const ev = event as { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
-            const context = self.getSnapshot().context
             if (context.selectedPrFile) {
               self.send({ 
                 type: 'OPEN_PR_DIFF_TAB', 
