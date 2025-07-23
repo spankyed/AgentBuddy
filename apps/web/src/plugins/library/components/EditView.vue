@@ -29,61 +29,30 @@
         <form @submit.prevent="handleSave" class="space-y-6">
           <!-- Basic Info Section -->
           <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                  Name <span class="text-red-400">*</span>
-                </label>
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                Name <span class="text-red-400">*</span>
+              </label>
+              <div class="flex items-center gap-3">
                 <input
                   v-model="formData.name"
                   type="text"
-                  class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+                  class="flex-1 px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                   placeholder="Enter document name"
                 />
-              </div>
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Collection</label>
-                <select
-                  v-model="formData.collectionId"
-                  class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">No collection</option>
-                  <option
-                    v-for="collection in flatCollections"
-                    :key="collection.id"
-                    :value="collection.id"
+                <div class="flex items-center gap-2">
+                  <span class="px-3 py-3 font-mono text-sm font-medium text-blue-400">
+                    {{ props.document.shortCode }}
+                  </span>
+                  <button
+                    type="button"
+                    @click="copyShortCode"
+                    class="p-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600 focus:outline-none"
+                    title="Copy code"
                   >
-                    {{ collection.path.join(' / ') }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            
-            <!-- Shortcode Section -->
-            <div class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700">
-              <div class="flex items-center gap-4">
-                <div class="flex-1">
-                  <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                    Document Code
-                  </label>
-                  <div class="flex items-center gap-2">
-                    <input
-                      :value="props.document.shortCode"
-                      type="text"
-                      readonly
-                      class="px-3 py-2 font-mono text-sm font-medium transition-colors border rounded-md bg-neutral-900 border-neutral-700 text-blue-400 focus:outline-none cursor-text select-all"
-                    />
-                    <button
-                      type="button"
-                      @click="copyShortCode"
-                      class="px-3 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600 focus:outline-none"
-                      title="Copy shortcode"
-                    >
-                      <Copy v-if="!copied" class="w-4 h-4" />
-                      <Check v-else class="w-4 h-4 text-green-400" />
-                    </button>
-                  </div>
-                  <p class="mt-1 text-xs text-neutral-500">Use this code to reference the document in actions and prompts</p>
+                    <Copy v-if="!copied" class="w-4 h-4" />
+                    <Check v-else class="w-4 h-4 text-green-400" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -91,32 +60,43 @@
           
           <!-- Tags Section -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">
+            <button
+              type="button"
+              @click="tagsExpanded = !tagsExpanded"
+              class="flex items-center gap-2 mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400 hover:text-neutral-300 transition-colors"
+            >
+              <ChevronDown v-if="tagsExpanded" class="w-4 h-4" />
+              <ChevronRight v-else class="w-4 h-4" />
               Tags
-            </label>
-            <div class="flex flex-wrap gap-2 mb-3">
-              <span
-                v-for="(tag, index) in formData.tags"
-                :key="index"
-                class="inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30"
-              >
-                {{ tag }}
-                <button
-                  type="button"
-                  @click="removeTag(index)"
-                  class="ml-2 text-blue-300 hover:text-blue-100 transition-colors"
-                >
-                  <X class="w-3 h-3" />
-                </button>
+              <span v-if="formData.tags.length > 0 && !tagsExpanded" class="ml-2 text-neutral-500">
+                ({{ formData.tags.length }})
               </span>
+            </button>
+            <div v-if="tagsExpanded" class="space-y-3">
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="(tag, index) in formData.tags"
+                  :key="index"
+                  class="inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                >
+                  {{ tag }}
+                  <button
+                    type="button"
+                    @click="removeTag(index)"
+                    class="ml-2 text-blue-300 hover:text-blue-100 transition-colors"
+                  >
+                    <X class="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
+              <input
+                v-model="newTag"
+                @keydown.enter.prevent="addTag"
+                type="text"
+                placeholder="Add tag and press Enter"
+                class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+              />
             </div>
-            <input
-              v-model="newTag"
-              @keydown.enter.prevent="addTag"
-              type="text"
-              placeholder="Add tag and press Enter"
-              class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-            />
           </div>
           
           <!-- Content Section -->
@@ -140,7 +120,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { X, Copy, Check } from 'lucide-vue-next'
+import { X, Copy, Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import type { DocumentDTO, CollectionDTO } from '@abuddy/api'
 
@@ -150,7 +130,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  SAVE_DOCUMENT: [{ name: string; content: string; tags: string[]; collectionId?: string }]
+  SAVE_DOCUMENT: [{ name: string; content: string; tags: string[] }]
   CANCEL_EDIT: []
 }>()
 
@@ -158,37 +138,21 @@ const formData = reactive({
   name: '',
   content: '',
   tags: [] as string[],
-  collectionId: undefined as string | undefined,
 })
 
 const newTag = ref('')
 const copied = ref(false)
+const tagsExpanded = ref(false)
 
 const isValid = computed(() => {
   return formData.name.trim() !== '' && formData.content.trim() !== ''
 })
 
-const flatCollections = computed(() => {
-  const flat: CollectionDTO[] = []
-  
-  function flatten(collections: CollectionDTO[]) {
-    for (const col of collections) {
-      flat.push(col)
-      if (col.childCollections.length > 0) {
-        flatten(col.childCollections)
-      }
-    }
-  }
-  
-  flatten(props.collections)
-  return flat
-})
 
 onMounted(() => {
   formData.name = props.document.name
   formData.content = props.document.content
   formData.tags = [...props.document.tags]
-  formData.collectionId = props.document.collectionId
 })
 
 function addTag() {
@@ -208,7 +172,6 @@ function handleSave() {
     name: formData.name,
     content: formData.content,
     tags: formData.tags,
-    collectionId: formData.collectionId,
   })
 }
 
