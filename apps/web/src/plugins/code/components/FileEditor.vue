@@ -50,7 +50,7 @@
             v-if="isTerminal(activeFile)"
             :key="(activeFile as TerminalTab).terminalInfo.id"
             :terminal-info="(activeFile as TerminalTab).terminalInfo"
-            :outputs="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || []"
+            :output="terminalOutputs[(activeFile as TerminalTab).terminalInfo.id] || ''"
             class="h-full"
           />
         </div>

@@ -183,7 +183,7 @@ export type Context = {
   // Terminal related
   terminals: TerminalInfo[]
   terminalError: string | null
-  terminalOutputs: Record<string, string[]>
+  terminalOutputs: Record<string, string>
 }
 
 export type Event = 
@@ -806,9 +806,9 @@ const codeState = setup({
         const ev = event as { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
         const outputs = { ...context.terminalOutputs }
         if (!outputs[ev.data.terminalId]) {
-          outputs[ev.data.terminalId] = []
+          outputs[ev.data.terminalId] = ''
         }
-        outputs[ev.data.terminalId].push(ev.data.data)
+        outputs[ev.data.terminalId] += ev.data.data
         return outputs
       }
     })

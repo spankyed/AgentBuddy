@@ -808,7 +808,7 @@ export const systemMachine = setup({
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
           // Save output to EARS
-          terminalCommands.appendOutput(terminalInfo.id, data)
+          // terminalCommands.appendOutput(terminalInfo.id, data)
 
           // Send to frontend
           system.get(bus).send(emit(pluginId, {
@@ -921,7 +921,7 @@ export const systemMachine = setup({
         // Set up output handler for restored terminal
         terminalService.onData(terminalInfo.id, (data) => {
           // Save output to EARS
-          terminalCommands.appendOutput(terminalInfo.id, data)
+          // terminalCommands.appendOutput(terminalInfo.id, data)
           
           // Send to frontend
           system.get(bus).send(emit(pluginId, {

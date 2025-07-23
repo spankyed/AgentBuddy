@@ -45,6 +45,9 @@ importers:
       fastify:
         specifier: ^5.3.2
         version: 5.3.2
+      handle-backspaces:
+        specifier: ^2.0.1
+        version: 2.0.1
       node-pty-prebuilt-multiarch:
         specifier: 0.10.1-pre.5
         version: 0.10.1-pre.5
@@ -2368,6 +2371,9 @@ packages:
 
   graphlib@2.1.8:
     resolution: {integrity: sha512-jcLLfkpoVGmH7/InMC/1hIvOPSUh38oJtGhvrOFGzioE1DZ+0YW16RgmOJhHiuWTvGiJQ9Z1Ik43JvkRPRvE+A==}
+
+  handle-backspaces@2.0.1:
+    resolution: {integrity: sha512-l6yTgp6ihz8SjmzFOnYzuGqcqFMHGlTCiPMGmFRv0Yl4SnVq71l4miKYOAQ4cxUCjMfclzQYc0PvrmIHZETZYw==}
 
   has-bigints@1.1.0:
     resolution: {integrity: sha512-R3pbpkcIqv2Pm3dUwgjclDRVmWpTJW2DcMzcIhEXEx1oh/CEMObMm3KLmRJOdvhM7o4uQBnwr8pzRK2sJWIqfg==}
@@ -6254,6 +6260,8 @@ snapshots:
   graphlib@2.1.8:
     dependencies:
       lodash: 4.17.21
+
+  handle-backspaces@2.0.1: {}
 
   has-bigints@1.1.0: {}
 

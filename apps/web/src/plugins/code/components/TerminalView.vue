@@ -17,10 +17,9 @@ import '@xterm/xterm/css/xterm.css'
 const props = defineProps<{
   terminalInfo: TerminalInfo
   /**
-   * Streamed stdout/stderr chunks from the backend.  Each entry is the raw byte
-   * string *exactly* as it should be written to the PTY.
+   * Terminal output as a single string containing all the text
    */
-  outputs?: string[]
+  output?: string
 }>()
 
 const actor: CodeState = applicationState.system.get(id)
@@ -32,9 +31,8 @@ let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 
-// Track how many output entries we've already rendered so that we only write
-// new chunks as they arrive.
-let processedCount = 0
+// Track the last output content to avoid re-writing everything
+let lastOutput = ''
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
@@ -51,10 +49,23 @@ const sendResize = () => {
 }
 
 /**
- * Write a batch of data chunks to the terminal.
+ * Write new content to the terminal.
  */
-const writeChunks = (chunks: string[]) => {
-  for (const chunk of chunks) term?.write(chunk)
+const writeNewContent = (content: string) => {
+  if (!content || !term) return
+  
+  // Only write the new part (everything after what we've already written)
+  if (content.startsWith(lastOutput)) {
+    const newPart = content.slice(lastOutput.length)
+    if (newPart) {
+      term.write(newPart)
+    }
+  } else {
+    // If content doesn't start with lastOutput, clear and rewrite everything
+    term.clear()
+    term.write(content)
+  }
+  lastOutput = content
 }
 
 /* --------------------------------------------------------------------------
@@ -106,10 +117,9 @@ onMounted(() => {
   fit()
   sendResize()
 
-  /* 3. Stream existing buffered output (if any) */
-  if (props.outputs?.length) {
-    writeChunks(props.outputs)
-    processedCount = props.outputs.length
+  /* 3. Write existing output (if any) */
+  if (props.output) {
+    writeNewContent(props.output)
   }
 
   /* 4. PTY -> FE communication */
@@ -133,19 +143,14 @@ onMounted(() => {
 })
 
 /**
- * Stream new output chunks into xterm (reactive).
+ * Update terminal when output changes (reactive).
  */
 watch(
-  () => props.outputs,
-  (newVal) => {
-    if (!term || !newVal) return
-    const unprocessed = newVal.slice(processedCount)
-    if (unprocessed.length) {
-      writeChunks(unprocessed)
-      processedCount = newVal.length
-    }
-  },
-  { deep: true }
+  () => props.output,
+  (newOutput) => {
+    if (!term || !newOutput) return
+    writeNewContent(newOutput)
+  }
 )
 
 onBeforeUnmount(() => {
