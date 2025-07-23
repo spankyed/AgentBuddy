@@ -125,7 +125,7 @@
                 </button>
                 <button
                   @click.stop="openRevertDialog(file)"
-                  class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="p-0.5 hover:bg-neutral-700 rounded"
                   title="Discard changes"
                 >
                   <RotateCcw class="w-3 h-3 text-red-400" />
