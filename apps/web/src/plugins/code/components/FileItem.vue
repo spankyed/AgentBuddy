@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import {
   Folder,
   File,
@@ -107,10 +107,6 @@ const isEditing = ref(false)
 const editingName = ref('')
 const renameInput = ref<HTMLInputElement | null>(null)
 
-// Click handling
-let clickTimer: number | null = null
-const DOUBLE_CLICK_DELAY = 160
-
 // Computed icon based on file type/extension
 const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
@@ -141,30 +137,13 @@ watch(isEditing, async (editing) => {
 
 const handleClick = () => {
   if (!isEditing.value) {
-    // Clear any existing timer
-    if (clickTimer) {
-      clearTimeout(clickTimer)
-      clickTimer = null
-    }
-    
-    // Set a new timer to delay the single click
-    clickTimer = setTimeout(() => {
-      emit('click', props.file)
-      clickTimer = null
-    }, DOUBLE_CLICK_DELAY) as unknown as number
+    emit('click', props.file)
   }
 }
 
 const handleDoubleClick = (e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
-  
-  // Clear the single click timer
-  if (clickTimer) {
-    clearTimeout(clickTimer)
-    clickTimer = null
-  }
-  
   startRename()
 }
 
@@ -194,11 +173,4 @@ const formatFileSize = (bytes: number) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
-
-// Cleanup timer on unmount
-onUnmounted(() => {
-  if (clickTimer) {
-    clearTimeout(clickTimer)
-  }
-})
 </script>
