@@ -875,7 +875,7 @@ const codeState = setup({
       meta: breadcrumb('canvas', 'Editor', true),
       on: {
         PLUGIN_ACTIVATED: {
-          actions: ['setLoading', 'requestInitialFiles', 'loadPersistedTabs']
+          actions: ['setLoading', 'requestInitialFiles']
         },
         CURRENT_DIRECTORY: {
           actions: ['assignCurrentDirectory']
