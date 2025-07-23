@@ -143,13 +143,44 @@ defineExpose({ focus })
 </script>
 
 <style scoped>
-/* Slight padding inside the terminal for aesthetics */
+/* Terminal container should not create its own scroll */
+:host,
 :deep(.xterm) {
   height: 100%;
   padding: 8px;
 }
 
+/* Terminal-specific scrollbar styling */
 :deep(.xterm-viewport) {
   background-color: transparent !important;
+  /* Override global scrollbar styles for terminal */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar) {
+  width: 14px;
+  height: 14px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb) {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-track) {
+  background-color: transparent;
+  border: none;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-corner) {
+  background-color: transparent;
 }
 </style>

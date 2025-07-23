@@ -34,7 +34,7 @@
     </div>
 
     <!-- Editor -->
-    <div class="relative flex-1 bg-neutral-800/80">
+    <div class="relative flex-1 min-h-0 bg-neutral-800/80">
       <div v-if="openFiles.length === 0" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
           <FileCode class="w-16 h-16 mx-auto mb-4 text-neutral-600" />
@@ -42,10 +42,10 @@
         </div>
       </div>
       
-      <div v-else-if="activeFile" class="relative h-full">
+      <div v-else-if="activeFile" class="absolute inset-0 overflow-hidden">
         <!-- Single instance of each component type -->
         <!-- Terminal for terminal tabs -->
-        <div v-show="isTerminal(activeFile)" class="h-full">
+        <div v-show="isTerminal(activeFile)" class="h-full overflow-hidden">
           <TerminalView
             v-if="isTerminal(activeFile)"
             :key="(activeFile as TerminalTab).terminalInfo.id"
@@ -55,7 +55,7 @@
         </div>
         
         <!-- Diff viewer for diff tabs -->
-        <div v-show="'isDiff' in activeFile && activeFile.isDiff" class="h-full">
+        <div v-show="'isDiff' in activeFile && activeFile.isDiff" class="h-full overflow-hidden">
           <DiffViewer
             v-if="'isDiff' in activeFile && activeFile.isDiff"
             :key="activeFile.path"
@@ -66,7 +66,7 @@
         </div>
         
         <!-- Regular editor for normal files -->
-        <div v-show="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)" class="h-full">
+        <div v-show="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)" class="h-full overflow-hidden">
           <SimpleMonacoEditor
             v-if="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)"
             :key="activeFile.path"
