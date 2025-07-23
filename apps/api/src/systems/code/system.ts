@@ -6,6 +6,7 @@ import { GitRepository } from './services/git'
 import { FileWatcherService } from './services/filewatcher'
 import { GitWatcherService } from './services/gitwatcher'
 import { terminalService } from './services/terminal'
+import { terminalCommands } from './repository'
 import { DirectoryContent, FileContent, FileInfo, CodeSystemError, SearchOptions, SearchResult, SearchProgress, GitStatusFile, GitDiff, FileChangeInfo, TerminalInfo } from './types'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus, SystemEvents } from '@/systems/backend'
@@ -784,11 +785,11 @@ export const systemMachine = setup({
     },
 
     // Terminal actions
-    createTerminal: async ({ system, event, context }) => {
+    createTerminal: ({ system, event, context }) => {
       const ev = typeOf('CREATE_TERMINAL', event)
       const pluginId = id
       try {
-        const terminalInfo = await terminalService.create({
+        const terminalInfo = terminalService.create({
           title: ev.title,
           cwd: ev.cwd || context.currentDirectory,
           shell: ev.shell,
@@ -798,9 +799,6 @@ export const systemMachine = setup({
 
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
-          // Save output to EARS
-          // terminalCommands.appendOutput(terminalInfo.id, data)
-
           // Send to frontend
           system.get(bus).send(emit(pluginId, {
             type: 'TERMINAL_OUTPUT',
@@ -905,7 +903,30 @@ export const systemMachine = setup({
       terminalService.killAll()
     },
 
-    // No restoration needed - terminals are ephemeral
+    restoreTerminals: async ({ system }) => {
+      const pluginId = id
+      
+      // Restore all active terminals from EARS
+      await terminalService.restoreAll((terminalInfo) => {
+        // Set up output handler for restored terminal
+        terminalService.onData(terminalInfo.id, (data) => {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_OUTPUT',
+            data: { terminalId: terminalInfo.id, data }
+          }))
+        })
+
+        // Set up exit handler for restored terminal
+        terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
+          system.get(bus).send(emit(pluginId, {
+            type: 'TERMINAL_CLOSED',
+            data: { terminalId: terminalInfo.id }
+          }))
+        })
+      })
+      
+      console.log('Terminal restoration complete')
+    }
   },
 }).createMachine({
   id,
@@ -921,7 +942,7 @@ export const systemMachine = setup({
       gitWatcher: new GitWatcherService(rootDir),
     }
   })(),
-  entry: ['setupFileWatcher', 'setupGitWatcher'],
+  entry: ['setupFileWatcher', 'setupGitWatcher', 'restoreTerminals'],
   states: {
     idle: {
       on: {

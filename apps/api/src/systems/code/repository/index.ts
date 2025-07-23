@@ -15,7 +15,6 @@ export interface TerminalEntity {
   active: boolean
   cols: number
   rows: number
-  output: string
   createdAt: number
   updatedAt: number
   closedAt?: number
@@ -23,7 +22,6 @@ export interface TerminalEntity {
 
 export interface StartupData {
   terminals: TerminalInfo[]
-  terminalOutputs: Record<string, string>
 }
 
 export const terminalQueries = {
@@ -41,41 +39,24 @@ export const terminalQueries = {
       .pickAll() as unknown as TerminalEntity[]
   },
   
-  withOutput: (id: EARS.EntityId): Pick<TerminalEntity, 'output' | 'title' | 'cwd'> | undefined => {
-    const result = qx(id).pickOne(['output', 'title', 'cwd'])
-    if (!result) return undefined
-    return result as Pick<TerminalEntity, 'output' | 'title' | 'cwd'>
-  },
 
 
   getStartupData: (): StartupData => {
     // Get all terminals from the service (only in-memory terminals)
     const terminals = terminalService.list()
     
-    // Get output for each terminal from EARS
-    const terminalOutputs: Record<string, string> = {}
-    
-    terminals.forEach(terminal => {
-      const terminalData = terminalQueries.withOutput(terminal.id as EARS.EntityId)
-      if (terminalData?.output) {
-        terminalOutputs[terminal.id] = terminalData.output
-      }
-    })
-    
     return {
-      terminals,
-      terminalOutputs
+      terminals
     }
   }
 }
 
 export const terminalCommands = {
-  create: (terminalInfo: Partial<TerminalInfo> & { output?: string }): EARS.EntityId => {
+  create: (terminalInfo: Partial<TerminalInfo> & { id: EARS.EntityId }): EARS.EntityId => {
     const now = Date.now()
     
-    // Create terminal entity with all required attributes
-    const id = tx(EARS.Entity.Terminal)
-      // .put('id', terminalInfo.id) // Use provided EARS ID
+    // Create terminal entity with all required attributes using the provided ID
+    tx(terminalInfo.id)
       .put('title', terminalInfo.title)
       .put('pid', terminalInfo.pid)
       .put('shell', terminalInfo.shell || '/bin/bash')
@@ -83,39 +64,12 @@ export const terminalCommands = {
       .put('active', true)
       .put('cols', terminalInfo.cols)
       .put('rows', terminalInfo.rows)
-      .put('output', terminalInfo.output || '')
       .put('createdAt', now)
       .put('updatedAt', now)
-      .id()
     
-    return id
+    return terminalInfo.id
   },
   
-  updateOutput: (id: EARS.EntityId, output: string): void => {
-    if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
-      return
-    }
-    
-    tx(id)
-      .put('output', output)
-      .put('updatedAt', Date.now())
-  },
-  
-  appendOutput: (id: EARS.EntityId, newOutput: string): void => {
-    const terminal = terminalQueries.byId(id)
-    if (!terminal) {
-      console.error(`Terminal ${id} not found`)
-      return
-    }
-    
-    // ! Append new output to existing output
-    const updatedOutput = terminal.output + newOutput
-    
-    tx(id)
-      .put('output', updatedOutput)
-      .put('updatedAt', Date.now())
-  },
   
   resize: (id: EARS.EntityId, cols: number, rows: number): void => {
     if (!exists(id)) {
