@@ -34,7 +34,7 @@
     </div>
 
     <!-- Editor -->
-    <div class="relative flex-1 min-h-0 bg-neutral-800/80">
+    <div class="relative flex-1 min-h-0 bg-neutral-900">
       <div v-if="openFiles.length === 0" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
           <FileCode class="w-16 h-16 mx-auto mb-4 text-neutral-600" />
