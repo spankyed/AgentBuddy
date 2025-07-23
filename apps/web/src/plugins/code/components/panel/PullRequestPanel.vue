@@ -49,9 +49,9 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
 import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
-import FileTree from './FileTree.vue'
+import FileTree from '../canvas/FileTree.vue'
 import { applicationState } from '@/app'
-import type { GitStatusFile, CodeState } from '../state'
+import type { GitStatusFile, CodeState } from '@/plugins/code/state'
 
 const pluginId = 'code'
 const actor = applicationState.system.get(pluginId) as CodeState

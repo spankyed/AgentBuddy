@@ -23,20 +23,20 @@
           v-for="terminal in terminals"
           :key="terminal.id"
           @click="selectTerminal(terminal)"
-          class="flex items-center justify-between p-3 mb-2 rounded-lg cursor-pointer transition-colors"
+          class="flex items-center justify-between p-3 mb-2 transition-colors rounded-lg cursor-pointer"
           :class="[
             isActiveTerminal(terminal.id)
               ? 'bg-primary-800/30 border border-primary-700'
               : 'bg-neutral-800 hover:bg-neutral-700 border border-transparent'
           ]"
         >
-          <div class="flex items-center gap-3 flex-1 min-w-0">
-            <Terminal class="w-4 h-4 text-neutral-400 flex-shrink-0" />
+          <div class="flex items-center flex-1 min-w-0 gap-3">
+            <Terminal class="flex-shrink-0 w-4 h-4 text-neutral-400" />
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-neutral-200 truncate">
+              <div class="text-sm font-medium truncate text-neutral-200">
                 {{ terminal.title }}
               </div>
-              <div class="text-xs text-neutral-500 truncate">
+              <div class="text-xs truncate text-neutral-500">
                 {{ terminal.shell }} - PID: {{ terminal.pid }}
               </div>
             </div>
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Terminal Error -->
-    <div v-if="terminalError" class="p-4 m-2 bg-red-500/10 border border-red-500/50 rounded">
+    <div v-if="terminalError" class="p-4 m-2 border rounded bg-red-500/10 border-red-500/50">
       <div class="text-sm text-red-400">{{ terminalError }}</div>
     </div>
   </div>
@@ -63,7 +63,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState, type TerminalInfo } from '../state'
+import { id, type CodeState, type TerminalInfo } from '@/plugins/code/state'
 import { Terminal, Plus, X } from 'lucide-vue-next'
 
 const actor: CodeState = applicationState.system.get(id)

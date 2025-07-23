@@ -175,7 +175,7 @@
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState } from '../state'
+import { id, type CodeState } from '@/plugins/code/state'
 import { ChevronRight, FolderOpen } from 'lucide-vue-next'
 
 const actor: CodeState = applicationState.system.get(id)

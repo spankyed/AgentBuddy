@@ -54,7 +54,7 @@ import { id, type CodeState } from './state'
 import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import FileEditor from './components/FileEditor.vue'
+import FileEditor from './components/canvas/FileEditor.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 

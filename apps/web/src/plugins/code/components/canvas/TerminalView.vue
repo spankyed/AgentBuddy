@@ -9,8 +9,8 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { applicationState } from '@/app'
-import { id, type CodeState, type TerminalInfo } from '../state'
-import { terminalEventBus } from '../utils/terminal-events'
+import { id, type CodeState, type TerminalInfo } from '@/plugins/code/state'
+import { terminalEventBus } from '@/plugins/code/utils/terminal-events'
 import '@xterm/xterm/css/xterm.css'
 
 /* --------------------------------------------------------------------------

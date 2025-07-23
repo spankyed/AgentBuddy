@@ -1,11 +1,11 @@
 <template>
-  <div ref="editorContainer" class="monaco-editor-container h-full w-full"></div>
+  <div ref="editorContainer" class="w-full h-full monaco-editor-container"></div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as monaco from 'monaco-editor'
-import { initializeMonaco, createEditor, getLanguageId } from '../utils/simple-monaco-config'
+import { initializeMonaco, createEditor, getLanguageId } from '@/plugins/code/utils/simple-monaco-config'
 
 // Props
 const props = defineProps<{

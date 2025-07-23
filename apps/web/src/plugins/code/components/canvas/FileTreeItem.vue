@@ -7,7 +7,7 @@
     >
       <button
         @click="toggleExpanded"
-        class="flex items-center gap-2 w-full px-2 py-1 hover:bg-neutral-800 rounded transition-colors"
+        class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800"
         :style="{ paddingLeft: `${(level * 16) + 8}px` }"
       >
         <ChevronRight
@@ -15,7 +15,7 @@
         />
         <Folder class="w-4 h-4 text-neutral-500" />
         <span class="text-sm text-neutral-200">{{ item.name }}</span>
-        <span class="text-xs text-neutral-500 ml-auto mr-2">{{ item.fileCount }}</span>
+        <span class="ml-auto mr-2 text-xs text-neutral-500">{{ item.fileCount }}</span>
       </button>
       
       <!-- Children -->
@@ -34,10 +34,10 @@
     <button
       v-else
       @click="$emit('select-file', item)"
-      class="flex items-center gap-2 w-full px-2 py-1 hover:bg-neutral-800 rounded transition-colors"
+      class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800"
       :style="{ paddingLeft: `${(level * 16) + 8 + 20}px` }"
     >
-      <span :class="getStatusColor(item.status)" class="text-xs font-medium w-4">
+      <span :class="getStatusColor(item.status)" class="w-4 text-xs font-medium">
         {{ getStatusIcon(item.status) }}
       </span>
       <FileCode class="w-4 h-4 text-neutral-400" />
@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref, computed, withDefaults } from 'vue'
 import { ChevronRight, Folder, FileCode } from 'lucide-vue-next'
-import type { GitStatusFile } from '../state'
+import type { GitStatusFile } from '@/plugins/code/state'
 
 interface TreeNode {
   name: string

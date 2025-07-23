@@ -68,11 +68,11 @@ import {
   GitPullRequest,
   Terminal,
 } from 'lucide-vue-next'
-import ExplorerPanel from './components/ExplorerPanel.vue'
-import SearchPanel from './components/SearchPanel.vue'
-import CommitPanel from './components/CommitPanel.vue'
-import PullRequestPanel from './components/PullRequestPanel.vue'
-import TerminalPanel from './components/TerminalPanel.vue'
+import ExplorerPanel from './components/panel/ExplorerPanel.vue'
+import SearchPanel from './components/panel/SearchPanel.vue'
+import CommitPanel from './components/panel/CommitPanel.vue'
+import PullRequestPanel from './components/panel/PullRequestPanel.vue'
+import TerminalPanel from './components/panel/TerminalPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
