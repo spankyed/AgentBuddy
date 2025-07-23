@@ -94,6 +94,7 @@ export type OutgoingCodeEvents =
   // Terminal events
   | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
   | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'TERMINAL_INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
   | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
@@ -148,11 +149,11 @@ export const systemMachine = setup({
           data: terminals
         }))
 
-        // Send output for each terminal
+        // Send initial output for each terminal
         Object.entries(terminalOutputs).forEach(([terminalId, output]) => {
           if (output) {
             system.get(bus).send(emit(pluginId, {
-              type: 'TERMINAL_OUTPUT',
+              type: 'TERMINAL_INITIAL_OUTPUT',
               data: { terminalId, data: output }
             }))
           }

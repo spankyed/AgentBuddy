@@ -54,6 +54,7 @@ type OutgoingCodeEvents =
   // Terminal events
   | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
   | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'TERMINAL_INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
   | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
@@ -811,6 +812,15 @@ const codeState = setup({
         outputs[ev.data.terminalId] += ev.data.data
         return outputs
       }
+    }),
+    handleTerminalInitialOutput: assign({
+      terminalOutputs: ({ context, event }) => {
+        const ev = event as { type: 'TERMINAL_INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
+        const outputs = { ...context.terminalOutputs }
+        // Replace the entire output (don't append)
+        outputs[ev.data.terminalId] = ev.data.data
+        return outputs
+      }
     })
   }
 }).createMachine({
@@ -1071,6 +1081,9 @@ const codeState = setup({
         },
         TERMINAL_OUTPUT: {
           actions: ['handleTerminalOutput']
+        },
+        TERMINAL_INITIAL_OUTPUT: {
+          actions: ['handleTerminalInitialOutput']
         },
         TERMINAL_ERROR: {
           actions: ['assignTerminalError']
