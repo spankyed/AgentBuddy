@@ -49,6 +49,7 @@ const IncomingCodeEvents = [
   busEvent('GET_BASE_BRANCH', {}),
   busEvent('GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
   busEvent('GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
+  busEvent('REVERT_FILE', { path: z.string() }),
   // Terminal events
   busEvent('CREATE_TERMINAL', {
     title: z.string().optional(),
@@ -84,6 +85,7 @@ export type OutgoingCodeEvents =
   | { type: 'FILES_STAGED'; data: { paths: string[] } }
   | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
   | { type: 'COMMIT_SUCCESS'; data: { message: string } }
+  | { type: 'FILE_REVERTED'; data: { path: string } }
   | { type: 'GIT_ERROR'; data: { message: string } }
   | { type: 'CURRENT_BRANCH'; data: { branch: string } }
   | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
@@ -585,6 +587,34 @@ export const systemMachine = setup({
       }
     },
 
+    revertFile: async ({ system, event, context, self }) => {
+      const ev = typeOf('REVERT_FILE', event)
+      const pluginId = id
+      try {
+        await context.gitRepository.revertFile(ev.path)
+        system.get(bus).send(emit(pluginId, {
+          type: 'FILE_REVERTED',
+          data: { path: ev.path }
+        }))
+        // Also send updated status
+        self.send({ type: 'GET_GIT_STATUS' })
+        // Notify frontend about file change
+        system.get(bus).send(emit(pluginId, {
+          type: 'FILE_CHANGED_EXTERNALLY',
+          data: {
+            path: ev.path,
+            type: 'modified',
+            timestamp: new Date()
+          }
+        }))
+      } catch (error: any) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'GIT_ERROR',
+          data: { message: error.message }
+        }))
+      }
+    },
+
     commit: async ({ system, event, context, self }) => {
       const ev = typeOf('COMMIT', event)
       const pluginId = id
@@ -984,6 +1014,9 @@ export const systemMachine = setup({
         },
         UNSTAGE_FILES: {
           actions: ['unstageFiles'],
+        },
+        REVERT_FILE: {
+          actions: ['revertFile'],
         },
         COMMIT: {
           actions: ['commit'],

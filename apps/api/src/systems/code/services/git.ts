@@ -440,6 +440,14 @@ export class GitRepository {
     }
   }
 
+  async revertFile(filePath: string): Promise<void> {
+    // Use git checkout to revert the file to its last committed state
+    const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
+    if (!result.success) {
+      throw new Error(result.error || `Failed to revert file: ${filePath}`)
+    }
+  }
+
   async commit(message: string): Promise<void> {
     if (!message.trim()) {
       throw new Error('Commit message cannot be empty')

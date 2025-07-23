@@ -1,5 +1,12 @@
 <template>
   <div class="h-full flex flex-col overflow-hidden">
+    <!-- Revert Dialog -->
+    <RevertDialog
+      :show="!!revertDialogFile"
+      :file="revertDialogFile"
+      @confirm="confirmRevert"
+      @cancel="cancelRevert"
+    />
     <!-- Branch Info -->
     <div class="p-3 border-b border-neutral-800">
       <div class="flex items-center justify-between">
@@ -95,7 +102,7 @@
               :key="`unstaged-${file.path}`"
               @click="selectFile(file)"
               :class="[
-                'flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
+                'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
                   ? 'bg-neutral-800'
                   : 'hover:bg-neutral-800/50'
@@ -112,6 +119,13 @@
                 {{ getStatusIcon(file.status) }}
               </span>
               <span class="text-sm text-neutral-200 flex-1 truncate">{{ file.path }}</span>
+              <button
+                @click.stop="openRevertDialog(file)"
+                class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Discard changes"
+              >
+                <RotateCcw class="w-3 h-3 text-red-400" />
+              </button>
             </div>
           </div>
         </div>
@@ -125,7 +139,8 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type GitStatusFile } from '../state'
-import { GitBranch, RefreshCw, Plus, Minus } from 'lucide-vue-next'
+import { GitBranch, RefreshCw, Plus, Minus, RotateCcw } from 'lucide-vue-next'
+import RevertDialog from './RevertDialog.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -136,6 +151,7 @@ const gitError = useSelector(actor, (state) => state.context.gitError)
 const isGitLoading = useSelector(actor, (state) => state.context.isGitLoading)
 const selectedGitFile = useSelector(actor, (state) => state.context.selectedGitFile)
 const commitMessage = useSelector(actor, (state) => state.context.commitMessage)
+const revertDialogFile = useSelector(actor, (state) => state.context.revertDialogFile)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
@@ -169,6 +185,18 @@ const commit = () => {
   if (canCommit.value) {
     actor.send({ type: 'COMMIT' })
   }
+}
+
+const openRevertDialog = (file: GitStatusFile) => {
+  actor.send({ type: 'TOGGLE_REVERT_DIALOG', file })
+}
+
+const confirmRevert = () => {
+  actor.send({ type: 'REVERT_FILE', path: revertDialogFile.value!.path })
+}
+
+const cancelRevert = () => {
+  actor.send({ type: 'TOGGLE_REVERT_DIALOG' })
 }
 
 // Helper functions
