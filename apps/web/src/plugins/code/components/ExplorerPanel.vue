@@ -1,15 +1,5 @@
 <template>
   <div class="flex flex-col h-full">
-    <!-- Rename Dialog -->
-    <RenameDialog
-      v-model="showRenameDialog"
-      :current-name="fileToRename?.name || ''"
-      :item-type="fileToRename?.type === 'directory' ? 'Directory' : 'File'"
-      :item-path="fileToRename?.path || ''"
-      @rename="handleRename"
-      @cancel="cancelRename"
-    />
-    
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model="showDeleteDialog"
@@ -102,16 +92,30 @@
       >
         <ContextMenuTrigger as-child>
           <div
-            @click="$emit('file-click', file)"
-            class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer hover:bg-neutral-800"
+            @click="editingFile?.path !== file.path && $emit('file-click', file)"
+            class="flex items-center gap-2 px-4 py-1 transition-colors cursor-pointer"
+            :class="{
+              'bg-neutral-800': editingFile?.path === file.path,
+              'hover:bg-neutral-800': editingFile?.path !== file.path
+            }"
           >
             <component 
               :is="file.type === 'directory' ? Folder : getFileIcon(file.extension)"
               class="flex-shrink-0 w-4 h-4"
               :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
             />
-            <span class="text-sm truncate text-neutral-200">{{ file.name }}</span>
-            <span v-if="file.type === 'file' && file.size" class="ml-auto text-xs text-neutral-500">
+            <input
+              v-if="editingFile?.path === file.path"
+              v-model="editingName"
+              @keydown.enter.stop="confirmRename"
+              @keydown.esc.stop="cancelRename"
+              @blur="confirmRename"
+              @click.stop
+              class="flex-1 px-1 -mx-1 py-0 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-200 focus:outline-none focus:border-blue-500 focus:bg-neutral-800"
+              :ref="(el) => { if (el && editingFile?.path === file.path) setRenameInputRef(el as HTMLInputElement) }"
+            />
+            <span v-else class="text-sm truncate text-neutral-200">{{ file.name }}</span>
+            <span v-if="file.type === 'file' && file.size && editingFile?.path !== file.path" class="ml-auto text-xs text-neutral-500">
               {{ formatFileSize(file.size) }}
             </span>
           </div>
@@ -121,7 +125,7 @@
             class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
             <ContextMenuItem
-              @select="startRename(file)"
+              @select="() => startRename(file)"
               class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none flex items-center gap-2"
             >
               <Edit2 class="w-4 h-4" />
@@ -143,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   Folder,
   File,
@@ -168,7 +172,6 @@ import {
   DropdownMenuPortal,
 } from 'reka-ui'
 import Dialog from '@/core/design/dialog.vue'
-import RenameDialog from './RenameDialog.vue'
 
 interface FileItem {
   path: string
@@ -287,26 +290,36 @@ const formatFileSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Rename functionality
-const showRenameDialog = ref(false)
-const fileToRename = ref<FileItem | null>(null)
+// Inline rename functionality
+const editingFile = ref<FileItem | null>(null)
+const editingName = ref('')
+const renameInput = ref<HTMLInputElement | null>(null)
 
-const startRename = (file: FileItem) => {
-  fileToRename.value = file
-  showRenameDialog.value = true
+const setRenameInputRef = (el: HTMLInputElement) => {
+  renameInput.value = el
+  el.focus()
+  el.select()
 }
 
-const handleRename = (newName: string) => {
-  if (fileToRename.value) {
-    emit('rename-file', fileToRename.value.path, newName)
-    showRenameDialog.value = false
-    fileToRename.value = null
+const startRename = (file: FileItem) => {
+  console.log('Starting rename for:', file.name)
+  // Small delay to allow context menu to close
+  setTimeout(() => {
+    editingFile.value = file
+    editingName.value = file.name
+  }, 50)
+}
+
+const confirmRename = () => {
+  if (editingFile.value && editingName.value.trim() && editingName.value !== editingFile.value.name) {
+    emit('rename-file', editingFile.value.path, editingName.value.trim())
   }
+  cancelRename()
 }
 
 const cancelRename = () => {
-  showRenameDialog.value = false
-  fileToRename.value = null
+  editingFile.value = null
+  editingName.value = ''
 }
 
 // Delete functionality
@@ -330,4 +343,23 @@ const cancelDelete = () => {
   showDeleteDialog.value = false
   fileToDelete.value = null
 }
+
+// Handle click outside to cancel editing
+const handleClickOutside = (event: MouseEvent) => {
+  if (editingFile.value) {
+    const target = event.target as HTMLElement
+    // Check if click is outside the input element
+    if (!target.matches('input')) {
+      confirmRename()
+    }
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
