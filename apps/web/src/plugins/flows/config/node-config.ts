@@ -165,13 +165,33 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
 
 // Node configuration registry
 export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
-  flow: {
-    type: 'flow',
-    label: 'Flow',
-    icon: Workflow,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    hoverBgColor: 'group-hover:bg-purple-500/15',
+  action: {
+    type: 'action',
+    label: 'Action',
+    icon: Play,
+    color: 'text-neutral-400',
+    bgColor: 'bg-neutral-500/10',
+    hoverBgColor: 'group-hover:bg-neutral-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'ActionNode'
+  },
+  keep_alive: {
+    type: 'keep_alive',
+    label: 'Keep Alive',
+    icon: Activity,
+    color: 'text-neutral-400',
+    bgColor: 'bg-neutral-500/10',
+    hoverBgColor: 'group-hover:bg-neutral-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode'
+  },
+  llm: {
+    type: 'llm',
+    label: 'LLM',
+    icon: Sparkle,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    hoverBgColor: 'group-hover:bg-indigo-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
   },
@@ -185,25 +205,35 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     connectionRules: { inputs: 0, outputs: -1 },
     component: 'ListenNode'
   },
-  fire: {
-    type: 'fire',
-    label: 'Fire',
-    icon: Zap,
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    hoverBgColor: 'group-hover:bg-amber-500/15',
-    connectionRules: { inputs: 1, outputs: 0 },
-    component: 'FireNode'
-  },
-  action: {
-    type: 'action',
-    label: 'Action',
-    icon: Play,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-500/10',
-    hoverBgColor: 'group-hover:bg-neutral-500/15',
+  query: {
+    type: 'query',
+    label: 'Query',
+    icon: Search,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    hoverBgColor: 'group-hover:bg-cyan-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'ActionNode'
+    component: 'VariableNode'
+  },
+  transform: {
+    type: 'transform',
+    label: 'Transform',
+    icon: Shuffle,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    hoverBgColor: 'group-hover:bg-emerald-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode'
+  }, 
+  flow: {
+    type: 'flow',
+    label: 'Flow',
+    icon: Workflow,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    hoverBgColor: 'group-hover:bg-purple-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode'
   },
   create: {
     type: 'create',
@@ -225,16 +255,6 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
   },
-  query: {
-    type: 'query',
-    label: 'Query',
-    icon: Search,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    hoverBgColor: 'group-hover:bg-cyan-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
-  },
   decision: {
     type: 'decision',
     label: 'Decision',
@@ -245,36 +265,16 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     connectionRules: { inputs: 1, outputs: -1 },
     component: 'DecisionNode'
   },
-  transform: {
-    type: 'transform',
-    label: 'Transform',
-    icon: Shuffle,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    hoverBgColor: 'group-hover:bg-emerald-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+  fire: {
+    type: 'fire',
+    label: 'Fire',
+    icon: Zap,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    hoverBgColor: 'group-hover:bg-amber-500/15',
+    connectionRules: { inputs: 1, outputs: 0 },
+    component: 'FireNode'
   },
-  keep_alive: {
-    type: 'keep_alive',
-    label: 'Keep Alive',
-    icon: Activity,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-500/10',
-    hoverBgColor: 'group-hover:bg-neutral-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
-  },
-  llm: {
-    type: 'llm',
-    label: 'LLM',
-    icon: Sparkle,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/10',
-    hoverBgColor: 'group-hover:bg-indigo-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
-  }
 } as const
 
 // ===========================
