@@ -165,16 +165,6 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
 
 // Node configuration registry
 export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
-  action: {
-    type: 'action',
-    label: 'Action',
-    icon: Play,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-500/10',
-    hoverBgColor: 'group-hover:bg-neutral-500/15',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'ActionNode'
-  },
   keep_alive: {
     type: 'keep_alive',
     label: 'Keep Alive',
@@ -185,15 +175,15 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
   },
-  llm: {
-    type: 'llm',
-    label: 'LLM',
-    icon: Sparkle,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/10',
-    hoverBgColor: 'group-hover:bg-indigo-500/15',
+  action: {
+    type: 'action',
+    label: 'Action',
+    icon: Play,
+    color: 'text-neutral-400',
+    bgColor: 'bg-neutral-500/10',
+    hoverBgColor: 'group-hover:bg-neutral-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'ActionNode'
   },
   listen: {
     type: 'listen',
@@ -224,7 +214,17 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     hoverBgColor: 'group-hover:bg-emerald-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
-  }, 
+  },
+  llm: {
+    type: 'llm',
+    label: 'LLM',
+    icon: Sparkle,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/10',
+    hoverBgColor: 'group-hover:bg-indigo-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode'
+  },
   flow: {
     type: 'flow',
     label: 'Flow',
