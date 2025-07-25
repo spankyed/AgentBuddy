@@ -9,7 +9,7 @@
         @select-file="$emit('select-file', $event)"
       />
     </div>
-    <div v-else class="p-4 text-center text-sm text-neutral-500">
+    <div v-else class="p-4 text-sm text-center text-neutral-500">
       No changes found
     </div>
   </div>
@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import FileTreeItem from './FileTreeItem.vue'
-import type { GitStatusFile } from '../../state'
+import type { GitStatusFile } from '@/plugins/code/state'
 
 interface TreeNode {
   name: string
