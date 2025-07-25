@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import FileTreeItem from './FileTreeItem.vue'
+import FileTreeItem from '@/plugins/code/panel/pull-request/FileTreeItem.vue'
 import type { GitStatusFile } from '@/plugins/code/state'
 
 interface TreeNode {

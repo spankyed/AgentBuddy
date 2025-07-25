@@ -156,7 +156,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type GitStatusFile } from '@/plugins/code/state'
 import { GitBranch, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
-import RevertDialog from '../canvas/RevertDialog.vue'
+import RevertDialog from '@/plugins/code/panel/commit/RevertDialog.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 

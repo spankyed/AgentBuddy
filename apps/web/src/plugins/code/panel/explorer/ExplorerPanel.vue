@@ -41,8 +41,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Dialog from '@/core/design/dialog.vue'
-import FileItem from './FileItem.vue'
-import DirectoryBreadcrumb from './DirectoryBreadcrumb.vue'
+import FileItem from '@/plugins/code/panel/explorer/FileItem.vue'
+import DirectoryBreadcrumb from '@/plugins/code/panel/explorer/DirectoryBreadcrumb.vue'
 
 interface FileItem {
   path: string

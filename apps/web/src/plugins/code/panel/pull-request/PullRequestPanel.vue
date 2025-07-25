@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
 import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
-import FileTree from '../canvas/FileTree.vue'
+import FileTree from '@/plugins/code/panel/pull-request/FileTree.vue'
 import { applicationState } from '@/app'
 import type { GitStatusFile, CodeState } from '@/plugins/code/state'
 
