@@ -53,7 +53,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '../state'
 import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -184,8 +184,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 // Terminal output is handled through state management
 
-// Add keyboard event listener
-window.addEventListener('keydown', handleKeyDown)
+// Add keyboard event listener on mount
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
 
 // Cleanup on unmount
 onUnmounted(() => {
