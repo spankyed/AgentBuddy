@@ -3,6 +3,7 @@ import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from './utils/terminal-events';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
+import type { OutgoingCodeEvents } from '@abuddy/api';
 
 // Search types
 export interface SearchMatch {
@@ -25,42 +26,6 @@ export interface SearchProgress {
   currentFile?: string
 }
 
-type OutgoingCodeEvents =
-  | { type: 'FILES_LISTED'; data: DirectoryContent }
-  | { type: 'FILE_CONTENT'; data: FileContent }
-  | { type: 'FILE_SAVED'; data: { path: string } }
-  | { type: 'FILE_CREATED'; data: { path: string } }
-  | { type: 'FILE_DELETED'; data: { path: string } }
-  | { type: 'FILE_RENAMED'; data: { oldPath: string; newPath: string } }
-  | { type: 'DIRECTORY_CREATED'; data: { path: string } }
-  | { type: 'FILE_INFO'; data: FileInfo }
-  | { type: 'DIRECTORY_CHANGED'; data: { path: string } }
-  | { type: 'CODE_ERROR'; data: { code: string; message: string; path?: string } }
-  | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
-  | { type: 'SEARCH_RESULT'; data: SearchResult }
-  | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
-  | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
-  | { type: 'SEARCH_ERROR'; data: { message: string } }
-  | { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-  | { type: 'GIT_DIFF'; data: GitDiff }
-  | { type: 'FILES_STAGED'; data: { paths: string[] } }
-  | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
-  | { type: 'COMMIT_SUCCESS'; data: { message: string } }
-  | { type: 'FILE_REVERTED'; data: { path: string } }
-  | { type: 'GIT_ERROR'; data: { message: string } }
-  | { type: 'CURRENT_BRANCH'; data: { branch: string } }
-  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
-  | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
-  | { type: 'BASE_BRANCH'; data: { branch: string } }
-  | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
-  // Terminal events
-  | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
-  | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
-  | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
-  | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
-  | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
-  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
 export const id = 'code' as const;
 
