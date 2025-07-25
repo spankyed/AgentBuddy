@@ -23,6 +23,11 @@ interface AgentContext {
   activeTabId: string;
 }
 
+type Brain_FE_AgentEvents = 
+  | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
+  | { type: 'TOKEN_STREAM'; token: string }
+  | { type: 'LLM_DONE' }
+
 type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
@@ -35,6 +40,7 @@ type AgentEvent =
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
+  | Brain_FE_AgentEvents
   | OutgoingAgentEvents
   | TrailClickEvent;
 
