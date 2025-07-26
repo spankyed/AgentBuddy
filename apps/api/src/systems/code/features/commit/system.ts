@@ -31,7 +31,6 @@ export type OutgoingCommitEvents =
   | { type: 'commit.FILE_REVERTED'; data: { path: string } }
   | { type: 'commit.GIT_ERROR'; data: { message: string } }
   | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
-  | { type: 'commit.GIT_STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
   gitRepository: GitRepository
@@ -72,12 +71,9 @@ export const commitSystem = setup({
       await context.gitWatcher.startWatching()
     },
 
-    handleGitStatusChanged: () => {
-      const wrapped = emit(pluginId, {
-        type: 'commit.GIT_STATUS_CHANGED',
-        data: { timestamp: new Date() }
-      })
-      rootEvents.emitOutgoing(wrapped.event)
+    handleGitStatusChanged: async ({ context, self }) => {
+      // When git status changes, automatically send the new status to frontend
+      self.send({ type: 'commit.GET_GIT_STATUS' })
     },
 
     getGitStatus: async ({ context }) => {
