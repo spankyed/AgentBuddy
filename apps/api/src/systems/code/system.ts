@@ -90,19 +90,16 @@ export const systemMachine = setup({
       });
     }),
 
+    handleChangeDirectory: ({ event, system }) => {
+      system.get('explorer')?.send(event);
+      system.get('terminal')?.send({ 
+        type: 'terminal.UPDATE_CURRENT_DIRECTORY', 
+        path: (event as any).path 
+      });
+    },
+
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
-      
-      // Events already come with prefixes, just forward them
-      // Special handling for explorer.CHANGE_DIRECTORY to also update terminal
-      if (eventType === 'explorer.CHANGE_DIRECTORY') {
-        system.get('explorer')?.send(event);
-        system.get('terminal')?.send({ 
-          type: 'terminal.UPDATE_CURRENT_DIRECTORY', 
-          path: (event as any).path 
-        });
-        return;
-      }
       
       // Route based on prefix
       const [prefix] = eventType.split('.');
@@ -151,6 +148,10 @@ export const systemMachine = setup({
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {
           actions: 'handleSetRootDirectory'
+        },
+        // Handle explorer.CHANGE_DIRECTORY specially to sync with terminal
+        'explorer.CHANGE_DIRECTORY': {
+          actions: 'handleChangeDirectory'
         },
         // All other events get routed to children
         '*': {

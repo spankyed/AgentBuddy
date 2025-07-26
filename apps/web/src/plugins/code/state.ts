@@ -137,18 +137,16 @@ const codeState = setup({
         }
       })
     }),
+    broadcastToAllFeatures: ({ event, system }) => {
+      system.get('explorer')?.send(event);
+      system.get('search')?.send(event);
+      system.get('commit')?.send(event);
+      system.get('pr')?.send(event);
+      system.get('terminal')?.send(event);
+    },
+
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
-      
-      // Broadcast events go to all children
-      if (eventType === 'CODE_STARTUP') {
-        system.get('explorer')?.send(event);
-        system.get('search')?.send(event);
-        system.get('commit')?.send(event);
-        system.get('pr')?.send(event);
-        system.get('terminal')?.send(event);
-        return;
-      }
       
       // Route based on prefix - prefix matches system ID
       if (eventType.includes('.')) {
@@ -174,6 +172,10 @@ const codeState = setup({
     canvas: {
       meta: breadcrumb('canvas', 'Editor', true),
       on: {
+        // Broadcast CODE_STARTUP to all features
+        CODE_STARTUP: {
+          actions: ['broadcastToAllFeatures']
+        },
         // Route events to child machines
         '*': {
           actions: ['routeEvent']
