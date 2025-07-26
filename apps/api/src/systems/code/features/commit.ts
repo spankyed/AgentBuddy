@@ -35,11 +35,9 @@ export type OutgoingCommitEvents =
 export interface Context {
   gitRepository: GitRepository
   gitWatcher: GitWatcherService
-  rootDirectory: string
 }
 
 export type Event = 
-  | { type: 'commit.SET_ROOT_DIRECTORY'; rootDirectory: string }
   | { type: 'commit.GET_GIT_STATUS' }
   | { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
   | { type: 'commit.STAGE_FILES'; paths: string[] }
@@ -294,18 +292,8 @@ export const commitSystem = setup({
       }
     },
 
-    setRootDirectory: assign({
-      rootDirectory: ({ event }) => {
-        const ev = event as { type: 'commit.SET_ROOT_DIRECTORY'; rootDirectory: string }
-        return ev.rootDirectory
-      }
-    }),
 
     updateRootDirectory: assign({
-      rootDirectory: ({ event }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
-        return ev.path
-      },
       gitRepository: ({ event, context }) => {
         const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
         // Clear the old repository's cache before creating new one
@@ -338,8 +326,7 @@ export const commitSystem = setup({
     const rootDir = input?.rootDirectory || process.cwd()
     return {
       gitRepository: new GitRepository(rootDir),
-      gitWatcher: new GitWatcherService(rootDir),
-      rootDirectory: rootDir
+      gitWatcher: new GitWatcherService(rootDir)
     }
   },
   entry: 'setupGitWatcher',
@@ -348,9 +335,6 @@ export const commitSystem = setup({
       on: {
         'CODE_STARTUP': {
           // No specific action needed for commit on startup
-        },
-        'commit.SET_ROOT_DIRECTORY': {
-          actions: 'setRootDirectory'
         },
         'commit.GET_GIT_STATUS': {
           actions: 'getGitStatus'
