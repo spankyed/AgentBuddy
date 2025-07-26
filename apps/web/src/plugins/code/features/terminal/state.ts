@@ -26,14 +26,10 @@ export type Event =
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
   | { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
-  | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }  // Backend format
-  | { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }
-  | { type: 'terminal.CREATED'; data: TerminalInfo }  // Backend format
-  | { type: 'terminal.CLOSED'; terminalId: string }
-  | { type: 'terminal.CLOSED'; data: { terminalId: string } }  // Backend format
-  | { type: 'terminal.OUTPUT'; terminalId: string; data: string }
-  | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }  // Backend format
-  | { type: 'terminal.ERROR'; message: string; terminalId?: string }
+  | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
+  | { type: 'terminal.CREATED'; data: TerminalInfo }
+  | { type: 'terminal.CLOSED'; data: { terminalId: string } }
+  | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcast event
 
@@ -85,62 +81,40 @@ export const terminalState = setup({
     
     assignTerminalCreated: assign({
       terminals: ({ context, event }) => {
-        // Handle both formats
-        const terminalInfo = 'data' in event 
-          ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
-          : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
-        return [...context.terminals, terminalInfo]
+        const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
+        return [...context.terminals, ev.data]
       }
     }),
     
     removeTerminal: assign({
       terminals: ({ context, event }) => {
-        // Handle both formats
-        const terminalId = 'data' in event
-          ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
-          : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
-        return context.terminals.filter(t => t.id !== terminalId)
+        const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
+        return context.terminals.filter(t => t.id !== ev.data.terminalId)
       }
     }),
     
     assignTerminalError: assign({
       terminalError: ({ event }) => {
-        // Handle both formats
-        const message = 'data' in event
-          ? (event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }).data.message
-          : (event as { type: 'terminal.ERROR'; message: string; terminalId?: string }).message
-        return message
+        const ev = event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
+        return ev.data.message
       }
     }),
     
     cleanupTerminalOutput: ({ event }) => {
-      // Handle both formats
-      const terminalId = 'data' in event
-        ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
-        : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
-      terminalEventBus.clearOutput(terminalId)
+      const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
+      terminalEventBus.clearOutput(ev.data.terminalId)
     },
     
     handleTerminalOutput: ({ event }) => {
-      // Handle both formats
-      if ('data' in event && typeof event.data === 'object') {
-        // Backend format: { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
-        const { terminalId, data } = (event as { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }).data
-        terminalEventBus.emit(terminalId, data)
-      } else {
-        // Frontend format: { type: 'terminal.OUTPUT'; terminalId: string; data: string }
-        const ev = event as { type: 'terminal.OUTPUT'; terminalId: string; data: string }
-        terminalEventBus.emit(ev.terminalId, ev.data)
-      }
+      const ev = event as { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
+      terminalEventBus.emit(ev.data.terminalId, ev.data.data)
     },
     
     handleTerminalCreated: enqueueActions(({ enqueue, self, event }) => {
       enqueue('assignTerminalCreated')
       enqueue(() => {
-        // Handle both formats
-        const terminalInfo = 'data' in event 
-          ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
-          : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
+        const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
+        const terminalInfo = ev.data
         
         const parentContext = getParentContext(self)
         
@@ -167,10 +141,8 @@ export const terminalState = setup({
       enqueue('removeTerminal')
       enqueue('cleanupTerminalOutput')
       enqueue(() => {
-        // Handle both formats
-        const terminalId = 'data' in event
-          ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
-          : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
+        const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
+        const terminalId = ev.data.terminalId
         
         const parentContext = getParentContext(self)
         const terminalPath = `terminal:${terminalId}`
