@@ -13,10 +13,6 @@ const sendToBackend = (type: string, data: any) => {
 
 export interface Context {
   files: FileInfo[]
-  isLoading: boolean
-  error: string | null
-  rootDirectory: string
-  currentDirectory: string
 }
 
 export type Event = 
@@ -48,7 +44,9 @@ export const explorerState = setup({
     events: {} as Event
   },
   actions: {
-    setLoading: assign({ isLoading: true, error: null }),
+    setLoading: ({ self }) => {
+      updateParentState(self, { isLoading: true, error: null })
+    },
     
     handleFileContent: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
@@ -139,33 +137,23 @@ export const explorerState = setup({
       updateParentState(self, { error: ev.data.message, isLoading: false })
     },
     
-    handleCurrentDirectory: enqueueActions(({ enqueue, event, self }) => {
+    handleCurrentDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-      enqueue.assign({
-        currentDirectory: ev.data.path
-      })
-      enqueue(() => {
-        updateParentState(self, { currentDirectory: ev.data.path })
-      })
-    }),
+      updateParentState(self, { currentDirectory: ev.data.path })
+    },
     
-    handleDirectoryChanged: enqueueActions(({ enqueue, event, self, system }) => {
+    handleDirectoryChanged: ({ event, self, system }) => {
       const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
-      enqueue.assign({
-        currentDirectory: ev.data.path
-      })
-      enqueue(() => {
-        updateParentState(self, { currentDirectory: ev.data.path })
-        
-        // Refresh git panels if active
-        const parentContext = getParentContext(self)
-        if (parentContext?.selectedPanel === 'commit') {
-          system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
-        } else if (parentContext?.selectedPanel === 'pr') {
-          system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
-        }
-      })
-    }),
+      updateParentState(self, { currentDirectory: ev.data.path })
+      
+      // Refresh git panels if active
+      const parentContext = getParentContext(self)
+      if (parentContext?.selectedPanel === 'commit') {
+        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
+      } else if (parentContext?.selectedPanel === 'pr') {
+        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
+      }
+    },
     
     handleCodeStartup: ({ event, self }) => {
       // Explorer can handle startup if needed
@@ -177,13 +165,14 @@ export const explorerState = setup({
       sendToBackend('LIST_FILES', { path: ev.path })
     },
     
-    assignFiles: assign({
-      files: ({ event }) => {
-        const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
-        return ev.data.files
-      },
-      isLoading: false,
-      error: null
+    assignFiles: enqueueActions(({ enqueue, event, self }) => {
+      const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
+      enqueue.assign({
+        files: ev.data.files
+      })
+      enqueue(() => {
+        updateParentState(self, { isLoading: false, error: null })
+      })
     }),
     
     deleteFile: ({ event }) => {
@@ -196,13 +185,10 @@ export const explorerState = setup({
       sendToBackend('RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
     },
     
-    assignError: assign({
-      error: ({ event }) => {
-        const ev = event as { type: 'explorer.ERROR'; message: string }
-        return ev.message
-      },
-      isLoading: false
-    }),
+    assignError: ({ event, self }) => {
+      const ev = event as { type: 'explorer.ERROR'; message: string }
+      updateParentState(self, { error: ev.message, isLoading: false })
+    },
     
     initialize: ({ event, self }) => {
       const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
@@ -238,12 +224,12 @@ export const explorerState = setup({
       })
     },
     
-    handleFileDeleted: ({ event, self, context }) => {
+    handleFileDeleted: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_DELETED'; path: string }
       const parentContext = getParentContext(self)
       
       // Refresh file list
-      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || context.currentDirectory })
+      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || '' })
       
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
@@ -259,12 +245,12 @@ export const explorerState = setup({
       }
     },
     
-    handleFileRenamed: ({ event, self, context }) => {
+    handleFileRenamed: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
       const parentContext = getParentContext(self)
       
       // Refresh file list
-      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || context.currentDirectory })
+      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || '' })
       
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
@@ -289,11 +275,7 @@ export const explorerState = setup({
   id: 'explorer',
   initial: 'idle',
   context: {
-    files: [],
-    isLoading: false,
-    error: null,
-    rootDirectory: '',
-    currentDirectory: ''
+    files: []
   },
   states: {
     idle: {

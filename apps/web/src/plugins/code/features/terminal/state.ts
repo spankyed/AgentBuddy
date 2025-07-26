@@ -42,7 +42,7 @@ export const terminalState = setup({
   actions: {
     createTerminal: ({ event, self }) => {
       const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string }
-      const parentContext = self._parent?.getSnapshot()?.context as any
+      const parentContext = getParentContext(self)
       
       sendToBackend('CREATE_TERMINAL', {
         title: ev.title,
