@@ -10,6 +10,7 @@ import { searchState } from './features/search/state';
 import { commitState, type GitStatusFile, type GitDiff } from './features/commit/state';
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
+import { actionsState, type ActionTab } from './features/actions/state';
 
 export const id = 'code' as const;
 export interface OpenFile {
@@ -32,12 +33,13 @@ export interface TerminalTab extends OpenFile {
 export type Context = {
   rootDirectory: string
   currentDirectory: string
-  openFiles: (OpenFile | TerminalTab)[]
+  openFiles: (OpenFile | TerminalTab | ActionTab)[]
   activeFilePath: string | null
   isLoading: boolean
   error: string | null
   selectedPanel: PanelType
   tabsRestored?: boolean
+  actorsSpawned?: boolean
 }
 
 export type Event = 
@@ -48,7 +50,7 @@ export type Event =
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal';
+type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions';
 
 const STORAGE_KEY = 'code-plugin-root-directory'
 const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
@@ -64,15 +66,21 @@ const codeState = setup({
     searchState,
     commitState,
     pullRequestState,
-    terminalState
+    terminalState,
+    actionsState
   },
   actions: {
-    spawnFeatureActors: enqueueActions(({ enqueue }) => {
-      enqueue.spawnChild('explorerState', { systemId: 'explorer' });
-      enqueue.spawnChild('searchState', { systemId: 'search' });
-      enqueue.spawnChild('commitState', { systemId: 'commit' });
-      enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
-      enqueue.spawnChild('terminalState', { systemId: 'terminal' });
+    spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
+      // Only spawn if not already spawned
+      if (!context.actorsSpawned) {
+        enqueue.spawnChild('explorerState', { systemId: 'explorer' });
+        enqueue.spawnChild('searchState', { systemId: 'search' });
+        enqueue.spawnChild('commitState', { systemId: 'commit' });
+        enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
+        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
+        enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
+        enqueue.assign({ actorsSpawned: true });
+      }
     }),
 
     saveTabsAction: ({ context }) => {
@@ -94,6 +102,7 @@ const codeState = setup({
       // Initialize child machines with root directory
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
+      system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
     },
     
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
@@ -113,10 +122,12 @@ const codeState = setup({
       enqueue(({ system }) => {
         const explorerActor = system.get('explorer')
         const terminalActor = system.get('terminal')
+        const actionsActor = system.get('codeActions')
         
         // Filter tabs by type
         const fileTabs = persistedTabs.filter(tab => tab.type === 'file')
         const terminalTabs = persistedTabs.filter(tab => tab.type === 'terminal')
+        const actionTabs = persistedTabs.filter(tab => tab.type === 'action')
         
         // Send file paths to restore
         if (fileTabs.length > 0 && explorerActor) {
@@ -135,6 +146,15 @@ const codeState = setup({
             terminalIds 
           })
         }
+        
+        // Send action IDs to restore
+        if (actionTabs.length > 0 && actionsActor) {
+          const actionIds = actionTabs.map(tab => tab.actionId!)
+          actionsActor.send({ 
+            type: 'codeActions.OPEN_TABS', 
+            actionIds 
+          })
+        }
       })
     }),
     broadcastToAllFeatures: ({ event, system }) => {
@@ -143,6 +163,7 @@ const codeState = setup({
       system.get('commit')?.send(event);
       system.get('pr')?.send(event);
       system.get('terminal')?.send(event);
+      system.get('codeActions')?.send(event);
     },
 
     routeEvent: ({ event, system }) => {
@@ -166,7 +187,8 @@ const codeState = setup({
     activeFilePath: null,
     isLoading: false,
     error: null,
-    selectedPanel: 'explorer' as PanelType
+    selectedPanel: 'explorer' as PanelType,
+    actorsSpawned: false
   },
   states: {
     canvas: {
@@ -175,6 +197,19 @@ const codeState = setup({
         // Broadcast CODE_STARTUP to all features
         CODE_STARTUP: {
           actions: ['broadcastToAllFeatures']
+        },
+        // Route actions events to actions state machine
+        ACTIONS_STARTUP: {
+          actions: ({ system, event }) => system.get('codeActions')?.send(event)
+        },
+        ACTION_SELECTED: {
+          actions: ({ system, event }) => system.get('codeActions')?.send(event)
+        },
+        ACTION_UPDATED: {
+          actions: ({ system, event }) => system.get('codeActions')?.send(event)
+        },
+        ACTIONS_PAGE_LOADED: {
+          actions: ({ system, event }) => system.get('codeActions')?.send(event)
         },
         // Route events to child machines
         '*': {

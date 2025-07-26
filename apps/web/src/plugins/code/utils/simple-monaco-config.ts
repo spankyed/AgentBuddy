@@ -86,6 +86,11 @@ export function createEditor(
 }
 
 export function getLanguageId(filePath: string): string {
+  // Check if this is an action file
+  if (filePath.startsWith('action:')) {
+    return 'typescript'
+  }
+  
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   
   const languageMap: Record<string, string> = {

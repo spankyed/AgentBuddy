@@ -11,6 +11,7 @@ import { searchSystem, IncomingSearchEvents, OutgoingSearchEvents } from './feat
 import { commitSystem, IncomingCommitEvents, OutgoingCommitEvents } from './features/commit'
 import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents } from './features/pull-request'
 import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal'
+import { actionsSystem, IncomingActionsEvents, OutgoingActionsEvents } from './features/actions'
 
 export const id = 'code' as const
 
@@ -23,6 +24,7 @@ const IncomingCodeEvents = [
   ...IncomingCommitEvents,
   ...IncomingPullRequestEvents,
   ...IncomingTerminalEvents,
+  ...IncomingActionsEvents,
   // Special root-level event
   busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
 ] as const
@@ -34,6 +36,7 @@ export type OutgoingCodeEvents =
   | OutgoingCommitEvents
   | OutgoingPullRequestEvents
   | OutgoingTerminalEvents
+  | OutgoingActionsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
@@ -62,7 +65,8 @@ export const systemMachine = setup({
     searchSystem,
     commitSystem,
     pullRequestSystem,
-    terminalSystem
+    terminalSystem,
+    actionsSystem
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
@@ -88,6 +92,7 @@ export const systemMachine = setup({
           currentDirectory: context.currentDirectory
         }
       });
+      enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
     }),
 
     handleChangeDirectory: ({ event, system }) => {
@@ -101,7 +106,7 @@ export const systemMachine = setup({
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
       
-      // Route based on prefix
+      // Route based on prefix - prefix matches system ID
       const [prefix] = eventType.split('.');
       if (prefix) {
         system.get(prefix)?.send(event);
@@ -133,6 +138,7 @@ export const systemMachine = setup({
       // Send CODE_STARTUP to all children that need it
       system.get('explorer')?.send({ type: 'CODE_STARTUP' });
       system.get('terminal')?.send({ type: 'CODE_STARTUP' });
+      system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
     },
   }
 }).createMachine({
