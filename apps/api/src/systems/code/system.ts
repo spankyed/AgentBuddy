@@ -1,4 +1,4 @@
-import { setup, enqueueActions } from 'xstate'
+import { setup, enqueueActions, assign } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { safeEvents } from '@/core/utils/actor-helpers'
@@ -108,13 +108,20 @@ export const systemMachine = setup({
       }
     },
 
-    handleSetRootDirectory: ({ event, context, system }) => {
+    updateRootDirectory: assign({
+      rootDirectory: ({ event }) => {
+        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        return ev.path
+      },
+      currentDirectory: ({ event }) => {
+        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        return ev.path
+      }
+    }),
+
+    notifyChildSystemsOfRootChange: ({ event, system }) => {
       const ev = typeOf('SET_ROOT_DIRECTORY', event)
       const newPath = ev.path
-      
-      // Update context
-      context.rootDirectory = newPath
-      context.currentDirectory = newPath
       
       // Update child systems
       system.get('explorer')?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath });
@@ -147,7 +154,7 @@ export const systemMachine = setup({
         },
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {
-          actions: 'handleSetRootDirectory'
+          actions: ['updateRootDirectory', 'notifyChildSystemsOfRootChange']
         },
         // Handle explorer.CHANGE_DIRECTORY specially to sync with terminal
         'explorer.CHANGE_DIRECTORY': {
