@@ -3,6 +3,7 @@ import { trpc } from '@/core/trpc';
 import type { TerminalInfo } from '../../state';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
+import { mergeTerminalTabs } from '../../utils/terminal-tabs';
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
@@ -136,43 +137,20 @@ export const terminalState = setup({
     handleTerminalCreated: enqueueActions(({ enqueue, self, event }) => {
       enqueue('assignTerminalCreated')
       enqueue(() => {
-      // Handle both formats
-      const terminalInfo = 'data' in event 
-        ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
-        : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
-      
-      const parentContext = getParentContext(self)
-      const terminalPath = `terminal:${terminalInfo.id}`
-      
-      // Build new openFiles array
-      const openFiles = parentContext?.openFiles || []
-      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
-      
-      let newOpenFiles
-      if (existingTab) {
-        // Update existing tab
-        newOpenFiles = openFiles.map((f: any) => 
-          f.path === terminalPath && f.isTerminal
-            ? { ...f, terminalInfo }
-            : f
+        // Handle both formats
+        const terminalInfo = 'data' in event 
+          ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
+          : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
+        
+        const parentContext = getParentContext(self)
+        
+        const result = mergeTerminalTabs(
+          parentContext?.openFiles || [],
+          [terminalInfo],
+          `terminal:${terminalInfo.id}` // Always set new terminal as active
         )
-      } else {
-        // Add new terminal tab
-        const terminalTab = {
-          path: terminalPath,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo
-        }
-        newOpenFiles = [...openFiles, terminalTab]
-      }
-      
-      // Send updated state to parent
-      updateParentState(self, {
-        openFiles: newOpenFiles,
-        activeFilePath: terminalPath
-      });
+        
+        updateParentState(self, result)
       })
     }),
     
@@ -218,67 +196,32 @@ export const terminalState = setup({
     openTerminalTab: ({ event, self }) => {
       const ev = event as { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
       const parentContext = getParentContext(self)
-      const terminalPath = `terminal:${ev.terminalInfo.id}`
       
-      // Build new openFiles array
-      const openFiles = parentContext?.openFiles || []
-      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
+      const result = mergeTerminalTabs(
+        parentContext?.openFiles || [],
+        [ev.terminalInfo],
+        `terminal:${ev.terminalInfo.id}` // Always set this terminal as active
+      )
       
-      let newOpenFiles
-      if (existingTab) {
-        // Tab already exists, just activate it
-        newOpenFiles = openFiles
-      } else {
-        // Add new terminal tab
-        const terminalTab = {
-          path: terminalPath,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo: ev.terminalInfo
-        }
-        newOpenFiles = [...openFiles, terminalTab]
-      }
-      
-      // Send updated state to parent
-      updateParentState(self, {
-        openFiles: newOpenFiles,
-        activeFilePath: terminalPath
-      });
+      updateParentState(self, result)
     },
     
     openTerminalTabs: ({ event, self, context }) => {
       const ev = event as { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
       const parentContext = getParentContext(self)
-      const openFiles = parentContext?.openFiles || []
       
-      // Find terminals by ID and create tabs for them
-      const newTerminalTabs = ev.terminalIds
+      // Find terminals by ID
+      const terminalsToOpen = ev.terminalIds
         .map(terminalId => context.terminals.find(t => t.id === terminalId))
         .filter((terminal): terminal is TerminalInfo => terminal !== undefined)
-        .map(terminal => ({
-          path: `terminal:${terminal.id}`,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo: terminal
-        }))
       
-      // Filter out any existing terminal tabs that we're re-opening
-      const terminalPaths = new Set(newTerminalTabs.map(t => t.path))
-      const filteredOpenFiles = openFiles.filter((f: any) => !terminalPaths.has(f.path))
+      const result = mergeTerminalTabs(
+        parentContext?.openFiles || [],
+        terminalsToOpen,
+        parentContext?.activeFilePath // Keep current active or use first new terminal
+      )
       
-      // Combine existing files with new terminal tabs
-      const newOpenFiles = [...filteredOpenFiles, ...newTerminalTabs]
-      
-      // Set the first terminal as active if there's no current active file
-      const activeFilePath = parentContext?.activeFilePath || (newTerminalTabs.length > 0 ? newTerminalTabs[0].path : null)
-      
-      // Send updated state to parent
-      updateParentState(self, {
-        openFiles: newOpenFiles,
-        activeFilePath
-      });
+      updateParentState(self, result)
     }
   }
 }).createMachine({
