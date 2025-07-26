@@ -22,7 +22,7 @@ export type Event =
   | { type: 'terminal.CLOSE'; terminalId: string }
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
-  | { type: 'terminal.LIST' }
+  | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }  // Backend format
   | { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }
   | { type: 'terminal.CREATED'; data: TerminalInfo }  // Backend format
@@ -70,7 +70,7 @@ export const terminalState = setup({
     },
     
     listTerminals: () => {
-      sendToBackend('terminal.LIST_TERMINALS', {})
+      sendToBackend('terminal.REFRESH_LIST', {})
     },
     
     assignTerminals: assign({
@@ -236,7 +236,7 @@ export const terminalState = setup({
         'terminal.RESIZE': {
           actions: 'resizeTerminal'
         },
-        'terminal.LIST': {
+        'terminal.REFRESH_LIST': {
           actions: 'listTerminals'
         },
         'terminal.TERMINALS_LISTED': {

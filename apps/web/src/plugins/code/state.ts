@@ -177,7 +177,7 @@ const codeState = setup({
     initializePlugin: ({ context, system }) => {
       // Initialize child machines with root directory
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
-      system.get('terminal')?.send({ type: 'terminal.LIST' });
+      system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
     },
     routeEvent: ({ event, system }) => {
       const eventType = event.type;

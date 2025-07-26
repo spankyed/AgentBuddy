@@ -108,7 +108,7 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
   } else if (panel === 'pr') {
     actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
   } else if (panel === 'terminal') {
-    actor.system.get('terminal')?.send({ type: 'terminal.LIST' })
+    actor.system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' })
   }
 }
 

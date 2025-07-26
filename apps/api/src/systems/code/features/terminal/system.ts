@@ -21,7 +21,7 @@ export const IncomingTerminalEvents = [
   busEvent('terminal.CLOSE_TERMINAL', { terminalId: z.string() }),
   busEvent('terminal.TERMINAL_INPUT', { terminalId: z.string(), data: z.string() }),
   busEvent('terminal.RESIZE_TERMINAL', { terminalId: z.string(), cols: z.number(), rows: z.number() }),
-  busEvent('terminal.LIST_TERMINALS', {}),
+  busEvent('terminal.REFRESH_LIST', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -48,7 +48,7 @@ export type Event =
   | { type: 'terminal.CLOSE_TERMINAL'; terminalId: string }
   | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
-  | { type: 'terminal.LIST_TERMINALS' }
+  | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
   | { type: 'CODE_STARTUP' };
 
@@ -258,7 +258,7 @@ export const terminalSystem = setup({
         'terminal.RESIZE_TERMINAL': {
           actions: 'resizeTerminal'
         },
-        'terminal.LIST_TERMINALS': {
+        'terminal.REFRESH_LIST': {
           actions: 'listTerminals'
         },
         'terminal.UPDATE_CURRENT_DIRECTORY': {
