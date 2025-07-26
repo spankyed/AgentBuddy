@@ -240,29 +240,3 @@ export interface StateUpdate {
   type: 'UPDATE_STATE'
   updates: Partial<Context>
 }
-
-// Validation function for state updates
-const validateStateUpdate = (updates: Partial<Context>): boolean => {
-  // Validate that updates contain valid properties
-  const validKeys = ['rootDirectory', 'currentDirectory', 'openFiles', 'activeFilePath', 'isLoading', 'error', 'selectedPanel']
-  
-  for (const key of Object.keys(updates)) {
-    if (!validKeys.includes(key)) {
-      console.warn(`Invalid state update key: ${key}`)
-      return false
-    }
-  }
-  
-  // Validate specific update types
-  if ('openFiles' in updates && !Array.isArray(updates.openFiles)) {
-    console.warn('openFiles must be an array')
-    return false
-  }
-  
-  if ('activeFilePath' in updates && updates.activeFilePath !== null && typeof updates.activeFilePath !== 'string') {
-    console.warn('activeFilePath must be null or string')
-    return false
-  }
-  
-  return true
-}
