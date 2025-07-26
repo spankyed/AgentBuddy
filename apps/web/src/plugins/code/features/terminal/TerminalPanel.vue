@@ -93,42 +93,10 @@ const createNewTerminal = () => {
 
 // Select a terminal
 const selectTerminal = (terminal: TerminalInfo) => {
-  console.log('Selecting terminal:', terminal.id, terminal.title)
-  
-  // Get current parent context
-  const parentContext = codeActor.getSnapshot().context
-  const terminalPath = `terminal:${terminal.id}`
-  const openFiles = parentContext.openFiles || []
-  const existingTab = openFiles.find(f => f.path === terminalPath)
-  
-  let newOpenFiles
-  if (existingTab) {
-    // Update existing tab
-    newOpenFiles = openFiles.map(f => 
-      f.path === terminalPath && 'isTerminal' in f && f.isTerminal
-        ? { ...f, terminalInfo: terminal }
-        : f
-    )
-  } else {
-    // Add new terminal tab
-    const terminalTab = {
-      path: terminalPath,
-      content: '',
-      modified: false,
-      isTerminal: true,
-      terminalInfo: terminal
-    }
-    newOpenFiles = [...openFiles, terminalTab]
-  }
-  
-  // Update parent state
-  codeActor.send({ 
-    type: 'UPDATE_STATE',
-    updates: {
-      openFiles: newOpenFiles,
-      activeFilePath: terminalPath
-    }
-  });
+  terminalActor.send({ 
+    type: 'terminal.OPEN_TAB', 
+    terminalInfo: terminal 
+  })
 }
 
 // Close a terminal with confirmation
