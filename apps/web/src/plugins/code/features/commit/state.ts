@@ -137,7 +137,7 @@ export const commitState = setup({
       gitDiff: null
     }),
     
-    openFile: ({ event, self }) => {
+    openFile: ({ event, self, system }) => {
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const rootDirectory = parentContext?.rootDirectory || ''
@@ -146,14 +146,11 @@ export const commitState = setup({
         : rootDirectory + '/' + ev.file.path
       
       // Send events to parent to switch to explorer panel and open file
-      self._parent?.send({ 
-        type: 'UPDATE_STATE', 
-        updates: { selectedPanel: 'explorer' } 
-      })
-      
-      self._parent?.send({ 
-        type: 'explorer.OPEN_FILE', 
-        path: fullPath 
+      updateParentState(self, { selectedPanel: 'explorer' })
+
+      system.get('explorer')?.send({
+        type: 'explorer.OPEN_FILE',
+        path: fullPath
       })
     },
     
