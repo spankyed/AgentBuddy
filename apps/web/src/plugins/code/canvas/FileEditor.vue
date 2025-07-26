@@ -59,8 +59,8 @@
           <DiffViewer
             v-if="'isDiff' in activeFile && activeFile.isDiff"
             :key="activeFile.path"
-            :selected-git-file="activeFile.gitFile!"
-            :git-diff="activeFile.gitDiff!"
+            :selected-git-file="(activeFile as any).gitFile!"
+            :git-diff="(activeFile as any).gitDiff!"
             class="h-full"
           />
         </div>
@@ -91,10 +91,11 @@ import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type OpenFile, type TerminalTab } from '@/plugins/code/state'
+import type { ActionTab } from '@/plugins/code/features/actions/state'
 
 // Props
 const props = defineProps<{
-  openFiles: (OpenFile | TerminalTab)[]
+  openFiles: (OpenFile | TerminalTab | ActionTab)[]
   activeFilePath: string | null
 }>()
 
@@ -122,7 +123,7 @@ const emit = defineEmits<{
 // Terminal output is now handled directly in TerminalView
 
 // Helper to check if a file is a terminal
-const isTerminal = (file: OpenFile | TerminalTab): file is TerminalTab => {
+const isTerminal = (file: OpenFile | TerminalTab | ActionTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
@@ -155,19 +156,23 @@ const getFileName = (path: string) => {
   return path.split('/').pop() || path
 }
 
-const getTabLabel = (file: OpenFile | TerminalTab) => {
+const getTabLabel = (file: OpenFile | TerminalTab | ActionTab) => {
   if (isTerminal(file)) {
     return file.terminalInfo.title
   }
-  if ('isDiff' in file && file.isDiff && file.gitFile) {
-    const fileName = getFileName(file.gitFile.path)
-    const status = file.gitFile.staged ? 'staged' : 'unstaged'
+  if ('isDiff' in file && file.isDiff && (file as any).gitFile) {
+    const fileName = getFileName((file as any).gitFile.path)
+    const status = (file as any).gitFile.staged ? 'staged' : 'unstaged'
     return `${fileName} (${status})`
+  }
+  // Check if this is an action file
+  if ('isAction' in file && file.isAction && 'actionEntity' in file) {
+    return (file as any).actionEntity.label
   }
   return getFileName(file.path)
 }
 
-const getTabIcon = (file: OpenFile | TerminalTab) => {
+const getTabIcon = (file: OpenFile | TerminalTab | ActionTab) => {
   if (isTerminal(file)) {
     return Terminal
   }
