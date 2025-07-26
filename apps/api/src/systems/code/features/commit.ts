@@ -3,9 +3,9 @@ import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { GitRepository } from '../../services/git'
-import { GitWatcherService } from '../../services/gitwatcher'
-import { GitStatusFile, GitDiff } from '../../types'
+import { GitRepository } from '../services/git'
+import { GitWatcherService } from '../services/gitwatcher'
+import { GitStatusFile, GitDiff } from '../types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)

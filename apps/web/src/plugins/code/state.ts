@@ -11,10 +11,7 @@ import { commitState, type GitStatusFile, type GitDiff } from './features/commit
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 
-
 export const id = 'code' as const;
-
-
 export interface OpenFile {
   path: string
   content: string
@@ -32,9 +29,6 @@ export interface TerminalTab extends OpenFile {
   terminalInfo: TerminalInfo
 }
 
-
-
-
 export type Context = {
   rootDirectory: string
   currentDirectory: string
@@ -46,9 +40,9 @@ export type Context = {
   tabsRestored?: boolean
 }
 
-// Generic update event for child actors to update parent state
 export type Event = 
   | OutgoingCodeEvents
+  // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' };
 
@@ -157,8 +151,8 @@ const codeState = setup({
       }
       
       // Route based on prefix - prefix matches system ID
-      const [prefix] = eventType.split('.');
-      if (prefix) {
+      if (eventType.includes('.')) {
+        const [prefix] = eventType.split('.');
         system.get(prefix)?.send(event);
       }
     },

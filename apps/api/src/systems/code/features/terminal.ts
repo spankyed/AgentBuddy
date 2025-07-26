@@ -3,8 +3,8 @@ import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { terminalService } from '../../services/terminal'
-import { TerminalInfo } from '../../types'
+import { terminalService } from '../services/terminal'
+import { TerminalInfo } from '../types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)

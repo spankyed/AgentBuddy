@@ -3,8 +3,8 @@ import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { FileSystemRepository } from '../../services/filesystem'
-import { SearchOptions, SearchResult, SearchProgress } from '../../types'
+import { FileSystemRepository } from '../services/filesystem'
+import { SearchOptions, SearchResult, SearchProgress } from '../types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)

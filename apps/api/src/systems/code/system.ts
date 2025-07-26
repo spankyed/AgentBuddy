@@ -5,12 +5,12 @@ import { safeEvents } from '@/core/utils/actor-helpers'
 import { SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 
-// Import child systems
-import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer/system'
-import { searchSystem, IncomingSearchEvents, OutgoingSearchEvents } from './features/search/system'
-import { commitSystem, IncomingCommitEvents, OutgoingCommitEvents } from './features/commit/system'
-import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents } from './features/pull-request/system'
-import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal/system'
+// child systems
+import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
+import { searchSystem, IncomingSearchEvents, OutgoingSearchEvents } from './features/search'
+import { commitSystem, IncomingCommitEvents, OutgoingCommitEvents } from './features/commit'
+import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents } from './features/pull-request'
+import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal'
 
 export const id = 'code' as const
 

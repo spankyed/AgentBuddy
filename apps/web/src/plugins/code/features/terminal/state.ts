@@ -4,7 +4,6 @@ import { terminalEventBus } from '../../utils/terminal-events';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs, removeTabs } from '../../utils/tab-management';
 
-// Terminal types
 export interface TerminalInfo {
   id: string
   title: string
@@ -42,7 +41,7 @@ export type Event =
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
-  | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcast event
+  | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
 export const terminalState = setup({
   types: {
