@@ -19,7 +19,8 @@ const props = defineProps<{
   terminalInfo: TerminalInfo
 }>()
 
-const actor: CodeState = applicationState.system.get(id)
+const codeActor: CodeState = applicationState.system.get(id)
+const terminalActor = codeActor.system.get('terminal')
 
 /* --------------------------------------------------------------------------
  * Refs / Singletons ---------------------------------------------------------------------- */
@@ -36,8 +37,8 @@ const fit = () => fitAddon?.fit()
 
 const sendResize = () => {
   if (!term) return
-  actor.send({
-    type: 'RESIZE_TERMINAL',
+  terminalActor?.send({
+    type: 'terminal.RESIZE',
     terminalId: props.terminalInfo.id,
     cols: term.cols,
     rows: term.rows
@@ -126,11 +127,11 @@ onMounted(() => {
 
   /* 5. PTY -> FE communication */
   term.onData(data => {
-    actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data })
+    terminalActor?.send({ type: 'terminal.INPUT', terminalId: props.terminalInfo.id, data })
   })
 
   term.onResize(({ cols, rows }) => {
-    actor.send({ type: 'RESIZE_TERMINAL', terminalId: props.terminalInfo.id, cols, rows })
+    terminalActor?.send({ type: 'terminal.RESIZE', terminalId: props.terminalInfo.id, cols, rows })
   })
 
   /* 6. Keep the terminal sized with its container */

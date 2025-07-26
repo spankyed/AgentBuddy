@@ -154,20 +154,24 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState, type GitStatusFile } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
+import type { GitStatusFile } from '@/plugins/code/state'
 import { GitBranch, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
-import RevertDialog from '@/plugins/code/panel/commit/RevertDialog.vue'
+import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
-const actor: CodeState = applicationState.system.get(id)
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const commitActor = codeActor.system.get('commit')!
 
-// State selectors
-const gitStatus = useSelector(actor, (state) => state.context.gitStatus)
-const gitBranch = useSelector(actor, (state) => state.context.gitBranch)
-const gitError = useSelector(actor, (state) => state.context.gitError)
-const isGitLoading = useSelector(actor, (state) => state.context.isGitLoading)
-const selectedGitFile = useSelector(actor, (state) => state.context.selectedGitFile)
-const commitMessage = useSelector(actor, (state) => state.context.commitMessage)
-const revertDialogFile = useSelector(actor, (state) => state.context.revertDialogFile)
+
+// State selectors from commit actor
+const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)
+const gitBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
+const gitError = useSelector(commitActor, (state: any) => state.context.gitError)
+const isGitLoading = useSelector(commitActor, (state: any) => state.context.isGitLoading)
+const selectedGitFile = useSelector(commitActor, (state: any) => state.context.selectedGitFile)
+const commitMessage = useSelector(commitActor, (state: any) => state.context.commitMessage)
+const revertDialogFile = useSelector(commitActor, (state: any) => state.context.revertDialogFile)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
@@ -176,48 +180,48 @@ const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value
 
 // Event handlers
 const refreshStatus = () => {
-  actor.send({ type: 'REFRESH_GIT_STATUS' })
+  commitActor?.send({ type: 'commit.REFRESH_STATUS' })
 }
 
 const selectFile = (file: GitStatusFile) => {
-  actor.send({ type: 'SELECT_GIT_FILE', file })
-  actor.send({ type: 'VIEW_DIFF', path: file.path, staged: file.staged })
+  commitActor?.send({ type: 'commit.SELECT_FILE', file })
+  commitActor?.send({ type: 'commit.VIEW_DIFF', path: file.path, staged: file.staged })
 }
 
 const stageFile = (file: GitStatusFile) => {
-  actor.send({ type: 'STAGE_FILES', paths: [file.path] })
+  commitActor?.send({ type: 'commit.STAGE_FILES', paths: [file.path] })
 }
 
 const unstageFile = (file: GitStatusFile) => {
-  actor.send({ type: 'UNSTAGE_FILES', paths: [file.path] })
+  commitActor?.send({ type: 'commit.UNSTAGE_FILES', paths: [file.path] })
 }
 
 const updateCommitMessage = (event: Event) => {
   const target = event.target as HTMLTextAreaElement
-  actor.send({ type: 'UPDATE_COMMIT_MESSAGE', message: target.value })
+  commitActor?.send({ type: 'commit.UPDATE_MESSAGE', message: target.value })
 }
 
 const commit = () => {
   if (canCommit.value) {
-    actor.send({ type: 'COMMIT' })
+    commitActor?.send({ type: 'commit.COMMIT' })
   }
 }
 
 const openRevertDialog = (file: GitStatusFile) => {
-  actor.send({ type: 'TOGGLE_REVERT_DIALOG', file })
+  commitActor?.send({ type: 'commit.TOGGLE_REVERT_DIALOG', file })
 }
 
 const confirmRevert = () => {
-  actor.send({ type: 'REVERT_FILE', path: revertDialogFile.value!.path })
+  commitActor?.send({ type: 'commit.REVERT_FILE', path: revertDialogFile.value!.path })
 }
 
 const cancelRevert = () => {
-  actor.send({ type: 'TOGGLE_REVERT_DIALOG' })
+  commitActor?.send({ type: 'commit.TOGGLE_REVERT_DIALOG' })
 }
 
 const openFile = (file: GitStatusFile) => {
   // Get the root directory from state
-  const state = actor.getSnapshot()
+  const state = codeActor.getSnapshot()
   const rootDirectory = state.context.rootDirectory
   
   // Construct the full path
@@ -226,9 +230,13 @@ const openFile = (file: GitStatusFile) => {
     : rootDirectory + '/' + file.path
   
   // First switch to explorer panel
-  actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
-  // Then open the file with full path
-  actor.send({ type: 'OPEN_FILE', path: fullPath })
+  codeActor.send({ 
+    type: 'UPDATE_STATE', 
+    updates: { selectedPanel: 'explorer' } 
+  })
+  // Then open the file through explorer
+  const explorerActor = codeActor.system.get('explorer')
+  explorerActor?.send({ type: 'explorer.OPEN_FILE', path: fullPath })
 }
 
 // Helper functions

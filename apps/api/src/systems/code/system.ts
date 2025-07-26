@@ -65,41 +65,54 @@ const IncomingCodeEvents = [
 ] as const
 
 export type OutgoingCodeEvents =
-  | { type: 'FILES_LISTED'; data: DirectoryContent }
+  // Explorer events (sent to child machine)
+  | { type: 'explorer.FILES_LISTED'; data: DirectoryContent }
+  | { type: 'explorer.FILE_CREATED'; data: { path: string } }
+  | { type: 'explorer.FILE_DELETED'; data: { path: string } }
+  | { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
+  | { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
+  | { type: 'explorer.FILE_INFO'; data: FileInfo }
+  | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
+  
+  // Parent-handled explorer events (no prefix)
   | { type: 'FILE_CONTENT'; data: FileContent }
   | { type: 'FILE_SAVED'; data: { path: string } }
-  | { type: 'FILE_CREATED'; data: { path: string } }
-  | { type: 'FILE_DELETED'; data: { path: string } }
-  | { type: 'FILE_RENAMED'; data: { oldPath: string; newPath: string } }
-  | { type: 'DIRECTORY_CREATED'; data: { path: string } }
-  | { type: 'FILE_INFO'; data: FileInfo }
-  | { type: 'DIRECTORY_CHANGED'; data: { path: string } }
   | { type: 'CODE_ERROR'; data: CodeSystemError }
-  | { type: 'CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-  | { type: 'SEARCH_RESULT'; data: SearchResult }
-  | { type: 'SEARCH_PROGRESS'; data: SearchProgress }
-  | { type: 'SEARCH_COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
-  | { type: 'SEARCH_ERROR'; data: { message: string } }
-  | { type: 'GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-  | { type: 'GIT_DIFF'; data: GitDiff }
-  | { type: 'FILES_STAGED'; data: { paths: string[] } }
-  | { type: 'FILES_UNSTAGED'; data: { paths: string[] } }
-  | { type: 'COMMIT_SUCCESS'; data: { message: string } }
-  | { type: 'FILE_REVERTED'; data: { path: string } }
-  | { type: 'GIT_ERROR'; data: { message: string } }
-  | { type: 'CURRENT_BRANCH'; data: { branch: string } }
-  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
-  | { type: 'GIT_STATUS_CHANGED'; data: { timestamp: Date } }
-  | { type: 'BASE_BRANCH'; data: { branch: string } }
-  | { type: 'BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'BRANCH_FILE_DIFF'; data: GitDiff }
+  
+  // Search events
+  | { type: 'search.RESULT'; data: SearchResult }
+  | { type: 'search.PROGRESS'; data: SearchProgress }
+  | { type: 'search.COMPLETE'; data: { results: SearchResult[]; totalMatches: number } }
+  | { type: 'search.ERROR'; data: { message: string } }
+  
+  // Commit events
+  | { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'commit.GIT_DIFF'; data: GitDiff }
+  | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
+  | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
+  | { type: 'commit.COMMIT_SUCCESS'; data: { message: string } }
+  | { type: 'commit.FILE_REVERTED'; data: { path: string } }
+  | { type: 'commit.GIT_ERROR'; data: { message: string } }
+  | { type: 'commit.CURRENT_BRANCH'; data: { branch: string } }
+  | { type: 'commit.GIT_STATUS_CHANGED'; data: { timestamp: Date } }
+  
+  // PR events
+  | { type: 'pr.BASE_BRANCH'; data: { branch: string } }
+  | { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+  | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+  | { type: 'pr.ERROR'; data: { message: string } }
+  
   // Terminal events
-  | { type: 'TERMINAL_CREATED'; data: TerminalInfo }
-  | { type: 'TERMINAL_OUTPUT'; data: { terminalId: string; data: string } }
-  | { type: 'TERMINAL_INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
-  | { type: 'TERMINAL_CLOSED'; data: { terminalId: string } }
-  | { type: 'TERMINAL_ERROR'; data: { message: string; terminalId?: string } }
-  | { type: 'TERMINALS_LIST'; data: TerminalInfo[] }
+  | { type: 'terminal.CREATED'; data: TerminalInfo }
+  | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'terminal.INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
+  | { type: 'terminal.CLOSED'; data: { terminalId: string } }
+  | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
+  | { type: 'terminal.LIST'; data: TerminalInfo[] }
+  
+  // Parent-only events (no prefix)
+  | { type: 'CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
+  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
   | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
@@ -160,7 +173,7 @@ export const systemMachine = setup({
         const path = ev.path || context.currentDirectory
         const content = await context.repository.listDirectory(path)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILES_LISTED',
+          type: 'explorer.FILES_LISTED',
           data: content,
         }))
       } catch (error: any) {
@@ -226,7 +239,7 @@ export const systemMachine = setup({
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_CREATED',
+          type: 'explorer.FILE_CREATED',
           data: { path: ev.path },
         }))
       } catch (error: any) {
@@ -247,7 +260,7 @@ export const systemMachine = setup({
       try {
         await context.repository.deleteFile(ev.path)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_DELETED',
+          type: 'explorer.FILE_DELETED',
           data: { path: ev.path },
         }))
       } catch (error: any) {
@@ -268,7 +281,7 @@ export const systemMachine = setup({
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_RENAMED',
+          type: 'explorer.FILE_RENAMED',
           data: { oldPath: ev.oldPath, newPath: ev.newPath },
         }))
       } catch (error: any) {
@@ -289,7 +302,7 @@ export const systemMachine = setup({
       try {
         await context.repository.createDirectory(ev.path)
         system.get(bus).send(emit(pluginId, {
-          type: 'DIRECTORY_CREATED',
+          type: 'explorer.DIRECTORY_CREATED',
           data: { path: ev.path },
         }))
       } catch (error: any) {
@@ -310,7 +323,7 @@ export const systemMachine = setup({
       try {
         const info = await context.repository.getFileInfo(ev.path)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_INFO',
+          type: 'explorer.FILE_INFO',
           data: info,
         }))
       } catch (error: any) {
@@ -332,7 +345,7 @@ export const systemMachine = setup({
       self.send({ type: 'ASSIGN_DIRECTORY', path: ev.path })
       // Send event to frontend
       system.get(bus).send(emit(pluginId, {
-        type: 'DIRECTORY_CHANGED',
+        type: 'explorer.DIRECTORY_CHANGED',
         data: { path: ev.path },
       }))
     },
@@ -351,7 +364,7 @@ export const systemMachine = setup({
       self.send({ type: 'RESTART_GIT_WATCHER' })
       // Send event to frontend
       system.get(bus).send(emit(pluginId, {
-        type: 'DIRECTORY_CHANGED',
+        type: 'explorer.DIRECTORY_CHANGED',
         data: { path: ev.path },
       }))
     },
@@ -416,7 +429,7 @@ export const systemMachine = setup({
           (filesSearched, totalFiles, currentFile) => {
             if (!controller.signal.aborted) {
               system.get(bus).send(emit(pluginId, {
-                type: 'SEARCH_PROGRESS',
+                type: 'search.PROGRESS',
                 data: { filesSearched, totalFiles, currentFile }
               }))
             }
@@ -426,7 +439,7 @@ export const systemMachine = setup({
             if (!controller.signal.aborted) {
               totalMatches += result.matches.length
               system.get(bus).send(emit(pluginId, {
-                type: 'SEARCH_RESULT',
+                type: 'search.RESULT',
                 data: result
               }))
             }
@@ -435,14 +448,14 @@ export const systemMachine = setup({
 
         if (!controller.signal.aborted) {
           system.get(bus).send(emit(pluginId, {
-            type: 'SEARCH_COMPLETE',
+            type: 'search.COMPLETE',
             data: { results, totalMatches }
           }))
         }
       } catch (error: any) {
         if (!controller.signal.aborted) {
           system.get(bus).send(emit(pluginId, {
-            type: 'SEARCH_ERROR',
+            type: 'search.ERROR',
             data: { message: error.message }
           }))
         }
@@ -472,7 +485,7 @@ export const systemMachine = setup({
         const isGitRepo = await context.gitRepository.isGitRepository()
         if (!isGitRepo) {
           system.get(bus).send(emit(pluginId, {
-            type: 'GIT_ERROR',
+            type: 'commit.GIT_ERROR',
             data: { message: 'Not a git repository' }
           }))
           return
@@ -483,7 +496,7 @@ export const systemMachine = setup({
           context.gitRepository.getCurrentBranch()
         ])
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_STATUS',
+          type: 'commit.GIT_STATUS',
           data: { files: status, branch }
         }))
       } catch (error: any) {
@@ -496,7 +509,7 @@ export const systemMachine = setup({
         }
 
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: errorMessage }
         }))
       }
@@ -532,7 +545,7 @@ export const systemMachine = setup({
         }
 
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_DIFF',
+          type: 'commit.GIT_DIFF',
           data: {
             path: ev.path || 'all',
             diff,
@@ -543,7 +556,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -555,14 +568,14 @@ export const systemMachine = setup({
       try {
         await context.gitRepository.stageFiles(ev.paths)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILES_STAGED',
+          type: 'commit.FILES_STAGED',
           data: { paths: ev.paths }
         }))
         // Also send updated status
         self.send({ type: 'GET_GIT_STATUS' })
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -574,14 +587,14 @@ export const systemMachine = setup({
       try {
         await context.gitRepository.unstageFiles(ev.paths)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILES_UNSTAGED',
+          type: 'commit.FILES_UNSTAGED',
           data: { paths: ev.paths }
         }))
         // Also send updated status
         self.send({ type: 'GET_GIT_STATUS' })
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -593,7 +606,7 @@ export const systemMachine = setup({
       try {
         await context.gitRepository.revertFile(ev.path)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_REVERTED',
+          type: 'commit.FILE_REVERTED',
           data: { path: ev.path }
         }))
         // Also send updated status
@@ -609,7 +622,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -623,7 +636,7 @@ export const systemMachine = setup({
         const stagedFiles = await context.gitRepository.getStagedFiles()
         if (stagedFiles.length === 0) {
           system.get(bus).send(emit(pluginId, {
-            type: 'GIT_ERROR',
+            type: 'commit.GIT_ERROR',
             data: { message: 'No files staged for commit. Please stage files before committing.' }
           }))
           return
@@ -631,7 +644,7 @@ export const systemMachine = setup({
 
         await context.gitRepository.commit(ev.message)
         system.get(bus).send(emit(pluginId, {
-          type: 'COMMIT_SUCCESS',
+          type: 'commit.COMMIT_SUCCESS',
           data: { message: ev.message }
         }))
         // Also send updated status
@@ -645,7 +658,7 @@ export const systemMachine = setup({
         }
 
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: errorMessage }
         }))
       }
@@ -656,12 +669,12 @@ export const systemMachine = setup({
       try {
         const branch = await context.gitRepository.getCurrentBranch()
         system.get(bus).send(emit(pluginId, {
-          type: 'CURRENT_BRANCH',
+          type: 'commit.CURRENT_BRANCH',
           data: { branch }
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -701,7 +714,7 @@ export const systemMachine = setup({
         context.gitRepository.clearCache()
 
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_STATUS_CHANGED',
+          type: 'commit.GIT_STATUS_CHANGED',
           data: { timestamp: new Date() }
         }))
       })
@@ -719,7 +732,7 @@ export const systemMachine = setup({
         context.gitRepository.clearCache()
 
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_STATUS_CHANGED',
+          type: 'commit.GIT_STATUS_CHANGED',
           data: { timestamp: new Date() }
         }))
       })
@@ -733,12 +746,12 @@ export const systemMachine = setup({
       try {
         const branch = await context.gitRepository.getPRBaseBranch()
         system.get(bus).send(emit(pluginId, {
-          type: 'BASE_BRANCH',
+          type: 'pr.BASE_BRANCH',
           data: { branch }
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -751,12 +764,12 @@ export const systemMachine = setup({
         const baseBranch = ev.baseBranch || await context.gitRepository.getPRBaseBranch()
         const files = await context.gitRepository.getBranchDiff(baseBranch)
         system.get(bus).send(emit(pluginId, {
-          type: 'BRANCH_DIFF',
+          type: 'pr.BRANCH_DIFF',
           data: { files, baseBranch }
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -773,7 +786,7 @@ export const systemMachine = setup({
         const modifiedContent = await context.gitRepository.getFileContentFromBranch(ev.path, 'HEAD')
 
         system.get(bus).send(emit(pluginId, {
-          type: 'BRANCH_FILE_DIFF',
+          type: 'pr.BRANCH_FILE_DIFF',
           data: {
             path: ev.path,
             diff,
@@ -784,7 +797,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'GIT_ERROR',
+          type: 'commit.GIT_ERROR',
           data: { message: error.message }
         }))
       }
@@ -807,7 +820,7 @@ export const systemMachine = setup({
         terminalService.onData(terminalInfo.id, (data) => {
           // Send to frontend
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_OUTPUT',
+            type: 'terminal.OUTPUT',
             data: { terminalId: terminalInfo.id, data }
           }))
         })
@@ -815,18 +828,18 @@ export const systemMachine = setup({
         // Set up exit handler
         terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_CLOSED',
+            type: 'terminal.CLOSED',
             data: { terminalId: terminalInfo.id }
           }))
         })
 
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_CREATED',
+          type: 'terminal.CREATED',
           data: terminalInfo
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_ERROR',
+          type: 'terminal.ERROR',
           data: { message: error.message }
         }))
       }
@@ -839,13 +852,13 @@ export const systemMachine = setup({
         const success = terminalService.kill(ev.terminalId)
         if (!success) {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_ERROR',
+            type: 'terminal.ERROR',
             data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_ERROR',
+          type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         }))
       }
@@ -858,13 +871,13 @@ export const systemMachine = setup({
         const success = terminalService.write(ev.terminalId, ev.data)
         if (!success) {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_ERROR',
+            type: 'terminal.ERROR',
             data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_ERROR',
+          type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         }))
       }
@@ -877,13 +890,13 @@ export const systemMachine = setup({
         const success = terminalService.resize(ev.terminalId, ev.cols, ev.rows)
         if (!success) {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_ERROR',
+            type: 'terminal.ERROR',
             data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
           }))
         }
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_ERROR',
+          type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         }))
       }
@@ -894,12 +907,12 @@ export const systemMachine = setup({
       try {
         const terminals = terminalService.list()
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINALS_LIST',
+          type: 'terminal.LIST',
           data: terminals
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'TERMINAL_ERROR',
+          type: 'terminal.ERROR',
           data: { message: error.message }
         }))
       }
@@ -917,7 +930,7 @@ export const systemMachine = setup({
         // Set up output handler for restored terminal
         terminalService.onData(terminalInfo.id, (data) => {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_OUTPUT',
+            type: 'terminal.OUTPUT',
             data: { terminalId: terminalInfo.id, data }
           }))
         })
@@ -925,7 +938,7 @@ export const systemMachine = setup({
         // Set up exit handler for restored terminal
         terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
           system.get(bus).send(emit(pluginId, {
-            type: 'TERMINAL_CLOSED',
+            type: 'terminal.CLOSED',
             data: { terminalId: terminalInfo.id }
           }))
         })

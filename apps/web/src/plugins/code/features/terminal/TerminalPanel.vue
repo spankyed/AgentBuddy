@@ -61,17 +61,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState, type TerminalInfo } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
+import type { TerminalInfo } from '@/plugins/code/state'
 import { Terminal, Plus, X } from 'lucide-vue-next'
 
-const actor: CodeState = applicationState.system.get(id)
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const terminalActor = codeActor.system.get('terminal')!
 
-// State selectors
-const terminals = useSelector(actor, (state) => state.context.terminals)
-const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
-const terminalError = useSelector(actor, (state) => state.context.terminalError)
+
+// State selectors from parent actor
+const activeFilePath = useSelector(codeActor, (state) => state.context.activeFilePath)
+
+// State selectors from terminal actor
+const terminals = useSelector(terminalActor, (state: any) => state.context.terminals)
+const terminalError = useSelector(terminalActor, (state: any) => state.context.terminalError)
 
 // Check if a terminal is active
 const isActiveTerminal = (terminalId: string) => {
@@ -81,20 +88,54 @@ const isActiveTerminal = (terminalId: string) => {
 // Create a new terminal
 const createNewTerminal = () => {
   const title = `Terminal ${terminals.value.length + 1}`
-  actor.send({ type: 'CREATE_TERMINAL', title })
+  terminalActor?.send({ type: 'terminal.CREATE', title })
 }
 
 // Select a terminal
 const selectTerminal = (terminal: TerminalInfo) => {
   console.log('Selecting terminal:', terminal.id, terminal.title)
-  actor.send({ type: 'SELECT_TERMINAL', terminalId: terminal.id })
+  
+  // Get current parent context
+  const parentContext = codeActor.getSnapshot().context
+  const terminalPath = `terminal:${terminal.id}`
+  const openFiles = parentContext.openFiles || []
+  const existingTab = openFiles.find(f => f.path === terminalPath)
+  
+  let newOpenFiles
+  if (existingTab) {
+    // Update existing tab
+    newOpenFiles = openFiles.map(f => 
+      f.path === terminalPath && 'isTerminal' in f && f.isTerminal
+        ? { ...f, terminalInfo: terminal }
+        : f
+    )
+  } else {
+    // Add new terminal tab
+    const terminalTab = {
+      path: terminalPath,
+      content: '',
+      modified: false,
+      isTerminal: true,
+      terminalInfo: terminal
+    }
+    newOpenFiles = [...openFiles, terminalTab]
+  }
+  
+  // Update parent state
+  codeActor.send({ 
+    type: 'UPDATE_STATE',
+    updates: {
+      openFiles: newOpenFiles,
+      activeFilePath: terminalPath
+    }
+  });
 }
 
 // Close a terminal with confirmation
 const closeTerminal = (terminal: TerminalInfo) => {
   const confirmed = confirm(`Close terminal "${terminal.title}"?`)
   if (confirmed) {
-    actor.send({ type: 'CLOSE_TERMINAL', terminalId: terminal.id })
+    terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
   }
 }
 </script>

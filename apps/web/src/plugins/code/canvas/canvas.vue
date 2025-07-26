@@ -100,18 +100,42 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
-  actor.send({ type: 'SELECT_FILE', path })
+  actor.send({ 
+    type: 'UPDATE_STATE', 
+    updates: { activeFilePath: path } 
+  })
 }
 
 const closeFile = (path: string) => {
-  actor.send({ type: 'CLOSE_FILE', path })
+  const newOpenFiles = openFiles.value.filter(f => f.path !== path)
+  const newActiveFilePath = activeFilePath.value === path 
+    ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
+    : activeFilePath.value
+    
+  actor.send({ 
+    type: 'UPDATE_STATE',
+    updates: {
+      openFiles: newOpenFiles,
+      activeFilePath: newActiveFilePath
+    }
+  })
+  
+  // Notify backend to close file
+  trpc.bus.send.mutate({
+    systemId: id as any,
+    type: 'CLOSE_FILE' as any,
+    path
+  })
 }
 
 const handleContentChange = (path: string, content: string) => {
+  const newOpenFiles = openFiles.value.map(f => 
+    f.path === path ? { ...f, content, modified: true } : f
+  )
+  
   actor.send({ 
-    type: 'FILE_MODIFIED', 
-    path, 
-    content 
+    type: 'UPDATE_STATE',
+    updates: { openFiles: newOpenFiles }
   })
 }
 

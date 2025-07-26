@@ -31,7 +31,7 @@
         :key="file.path"
         :file="file"
         @click="$emit('file-click', file)"
-        @rename="(oldPath, newName) => $emit('rename-file', oldPath, newName)"
+        @rename="handleRename"
         @delete="confirmDelete"
       />
     </div>
@@ -40,9 +40,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useSelector } from '@xstate/vue'
+import { applicationState } from '@/app'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/design/dialog.vue'
-import FileItem from '@/plugins/code/panel/explorer/FileItem.vue'
-import DirectoryBreadcrumb from '@/plugins/code/panel/explorer/DirectoryBreadcrumb.vue'
+import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
+import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
 
 interface FileItem {
   path: string
@@ -55,17 +58,21 @@ interface FileItem {
 const props = defineProps<{
   rootDirectory: string | null
   currentDirectory: string | null
-  files: FileItem[]
-  isLoading: boolean
-  error: string | null
 }>()
+
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const explorerActor = codeActor.system.get('explorer')!
+
+// State selectors
+const files = useSelector(explorerActor, (state: any) => state.context.files)
+const isLoading = useSelector(explorerActor, (state: any) => state.context.isLoading)
+const error = useSelector(explorerActor, (state: any) => state.context.error)
 
 const emit = defineEmits<{
   'navigate-to-directory': [path: string]
   'set-root-directory': [path: string]
   'file-click': [file: FileItem]
-  'rename-file': [oldPath: string, newName: string]
-  'delete-file': [path: string]
 }>()
 
 // Delete functionality
@@ -79,7 +86,7 @@ const confirmDelete = (file: FileItem) => {
 
 const handleDelete = () => {
   if (fileToDelete.value) {
-    emit('delete-file', fileToDelete.value.path)
+    explorerActor?.send({ type: 'explorer.DELETE_FILE', path: fileToDelete.value.path })
     showDeleteDialog.value = false
     fileToDelete.value = null
   }
@@ -88,5 +95,15 @@ const handleDelete = () => {
 const cancelDelete = () => {
   showDeleteDialog.value = false
   fileToDelete.value = null
+}
+
+const handleRename = (oldPath: string, newName: string) => {
+  // Construct the new path
+  const pathParts = oldPath.split('/')
+  pathParts[pathParts.length - 1] = newName
+  const newPath = pathParts.join('/')
+  
+  // Send rename event directly to explorer state machine
+  explorerActor?.send({ type: 'explorer.RENAME_FILE', oldPath, newPath })
 }
 </script>
