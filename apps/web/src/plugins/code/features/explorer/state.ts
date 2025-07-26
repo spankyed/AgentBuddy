@@ -22,6 +22,7 @@ export type Event =
   | { type: 'explorer.DELETE_FILE'; path: string }
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
   | { type: 'explorer.OPEN_FILE'; path: string }
+  | { type: 'explorer.OPEN_FILES'; paths: string[] }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
@@ -204,6 +205,15 @@ export const explorerState = setup({
       sendToBackend('explorer.READ_FILE', { path: ev.path })
     },
     
+    openFiles: enqueueActions(({ enqueue, event }) => {
+      const ev = event as { type: 'explorer.OPEN_FILES'; paths: string[] }
+      ev.paths.forEach(path => {
+        enqueue(({ self }) => {
+          self.send({ type: 'explorer.OPEN_FILE', path })
+        })
+      })
+    }),
+    
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
       sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
@@ -309,6 +319,9 @@ export const explorerState = setup({
         },
         'explorer.OPEN_FILE': {
           actions: 'openFile'
+        },
+        'explorer.OPEN_FILES': {
+          actions: 'openFiles'
         },
         'explorer.NAVIGATE_TO_DIRECTORY': {
           actions: 'navigateToDirectory'

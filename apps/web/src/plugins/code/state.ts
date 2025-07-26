@@ -126,6 +126,7 @@ export type Context = {
   isLoading: boolean
   error: string | null
   selectedPanel: PanelType
+  tabsRestored?: boolean
 }
 
 // Generic update event for child actors to update parent state
@@ -164,6 +165,10 @@ const codeState = setup({
     }),
 
     saveTabsAction: ({ context }) => {
+      // Don't save tabs until they've been restored (to avoid overwriting with empty array)
+      if (!context.tabsRestored) {
+        return
+      }
       saveOpenTabs(context.openFiles)
     },
     updateState: assign(({ event, context }) => {
@@ -179,6 +184,48 @@ const codeState = setup({
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
     },
+    
+    restorePersistedTabs: enqueueActions(({ enqueue }) => {
+      const persistedTabs = loadPersistedTabs()
+      
+      // Mark tabs as restored immediately (even if empty)
+      enqueue.assign({
+        tabsRestored: true
+      })
+      
+      // If no persisted tabs, we're done
+      if (persistedTabs.length === 0) {
+        return
+      }
+      
+      // Restore tabs
+      enqueue(({ system }) => {
+        const explorerActor = system.get('explorer')
+        const terminalActor = system.get('terminal')
+        
+        // Filter tabs by type
+        const fileTabs = persistedTabs.filter(tab => tab.type === 'file')
+        const terminalTabs = persistedTabs.filter(tab => tab.type === 'terminal')
+        
+        // Send file paths to restore
+        if (fileTabs.length > 0 && explorerActor) {
+          const filePaths = fileTabs.map(tab => tab.path)
+          explorerActor.send({ 
+            type: 'explorer.OPEN_FILES', 
+            paths: filePaths 
+          })
+        }
+        
+        // Send terminal IDs to restore
+        if (terminalTabs.length > 0 && terminalActor) {
+          const terminalIds = terminalTabs.map(tab => tab.terminalId!)
+          terminalActor.send({ 
+            type: 'terminal.OPEN_TABS', 
+            terminalIds 
+          })
+        }
+      })
+    }),
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
       
@@ -206,7 +253,7 @@ const codeState = setup({
   context: {
     rootDirectory: savedRootDirectory,
     currentDirectory: savedRootDirectory,
-    openFiles: [],
+    openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
     activeFilePath: null,
     isLoading: false,
     error: null,
@@ -226,7 +273,7 @@ const codeState = setup({
         },
         // Plugin initialization
         PLUGIN_ACTIVATED: {
-          actions: ['initializePlugin']
+          actions: ['initializePlugin', 'restorePersistedTabs']
         }
       }
     }

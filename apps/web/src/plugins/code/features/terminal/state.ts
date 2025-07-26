@@ -23,6 +23,8 @@ export type Event =
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
   | { type: 'terminal.REFRESH_LIST' }
+  | { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
+  | { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }  // Backend format
   | { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }
   | { type: 'terminal.CREATED'; data: TerminalInfo }  // Backend format
@@ -205,13 +207,78 @@ export const terminalState = setup({
     handleCodeStartup: ({ event, self }) => {
       const ev = event as { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } }
       // If startup includes terminals, handle them like TERMINALS_LISTED
-      console.log('ev.data.terminals: ', ev.data.terminals);
       if (ev.data?.terminals) {
         self.send({ 
           type: 'terminal.TERMINALS_LISTED', 
           data: ev.data.terminals
         })
       }
+    },
+    
+    openTerminalTab: ({ event, self }) => {
+      const ev = event as { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
+      const parentContext = getParentContext(self)
+      const terminalPath = `terminal:${ev.terminalInfo.id}`
+      
+      // Build new openFiles array
+      const openFiles = parentContext?.openFiles || []
+      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
+      
+      let newOpenFiles
+      if (existingTab) {
+        // Tab already exists, just activate it
+        newOpenFiles = openFiles
+      } else {
+        // Add new terminal tab
+        const terminalTab = {
+          path: terminalPath,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: ev.terminalInfo
+        }
+        newOpenFiles = [...openFiles, terminalTab]
+      }
+      
+      // Send updated state to parent
+      updateParentState(self, {
+        openFiles: newOpenFiles,
+        activeFilePath: terminalPath
+      });
+    },
+    
+    openTerminalTabs: ({ event, self, context }) => {
+      const ev = event as { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
+      const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      
+      // Find terminals by ID and create tabs for them
+      const newTerminalTabs = ev.terminalIds
+        .map(terminalId => context.terminals.find(t => t.id === terminalId))
+        .filter((terminal): terminal is TerminalInfo => terminal !== undefined)
+        .map(terminal => ({
+          path: `terminal:${terminal.id}`,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: terminal
+        }))
+      
+      // Filter out any existing terminal tabs that we're re-opening
+      const terminalPaths = new Set(newTerminalTabs.map(t => t.path))
+      const filteredOpenFiles = openFiles.filter((f: any) => !terminalPaths.has(f.path))
+      
+      // Combine existing files with new terminal tabs
+      const newOpenFiles = [...filteredOpenFiles, ...newTerminalTabs]
+      
+      // Set the first terminal as active if there's no current active file
+      const activeFilePath = parentContext?.activeFilePath || (newTerminalTabs.length > 0 ? newTerminalTabs[0].path : null)
+      
+      // Send updated state to parent
+      updateParentState(self, {
+        openFiles: newOpenFiles,
+        activeFilePath
+      });
     }
   }
 }).createMachine({
@@ -238,6 +305,12 @@ export const terminalState = setup({
         },
         'terminal.REFRESH_LIST': {
           actions: 'listTerminals'
+        },
+        'terminal.OPEN_TAB': {
+          actions: 'openTerminalTab'
+        },
+        'terminal.OPEN_TABS': {
+          actions: 'openTerminalTabs'
         },
         'terminal.TERMINALS_LISTED': {
           actions: 'assignTerminals'
