@@ -85,7 +85,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal } from 'lucide-vue-next'
+import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
@@ -178,6 +178,10 @@ const getTabIcon = (file: OpenFile | TerminalTab | ActionTab) => {
   }
   if ('isDiff' in file && file.isDiff) {
     return GitCompare
+  }
+  // Check if this is an action file
+  if ('isAction' in file && file.isAction) {
+    return Play
   }
   return getFileIcon(getFileExtension(file.path))
 }
