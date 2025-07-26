@@ -2,6 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
+import { mergeTabs } from '../../utils/tab-management';
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
@@ -126,36 +127,23 @@ export const pullRequestState = setup({
           const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
           
-          // Build new openFiles array
-          const openFiles = parentContext?.openFiles || []
-          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-          
-          let newOpenFiles
-          if (existingTab) {
-            // Update existing tab
-            newOpenFiles = openFiles.map((f: any) => 
-              f.path === diffTabId 
-                ? { ...f, gitDiff: ev.diff, gitFile: context.selectedPrFile }
-                : f
-            )
-          } else {
-            // Add new diff tab
-            const diffTab = {
-              path: diffTabId,
-              content: '',
-              modified: false,
-              isDiff: true,
-              gitDiff: ev.diff,
-              gitFile: context.selectedPrFile
-            }
-            newOpenFiles = [...openFiles, diffTab]
+          // Create diff tab
+          const diffTab = {
+            path: diffTabId,
+            content: '',
+            modified: false,
+            isDiff: true,
+            gitDiff: ev.diff,
+            gitFile: context.selectedPrFile
           }
           
-          // Send updated state to parent
-          updateParentState(self, {
-            openFiles: newOpenFiles,
-            activeFilePath: diffTabId
-          });
+          const result = mergeTabs(
+            parentContext?.openFiles || [],
+            [diffTab],
+            diffTabId // Set as active
+          )
+          
+          updateParentState(self, result)
         }
       })
     }),
@@ -170,36 +158,23 @@ export const pullRequestState = setup({
           const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
           
-          // Build new openFiles array
-          const openFiles = parentContext?.openFiles || []
-          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-          
-          let newOpenFiles
-          if (existingTab) {
-            // Update existing tab
-            newOpenFiles = openFiles.map((f: any) => 
-              f.path === diffTabId 
-                ? { ...f, gitDiff: ev.data, gitFile: context.selectedPrFile }
-                : f
-            )
-          } else {
-            // Add new diff tab
-            const diffTab = {
-              path: diffTabId,
-              content: '',
-              modified: false,
-              isDiff: true,
-              gitDiff: ev.data,
-              gitFile: context.selectedPrFile
-            }
-            newOpenFiles = [...openFiles, diffTab]
+          // Create diff tab
+          const diffTab = {
+            path: diffTabId,
+            content: '',
+            modified: false,
+            isDiff: true,
+            gitDiff: ev.data,
+            gitFile: context.selectedPrFile
           }
           
-          // Send updated state to parent
-          updateParentState(self, {
-            openFiles: newOpenFiles,
-            activeFilePath: diffTabId
-          });
+          const result = mergeTabs(
+            parentContext?.openFiles || [],
+            [diffTab],
+            diffTabId // Set as active
+          )
+          
+          updateParentState(self, result)
         }
       })
     })

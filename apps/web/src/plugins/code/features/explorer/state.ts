@@ -2,6 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { FileInfo } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
+import { mergeTabs, removeTabs } from '../../utils/tab-management';
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
@@ -57,10 +58,9 @@ export const explorerState = setup({
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
       
-      let newOpenFiles
       if (existingFile) {
         // Update content for existing file
-        newOpenFiles = openFiles.map((f: any) => 
+        const updatedFiles = openFiles.map((f: any) => 
           f.path === ev.data.path 
             ? { 
                 ...f, 
@@ -72,27 +72,35 @@ export const explorerState = setup({
               }
             : f
         )
+        updateParentState(self, {
+          openFiles: updatedFiles,
+          activeFilePath: ev.data.path,
+          isLoading: false
+        })
       } else {
         // Add new file
-        newOpenFiles = [...openFiles, {
+        const newTab = {
           path: ev.data.path,
           content: ev.data.content,
           modified: false
-        }]
+        }
+        const result = mergeTabs(
+          openFiles,
+          [newTab],
+          ev.data.path // Set as active
+        )
+        updateParentState(self, {
+          ...result,
+          isLoading: false
+        })
       }
-      
-      // Update parent state
-      updateParentState(self, {
-        openFiles: newOpenFiles,
-        activeFilePath: ev.data.path,
-        isLoading: false
-      })
     },
     
     handleFileSaved: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
       const parentContext = getParentContext(self)
-      const newOpenFiles = parentContext?.openFiles?.map((f: any) => 
+      
+      const updatedFiles = (parentContext?.openFiles || []).map((f: any) => 
         f.path === ev.data.path 
           ? { 
               ...f, 
@@ -102,9 +110,9 @@ export const explorerState = setup({
               externalModificationTime: undefined
             } 
           : f
-      ) || []
+      )
       
-      updateParentState(self, { openFiles: newOpenFiles })
+      updateParentState(self, { openFiles: updatedFiles })
     },
     
     handleFileChangedExternally: ({ event, self }) => {
@@ -114,7 +122,7 @@ export const explorerState = setup({
       const file = openFiles.find((f: any) => f.path === ev.data.path)
       
       if (file && !file.isDiff) {
-        const newOpenFiles = openFiles.map((f: any) => {
+        const updatedFiles = openFiles.map((f: any) => {
           if (f.path === ev.data.path && !f.isDiff) {
             return {
               ...f,
@@ -126,7 +134,7 @@ export const explorerState = setup({
           return f
         })
         
-        updateParentState(self, { openFiles: newOpenFiles })
+        updateParentState(self, { openFiles: updatedFiles })
         
         // Only refresh if file is not modified by user
         if (!file.modified) {
@@ -245,15 +253,13 @@ export const explorerState = setup({
       
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
-        const newOpenFiles = parentContext.openFiles.filter((f: any) => f.path !== ev.path)
-        const newActiveFile = parentContext.activeFilePath === ev.path
-          ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
-          : parentContext.activeFilePath
-          
-        updateParentState(self, {
-          openFiles: newOpenFiles,
-          activeFilePath: newActiveFile
-        })
+        const result = removeTabs(
+          parentContext.openFiles,
+          ev.path,
+          parentContext.activeFilePath
+        )
+        
+        updateParentState(self, result)
       }
     },
     

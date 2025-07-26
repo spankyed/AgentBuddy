@@ -3,7 +3,7 @@ import { trpc } from '@/core/trpc';
 import type { TerminalInfo } from '../../state';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTerminalTabs } from '../../utils/terminal-tabs';
+import { mergeTabs, removeTabs } from '../../utils/tab-management';
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
@@ -144,10 +144,19 @@ export const terminalState = setup({
         
         const parentContext = getParentContext(self)
         
-        const result = mergeTerminalTabs(
+        // Create terminal tab object
+        const terminalTab = {
+          path: `terminal:${terminalInfo.id}`,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: terminalInfo
+        }
+        
+        const result = mergeTabs(
           parentContext?.openFiles || [],
-          [terminalInfo],
-          `terminal:${terminalInfo.id}` // Always set new terminal as active
+          [terminalTab],
+          terminalTab.path // Always set new terminal as active
         )
         
         updateParentState(self, result)
@@ -158,27 +167,21 @@ export const terminalState = setup({
       enqueue('removeTerminal')
       enqueue('cleanupTerminalOutput')
       enqueue(() => {
-      // Handle both formats
-      const terminalId = 'data' in event
-        ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
-        : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
+        // Handle both formats
+        const terminalId = 'data' in event
+          ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
+          : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
         
-      const parentContext = getParentContext(self)
-      const terminalPath = `terminal:${terminalId}`
-      
-      // Remove terminal tab from openFiles
-      const openFiles = parentContext?.openFiles || []
-      const newOpenFiles = openFiles.filter((f: any) => f.path !== terminalPath)
-      
-      // Update parent state
-      const updates: any = { openFiles: newOpenFiles }
-      
-      // If this was the active file, set a new active file
-      if (parentContext?.activeFilePath === terminalPath) {
-        updates.activeFilePath = newOpenFiles.length > 0 ? newOpenFiles[0].path : null
-      }
-      
-      updateParentState(self, updates);
+        const parentContext = getParentContext(self)
+        const terminalPath = `terminal:${terminalId}`
+        
+        const result = removeTabs(
+          parentContext?.openFiles || [],
+          terminalPath,
+          parentContext?.activeFilePath
+        )
+        
+        updateParentState(self, result)
       })
     }),
     
@@ -197,10 +200,19 @@ export const terminalState = setup({
       const ev = event as { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
       const parentContext = getParentContext(self)
       
-      const result = mergeTerminalTabs(
+      // Create terminal tab object
+      const terminalTab = {
+        path: `terminal:${ev.terminalInfo.id}`,
+        content: '',
+        modified: false,
+        isTerminal: true,
+        terminalInfo: ev.terminalInfo
+      }
+      
+      const result = mergeTabs(
         parentContext?.openFiles || [],
-        [ev.terminalInfo],
-        `terminal:${ev.terminalInfo.id}` // Always set this terminal as active
+        [terminalTab],
+        terminalTab.path // Always set this terminal as active
       )
       
       updateParentState(self, result)
@@ -210,14 +222,21 @@ export const terminalState = setup({
       const ev = event as { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
       const parentContext = getParentContext(self)
       
-      // Find terminals by ID
-      const terminalsToOpen = ev.terminalIds
+      // Find terminals by ID and create tab objects
+      const terminalTabs = ev.terminalIds
         .map(terminalId => context.terminals.find(t => t.id === terminalId))
         .filter((terminal): terminal is TerminalInfo => terminal !== undefined)
+        .map(terminal => ({
+          path: `terminal:${terminal.id}`,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: terminal
+        }))
       
-      const result = mergeTerminalTabs(
+      const result = mergeTabs(
         parentContext?.openFiles || [],
-        terminalsToOpen,
+        terminalTabs,
         parentContext?.activeFilePath // Keep current active or use first new terminal
       )
       
