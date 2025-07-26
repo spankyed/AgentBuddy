@@ -175,20 +175,22 @@
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { ChevronRight, FolderOpen } from 'lucide-vue-next'
 
-const actor: CodeState = applicationState.system.get(id)
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const searchActor = codeActor.system.get('search')!
 
 // State selectors
 const searchQuery = ref('')
-const searchResults = useSelector(actor, (state) => state.context.searchResults)
-const isSearching = useSelector(actor, (state) => state.context.isSearching)
-const searchError = useSelector(actor, (state) => state.context.searchError)
-const searchProgress = useSelector(actor, (state) => state.context.searchProgress)
-const searchOptions = useSelector(actor, (state) => state.context.searchOptions)
-const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
-const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
+const searchResults = useSelector(searchActor, (state: any) => state.context.searchResults)
+const isSearching = useSelector(searchActor, (state: any) => state.context.isSearching)
+const searchError = useSelector(searchActor, (state: any) => state.context.searchError)
+const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
+const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
+const rootDirectory = useSelector(codeActor, (state) => state.context.rootDirectory)
+const currentDirectory = useSelector(codeActor, (state) => state.context.currentDirectory)
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)
@@ -274,19 +276,19 @@ const performSearch = () => {
   // Clear previous results
   expandedResults.value.clear()
   
-  actor.send({ 
-    type: 'START_SEARCH', 
+  searchActor?.send({ 
+    type: 'search.START', 
     query: searchQuery.value 
   })
 }
 
 const cancelSearch = () => {
-  actor.send({ type: 'CANCEL_SEARCH' })
+  searchActor?.send({ type: 'search.CANCEL' })
 }
 
 const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'searchInCurrentDir') => {
-  actor.send({
-    type: 'UPDATE_SEARCH_OPTIONS',
+  searchActor?.send({
+    type: 'search.UPDATE_OPTIONS',
     options: {
       [option]: !searchOptions.value[option]
     }
@@ -294,8 +296,8 @@ const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'sear
 }
 
 const updateOptions = () => {
-  actor.send({
-    type: 'UPDATE_SEARCH_OPTIONS',
+  searchActor?.send({
+    type: 'search.UPDATE_OPTIONS',
     options: {
       includePattern: includePattern.value,
       excludePattern: excludePattern.value
@@ -312,11 +314,14 @@ const toggleResultExpanded = (path: string) => {
 }
 
 const openMatch = (result: typeof searchResults.value[0], matchIndex: number) => {
-  actor.send({
-    type: 'OPEN_SEARCH_RESULT',
-    result,
-    matchIndex
+  // Open file through explorer
+  const explorerActor = codeActor.system.get('explorer')
+  explorerActor?.send({
+    type: 'explorer.OPEN_FILE',
+    path: result.path
   })
+  
+  // TODO: Handle scrolling to specific match index in the editor
 }
 
 const getRelativePath = (path: string) => {

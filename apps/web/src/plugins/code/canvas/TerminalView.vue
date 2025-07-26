@@ -9,7 +9,8 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { applicationState } from '@/app'
-import { id, type CodeState, type TerminalInfo } from '@/plugins/code/state'
+import { id, type CodeState } from '@/plugins/code/state'
+import type { TerminalInfo } from '@/plugins/code/features/terminal/state'
 import { terminalEventBus } from '@/plugins/code/utils/terminal-events'
 import '@xterm/xterm/css/xterm.css'
 
@@ -19,7 +20,8 @@ const props = defineProps<{
   terminalInfo: TerminalInfo
 }>()
 
-const actor: CodeState = applicationState.system.get(id)
+const codeActor: CodeState = applicationState.system.get(id)
+const terminalActor = codeActor.system.get('terminal')
 
 /* --------------------------------------------------------------------------
  * Refs / Singletons ---------------------------------------------------------------------- */
@@ -36,8 +38,8 @@ const fit = () => fitAddon?.fit()
 
 const sendResize = () => {
   if (!term) return
-  actor.send({
-    type: 'RESIZE_TERMINAL',
+  terminalActor?.send({
+    type: 'terminal.RESIZE',
     terminalId: props.terminalInfo.id,
     cols: term.cols,
     rows: term.rows
@@ -126,11 +128,11 @@ onMounted(() => {
 
   /* 5. PTY -> FE communication */
   term.onData(data => {
-    actor.send({ type: 'TERMINAL_INPUT', terminalId: props.terminalInfo.id, data })
+    terminalActor?.send({ type: 'terminal.INPUT', terminalId: props.terminalInfo.id, data })
   })
 
   term.onResize(({ cols, rows }) => {
-    actor.send({ type: 'RESIZE_TERMINAL', terminalId: props.terminalInfo.id, cols, rows })
+    terminalActor?.send({ type: 'terminal.RESIZE', terminalId: props.terminalInfo.id, cols, rows })
   })
 
   /* 6. Keep the terminal sized with its container */

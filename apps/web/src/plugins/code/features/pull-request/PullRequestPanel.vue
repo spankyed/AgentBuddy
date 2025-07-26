@@ -47,24 +47,28 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
-import FileTree from '@/plugins/code/panel/pull-request/FileTree.vue'
 import { applicationState } from '@/app'
-import type { GitStatusFile, CodeState } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
+import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
+import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
+import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
-const pluginId = 'code'
-const actor = applicationState.system.get(pluginId) as CodeState
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const prActor = codeActor.system.get('pr')!
 
-// State selectors
-const prFiles = useSelector(actor, (state) => state.context.prFiles)
-const prBaseBranch = useSelector(actor, (state) => state.context.prBaseBranch)
-const prError = useSelector(actor, (state) => state.context.prError)
-const isPrLoading = useSelector(actor, (state) => state.context.isPrLoading)
+
+// State selectors from PR actor
+const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
+const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
+const prError = useSelector(prActor, (state: any) => state.context.prError)
+const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 
 // Actions
 const refreshStatus = () => {
-  actor.send({ type: 'REFRESH_PR_STATUS' })
+  prActor?.send({ type: 'pr.REFRESH_STATUS' })
 }
 
 interface TreeNode {
@@ -85,10 +89,10 @@ const handleFileSelect = (file: TreeNode) => {
       staged: false
     }
     
-    actor.send({ type: 'SELECT_PR_FILE', file: gitFile })
+    prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
     
     // Then request the diff
-    actor.send({ type: 'VIEW_PR_DIFF', path: file.path })
+    prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
   }
 }
 </script>

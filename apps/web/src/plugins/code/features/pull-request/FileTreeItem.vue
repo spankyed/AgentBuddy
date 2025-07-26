@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref, computed, withDefaults } from 'vue'
 import { ChevronRight, Folder, FileCode } from 'lucide-vue-next'
-import type { GitStatusFile } from '@/plugins/code/state'
+import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
 interface TreeNode {
   name: string

@@ -51,12 +51,12 @@
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '../state'
-import { trpc } from '@/core/trpc'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 
 const actor: CodeState = applicationState.system.get(id)
+const explorerActor = actor.system.get('explorer')
 
 // Terminal outputs are handled through state
 
@@ -100,41 +100,63 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
-  actor.send({ type: 'SELECT_FILE', path })
+  actor.send({ 
+    type: 'UPDATE_STATE', 
+    updates: { activeFilePath: path } 
+  })
 }
 
 const closeFile = (path: string) => {
-  actor.send({ type: 'CLOSE_FILE', path })
+  const newOpenFiles = openFiles.value.filter(f => f.path !== path)
+  const newActiveFilePath = activeFilePath.value === path 
+    ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
+    : activeFilePath.value
+    
+  actor.send({ 
+    type: 'UPDATE_STATE',
+    updates: {
+      openFiles: newOpenFiles,
+      activeFilePath: newActiveFilePath
+    }
+  })
+  
+  // Send event to explorer state machine
+  explorerActor?.send({
+    type: 'explorer.CLOSE_FILE',
+    path
+  })
 }
 
 const handleContentChange = (path: string, content: string) => {
+  const newOpenFiles = openFiles.value.map(f => 
+    f.path === path ? { ...f, content, modified: true } : f
+  )
+  
   actor.send({ 
-    type: 'FILE_MODIFIED', 
-    path, 
-    content 
+    type: 'UPDATE_STATE',
+    updates: { openFiles: newOpenFiles }
   })
 }
 
 const saveFile = async () => {
   if (activeFile.value && !activeFile.value.isDiff) {
-    // Just save/override regardless of conflict
-    await trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'WRITE_FILE' as any,
-      path: activeFile.value.path, 
+    console.log('activeFile.value: ', activeFile.value);
+    // Send event to explorer state machine
+    explorerActor?.send({
+      type: 'explorer.WRITE_FILE',
+      path: activeFile.value.path,
       content: activeFile.value.content
-    } as any)
+    })
   }
 }
 
 const loadExternalChanges = () => {
   if (activeFile.value && activeFile.value.pendingSaveConflict) {
-    // Reload the file from disk
-    trpc.bus.send.mutate({
-      systemId: id as any,
-      type: 'READ_FILE' as any,
+    // Send event to explorer state machine
+    explorerActor?.send({
+      type: 'explorer.OPEN_FILE',
       path: activeFile.value.path
-    } as any)
+    })
   }
 }
 

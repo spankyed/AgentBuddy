@@ -24,23 +24,23 @@
         v-if="selectedPanel === 'explorer'"
         :root-directory="rootDirectory"
         :current-directory="currentDirectory"
-        :files="files"
-        :is-loading="isLoading"
-        :error="error"
-        @navigate-to-directory="navigateToDirectory"
-        @set-root-directory="setRootDirectory"
-        @file-click="handleFileClick"
-        @rename-file="handleRenameFile"
-        @delete-file="handleDeleteFile"
       />
       
-      <SearchPanel v-else-if="selectedPanel === 'search'" />
+      <SearchPanel 
+        v-else-if="selectedPanel === 'search'" 
+      />
       
-      <CommitPanel v-else-if="selectedPanel === 'commit'" />
+      <CommitPanel 
+        v-else-if="selectedPanel === 'commit'"
+      />
       
-      <PullRequestPanel v-else-if="selectedPanel === 'pr'" />
+      <PullRequestPanel 
+        v-else-if="selectedPanel === 'pr'"
+      />
       
-      <TerminalPanel v-else-if="selectedPanel === 'terminal'" />
+      <TerminalPanel 
+        v-else-if="selectedPanel === 'terminal'"
+      />
     </div>
 
     <!-- Change Directory Button -->
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/state'
@@ -68,23 +68,17 @@ import {
   GitPullRequest,
   Terminal,
 } from 'lucide-vue-next'
-import ExplorerPanel from '@/plugins/code/panel/explorer/ExplorerPanel.vue'
-import SearchPanel from '@/plugins/code/panel/search/SearchPanel.vue'
-import CommitPanel from '@/plugins/code/panel/commit/CommitPanel.vue'
-import PullRequestPanel from '@/plugins/code/panel/pull-request/PullRequestPanel.vue'
-import TerminalPanel from '@/plugins/code/panel/terminal/TerminalPanel.vue'
+import ExplorerPanel from '@/plugins/code/features/explorer/ExplorerPanel.vue'
+import SearchPanel from '@/plugins/code/features/search/SearchPanel.vue'
+import CommitPanel from '@/plugins/code/features/commit/CommitPanel.vue'
+import PullRequestPanel from '@/plugins/code/features/pull-request/PullRequestPanel.vue'
+import TerminalPanel from '@/plugins/code/features/terminal/TerminalPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
-// State selectors
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
-const files = useSelector(actor, (state) => state.context.files)
-const isLoading = useSelector(actor, (state) => state.context.isLoading)
-const error = useSelector(actor, (state) => state.context.error)
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
-
-
 
 // Panel configuration
 const panels = [
@@ -97,46 +91,32 @@ const panels = [
 
 // Event handlers
 const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal') => {
-  actor.send({ type: 'SELECT_PANEL', panel })
-}
-
-const navigateToDirectory = (path: string) => {
-  actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path })
-}
-
-const setRootDirectory = (path: string) => {
-  actor.send({ type: 'SET_ROOT_DIRECTORY', path })
-}
-
-const handleFileClick = (file: { path: string; type: 'file' | 'directory' }) => {
-  if (file.type === 'directory') {
-    actor.send({ type: 'NAVIGATE_TO_DIRECTORY', path: file.path })
-  } else {
-    actor.send({ type: 'OPEN_FILE', path: file.path })
+  // Update parent state
+  actor.send({ 
+    type: 'UPDATE_STATE', 
+    updates: { selectedPanel: panel } 
+  })
+  
+  // Notify child machines if needed
+  if (panel === 'commit') {
+    actor.system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
+  } else if (panel === 'pr') {
+    actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
+  } else if (panel === 'terminal') {
+    actor.system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' })
   }
 }
+
+// Navigation handlers removed - now handled directly in ExplorerPanel
 
 const changeDirectory = () => {
   const newPath = prompt('Enter new root directory path:', rootDirectory.value)
   if (newPath && newPath !== rootDirectory.value) {
-    actor.send({ type: 'SET_ROOT_DIRECTORY', path: newPath })
+    const explorerActor = actor.system.get('explorer')
+    explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
   }
 }
 
-const handleRenameFile = (oldPath: string, newName: string) => {
-  // Construct the new path
-  const pathParts = oldPath.split('/')
-  pathParts[pathParts.length - 1] = newName
-  const newPath = pathParts.join('/')
-  
-  // Send rename event to state machine
-  actor.send({ type: 'RENAME_FILE', oldPath, newPath })
-}
-
-const handleDeleteFile = (path: string) => {
-  // Send delete event to state machine
-  actor.send({ type: 'DELETE_FILE', path })
-}
 
 // Plugin activation is handled by the state machine
 onMounted(() => {

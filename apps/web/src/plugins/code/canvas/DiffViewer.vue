@@ -27,7 +27,7 @@
 import { onMounted } from 'vue'
 import { GitCompare } from 'lucide-vue-next'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
-import type { GitStatusFile, GitDiff } from '@/plugins/code/state'
+import type { GitStatusFile, GitDiff } from '@/plugins/code/features/commit/state'
 
 // Props
 defineProps<{

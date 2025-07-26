@@ -61,17 +61,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
-import { id, type CodeState, type TerminalInfo } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
+import type { TerminalInfo } from './state'
 import { Terminal, Plus, X } from 'lucide-vue-next'
 
-const actor: CodeState = applicationState.system.get(id)
+// Get actors
+const codeActor: CodeState = applicationState.system.get(codeId)
+const terminalActor = codeActor.system.get('terminal')!
 
-// State selectors
-const terminals = useSelector(actor, (state) => state.context.terminals)
-const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
-const terminalError = useSelector(actor, (state) => state.context.terminalError)
+
+// State selectors from parent actor
+const activeFilePath = useSelector(codeActor, (state) => state.context.activeFilePath)
+
+// State selectors from terminal actor
+const terminals = useSelector(terminalActor, (state: any) => state.context.terminals)
+const terminalError = useSelector(terminalActor, (state: any) => state.context.terminalError)
 
 // Check if a terminal is active
 const isActiveTerminal = (terminalId: string) => {
@@ -81,20 +88,22 @@ const isActiveTerminal = (terminalId: string) => {
 // Create a new terminal
 const createNewTerminal = () => {
   const title = `Terminal ${terminals.value.length + 1}`
-  actor.send({ type: 'CREATE_TERMINAL', title })
+  terminalActor?.send({ type: 'terminal.CREATE', title })
 }
 
 // Select a terminal
 const selectTerminal = (terminal: TerminalInfo) => {
-  console.log('Selecting terminal:', terminal.id, terminal.title)
-  actor.send({ type: 'SELECT_TERMINAL', terminalId: terminal.id })
+  terminalActor.send({ 
+    type: 'terminal.OPEN_TAB', 
+    terminalInfo: terminal 
+  })
 }
 
 // Close a terminal with confirmation
 const closeTerminal = (terminal: TerminalInfo) => {
   const confirmed = confirm(`Close terminal "${terminal.title}"?`)
   if (confirmed) {
-    actor.send({ type: 'CLOSE_TERMINAL', terminalId: terminal.id })
+    terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
   }
 }
 </script>
