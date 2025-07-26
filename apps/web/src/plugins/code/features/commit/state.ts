@@ -51,7 +51,7 @@ export const commitState = setup({
   },
   actions: {
     refreshGitStatus: () => {
-      sendToBackend('GET_GIT_STATUS', {})
+      sendToBackend('commit.GET_GIT_STATUS', {})
     },
     
     assignGitStatus: assign({
@@ -84,12 +84,12 @@ export const commitState = setup({
     
     stageFiles: ({ event }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
-      sendToBackend('STAGE_FILES', { paths: ev.paths })
+      sendToBackend('commit.STAGE_FILES', { paths: ev.paths })
     },
     
     unstageFiles: ({ event }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
-      sendToBackend('UNSTAGE_FILES', { paths: ev.paths })
+      sendToBackend('commit.UNSTAGE_FILES', { paths: ev.paths })
     },
     
     assignGitDiff: assign({
@@ -101,7 +101,7 @@ export const commitState = setup({
     
     viewDiff: ({ event }) => {
       const ev = event as { type: 'commit.VIEW_DIFF'; path: string; staged: boolean }
-      sendToBackend('GET_GIT_DIFF', { path: ev.path, staged: ev.staged })
+      sendToBackend('commit.GET_GIT_DIFF', { path: ev.path, staged: ev.staged })
     },
     
     updateCommitMessage: assign({
@@ -113,7 +113,7 @@ export const commitState = setup({
     
     commit: ({ context }) => {
       if (context.commitMessage.trim()) {
-        sendToBackend('COMMIT', { message: context.commitMessage })
+        sendToBackend('commit.COMMIT', { message: context.commitMessage })
       }
     },
     
@@ -132,7 +132,7 @@ export const commitState = setup({
     
     revertFile: ({ context }) => {
       if (context.revertDialogFile) {
-        sendToBackend('REVERT_FILE', { path: context.revertDialogFile.path })
+        sendToBackend('commit.REVERT_FILE', { path: context.revertDialogFile.path })
       }
     },
     

@@ -47,7 +47,7 @@ export const searchState = setup({
       const ev = event as { type: 'search.START'; query: string }
       const parentContext = getParentContext(self)
       
-      sendToBackend('SEARCH_FILES', {
+      sendToBackend('search.SEARCH_FILES', {
         query: ev.query,
         path: context.searchOptions.searchInCurrentDir 
           ? parentContext?.currentDirectory 
@@ -61,7 +61,7 @@ export const searchState = setup({
     },
     
     cancelSearch: () => {
-      sendToBackend('CANCEL_SEARCH', {})
+      sendToBackend('search.CANCEL_SEARCH', {})
     },
     
     assignSearchQuery: assign({

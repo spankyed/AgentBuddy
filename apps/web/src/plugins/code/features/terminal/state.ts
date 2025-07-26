@@ -23,7 +23,7 @@ export type Event =
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
   | { type: 'terminal.LIST' }
-  | { type: 'terminal.TERMINALS_LISTED'; terminals: TerminalInfo[] }
+  | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }  // Backend format
   | { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }
   | { type: 'terminal.CREATED'; data: TerminalInfo }  // Backend format
   | { type: 'terminal.CLOSED'; terminalId: string }
@@ -44,7 +44,7 @@ export const terminalState = setup({
       const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string }
       const parentContext = getParentContext(self)
       
-      sendToBackend('CREATE_TERMINAL', {
+      sendToBackend('terminal.CREATE_TERMINAL', {
         title: ev.title,
         cwd: ev.cwd || parentContext?.currentDirectory
       })
@@ -52,17 +52,17 @@ export const terminalState = setup({
     
     closeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.CLOSE'; terminalId: string }
-      sendToBackend('CLOSE_TERMINAL', { terminalId: ev.terminalId })
+      sendToBackend('terminal.CLOSE_TERMINAL', { terminalId: ev.terminalId })
     },
     
     sendTerminalInput: ({ event }) => {
       const ev = event as { type: 'terminal.INPUT'; terminalId: string; data: string }
-      sendToBackend('TERMINAL_INPUT', { terminalId: ev.terminalId, data: ev.data })
+      sendToBackend('terminal.TERMINAL_INPUT', { terminalId: ev.terminalId, data: ev.data })
     },
     
     resizeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
-      sendToBackend('RESIZE_TERMINAL', { 
+      sendToBackend('terminal.RESIZE_TERMINAL', { 
         terminalId: ev.terminalId, 
         cols: ev.cols, 
         rows: ev.rows 
@@ -70,13 +70,13 @@ export const terminalState = setup({
     },
     
     listTerminals: () => {
-      sendToBackend('LIST_TERMINALS', {})
+      sendToBackend('terminal.LIST_TERMINALS', {})
     },
     
     assignTerminals: assign({
       terminals: ({ event }) => {
-        const ev = event as { type: 'terminal.TERMINALS_LISTED'; terminals: TerminalInfo[] }
-        return ev.terminals
+        const ev = event as { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
+        return ev.data || []
       }
     }),
     
@@ -205,10 +205,11 @@ export const terminalState = setup({
     handleCodeStartup: ({ event, self }) => {
       const ev = event as { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } }
       // If startup includes terminals, handle them like TERMINALS_LISTED
+      console.log('ev.data.terminals: ', ev.data.terminals);
       if (ev.data?.terminals) {
         self.send({ 
           type: 'terminal.TERMINALS_LISTED', 
-          terminals: ev.data.terminals
+          data: ev.data.terminals
         })
       }
     }

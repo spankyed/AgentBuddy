@@ -22,6 +22,8 @@ export type Event =
   | { type: 'explorer.DELETE_FILE'; path: string }
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
   | { type: 'explorer.OPEN_FILE'; path: string }
+  | { type: 'explorer.WRITE_FILE'; path: string; content: string }
+  | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
   | { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
   | { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
@@ -127,7 +129,7 @@ export const explorerState = setup({
         
         // Only refresh if file is not modified by user
         if (!file.modified) {
-          sendToBackend('READ_FILE', { path: ev.data.path })
+          sendToBackend('explorer.READ_FILE', { path: ev.data.path })
         }
       }
     },
@@ -162,7 +164,7 @@ export const explorerState = setup({
     
     listFiles: ({ event }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
-      sendToBackend('LIST_FILES', { path: ev.path })
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
     },
     
     assignFiles: enqueueActions(({ enqueue, event, self }) => {
@@ -177,12 +179,12 @@ export const explorerState = setup({
     
     deleteFile: ({ event }) => {
       const ev = event as { type: 'explorer.DELETE_FILE'; path: string }
-      sendToBackend('DELETE_FILE', { path: ev.path })
+      sendToBackend('explorer.DELETE_FILE', { path: ev.path })
     },
     
     renameFile: ({ event }) => {
       const ev = event as { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
-      sendToBackend('RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
+      sendToBackend('explorer.RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
     },
     
     assignError: ({ event, self }) => {
@@ -199,13 +201,13 @@ export const explorerState = setup({
     
     openFile: ({ event }) => {
       const ev = event as { type: 'explorer.OPEN_FILE'; path: string }
-      sendToBackend('READ_FILE', { path: ev.path })
+      sendToBackend('explorer.READ_FILE', { path: ev.path })
     },
     
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
-      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('LIST_FILES', { path: ev.path })
+      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
       updateParentState(self, { currentDirectory: ev.path })
@@ -214,8 +216,8 @@ export const explorerState = setup({
     setRootDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
       localStorage.setItem('code-plugin-root-directory', ev.path)
-      sendToBackend('CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('LIST_FILES', { path: ev.path })
+      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
       updateParentState(self, { 
@@ -229,7 +231,7 @@ export const explorerState = setup({
       const parentContext = getParentContext(self)
       
       // Refresh file list
-      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || '' })
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
       
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
@@ -250,7 +252,7 @@ export const explorerState = setup({
       const parentContext = getParentContext(self)
       
       // Refresh file list
-      sendToBackend('LIST_FILES', { path: parentContext?.currentDirectory || '' })
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
       
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
@@ -269,6 +271,16 @@ export const explorerState = setup({
           activeFilePath: newActiveFile
         })
       }
+    },
+    
+    writeFile: ({ event }) => {
+      const ev = event as { type: 'explorer.WRITE_FILE'; path: string; content: string }
+      sendToBackend('explorer.WRITE_FILE', { path: ev.path, content: ev.content })
+    },
+    
+    closeFile: ({ event }) => {
+      const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
+      sendToBackend('explorer.CLOSE_FILE', { path: ev.path })
     }
   }
 }).createMachine({
@@ -331,6 +343,12 @@ export const explorerState = setup({
         },
         'explorer.DIRECTORY_CHANGED': {
           actions: 'handleDirectoryChanged'
+        },
+        'explorer.WRITE_FILE': {
+          actions: 'writeFile'
+        },
+        'explorer.CLOSE_FILE': {
+          actions: 'closeFile'
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

@@ -39,8 +39,8 @@ export const pullRequestState = setup({
   },
   actions: {
     refreshPrStatus: () => {
-      sendToBackend('GET_BASE_BRANCH', {})
-      sendToBackend('GET_BRANCH_DIFF', {})
+      sendToBackend('pr.GET_BASE_BRANCH', {})
+      sendToBackend('pr.GET_BRANCH_DIFF', {})
     },
     
     assignBaseBranch: assign({
@@ -73,7 +73,7 @@ export const pullRequestState = setup({
     
     viewPrDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.VIEW_DIFF'; path: string }
-      sendToBackend('GET_BRANCH_FILE_DIFF', { 
+      sendToBackend('pr.GET_BRANCH_FILE_DIFF', { 
         path: ev.path, 
         baseBranch: context.prBaseBranch 
       })
