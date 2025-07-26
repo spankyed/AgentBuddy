@@ -34,16 +34,13 @@ export type Event =
   | { type: 'commit.CLEAR_DIFF' }
   | { type: 'commit.REVERT_FILE'; path: string }
   | { type: 'commit.TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
-  | { type: 'commit.STATUS_RECEIVED'; files: GitStatusFile[]; branch: string }
-  | { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-  | { type: 'commit.DIFF_RECEIVED'; diff: GitDiff }
-  | { type: 'commit.GIT_DIFF'; data: GitDiff }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
   | { type: 'commit.COMMIT_SUCCESS'; message: string }
   | { type: 'commit.FILE_REVERTED'; path: string }
-  | { type: 'commit.ERROR'; message: string }
-  | { type: 'commit.GIT_ERROR'; data: { message: string } };
+  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } };
 
 export const commitState = setup({
   types: {
@@ -55,26 +52,7 @@ export const commitState = setup({
       sendToBackend('commit.GET_GIT_STATUS', {})
     },
     
-    assignGitStatus: assign({
-      gitStatus: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; files: GitStatusFile[]; branch: string }
-        return ev.files
-      },
-      gitBranch: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; files: GitStatusFile[]; branch: string }
-        return ev.branch
-      },
-      isGitLoading: false,
-      gitError: null
-    }),
     
-    assignGitError: assign({
-      gitError: ({ event }) => {
-        const ev = event as { type: 'commit.ERROR'; message: string }
-        return ev.message
-      },
-      isGitLoading: false
-    }),
     
     selectGitFile: assign({
       selectedGitFile: ({ event }) => {
@@ -93,12 +71,6 @@ export const commitState = setup({
       sendToBackend('commit.UNSTAGE_FILES', { paths: ev.paths })
     },
     
-    assignGitDiff: assign({
-      gitDiff: ({ event }) => {
-        const ev = event as { type: 'commit.DIFF_RECEIVED'; diff: GitDiff }
-        return ev.diff
-      }
-    }),
     
     viewDiff: ({ event }) => {
       const ev = event as { type: 'commit.VIEW_DIFF'; path: string; staged: boolean }
@@ -148,58 +120,30 @@ export const commitState = setup({
       gitDiff: null
     }),
     
-    handleGitStatus: assign({
+    handleStatusReceived: assign({
       gitStatus: ({ event }) => {
-        const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
         return ev.data.files
       },
       gitBranch: ({ event }) => {
-        const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
         return ev.data.branch
       },
       isGitLoading: false,
       gitError: null
     }),
     
-    handleGitError: assign({
+    handleErrorReceived: assign({
       gitError: ({ event }) => {
-        const ev = event as { type: 'commit.GIT_ERROR'; data: { message: string } }
+        const ev = event as { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
         return ev.data.message
       },
       isGitLoading: false
     }),
     
-    handleDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
-      enqueue('assignGitDiff')
-      enqueue(() => {
-        const ev = event as { type: 'commit.DIFF_RECEIVED'; diff: GitDiff }
-        if (context.selectedGitFile) {
-          const parentContext = getParentContext(self)
-          const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-          
-          // Create diff tab
-          const diffTab = {
-            path: diffTabId,
-            content: '',
-            modified: false,
-            isDiff: true,
-            gitDiff: ev.diff,
-            gitFile: context.selectedGitFile
-          }
-          
-          const result = mergeTabs(
-            parentContext?.openFiles || [],
-            [diffTab],
-            diffTabId // Set as active
-          )
-          
-          updateParentState(self, result)
-        }
-      })
-    }),
     
-    handleGitDiff: enqueueActions(({ enqueue, self, context, event }) => {
-      const ev = event as { type: 'commit.GIT_DIFF'; data: GitDiff }
+    handleDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
+      const ev = event as { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
       enqueue.assign({
         gitDiff: ev.data
       })
@@ -249,16 +193,10 @@ export const commitState = setup({
           actions: ['setGitLoading', 'refreshGitStatus']
         },
         'commit.STATUS_RECEIVED': {
-          actions: 'assignGitStatus'
+          actions: 'handleStatusReceived'
         },
-        'commit.GIT_STATUS': {
-          actions: 'handleGitStatus'
-        },
-        'commit.ERROR': {
-          actions: 'assignGitError'
-        },
-        'commit.GIT_ERROR': {
-          actions: 'handleGitError'
+        'commit.ERROR_RECEIVED': {
+          actions: 'handleErrorReceived'
         },
         'commit.SELECT_FILE': {
           actions: 'selectGitFile'
@@ -280,9 +218,6 @@ export const commitState = setup({
         },
         'commit.DIFF_RECEIVED': {
           actions: 'handleDiffReceived'
-        },
-        'commit.GIT_DIFF': {
-          actions: 'handleGitDiff'
         },
         'commit.UPDATE_MESSAGE': {
           actions: 'updateCommitMessage'

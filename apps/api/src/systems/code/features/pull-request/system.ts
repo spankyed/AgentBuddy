@@ -18,9 +18,9 @@ export const IncomingPullRequestEvents = [
 
 // Outgoing events to frontend
 export type OutgoingPullRequestEvents =
-  | { type: 'pr.BASE_BRANCH'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+  | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
+  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
+  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
   | { type: 'pr.ERROR'; data: { message: string } }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
@@ -52,13 +52,13 @@ export const pullRequestSystem = setup({
         
         const branch = await gitRepository.getPRBaseBranch()
         const wrapped = emit(pluginId, {
-          type: 'pr.BASE_BRANCH',
+          type: 'pr.BASE_BRANCH_RECEIVED',
           data: { branch }
         })
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -79,13 +79,13 @@ export const pullRequestSystem = setup({
         const baseBranch = ev.baseBranch || await gitRepository.getPRBaseBranch()
         const files = await gitRepository.getBranchDiff(baseBranch)
         const wrapped = emit(pluginId, {
-          type: 'pr.BRANCH_DIFF',
+          type: 'pr.BRANCH_DIFF_RECEIVED',
           data: { files, baseBranch }
         })
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -110,7 +110,7 @@ export const pullRequestSystem = setup({
         const modifiedContent = await gitRepository.getFileContentFromBranch(ev.path, 'HEAD')
 
         const wrapped = emit(pluginId, {
-          type: 'pr.BRANCH_FILE_DIFF',
+          type: 'pr.FILE_DIFF_RECEIVED',
           data: {
             path: ev.path,
             diff,
@@ -122,7 +122,7 @@ export const pullRequestSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)

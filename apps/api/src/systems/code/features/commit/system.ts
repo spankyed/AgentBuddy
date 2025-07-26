@@ -23,13 +23,13 @@ export const IncomingCommitEvents = [
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
-  | { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-  | { type: 'commit.GIT_DIFF'; data: GitDiff }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
   | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
   | { type: 'commit.COMMIT_SUCCESS'; data: { message: string } }
   | { type: 'commit.FILE_REVERTED'; data: { path: string } }
-  | { type: 'commit.GIT_ERROR'; data: { message: string } }
+  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
 
 export interface Context {
@@ -88,7 +88,7 @@ export const commitSystem = setup({
         const isGitRepo = await context.gitRepository.isGitRepository()
         if (!isGitRepo) {
           const wrapped = emit(pluginId, {
-            type: 'commit.GIT_ERROR',
+            type: 'commit.ERROR_RECEIVED',
             data: { message: 'Not a git repository' }
           })
           rootEvents.emitOutgoing(wrapped.event)
@@ -100,7 +100,7 @@ export const commitSystem = setup({
           context.gitRepository.getCurrentBranch()
         ])
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_STATUS',
+          type: 'commit.STATUS_RECEIVED',
           data: { files: status, branch }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -114,7 +114,7 @@ export const commitSystem = setup({
         }
 
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -150,7 +150,7 @@ export const commitSystem = setup({
         }
 
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_DIFF',
+          type: 'commit.DIFF_RECEIVED',
           data: {
             path: ev.path || 'all',
             diff,
@@ -162,7 +162,7 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -182,7 +182,7 @@ export const commitSystem = setup({
         self.send({ type: 'commit.GET_GIT_STATUS' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -202,7 +202,7 @@ export const commitSystem = setup({
         self.send({ type: 'commit.GET_GIT_STATUS' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -232,7 +232,7 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(fileChangeWrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -246,7 +246,7 @@ export const commitSystem = setup({
         const stagedFiles = await context.gitRepository.getStagedFiles()
         if (stagedFiles.length === 0) {
           const wrapped = emit(pluginId, {
-            type: 'commit.GIT_ERROR',
+            type: 'commit.ERROR_RECEIVED',
             data: { message: 'No files staged for commit. Please stage files before committing.' }
           })
           rootEvents.emitOutgoing(wrapped.event)
@@ -270,7 +270,7 @@ export const commitSystem = setup({
         }
 
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: errorMessage }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -287,7 +287,7 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ERROR',
+          type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)

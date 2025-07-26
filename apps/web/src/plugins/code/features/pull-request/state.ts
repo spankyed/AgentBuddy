@@ -25,13 +25,10 @@ export type Event =
   | { type: 'pr.REFRESH_STATUS' }
   | { type: 'pr.SELECT_FILE'; file: GitStatusFile }
   | { type: 'pr.VIEW_DIFF'; path: string }
-  | { type: 'pr.BASE_BRANCH_RECEIVED'; branch: string }
-  | { type: 'pr.BRANCH_DIFF_RECEIVED'; files: GitStatusFile[]; baseBranch: string }
-  | { type: 'pr.FILE_DIFF_RECEIVED'; diff: GitDiff }
   | { type: 'pr.ERROR'; message: string }
-  | { type: 'pr.BASE_BRANCH'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+  | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
+  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
+  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } };
 
 export const pullRequestState = setup({
@@ -45,26 +42,7 @@ export const pullRequestState = setup({
       sendToBackend('pr.GET_BRANCH_DIFF', {})
     },
     
-    assignBaseBranch: assign({
-      prBaseBranch: ({ event }) => {
-        const ev = event as { type: 'pr.BASE_BRANCH_RECEIVED'; branch: string }
-        return ev.branch
-      },
-      isPrLoading: false,
-      prError: null
-    }),
     
-    assignBranchDiff: assign({
-      prFiles: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; files: GitStatusFile[]; baseBranch: string }
-        return ev.files
-      },
-      prBaseBranch: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; files: GitStatusFile[]; baseBranch: string }
-        return ev.baseBranch
-      },
-      isPrLoading: false
-    }),
     
     selectPrFile: assign({
       selectedPrFile: ({ event }) => {
@@ -81,12 +59,6 @@ export const pullRequestState = setup({
       })
     },
     
-    assignPrDiff: assign({
-      prDiff: ({ event }) => {
-        const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; diff: GitDiff }
-        return ev.diff
-      }
-    }),
     
     assignPrError: assign({
       prError: ({ event }) => {
@@ -98,58 +70,30 @@ export const pullRequestState = setup({
     
     setPrLoading: assign({ isPrLoading: true }),
     
-    handleBaseBranch: assign({
+    handleBaseBranchReceived: assign({
       prBaseBranch: ({ event }) => {
-        const ev = event as { type: 'pr.BASE_BRANCH'; data: { branch: string } }
+        const ev = event as { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
         return ev.data.branch
       },
       isPrLoading: false,
       prError: null
     }),
     
-    handleBranchDiff: assign({
+    handleBranchDiffReceived: assign({
       prFiles: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
         return ev.data.files
       },
       prBaseBranch: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
         return ev.data.baseBranch
       },
       isPrLoading: false
     }),
     
-    handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
-      enqueue('assignPrDiff')
-      enqueue(() => {
-        const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; diff: GitDiff }
-        if (context.selectedPrFile) {
-          const parentContext = getParentContext(self)
-          const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-          
-          // Create diff tab
-          const diffTab = {
-            path: diffTabId,
-            content: '',
-            modified: false,
-            isDiff: true,
-            gitDiff: ev.diff,
-            gitFile: context.selectedPrFile
-          }
-          
-          const result = mergeTabs(
-            parentContext?.openFiles || [],
-            [diffTab],
-            diffTabId // Set as active
-          )
-          
-          updateParentState(self, result)
-        }
-      })
-    }),
     
-    handleBranchFileDiff: enqueueActions(({ enqueue, self, context, event }) => {
-      const ev = event as { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+    handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
+      const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
       enqueue.assign({
         prDiff: ev.data
       })
@@ -196,32 +140,23 @@ export const pullRequestState = setup({
         'pr.REFRESH_STATUS': {
           actions: ['setPrLoading', 'refreshPrStatus']
         },
-        'pr.BASE_BRANCH_RECEIVED': {
-          actions: 'assignBaseBranch'
-        },
-        'pr.BRANCH_DIFF_RECEIVED': {
-          actions: 'assignBranchDiff'
-        },
         'pr.SELECT_FILE': {
           actions: 'selectPrFile'
         },
         'pr.VIEW_DIFF': {
           actions: 'viewPrDiff'
         },
-        'pr.FILE_DIFF_RECEIVED': {
-          actions: 'handleFileDiffReceived'
-        },
         'pr.ERROR': {
           actions: 'assignPrError'
         },
-        'pr.BASE_BRANCH': {
-          actions: 'handleBaseBranch'
+        'pr.BASE_BRANCH_RECEIVED': {
+          actions: 'handleBaseBranchReceived'
         },
-        'pr.BRANCH_DIFF': {
-          actions: 'handleBranchDiff'
+        'pr.BRANCH_DIFF_RECEIVED': {
+          actions: 'handleBranchDiffReceived'
         },
-        'pr.BRANCH_FILE_DIFF': {
-          actions: 'handleBranchFileDiff'
+        'pr.FILE_DIFF_RECEIVED': {
+          actions: 'handleFileDiffReceived'
         },
         'pr.STATUS_CHANGED': {
           actions: 'refreshPrStatus'
