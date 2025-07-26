@@ -1,6 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import type { GitStatusFile, GitDiff } from '../../state';
+import type { GitStatusFile, GitDiff } from '../commit/state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
 

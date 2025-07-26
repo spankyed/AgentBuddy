@@ -1,7 +1,27 @@
 import { setup, assign } from 'xstate';
 import { trpc } from '@/core/trpc';
-import type { SearchResult, SearchProgress } from '../../state';
 import { getParentContext } from '../../utils/parent-communication';
+
+// Search types
+export interface SearchMatch {
+  line: number
+  column: number
+  lineText: string
+  matchStart: number
+  matchEnd: number
+}
+
+export interface SearchResult {
+  path: string
+  matches: SearchMatch[]
+  fileSize?: number
+}
+
+export interface SearchProgress {
+  filesSearched: number
+  totalFiles: number
+  currentFile?: string
+}
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({

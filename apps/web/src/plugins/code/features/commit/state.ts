@@ -1,8 +1,24 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import type { GitStatusFile, GitDiff } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
+
+// Git types
+export interface GitStatusFile {
+  path: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged'
+  staged: boolean
+  originalPath?: string // For renames and copies
+  score?: number // Rename/copy similarity score (0-100)
+}
+
+export interface GitDiff {
+  path: string
+  diff: string
+  staged: boolean
+  originalContent?: string
+  modifiedContent?: string
+}
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({

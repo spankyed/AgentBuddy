@@ -53,7 +53,7 @@ import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
-import type { GitStatusFile } from '@/plugins/code/state'
+import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)

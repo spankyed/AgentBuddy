@@ -7,63 +7,13 @@ import type { OutgoingCodeEvents } from '@abuddy/api';
 // Import child state machines
 import { explorerState } from './features/explorer/state';
 import { searchState } from './features/search/state';
-import { commitState } from './features/commit/state';
+import { commitState, type GitStatusFile, type GitDiff } from './features/commit/state';
 import { pullRequestState } from './features/pull-request/state';
-import { terminalState } from './features/terminal/state';
-
-// Search types
-export interface SearchMatch {
-  line: number
-  column: number
-  lineText: string
-  matchStart: number
-  matchEnd: number
-}
-
-export interface SearchResult {
-  path: string
-  matches: SearchMatch[]
-  fileSize?: number
-}
-
-export interface SearchProgress {
-  filesSearched: number
-  totalFiles: number
-  currentFile?: string
-}
+import { terminalState, type TerminalInfo } from './features/terminal/state';
 
 
 export const id = 'code' as const;
 
-// Helper function to send events to backend
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: id as any,
-    type: type as any,
-    ...data
-  } as any)
-}
-
-
-export interface FileInfo {
-  name: string
-  path: string
-  type: 'file' | 'directory'
-  size?: number
-  modifiedAt?: Date
-  extension?: string
-}
-
-export interface DirectoryContent {
-  path: string
-  files: FileInfo[]
-}
-
-export interface FileContent {
-  path: string
-  content: string
-  encoding: string
-}
 
 export interface OpenFile {
   path: string
@@ -77,46 +27,13 @@ export interface OpenFile {
   pendingSaveConflict?: boolean
 }
 
-// Git types
-export interface GitStatusFile {
-  path: string
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged'
-  staged: boolean
-  originalPath?: string // For renames and copies
-  score?: number // Rename/copy similarity score (0-100)
-}
-
-export interface GitDiff {
-  path: string
-  diff: string
-  staged: boolean
-  originalContent?: string
-  modifiedContent?: string
-}
-
-// File watching types
-export interface FileChangeInfo {
-  path: string
-  modifiedAt: Date
-  changeType: 'add' | 'change' | 'unlink'
-}
-
-// Terminal types
-export interface TerminalInfo {
-  id: string
-  title: string
-  pid: number
-  shell?: string
-  cwd: string
-  active: boolean
-  cols: number
-  rows: number
-}
-
 export interface TerminalTab extends OpenFile {
   isTerminal: true
   terminalInfo: TerminalInfo
 }
+
+
+
 
 export type Context = {
   rootDirectory: string

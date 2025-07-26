@@ -1,9 +1,20 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import type { TerminalInfo } from '../../state';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs, removeTabs } from '../../utils/tab-management';
+
+// Terminal types
+export interface TerminalInfo {
+  id: string
+  title: string
+  pid: number
+  shell?: string
+  cwd: string
+  active: boolean
+  cols: number
+  rows: number
+}
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({

@@ -1,8 +1,35 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import type { FileInfo } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs, removeTabs } from '../../utils/tab-management';
+
+// File types
+export interface FileInfo {
+  name: string
+  path: string
+  type: 'file' | 'directory'
+  size?: number
+  modifiedAt?: Date
+  extension?: string
+}
+
+export interface DirectoryContent {
+  path: string
+  files: FileInfo[]
+}
+
+export interface FileContent {
+  path: string
+  content: string
+  encoding: string
+}
+
+// File watching types
+export interface FileChangeInfo {
+  path: string
+  modifiedAt: Date
+  changeType: 'add' | 'change' | 'unlink'
+}
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
