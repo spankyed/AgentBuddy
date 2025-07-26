@@ -22,6 +22,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
   | { type: 'pr.ERROR'; data: { message: string } }
+  | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
   // We'll get gitRepository from commit system via parent
@@ -30,7 +31,8 @@ export interface Context {
 export type Event = 
   | { type: 'pr.GET_BASE_BRANCH' }
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
-  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string };
+  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
+  | { type: 'pr.GIT_STATUS_CHANGED' };
 
 export const pullRequestSystem = setup({
   types: {
@@ -125,6 +127,15 @@ export const pullRequestSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
+    },
+
+    handleGitStatusChanged: async ({ self }) => {
+      // When git status changes, send PR status update event to frontend
+      const wrapped = emit(pluginId, {
+        type: 'pr.STATUS_CHANGED',
+        data: { timestamp: new Date() }
+      })
+      rootEvents.emitOutgoing(wrapped.event)
     }
   }
 }).createMachine({
@@ -142,6 +153,9 @@ export const pullRequestSystem = setup({
         },
         'pr.GET_BRANCH_FILE_DIFF': {
           actions: 'getBranchFileDiff'
+        },
+        'pr.GIT_STATUS_CHANGED': {
+          actions: 'handleGitStatusChanged'
         }
       }
     }

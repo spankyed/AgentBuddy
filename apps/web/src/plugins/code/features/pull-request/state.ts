@@ -30,7 +30,8 @@ export type Event =
   | { type: 'pr.ERROR'; message: string }
   | { type: 'pr.BASE_BRANCH'; data: { branch: string } }
   | { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff };
+  | { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+  | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } };
 
 export const pullRequestState = setup({
   types: {
@@ -246,6 +247,9 @@ export const pullRequestState = setup({
         },
         'pr.BRANCH_FILE_DIFF': {
           actions: 'handleBranchFileDiff'
+        },
+        'pr.STATUS_CHANGED': {
+          actions: 'refreshPrStatus'
         }
       }
     }

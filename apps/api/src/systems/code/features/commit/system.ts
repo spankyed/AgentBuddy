@@ -71,9 +71,15 @@ export const commitSystem = setup({
       await context.gitWatcher.startWatching()
     },
 
-    handleGitStatusChanged: async ({ context, self }) => {
+    handleGitStatusChanged: async ({ context, self, system }) => {
       // When git status changes, automatically send the new status to frontend
       self.send({ type: 'commit.GET_GIT_STATUS' })
+      
+      // Also notify the PR system to refresh if it exists
+      const prSystem = system.get('pr')
+      if (prSystem) {
+        prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
+      }
     },
 
     getGitStatus: async ({ context }) => {
