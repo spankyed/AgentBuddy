@@ -31,7 +31,8 @@ export type Event =
   | { type: 'terminal.OUTPUT'; terminalId: string; data: string }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }  // Backend format
   | { type: 'terminal.ERROR'; message: string; terminalId?: string }
-  | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } };
+  | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
+  | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcast event
 
 export const terminalState = setup({
   types: {
@@ -229,6 +230,18 @@ export const terminalState = setup({
         },
         'terminal.ERROR': {
           actions: 'assignTerminalError'
+        },
+        'CODE_STARTUP': {
+          actions: ({ event, self }) => {
+            const ev = event as { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } }
+            // If startup includes terminals, handle them like TERMINALS_LISTED
+            if (ev.data?.terminals) {
+              self.send({ 
+                type: 'terminal.TERMINALS_LISTED', 
+                terminals: ev.data.terminals
+              })
+            }
+          }
         }
       }
     }

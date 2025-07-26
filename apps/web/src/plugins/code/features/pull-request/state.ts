@@ -97,7 +97,7 @@ export const pullRequestState = setup({
     setPrLoading: assign({ isPrLoading: true })
   }
 }).createMachine({
-  id: 'pullRequest',
+  id: 'pr',
   initial: 'idle',
   context: {
     prFiles: [],

@@ -32,13 +32,15 @@ export type Event =
   | { type: 'explorer.FILE_DELETED'; path: string }
   | { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
   | { type: 'explorer.ERROR'; message: string }
-  // Backend events that affect file state
-  | { type: 'FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
-  | { type: 'FILE_SAVED'; data: { path: string } }
-  | { type: 'FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
-  | { type: 'CODE_ERROR'; data: { message: string } }
-  | { type: 'CURRENT_DIRECTORY'; data: { path: string } }
-  | { type: 'DIRECTORY_CHANGED'; data: { path: string } };
+  // Backend events that affect file state (now with explorer. prefix)
+  | { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
+  | { type: 'explorer.FILE_SAVED'; data: { path: string } }
+  | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
+  | { type: 'explorer.CODE_ERROR'; data: { message: string } }
+  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
+  | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
+  // Broadcast events
+  | { type: 'CODE_STARTUP'; data: any };
 
 export const explorerState = setup({
   types: {
@@ -208,9 +210,9 @@ export const explorerState = setup({
           actions: 'assignError'
         },
         // Handle backend events
-        'FILE_CONTENT': {
+        'explorer.FILE_CONTENT': {
           actions: ({ event, self }) => {
-            const ev = event as { type: 'FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
+            const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
             const parentContext = getParentContext(self)
             const openFiles = parentContext?.openFiles || []
             const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
@@ -247,9 +249,9 @@ export const explorerState = setup({
             })
           }
         },
-        'FILE_SAVED': {
+        'explorer.FILE_SAVED': {
           actions: ({ event, self }) => {
-            const ev = event as { type: 'FILE_SAVED'; data: { path: string } }
+            const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
             const parentContext = getParentContext(self)
             const newOpenFiles = parentContext?.openFiles?.map((f: any) => 
               f.path === ev.data.path 
@@ -266,9 +268,9 @@ export const explorerState = setup({
             updateParentState(self, { openFiles: newOpenFiles })
           }
         },
-        'FILE_CHANGED_EXTERNALLY': {
+        'explorer.FILE_CHANGED_EXTERNALLY': {
           actions: ({ event, self }) => {
-            const ev = event as { type: 'FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
+            const ev = event as { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
             const parentContext = getParentContext(self)
             const openFiles = parentContext?.openFiles || []
             const file = openFiles.find((f: any) => f.path === ev.data.path)
@@ -295,31 +297,31 @@ export const explorerState = setup({
             }
           }
         },
-        'CODE_ERROR': {
+        'explorer.CODE_ERROR': {
           actions: ({ event, self }) => {
-            const ev = event as { type: 'CODE_ERROR'; data: { message: string } }
+            const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string } }
             updateParentState(self, { error: ev.data.message, isLoading: false })
           }
         },
-        'CURRENT_DIRECTORY': {
+        'explorer.CURRENT_DIRECTORY': {
           actions: [assign({
             currentDirectory: ({ event }) => {
-              const ev = event as { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+              const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
               return ev.data.path
             }
           }), ({ event, self }) => {
-            const ev = event as { type: 'CURRENT_DIRECTORY'; data: { path: string } }
+            const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
             updateParentState(self, { currentDirectory: ev.data.path })
           }]
         },
-        'DIRECTORY_CHANGED': {
+        'explorer.DIRECTORY_CHANGED': {
           actions: [assign({
             currentDirectory: ({ event }) => {
-              const ev = event as { type: 'DIRECTORY_CHANGED'; data: { path: string } }
+              const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
               return ev.data.path
             }
           }), ({ event, self, system }) => {
-            const ev = event as { type: 'DIRECTORY_CHANGED'; data: { path: string } }
+            const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
             updateParentState(self, { currentDirectory: ev.data.path })
             
             // Refresh git panels if active
@@ -327,9 +329,15 @@ export const explorerState = setup({
             if (parentContext?.selectedPanel === 'commit') {
               system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
             } else if (parentContext?.selectedPanel === 'pr') {
-              system.get('pullRequest')?.send({ type: 'pr.REFRESH_STATUS' })
+              system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
             }
           }]
+        },
+        'CODE_STARTUP': {
+          actions: ({ event, self }) => {
+            // Explorer can handle startup if needed
+            // Currently no specific action required
+          }
         }
       }
     }

@@ -44,6 +44,7 @@ const sendToBackend = (type: string, data: any) => {
   } as any)
 }
 
+
 export interface FileInfo {
   name: string
   path: string
@@ -158,7 +159,7 @@ const codeState = setup({
       enqueue.spawnChild('explorerState', { systemId: 'explorer' });
       enqueue.spawnChild('searchState', { systemId: 'search' });
       enqueue.spawnChild('commitState', { systemId: 'commit' });
-      enqueue.spawnChild('pullRequestState', { systemId: 'pullRequest' });
+      enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
       enqueue.spawnChild('terminalState', { systemId: 'terminal' });
     }),
 
@@ -181,40 +182,20 @@ const codeState = setup({
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
       
-      // Route based on prefix
-      if (eventType.startsWith('explorer.')) {
+      // Broadcast events go to all children
+      if (eventType === 'CODE_STARTUP') {
         system.get('explorer')?.send(event);
-      } else if (eventType.startsWith('search.')) {
         system.get('search')?.send(event);
-      } else if (eventType.startsWith('commit.')) {
         system.get('commit')?.send(event);
-      } else if (eventType.startsWith('pr.')) {
-        system.get('pullRequest')?.send(event);
-      } else if (eventType.startsWith('terminal.')) {
+        system.get('pr')?.send(event);
         system.get('terminal')?.send(event);
+        return;
       }
       
-      // Route backend events to appropriate child machines
-      const backendEvents = [
-        'FILE_CONTENT', 'FILE_SAVED', 'FILE_CHANGED_EXTERNALLY', 
-        'CODE_ERROR', 'CURRENT_DIRECTORY', 'DIRECTORY_CHANGED',
-        'CODE_STARTUP'
-      ];
-      
-      if (backendEvents.includes(eventType)) {
-        // File-related events go to explorer
-        system.get('explorer')?.send(event);
-        
-        // CODE_STARTUP also needs to go to terminal for loading persisted tabs
-        if (eventType === 'CODE_STARTUP') {
-          const event_ = event as any
-          if (event_.data?.terminals) {
-            system.get('terminal')?.send({ 
-              type: 'terminal.TERMINALS_LISTED', 
-              terminals: event_.data.terminals
-            });
-          }
-        }
+      // Route based on prefix - prefix matches system ID
+      const [prefix] = eventType.split('.');
+      if (prefix) {
+        system.get(prefix)?.send(event);
       }
     },
   }

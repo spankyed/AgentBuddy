@@ -57,7 +57,7 @@ import type { GitStatusFile } from '@/plugins/code/state'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
-const prActor = codeActor.system.get('pullRequest')!
+const prActor = codeActor.system.get('pr')!
 
 
 // State selectors from PR actor

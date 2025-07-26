@@ -74,10 +74,10 @@ export type OutgoingCodeEvents =
   | { type: 'explorer.FILE_INFO'; data: FileInfo }
   | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
   
-  // Parent-handled explorer events (no prefix)
-  | { type: 'FILE_CONTENT'; data: FileContent }
-  | { type: 'FILE_SAVED'; data: { path: string } }
-  | { type: 'CODE_ERROR'; data: CodeSystemError }
+  // File-related events (with explorer prefix)
+  | { type: 'explorer.FILE_CONTENT'; data: FileContent }
+  | { type: 'explorer.FILE_SAVED'; data: { path: string } }
+  | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
   
   // Search events
   | { type: 'search.RESULT'; data: SearchResult }
@@ -110,9 +110,11 @@ export type OutgoingCodeEvents =
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.LIST'; data: TerminalInfo[] }
   
-  // Parent-only events (no prefix)
-  | { type: 'CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-  | { type: 'FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+  // Explorer events
+  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
+  | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+  
+  // Broadcast events (sent to all child systems)
   | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
@@ -146,7 +148,7 @@ export const systemMachine = setup({
     sendCurrentDirectory: ({ system, event, context }) => {
       const pluginId = id
       system.get(bus).send(emit(pluginId, {
-        type: 'CURRENT_DIRECTORY',
+        type: 'explorer.CURRENT_DIRECTORY',
         data: {
           path: context.currentDirectory,
           rootDirectory: context.rootDirectory
@@ -178,7 +180,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -194,7 +196,7 @@ export const systemMachine = setup({
       try {
         const content = await context.repository.readFile(ev.path)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_CONTENT',
+          type: 'explorer.FILE_CONTENT',
           data: content,
         }))
 
@@ -202,7 +204,7 @@ export const systemMachine = setup({
         await context.fileWatcher.watchFile(ev.path)
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -218,12 +220,12 @@ export const systemMachine = setup({
       try {
         await context.repository.writeFile(ev.path, ev.content)
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_SAVED',
+          type: 'explorer.FILE_SAVED',
           data: { path: ev.path },
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -244,7 +246,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -265,7 +267,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -286,7 +288,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -307,7 +309,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -328,7 +330,7 @@ export const systemMachine = setup({
         }))
       } catch (error: any) {
         system.get(bus).send(emit(pluginId, {
-          type: 'CODE_ERROR',
+          type: 'explorer.CODE_ERROR',
           data: {
             code: error.code || 'IO_ERROR',
             message: error.message,
@@ -613,7 +615,7 @@ export const systemMachine = setup({
         self.send({ type: 'GET_GIT_STATUS' })
         // Notify frontend about file change
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_CHANGED_EXTERNALLY',
+          type: 'explorer.FILE_CHANGED_EXTERNALLY',
           data: {
             path: ev.path,
             changeType: 'change',
@@ -699,7 +701,7 @@ export const systemMachine = setup({
         context.gitRepository.invalidateCache([change.path])
 
         system.get(bus).send(emit(pluginId, {
-          type: 'FILE_CHANGED_EXTERNALLY',
+          type: 'explorer.FILE_CHANGED_EXTERNALLY',
           data: change
         }))
       })

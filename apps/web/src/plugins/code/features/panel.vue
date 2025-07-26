@@ -109,7 +109,7 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
   if (panel === 'commit') {
     actor.system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
   } else if (panel === 'pr') {
-    actor.system.get('pullRequest')?.send({ type: 'pr.REFRESH_STATUS' })
+    actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
   } else if (panel === 'terminal') {
     actor.system.get('terminal')?.send({ type: 'terminal.LIST' })
   }
