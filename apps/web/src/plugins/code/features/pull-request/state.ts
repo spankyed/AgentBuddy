@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
@@ -94,7 +94,114 @@ export const pullRequestState = setup({
       isPrLoading: false
     }),
     
-    setPrLoading: assign({ isPrLoading: true })
+    setPrLoading: assign({ isPrLoading: true }),
+    
+    handleBaseBranch: assign({
+      prBaseBranch: ({ event }) => {
+        const ev = event as { type: 'pr.BASE_BRANCH'; data: { branch: string } }
+        return ev.data.branch
+      },
+      isPrLoading: false,
+      prError: null
+    }),
+    
+    handleBranchDiff: assign({
+      prFiles: ({ event }) => {
+        const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        return ev.data.files
+      },
+      prBaseBranch: ({ event }) => {
+        const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
+        return ev.data.baseBranch
+      },
+      isPrLoading: false
+    }),
+    
+    handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
+      enqueue('assignPrDiff')
+      enqueue(() => {
+        const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; diff: GitDiff }
+        if (context.selectedPrFile) {
+          const parentContext = getParentContext(self)
+          const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
+          
+          // Build new openFiles array
+          const openFiles = parentContext?.openFiles || []
+          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
+          
+          let newOpenFiles
+          if (existingTab) {
+            // Update existing tab
+            newOpenFiles = openFiles.map((f: any) => 
+              f.path === diffTabId 
+                ? { ...f, gitDiff: ev.diff, gitFile: context.selectedPrFile }
+                : f
+            )
+          } else {
+            // Add new diff tab
+            const diffTab = {
+              path: diffTabId,
+              content: '',
+              modified: false,
+              isDiff: true,
+              gitDiff: ev.diff,
+              gitFile: context.selectedPrFile
+            }
+            newOpenFiles = [...openFiles, diffTab]
+          }
+          
+          // Send updated state to parent
+          updateParentState(self, {
+            openFiles: newOpenFiles,
+            activeFilePath: diffTabId
+          });
+        }
+      })
+    }),
+    
+    handleBranchFileDiff: enqueueActions(({ enqueue, self, context, event }) => {
+      const ev = event as { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
+      enqueue.assign({
+        prDiff: ev.data
+      })
+      enqueue(() => {
+        if (context.selectedPrFile) {
+          const parentContext = getParentContext(self)
+          const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
+          
+          // Build new openFiles array
+          const openFiles = parentContext?.openFiles || []
+          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
+          
+          let newOpenFiles
+          if (existingTab) {
+            // Update existing tab
+            newOpenFiles = openFiles.map((f: any) => 
+              f.path === diffTabId 
+                ? { ...f, gitDiff: ev.data, gitFile: context.selectedPrFile }
+                : f
+            )
+          } else {
+            // Add new diff tab
+            const diffTab = {
+              path: diffTabId,
+              content: '',
+              modified: false,
+              isDiff: true,
+              gitDiff: ev.data,
+              gitFile: context.selectedPrFile
+            }
+            newOpenFiles = [...openFiles, diffTab]
+          }
+          
+          // Send updated state to parent
+          updateParentState(self, {
+            openFiles: newOpenFiles,
+            activeFilePath: diffTabId
+          });
+        }
+      })
+    })
   }
 }).createMachine({
   id: 'pr',
@@ -126,115 +233,19 @@ export const pullRequestState = setup({
           actions: 'viewPrDiff'
         },
         'pr.FILE_DIFF_RECEIVED': {
-          actions: ['assignPrDiff', ({ self, context, event }) => {
-            const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; diff: GitDiff }
-            if (context.selectedPrFile) {
-              const parentContext = getParentContext(self)
-              const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-              
-              // Build new openFiles array
-              const openFiles = parentContext?.openFiles || []
-              const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-              
-              let newOpenFiles
-              if (existingTab) {
-                // Update existing tab
-                newOpenFiles = openFiles.map((f: any) => 
-                  f.path === diffTabId 
-                    ? { ...f, gitDiff: ev.diff, gitFile: context.selectedPrFile }
-                    : f
-                )
-              } else {
-                // Add new diff tab
-                const diffTab = {
-                  path: diffTabId,
-                  content: '',
-                  modified: false,
-                  isDiff: true,
-                  gitDiff: ev.diff,
-                  gitFile: context.selectedPrFile
-                }
-                newOpenFiles = [...openFiles, diffTab]
-              }
-              
-              // Send updated state to parent
-              updateParentState(self, {
-                openFiles: newOpenFiles,
-                activeFilePath: diffTabId
-              });
-            }
-          }]
+          actions: 'handleFileDiffReceived'
         },
         'pr.ERROR': {
           actions: 'assignPrError'
         },
         'pr.BASE_BRANCH': {
-          actions: assign({
-            prBaseBranch: ({ event }) => {
-              const ev = event as { type: 'pr.BASE_BRANCH'; data: { branch: string } }
-              return ev.data.branch
-            },
-            isPrLoading: false,
-            prError: null
-          })
+          actions: 'handleBaseBranch'
         },
         'pr.BRANCH_DIFF': {
-          actions: assign({
-            prFiles: ({ event }) => {
-              const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-              return ev.data.files
-            },
-            prBaseBranch: ({ event }) => {
-              const ev = event as { type: 'pr.BRANCH_DIFF'; data: { files: GitStatusFile[]; baseBranch: string } }
-              return ev.data.baseBranch
-            },
-            isPrLoading: false
-          })
+          actions: 'handleBranchDiff'
         },
         'pr.BRANCH_FILE_DIFF': {
-          actions: [assign({
-            prDiff: ({ event }) => {
-              const ev = event as { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
-              return ev.data
-            }
-          }), ({ self, context, event }) => {
-            const ev = event as { type: 'pr.BRANCH_FILE_DIFF'; data: GitDiff }
-            if (context.selectedPrFile) {
-              const parentContext = getParentContext(self)
-              const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-              
-              // Build new openFiles array
-              const openFiles = parentContext?.openFiles || []
-              const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-              
-              let newOpenFiles
-              if (existingTab) {
-                // Update existing tab
-                newOpenFiles = openFiles.map((f: any) => 
-                  f.path === diffTabId 
-                    ? { ...f, gitDiff: ev.data, gitFile: context.selectedPrFile }
-                    : f
-                )
-              } else {
-                // Add new diff tab
-                const diffTab = {
-                  path: diffTabId,
-                  content: '',
-                  modified: false,
-                  isDiff: true,
-                  gitDiff: ev.data,
-                  gitFile: context.selectedPrFile
-                }
-                newOpenFiles = [...openFiles, diffTab]
-              }
-              
-              // Send updated state to parent
-              updateParentState(self, {
-                openFiles: newOpenFiles,
-                activeFilePath: diffTabId
-              });
-            }
-          }]
+          actions: 'handleBranchFileDiff'
         }
       }
     }

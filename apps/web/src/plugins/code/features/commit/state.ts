@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
@@ -145,6 +145,113 @@ export const commitState = setup({
     clearGitDiff: assign({
       selectedGitFile: null,
       gitDiff: null
+    }),
+    
+    handleGitStatus: assign({
+      gitStatus: ({ event }) => {
+        const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        return ev.data.files
+      },
+      gitBranch: ({ event }) => {
+        const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
+        return ev.data.branch
+      },
+      isGitLoading: false,
+      gitError: null
+    }),
+    
+    handleGitError: assign({
+      gitError: ({ event }) => {
+        const ev = event as { type: 'commit.GIT_ERROR'; data: { message: string } }
+        return ev.data.message
+      },
+      isGitLoading: false
+    }),
+    
+    handleDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
+      enqueue('assignGitDiff')
+      enqueue(() => {
+        const ev = event as { type: 'commit.DIFF_RECEIVED'; diff: GitDiff }
+        if (context.selectedGitFile) {
+          const parentContext = getParentContext(self)
+          const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
+          
+          // Build new openFiles array
+          const openFiles = parentContext?.openFiles || []
+          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
+          
+          let newOpenFiles
+          if (existingTab) {
+            // Update existing tab
+            newOpenFiles = openFiles.map((f: any) => 
+              f.path === diffTabId 
+                ? { ...f, gitDiff: ev.diff, gitFile: context.selectedGitFile }
+                : f
+            )
+          } else {
+            // Add new diff tab
+            const diffTab = {
+              path: diffTabId,
+              content: '',
+              modified: false,
+              isDiff: true,
+              gitDiff: ev.diff,
+              gitFile: context.selectedGitFile
+            }
+            newOpenFiles = [...openFiles, diffTab]
+          }
+          
+          // Send updated state to parent
+          updateParentState(self, {
+            openFiles: newOpenFiles,
+            activeFilePath: diffTabId
+          });
+        }
+      })
+    }),
+    
+    handleGitDiff: enqueueActions(({ enqueue, self, context, event }) => {
+      const ev = event as { type: 'commit.GIT_DIFF'; data: GitDiff }
+      enqueue.assign({
+        gitDiff: ev.data
+      })
+      enqueue(() => {
+        if (context.selectedGitFile) {
+          const parentContext = getParentContext(self)
+          const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
+          
+          // Build new openFiles array
+          const openFiles = parentContext?.openFiles || []
+          const existingTab = openFiles.find((f: any) => f.path === diffTabId)
+          
+          let newOpenFiles
+          if (existingTab) {
+            // Update existing tab
+            newOpenFiles = openFiles.map((f: any) => 
+              f.path === diffTabId 
+                ? { ...f, gitDiff: ev.data, gitFile: context.selectedGitFile }
+                : f
+            )
+          } else {
+            // Add new diff tab
+            const diffTab = {
+              path: diffTabId,
+              content: '',
+              modified: false,
+              isDiff: true,
+              gitDiff: ev.data,
+              gitFile: context.selectedGitFile
+            }
+            newOpenFiles = [...openFiles, diffTab]
+          }
+          
+          // Send updated state to parent
+          updateParentState(self, {
+            openFiles: newOpenFiles,
+            activeFilePath: diffTabId
+          });
+        }
+      })
     })
   }
 }).createMachine({
@@ -170,30 +277,13 @@ export const commitState = setup({
           actions: 'assignGitStatus'
         },
         'commit.GIT_STATUS': {
-          actions: assign({
-            gitStatus: ({ event }) => {
-              const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-              return ev.data.files
-            },
-            gitBranch: ({ event }) => {
-              const ev = event as { type: 'commit.GIT_STATUS'; data: { files: GitStatusFile[]; branch: string } }
-              return ev.data.branch
-            },
-            isGitLoading: false,
-            gitError: null
-          })
+          actions: 'handleGitStatus'
         },
         'commit.ERROR': {
           actions: 'assignGitError'
         },
         'commit.GIT_ERROR': {
-          actions: assign({
-            gitError: ({ event }) => {
-              const ev = event as { type: 'commit.GIT_ERROR'; data: { message: string } }
-              return ev.data.message
-            },
-            isGitLoading: false
-          })
+          actions: 'handleGitError'
         },
         'commit.SELECT_FILE': {
           actions: 'selectGitFile'
@@ -214,89 +304,10 @@ export const commitState = setup({
           actions: 'viewDiff'
         },
         'commit.DIFF_RECEIVED': {
-          actions: ['assignGitDiff', ({ self, context, event }) => {
-            const ev = event as { type: 'commit.DIFF_RECEIVED'; diff: GitDiff }
-            if (context.selectedGitFile) {
-              const parentContext = getParentContext(self)
-              const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-              
-              // Build new openFiles array
-              const openFiles = parentContext?.openFiles || []
-              const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-              
-              let newOpenFiles
-              if (existingTab) {
-                // Update existing tab
-                newOpenFiles = openFiles.map((f: any) => 
-                  f.path === diffTabId 
-                    ? { ...f, gitDiff: ev.diff, gitFile: context.selectedGitFile }
-                    : f
-                )
-              } else {
-                // Add new diff tab
-                const diffTab = {
-                  path: diffTabId,
-                  content: '',
-                  modified: false,
-                  isDiff: true,
-                  gitDiff: ev.diff,
-                  gitFile: context.selectedGitFile
-                }
-                newOpenFiles = [...openFiles, diffTab]
-              }
-              
-              // Send updated state to parent
-              updateParentState(self, {
-                openFiles: newOpenFiles,
-                activeFilePath: diffTabId
-              });
-            }
-          }]
+          actions: 'handleDiffReceived'
         },
         'commit.GIT_DIFF': {
-          actions: [assign({
-            gitDiff: ({ event }) => {
-              const ev = event as { type: 'commit.GIT_DIFF'; data: GitDiff }
-              return ev.data
-            }
-          }), ({ self, context, event }) => {
-            const ev = event as { type: 'commit.GIT_DIFF'; data: GitDiff }
-            if (context.selectedGitFile) {
-              const parentContext = getParentContext(self)
-              const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-              
-              // Build new openFiles array
-              const openFiles = parentContext?.openFiles || []
-              const existingTab = openFiles.find((f: any) => f.path === diffTabId)
-              
-              let newOpenFiles
-              if (existingTab) {
-                // Update existing tab
-                newOpenFiles = openFiles.map((f: any) => 
-                  f.path === diffTabId 
-                    ? { ...f, gitDiff: ev.data, gitFile: context.selectedGitFile }
-                    : f
-                )
-              } else {
-                // Add new diff tab
-                const diffTab = {
-                  path: diffTabId,
-                  content: '',
-                  modified: false,
-                  isDiff: true,
-                  gitDiff: ev.data,
-                  gitFile: context.selectedGitFile
-                }
-                newOpenFiles = [...openFiles, diffTab]
-              }
-              
-              // Send updated state to parent
-              updateParentState(self, {
-                openFiles: newOpenFiles,
-                activeFilePath: diffTabId
-              });
-            }
-          }]
+          actions: 'handleGitDiff'
         },
         'commit.UPDATE_MESSAGE': {
           actions: 'updateCommitMessage'

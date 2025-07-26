@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { TerminalInfo } from '../../state';
 import { terminalEventBus } from '../../utils/terminal-events';
@@ -129,6 +129,88 @@ export const terminalState = setup({
         const ev = event as { type: 'terminal.OUTPUT'; terminalId: string; data: string }
         terminalEventBus.emit(ev.terminalId, ev.data)
       }
+    },
+    
+    handleTerminalCreated: enqueueActions(({ enqueue, self, event }) => {
+      enqueue('assignTerminalCreated')
+      enqueue(() => {
+      // Handle both formats
+      const terminalInfo = 'data' in event 
+        ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
+        : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
+      
+      const parentContext = getParentContext(self)
+      const terminalPath = `terminal:${terminalInfo.id}`
+      
+      // Build new openFiles array
+      const openFiles = parentContext?.openFiles || []
+      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
+      
+      let newOpenFiles
+      if (existingTab) {
+        // Update existing tab
+        newOpenFiles = openFiles.map((f: any) => 
+          f.path === terminalPath && f.isTerminal
+            ? { ...f, terminalInfo }
+            : f
+        )
+      } else {
+        // Add new terminal tab
+        const terminalTab = {
+          path: terminalPath,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo
+        }
+        newOpenFiles = [...openFiles, terminalTab]
+      }
+      
+      // Send updated state to parent
+      updateParentState(self, {
+        openFiles: newOpenFiles,
+        activeFilePath: terminalPath
+      });
+      })
+    }),
+    
+    handleTerminalClosed: enqueueActions(({ enqueue, self, event }) => {
+      enqueue('removeTerminal')
+      enqueue('cleanupTerminalOutput')
+      enqueue(() => {
+      // Handle both formats
+      const terminalId = 'data' in event
+        ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
+        : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
+        
+      const parentContext = getParentContext(self)
+      const terminalPath = `terminal:${terminalId}`
+      
+      // Remove terminal tab from openFiles
+      const openFiles = parentContext?.openFiles || []
+      const newOpenFiles = openFiles.filter((f: any) => f.path !== terminalPath)
+      
+      // Update parent state
+      const updates: any = { openFiles: newOpenFiles }
+      
+      // If this was the active file, set a new active file
+      if (parentContext?.activeFilePath === terminalPath) {
+        updates.activeFilePath = newOpenFiles.length > 0 ? newOpenFiles[0].path : null
+      }
+      
+      updateParentState(self, updates);
+      })
+    }),
+    
+    handleCodeStartup: ({ event, self }) => {
+      const ev = event as { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } }
+      // If startup includes terminals, handle them like TERMINALS_LISTED
+      if (ev.data?.terminals) {
+        self.send({ 
+          type: 'terminal.TERMINALS_LISTED', 
+          terminals: ev.data.terminals
+        })
+      }
     }
   }
 }).createMachine({
@@ -160,70 +242,10 @@ export const terminalState = setup({
           actions: 'assignTerminals'
         },
         'terminal.CREATED': {
-          actions: ['assignTerminalCreated', ({ self, event }) => {
-            // Handle both formats
-            const terminalInfo = 'data' in event 
-              ? (event as { type: 'terminal.CREATED'; data: TerminalInfo }).data
-              : (event as { type: 'terminal.CREATED'; terminalInfo: TerminalInfo }).terminalInfo
-            
-            const parentContext = getParentContext(self)
-            const terminalPath = `terminal:${terminalInfo.id}`
-            
-            // Build new openFiles array
-            const openFiles = parentContext?.openFiles || []
-            const existingTab = openFiles.find((f: any) => f.path === terminalPath)
-            
-            let newOpenFiles
-            if (existingTab) {
-              // Update existing tab
-              newOpenFiles = openFiles.map((f: any) => 
-                f.path === terminalPath && f.isTerminal
-                  ? { ...f, terminalInfo }
-                  : f
-              )
-            } else {
-              // Add new terminal tab
-              const terminalTab = {
-                path: terminalPath,
-                content: '',
-                modified: false,
-                isTerminal: true,
-                terminalInfo
-              }
-              newOpenFiles = [...openFiles, terminalTab]
-            }
-            
-            // Send updated state to parent
-            updateParentState(self, {
-              openFiles: newOpenFiles,
-              activeFilePath: terminalPath
-            });
-          }]
+          actions: 'handleTerminalCreated'
         },
         'terminal.CLOSED': {
-          actions: ['removeTerminal', 'cleanupTerminalOutput', ({ self, event }) => {
-            // Handle both formats
-            const terminalId = 'data' in event
-              ? (event as { type: 'terminal.CLOSED'; data: { terminalId: string } }).data.terminalId
-              : (event as { type: 'terminal.CLOSED'; terminalId: string }).terminalId
-              
-            const parentContext = getParentContext(self)
-            const terminalPath = `terminal:${terminalId}`
-            
-            // Remove terminal tab from openFiles
-            const openFiles = parentContext?.openFiles || []
-            const newOpenFiles = openFiles.filter((f: any) => f.path !== terminalPath)
-            
-            // Update parent state
-            const updates: any = { openFiles: newOpenFiles }
-            
-            // If this was the active file, set a new active file
-            if (parentContext?.activeFilePath === terminalPath) {
-              updates.activeFilePath = newOpenFiles.length > 0 ? newOpenFiles[0].path : null
-            }
-            
-            updateParentState(self, updates);
-          }]
+          actions: 'handleTerminalClosed'
         },
         'terminal.OUTPUT': {
           actions: 'handleTerminalOutput'
@@ -232,16 +254,7 @@ export const terminalState = setup({
           actions: 'assignTerminalError'
         },
         'CODE_STARTUP': {
-          actions: ({ event, self }) => {
-            const ev = event as { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } }
-            // If startup includes terminals, handle them like TERMINALS_LISTED
-            if (ev.data?.terminals) {
-              self.send({ 
-                type: 'terminal.TERMINALS_LISTED', 
-                terminals: ev.data.terminals
-              })
-            }
-          }
+          actions: 'handleCodeStartup'
         }
       }
     }

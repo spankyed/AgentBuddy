@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { FileInfo } from '../../state';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
@@ -49,6 +49,128 @@ export const explorerState = setup({
   },
   actions: {
     setLoading: assign({ isLoading: true, error: null }),
+    
+    handleFileContent: ({ event, self }) => {
+      const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
+      const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
+      
+      let newOpenFiles
+      if (existingFile) {
+        // Update content for existing file
+        newOpenFiles = openFiles.map((f: any) => 
+          f.path === ev.data.path 
+            ? { 
+                ...f, 
+                content: ev.data.content,
+                modified: false,
+                externallyModified: false,
+                externalModificationTime: undefined,
+                pendingSaveConflict: false
+              }
+            : f
+        )
+      } else {
+        // Add new file
+        newOpenFiles = [...openFiles, {
+          path: ev.data.path,
+          content: ev.data.content,
+          modified: false
+        }]
+      }
+      
+      // Update parent state
+      updateParentState(self, {
+        openFiles: newOpenFiles,
+        activeFilePath: ev.data.path,
+        isLoading: false
+      })
+    },
+    
+    handleFileSaved: ({ event, self }) => {
+      const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
+      const parentContext = getParentContext(self)
+      const newOpenFiles = parentContext?.openFiles?.map((f: any) => 
+        f.path === ev.data.path 
+          ? { 
+              ...f, 
+              modified: false,
+              pendingSaveConflict: false,
+              externallyModified: false,
+              externalModificationTime: undefined
+            } 
+          : f
+      ) || []
+      
+      updateParentState(self, { openFiles: newOpenFiles })
+    },
+    
+    handleFileChangedExternally: ({ event, self }) => {
+      const ev = event as { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
+      const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      const file = openFiles.find((f: any) => f.path === ev.data.path)
+      
+      if (file && !file.isDiff) {
+        const newOpenFiles = openFiles.map((f: any) => {
+          if (f.path === ev.data.path && !f.isDiff) {
+            return {
+              ...f,
+              externallyModified: true,
+              externalModificationTime: ev.data.modifiedAt,
+              pendingSaveConflict: f.modified
+            }
+          }
+          return f
+        })
+        
+        updateParentState(self, { openFiles: newOpenFiles })
+        
+        // Only refresh if file is not modified by user
+        if (!file.modified) {
+          sendToBackend('READ_FILE', { path: ev.data.path })
+        }
+      }
+    },
+    
+    handleCodeError: ({ event, self }) => {
+      const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string } }
+      updateParentState(self, { error: ev.data.message, isLoading: false })
+    },
+    
+    handleCurrentDirectory: enqueueActions(({ enqueue, event, self }) => {
+      const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
+      enqueue.assign({
+        currentDirectory: ev.data.path
+      })
+      enqueue(() => {
+        updateParentState(self, { currentDirectory: ev.data.path })
+      })
+    }),
+    
+    handleDirectoryChanged: enqueueActions(({ enqueue, event, self, system }) => {
+      const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
+      enqueue.assign({
+        currentDirectory: ev.data.path
+      })
+      enqueue(() => {
+        updateParentState(self, { currentDirectory: ev.data.path })
+        
+        // Refresh git panels if active
+        const parentContext = getParentContext(self)
+        if (parentContext?.selectedPanel === 'commit') {
+          system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
+        } else if (parentContext?.selectedPanel === 'pr') {
+          system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
+        }
+      })
+    }),
+    
+    handleCodeStartup: ({ event, self }) => {
+      // Explorer can handle startup if needed
+      // Currently no specific action required
+    },
     
     listFiles: ({ event }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
@@ -211,133 +333,25 @@ export const explorerState = setup({
         },
         // Handle backend events
         'explorer.FILE_CONTENT': {
-          actions: ({ event, self }) => {
-            const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
-            const parentContext = getParentContext(self)
-            const openFiles = parentContext?.openFiles || []
-            const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
-            
-            let newOpenFiles
-            if (existingFile) {
-              // Update content for existing file
-              newOpenFiles = openFiles.map((f: any) => 
-                f.path === ev.data.path 
-                  ? { 
-                      ...f, 
-                      content: ev.data.content,
-                      modified: false,
-                      externallyModified: false,
-                      externalModificationTime: undefined,
-                      pendingSaveConflict: false
-                    }
-                  : f
-              )
-            } else {
-              // Add new file
-              newOpenFiles = [...openFiles, {
-                path: ev.data.path,
-                content: ev.data.content,
-                modified: false
-              }]
-            }
-            
-            // Update parent state
-            updateParentState(self, {
-              openFiles: newOpenFiles,
-              activeFilePath: ev.data.path,
-              isLoading: false
-            })
-          }
+          actions: 'handleFileContent'
         },
         'explorer.FILE_SAVED': {
-          actions: ({ event, self }) => {
-            const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
-            const parentContext = getParentContext(self)
-            const newOpenFiles = parentContext?.openFiles?.map((f: any) => 
-              f.path === ev.data.path 
-                ? { 
-                    ...f, 
-                    modified: false,
-                    pendingSaveConflict: false,
-                    externallyModified: false,
-                    externalModificationTime: undefined
-                  } 
-                : f
-            ) || []
-            
-            updateParentState(self, { openFiles: newOpenFiles })
-          }
+          actions: 'handleFileSaved'
         },
         'explorer.FILE_CHANGED_EXTERNALLY': {
-          actions: ({ event, self }) => {
-            const ev = event as { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
-            const parentContext = getParentContext(self)
-            const openFiles = parentContext?.openFiles || []
-            const file = openFiles.find((f: any) => f.path === ev.data.path)
-            
-            if (file && !file.isDiff) {
-              const newOpenFiles = openFiles.map((f: any) => {
-                if (f.path === ev.data.path && !f.isDiff) {
-                  return {
-                    ...f,
-                    externallyModified: true,
-                    externalModificationTime: ev.data.modifiedAt,
-                    pendingSaveConflict: f.modified
-                  }
-                }
-                return f
-              })
-              
-              updateParentState(self, { openFiles: newOpenFiles })
-              
-              // Only refresh if file is not modified by user
-              if (!file.modified) {
-                sendToBackend('READ_FILE', { path: ev.data.path })
-              }
-            }
-          }
+          actions: 'handleFileChangedExternally'
         },
         'explorer.CODE_ERROR': {
-          actions: ({ event, self }) => {
-            const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string } }
-            updateParentState(self, { error: ev.data.message, isLoading: false })
-          }
+          actions: 'handleCodeError'
         },
         'explorer.CURRENT_DIRECTORY': {
-          actions: [assign({
-            currentDirectory: ({ event }) => {
-              const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-              return ev.data.path
-            }
-          }), ({ event, self }) => {
-            const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-            updateParentState(self, { currentDirectory: ev.data.path })
-          }]
+          actions: 'handleCurrentDirectory'
         },
         'explorer.DIRECTORY_CHANGED': {
-          actions: [assign({
-            currentDirectory: ({ event }) => {
-              const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
-              return ev.data.path
-            }
-          }), ({ event, self, system }) => {
-            const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
-            updateParentState(self, { currentDirectory: ev.data.path })
-            
-            // Refresh git panels if active
-            const parentContext = getParentContext(self)
-            if (parentContext?.selectedPanel === 'commit') {
-              system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
-            } else if (parentContext?.selectedPanel === 'pr') {
-              system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
-            }
-          }]
+          actions: 'handleDirectoryChanged'
         },
         'CODE_STARTUP': {
-          actions: ({ event, self }) => {
-            // Explorer can handle startup if needed
-            // Currently no specific action required
-          }
+          actions: 'handleCodeStartup'
         }
       }
     }
