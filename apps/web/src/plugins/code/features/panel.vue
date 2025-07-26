@@ -76,14 +76,9 @@ import TerminalPanel from '@/plugins/code/features/terminal/TerminalPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
-// State selectors from parent actor
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
-
-// Files state is now managed by explorer actor
-
-
 
 // Panel configuration
 const panels = [
