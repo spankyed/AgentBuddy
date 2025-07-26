@@ -166,14 +166,7 @@ const codeState = setup({
       saveOpenTabs(context.openFiles)
     },
     updateState: assign(({ event, context }) => {
-      const ev = event as StateUpdate
-      
-      // Validate the update before applying
-      if (!validateStateUpdate(ev.updates)) {
-        console.error('Invalid state update rejected:', ev.updates)
-        return context
-      }
-      
+      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       return { ...context, ...ev.updates }
     }),
     assignFiles: assign({
