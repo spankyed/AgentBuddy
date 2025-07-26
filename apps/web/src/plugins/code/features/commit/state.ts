@@ -50,6 +50,7 @@ export type Event =
   | { type: 'commit.CLEAR_DIFF' }
   | { type: 'commit.REVERT_FILE'; path: string }
   | { type: 'commit.TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
+  | { type: 'commit.OPEN_FILE'; file: GitStatusFile }
   | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
@@ -135,6 +136,26 @@ export const commitState = setup({
       selectedGitFile: null,
       gitDiff: null
     }),
+    
+    openFile: ({ event, self }) => {
+      const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
+      const parentContext = getParentContext(self)
+      const rootDirectory = parentContext?.rootDirectory || ''
+      const fullPath = rootDirectory.endsWith('/') 
+        ? rootDirectory + ev.file.path 
+        : rootDirectory + '/' + ev.file.path
+      
+      // Send events to parent to switch to explorer panel and open file
+      self._parent?.send({ 
+        type: 'UPDATE_STATE', 
+        updates: { selectedPanel: 'explorer' } 
+      })
+      
+      self._parent?.send({ 
+        type: 'explorer.OPEN_FILE', 
+        path: fullPath 
+      })
+    },
     
     handleStatusReceived: assign({
       gitStatus: ({ event }) => {
@@ -255,6 +276,9 @@ export const commitState = setup({
         },
         'commit.CLEAR_DIFF': {
           actions: 'clearGitDiff'
+        },
+        'commit.OPEN_FILE': {
+          actions: 'openFile'
         }
       }
     }

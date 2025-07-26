@@ -220,23 +220,7 @@ const cancelRevert = () => {
 }
 
 const openFile = (file: GitStatusFile) => {
-  // Get the root directory from state
-  const state = codeActor.getSnapshot()
-  const rootDirectory = state.context.rootDirectory
-  
-  // Construct the full path
-  const fullPath = rootDirectory.endsWith('/') 
-    ? rootDirectory + file.path 
-    : rootDirectory + '/' + file.path
-  
-  // First switch to explorer panel
-  codeActor.send({ 
-    type: 'UPDATE_STATE', 
-    updates: { selectedPanel: 'explorer' } 
-  })
-  // Then open the file through explorer
-  const explorerActor = codeActor.system.get('explorer')
-  explorerActor?.send({ type: 'explorer.OPEN_FILE', path: fullPath })
+  commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 
 // Helper functions
