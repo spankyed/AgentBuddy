@@ -24,9 +24,6 @@
         v-if="selectedPanel === 'explorer'"
         :root-directory="rootDirectory"
         :current-directory="currentDirectory"
-        @navigate-to-directory="navigateToDirectory"
-        @set-root-directory="setRootDirectory"
-        @file-click="handleFileClick"
       />
       
       <SearchPanel 
@@ -115,24 +112,7 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
   }
 }
 
-const navigateToDirectory = (path: string) => {
-  const explorerActor = actor.system.get('explorer')
-  explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path })
-}
-
-const setRootDirectory = (path: string) => {
-  const explorerActor = actor.system.get('explorer')
-  explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path })
-}
-
-const handleFileClick = (file: { path: string; type: 'file' | 'directory' }) => {
-  const explorerActor = actor.system.get('explorer')
-  if (file.type === 'directory') {
-    explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path: file.path })
-  } else {
-    explorerActor?.send({ type: 'explorer.OPEN_FILE', path: file.path })
-  }
-}
+// Navigation handlers removed - now handled directly in ExplorerPanel
 
 const changeDirectory = () => {
   const newPath = prompt('Enter new root directory path:', rootDirectory.value)

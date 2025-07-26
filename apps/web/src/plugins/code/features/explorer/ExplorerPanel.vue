@@ -13,8 +13,8 @@
     <DirectoryBreadcrumb
       :root-directory="rootDirectory"
       :current-directory="currentDirectory"
-      @navigate="$emit('navigate-to-directory', $event)"
-      @set-root="$emit('set-root-directory', $event)"
+      @navigate="navigateToDirectory"
+      @set-root="setRootDirectory"
     />
     
     <div v-if="isLoading" class="flex items-center justify-center flex-1">
@@ -30,7 +30,7 @@
         v-for="file in files"
         :key="file.path"
         :file="file"
-        @click="$emit('file-click', file)"
+        @click="handleFileClick(file)"
         @rename="handleRename"
         @delete="confirmDelete"
       />
@@ -69,11 +69,7 @@ const files = useSelector(explorerActor, (state: any) => state.context.files)
 const isLoading = useSelector(explorerActor, (state: any) => state.context.isLoading)
 const error = useSelector(explorerActor, (state: any) => state.context.error)
 
-const emit = defineEmits<{
-  'navigate-to-directory': [path: string]
-  'set-root-directory': [path: string]
-  'file-click': [file: FileItem]
-}>()
+// No emits needed - handle everything internally
 
 // Delete functionality
 const showDeleteDialog = ref(false)
@@ -105,5 +101,22 @@ const handleRename = (oldPath: string, newName: string) => {
   
   // Send rename event directly to explorer state machine
   explorerActor?.send({ type: 'explorer.RENAME_FILE', oldPath, newPath })
+}
+
+// Navigation handlers
+const navigateToDirectory = (path: string) => {
+  explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path })
+}
+
+const setRootDirectory = (path: string) => {
+  explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path })
+}
+
+const handleFileClick = (file: FileItem) => {
+  if (file.type === 'directory') {
+    explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path: file.path })
+  } else {
+    explorerActor?.send({ type: 'explorer.OPEN_FILE', path: file.path })
+  }
 }
 </script>
