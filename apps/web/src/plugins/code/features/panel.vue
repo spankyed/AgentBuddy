@@ -41,6 +41,10 @@
       <TerminalPanel 
         v-else-if="selectedPanel === 'terminal'"
       />
+      
+      <ActionsPanel 
+        v-else-if="selectedPanel === 'actions'"
+      />
     </div>
 
     <!-- Change Directory Button -->
@@ -67,12 +71,14 @@ import {
   GitCommit, 
   GitPullRequest,
   Terminal,
+  Play
 } from 'lucide-vue-next'
 import ExplorerPanel from '@/plugins/code/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '@/plugins/code/features/search/SearchPanel.vue'
 import CommitPanel from '@/plugins/code/features/commit/CommitPanel.vue'
 import PullRequestPanel from '@/plugins/code/features/pull-request/PullRequestPanel.vue'
 import TerminalPanel from '@/plugins/code/features/terminal/TerminalPanel.vue'
+import ActionsPanel from '@/plugins/code/features/actions/ActionsPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -86,11 +92,12 @@ const panels = [
   { id: 'search', label: 'Search', icon: Search },
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
-  { id: 'terminal', label: 'Terminal', icon: Terminal }
+  { id: 'terminal', label: 'Terminal', icon: Terminal },
+  { id: 'actions', label: 'Actions', icon: Play }
 ] as const
 
 // Event handlers
-const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal') => {
+const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions') => {
   // Update parent state
   actor.send({ 
     type: 'UPDATE_STATE', 
@@ -104,6 +111,8 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
     actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
   } else if (panel === 'terminal') {
     actor.system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' })
+  } else if (panel === 'actions') {
+    actor.system.get('codeActions')?.send({ type: 'codeActions.LIST' })
   }
 }
 

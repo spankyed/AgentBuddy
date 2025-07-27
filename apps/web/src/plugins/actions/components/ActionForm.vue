@@ -89,11 +89,21 @@
 
           <!-- Action Function -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Action Function <span class="text-red-400">*</span>
-            </label>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
+                Action Function <span class="text-red-400">*</span>
+              </label>
+              <button
+                v-if="mode === 'edit'"
+                @click="openInEditor"
+                class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              >
+                <ExternalLink class="w-3 h-3" />
+                Open in editor
+              </button>
+            </div>
             <p class="mb-4 text-xs text-neutral-500">
-              Write an async JavaScript function body. The function receives `params` object and `services` object with available services (logger, database, email, http, storage).
+              An async JavaScript function body that receives `params` object and `services` (logger, database, LLM, http) object.
             </p>
             <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;">
               <ActionFunctionEditor
@@ -115,7 +125,7 @@
               :value="JSON.stringify(formData.output || {}, null, 2)"
               @input="handleOutputChange"
               rows="4"
-              class="w-full px-4 py-3 text-sm font-mono transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+              class="w-full px-4 py-3 font-mono text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
               placeholder='{ "success": "boolean", "data": "any" }'
             />
           </div>
@@ -127,10 +137,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import type { ActionParameter } from '@abuddy/api';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
+import { applicationState } from '@/app';
 
 const props = defineProps<{
   formData: {
@@ -142,6 +154,7 @@ const props = defineProps<{
     output?: any;
   };
   mode: 'create' | 'edit';
+  actionId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -173,5 +186,33 @@ function handleOutputChange(event: Event) {
   } catch {
     // Invalid JSON, ignore
   }
+}
+
+function openInEditor() {
+  if (!props.actionId) return;
+  
+  // First, switch to the code plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  
+  // Give the code plugin time to activate, then send the action to open
+  setTimeout(() => {
+    const codeActor = applicationState.system.get('code');
+    if (codeActor) {
+      // First ensure the actions panel is selected
+      codeActor.send({ 
+        type: 'UPDATE_STATE', 
+        updates: { selectedPanel: 'actions' } 
+      });
+      
+      // Then send the open action event to the actions child actor
+      const actionsActor = codeActor.system.get('codeActions');
+      if (actionsActor) {
+        actionsActor.send({ 
+          type: 'codeActions.OPEN_ACTION', 
+          actionId: props.actionId
+        });
+      }
+    }
+  }, 100);
 }
 </script>

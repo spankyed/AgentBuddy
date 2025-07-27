@@ -12,7 +12,7 @@
 
 <style lang="scss" module>
 .component {
-  height: 55vh;
+  height: 48vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 -0.5rem 1rem -0.125rem rgba(0, 0, 0, 0.1), 0 -0.25rem 0.5rem -0.0625rem rgba(0, 0, 0, 0.05);

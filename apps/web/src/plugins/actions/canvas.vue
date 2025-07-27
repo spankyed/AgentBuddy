@@ -37,6 +37,7 @@
     <ActionForm
       v-else-if="state.hasTag('edit-action')"
       :form-data="formData"
+      :action-id="selectedAction?.id"
       mode="edit"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"

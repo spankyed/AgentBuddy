@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-950">
+  <div class="flex flex-col h-full bg-neutral-900">
     <div class="flex items-center border-b border-neutral-800 bg-neutral-900">
       <!-- Tab Bar -->
       <TabBar

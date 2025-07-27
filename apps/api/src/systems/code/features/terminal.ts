@@ -22,6 +22,7 @@ export const IncomingTerminalEvents = [
   busEvent('terminal.TERMINAL_INPUT', { terminalId: z.string(), data: z.string() }),
   busEvent('terminal.RESIZE_TERMINAL', { terminalId: z.string(), cols: z.number(), rows: z.number() }),
   busEvent('terminal.REFRESH_LIST', {}),
+  busEvent('terminal.OPEN_TERMINAL_TAB', { terminalId: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -32,6 +33,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
+  | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
   currentDirectory: string
@@ -49,6 +51,7 @@ export type Event =
   | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
   | { type: 'terminal.REFRESH_LIST' }
+  | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
   | { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
   | { type: 'CODE_STARTUP' };
 
@@ -198,6 +201,37 @@ export const terminalSystem = setup({
       }
     },
 
+    openTerminalTab: ({ event }) => {
+      const ev = event as { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
+      try {
+        const terminals = terminalService.list()
+        const terminal = terminals.find(t => t.id === ev.terminalId)
+        
+        if (terminal) {
+          const wrapped = emit(pluginId, {
+            type: 'terminal.TERMINAL_TAB_OPENED',
+            data: terminal
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        } else {
+          const wrapped = emit(pluginId, {
+            type: 'terminal.ERROR',
+            data: { 
+              message: `Terminal ${ev.terminalId} not found`, 
+              terminalId: ev.terminalId 
+            }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        }
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'terminal.ERROR',
+          data: { message: error.message, terminalId: ev.terminalId }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     cleanupTerminals: () => {
       terminalService.killAll()
     },
@@ -260,6 +294,9 @@ export const terminalSystem = setup({
         },
         'terminal.REFRESH_LIST': {
           actions: 'listTerminals'
+        },
+        'terminal.OPEN_TERMINAL_TAB': {
+          actions: 'openTerminalTab'
         },
         'terminal.UPDATE_CURRENT_DIRECTORY': {
           actions: 'updateCurrentDirectory'

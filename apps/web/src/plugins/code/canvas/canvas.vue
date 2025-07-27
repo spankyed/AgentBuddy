@@ -29,7 +29,7 @@
       </div>
       <div class="flex items-center gap-2">
         <button
-          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff"
+          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff && !isAction(activeFile)"
           @click="loadExternalChanges"
           class="px-2 py-0.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded transition-colors"
         >
@@ -57,6 +57,7 @@ import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
+const actionsActor = actor.system.get('codeActions')
 
 // Terminal outputs are handled through state
 
@@ -140,13 +141,22 @@ const handleContentChange = (path: string, content: string) => {
 
 const saveFile = async () => {
   if (activeFile.value && !activeFile.value.isDiff) {
-    console.log('activeFile.value: ', activeFile.value);
-    // Send event to explorer state machine
-    explorerActor?.send({
-      type: 'explorer.WRITE_FILE',
-      path: activeFile.value.path,
-      content: activeFile.value.content
-    })
+    if (isAction(activeFile.value)) {
+      // Send event to actions state machine for action files
+      const actionId = activeFile.value.path.replace('action:', '')
+      actionsActor?.send({
+        type: 'codeActions.SAVE_ACTION',
+        actionId: actionId,
+        content: activeFile.value.content
+      })
+    } else {
+      // Send event to explorer state machine for regular files
+      explorerActor?.send({
+        type: 'explorer.WRITE_FILE',
+        path: activeFile.value.path,
+        content: activeFile.value.content
+      })
+    }
   }
 }
 
@@ -169,9 +179,14 @@ const isTerminal = (file: any): boolean => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
+const isAction = (file: any): boolean => {
+  return 'isAction' in file && file.isAction === true
+}
+
 const getStatusIcon = (file: any) => {
   if (isTerminal(file)) return Terminal
   if (file.isDiff) return GitCompare
+  if (isAction(file)) return FileCode // Actions use same icon as files
   return FileCode
 }
 
@@ -181,6 +196,9 @@ const getStatusText = (file: any) => {
   }
   if (file.isDiff && file.gitFile) {
     return getFileName(file.gitFile.path)
+  }
+  if (isAction(file)) {
+    return file.actionEntity.label
   }
   return getFileName(file.path)
 }

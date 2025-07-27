@@ -1,15 +1,17 @@
 import type { OpenFile, TerminalTab } from '../state'
+import type { ActionTab } from '../features/actions/state'
 
 // Simplified interface for persisted tabs
 interface PersistedTab {
   path: string
-  type: 'file' | 'terminal'
+  type: 'file' | 'terminal' | 'action'
   terminalId?: string
+  actionId?: string
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
 
-export function saveOpenTabs(openFiles: (OpenFile | TerminalTab)[]): void {
+export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab)[]): void {
   try {
     const tabs: PersistedTab[] = openFiles
       .filter(tab => {
@@ -23,6 +25,13 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab)[]): void {
             path: tab.path,
             type: 'terminal' as const,
             terminalId: tab.terminalInfo.id
+          }
+        }
+        if ('isAction' in tab && tab.isAction) {
+          return {
+            path: tab.path,
+            type: 'action' as const,
+            actionId: tab.path.replace('action:', '')
           }
         }
         return {
@@ -51,8 +60,10 @@ export function loadPersistedTabs(): PersistedTab[] {
         typeof tab === 'object' &&
         tab !== null &&
         typeof tab.path === 'string' &&
-        (tab.type === 'file' || tab.type === 'terminal') &&
-        (tab.type === 'file' || typeof tab.terminalId === 'string')
+        (tab.type === 'file' || tab.type === 'terminal' || tab.type === 'action') &&
+        (tab.type === 'file' || 
+         (tab.type === 'terminal' && typeof tab.terminalId === 'string') ||
+         (tab.type === 'action' && typeof tab.actionId === 'string'))
       )
     })
   } catch (error) {
