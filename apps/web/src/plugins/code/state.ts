@@ -39,7 +39,6 @@ export type Context = {
   error: string | null
   selectedPanel: PanelType
   tabsRestored?: boolean
-  actorsSpawned?: boolean
 }
 
 export type Event = 
@@ -72,15 +71,12 @@ const codeState = setup({
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Only spawn if not already spawned
-      if (!context.actorsSpawned) {
         enqueue.spawnChild('explorerState', { systemId: 'explorer' });
         enqueue.spawnChild('searchState', { systemId: 'search' });
         enqueue.spawnChild('commitState', { systemId: 'commit' });
         enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
         enqueue.spawnChild('terminalState', { systemId: 'terminal' });
         enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
-        enqueue.assign({ actorsSpawned: true });
-      }
     }),
 
     saveTabsAction: ({ context }) => {
@@ -107,6 +103,7 @@ const codeState = setup({
     
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
       const persistedTabs = loadPersistedTabs()
+      // console.log('[Code Plugin] Restoring persisted tabs:', persistedTabs)
       
       // Mark tabs as restored immediately (even if empty)
       enqueue.assign({
@@ -129,6 +126,12 @@ const codeState = setup({
         const terminalTabs = persistedTabs.filter(tab => tab.type === 'terminal')
         const actionTabs = persistedTabs.filter(tab => tab.type === 'action')
         
+        console.log('[Code Plugin] tabs to restore:', {
+          actionTabs,
+          fileTabs,
+          terminalTabs,
+        })
+        
         // Send file paths to restore
         if (fileTabs.length > 0 && explorerActor) {
           const filePaths = fileTabs.map(tab => tab.path)
@@ -150,9 +153,9 @@ const codeState = setup({
         // Send action IDs to restore
         if (actionTabs.length > 0 && actionsActor) {
           const actionIds = actionTabs.map(tab => tab.actionId!)
-          actionsActor.send({ 
-            type: 'codeActions.OPEN_TABS', 
-            actionIds 
+          actionsActor.send({
+            type: 'codeActions.OPEN_TABS',
+            actionIds
           })
         }
       })
@@ -179,7 +182,7 @@ const codeState = setup({
 }).createMachine({
   id,
   initial: 'canvas',
-  entry: 'spawnFeatureActors',
+  entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
     rootDirectory: savedRootDirectory,
     currentDirectory: savedRootDirectory,
@@ -188,7 +191,6 @@ const codeState = setup({
     isLoading: false,
     error: null,
     selectedPanel: 'explorer' as PanelType,
-    actorsSpawned: false
   },
   states: {
     canvas: {
@@ -221,12 +223,12 @@ const codeState = setup({
         },
         // Plugin initialization
         PLUGIN_ACTIVATED: {
-          actions: ['initializePlugin', 'restorePersistedTabs']
+          actions: ['initializePlugin']
         }
       }
     }
   }
-}); 
+});
 
 export default codeState;
 

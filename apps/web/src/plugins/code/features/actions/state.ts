@@ -197,43 +197,43 @@ export const actionsState = setup({
     isLoading: false,
     error: null
   },
+  on: {
+    'codeActions.LIST': {
+      target: '.loading',
+      actions: ['setLoading', 'listActions']
+    },
+    'codeActions.OPEN_ACTION': {
+      actions: 'openAction'
+    },
+    'codeActions.SAVE_ACTION': {
+      actions: 'saveAction'
+    },
+    'codeActions.REFRESH_LIST': {
+      target: '.loading',
+      actions: ['setLoading', 'refreshList']
+    },
+    'codeActions.OPEN_TABS': {
+      actions: 'openActionTabs'
+    },
+    // Backend events
+    'ACTIONS_STARTUP': {
+      actions: 'handleActionsStartup'
+    },
+    'ACTION_SELECTED': {
+      actions: 'handleActionSelected'
+    },
+    'ACTION_UPDATED': {
+      actions: ['handleActionUpdated', 'updateActionInOpenFiles']
+    },
+    'ACTIONS_PAGE_LOADED': {
+      actions: 'handleActionsPageLoaded'
+    },
+    'codeActions.CODE_ERROR': {
+      actions: 'setError'
+    }
+  },
   states: {
     idle: {
-      on: {
-        'codeActions.LIST': {
-          target: 'loading',
-          actions: ['setLoading', 'listActions']
-        },
-        'codeActions.OPEN_ACTION': {
-          actions: 'openAction'
-        },
-        'codeActions.SAVE_ACTION': {
-          actions: 'saveAction'
-        },
-        'codeActions.REFRESH_LIST': {
-          target: 'loading',
-          actions: ['setLoading', 'refreshList']
-        },
-        'codeActions.OPEN_TABS': {
-          actions: 'openActionTabs'
-        },
-        // Backend events
-        'ACTIONS_STARTUP': {
-          actions: 'handleActionsStartup'
-        },
-        'ACTION_SELECTED': {
-          actions: 'handleActionSelected'
-        },
-        'ACTION_UPDATED': {
-          actions: ['handleActionUpdated', 'updateActionInOpenFiles']
-        },
-        'ACTIONS_PAGE_LOADED': {
-          actions: 'handleActionsPageLoaded'
-        },
-        'codeActions.CODE_ERROR': {
-          actions: 'setError'
-        }
-      }
     },
     loading: {
       on: {
