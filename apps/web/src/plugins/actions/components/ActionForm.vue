@@ -103,7 +103,7 @@
               </button>
             </div>
             <p class="mb-4 text-xs text-neutral-500">
-              Write an async JavaScript function body. The function receives `params` object and `services` object with available services (logger, database, email, http, storage).
+              An async JavaScript function body that receives `params` object and `services` (logger, database, LLM, http) object.
             </p>
             <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;">
               <ActionFunctionEditor
