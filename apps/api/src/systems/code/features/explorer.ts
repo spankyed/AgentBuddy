@@ -5,7 +5,7 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { FileSystemRepository } from '../services/filesystem'
 import { FileWatcherService } from '../services/filewatcher'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, FileChangeInfo } from '../types'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, FileChangeInfo, QuickOpenResult } from '../types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -22,6 +22,7 @@ export const IncomingExplorerEvents = [
   busEvent('explorer.GET_FILE_INFO', { path: z.string() }),
   busEvent('explorer.CHANGE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.CLOSE_FILE', { path: z.string() }),
+  busEvent('explorer.QUICK_OPEN_SEARCH', { rootDirectory: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -38,6 +39,7 @@ export type OutgoingExplorerEvents =
   | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
   | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
+  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
 
 export interface Context {
   currentDirectory: string
@@ -60,6 +62,7 @@ export type Event =
   | { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
+  | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
   | { type: 'CODE_STARTUP' };
 
 export const explorerSystem = setup({
@@ -337,6 +340,28 @@ export const explorerSystem = setup({
         console.error('Failed to unwatch file:', error)
       }
     },
+
+    quickOpenSearch: async ({ event, context }) => {
+      const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
+      try {
+        const files = await context.repository.getAllFiles(ev.rootDirectory)
+        const wrapped = emit(pluginId, {
+          type: 'explorer.QUICK_OPEN_RESULTS',
+          data: files,
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'explorer.CODE_ERROR',
+          data: {
+            code: error.code || 'IO_ERROR',
+            message: error.message,
+            path: ev.rootDirectory,
+          },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
   }
 }).createMachine({
   id: 'explorer',
@@ -395,6 +420,9 @@ export const explorerSystem = setup({
         },
         'explorer.FILE_CHANGE_CALLBACK': {
           actions: 'handleFileChange'
+        },
+        'explorer.QUICK_OPEN_SEARCH': {
+          actions: 'quickOpenSearch'
         }
       }
     }

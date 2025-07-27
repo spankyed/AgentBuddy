@@ -139,3 +139,20 @@ export interface TerminalCreate {
 export interface TerminalClose {
   terminalId: string
 }
+
+// Quick Open types
+export interface QuickOpenOptions {
+  query: string
+  rootDirectory: string
+  excludePatterns?: string[]
+  maxResults?: number
+}
+
+export interface QuickOpenResult {
+  path: string
+  relativePath: string
+  name: string
+  type: 'file' | 'directory'
+  extension?: string
+  score?: number
+}

@@ -1,5 +1,8 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Quick Open Palette -->
+    <QuickOpenPalette />
+    
     <!-- Always use FileEditor which now handles both regular files and diffs -->
     <FileEditor
       :open-files="openFiles"
@@ -55,6 +58,7 @@ import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
+import QuickOpenPalette from '@/plugins/code/components/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -233,6 +237,12 @@ const getStatusText = (file: any) => {
 
 // Keyboard shortcuts
 const handleKeyDown = (e: KeyboardEvent) => {
+  // Quick Open: Cmd/Ctrl + P
+  if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+    e.preventDefault()
+    actor.send({ type: 'SHOW_QUICK_OPEN' })
+  }
+  
   // Save file: Cmd/Ctrl + S
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault()
