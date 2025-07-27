@@ -41,6 +41,7 @@ export type Event =
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
+  | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
 export const terminalState = setup({
@@ -200,26 +201,31 @@ export const terminalState = setup({
       updateParentState(self, result)
     },
     
-    openTerminalTabs: ({ event, self, context }) => {
+    openTerminalTabs: ({ event }) => {
       const ev = event as { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
+      // Send individual requests to backend for each terminal
+      ev.terminalIds.forEach(terminalId => {
+        sendToBackend('terminal.OPEN_TERMINAL_TAB', { terminalId })
+      })
+    },
+    
+    handleTerminalTabOpened: ({ event, self }) => {
+      const ev = event as { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
       const parentContext = getParentContext(self)
       
-      // Find terminals by ID and create tab objects
-      const terminalTabs = ev.terminalIds
-        .map(terminalId => context.terminals.find(t => t.id === terminalId))
-        .filter((terminal): terminal is TerminalInfo => terminal !== undefined)
-        .map(terminal => ({
-          path: `terminal:${terminal.id}`,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo: terminal
-        }))
+      // Create terminal tab object
+      const terminalTab = {
+        path: `terminal:${ev.data.id}`,
+        content: '',
+        modified: false,
+        isTerminal: true,
+        terminalInfo: ev.data
+      }
       
       const result = mergeTabs(
         parentContext?.openFiles || [],
-        terminalTabs,
-        parentContext?.activeFilePath // Keep current active or use first new terminal
+        [terminalTab],
+        parentContext?.activeFilePath // Keep current active
       )
       
       updateParentState(self, result)
@@ -232,49 +238,52 @@ export const terminalState = setup({
     terminals: [],
     terminalError: null
   },
+  on: {
+    'terminal.CREATE': {
+      actions: 'createTerminal'
+    },
+    'terminal.CLOSE': {
+      actions: 'closeTerminal'
+    },
+    'terminal.INPUT': {
+      actions: 'sendTerminalInput'
+    },
+    'terminal.RESIZE': {
+      actions: 'resizeTerminal'
+    },
+    'terminal.REFRESH_LIST': {
+      actions: 'listTerminals'
+    },
+    'terminal.OPEN_TAB': {
+      actions: 'openTerminalTab'
+    },
+    'terminal.OPEN_TABS': {
+      actions: 'openTerminalTabs'
+    },
+    'terminal.TERMINALS_LISTED': {
+      actions: 'assignTerminals'
+    },
+    'terminal.CREATED': {
+      actions: 'handleTerminalCreated'
+    },
+    'terminal.CLOSED': {
+      actions: 'handleTerminalClosed'
+    },
+    'terminal.OUTPUT': {
+      actions: 'handleTerminalOutput'
+    },
+    'terminal.ERROR': {
+      actions: 'assignTerminalError'
+    },
+    'terminal.TERMINAL_TAB_OPENED': {
+      actions: 'handleTerminalTabOpened'
+    },
+    'CODE_STARTUP': {
+      actions: 'handleCodeStartup'
+    }
+  },
   states: {
     idle: {
-      on: {
-        'terminal.CREATE': {
-          actions: 'createTerminal'
-        },
-        'terminal.CLOSE': {
-          actions: 'closeTerminal'
-        },
-        'terminal.INPUT': {
-          actions: 'sendTerminalInput'
-        },
-        'terminal.RESIZE': {
-          actions: 'resizeTerminal'
-        },
-        'terminal.REFRESH_LIST': {
-          actions: 'listTerminals'
-        },
-        'terminal.OPEN_TAB': {
-          actions: 'openTerminalTab'
-        },
-        'terminal.OPEN_TABS': {
-          actions: 'openTerminalTabs'
-        },
-        'terminal.TERMINALS_LISTED': {
-          actions: 'assignTerminals'
-        },
-        'terminal.CREATED': {
-          actions: 'handleTerminalCreated'
-        },
-        'terminal.CLOSED': {
-          actions: 'handleTerminalClosed'
-        },
-        'terminal.OUTPUT': {
-          actions: 'handleTerminalOutput'
-        },
-        'terminal.ERROR': {
-          actions: 'assignTerminalError'
-        },
-        'CODE_STARTUP': {
-          actions: 'handleCodeStartup'
-        }
-      }
     }
   }
 });
