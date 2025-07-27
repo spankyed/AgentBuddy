@@ -91,6 +91,11 @@ export function getLanguageId(filePath: string): string {
     return 'typescript'
   }
   
+  // Check if this is a prompt file
+  if (filePath.startsWith('prompt:')) {
+    return 'typescript'
+  }
+  
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   
   const languageMap: Record<string, string> = {

@@ -85,17 +85,18 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play } from 'lucide-vue-next'
+import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play, Sparkle } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type OpenFile, type TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
+import type { PromptTab } from '@/plugins/code/features/prompts/state'
 
 // Props
 const props = defineProps<{
-  openFiles: (OpenFile | TerminalTab | ActionTab)[]
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
 }>()
 
@@ -123,7 +124,7 @@ const emit = defineEmits<{
 // Terminal output is now handled directly in TerminalView
 
 // Helper to check if a file is a terminal
-const isTerminal = (file: OpenFile | TerminalTab | ActionTab): file is TerminalTab => {
+const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
@@ -156,7 +157,7 @@ const getFileName = (path: string) => {
   return path.split('/').pop() || path
 }
 
-const getTabLabel = (file: OpenFile | TerminalTab | ActionTab) => {
+const getTabLabel = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   if (isTerminal(file)) {
     return file.terminalInfo.title
   }
@@ -169,10 +170,14 @@ const getTabLabel = (file: OpenFile | TerminalTab | ActionTab) => {
   if ('isAction' in file && file.isAction && 'actionEntity' in file) {
     return (file as any).actionEntity.label
   }
+  // Check if this is a prompt file
+  if ('isPrompt' in file && file.isPrompt && 'promptEntity' in file) {
+    return (file as any).promptEntity.label
+  }
   return getFileName(file.path)
 }
 
-const getTabIcon = (file: OpenFile | TerminalTab | ActionTab) => {
+const getTabIcon = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   if (isTerminal(file)) {
     return Terminal
   }
@@ -182,6 +187,10 @@ const getTabIcon = (file: OpenFile | TerminalTab | ActionTab) => {
   // Check if this is an action file
   if ('isAction' in file && file.isAction) {
     return Play
+  }
+  // Check if this is a prompt file
+  if ('isPrompt' in file && file.isPrompt) {
+    return Sparkle
   }
   return getFileIcon(getFileExtension(file.path))
 }

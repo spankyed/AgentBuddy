@@ -11,6 +11,7 @@ import { commitState, type GitStatusFile, type GitDiff } from './features/commit
 import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState, type ActionTab } from './features/actions/state';
+import { promptsState, type PromptTab } from './features/prompts/state';
 
 export const id = 'code' as const;
 export interface OpenFile {
@@ -33,7 +34,7 @@ export interface TerminalTab extends OpenFile {
 export type Context = {
   rootDirectory: string
   currentDirectory: string
-  openFiles: (OpenFile | TerminalTab | ActionTab)[]
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
   isLoading: boolean
   error: string | null
@@ -50,7 +51,7 @@ export type Event =
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions';
+type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts';
 
 const STORAGE_KEY = 'code-plugin-root-directory'
 const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
@@ -67,7 +68,8 @@ const codeState = setup({
     commitState,
     pullRequestState,
     terminalState,
-    actionsState
+    actionsState,
+    promptsState
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
@@ -78,6 +80,7 @@ const codeState = setup({
         enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
         enqueue.spawnChild('terminalState', { systemId: 'terminal' });
         enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
+        enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
     }),
 
     saveTabsAction: ({ context }) => {
@@ -100,6 +103,7 @@ const codeState = setup({
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
+      system.get('codePrompts')?.send({ type: 'codePrompts.REFRESH_LIST' });
     },
     
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
@@ -121,16 +125,19 @@ const codeState = setup({
         const explorerActor = system.get('explorer')
         const terminalActor = system.get('terminal')
         const actionsActor = system.get('codeActions')
+        const promptsActor = system.get('codePrompts')
         
         // Filter tabs by type
         const fileTabs = persistedTabs.filter(tab => tab.type === 'file')
         const terminalTabs = persistedTabs.filter(tab => tab.type === 'terminal')
         const actionTabs = persistedTabs.filter(tab => tab.type === 'action')
+        const promptTabs = persistedTabs.filter(tab => tab.type === 'prompt')
         
         console.log('[Code Plugin] tabs to restore:', {
           actionTabs,
           fileTabs,
           terminalTabs,
+          promptTabs,
         })
         
         // Send file paths to restore
@@ -159,6 +166,15 @@ const codeState = setup({
             actionIds
           })
         }
+        
+        // Send prompt IDs to restore
+        if (promptTabs.length > 0 && promptsActor) {
+          const promptIds = promptTabs.map(tab => tab.promptId!)
+          promptsActor.send({
+            type: 'codePrompts.OPEN_TABS',
+            promptIds
+          })
+        }
       })
     }),
     broadcastToAllFeatures: ({ event, system }) => {
@@ -168,6 +184,7 @@ const codeState = setup({
       system.get('pr')?.send(event);
       system.get('terminal')?.send(event);
       system.get('codeActions')?.send(event);
+      system.get('codePrompts')?.send(event);
     },
 
     routeEvent: ({ event, system }) => {
@@ -196,6 +213,8 @@ const codeState = setup({
         system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       } else if (ev.panel === 'actions') {
         system.get('codeActions')?.send({ type: 'codeActions.LIST' });
+      } else if (ev.panel === 'prompts') {
+        system.get('codePrompts')?.send({ type: 'codePrompts.LIST' });
       }
       return {
         ...context,
