@@ -41,6 +41,22 @@ export type Context = {
   selectedPanel: PanelType
   tabsRestored?: boolean
   pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
+  // Quick open state
+  isQuickOpenVisible: boolean
+  quickOpenQuery: string
+  quickOpenResults: QuickOpenResult[]
+  quickOpenSelectedIndex: number
+  quickOpenLoading: boolean
+}
+
+export interface QuickOpenResult {
+  path: string
+  relativePath: string
+  name: string
+  type: 'file' | 'directory'
+  extension?: string
+  score?: number
+  matchRanges?: Array<[number, number]> // For highlighting matches
 }
 
 export type Event = 
@@ -48,7 +64,14 @@ export type Event =
   // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
-  | { type: 'SELECT_PANEL'; panel: PanelType };
+  | { type: 'SELECT_PANEL'; panel: PanelType }
+  // Quick open events
+  | { type: 'TOGGLE_QUICK_OPEN' }
+  | { type: 'SHOW_QUICK_OPEN' }
+  | { type: 'HIDE_QUICK_OPEN' }
+  | { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string }
+  | { type: 'SELECT_QUICK_OPEN_RESULT'; index: number }
+  | { type: 'OPEN_QUICK_OPEN_RESULT' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -265,6 +288,66 @@ const codeState = setup({
         selectedPanel: ev.panel
       };
     }),
+    
+    // Quick open actions
+    showQuickOpen: assign({
+      isQuickOpenVisible: true,
+      quickOpenQuery: '',
+      quickOpenResults: [],
+      quickOpenSelectedIndex: 0,
+      quickOpenLoading: true
+    }),
+    
+    hideQuickOpen: assign({
+      isQuickOpenVisible: false,
+      quickOpenQuery: '',
+      quickOpenResults: [],
+      quickOpenSelectedIndex: 0,
+      quickOpenLoading: false
+    }),
+    
+    toggleQuickOpen: assign(({ context }) => ({
+      ...context,
+      isQuickOpenVisible: !context.isQuickOpenVisible,
+      quickOpenQuery: context.isQuickOpenVisible ? '' : context.quickOpenQuery,
+      quickOpenResults: context.isQuickOpenVisible ? [] : context.quickOpenResults,
+      quickOpenSelectedIndex: 0,
+      quickOpenLoading: context.isQuickOpenVisible ? false : true
+    })),
+    
+    updateQuickOpenQuery: assign(({ event }) => {
+      const ev = event as { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string };
+      return {
+        quickOpenQuery: ev.query,
+        quickOpenSelectedIndex: 0
+      };
+    }),
+    
+    selectQuickOpenResult: assign(({ event, context }) => {
+      const ev = event as { type: 'SELECT_QUICK_OPEN_RESULT'; index: number };
+      const maxIndex = Math.max(0, context.quickOpenResults.length - 1);
+      return {
+        quickOpenSelectedIndex: Math.max(0, Math.min(ev.index, maxIndex))
+      };
+    }),
+    
+    openQuickOpenResult: ({ context, system }) => {
+      const result = context.quickOpenResults[context.quickOpenSelectedIndex];
+      if (result && result.type === 'file') {
+        // Open file through explorer
+        system.get('explorer')?.send({
+          type: 'explorer.OPEN_FILE',
+          path: result.path
+        });
+      }
+    },
+    
+    requestQuickOpenFiles: ({ context, system }) => {
+      system.get('explorer')?.send({
+        type: 'explorer.QUICK_OPEN_SEARCH',
+        rootDirectory: context.rootDirectory
+      });
+    },
   }
 }).createMachine({
   id,
@@ -278,6 +361,12 @@ const codeState = setup({
     isLoading: false,
     error: null,
     selectedPanel: 'explorer' as PanelType,
+    // Quick open state
+    isQuickOpenVisible: false,
+    quickOpenQuery: '',
+    quickOpenResults: [],
+    quickOpenSelectedIndex: 0,
+    quickOpenLoading: false,
   },
   states: {
     canvas: {
@@ -302,6 +391,25 @@ const codeState = setup({
         // Panel selection
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        // Quick open events
+        TOGGLE_QUICK_OPEN: {
+          actions: ['toggleQuickOpen', 'requestQuickOpenFiles']
+        },
+        SHOW_QUICK_OPEN: {
+          actions: ['showQuickOpen', 'requestQuickOpenFiles']
+        },
+        HIDE_QUICK_OPEN: {
+          actions: ['hideQuickOpen']
+        },
+        UPDATE_QUICK_OPEN_QUERY: {
+          actions: ['updateQuickOpenQuery']
+        },
+        SELECT_QUICK_OPEN_RESULT: {
+          actions: ['selectQuickOpenResult']
+        },
+        OPEN_QUICK_OPEN_RESULT: {
+          actions: ['openQuickOpenResult', 'hideQuickOpen']
         }
       }
     }

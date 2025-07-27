@@ -43,6 +43,16 @@ export interface Context {
   files: FileInfo[]
 }
 
+// Quick open types
+export interface QuickOpenResult {
+  path: string
+  relativePath: string
+  name: string
+  type: 'file' | 'directory'
+  extension?: string
+  score?: number
+}
+
 export type Event = 
   | { type: 'explorer.INITIALIZE'; rootDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
@@ -66,6 +76,9 @@ export type Event =
   | { type: 'explorer.CODE_ERROR'; data: { message: string } }
   | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
   | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
+  // Quick open events
+  | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
+  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
   // Broadcast events
   | { type: 'CODE_STARTUP'; data: any };
 
@@ -323,6 +336,19 @@ export const explorerState = setup({
     closeFile: ({ event }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
       sendToBackend('explorer.CLOSE_FILE', { path: ev.path })
+    },
+    
+    quickOpenSearch: ({ event }) => {
+      const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
+      sendToBackend('explorer.QUICK_OPEN_SEARCH', { rootDirectory: ev.rootDirectory })
+    },
+    
+    handleQuickOpenResults: ({ event, self }) => {
+      const ev = event as { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
+      updateParentState(self, { 
+        quickOpenResults: ev.data,
+        quickOpenLoading: false
+      })
     }
   }
 }).createMachine({
@@ -394,6 +420,12 @@ export const explorerState = setup({
         },
         'explorer.CLOSE_FILE': {
           actions: 'closeFile'
+        },
+        'explorer.QUICK_OPEN_SEARCH': {
+          actions: 'quickOpenSearch'
+        },
+        'explorer.QUICK_OPEN_RESULTS': {
+          actions: 'handleQuickOpenResults'
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

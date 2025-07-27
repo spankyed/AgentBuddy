@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { spawn } from 'child_process'
-import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch } from '../types'
+import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const PROJECT_ROOT = process.cwd()
@@ -356,5 +356,74 @@ export class FileSystemRepository {
     return []
   }
 
+  // Get all files recursively for quick open
+  async getAllFiles(
+    rootPath: string, 
+    excludePatterns: string[] = [
+      'node_modules',
+      '.git',
+      '.next',
+      'dist',
+      'build',
+      'coverage',
+      '.turbo',
+      '.cache',
+      '.vscode',
+      '.idea',
+      '*.log',
+      '*.lock'
+    ]
+  ): Promise<QuickOpenResult[]> {
+    const results: QuickOpenResult[] = []
+    const validPath = this.validatePath(rootPath)
+    
+    const shouldExclude = (filePath: string): boolean => {
+      const relativePath = path.relative(validPath, filePath)
+      return excludePatterns.some(pattern => {
+        // Simple glob pattern matching
+        if (pattern.includes('*')) {
+          const regex = new RegExp(pattern.replace(/\*/g, '.*'))
+          return regex.test(relativePath)
+        }
+        // Direct name matching
+        return relativePath.split(path.sep).some(part => part === pattern)
+      })
+    }
+    
+    const walk = async (dir: string) => {
+      if (shouldExclude(dir)) return
+      
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true })
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name)
+          
+          if (shouldExclude(fullPath)) continue
+          
+          if (entry.isDirectory()) {
+            await walk(fullPath)
+          } else {
+            const relativePath = path.relative(validPath, fullPath)
+            results.push({
+              path: fullPath,
+              relativePath,
+              name: entry.name,
+              type: 'file',
+              extension: path.extname(entry.name).slice(1)
+            })
+          }
+        }
+      } catch (error) {
+        // Ignore permission errors and continue
+        if ((error as any).code !== 'EACCES') {
+          console.error(`Error reading directory ${dir}:`, error)
+        }
+      }
+    }
+    
+    await walk(validPath)
+    return results
+  }
 
 }
