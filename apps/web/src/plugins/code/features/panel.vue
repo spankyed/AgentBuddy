@@ -71,7 +71,7 @@ import {
   GitCommit, 
   GitPullRequest,
   Terminal,
-  Code2,
+  Play
 } from 'lucide-vue-next'
 import ExplorerPanel from '@/plugins/code/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '@/plugins/code/features/search/SearchPanel.vue'
@@ -93,7 +93,7 @@ const panels = [
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
   { id: 'terminal', label: 'Terminal', icon: Terminal },
-  { id: 'actions', label: 'Actions', icon: Code2 }
+  { id: 'actions', label: 'Actions', icon: Play }
 ] as const
 
 // Event handlers

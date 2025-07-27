@@ -6,7 +6,7 @@
       <button
         @click="refreshActions"
         :disabled="isLoading"
-        class="p-1 text-neutral-400 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
+        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
         title="Refresh actions"
       >
         <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
@@ -25,7 +25,7 @@
 
     <!-- Actions List -->
     <div v-else class="flex-1 overflow-auto">
-      <div v-if="actions.length === 0" class="p-4 text-sm text-neutral-400 text-center">
+      <div v-if="actions.length === 0" class="p-4 text-sm text-center text-neutral-400">
         No actions found
       </div>
       
@@ -33,11 +33,11 @@
         v-for="action in actions"
         :key="action.id"
         @click="selectAction(action)"
-        class="px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800/50 cursor-pointer transition-colors"
+        class="px-4 py-3 transition-colors border-b cursor-pointer border-neutral-800 hover:bg-neutral-800/50"
       >
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-neutral-200 truncate">
+            <div class="text-sm font-medium truncate text-neutral-200">
               {{ action.label }}
             </div>
             <div v-if="action.description" class="mt-1 text-xs text-neutral-400 line-clamp-2">
@@ -50,7 +50,7 @@
             </div>
           </div>
           <div class="ml-2 text-neutral-500">
-            <Code2 :size="16" />
+            <Play :size="16" />
           </div>
         </div>
       </div>
@@ -61,7 +61,7 @@
       <button
         @click="goToPage(page - 1)"
         :disabled="page === 1 || isLoading"
-        class="px-2 py-1 text-xs rounded transition-colors"
+        class="px-2 py-1 text-xs transition-colors rounded"
         :class="page === 1 || isLoading ? 'text-neutral-600 cursor-not-allowed' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'"
       >
         Previous
@@ -74,7 +74,7 @@
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages || isLoading"
-        class="px-2 py-1 text-xs rounded transition-colors"
+        class="px-2 py-1 text-xs transition-colors rounded"
         :class="page === totalPages || isLoading ? 'text-neutral-600 cursor-not-allowed' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'"
       >
         Next
@@ -88,7 +88,7 @@ import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, Code2 } from 'lucide-vue-next'
+import { RefreshCw, Play } from 'lucide-vue-next'
 import type { ActionEntity } from '@abuddy/api'
 
 // Get actors
