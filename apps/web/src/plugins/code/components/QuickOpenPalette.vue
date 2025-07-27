@@ -2,28 +2,25 @@
   <Transition name="quick-open">
     <div
       v-if="isVisible"
-      class="fixed inset-0 z-50 flex items-start justify-center pt-20"
+      class="absolute inset-0 z-50 flex items-start justify-center pt-20 -top-10"
       @click.self="handleClose"
     >
-      <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/50" />
-      
       <!-- Palette -->
       <div class="relative w-full max-w-2xl mx-4">
-        <div class="bg-neutral-900 rounded-lg shadow-2xl border border-neutral-800 overflow-hidden">
+        <div class="overflow-hidden border rounded-lg shadow-2xl bg-neutral-900 border-neutral-800">
           <!-- Search Input -->
           <div class="flex items-center px-4 py-3 border-b border-neutral-800">
-            <Search class="w-4 h-4 text-neutral-500 mr-3 flex-shrink-0" />
+            <Search class="flex-shrink-0 w-4 h-4 mr-3 text-neutral-500" />
             <input
               ref="searchInput"
               v-model="searchQuery"
               type="text"
               placeholder="Search files by name..."
-              class="flex-1 bg-transparent text-neutral-100 placeholder-neutral-500 outline-none text-sm"
+              class="flex-1 text-sm bg-transparent outline-none text-neutral-100 placeholder-neutral-500"
               @input="handleSearch"
               @keydown="handleKeydown"
             />
-            <kbd class="ml-3 px-2 py-1 text-xs bg-neutral-800 text-neutral-400 rounded">
+            <kbd class="px-2 py-1 ml-3 text-xs rounded bg-neutral-800 text-neutral-400">
               ESC
             </kbd>
           </div>
@@ -31,14 +28,14 @@
           <!-- Results -->
           <div
             v-if="loading"
-            class="px-4 py-8 text-center text-neutral-500 text-sm"
+            class="px-4 py-8 text-sm text-center text-neutral-500"
           >
             Loading files...
           </div>
           
           <div
             v-else-if="filteredResults.length === 0 && searchQuery"
-            class="px-4 py-8 text-center text-neutral-500 text-sm"
+            class="px-4 py-8 text-sm text-center text-neutral-500"
           >
             No files found matching "{{ searchQuery }}"
           </div>
@@ -46,13 +43,13 @@
           <div
             v-else-if="filteredResults.length > 0"
             ref="resultsContainer"
-            class="max-h-96 overflow-y-auto"
+            class="overflow-y-auto max-h-96"
           >
             <div
               v-for="(result, index) in filteredResults"
               :key="result.item.path"
               :ref="el => setResultRef(el, index)"
-              class="px-4 py-2 flex items-center gap-3 hover:bg-neutral-800 cursor-pointer transition-colors"
+              class="flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer hover:bg-neutral-800"
               :class="{ 'bg-neutral-800': index === selectedIndex }"
               @click="handleSelect(index)"
               @mouseenter="selectedIndex = index"
@@ -60,7 +57,7 @@
               <!-- File Icon -->
               <component
                 :is="getFileIcon(result.item)"
-                class="w-4 h-4 text-neutral-500 flex-shrink-0"
+                class="flex-shrink-0 w-4 h-4 text-neutral-500"
               />
               
               <!-- File Info -->
@@ -68,12 +65,12 @@
                 <div class="flex items-baseline gap-2">
                   <!-- File Name with Highlighting -->
                   <span
-                    class="text-sm text-neutral-100 truncate"
+                    class="text-sm truncate text-neutral-100"
                     v-html="highlightedName(result)"
                   />
                   
                   <!-- File Path -->
-                  <span class="text-xs text-neutral-500 truncate">
+                  <span class="text-xs truncate text-neutral-500">
                     {{ getDirectory(result.item.relativePath) }}
                   </span>
                 </div>
@@ -88,13 +85,13 @@
           
           <div
             v-else
-            class="px-4 py-8 text-center text-neutral-500 text-sm"
+            class="px-4 py-8 text-sm text-center text-neutral-500"
           >
             Start typing to search files...
           </div>
           
           <!-- Footer -->
-          <div class="px-4 py-2 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-500">
+          <div class="flex items-center justify-between px-4 py-2 text-xs border-t border-neutral-800 text-neutral-500">
             <div class="flex items-center gap-4">
               <span class="flex items-center gap-1">
                 <kbd class="px-1.5 py-0.5 bg-neutral-800 rounded">↑</kbd>
@@ -339,17 +336,12 @@ onUnmounted(() => {
 /* Transition for smooth appearance */
 .quick-open-enter-active,
 .quick-open-leave-active {
-  transition: all 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .quick-open-enter-from,
 .quick-open-leave-to {
   opacity: 0;
-}
-
-.quick-open-enter-from > div:last-child,
-.quick-open-leave-to > div:last-child {
-  transform: scale(0.95) translateY(-10px);
 }
 
 /* Custom scrollbar for results */
