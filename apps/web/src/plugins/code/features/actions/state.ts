@@ -40,9 +40,9 @@ export type Event =
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; content: string }
   | { type: 'codeActions.REFRESH_LIST' }
   // Backend events
-  | { type: 'ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
-  | { type: 'ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
-  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: string }
+  | { type: 'codeActions.ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
+  | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
+  | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
   | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
   | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
   // Tab restoration
@@ -91,19 +91,19 @@ export const actionsState = setup({
     
     handleActionsStartup: assign({
       actions: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
+        const ev = event as { type: 'codeActions.ACTIONS_LISTED'; data: any }
         return ev.data.actions
       },
       page: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
+        const ev = event as { type: 'codeActions.ACTIONS_LISTED'; data: any }
         return ev.data.page
       },
       totalPages: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
+        const ev = event as { type: 'codeActions.ACTIONS_LISTED'; data: any }
         return ev.data.totalPages
       },
       totalCount: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
+        const ev = event as { type: 'codeActions.ACTIONS_LISTED'; data: any }
         return ev.data.totalCount
       },
       isLoading: false,
@@ -111,7 +111,7 @@ export const actionsState = setup({
     }),
     
     handleActionSelected: ({ event, self }) => {
-      const ev = event as { type: 'ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
+      const ev = event as { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       const actionPath = `action:${ev.actionId}`
@@ -146,7 +146,7 @@ export const actionsState = setup({
     
     handleActionUpdated: assign({
       actions: ({ context, event }) => {
-        const ev = event as { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: string }
+        const ev = event as { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
         return context.actions.map(action => 
           action.id === ev.actionId ? ev.action : action
         )
@@ -154,7 +154,7 @@ export const actionsState = setup({
     }),
     
     updateActionInOpenFiles: ({ event, self }) => {
-      const ev = event as { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: string }
+      const ev = event as { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       
@@ -228,13 +228,13 @@ export const actionsState = setup({
       actions: 'openActionTabs'
     },
     // Backend events
-    'ACTIONS_LISTED': {
+    'codeActions.ACTIONS_LISTED': {
       actions: 'handleActionsStartup'
     },
-    'ACTION_SELECTED': {
+    'codeActions.ACTION_SELECTED': {
       actions: 'handleActionSelected'
     },
-    'ACTION_UPDATED': {
+    'codeActions.ACTION_UPDATED': {
       actions: ['handleActionUpdated', 'updateActionInOpenFiles']
     },
     'ACTIONS_PAGE_LOADED': {
@@ -249,7 +249,7 @@ export const actionsState = setup({
     },
     loading: {
       on: {
-        'ACTIONS_LISTED': {
+        'codeActions.ACTIONS_LISTED': {
           target: 'idle',
           actions: 'handleActionsStartup'
         },

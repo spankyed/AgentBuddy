@@ -5,7 +5,7 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { actionQueries, actionCommands } from '@/systems/actions/repository'
 import { EARS } from '@/core/types'
-import type { ActionEntity, OutgoingActionEvents as ActionsOutgoingEvents } from '@/systems/actions/types'
+import type { ActionEntity } from '@/systems/actions/types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -20,9 +20,11 @@ export const IncomingActionsEvents = [
   }),
 ] as const
 
-// Outgoing events to frontend (reuse from actions system and add error event)
+// Outgoing events to frontend
 export type OutgoingActionsEvents = 
-  | ActionsOutgoingEvents
+  | { type: 'codeActions.ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
+  | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
+  | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
   | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
 
 export interface Context {
@@ -46,7 +48,7 @@ export const actionsSystem = setup({
       const data = actionQueries.startupData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
-        type: 'ACTIONS_LISTED',
+        type: 'codeActions.ACTIONS_LISTED',
         data
       })
       rootEvents.emitOutgoing(wrapped.event)
@@ -64,7 +66,7 @@ export const actionsSystem = setup({
         }
         
         const wrapped = emit(pluginId, {
-          type: 'ACTION_SELECTED',
+          type: 'codeActions.ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: actionWithContent
         })
@@ -92,7 +94,7 @@ export const actionsSystem = setup({
         const updatedAction = actionQueries.byId(ev.actionId as EARS.EntityId)
         if (updatedAction) {
           const wrapped = emit(pluginId, {
-            type: 'ACTION_UPDATED',
+            type: 'codeActions.ACTION_UPDATED',
             action: updatedAction,
             actionId: updatedAction.id
           })
@@ -114,7 +116,7 @@ export const actionsSystem = setup({
       const data = actionQueries.startupData(1)
       
       const wrapped = emit(pluginId, {
-        type: 'ACTIONS_LISTED',
+        type: 'codeActions.ACTIONS_LISTED',
         data
       })
       rootEvents.emitOutgoing(wrapped.event)

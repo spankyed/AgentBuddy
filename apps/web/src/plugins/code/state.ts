@@ -224,16 +224,6 @@ const codeState = setup({
         CODE_STARTUP: {
           actions: ['broadcastToAllFeatures']
         },
-        // Route actions events to actions state machine
-        ACTIONS_LISTED: {
-          actions: ({ system, event }) => system.get('codeActions')?.send(event)
-        },
-        ACTION_SELECTED: {
-          actions: ({ system, event }) => system.get('codeActions')?.send(event)
-        },
-        ACTION_UPDATED: {
-          actions: ({ system, event }) => system.get('codeActions')?.send(event)
-        },
         ACTIONS_PAGE_LOADED: {
           actions: ({ system, event }) => system.get('codeActions')?.send(event)
         },
