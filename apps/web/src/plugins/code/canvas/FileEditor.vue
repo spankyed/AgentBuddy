@@ -6,6 +6,7 @@
       :active-tab-path="activeFilePath"
       @select="selectFile"
       @close="closeFile"
+      @reorder="(fromIndex, toIndex) => $emit('reorder', fromIndex, toIndex)"
     />
 
     <!-- Editor -->
@@ -95,6 +96,7 @@ const emit = defineEmits<{
   selectFile: [path: string]
   closeFile: [path: string]
   contentChange: [path: string, content: string]
+  reorder: [fromIndex: number, toIndex: number]
 }>()
 
 // Terminal output is now handled directly in TerminalView
