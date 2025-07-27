@@ -40,6 +40,7 @@ export type Context = {
   error: string | null
   selectedPanel: PanelType
   tabsRestored?: boolean
+  pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
 }
 
 export type Event = 
@@ -56,6 +57,34 @@ type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions
 const STORAGE_KEY = 'code-plugin-root-directory'
 const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
 const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || DEFAULT_DIR
+
+// Helper function to reorder tabs based on stored order
+function reorderTabsByStoredOrder(
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
+  pendingOrder: Array<{ path: string; order: number }>
+): (OpenFile | TerminalTab | ActionTab | PromptTab)[] | null {
+  // Check if all pending tabs have been loaded
+  const pendingPaths = pendingOrder.map(t => t.path)
+  const loadedPaths = openFiles.map(f => f.path)
+  const allTabsLoaded = pendingPaths.every(path => loadedPaths.includes(path))
+  
+  if (!allTabsLoaded) {
+    // Not all tabs loaded yet, wait
+    return null
+  }
+  
+  // Create a map of path to order
+  const orderMap = new Map(pendingOrder.map(t => [t.path, t.order]))
+  
+  // Sort tabs by their original order
+  const sorted = [...openFiles].sort((a, b) => {
+    const orderA = orderMap.get(a.path) ?? Number.MAX_SAFE_INTEGER
+    const orderB = orderMap.get(b.path) ?? Number.MAX_SAFE_INTEGER
+    return orderA - orderB
+  })
+  
+  return sorted
+}
 
 const codeState = setup({
   types: {
@@ -92,7 +121,18 @@ const codeState = setup({
     },
     updateState: assign(({ event, context }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
-      return { ...context, ...ev.updates }
+      const updates = { ...context, ...ev.updates }
+      
+      // Check if we need to reorder tabs based on pending order
+      if (context.pendingTabOrder && ev.updates.openFiles && ev.updates.openFiles.length > 0) {
+        const reorderedFiles = reorderTabsByStoredOrder(ev.updates.openFiles, context.pendingTabOrder)
+        if (reorderedFiles) {
+          updates.openFiles = reorderedFiles
+          updates.pendingTabOrder = undefined // Clear pending order after applying
+        }
+      }
+      
+      return updates
     }),
     assignFiles: assign({
       isLoading: false,
@@ -110,9 +150,13 @@ const codeState = setup({
       const persistedTabs = loadPersistedTabs()
       // console.log('[Code Plugin] Restoring persisted tabs:', persistedTabs)
       
+      // Store the desired tab order
+      const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
+      
       // Mark tabs as restored immediately (even if empty)
       enqueue.assign({
-        tabsRestored: true
+        tabsRestored: true,
+        pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined
       })
       
       // If no persisted tabs, we're done

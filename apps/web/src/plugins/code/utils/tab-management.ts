@@ -175,3 +175,29 @@ export function batchUpdateTabs<T extends BaseTab>(
     return tabUpdates ? { ...tab, ...tabUpdates } : tab
   })
 }
+
+/**
+ * Reorders tabs by moving a tab from one position to another
+ * @param openFiles - Current array of open tabs
+ * @param fromIndex - Index of tab to move
+ * @param toIndex - Index to move tab to
+ * @returns Reordered array of tabs
+ */
+export function reorderTabs<T extends BaseTab>(
+  openFiles: T[],
+  fromIndex: number,
+  toIndex: number
+): T[] {
+  // Validate indices
+  if (fromIndex < 0 || fromIndex >= openFiles.length || 
+      toIndex < 0 || toIndex >= openFiles.length ||
+      fromIndex === toIndex) {
+    return openFiles
+  }
+  
+  const result = [...openFiles]
+  const [movedTab] = result.splice(fromIndex, 1)
+  result.splice(toIndex, 0, movedTab)
+  
+  return result
+}

@@ -9,6 +9,7 @@ interface PersistedTab {
   terminalId?: string
   actionId?: string
   promptId?: string
+  order: number // Track original position
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
@@ -21,31 +22,35 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
         if ('isDiff' in tab && tab.isDiff) return false
         return true
       })
-      .map(tab => {
+      .map((tab, index) => {
         if ('isTerminal' in tab && tab.isTerminal) {
           return {
             path: tab.path,
             type: 'terminal' as const,
-            terminalId: tab.terminalInfo.id
+            terminalId: tab.terminalInfo.id,
+            order: index
           }
         }
         if ('isAction' in tab && tab.isAction) {
           return {
             path: tab.path,
             type: 'action' as const,
-            actionId: tab.path.replace('action:', '')
+            actionId: tab.path.replace('action:', ''),
+            order: index
           }
         }
         if ('isPrompt' in tab && tab.isPrompt) {
           return {
             path: tab.path,
             type: 'prompt' as const,
-            promptId: tab.path.replace('prompt:', '')
+            promptId: tab.path.replace('prompt:', ''),
+            order: index
           }
         }
         return {
           path: tab.path,
-          type: 'file' as const
+          type: 'file' as const,
+          order: index
         }
       })
     
@@ -63,7 +68,7 @@ export function loadPersistedTabs(): PersistedTab[] {
     const tabs = JSON.parse(stored)
     if (!Array.isArray(tabs)) return []
     
-    // Validate each tab
+    // Validate each tab and add order if missing (for backward compatibility)
     return tabs.filter((tab): tab is PersistedTab => {
       return (
         typeof tab === 'object' &&
@@ -75,7 +80,10 @@ export function loadPersistedTabs(): PersistedTab[] {
          (tab.type === 'action' && typeof tab.actionId === 'string') ||
          (tab.type === 'prompt' && typeof tab.promptId === 'string'))
       )
-    })
+    }).map((tab, index) => ({
+      ...tab,
+      order: typeof tab.order === 'number' ? tab.order : index // Add order if missing
+    }))
   } catch (error) {
     console.error('Failed to load persisted tabs:', error)
     return []

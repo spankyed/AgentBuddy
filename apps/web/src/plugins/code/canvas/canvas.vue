@@ -7,6 +7,7 @@
       @select-file="selectFile"
       @close-file="closeFile"
       @content-change="handleContentChange"
+      @reorder="handleReorder"
       class="flex-1 min-h-0"
     />
 
@@ -54,6 +55,7 @@ import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
+import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
@@ -137,6 +139,15 @@ const handleContentChange = (path: string, content: string) => {
   actor.send({ 
     type: 'UPDATE_STATE',
     updates: { openFiles: newOpenFiles }
+  })
+}
+
+const handleReorder = (fromIndex: number, toIndex: number) => {
+  const reorderedFiles = reorderTabs(openFiles.value, fromIndex, toIndex)
+  
+  actor.send({
+    type: 'UPDATE_STATE',
+    updates: { openFiles: reorderedFiles }
   })
 }
 
