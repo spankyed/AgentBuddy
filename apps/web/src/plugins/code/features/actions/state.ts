@@ -113,23 +113,35 @@ export const actionsState = setup({
     handleActionSelected: ({ event, self }) => {
       const ev = event as { type: 'ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
       const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      const actionPath = `action:${ev.actionId}`
       
-      // Create action tab
-      const actionTab: ActionTab = {
-        path: `action:${ev.actionId}`,
-        content: ev.data.actionFnContent || ev.data.actionFn || '',
-        modified: false,
-        isAction: true,
-        actionEntity: ev.data
+      // Check if action tab already exists
+      const existingTab = openFiles.find((f: any) => f.path === actionPath)
+      
+      if (existingTab) {
+        // Tab already exists, just activate it
+        updateParentState(self, {
+          activeFilePath: actionPath
+        })
+      } else {
+        // Create new action tab
+        const actionTab: ActionTab = {
+          path: actionPath,
+          content: ev.data.actionFnContent || ev.data.actionFn || '',
+          modified: false,
+          isAction: true,
+          actionEntity: ev.data
+        }
+        
+        // Add to open files
+        const { openFiles: updatedFiles, activeFilePath } = mergeTabs(openFiles, [actionTab], actionTab.path)
+        
+        updateParentState(self, {
+          openFiles: updatedFiles,
+          activeFilePath: activeFilePath
+        })
       }
-      
-      // Add to open files
-      const { openFiles: updatedFiles, activeFilePath } = mergeTabs(parentContext?.openFiles || [], [actionTab], actionTab.path)
-      
-      updateParentState(self, {
-        openFiles: updatedFiles,
-        activeFilePath: activeFilePath
-      })
     },
     
     handleActionUpdated: assign({
