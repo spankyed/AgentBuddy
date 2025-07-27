@@ -78,7 +78,16 @@
 
           <!-- Action Function -->
           <div class="pt-6 border-t border-neutral-800">
-            <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Action Function</h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-xs font-medium tracking-wider uppercase text-neutral-400">Action Function</h3>
+              <button
+                @click="openInEditor"
+                class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              >
+                <ExternalLink class="w-3 h-3" />
+                Open in editor
+              </button>
+            </div>
             <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;">
               <ActionFunctionViewer :code="action?.actionFn || ''" />
             </div>
@@ -104,7 +113,7 @@
               </div>
               <div>
                 <dt class="text-xs text-neutral-500">ID</dt>
-                <dd class="text-sm font-mono text-neutral-300">{{ action?.id }}</dd>
+                <dd class="font-mono text-sm text-neutral-300">{{ action?.id }}</dd>
               </div>
             </dl>
           </div>
@@ -116,11 +125,12 @@
 
 <script setup lang="ts">
 import type { ActionEntity } from '@abuddy/api';
-import { Edit2 } from 'lucide-vue-next';
+import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
+import { applicationState } from '@/app';
 
-defineProps<{
+const props = defineProps<{
   action?: ActionEntity;
 }>();
 
@@ -128,6 +138,34 @@ defineEmits<{
   edit: [];
   back: [];
 }>();
+
+function openInEditor() {
+  if (!props.action) return;
+  
+  // First, switch to the code plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  
+  // Give the code plugin time to activate, then send the action to open
+  setTimeout(() => {
+    const codeActor = applicationState.system.get('code');
+    if (codeActor) {
+      // First ensure the actions panel is selected
+      codeActor.send({ 
+        type: 'UPDATE_STATE', 
+        updates: { selectedPanel: 'actions' } 
+      });
+      
+      // Then send the open action event to the actions child actor
+      const actionsActor = codeActor.system.get('codeActions');
+      if (actionsActor) {
+        actionsActor.send({ 
+          type: 'codeActions.OPEN_ACTION', 
+          actionId: props.action!.id 
+        });
+      }
+    }
+  }, 10);
+}
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return 'N/A';
