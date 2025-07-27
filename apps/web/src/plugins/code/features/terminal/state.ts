@@ -182,23 +182,35 @@ export const terminalState = setup({
     openTerminalTab: ({ event, self }) => {
       const ev = event as { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
       const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      const terminalPath = `terminal:${ev.terminalInfo.id}`
       
-      // Create terminal tab object
-      const terminalTab = {
-        path: `terminal:${ev.terminalInfo.id}`,
-        content: '',
-        modified: false,
-        isTerminal: true,
-        terminalInfo: ev.terminalInfo
+      // Check if terminal tab already exists
+      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
+      
+      if (existingTab) {
+        // Tab already exists, just activate it
+        updateParentState(self, {
+          activeFilePath: terminalPath
+        })
+      } else {
+        // Create terminal tab object
+        const terminalTab = {
+          path: terminalPath,
+          content: '',
+          modified: false,
+          isTerminal: true,
+          terminalInfo: ev.terminalInfo
+        }
+        
+        const result = mergeTabs(
+          openFiles,
+          [terminalTab],
+          terminalTab.path // Always set this terminal as active
+        )
+        
+        updateParentState(self, result)
       }
-      
-      const result = mergeTabs(
-        parentContext?.openFiles || [],
-        [terminalTab],
-        terminalTab.path // Always set this terminal as active
-      )
-      
-      updateParentState(self, result)
     },
     
     openTerminalTabs: ({ event }) => {
@@ -212,10 +224,21 @@ export const terminalState = setup({
     handleTerminalTabOpened: ({ event, self }) => {
       const ev = event as { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
       const parentContext = getParentContext(self)
+      const openFiles = parentContext?.openFiles || []
+      const terminalPath = `terminal:${ev.data.id}`
+      
+      // Check if terminal tab already exists
+      const existingTab = openFiles.find((f: any) => f.path === terminalPath)
+      
+      if (existingTab) {
+        // Tab already exists, don't create duplicate
+        // For restored tabs, we might not want to change active tab
+        return
+      }
       
       // Create terminal tab object
       const terminalTab = {
-        path: `terminal:${ev.data.id}`,
+        path: terminalPath,
         content: '',
         modified: false,
         isTerminal: true,
@@ -223,7 +246,7 @@ export const terminalState = setup({
       }
       
       const result = mergeTabs(
-        parentContext?.openFiles || [],
+        openFiles,
         [terminalTab],
         parentContext?.activeFilePath // Keep current active
       )
