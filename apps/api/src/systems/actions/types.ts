@@ -34,4 +34,3 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
-  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }

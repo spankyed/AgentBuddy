@@ -36,7 +36,6 @@ export const IncomingActionEvents = [
     category: z.string().optional()
   }),
   busEvent('DELETE_ACTION', { actionId: z.string() }),
-  busEvent('FETCH_ACTIONS_PAGE', { page: z.number().optional() }),
 ] as const
 
 export type ActionsInternalEvents = 
@@ -48,7 +47,6 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
-  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
 
 export const ActionsSystemEvents = fromSystem(IncomingActionEvents)<OutgoingActionEvents, typeof actions>()
 type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInternalEvents>;
@@ -135,19 +133,6 @@ export const actionsSystem = setup({
         logger.error('Failed to delete action:', { error: result.error });
       }
     },
-    fetchActionsPage: ({ system, event }) => {
-      const ev = typeOf('FETCH_ACTIONS_PAGE', event);
-      const data = actionQueries.startupData(ev.page || 1);
-      
-      system.get(bus).send(emit(actions, {
-        type: 'ACTIONS_PAGE_LOADED',
-        data: {
-          actions: data.actions,
-          page: data.page,
-          totalPages: data.totalPages
-        }
-      }));
-    },
   },
 }).createMachine(
   {
@@ -166,9 +151,6 @@ export const actionsSystem = setup({
       },
       DELETE_ACTION: {
         actions: 'deleteAction',
-      },
-      FETCH_ACTIONS_PAGE: {
-        actions: 'fetchActionsPage',
       },
     },
     states: {

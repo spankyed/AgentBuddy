@@ -224,9 +224,6 @@ const codeState = setup({
         CODE_STARTUP: {
           actions: ['broadcastToAllFeatures']
         },
-        ACTIONS_PAGE_LOADED: {
-          actions: ({ system, event }) => system.get('codeActions')?.send(event)
-        },
         // Route events to child machines
         '*': {
           actions: ['routeEvent']

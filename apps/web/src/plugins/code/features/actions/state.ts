@@ -43,7 +43,6 @@ export type Event =
   | { type: 'codeActions.ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
   | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
   | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
-  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
   | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
   // Tab restoration
   | { type: 'codeActions.OPEN_TABS'; actionIds: string[] };
@@ -173,22 +172,6 @@ export const actionsState = setup({
       updateParentState(self, { openFiles: updatedFiles })
     },
     
-    handleActionsPageLoaded: assign({
-      actions: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_PAGE_LOADED'; data: any }
-        return ev.data.actions
-      },
-      page: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_PAGE_LOADED'; data: any }
-        return ev.data.page
-      },
-      totalPages: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_PAGE_LOADED'; data: any }
-        return ev.data.totalPages
-      },
-      isLoading: false
-    }),
-    
     // Handle tab restoration
     openActionTabs: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_TABS'; actionIds: string[] }
@@ -237,9 +220,6 @@ export const actionsState = setup({
     'codeActions.ACTION_UPDATED': {
       actions: ['handleActionUpdated', 'updateActionInOpenFiles']
     },
-    'ACTIONS_PAGE_LOADED': {
-      actions: 'handleActionsPageLoaded'
-    },
     'codeActions.CODE_ERROR': {
       actions: 'setError'
     }
@@ -252,10 +232,6 @@ export const actionsState = setup({
         'codeActions.ACTIONS_LISTED': {
           target: 'idle',
           actions: 'handleActionsStartup'
-        },
-        'ACTIONS_PAGE_LOADED': {
-          target: 'idle',
-          actions: 'handleActionsPageLoaded'
         },
         'codeActions.CODE_ERROR': {
           target: 'idle',
