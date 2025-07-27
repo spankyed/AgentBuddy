@@ -29,7 +29,7 @@
       </div>
       <div class="flex items-center gap-2">
         <button
-          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff && !isAction(activeFile)"
+          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff && !isAction(activeFile) && !isPrompt(activeFile)"
           @click="loadExternalChanges"
           class="px-2 py-0.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded transition-colors"
         >
@@ -58,6 +58,7 @@ import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
 const actionsActor = actor.system.get('codeActions')
+const promptsActor = actor.system.get('codePrompts')
 
 // Terminal outputs are handled through state
 
@@ -149,6 +150,14 @@ const saveFile = async () => {
         actionId: actionId,
         content: activeFile.value.content
       })
+    } else if (isPrompt(activeFile.value)) {
+      // Send event to prompts state machine for prompt files
+      const promptId = activeFile.value.path.replace('prompt:', '')
+      promptsActor?.send({
+        type: 'codePrompts.SAVE_PROMPT',
+        promptId: promptId,
+        content: activeFile.value.content
+      })
     } else {
       // Send event to explorer state machine for regular files
       explorerActor?.send({
@@ -183,10 +192,15 @@ const isAction = (file: any): boolean => {
   return 'isAction' in file && file.isAction === true
 }
 
+const isPrompt = (file: any): boolean => {
+  return 'isPrompt' in file && file.isPrompt === true
+}
+
 const getStatusIcon = (file: any) => {
   if (isTerminal(file)) return Terminal
   if (file.isDiff) return GitCompare
   if (isAction(file)) return FileCode // Actions use same icon as files
+  if (isPrompt(file)) return FileCode // Prompts use same icon as files
   return FileCode
 }
 
@@ -199,6 +213,9 @@ const getStatusText = (file: any) => {
   }
   if (isAction(file)) {
     return file.actionEntity.label
+  }
+  if (isPrompt(file)) {
+    return file.promptEntity.label
   }
   return getFileName(file.path)
 }

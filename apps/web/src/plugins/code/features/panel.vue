@@ -45,6 +45,10 @@
       <ActionsPanel 
         v-else-if="selectedPanel === 'actions'"
       />
+      
+      <PromptsPanel 
+        v-else-if="selectedPanel === 'prompts'"
+      />
     </div>
   </div>
   
@@ -61,7 +65,8 @@ import {
   GitCommit, 
   GitPullRequest,
   Terminal,
-  Play
+  Play,
+  Sparkle
 } from 'lucide-vue-next'
 import ExplorerPanel from '@/plugins/code/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '@/plugins/code/features/search/SearchPanel.vue'
@@ -69,6 +74,7 @@ import CommitPanel from '@/plugins/code/features/commit/CommitPanel.vue'
 import PullRequestPanel from '@/plugins/code/features/pull-request/PullRequestPanel.vue'
 import TerminalPanel from '@/plugins/code/features/terminal/TerminalPanel.vue'
 import ActionsPanel from '@/plugins/code/features/actions/ActionsPanel.vue'
+import PromptsPanel from '@/plugins/code/features/prompts/PromptsPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
@@ -83,11 +89,12 @@ const panels = [
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
   { id: 'terminal', label: 'Terminal', icon: Terminal },
-  { id: 'actions', label: 'Actions', icon: Play }
+  { id: 'actions', label: 'Actions', icon: Play },
+  { id: 'prompts', label: 'Prompts', icon: Sparkle }
 ] as const
 
 // Event handlers
-const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions') => {
+const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts') => {
   actor.send({ 
     type: 'SELECT_PANEL', 
     panel 

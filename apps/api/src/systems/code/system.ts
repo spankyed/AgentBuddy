@@ -12,6 +12,7 @@ import { commitSystem, IncomingCommitEvents, OutgoingCommitEvents } from './feat
 import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents } from './features/pull-request'
 import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal'
 import { actionsSystem, IncomingActionsEvents, OutgoingActionsEvents } from './features/actions'
+import { promptsSystem, IncomingPromptsEvents, OutgoingPromptsEvents } from './features/prompts'
 
 export const id = 'code' as const
 
@@ -25,6 +26,7 @@ const IncomingCodeEvents = [
   ...IncomingPullRequestEvents,
   ...IncomingTerminalEvents,
   ...IncomingActionsEvents,
+  ...IncomingPromptsEvents,
   // Special root-level event
   busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
 ] as const
@@ -66,7 +68,8 @@ export const systemMachine = setup({
     commitSystem,
     pullRequestSystem,
     terminalSystem,
-    actionsSystem
+    actionsSystem,
+    promptsSystem
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
@@ -93,6 +96,7 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
+      enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
     }),
 
     handleChangeDirectory: ({ event, system }) => {
@@ -139,6 +143,7 @@ export const systemMachine = setup({
       system.get('explorer')?.send({ type: 'CODE_STARTUP' });
       system.get('terminal')?.send({ type: 'CODE_STARTUP' });
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
+      system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
     },
   }
 }).createMachine({
