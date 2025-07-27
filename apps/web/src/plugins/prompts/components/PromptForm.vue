@@ -87,9 +87,19 @@
 
           <!-- Template Function -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Template Function <span class="text-red-400">*</span>
-            </label>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
+                Template Function <span class="text-red-400">*</span>
+              </label>
+              <button
+                v-if="mode === 'edit'"
+                @click="openInEditor"
+                class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              >
+                <ExternalLink class="w-3 h-3" />
+                Open in editor
+              </button>
+            </div>
             <p class="mb-4 text-xs text-neutral-500">
               Write a JavaScript function body that returns a template string. The function will receive a `params` object with your defined inputs.
             </p>
@@ -122,11 +132,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import type { TemplateInput } from '@abuddy/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import JsonSchemaEditor from './JsonSchemaEditor.vue';
+import { applicationState } from '@/app';
 
 const props = defineProps<{
   formData: {
@@ -138,6 +150,7 @@ const props = defineProps<{
     outputSchema?: any;
   };
   mode: 'create' | 'edit';
+  promptId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -159,5 +172,33 @@ function handleSave() {
   if (isValid.value) {
     emit('save');
   }
+}
+
+function openInEditor() {
+  if (!props.promptId) return;
+  
+  // First, switch to the code plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  
+  // Give the code plugin time to activate, then send the prompt to open
+  setTimeout(() => {
+    const codeActor = applicationState.system.get('code');
+    if (codeActor) {
+      // First ensure the prompts panel is selected
+      codeActor.send({ 
+        type: 'UPDATE_STATE', 
+        updates: { selectedPanel: 'prompts' } 
+      });
+      
+      // Then send the open prompt event to the prompts child actor
+      const promptsActor = codeActor.system.get('codePrompts');
+      if (promptsActor) {
+        promptsActor.send({ 
+          type: 'codePrompts.OPEN_PROMPT', 
+          promptId: props.promptId
+        });
+      }
+    }
+  }, 10);
 }
 </script> 

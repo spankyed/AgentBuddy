@@ -37,6 +37,7 @@
       v-else-if="state.hasTag('edit-prompt')"
       :form-data="formData"
       mode="edit"
+      :prompt-id="selectedPrompt?.id"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-inputs="handleUpdateInputs"

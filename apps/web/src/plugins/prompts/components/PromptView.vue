@@ -93,7 +93,16 @@
 
         <!-- Template Function -->
         <div class="pt-6 border-t border-neutral-800">
-          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Template Function</label>
+          <div class="flex items-center justify-between mb-4">
+            <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">Template Function</label>
+            <button
+              @click="openInEditor"
+              class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            >
+              <ExternalLink class="w-3 h-3" />
+              Open in editor
+            </button>
+          </div>
           <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 300px;">
             <PromptTemplateViewer :value="prompt.templateFn" />
           </div>
@@ -129,12 +138,13 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Edit2 } from 'lucide-vue-next';
+import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import type { PromptEntity } from '@abuddy/api';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
+import { applicationState } from '@/app';
 
-defineProps<{
+const props = defineProps<{
   prompt?: PromptEntity;
 }>();
 
@@ -155,5 +165,33 @@ function categoryStyle(category?: string) {
     default:
       return 'bg-neutral-800 text-neutral-400 border border-neutral-700';
   }
+}
+
+function openInEditor() {
+  if (!props.prompt) return;
+  
+  // First, switch to the code plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
+  
+  // Give the code plugin time to activate, then send the prompt to open
+  setTimeout(() => {
+    const codeActor = applicationState.system.get('code');
+    if (codeActor) {
+      // First ensure the prompts panel is selected
+      codeActor.send({ 
+        type: 'UPDATE_STATE', 
+        updates: { selectedPanel: 'prompts' } 
+      });
+      
+      // Then send the open prompt event to the prompts child actor
+      const promptsActor = codeActor.system.get('codePrompts');
+      if (promptsActor) {
+        promptsActor.send({ 
+          type: 'codePrompts.OPEN_PROMPT', 
+          promptId: props.prompt!.id 
+        });
+      }
+    }
+  }, 10);
 }
 </script> 
