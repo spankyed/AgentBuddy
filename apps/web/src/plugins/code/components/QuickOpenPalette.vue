@@ -189,18 +189,26 @@ const filteredResults = computed<EnhancedSearchResult[]>(() => {
       }))
     
     // Then add recent files (excluding already open ones)
-    const recentFileResults: EnhancedSearchResult[] = recentlyOpenedFiles.value
-      .filter(path => !openFilePaths.includes(path))
-      .map(path => results.value.find(item => item.path === path))
-      .filter((item): item is QuickOpenResult => item !== undefined)
-      .slice(0, 10) // Show top 10 recent files
-      .map((item, index) => ({
-        item,
-        score: 10000 - index * 100, // High score for recent files
-        positions: [],
-        matchRanges: [],
-        isRecent: true
-      }))
+    const recentFileResults: EnhancedSearchResult[] = []
+    let recentCount = 0
+    
+    // Go through recent files in order (they're already sorted by recency)
+    for (const recentPath of recentlyOpenedFiles.value) {
+      if (recentCount >= 10) break // Show max 10 recent files
+      if (openFilePaths.includes(recentPath)) continue // Skip if already open
+      
+      const fileItem = results.value.find(item => item.path === recentPath)
+      if (fileItem) {
+        recentFileResults.push({
+          item: fileItem,
+          score: 10000 - recentCount * 100, // Higher score for more recent
+          positions: [],
+          matchRanges: [],
+          isRecent: true
+        })
+        recentCount++
+      }
+    }
     
     // Finally, add other files
     const shownPaths = [...openFilePaths, ...recentlyOpenedFiles.value]
