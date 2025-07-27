@@ -1,37 +1,12 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Tabs (for both files and terminals) -->
-    <div v-if="openFiles.length > 0" class="flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800">
-      <div
-        v-for="file in openFiles"
-        :key="file.path"
-        class="flex items-center group"
-        :class="[
-          'border-r border-neutral-800',
-          activeFilePath === file.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800'
-        ]"
-      >
-        <button
-          @click="selectFile(file.path)"
-          class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
-          :class="activeFilePath === file.path ? 'text-neutral-100' : 'text-neutral-400'"
-        >
-          <component 
-            :is="getTabIcon(file)"
-            class="flex-shrink-0 w-4 h-4"
-          />
-          <span class="max-w-[150px] truncate">{{ getTabLabel(file) }}</span>
-          <span v-if="!isTerminal(file) && !file.isDiff && file.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-          <span v-else-if="!isTerminal(file) && !file.isDiff && file.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-        </button>
-        <button
-          @click.stop="closeFile(file.path)"
-          class="p-1 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-        >
-          <X class="w-3 h-3" />
-        </button>
-      </div>
-    </div>
+    <Tabs
+      :tabs="openFiles"
+      :active-tab-path="activeFilePath"
+      @select="selectFile"
+      @close="closeFile"
+    />
 
     <!-- Editor -->
     <div class="relative flex-1 min-h-0 bg-neutral-900">
@@ -85,10 +60,11 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play, Sparkle } from 'lucide-vue-next'
+import { FileCode } from 'lucide-vue-next'
 import DiffViewer from './DiffViewer.vue'
 import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
+import Tabs from './Tabs.vue'
 import { applicationState } from '@/app'
 import { id, type CodeState, type OpenFile, type TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -151,75 +127,4 @@ const handleContentChange = (value: string) => {
     emit('contentChange', props.activeFilePath, value)
   }
 }
-
-// Helper functions
-const getFileName = (path: string) => {
-  return path.split('/').pop() || path
-}
-
-const getTabLabel = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
-  if (isTerminal(file)) {
-    return file.terminalInfo.title
-  }
-  if ('isDiff' in file && file.isDiff && (file as any).gitFile) {
-    const fileName = getFileName((file as any).gitFile.path)
-    const status = (file as any).gitFile.staged ? 'staged' : 'unstaged'
-    return `${fileName} (${status})`
-  }
-  // Check if this is an action file
-  if ('isAction' in file && file.isAction && 'actionEntity' in file) {
-    return (file as any).actionEntity.label
-  }
-  // Check if this is a prompt file
-  if ('isPrompt' in file && file.isPrompt && 'promptEntity' in file) {
-    return (file as any).promptEntity.label
-  }
-  return getFileName(file.path)
-}
-
-const getTabIcon = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
-  if (isTerminal(file)) {
-    return Terminal
-  }
-  if ('isDiff' in file && file.isDiff) {
-    return GitCompare
-  }
-  // Check if this is an action file
-  if ('isAction' in file && file.isAction) {
-    return Play
-  }
-  // Check if this is a prompt file
-  if ('isPrompt' in file && file.isPrompt) {
-    return Sparkle
-  }
-  return getFileIcon(getFileExtension(file.path))
-}
-
-const getFileExtension = (path: string) => {
-  const parts = path.split('.')
-  return parts.length > 1 ? parts.pop() : ''
-}
-
-// Language detection is handled by SimpleMonacoEditor
-
-const getFileIcon = (extension?: string) => {
-  if (!extension) return File
-  
-  const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
-  const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
-  const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
-  
-  if (codeExtensions.includes(extension)) return FileCode
-  if (extension === 'json') return FileJson
-  if (textExtensions.includes(extension)) return FileText
-  if (imageExtensions.includes(extension)) return Image
-  
-  return File
-}
 </script>
-
-<style>
-.bg-neutral-850 {
-  background-color: rgb(28, 28, 30);
-}
-</style>
