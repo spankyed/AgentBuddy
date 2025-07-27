@@ -192,8 +192,11 @@ const codeState = setup({
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
       } else if (ev.panel === 'pr') {
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+      } else if (ev.panel === 'terminal') {
+        system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
+      } else if (ev.panel === 'actions') {
+        system.get('codeActions')?.send({ type: 'codeActions.LIST' });
       }
-      
       return {
         ...context,
         selectedPanel: ev.panel
