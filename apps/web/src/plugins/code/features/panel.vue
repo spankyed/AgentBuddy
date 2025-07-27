@@ -109,10 +109,6 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
     actor.system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
   } else if (panel === 'pr') {
     actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
-  } else if (panel === 'terminal') {
-    actor.system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' })
-  } else if (panel === 'actions') {
-    actor.system.get('codeActions')?.send({ type: 'codeActions.LIST' })
   }
 }
 
@@ -125,10 +121,4 @@ const changeDirectory = () => {
     explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
   }
 }
-
-
-// Plugin activation is handled by the state machine
-onMounted(() => {
-  actor.send({ type: 'PLUGIN_ACTIVATED' })
-})
 </script>

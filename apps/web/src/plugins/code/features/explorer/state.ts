@@ -232,7 +232,6 @@ export const explorerState = setup({
       const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
       // Update local state and notify parent
       self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
-      self.send({ type: 'explorer.LIST_FILES', path: ev.rootDirectory })
     },
     
     openFile: ({ event }) => {
