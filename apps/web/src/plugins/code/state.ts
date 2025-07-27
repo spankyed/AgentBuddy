@@ -2,6 +2,7 @@ import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
+import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import type { OutgoingCodeEvents } from '@abuddy/api';
 
 // Import child state machines
@@ -47,6 +48,7 @@ export type Context = {
   quickOpenResults: QuickOpenResult[]
   quickOpenSelectedIndex: number
   quickOpenLoading: boolean
+  recentlyOpenedFiles: string[]
 }
 
 export interface QuickOpenResult {
@@ -331,9 +333,16 @@ const codeState = setup({
       };
     }),
     
-    openQuickOpenResult: ({ context, system }) => {
+    openQuickOpenResult: ({ context, system, self }) => {
       const result = context.quickOpenResults[context.quickOpenSelectedIndex];
       if (result && result.type === 'file') {
+        // Track the file as recently opened
+        const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, result.path);
+        self.send({
+          type: 'UPDATE_STATE',
+          updates: { recentlyOpenedFiles: updatedRecentFiles }
+        });
+        
         // Open file through explorer
         system.get('explorer')?.send({
           type: 'explorer.OPEN_FILE',
@@ -367,6 +376,7 @@ const codeState = setup({
     quickOpenResults: [],
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
+    recentlyOpenedFiles: loadRecentFiles(),
   },
   states: {
     canvas: {

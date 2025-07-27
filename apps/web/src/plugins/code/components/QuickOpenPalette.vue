@@ -69,6 +69,23 @@
                     v-html="highlightedName(result)"
                   />
                   
+                  <!-- Recent/Open Indicators -->
+                  <div class="flex items-center gap-1">
+                    <span
+                      v-if="result.isOpen"
+                      class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded"
+                    >
+                      open
+                    </span>
+                    <span
+                      v-else-if="result.isRecent"
+                      class="px-1.5 py-0.5 text-xs bg-neutral-700 text-neutral-400 rounded flex items-center gap-1"
+                    >
+                      <Clock class="w-3 h-3" />
+                      recent
+                    </span>
+                  </div>
+                  
                   <!-- File Path -->
                   <span class="text-xs truncate text-neutral-500">
                     {{ getDirectory(result.item.relativePath) }}
@@ -119,10 +136,21 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState, type QuickOpenResult } from '@/plugins/code/state'
 import { fuzzySearch, highlightMatches } from '@/plugins/code/utils/fuzzy-search'
+import { getRecencyScore } from '@/plugins/code/utils/recent-files'
 import { 
   Search, FileCode, FileText, FileJson, Image, 
-  Video, FileArchive, FileType, Folder 
+  Video, FileArchive, FileType, Folder, Clock 
 } from 'lucide-vue-next'
+
+// Type for enhanced search results
+interface EnhancedSearchResult {
+  item: QuickOpenResult
+  score: number
+  positions: number[]
+  matchRanges: Array<[number, number]>
+  isRecent?: boolean
+  isOpen?: boolean
+}
 
 // Get state
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -132,6 +160,8 @@ const isVisible = useSelector(codeActor, (state) => state.context.isQuickOpenVis
 const results = useSelector(codeActor, (state) => state.context.quickOpenResults)
 const loading = useSelector(codeActor, (state) => state.context.quickOpenLoading)
 const selectedIndex = useSelector(codeActor, (state) => state.context.quickOpenSelectedIndex)
+const recentlyOpenedFiles = useSelector(codeActor, (state) => state.context.recentlyOpenedFiles)
+const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
 
 // Local state
 const searchInput = ref<HTMLInputElement>()
@@ -140,15 +170,51 @@ const searchQuery = ref('')
 const resultRefs = ref<(HTMLElement | null)[]>([])
 
 // Computed filtered results
-const filteredResults = computed(() => {
+const filteredResults = computed<EnhancedSearchResult[]>(() => {
   if (!searchQuery.value.trim()) {
-    // Show recent files or all files when no query
-    return results.value.slice(0, 20).map(item => ({
-      item,
-      score: 0,
-      positions: [],
-      matchRanges: []
-    }))
+    // When no query, show recent files first
+    const openFilePaths = openFiles.value.map(f => f.path)
+    const recentResults: any[] = []
+    const otherResults: any[] = []
+    
+    // First, add currently open files
+    const openFileResults: EnhancedSearchResult[] = results.value
+      .filter(item => openFilePaths.includes(item.path))
+      .map(item => ({
+        item,
+        score: 20000, // Very high score for open files
+        positions: [],
+        matchRanges: [],
+        isOpen: true
+      }))
+    
+    // Then add recent files (excluding already open ones)
+    const recentFileResults: EnhancedSearchResult[] = recentlyOpenedFiles.value
+      .filter(path => !openFilePaths.includes(path))
+      .map(path => results.value.find(item => item.path === path))
+      .filter((item): item is QuickOpenResult => item !== undefined)
+      .slice(0, 10) // Show top 10 recent files
+      .map((item, index) => ({
+        item,
+        score: 10000 - index * 100, // High score for recent files
+        positions: [],
+        matchRanges: [],
+        isRecent: true
+      }))
+    
+    // Finally, add other files
+    const shownPaths = [...openFilePaths, ...recentlyOpenedFiles.value]
+    const otherFileResults: EnhancedSearchResult[] = results.value
+      .filter(item => !shownPaths.includes(item.path))
+      .slice(0, 20)
+      .map(item => ({
+        item,
+        score: 0,
+        positions: [],
+        matchRanges: []
+      }))
+    
+    return [...openFileResults, ...recentFileResults, ...otherFileResults]
   }
   
   // Search with both full path and filename for better results
@@ -164,15 +230,31 @@ const filteredResults = computed(() => {
   const query = searchQuery.value.toLowerCase()
   return searchResults
     .map(result => {
+      let score = result.score
+      
       // Extra boost for exact filename match
       if (result.item.name.toLowerCase() === query) {
-        return { ...result, score: result.score + 10000 }
+        score += 10000
       }
       // Boost for filename starting with query
-      if (result.item.name.toLowerCase().startsWith(query)) {
-        return { ...result, score: result.score + 5000 }
+      else if (result.item.name.toLowerCase().startsWith(query)) {
+        score += 5000
       }
-      return result
+      
+      // Add recency score
+      const recencyScore = getRecencyScore(recentlyOpenedFiles.value, result.item.path)
+      score += recencyScore
+      
+      // Mark if it's a recent file
+      const isRecent = recentlyOpenedFiles.value.includes(result.item.path)
+      const isOpen = openFiles.value.some(f => f.path === result.item.path)
+      
+      return { 
+        ...result, 
+        score,
+        isRecent,
+        isOpen
+      }
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 50) // Return top 50

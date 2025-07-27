@@ -2,6 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs, removeTabs } from '../../utils/tab-management';
+import { addRecentFile } from '../../utils/recent-files';
 
 // File types
 export interface FileInfo {
@@ -98,6 +99,10 @@ export const explorerState = setup({
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
       
+      // Track the file as recently opened
+      const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
+      const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
+      
       if (existingFile) {
         // Update content for existing file
         const updatedFiles = openFiles.map((f: any) => 
@@ -115,7 +120,8 @@ export const explorerState = setup({
         updateParentState(self, {
           openFiles: updatedFiles,
           activeFilePath: ev.data.path,
-          isLoading: false
+          isLoading: false,
+          recentlyOpenedFiles: updatedRecentFiles
         })
       } else {
         // Add new file
@@ -131,7 +137,8 @@ export const explorerState = setup({
         )
         updateParentState(self, {
           ...result,
-          isLoading: false
+          isLoading: false,
+          recentlyOpenedFiles: updatedRecentFiles
         })
       }
     },
