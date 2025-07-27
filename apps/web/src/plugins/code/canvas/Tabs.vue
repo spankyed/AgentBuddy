@@ -2,25 +2,22 @@
   <div 
     v-if="tabs.length > 0" 
     class="tabs-container flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800"
-    @dragover="handleParentDragOver"
-    @drop="handleParentDrop"
-    @dragleave="handleParentDragLeave"
+    @dragover="handleContainerDragOver"
+    @drop="handleContainerDrop"
+    @dragleave="handleDragLeave"
   >
     <div
       v-for="(tab, index) in tabs"
       :key="tab.path"
-      class="tab-item flex items-center group"
+      class="tab-item group relative flex border-r border-neutral-800"
       :class="[
-        'border-r border-neutral-800 relative',
         activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
         draggedIndex === index ? 'opacity-50' : ''
       ]"
+      :data-index="index"
       draggable="true"
       @dragstart="handleDragStart(index, $event)"
-      @dragover="handleDragOver(index, $event)"
-      @drop="handleDrop(index, $event)"
       @dragend="handleDragEnd"
-      @dragleave="handleDragLeave($event)"
     >
       <!-- Drop indicator -->
       <div
@@ -155,120 +152,35 @@ const handleDragStart = (index: number, event: DragEvent) => {
   event.dataTransfer!.setData('text/plain', index.toString())
 }
 
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault() // Allow drop
-  event.stopPropagation() // Prevent parent handler
-  event.dataTransfer!.dropEffect = 'move'
-  
-  if (draggedIndex.value === null || draggedIndex.value === index) return
-  
-  // Get the tab element
-  const tabElement = (event.currentTarget as HTMLElement)
-  const rect = tabElement.getBoundingClientRect()
-  const midpoint = rect.left + rect.width / 2
-  
-  // Determine which side of the tab we're hovering over
-  const side = event.clientX < midpoint ? 'left' : 'right'
-  
-  // Update drop position
-  dropPosition.value = { index, side }
-}
-
-const handleDrop = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  event.stopPropagation() // Prevent parent handler
-  
-  if (draggedIndex.value === null || draggedIndex.value === index) return
-  
-  // Calculate the actual drop index based on which side we're dropping on
-  let targetIndex = index
-  
-  if (dropPosition.value.side === 'right') {
-    // If dropping on the right side, we want to place it after this tab
-    targetIndex = index + 1
-    
-    // If we're moving from before to after, we need to adjust for the removal
-    if (draggedIndex.value < index) {
-      targetIndex = index
-    }
-  } else {
-    // Dropping on the left side
-    if (draggedIndex.value > index) {
-      targetIndex = index
-    } else {
-      targetIndex = index - 1
-    }
-  }
-  
-  // Ensure target index is within bounds
-  targetIndex = Math.max(0, Math.min(props.tabs.length - 1, targetIndex))
-  
-  emit('reorder', draggedIndex.value, targetIndex)
-  
-  // Clean up
-  draggedIndex.value = null
-  dropPosition.value = { index: null, side: 'left' }
-}
-
-const handleDragEnd = () => {
-  // Clean up in case drop didn't fire
-  draggedIndex.value = null
-  dropPosition.value = { index: null, side: 'left' }
-}
-
-const handleDragLeave = (event: DragEvent) => {
-  // Don't clear if we're moving to another tab or the parent container
-  const relatedTarget = event.relatedTarget as HTMLElement
-  if (relatedTarget && relatedTarget.closest('.tabs-container')) {
-    return
-  }
-  
-  // Clear the drop indicator when leaving a tab
-  dropPosition.value = { index: null, side: 'left' }
-}
-
-// Parent container handlers
-const handleParentDragOver = (event: DragEvent) => {
+const handleContainerDragOver = (event: DragEvent) => {
   if (draggedIndex.value === null) return
   
   event.preventDefault()
   event.dataTransfer!.dropEffect = 'move'
   
-  // Find which tabs we're between
+  // Find which tab we're over
   const container = event.currentTarget as HTMLElement
-  const tabs = Array.from(container.querySelectorAll('.tab-item')) as HTMLElement[]
-  
-  // Get mouse position
+  const tabElements = Array.from(container.querySelectorAll('.tab-item')) as HTMLElement[]
   const mouseX = event.clientX
   
-  // Find the closest gap between tabs
-  for (let i = 0; i < tabs.length; i++) {
-    const tab = tabs[i]
-    const rect = tab.getBoundingClientRect()
+  for (let i = 0; i < tabElements.length; i++) {
+    const rect = tabElements[i].getBoundingClientRect()
     
-    // Check if we're before the first tab
-    if (i === 0 && mouseX < rect.left) {
-      dropPosition.value = { index: 0, side: 'left' }
+    // Check if mouse is over this tab or in the gap after it
+    if (mouseX >= rect.left && mouseX <= (tabElements[i + 1]?.getBoundingClientRect().left || rect.right + 10)) {
+      const midpoint = rect.left + rect.width / 2
+      const side = mouseX < midpoint ? 'left' : 'right'
+      dropPosition.value = { index: i, side }
       return
-    }
-    
-    // Check if we're after this tab but before the next
-    if (mouseX > rect.right) {
-      // If this is the last tab or we're before the next tab
-      if (i === tabs.length - 1 || mouseX < tabs[i + 1].getBoundingClientRect().left) {
-        dropPosition.value = { index: i, side: 'right' }
-        return
-      }
     }
   }
 }
 
-const handleParentDrop = (event: DragEvent) => {
+const handleContainerDrop = (event: DragEvent) => {
   if (draggedIndex.value === null || dropPosition.value.index === null) return
   
   event.preventDefault()
   
-  // Use the same logic as tab drop
   const index = dropPosition.value.index
   let targetIndex = index
   
@@ -293,11 +205,18 @@ const handleParentDrop = (event: DragEvent) => {
   dropPosition.value = { index: null, side: 'left' }
 }
 
-const handleParentDragLeave = (event: DragEvent) => {
-  // Only clear if we're truly leaving the tabs container
+const handleDragEnd = () => {
+  // Clean up in case drop didn't fire
+  draggedIndex.value = null
+  dropPosition.value = { index: null, side: 'left' }
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  // Only clear if leaving the container entirely
+  const container = event.currentTarget as HTMLElement
   const relatedTarget = event.relatedTarget as HTMLElement
-  const currentTarget = event.currentTarget as HTMLElement
-  if (!relatedTarget || !currentTarget?.contains(relatedTarget)) {
+  
+  if (!container.contains(relatedTarget)) {
     dropPosition.value = { index: null, side: 'left' }
   }
 }
