@@ -35,6 +35,16 @@
         @delete="confirmDelete"
       />
     </div>
+    
+    <!-- Change Directory Button -->
+    <div class="p-2 border-t border-neutral-800">
+      <button
+        @click="changeDirectory"
+        class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
+      >
+        Change Directory
+      </button>
+    </div>
   </div>
 </template>
 
@@ -117,6 +127,13 @@ const handleFileClick = (file: FileItem) => {
     explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path: file.path })
   } else {
     explorerActor?.send({ type: 'explorer.OPEN_FILE', path: file.path })
+  }
+}
+
+const changeDirectory = () => {
+  const newPath = prompt('Enter new root directory path:', props.rootDirectory || '')
+  if (newPath && newPath !== props.rootDirectory) {
+    explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
   }
 }
 </script>

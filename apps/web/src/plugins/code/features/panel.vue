@@ -46,16 +46,6 @@
         v-else-if="selectedPanel === 'actions'"
       />
     </div>
-
-    <!-- Change Directory Button -->
-    <div class="p-2 border-t border-neutral-800">
-      <button
-        @click="changeDirectory"
-        class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
-      >
-        Change Directory
-      </button>
-    </div>
   </div>
   
 </template>
@@ -102,15 +92,5 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
     type: 'SELECT_PANEL', 
     panel 
   })
-}
-
-// Navigation handlers removed - now handled directly in ExplorerPanel
-
-const changeDirectory = () => {
-  const newPath = prompt('Enter new root directory path:', rootDirectory.value)
-  if (newPath && newPath !== rootDirectory.value) {
-    const explorerActor = actor.system.get('explorer')
-    explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
-  }
 }
 </script>
