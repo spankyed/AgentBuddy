@@ -98,18 +98,10 @@ const panels = [
 
 // Event handlers
 const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions') => {
-  // Update parent state
   actor.send({ 
-    type: 'UPDATE_STATE', 
-    updates: { selectedPanel: panel } 
+    type: 'SELECT_PANEL', 
+    panel 
   })
-  
-  // Notify child machines if needed
-  if (panel === 'commit') {
-    actor.system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
-  } else if (panel === 'pr') {
-    actor.system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
-  }
 }
 
 // Navigation handlers removed - now handled directly in ExplorerPanel

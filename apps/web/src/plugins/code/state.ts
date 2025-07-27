@@ -45,7 +45,8 @@ export type Event =
   | OutgoingCodeEvents
   // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
-  | { type: 'PLUGIN_ACTIVATED' };
+  | { type: 'PLUGIN_ACTIVATED' }
+  | { type: 'SELECT_PANEL'; panel: PanelType };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -178,6 +179,26 @@ const codeState = setup({
         system.get(prefix)?.send(event);
       }
     },
+    
+    selectPanel: assign(({
+      event,
+      context,
+      system
+    }) => {
+      const ev = event as { type: 'SELECT_PANEL'; panel: PanelType };
+      
+      // Notify child machines if needed
+      if (ev.panel === 'commit') {
+        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+      } else if (ev.panel === 'pr') {
+        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+      }
+      
+      return {
+        ...context,
+        selectedPanel: ev.panel
+      };
+    }),
   }
 }).createMachine({
   id,
@@ -224,6 +245,10 @@ const codeState = setup({
         // Plugin initialization
         PLUGIN_ACTIVATED: {
           actions: ['initializePlugin']
+        },
+        // Panel selection
+        SELECT_PANEL: {
+          actions: ['selectPanel']
         }
       }
     }
