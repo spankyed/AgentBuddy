@@ -40,7 +40,7 @@ export type Event =
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; content: string }
   | { type: 'codeActions.REFRESH_LIST' }
   // Backend events
-  | { type: 'ACTIONS_STARTUP'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
+  | { type: 'ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
   | { type: 'ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: string }
   | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
@@ -91,19 +91,19 @@ export const actionsState = setup({
     
     handleActionsStartup: assign({
       actions: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_STARTUP'; data: any }
+        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
         return ev.data.actions
       },
       page: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_STARTUP'; data: any }
+        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
         return ev.data.page
       },
       totalPages: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_STARTUP'; data: any }
+        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
         return ev.data.totalPages
       },
       totalCount: ({ event }) => {
-        const ev = event as { type: 'ACTIONS_STARTUP'; data: any }
+        const ev = event as { type: 'ACTIONS_LISTED'; data: any }
         return ev.data.totalCount
       },
       isLoading: false,
@@ -228,7 +228,7 @@ export const actionsState = setup({
       actions: 'openActionTabs'
     },
     // Backend events
-    'ACTIONS_STARTUP': {
+    'ACTIONS_LISTED': {
       actions: 'handleActionsStartup'
     },
     'ACTION_SELECTED': {
@@ -249,7 +249,7 @@ export const actionsState = setup({
     },
     loading: {
       on: {
-        'ACTIONS_STARTUP': {
+        'ACTIONS_LISTED': {
           target: 'idle',
           actions: 'handleActionsStartup'
         },

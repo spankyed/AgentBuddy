@@ -29,7 +29,7 @@ export interface ActionsStartupData {
 }
 
 export type OutgoingActionEvents =
-  | { type: 'ACTIONS_STARTUP'; data: ActionsStartupData }
+  | { type: 'ACTIONS_LISTED'; data: ActionsStartupData }
   | { type: 'ACTION_SELECTED'; actionId: EARS.EntityId; data: ActionEntity }
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }

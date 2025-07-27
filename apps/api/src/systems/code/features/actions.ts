@@ -46,7 +46,7 @@ export const actionsSystem = setup({
       const data = actionQueries.startupData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
-        type: 'ACTIONS_STARTUP',
+        type: 'ACTIONS_LISTED',
         data
       })
       rootEvents.emitOutgoing(wrapped.event)
@@ -114,7 +114,7 @@ export const actionsSystem = setup({
       const data = actionQueries.startupData(1)
       
       const wrapped = emit(pluginId, {
-        type: 'ACTIONS_STARTUP',
+        type: 'ACTIONS_LISTED',
         data
       })
       rootEvents.emitOutgoing(wrapped.event)

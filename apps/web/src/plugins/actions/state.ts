@@ -68,7 +68,7 @@ const actionsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
-      const ev = typeOf('ACTIONS_STARTUP', event);
+      const ev = typeOf('ACTIONS_LISTED', event);
       return {
         actions: ev.data.actions,
         page: ev.data.page,
@@ -257,7 +257,7 @@ const actionsState = setup({
     },
   },
   on: {
-    ACTIONS_STARTUP: { actions: 'setPluginData' },
+    ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
     ACTION_CREATED: { 
       actions: 'addCreatedAction',
