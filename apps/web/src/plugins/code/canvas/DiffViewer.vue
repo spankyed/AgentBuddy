@@ -13,7 +13,7 @@
         :modified="gitDiff.modifiedContent || ''"
         :options="diffEditorOptions"
         theme="vs-dark"
-        :language="getLanguage(selectedGitFile.path)"
+        :language="getLanguageId(selectedGitFile.path)"
         class="h-full"
       />
     </div>
@@ -28,6 +28,7 @@ import { onMounted } from 'vue'
 import { GitCompare } from 'lucide-vue-next'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import type { GitStatusFile, GitDiff } from '@/plugins/code/features/commit/state'
+import { getLanguageId } from '@/plugins/code/utils/simple-monaco-config'
 
 // Props
 defineProps<{
@@ -64,38 +65,5 @@ const diffEditorOptions = {
     enabled: true,
     delay: 300
   },
-}
-
-// Helper function
-const getLanguage = (path: string) => {
-  const ext = path.split('.').pop()?.toLowerCase() || ''
-  const languageMap: Record<string, string> = {
-    ts: 'typescript',
-    tsx: 'typescript',
-    js: 'javascript',
-    jsx: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    vue: 'vue',
-    json: 'json',
-    jsonc: 'json',
-    css: 'css',
-    scss: 'scss',
-    sass: 'scss',
-    less: 'less',
-    html: 'html',
-    htm: 'html',
-    xml: 'xml',
-    yaml: 'yaml',
-    yml: 'yaml',
-    md: 'markdown',
-    py: 'python',
-    java: 'java',
-    go: 'go',
-    rs: 'rust',
-    php: 'php',
-    rb: 'ruby',
-  }
-  return languageMap[ext] || 'plaintext'
 }
 </script>
