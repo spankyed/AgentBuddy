@@ -16,13 +16,16 @@ export interface FuzzySearchResult<T> {
   matchRanges: Array<[number, number]> // For highlighting
 }
 
-// Scoring constants (inspired by VS Code)
-const SCORE_MATCH = 1
-const SCORE_WORD_START = 7
-const SCORE_CAMEL_CASE = 5
+// Scoring constants (VS Code heuristics)
+const SCORE_EXACT_PREFIX_SAME_CASE = 7
+const SCORE_EXACT_PREFIX_DIFF_CASE = 5
+const SCORE_WORD_BOUNDARY = 5
+const SCORE_CAMEL_CASE = 7
+const SCORE_UPPER_CASE = 5
 const SCORE_CONSECUTIVE = 1
-const SCORE_GAP_PENALTY = -3
-const SCORE_DISTANCE_FROM_START = -1
+const SCORE_GAP_NICE = -3  // Gap at word boundary
+const SCORE_GAP_OTHER = -5 // Gap elsewhere
+const SCORE_FULL_MATCH = 2
 
 /**
  * Check if a character is uppercase
@@ -49,47 +52,11 @@ function isWordBoundary(str: string, index: number): boolean {
   return false
 }
 
-/**
- * Score a single match based on its position and context
- */
-function scoreMatch(
-  target: string,
-  targetIndex: number,
-  isConsecutive: boolean,
-  distanceFromLastMatch: number
-): number {
-  let score = SCORE_MATCH
-  
-  // Bonus for matching at word boundaries
-  if (isWordBoundary(target, targetIndex)) {
-    score += SCORE_WORD_START
-  }
-  
-  // Bonus for camelCase matches
-  if (targetIndex > 0 && isUpperCase(target[targetIndex])) {
-    score += SCORE_CAMEL_CASE
-  }
-  
-  // Bonus for consecutive matches
-  if (isConsecutive) {
-    score += SCORE_CONSECUTIVE
-  }
-  
-  // Penalty for gaps between matches
-  if (distanceFromLastMatch > 1) {
-    score += SCORE_GAP_PENALTY * (distanceFromLastMatch - 1)
-  }
-  
-  // Small penalty for distance from start
-  score += SCORE_DISTANCE_FROM_START * targetIndex * 0.01
-  
-  return score
-}
 
 /**
  * Fuzzy match a pattern against a target string
  */
-export function fuzzyMatch(pattern: string, target: string): FuzzyMatch | null {
+export function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMatch | null {
   if (!pattern || !target) return null
   
   const patternLower = pattern.toLowerCase()
@@ -100,18 +67,73 @@ export function fuzzyMatch(pattern: string, target: string): FuzzyMatch | null {
   let score = 0
   let lastMatchIndex = -1
   const positions: number[] = []
+  let isFirstChar = true
+  let consecutiveCount = 0
+  
+  // Check for exact prefix match
+  if (targetLower.startsWith(patternLower)) {
+    // Bonus for exact prefix
+    if (target.startsWith(pattern)) {
+      score += SCORE_EXACT_PREFIX_SAME_CASE * pattern.length
+    } else {
+      score += SCORE_EXACT_PREFIX_DIFF_CASE * pattern.length
+    }
+  }
+  
+  // Also check filename for exact prefix if provided
+  if (filename) {
+    const filenameLower = filename.toLowerCase()
+    if (filenameLower.startsWith(patternLower)) {
+      // Even bigger bonus for filename prefix match
+      if (filename.startsWith(pattern)) {
+        score += SCORE_EXACT_PREFIX_SAME_CASE * pattern.length * 2
+      } else {
+        score += SCORE_EXACT_PREFIX_DIFF_CASE * pattern.length * 2
+      }
+    }
+  }
   
   // Try to match all pattern characters
   while (patternIndex < pattern.length && targetIndex < target.length) {
     if (patternLower[patternIndex] === targetLower[targetIndex]) {
-      const isConsecutive = lastMatchIndex === targetIndex - 1
-      const distanceFromLastMatch = lastMatchIndex === -1 ? 0 : targetIndex - lastMatchIndex
-      
-      score += scoreMatch(target, targetIndex, isConsecutive, distanceFromLastMatch)
       positions.push(targetIndex)
       
+      // Base score
+      let charScore = 0
+      
+      // Word boundary bonus
+      if (isWordBoundary(target, targetIndex)) {
+        charScore += SCORE_WORD_BOUNDARY
+      }
+      
+      // Camel case / uppercase bonus
+      if (isUpperCase(target[targetIndex])) {
+        if (targetIndex > 0 && !isUpperCase(target[targetIndex - 1])) {
+          charScore += SCORE_CAMEL_CASE
+        } else {
+          charScore += SCORE_UPPER_CASE
+        }
+      }
+      
+      // Consecutive match bonus
+      if (lastMatchIndex === targetIndex - 1) {
+        consecutiveCount++
+        charScore += SCORE_CONSECUTIVE * consecutiveCount
+      } else if (lastMatchIndex !== -1) {
+        // Gap penalty
+        const gap = targetIndex - lastMatchIndex - 1
+        if (isWordBoundary(target, lastMatchIndex + 1)) {
+          charScore += SCORE_GAP_NICE * gap
+        } else {
+          charScore += SCORE_GAP_OTHER * gap
+        }
+        consecutiveCount = 0
+      }
+      
+      score += charScore
       lastMatchIndex = targetIndex
       patternIndex++
+      isFirstChar = false
     }
     targetIndex++
   }
@@ -121,12 +143,14 @@ export function fuzzyMatch(pattern: string, target: string): FuzzyMatch | null {
     return null
   }
   
-  // Apply length penalty - prefer shorter matches
-  score -= (target.length - pattern.length) * 0.1
-  
-  // Bonus for exact match
+  // Full string match bonus
   if (pattern.length === target.length && patternLower === targetLower) {
-    score += 10
+    score += SCORE_FULL_MATCH
+  }
+  
+  // Additional filename exact match bonus
+  if (filename && patternLower === filename.toLowerCase()) {
+    score += 100 // Big bonus for exact filename match
   }
   
   return { score, positions }
@@ -167,7 +191,8 @@ export function fuzzySearch<T>(
   pattern: string,
   items: T[],
   getText: (item: T) => string,
-  maxResults: number = 100
+  maxResults: number = 100,
+  getFilename?: (item: T) => string
 ): FuzzySearchResult<T>[] {
   if (!pattern.trim()) {
     // Return all items when pattern is empty
@@ -183,7 +208,8 @@ export function fuzzySearch<T>(
   
   for (const item of items) {
     const text = getText(item)
-    const match = fuzzyMatch(pattern, text)
+    const filename = getFilename ? getFilename(item) : undefined
+    const match = fuzzyMatch(pattern, text, filename)
     
     if (match) {
       results.push({

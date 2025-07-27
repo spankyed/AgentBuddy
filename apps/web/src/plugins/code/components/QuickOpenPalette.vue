@@ -151,12 +151,31 @@ const filteredResults = computed(() => {
     }))
   }
   
-  return fuzzySearch(
+  // Search with both full path and filename for better results
+  const searchResults = fuzzySearch(
     searchQuery.value,
     results.value,
     (item) => item.relativePath,
-    50 // Max results
+    100, // Get more results initially
+    (item) => item.name // Pass filename for exact match detection
   )
+  
+  // If we have exact filename matches, prioritize them heavily
+  const query = searchQuery.value.toLowerCase()
+  return searchResults
+    .map(result => {
+      // Extra boost for exact filename match
+      if (result.item.name.toLowerCase() === query) {
+        return { ...result, score: result.score + 10000 }
+      }
+      // Boost for filename starting with query
+      if (result.item.name.toLowerCase().startsWith(query)) {
+        return { ...result, score: result.score + 5000 }
+      }
+      return result
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 50) // Return top 50
 })
 
 // Methods
