@@ -1,9 +1,15 @@
 <template>
-  <div v-if="tabs.length > 0" class="flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800">
+  <div 
+    v-if="tabs.length > 0" 
+    class="tabs-container flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800"
+    @dragover="handleParentDragOver"
+    @drop="handleParentDrop"
+    @dragleave="handleParentDragLeave"
+  >
     <div
       v-for="(tab, index) in tabs"
       :key="tab.path"
-      class="flex items-center group"
+      class="tab-item flex items-center group"
       :class="[
         'border-r border-neutral-800 relative',
         activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
@@ -14,7 +20,7 @@
       @dragover="handleDragOver(index, $event)"
       @drop="handleDrop(index, $event)"
       @dragend="handleDragEnd"
-      @dragleave="handleDragLeave"
+      @dragleave="handleDragLeave($event)"
     >
       <!-- Drop indicator -->
       <div
@@ -151,6 +157,7 @@ const handleDragStart = (index: number, event: DragEvent) => {
 
 const handleDragOver = (index: number, event: DragEvent) => {
   event.preventDefault() // Allow drop
+  event.stopPropagation() // Prevent parent handler
   event.dataTransfer!.dropEffect = 'move'
   
   if (draggedIndex.value === null || draggedIndex.value === index) return
@@ -169,6 +176,7 @@ const handleDragOver = (index: number, event: DragEvent) => {
 
 const handleDrop = (index: number, event: DragEvent) => {
   event.preventDefault()
+  event.stopPropagation() // Prevent parent handler
   
   if (draggedIndex.value === null || draggedIndex.value === index) return
   
@@ -208,9 +216,90 @@ const handleDragEnd = () => {
   dropPosition.value = { index: null, side: 'left' }
 }
 
-const handleDragLeave = () => {
+const handleDragLeave = (event: DragEvent) => {
+  // Don't clear if we're moving to another tab or the parent container
+  const relatedTarget = event.relatedTarget as HTMLElement
+  if (relatedTarget && relatedTarget.closest('.tabs-container')) {
+    return
+  }
+  
   // Clear the drop indicator when leaving a tab
   dropPosition.value = { index: null, side: 'left' }
+}
+
+// Parent container handlers
+const handleParentDragOver = (event: DragEvent) => {
+  if (draggedIndex.value === null) return
+  
+  event.preventDefault()
+  event.dataTransfer!.dropEffect = 'move'
+  
+  // Find which tabs we're between
+  const container = event.currentTarget as HTMLElement
+  const tabs = Array.from(container.querySelectorAll('.tab-item')) as HTMLElement[]
+  
+  // Get mouse position
+  const mouseX = event.clientX
+  
+  // Find the closest gap between tabs
+  for (let i = 0; i < tabs.length; i++) {
+    const tab = tabs[i]
+    const rect = tab.getBoundingClientRect()
+    
+    // Check if we're before the first tab
+    if (i === 0 && mouseX < rect.left) {
+      dropPosition.value = { index: 0, side: 'left' }
+      return
+    }
+    
+    // Check if we're after this tab but before the next
+    if (mouseX > rect.right) {
+      // If this is the last tab or we're before the next tab
+      if (i === tabs.length - 1 || mouseX < tabs[i + 1].getBoundingClientRect().left) {
+        dropPosition.value = { index: i, side: 'right' }
+        return
+      }
+    }
+  }
+}
+
+const handleParentDrop = (event: DragEvent) => {
+  if (draggedIndex.value === null || dropPosition.value.index === null) return
+  
+  event.preventDefault()
+  
+  // Use the same logic as tab drop
+  const index = dropPosition.value.index
+  let targetIndex = index
+  
+  if (dropPosition.value.side === 'right') {
+    targetIndex = index + 1
+    if (draggedIndex.value < index) {
+      targetIndex = index
+    }
+  } else {
+    if (draggedIndex.value > index) {
+      targetIndex = index
+    } else {
+      targetIndex = index - 1
+    }
+  }
+  
+  targetIndex = Math.max(0, Math.min(props.tabs.length - 1, targetIndex))
+  emit('reorder', draggedIndex.value, targetIndex)
+  
+  // Clean up
+  draggedIndex.value = null
+  dropPosition.value = { index: null, side: 'left' }
+}
+
+const handleParentDragLeave = (event: DragEvent) => {
+  // Only clear if we're truly leaving the tabs container
+  const relatedTarget = event.relatedTarget as HTMLElement
+  const currentTarget = event.currentTarget as HTMLElement
+  if (!relatedTarget || !currentTarget?.contains(relatedTarget)) {
+    dropPosition.value = { index: null, side: 'left' }
+  }
 }
 </script>
 
