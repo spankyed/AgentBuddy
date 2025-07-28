@@ -1,14 +1,18 @@
 <template>
-  <div class="pr-panel-container bg-neutral-900">
-    <div class="pr-header">
-      <h3 class="text-sm font-medium">Pull Request Changes</h3>
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <div class="flex items-center gap-2">
+        <GitPullRequest :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
+      </div>
       <button
         @click="refreshStatus"
         :disabled="isPrLoading"
-        class="refresh-btn"
+        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
         title="Refresh PR changes"
       >
-        <RefreshCw :class="['w-4 h-4', { 'animate-spin': isPrLoading }]" />
+        <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
       </button>
     </div>
 
@@ -51,7 +55,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, AlertCircle, Loader2, GitBranch } from 'lucide-vue-next'
+import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest } from 'lucide-vue-next'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
@@ -98,35 +102,6 @@ const handleFileSelect = (file: TreeNode) => {
 </script>
 
 <style scoped>
-.pr-panel-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.pr-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #27272a;
-}
-
-.refresh-btn {
-  padding: 0.25rem;
-  border-radius: 0.25rem;
-  transition: background-color 0.2s;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background-color: #27272a;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .error-state,
 .loading-state,
 .empty-state {

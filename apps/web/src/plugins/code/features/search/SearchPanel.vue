@@ -1,5 +1,13 @@
 <template>
   <div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <div class="flex items-center gap-2">
+        <Search :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Search</h3>
+      </div>
+    </div>
+    
     <!-- Search Input Section -->
     <div class="p-4 border-b border-neutral-800">
 
@@ -176,7 +184,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { ChevronRight, FolderOpen } from 'lucide-vue-next'
+import { ChevronRight, FolderOpen, Search } from 'lucide-vue-next'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)

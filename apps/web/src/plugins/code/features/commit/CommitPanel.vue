@@ -7,21 +7,27 @@
       @confirm="confirmRevert"
       @cancel="cancelRevert"
     />
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <div class="flex items-center gap-2">
+        <GitCommit :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Source Control</h3>
+      </div>
+      <button
+        @click="refreshStatus"
+        :disabled="isGitLoading"
+        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+        title="Refresh"
+      >
+        <RefreshCw :size="16" :class="{ 'animate-spin': isGitLoading }" />
+      </button>
+    </div>
+    
     <!-- Branch Info -->
-    <div class="p-3 border-b border-neutral-800">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <GitBranch class="w-4 h-4 text-neutral-400" />
-          <span class="text-sm font-medium">{{ gitBranch || 'unknown' }}</span>
-        </div>
-        <button
-          @click="refreshStatus"
-          :disabled="isGitLoading"
-          class="p-1 transition-colors rounded hover:bg-neutral-800"
-          title="Refresh"
-        >
-          <RefreshCw :class="['w-4 h-4 text-neutral-400', { 'animate-spin': isGitLoading }]" />
-        </button>
+    <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
+      <div class="flex items-center gap-2">
+        <GitBranch :size="14" class="text-neutral-400" />
+        <span class="text-xs text-neutral-300">{{ gitBranch || 'unknown' }}</span>
       </div>
     </div>
 
@@ -156,7 +162,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
+import { GitBranch, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
 // Get actors

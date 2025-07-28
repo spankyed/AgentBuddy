@@ -1,14 +1,17 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between p-4 border-b border-neutral-800">
-      <h3 class="text-lg font-medium text-neutral-200">Terminals</h3>
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <div class="flex items-center gap-2">
+        <Terminal :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Terminals</h3>
+      </div>
       <button
         @click="createNewTerminal"
-        class="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded transition-colors"
+        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+        title="New Terminal"
       >
-        <Plus class="w-4 h-4" />
-        New Terminal
+        <Plus :size="16" />
       </button>
     </div>
 

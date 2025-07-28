@@ -10,6 +10,15 @@
       @confirm="handleDelete"
       @cancel="cancelDelete"
     />
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <div class="flex items-center gap-2">
+        <FolderOpen :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Explorer</h3>
+      </div>
+    </div>
+    
     <DirectoryBreadcrumb
       :root-directory="rootDirectory"
       :current-directory="currentDirectory"
@@ -57,6 +66,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
+import { FolderOpen } from 'lucide-vue-next'
 
 interface FileItem {
   path: string
