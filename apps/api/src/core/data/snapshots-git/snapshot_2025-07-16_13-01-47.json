@@ -2,152 +2,40 @@
   "version": "1.0.0",
   "timestamp": "2025-07-16T17:01:47.656Z",
   "entities": {
-    "Thread-1": {
-      "timestamp": [
-        1752547904461,
-        1752547913461
-      ],
-      "topic": "UI Layout Reorganization Instructions",
-      "instructions": "Please reorganize the UI layout of the application to make it more user-friendly.",
-      "shortCode": "U-182",
-      "threadType": "work-item",
-      "status": "active",
-      "role": [
-        "latest_thread",
-        "selected_thread"
-      ]
-    },
-    "Thread-2": {
-      "timestamp": [
-        1752544793461,
-        1752544793461
-      ],
-      "topic": "Adding Padding to Scrollbar in CSS",
-      "instructions": "Please add padding to the scrollbar of the application to make it more user-friendly.",
-      "shortCode": "WI-45",
-      "threadType": "work-item",
-      "status": "queued"
-    },
-    "Thread-3": {
-      "timestamp": [
-        1752544853461,
-        1752544853461
-      ],
-      "topic": "Enhancing Chat Interface Design",
-      "instructions": "Please enhance the chat interface of the application to make it more user-friendly.",
-      "shortCode": "U-67",
-      "threadType": "work-item",
-      "status": "draft"
-    },
-    "Thread-4": {
-      "timestamp": [
-        1752544853461,
-        1752544853461
-      ],
-      "topic": "Project X",
-      "instructions": "Please create a project X.",
-      "shortCode": "P-13",
-      "threadType": "project",
-      "status": "inactive"
-    },
     "Tag-1": {
       "timestamp": 1752548453461,
-      "name": "ui",
+      "name": "company",
       "color": "yellow"
     },
     "Tag-2": {
       "timestamp": 1752548453461,
-      "name": "design",
+      "name": "education",
       "color": "blue"
     },
     "Tag-3": {
       "timestamp": 1752548453461,
-      "name": "frontend",
+      "name": "money",
       "color": "green"
     },
     "Tag-4": {
       "timestamp": 1752548453461,
-      "name": "css",
+      "name": "political",
       "color": "orange"
     },
     "Tag-5": {
       "timestamp": 1752548453461,
-      "name": "chat",
+      "name": "social",
       "color": "purple"
     },
     "Tag-6": {
       "timestamp": 1752548453461,
-      "name": "project",
+      "name": "confidential",
       "color": "red"
     },
     "Tag-7": {
       "timestamp": 1752548453461,
-      "name": "backend",
+      "name": "health",
       "color": "pink"
-    },
-    "Message-1": {
-      "timestamp": [
-        1752548153461,
-        1752548153461
-      ],
-      "role": "latest_message",
-      "text": "I'm working on implementing a new design system for our web application, and I've heard CSS variables could help make our styles more maintainable. Can you help me understand how to use CSS variables effectively? I'm particularly interested in how they could help us maintain consistency across different components and make theme updates easier.",
-      "sender": "user"
-    },
-    "Message-2": {
-      "timestamp": [
-        1752548213461,
-        1752548213461
-      ],
-      "text": "CSS variables, also known as custom properties, are a powerful feature for building maintainable design systems. They allow you to define reusable values that can be referenced throughout your stylesheets. The syntax follows this pattern: `--variable-name: value;` when defining, and `var(--variable-name)` when using them.\n\nOne of the biggest advantages is that you can update these values in one place and see the changes reflect across your entire application. They also support features like fallback values and can be modified dynamically using JavaScript. Let me show you a practical example in the canvas area above.",
-      "sender": "assistant"
-    },
-    "Message-3": {
-      "timestamp": [
-        1752548273461,
-        1752548273461
-      ],
-      "text": "That explanation really helps! I think I see how this could improve our codebase. Could you show me a specific example of how we might implement a color palette using CSS variables? We currently have different shades of blue scattered throughout our CSS files, and it's becoming hard to maintain consistency.",
-      "sender": "user"
-    },
-    "Message-4": {
-      "timestamp": [
-        1752548333461,
-        1752548333461
-      ],
-      "text": "I've updated the canvas with a comprehensive color palette example using CSS variables. You can define your colors once in the :root selector like this:\n\n:root {\n  --primary-100: #e3f2fd;\n  --primary-500: #2196f3;\n  --primary-900: #0d47a1;\n}\n\nThen use them throughout your CSS with var(--primary-500) for your main brand color, var(--primary-100) for lighter variants, and var(--primary-900) for darker accents. This makes it much easier to maintain a consistent color scheme and update colors globally when needed.",
-      "sender": "assistant"
-    },
-    "Message-5": {
-      "timestamp": [
-        1752548393461,
-        1752548393461
-      ],
-      "text": "This is exactly what we need! Could you help me refactor our current CSS code to use these variables from our design system? I want to make sure we're following best practices and maintaining consistency across all components.",
-      "sender": "user"
-    },
-    "ContextItem-1": {
-      "timestamp": 1752548453461,
-      "title": "Project Overview",
-      "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-      "itemType": "text"
-    },
-    "ContextItem-2": {
-      "timestamp": 1752548453461,
-      "title": "CSS Variables Example",
-      "content": "\n:root {\n  --primary-color: #3B4D6C;\n  --accent-color: #38B2AC;\n  --text-color: #333;\n  --background-color: #f9f9f9;\n}\n\n.button {\n  background-color: var(--primary-color);\n  color: white;\n  padding: 8px 16px;\n  border-radius: 4px;\n}\n\n.button.accent {\n  background-color: var(--accent-color);\n}\n    ",
-      "itemType": "code"
-    },
-    "ContextItem-3": {
-      "timestamp": 1752548453461,
-      "title": "Color Palette",
-      "content": "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English.",
-      "itemType": "text"
-    },
-    "CanvasItem-1": {
-      "timestamp": 1752548453461,
-      "content": "/* Before: Using hardcoded colors */\n.header {\n  background-color: #333;\n  color: white;\n}\n\n.sidebar {\n  background-color: #444;\n  border-right: 1px solid #555;\n}\n\n.button {\n  background-color: #0066cc;\n  color: white;\n}\n\n.button.secondary {\n  background-color: #6c757d;\n}\n\n/* Please rewrite this code using css variables from our design systems */",
-      "contentType": "code"
     },
     "Flow-a": {
       "timestamp": 1752548452461,
@@ -162,19 +50,6 @@
       "label": "Chat Flow",
       "flowType": "workflow"
     },
-    "Flow-c": {
-      "timestamp": 1752548452461,
-      "shortCode": "F-c",
-      "label": "Some flow with validation",
-      "flowType": "workflow"
-    },
-    "Flow-action-demo": {
-      "timestamp": 1752548452461,
-      "shortCode": "F-action-demo",
-      "label": "Action Demo Flow",
-      "flowType": "workflow",
-      "description": "Demonstrates various action nodes"
-    },
     "Node-a1": {
       "timestamp": 1752548452561,
       "role": "entry_event",
@@ -182,14 +57,6 @@
       "nodeType": "listen",
       "mode": "entry",
       "eventType": "flow.entry"
-    },
-    "Node-a2": {
-      "timestamp": 1752548452561,
-      "label": "User Message Old",
-      "nodeType": "listen",
-      "mode": "internal",
-      "eventType": "user.message.old",
-      "updatedAt": 1752656040779
     },
     "Node-a3": {
       "timestamp": 1752548452561,
@@ -202,57 +69,6 @@
       "timestamp": 1752548452561,
       "label": "Keep Alive",
       "nodeType": "keep_alive"
-    },
-    "Node-a7s": {
-      "timestamp": 1752548452561,
-      "label": "Process User Message",
-      "nodeType": "llm",
-      "model": "gpt-4",
-      "promptTemplateId": "Prompt-user-message-analysis",
-      "fieldMappings": [
-        {
-          "target": "userMessage",
-          "source": "$.event.data.payload",
-          "default": "[No message provided]"
-        },
-        {
-          "target": "additionalContext",
-          "source": "$.event.data.context",
-          "default": "User is interacting with the agent brain system"
-        }
-      ]
-    },
-    "Node-a8s": {
-      "timestamp": 1752548452561,
-      "label": "Format Response",
-      "nodeType": "llm",
-      "model": "gpt-4",
-      "promptTemplateId": "Prompt-format-response",
-      "fieldMappings": [
-        {
-          "target": "userMessage",
-          "source": "$.event.data.payload"
-        },
-        {
-          "target": "analysisResult",
-          "source": "$.steps[label=Process User Message].result"
-        },
-        {
-          "target": "responseStyle",
-          "source": "$.event.data.responseStyle",
-          "default": "helpful and professional"
-        }
-      ]
-    },
-    "Node-loa8s": {
-      "timestamp": 1752548452601,
-      "label": "Stream to FE",
-      "nodeType": "action",
-      "fieldMappings": {
-        "target": "message",
-        "source": "$.event.data.payload"
-      },
-      "actionId": "Action-stream-to-fe"
     },
     "Node-b1": {
       "timestamp": 1752548452561,
@@ -318,7 +134,7 @@
     },
     "Node-b9": {
       "timestamp": 1752548452641,
-      "label": "Format Response",
+      "label": "Transform Response",
       "nodeType": "transform",
       "script": "return { response: `Intent: ${context.intent}` }",
       "outputType": "json"
@@ -337,86 +153,6 @@
       "flowRef": "command-flow-3",
       "propagateCtx": true
     },
-    "Node-ad1": {
-      "timestamp": 1752548452561,
-      "label": "Start Demo",
-      "nodeType": "listen",
-      "mode": "entry",
-      "eventType": "demo.start"
-    },
-    "Node-ad2": {
-      "timestamp": 1752548452571,
-      "label": "Save User Data",
-      "nodeType": "action",
-      "params": {
-        "entityType": "User",
-        "data": {
-          "name": "Demo User",
-          "email": "demo@example.com",
-          "timestamp": 1752548453461
-        }
-      }
-    },
-    "Node-ad3": {
-      "timestamp": 1752548452581,
-      "label": "Send Welcome Email",
-      "nodeType": "action",
-      "fieldMappings": [
-        {
-          "target": "to",
-          "source": "$.lastStep.result.email",
-          "default": "fallback@example.com"
-        },
-        {
-          "target": "subject",
-          "source": "$.event.data.emailSubject",
-          "default": "Welcome to AgentBuddy!"
-        },
-        {
-          "target": "body",
-          "source": "$.event.data.emailBody",
-          "default": "Thank you for joining us!"
-        }
-      ]
-    },
-    "Node-ad4": {
-      "timestamp": 1752548452591,
-      "label": "Call External API",
-      "nodeType": "action",
-      "fieldMappings": {
-        "target": "data",
-        "source": "$.steps[1].result"
-      },
-      "params": {
-        "method": "POST",
-        "url": "https://api.example.com/notify",
-        "headers": {
-          "Content-Type": "application/json"
-        }
-      }
-    },
-    "Node-ad5": {
-      "timestamp": 1752548452601,
-      "label": "Log Results",
-      "nodeType": "action",
-      "fieldMappings": {
-        "target": "data",
-        "source": "$.steps",
-        "default": {}
-      },
-      "params": {
-        "level": "info",
-        "message": "Demo flow completed successfully"
-      }
-    },
-    "Node-ad6": {
-      "timestamp": 1752548452611,
-      "label": "Demo Complete",
-      "nodeType": "fire",
-      "eventType": "demo.complete",
-      "scope": "global",
-      "final": true
-    },
     "Node-md5kx4ty32qcubraskrcd": {
       "label": "Generate db query",
       "description": "",
@@ -434,7 +170,7 @@
       "entityType": "Node"
     },
     "Node-md5q7ctp34kqwqpamznj": {
-      "label": "User Message Main",
+      "label": "User Message",
       "description": "",
       "nodeType": "listen",
       "mode": "internal",
@@ -584,43 +320,6 @@
       "templateFn": "const { question, context = '', tone = 'professional' } = params;\n\nif (context) {\n  // prettier-ignore\n  return `\n    Context:\n    ${context}\n\n    Please answer the following question in a ${tone} tone:\n\n    ${question}\n\n    Provide a clear and helpful response.\n  `;\n}\n\n// prettier-ignore\nreturn `\n  Please answer the following question in a ${tone} tone:\n\n  ${question}\n\n  Provide a clear and helpful response.\n`;"
     },
     "Prompt-4": {
-      "timestamp": 1752202853461,
-      "label": "Translate Text",
-      "description": "Translates text between languages",
-      "updatedAt": 1752462053461,
-      "category": "text-processing",
-      "inputs": {
-        "text": {
-          "name": "text",
-          "type": "string",
-          "description": "The text to translate",
-          "required": true
-        },
-        "sourceLang": {
-          "name": "sourceLang",
-          "type": "string",
-          "description": "Source language (e.g., \"en\", \"es\", \"fr\")",
-          "required": false,
-          "defaultValue": "auto"
-        },
-        "targetLang": {
-          "name": "targetLang",
-          "type": "string",
-          "description": "Target language (e.g., \"en\", \"es\", \"fr\")",
-          "required": true,
-          "example": "en"
-        },
-        "style": {
-          "name": "style",
-          "type": "string",
-          "description": "Translation style",
-          "required": false,
-          "defaultValue": "natural"
-        }
-      },
-      "templateFn": "const { text, sourceLang = 'auto', targetLang, style = 'natural' } = params;\n\n// prettier-ignore\nreturn `\n  Please translate the following text to ${targetLang}:\n\n  ${text}\n\n  Translation requirements:\n  - ${sourceLang === 'auto' ? 'Detect the source language automatically' : 'Source language: ' + sourceLang}\n  - Target language: ${targetLang}\n  - Translation style: ${style} (preserve the original tone and meaning)\n  - Maintain formatting and structure\n  - Ensure cultural appropriateness\n\n  Provide only the translated text without explanations.\n`;"
-    },
-    "Prompt-5": {
       "timestamp": 1752030053461,
       "label": "Sentiment Analysis",
       "description": "Analyzes sentiment and emotion in text",
@@ -688,7 +387,7 @@
         }
       }
     },
-    "Prompt-6": {
+    "Prompt-5": {
       "timestamp": 1751857253461,
       "label": "Brainstorm Ideas",
       "description": "Generates creative ideas for a given topic",
@@ -751,7 +450,7 @@
     },
     "Prompt-format-response": {
       "timestamp": 1752375653461,
-      "label": "Format Response",
+      "label": "Construct Response",
       "description": "Formats AI responses based on analysis results and style preferences",
       "updatedAt": 1752375653461,
       "category": "formatting",
@@ -793,67 +492,6 @@
         }
       },
       "actionFn": "const { message } = params;\n\nconst result = await services.llm.streamText({\n  model: { provider: 'openai', model: 'gpt-4o' },\n  prompt: message,\n  system: 'You are a helpful assistant.',\n  temperature: 0.7,\n  maxTokens: 100,\n});\n\nfor await (const textPart of result.textStream) {\n  services.logger.info('Streaming text to FE', { textPart });\n\n  services.emitter.sendToPlugin('agent', {\n    type: 'TOKEN_STREAM',\n    token: textPart\n  });\n}\n\nawait result.finishReason\n\nservices.emitter.sendToPlugin('agent', {\n  type: 'LLM_DONE',\n});",
-      "output": {
-        "logged": "boolean",
-        "message": "string"
-      }
-    },
-    "Action-save-entity": {
-      "timestamp": 1752548453361,
-      "label": "Save Entity",
-      "description": "Saves an entity to the database",
-      "updatedAt": 1752548453361,
-      "category": "database",
-      "input": {
-        "entityType": {
-          "name": "entityType",
-          "type": "string",
-          "required": true,
-          "description": "The type of entity to save",
-          "placeholder": "e.g., User, Post, Comment"
-        },
-        "data": {
-          "name": "data",
-          "type": "object",
-          "required": true,
-          "description": "The entity data to save"
-        }
-      },
-      "actionFn": "const { entityType, data } = params;\n\nconst result = await services.database.insert(entityType, data);\nawait services.logger.info('Entity saved', { entityType, id: result.id });\n\nreturn result;",
-      "output": {
-        "id": "string",
-        "success": "boolean"
-      }
-    },
-    "Action-log-message": {
-      "timestamp": 1752548453513,
-      "label": "Log Message",
-      "description": "Logs a message with optional data",
-      "updatedAt": 1752548453513,
-      "category": "utility",
-      "input": {
-        "level": {
-          "name": "level",
-          "type": "string",
-          "required": true,
-          "description": "Log level",
-          "placeholder": "info, error, debug",
-          "default": "info"
-        },
-        "message": {
-          "name": "message",
-          "type": "string",
-          "required": true,
-          "description": "Log message"
-        },
-        "data": {
-          "name": "data",
-          "type": "object",
-          "required": false,
-          "description": "Additional data to log"
-        }
-      },
-      "actionFn": "const { level, message, data } = params;\n\nswitch (level) {\n  case 'error':\n    return await services.logger.error(message, data);\n  case 'debug':\n    return await services.logger.debug(message, data);\n  case 'info':\n  default:\n    return await services.logger.info(message, data);\n}",
       "output": {
         "logged": "boolean",
         "message": "string"
@@ -920,194 +558,10 @@
       },
       "actionFn": "const { message } = params\n\ntry {\n  /** ──────────────────────────────────────────────────────────────\n  * 1. Load all procedure-related documents\n  * ──────────────────────────────────────────────────────────────*/\n  const allDocs = await services.library.getWithinFolder('procedures')\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in “procedures” collection')\n  }\n\n  /** 2. Collect the “*.usage” docs and build the LLM prompt */\n  const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n  services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n  if (usageDocs.length === 0) {\n    throw new Error('No “*.usage” documents found')\n  }\n\n  const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n  const proceduresPrompt = usageDocs\n    .map(d => {\n      const name = d.name.replace(/\\.usage$/, '')\n      return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n    })\n    .join('\\n\\n')\n\n  /** 3. Ask the LLM which procedure (if any) matches the user’s request */\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum([...procedureNames, 'none']).describe('Chosen procedure name or \"none\"')\n  })\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n    You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n    <procedures>\n    ${proceduresPrompt}\n    </procedures>\n\n    Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n    \n    User message: \"\"\"${message}\"\"\"\n  `,\n    temperature: 0\n  })\n\n\n\n  const { procedure } = llmResult.object\n\n  services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n\n  /** ──────────────────────────────────────────────────────────────\n   * 4. Route to the chosen procedure or fall back to streaming\n   * ──────────────────────────────────────────────────────────────*/\n  if (procedure !== 'none') {\n    const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n    if (!procDoc) {\n      throw new Error(`Procedure implementation document “${procedure}.procedure” not found`)\n    }\n\n    const actionKey = procDoc.content.trim()\n\n    await services.action.getAndExecute(actionKey, { searchQuery: message })\n  } else {\n    await services.action.getAndExecute('Stream to FE', { message })\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  // Fallback behaviour here if needed\n}"
     },
-    "Relation-md67e0533003emvxw3zrm": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Message-1",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0532yg4h9km4b9s5": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Message-2",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0531ov1hljsyz0zo": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Message-3",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0533c9mil45x137f": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Message-4",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0532nqxach0ztfis": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Message-5",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e053388wnrxa4yt26": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "ContextItem-1",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0532isv3a4azqfm1": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "ContextItem-2",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0533qsic3osca4kb": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "ContextItem-3",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0531596xq20l6jy7": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "CanvasItem-1",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e053147fri1xygf3a": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Tag-1",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e053jb89h6hsxxcp": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Tag-2",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e05312dwsavb7otg8": {
-      "relationDetails": {
-        "sourceEntity": "Thread-1",
-        "targetEntity": "Tag-3",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0533tziipzdgplj2": {
-      "relationDetails": {
-        "sourceEntity": "Thread-2",
-        "targetEntity": "Tag-4",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e053tp65za5m2y7p": {
-      "relationDetails": {
-        "sourceEntity": "Thread-2",
-        "targetEntity": "Tag-3",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0531remewwqdmxgw": {
-      "relationDetails": {
-        "sourceEntity": "Thread-3",
-        "targetEntity": "Tag-1",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0538meadh0rbr7w": {
-      "relationDetails": {
-        "sourceEntity": "Thread-3",
-        "targetEntity": "Tag-5",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e0531wotu7gk82he9": {
-      "relationDetails": {
-        "sourceEntity": "Thread-3",
-        "targetEntity": "Tag-2",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e053487vldfk6jex": {
-      "relationDetails": {
-        "sourceEntity": "Thread-4",
-        "targetEntity": "Tag-6",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e05321rsxdxtrlrw2": {
-      "relationDetails": {
-        "sourceEntity": "Thread-4",
-        "targetEntity": "Tag-7",
-        "relationType": "has",
-        "info": {}
-      }
-    },
-    "Relation-md67e053ky4ar80ni2fr": {
-      "relationDetails": {
-        "sourceEntity": "Thread-4",
-        "targetEntity": "Thread-3",
-        "relationType": "parent_of",
-        "info": {}
-      }
-    },
-    "Relation-md67e053u3pych38c80w": {
-      "relationDetails": {
-        "sourceEntity": "Thread-4",
-        "targetEntity": "Thread-2",
-        "relationType": "parent_of",
-        "info": {}
-      }
-    },
-    "Relation-md67e0532eoo7f7jri42w": {
-      "relationDetails": {
-        "sourceEntity": "Thread-2",
-        "targetEntity": "Thread-1",
-        "relationType": "parent_of",
-        "info": {}
-      }
-    },
     "Relation-md67e0532occflbc4n5o3": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0532a3577hc3q5ir": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a2",
         "relationType": "contains",
         "info": {}
       }
@@ -1128,30 +582,6 @@
         "info": {}
       }
     },
-    "Relation-md67e053mlv663ttl4fi": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a7s",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e0531xjtyutolx5yd": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a8s",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
-    "Relation-md67e053161nzgr96jkgr": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-loa8s",
-        "relationType": "contains",
-        "info": {}
-      }
-    },
     "Relation-md67e054254va035lcne4": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
@@ -1168,14 +598,6 @@
         "info": {}
       }
     },
-    "Relation-md67e0543hgzlc83mqgpf": {
-      "relationDetails": {
-        "sourceEntity": "Flow-a",
-        "targetEntity": "Node-a2",
-        "relationType": "event_trace",
-        "info": {}
-      }
-    },
     "Relation-md67e0545gepa3mfrfuz": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
@@ -1188,30 +610,6 @@
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
-        "relationType": "transitions_to",
-        "info": {}
-      }
-    },
-    "Relation-md67e0542tf755heru9lo": {
-      "relationDetails": {
-        "sourceEntity": "Node-a2",
-        "targetEntity": "Node-a7s",
-        "relationType": "transitions_to",
-        "info": {}
-      }
-    },
-    "Relation-md67e0543v4dh427odrau": {
-      "relationDetails": {
-        "sourceEntity": "Node-a7s",
-        "targetEntity": "Node-a8s",
-        "relationType": "transitions_to",
-        "info": {}
-      }
-    },
-    "Relation-md67e054h1fmi0xu7mgm": {
-      "relationDetails": {
-        "sourceEntity": "Node-a8s",
-        "targetEntity": "Node-loa8s",
         "relationType": "transitions_to",
         "info": {}
       }
@@ -1368,7 +766,7 @@
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
-        "relationType": "emits",
+        "relationType": "transitions_to",
         "info": {}
       }
     },
@@ -1386,97 +784,6 @@
         "targetEntity": "Node-b10",
         "relationType": "transitions_to",
         "info": {}
-      }
-    },
-    "Relation-md67e0541d8i791omnfax": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad1",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e0543ovbr6vuttx2f": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad2",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e0541ytj1vwgwhynq": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad3",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e0545gr4rjrjndaz": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad4",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e054hzym70oocxnb": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad5",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e0543l5uerp2034r8": {
-      "relationDetails": {
-        "sourceEntity": "Flow-action-demo",
-        "targetEntity": "Node-ad6",
-        "relationType": "contains"
-      }
-    },
-    "Relation-md67e0543t42d6rd7g7b5": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad1",
-        "targetEntity": "Node-ad2",
-        "relationType": "transitions_to"
-      }
-    },
-    "Relation-md67e054f1bs0v1uvd6q": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad2",
-        "targetEntity": "Node-ad3",
-        "relationType": "transitions_to"
-      }
-    },
-    "Relation-md67e054kfqaqk6bj4gq": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad3",
-        "targetEntity": "Node-ad4",
-        "relationType": "transitions_to"
-      }
-    },
-    "Relation-md67e0543cg22vhkvj88t": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad4",
-        "targetEntity": "Node-ad5",
-        "relationType": "transitions_to"
-      }
-    },
-    "Relation-md67e0546uvifdrkte1u": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad5",
-        "targetEntity": "Node-ad6",
-        "relationType": "transitions_to"
-      }
-    },
-    "Relation-md67e054narcy25563q9": {
-      "relationDetails": {
-        "sourceEntity": "Node-ad2",
-        "targetEntity": "Action-save-entity",
-        "relationType": "instance_of"
-      }
-    },
-    "Relation-md67e0545ypn4adlqeyb": {
-      "relationDetails": {
-        "sourceEntity": "Node-loa8s",
-        "targetEntity": "Action-stream-to-fe",
-        "relationType": "instance_of"
       }
     },
     "Relation-md67e0543k6qkx8c2975y": {
@@ -1610,7 +917,7 @@
     }
   },
   "metadata": {
-    "entityCount": 154,
+    "entityCount": 140,
     "attributeKinds": [
       "timestamp",
       "topic",
