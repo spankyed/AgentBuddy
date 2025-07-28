@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-28T08:32:11.767Z",
+  "timestamp": "2025-07-28T08:33:58.130Z",
   "entities": {
     "Tag-1": {
       "timestamp": 1752548453461,
@@ -542,7 +542,7 @@
       "shortCode": "ACT-6",
       "label": "Check for procedure",
       "description": "Checks if user message matches any stored procedures",
-      "updatedAt": 1753691146924,
+      "updatedAt": 1753691633689,
       "createdAt": [
         1752655320835,
         1752655320835
@@ -551,14 +551,14 @@
       "category": "",
       "input": {
         "message": {
-          "type": "string",
+          "type": "object",
           "required": true,
           "description": ""
         }
       },
-      "actionFn": "const { text, mode } = params;\n\ntry {\n  /** ──────────────────────────────────────────────────────────────\n  * 1. Load all procedure-related documents\n  * ──────────────────────────────────────────────────────────────*/\n  const allDocs = await services.library.getWithinFolder('procedures')\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in “procedures” collection')\n  }\n\n  /** 2. Collect the “*.usage” docs and build the LLM prompt */\n  const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n  services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n  if (usageDocs.length === 0) {\n    throw new Error('No “*.usage” documents found')\n  }\n\n  const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n  const proceduresPrompt = usageDocs\n    .map(d => {\n      const name = d.name.replace(/\\.usage$/, '')\n      return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n    })\n    .join('\\n\\n')\n\n  /** 3. Ask the LLM which procedure (if any) matches the user’s request */\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum([...procedureNames, 'none']).describe('Chosen procedure name or \"none\"')\n  })\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n    You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n    <procedures>\n    ${proceduresPrompt}\n    </procedures>\n\n    Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n    \n    User message: \"\"\"${text}\"\"\"\n  `,\n    temperature: 0\n  })\n\n\n\n  const { procedure } = llmResult.object\n\n  services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n\n  /** ──────────────────────────────────────────────────────────────\n   * 4. Route to the chosen procedure or fall back to streaming\n   * ──────────────────────────────────────────────────────────────*/\n  if (procedure !== 'none') {\n    const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n    if (!procDoc) {\n      throw new Error(`Procedure implementation document “${procedure}.procedure” not found`)\n    }\n\n    const actionKey = procDoc.content.trim()\n\n    await services.action.getAndExecute(actionKey, { searchQuery: text })\n  } else {\n    await services.action.getAndExecute('Stream to FE', { message: text })\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  // Fallback behaviour here if needed\n}"
+      "actionFn": "const { message } = params;\n\nconst { text, mode } = message;\n\ntry {\n  /** ──────────────────────────────────────────────────────────────\n  * 1. Load all procedure-related documents\n  * ──────────────────────────────────────────────────────────────*/\n  const allDocs = await services.library.getWithinFolder('procedures')\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in “procedures” collection')\n  }\n\n  /** 2. Collect the “*.usage” docs and build the LLM prompt */\n  const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n  services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n  if (usageDocs.length === 0) {\n    throw new Error('No “*.usage” documents found')\n  }\n\n  const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n  const proceduresPrompt = usageDocs\n    .map(d => {\n      const name = d.name.replace(/\\.usage$/, '')\n      return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n    })\n    .join('\\n\\n')\n\n  /** 3. Ask the LLM which procedure (if any) matches the user’s request */\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum([...procedureNames, 'none']).describe('Chosen procedure name or \"none\"')\n  })\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n    You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n    <procedures>\n    ${proceduresPrompt}\n    </procedures>\n\n    Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n    \n    User message: \"\"\"${text}\"\"\"\n  `,\n    temperature: 0\n  })\n\n\n\n  const { procedure } = llmResult.object\n\n  services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n\n  /** ──────────────────────────────────────────────────────────────\n   * 4. Route to the chosen procedure or fall back to streaming\n   * ──────────────────────────────────────────────────────────────*/\n  if (procedure !== 'none') {\n    const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n    if (!procDoc) {\n      throw new Error(`Procedure implementation document “${procedure}.procedure” not found`)\n    }\n\n    const actionKey = procDoc.content.trim()\n\n    await services.action.getAndExecute(actionKey, { searchQuery: text })\n  } else {\n    await services.action.getAndExecute('Stream to FE', { message: text })\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  // Fallback behaviour here if needed\n}"
     },
-    "Relation-mdmun97m595tex4o0aod": {
+    "Relation-mdmunx1j3s2b2gdn8lrh9": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -566,7 +566,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mxm3aq874poe3": {
+    "Relation-mdmunx1j1v93y8tu1hzjm": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -574,7 +574,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m1u0rgjphzrhtl": {
+    "Relation-mdmunx1j2qp7id4sg2x3k": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -582,7 +582,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m12kcvi81z97v0": {
+    "Relation-mdmunx1j2gryexfyhv1zw": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -590,7 +590,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m30i4f90eidnje": {
+    "Relation-mdmunx1j1da679uzaapbu": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
@@ -598,7 +598,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3t07nuslyvgr9": {
+    "Relation-mdmunx1j3oans1khnymlb": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -606,7 +606,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m1y87dfz2ik6zr": {
+    "Relation-mdmunx1j18gh8j940c2uq": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -614,7 +614,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m2n3qab50wc0as": {
+    "Relation-mdmunx1j96pzht3u0cg9": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -622,7 +622,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3g2i26nasyjuw": {
+    "Relation-mdmunx1j3kqhm3djs95fb": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -630,7 +630,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mldsuj619mj9q": {
+    "Relation-mdmunx1jbbxg137tyqyn": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -638,7 +638,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mr155kubh33rr": {
+    "Relation-mdmunx1jb6v1oer9uz6u": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -646,7 +646,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mmc8f7d5r3p1e": {
+    "Relation-mdmunx1j243dkf7z1t1sf": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -654,7 +654,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mfnswcfpq1ant": {
+    "Relation-mdmunx1j8kd8b4eqcrdq": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -662,7 +662,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3445bcig4jc4t": {
+    "Relation-mdmunx1j2fhhhgyrg0c2w": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -670,7 +670,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m37afh90t0ftta": {
+    "Relation-mdmunx1jlkmnxuz5d8mb": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -678,7 +678,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3f9wpx4h1dyvn": {
+    "Relation-mdmunx1k2s4tiftm907ez": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -686,7 +686,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mawdhqqu9qijq": {
+    "Relation-mdmunx1k2qyihhm5yi83p": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -694,7 +694,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3bvyxp2cndfwl": {
+    "Relation-mdmunx1k37oh2k9f2t47j": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -702,7 +702,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97mv85wx6s7hibc": {
+    "Relation-mdmunx1k15uhgf1b1gubv": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -710,7 +710,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m35d7hwtgsx46v": {
+    "Relation-mdmunx1k1hp6l3a3se7k": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -718,7 +718,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m1iraeyg1m6l93": {
+    "Relation-mdmunx1k2qlrn8z8ft37": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -726,7 +726,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m2xwnat72eyfq4": {
+    "Relation-mdmunx1k1v3x169p9ohj8": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -736,7 +736,7 @@
         }
       }
     },
-    "Relation-mdmun97m1yvq16pljzw0j": {
+    "Relation-mdmunx1k1a79yh5itqc5z": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -746,7 +746,7 @@
         }
       }
     },
-    "Relation-mdmun97m1ocacd00yd4jm": {
+    "Relation-mdmunx1k449bkfs1j2b5": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -754,7 +754,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m1k7itd11tawjm": {
+    "Relation-mdmunx1khjz2xjf5bj81": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -762,7 +762,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m1m5fbacmpwha7": {
+    "Relation-mdmunx1k2yw69yv2qlgqc": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -770,7 +770,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m3ansgua77xknj": {
+    "Relation-mdmunx1k1gfw70kxjsdh7": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -778,7 +778,7 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m136v3sekbvgxe": {
+    "Relation-mdmunx1k2s7koiusb8448": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -786,84 +786,84 @@
         "info": {}
       }
     },
-    "Relation-mdmun97m25vmaexo4cjw6": {
+    "Relation-mdmunx1k2bk353aux9jzx": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97m2tb39rippqht": {
+    "Relation-mdmunx1k1exz9jabopd4v": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97m1x2ivrazdvrqh": {
+    "Relation-mdmunx1k13q7afzzi1e9u": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97m20r410quoclxy": {
+    "Relation-mdmunx1k3gjj8huks9xa4": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdmun97msnz9ijnf8vxb": {
+    "Relation-mdmunx1k2xmnckoyoi4zi": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdmun97mttb9pkqe5bqn": {
+    "Relation-mdmunx1k19hvzezfadz51": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97m3ts09nsg7dtm8": {
+    "Relation-mdmunx1kgoypdxu5mbnr": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97mqact2xgke1o0": {
+    "Relation-mdmunx1k153a7q9y92t0a": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97mrxd0tgrt8898": {
+    "Relation-mdmunx1k256ymn8xbknz4": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97mvacwotvtdw80": {
+    "Relation-mdmunx1k38mod8v61snry": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "contains"
       }
     },
-    "Relation-mdmun97m3dnc33fxn1778": {
+    "Relation-mdmunx1k2tpbpra1psher": {
       "relationDetails": {
         "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdmun97mhbwxrn3cb8d": {
+    "Relation-mdmunx1k3jmoeralkzpw6": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
@@ -974,6 +974,6 @@
     "excludedTypes": [
       "TNode"
     ],
-    "excludedRelations": 3
+    "excludedRelations": 5
   }
 }
