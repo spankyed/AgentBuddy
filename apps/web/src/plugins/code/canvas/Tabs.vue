@@ -9,7 +9,7 @@
     <div
       v-for="(tab, index) in tabs"
       :key="tab.path"
-      class="tab-item group relative flex border-r border-neutral-800"
+      class="tab-item group relative flex items-center border-r border-neutral-800"
       :class="[
         activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
         draggedIndex === index ? 'opacity-50' : ''
@@ -44,7 +44,7 @@
       </button>
       <button
         @click.stop="$emit('close', tab.path)"
-        class="p-1 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+        class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
       >
         <X class="w-3 h-3" />
       </button>
