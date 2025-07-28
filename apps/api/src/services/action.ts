@@ -1,20 +1,20 @@
-import { actionQueries } from '@/systems/actions/repository';
+import { repository } from '@/repository';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 import services from '@/services';
 
 export class ActionService {
   async getById(id: EARS.EntityId): Promise<ActionEntity | undefined> {
-    return actionQueries.byId(id);
+    return repository.actionQueries.byId(id);
   }
 
   async getByLabel(label: string): Promise<ActionEntity | undefined> {
-    const allActions = actionQueries.all();
+    const allActions = repository.actionQueries.all();
     return allActions.find(action => action.label === label);
   }
 
   async getByCategory(category: string): Promise<ActionEntity[]> {
-    return actionQueries.byCategory(category);
+    return repository.actionQueries.byCategory(category);
   }
 
   async executeAction(actionFn: string, params: Record<string, any> = {}): Promise<any> {

@@ -6,6 +6,7 @@ import { promptService } from './prompt';
 import { actionService } from './action';
 import { libraryService } from './library';
 import * as browser from './browser';
+import { repositoryService } from './repository';
 
 const services = {
   logger: loggerService,
@@ -16,6 +17,7 @@ const services = {
   action: actionService,
   library: libraryService,
   browser,
+  repository: repositoryService,
 }
 
 export default services;

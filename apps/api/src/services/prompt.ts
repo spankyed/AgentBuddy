@@ -1,10 +1,10 @@
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
-import { promptQueries } from '@/systems/prompts/repository';
+import { repository } from '@/repository';
 import type { PromptEntity } from '@/systems/prompts/types';
 
 export class PromptService {
   async getByLabel(label: string): Promise<PromptEntity | undefined> {
-    return promptQueries.byLabel(label);
+    return repository.promptQueries.byLabel(label);
   }
 
   async executeTemplate(templateFn: string, templateParams: Record<string, any>): Promise<string> {
