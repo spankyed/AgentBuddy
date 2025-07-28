@@ -59,36 +59,37 @@
 
         <!-- Input Parameters -->
         <div class="pt-6 border-t border-neutral-800">
-          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Input Parameters</label>
-          <div v-if="Object.keys(prompt.inputs || {}).length > 0" class="space-y-3">
-            <div 
-              v-for="(input, key) in prompt.inputs" 
-              :key="key"
-              class="p-4 border rounded-md bg-neutral-800 border-neutral-700"
-            >
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <h4 class="text-sm font-medium text-neutral-100">
-                    {{ input.name }}
-                    <span v-if="input.required !== false" class="text-red-400">*</span>
-                  </h4>
-                  <p v-if="input.description" class="mt-1 text-sm text-neutral-400">
-                    {{ input.description }}
-                  </p>
+          <CollapsibleSection label="Input Parameters">
+            <div v-if="Object.keys(prompt.inputs || {}).length > 0" class="space-y-3">
+              <div 
+                v-for="(input, key) in prompt.inputs" 
+                :key="key"
+                class="p-4 border rounded-md bg-neutral-800 border-neutral-700"
+              >
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <h4 class="text-sm font-medium text-neutral-100">
+                      {{ input.name }}
+                      <span v-if="input.required !== false" class="text-red-400">*</span>
+                    </h4>
+                    <p v-if="input.description" class="mt-1 text-sm text-neutral-400">
+                      {{ input.description }}
+                    </p>
+                  </div>
+                  <span class="px-2 py-1 text-xs font-medium border rounded bg-neutral-700 border-neutral-600 text-neutral-300">
+                    {{ input.type }}
+                  </span>
                 </div>
-                <span class="px-2 py-1 text-xs font-medium border rounded bg-neutral-700 border-neutral-600 text-neutral-300">
-                  {{ input.type }}
-                </span>
-              </div>
-              <div v-if="input.defaultValue !== undefined" class="mt-3">
-                <span class="text-xs text-neutral-500">Default:</span>
-                <code class="px-2 py-1 ml-2 text-xs rounded bg-neutral-900 text-neutral-300">
-                  {{ JSON.stringify(input.defaultValue) }}
-                </code>
+                <div v-if="input.defaultValue !== undefined" class="mt-3">
+                  <span class="text-xs text-neutral-500">Default:</span>
+                  <code class="px-2 py-1 ml-2 text-xs rounded bg-neutral-900 text-neutral-300">
+                    {{ JSON.stringify(input.defaultValue) }}
+                  </code>
+                </div>
               </div>
             </div>
-          </div>
-          <p v-else class="text-sm text-neutral-400">No input parameters defined</p>
+            <p v-else class="text-sm text-neutral-400">No input parameters defined</p>
+          </CollapsibleSection>
         </div>
 
         <!-- Template Function -->
@@ -140,6 +141,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
+import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { PromptEntity } from '@abuddy/api';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import { applicationState } from '@/app';

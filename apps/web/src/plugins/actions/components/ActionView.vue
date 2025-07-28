@@ -49,31 +49,32 @@
 
           <!-- Parameters -->
           <div class="pt-6 border-t border-neutral-800">
-            <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Input Parameters</h3>
-            <div v-if="action?.input && Object.keys(action.input).length > 0" class="space-y-3">
-              <div
-                v-for="(param, key) in action.input"
-                :key="key"
-                class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700"
-              >
-                <div class="flex items-start justify-between">
-                  <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-neutral-100">{{ key }}</span>
-                      <span class="text-xs text-neutral-500">({{ param.type }})</span>
-                      <span v-if="param.required" class="text-xs text-red-400">required</span>
+            <CollapsibleSection label="Input Parameters">
+              <div v-if="action?.input && Object.keys(action.input).length > 0" class="space-y-3">
+                <div
+                  v-for="(param, key) in action.input"
+                  :key="key"
+                  class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-neutral-100">{{ key }}</span>
+                        <span class="text-xs text-neutral-500">({{ param.type }})</span>
+                        <span v-if="param.required" class="text-xs text-red-400">required</span>
+                      </div>
+                      <p v-if="param.description" class="text-sm text-neutral-400">{{ param.description }}</p>
+                      <p v-if="param.default !== undefined" class="text-xs text-neutral-500">
+                        Default: <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-300">{{ param.default }}</code>
+                      </p>
                     </div>
-                    <p v-if="param.description" class="text-sm text-neutral-400">{{ param.description }}</p>
-                    <p v-if="param.default !== undefined" class="text-xs text-neutral-500">
-                      Default: <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-300">{{ param.default }}</code>
-                    </p>
                   </div>
                 </div>
               </div>
-            </div>
-            <div v-else class="p-8 text-center border-2 border-dashed rounded-lg border-neutral-700">
-              <p class="text-sm text-neutral-400">No parameters defined</p>
-            </div>
+              <div v-else class="p-8 text-center border-2 border-dashed rounded-lg border-neutral-700">
+                <p class="text-sm text-neutral-400">No parameters defined</p>
+              </div>
+            </CollapsibleSection>
           </div>
 
           <!-- Action Function -->
@@ -127,6 +128,7 @@
 import type { ActionEntity } from '@abuddy/api';
 import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
+import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import { applicationState } from '@/app';
 

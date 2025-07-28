@@ -78,13 +78,12 @@
 
           <!-- Parameters -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Input Parameters
-            </label>
-            <ActionParametersEditor
-              :parameters="formData.input"
-              @update="$emit('update-parameters', $event)"
-            />
+            <CollapsibleSection label="Input Parameters">
+              <ActionParametersEditor
+                :parameters="formData.input"
+                @update="$emit('update-parameters', $event)"
+              />
+            </CollapsibleSection>
           </div>
 
           <!-- Action Function -->
@@ -139,6 +138,7 @@
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
+import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { ActionParameter } from '@abuddy/api';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';

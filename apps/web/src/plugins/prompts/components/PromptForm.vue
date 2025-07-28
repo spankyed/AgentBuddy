@@ -76,13 +76,12 @@
 
           <!-- Input Parameters -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Input Parameters
-            </label>
-            <PromptInputsEditor
-              :inputs="formData.inputs"
-              @update="$emit('update-inputs', $event)"
-            />
+            <CollapsibleSection label="Input Parameters">
+              <PromptInputsEditor
+                :inputs="formData.inputs"
+                @update="$emit('update-inputs', $event)"
+              />
+            </CollapsibleSection>
           </div>
 
           <!-- Template Function -->
@@ -134,6 +133,7 @@
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
+import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { TemplateInput } from '@abuddy/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
