@@ -2,7 +2,10 @@
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
-      <h3 class="text-sm font-medium text-neutral-200">Actions</h3>
+      <div class="flex items-center gap-2">
+        <Play :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Actions</h3>
+      </div>
       <button
         @click="refreshActions"
         :disabled="isLoading"
@@ -49,9 +52,13 @@
               </span>
             </div>
           </div>
-          <div class="ml-2 text-neutral-500">
-            <Play :size="16" />
-          </div>
+          <button
+            @click.stop="goToAction(action)"
+            class="p-1 ml-2 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+            title="Go to action"
+          >
+            <ExternalLink :size="16" />
+          </button>
         </div>
       </div>
     </div>
@@ -88,7 +95,7 @@ import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, Play } from 'lucide-vue-next'
+import { RefreshCw, Play, ExternalLink } from 'lucide-vue-next'
 import type { ActionEntity } from '@abuddy/api'
 
 // Get actors
@@ -106,6 +113,17 @@ const error = useSelector(actionsActor, (state: any) => state.context.error)
 // Event handlers
 const selectAction = (action: ActionEntity) => {
   actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: action.id })
+}
+
+const goToAction = (action: ActionEntity) => {
+  // Switch to actions plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
+  
+  // Select the action in the actions plugin
+  const actionsPluginActor = applicationState.system.get('actions')
+  if (actionsPluginActor) {
+    actionsPluginActor.send({ type: 'ACTION.SELECT', actionId: action.id })
+  }
 }
 
 const refreshActions = () => {
