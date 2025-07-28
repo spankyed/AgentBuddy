@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-28T07:32:15.395Z",
+  "timestamp": "2025-07-28T08:24:12.552Z",
   "entities": {
     "Tag-1": {
       "timestamp": 1752548453461,
@@ -481,7 +481,7 @@
       "timestamp": 1752548453391,
       "label": "Stream to FE",
       "description": "Streams a message to the front-end",
-      "updatedAt": 1753687929672,
+      "updatedAt": 1753691047838,
       "category": "utility",
       "input": {
         "message": {
@@ -491,7 +491,7 @@
           "description": "User message"
         }
       },
-      "actionFn": "const { text, mode } = params;\n\nconst result = await services.llm.streamText({\n  model: { provider: 'openai', model: 'gpt-4o' },\n  prompt: text,\n  system: 'You are a helpful assistant.',\n  temperature: 0.7,\n  maxTokens: 100,\n});\n\nfor await (const textPart of result.textStream) {\n  services.logger.info('Streaming text to FE', { textPart });\n\n  services.emitter.sendToPlugin('agent', {\n    type: 'TOKEN_STREAM',\n    token: textPart\n  });\n}\n\nawait result.finishReason\n\nservices.emitter.sendToPlugin('agent', {\n  type: 'LLM_DONE',\n});",
+      "actionFn": "const { message } = params;\n\nconst result = await services.llm.streamText({\n  model: { provider: 'openai', model: 'gpt-4o' },\n  prompt: message,\n  system: 'You are a helpful assistant.',\n  temperature: 0.7,\n  maxTokens: 100,\n});\n\nfor await (const textPart of result.textStream) {\n  services.logger.info('Streaming text to FE', { textPart });\n\n  services.emitter.sendToPlugin('agent', {\n    type: 'TOKEN_STREAM',\n    token: textPart\n  });\n}\n\nawait result.finishReason\n\nservices.emitter.sendToPlugin('agent', {\n  type: 'LLM_DONE',\n});",
       "output": {
         "logged": "boolean",
         "message": "string"
@@ -558,7 +558,7 @@
       },
       "actionFn": "const { text, mode } = params;\n\ntry {\n  /** ──────────────────────────────────────────────────────────────\n  * 1. Load all procedure-related documents\n  * ──────────────────────────────────────────────────────────────*/\n  const allDocs = await services.library.getWithinFolder('procedures')\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in “procedures” collection')\n  }\n\n  /** 2. Collect the “*.usage” docs and build the LLM prompt */\n  const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n  services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n  if (usageDocs.length === 0) {\n    throw new Error('No “*.usage” documents found')\n  }\n\n  const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n  const proceduresPrompt = usageDocs\n    .map(d => {\n      const name = d.name.replace(/\\.usage$/, '')\n      return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n    })\n    .join('\\n\\n')\n\n  /** 3. Ask the LLM which procedure (if any) matches the user’s request */\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum([...procedureNames, 'none']).describe('Chosen procedure name or \"none\"')\n  })\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n    You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n    <procedures>\n    ${proceduresPrompt}\n    </procedures>\n\n    Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n    \n    User message: \"\"\"${text}\"\"\"\n  `,\n    temperature: 0\n  })\n\n\n\n  const { procedure } = llmResult.object\n\n  services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n\n  /** ──────────────────────────────────────────────────────────────\n   * 4. Route to the chosen procedure or fall back to streaming\n   * ──────────────────────────────────────────────────────────────*/\n  if (procedure !== 'none') {\n    const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n    if (!procDoc) {\n      throw new Error(`Procedure implementation document “${procedure}.procedure” not found`)\n    }\n\n    const actionKey = procDoc.content.trim()\n\n    await services.action.getAndExecute(actionKey, { searchQuery: text })\n  } else {\n    await services.action.getAndExecute('Stream to FE', { text })\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  // Fallback behaviour here if needed\n}"
     },
-    "Relation-mdmshz19a4qzud2ndqzv": {
+    "Relation-mdmubatd3ijt8b02kan49": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -566,7 +566,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192pha7cjl7b59s": {
+    "Relation-mdmubatd3br9xzs0555c5": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -574,7 +574,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191lutey0x1gis0": {
+    "Relation-mdmubatd11b6ue1z8nuh2": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -582,7 +582,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz1932kshsfkzrjkw": {
+    "Relation-mdmubatd3h7mq1yhkvged": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -590,7 +590,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19338fiqekab5z1": {
+    "Relation-mdmubatd178v552dlyh6c": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
@@ -598,7 +598,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19edr3qq1mlg2f": {
+    "Relation-mdmubatdqq8c8mfdo05k": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -606,7 +606,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192dioo99x189dy": {
+    "Relation-mdmubatdrml5vqskga3k": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -614,7 +614,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191g5kptfczi33e": {
+    "Relation-mdmubatd3t45ryvmi70f5": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -622,7 +622,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191w8bsogibz9b7": {
+    "Relation-mdmubatd1qvyqetnpiybz": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -630,7 +630,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191mm7ci9cye3bf": {
+    "Relation-mdmubatd51ts1evxwdfb": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -638,7 +638,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191cdlhlxa823p": {
+    "Relation-mdmubatd38noavavyf49l": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -646,7 +646,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192zyeisshbg13": {
+    "Relation-mdmubatd2h4w7aqmlcrdy": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -654,7 +654,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192cvdw4tftaml": {
+    "Relation-mdmubatdw4j9i05e2voe": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -662,7 +662,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19341hwyee6l8uk": {
+    "Relation-mdmubatdy1ubd9evooe3": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -670,7 +670,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192gm2wthu374te": {
+    "Relation-mdmubatdy15b2gnul6ul": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -678,7 +678,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191jssfzlhhsbtx": {
+    "Relation-mdmubatd3r3hh5ae3y6i7": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -686,7 +686,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192rahmmjai7zr6": {
+    "Relation-mdmubatd1pb3y7xesp7rm": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -694,7 +694,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19x8m9zjmlmpr9": {
+    "Relation-mdmubatd2jochujogtpp3": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -702,7 +702,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192icro10fbxzmm": {
+    "Relation-mdmubatdd4kus4c30w0q": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -710,7 +710,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz1914cdbywpy6hfj": {
+    "Relation-mdmubatd14qpeqyoq21fj": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -718,7 +718,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19zagofnsxg9eh": {
+    "Relation-mdmubatd3fi3krp4h875x": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -726,7 +726,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191fijgzy99y9hr": {
+    "Relation-mdmubatd1vqznjrs87f9g": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -736,7 +736,7 @@
         }
       }
     },
-    "Relation-mdmshz192hggzsbtqgrqf": {
+    "Relation-mdmubatd1pxprub32w0hs": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -746,7 +746,7 @@
         }
       }
     },
-    "Relation-mdmshz1935wuuol1malcm": {
+    "Relation-mdmubatd2b9f4sm83g9se": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -754,7 +754,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz192ht5w69l7bmwi": {
+    "Relation-mdmubatd1pqu1qx5y8f16": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -762,7 +762,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191tjqftyrmwykc": {
+    "Relation-mdmubatd2t2fhu6692hwm": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -770,7 +770,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz191e675ukqxswjm": {
+    "Relation-mdmubatd3c1gqwu089gxm": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -778,7 +778,7 @@
         "info": {}
       }
     },
-    "Relation-mdmshz193pahngrelwayu": {
+    "Relation-mdmubatd2cefuc4yj599k": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -786,84 +786,84 @@
         "info": {}
       }
     },
-    "Relation-mdmshz19175ag8dhyrahd": {
+    "Relation-mdmubatd1giq262wbq08k": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz191tczbx3h4038n": {
+    "Relation-mdmubatd2md2iux3jwzai": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz192wejqsy1bkkey": {
+    "Relation-mdmubatd1iyo9w7vb0bq2": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz1921f006boqnrt4": {
+    "Relation-mdmubatd2rrapkbmmp2qe": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdmshz1923820tpxz10hs": {
+    "Relation-mdmubatd1cssufdf20wlb": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdmshz19josha7zg15v": {
+    "Relation-mdmubatd2hp2jgsy9mc9u": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz193ageo1h4n8ilb": {
+    "Relation-mdmubatd1u5ek483pblp3": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz191cjl0xzanw7y5": {
+    "Relation-mdmubatd12uzav9eeid49": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz19272yuzux1fpy4": {
+    "Relation-mdmubatdjuun12yi1zrk": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz191fjdpiyluxc9h": {
+    "Relation-mdmubatd219evhgcq07mc": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "contains"
       }
     },
-    "Relation-mdmshz192069ro0212fgb": {
+    "Relation-mdmubatd3u3ec8gdjsz2q": {
       "relationDetails": {
         "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdmshz1937ea5rj9noxb1": {
+    "Relation-mdmubatd1k5tvx3nzhph5": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
