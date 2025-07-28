@@ -1,6 +1,6 @@
 import type { Plugin } from "@/core/types";
 import state, { id } from '@/plugins/agent/state.ts';
-import canvas from '@/plugins/agent/canvas.vue';
+import canvas from '@/plugins/agent/canvas/canvas.vue';
 import panel from '@/plugins/agent/panel/panel.vue';
 import chat from '@/plugins/agent/chat/chat.vue';
 import { Inbox } from "lucide-vue-next";

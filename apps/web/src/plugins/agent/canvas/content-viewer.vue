@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ArtifactItem } from '../types';
+import type { ArtifactItem } from './types';
 import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';
 import ReviewArtifact from './artifacts/types/review-artifact.vue';

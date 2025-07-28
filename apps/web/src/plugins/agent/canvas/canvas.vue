@@ -45,10 +45,9 @@ import { applicationState } from '@/app';
 import { useSelector } from '@xstate/vue';
 import { id, type AgentState } from '@/plugins/agent/state';
 import { trpc } from '@/core/trpc';
-import TabBar from './canvas/components/tabs/tab-bar.vue';
-import ArtifactList from './canvas/components/artifacts/artifact-list.vue';
-import ContentViewer from './canvas/components/content-viewer.vue';
-import type { Tab } from './canvas/types';
+import TabBar from '@/plugins/agent/canvas/tabs/tab-bar.vue';
+import ArtifactList from '@/plugins/agent/canvas/artifacts/artifact-list.vue';
+import ContentViewer from '@/plugins/agent/canvas/content-viewer.vue';
 
 const actor: AgentState = applicationState.system.get(id);
 
