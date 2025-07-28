@@ -6,14 +6,23 @@
         <Play :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Actions</h3>
       </div>
-      <button
-        @click="refreshActions"
-        :disabled="isLoading"
-        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-        title="Refresh actions"
-      >
-        <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          @click="goToCreateAction"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Create new action"
+        >
+          <Plus :size="16" />
+        </button>
+        <!-- <button
+          @click="refreshActions"
+          :disabled="isLoading"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Refresh actions"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
+        </button> -->
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -116,7 +125,7 @@ import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, Play, ExternalLink } from 'lucide-vue-next'
+import { RefreshCw, Play, ExternalLink, Plus } from 'lucide-vue-next'
 import type { ActionEntity, ActionParameter } from '@abuddy/api'
 
 // Get actors
@@ -144,6 +153,17 @@ const goToAction = (action: ActionEntity) => {
   const actionsPluginActor = applicationState.system.get('actions')
   if (actionsPluginActor) {
     actionsPluginActor.send({ type: 'ACTION.SELECT', actionId: action.id })
+  }
+}
+
+const goToCreateAction = () => {
+  // Switch to actions plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
+  
+  // Navigate to create view in the actions plugin
+  const actionsPluginActor = applicationState.system.get('actions')
+  if (actionsPluginActor) {
+    actionsPluginActor.send({ type: 'ACTION.CREATE' })
   }
 }
 

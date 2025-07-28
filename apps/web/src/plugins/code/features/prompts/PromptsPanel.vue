@@ -6,14 +6,23 @@
         <Sparkle :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Prompts</h3>
       </div>
-      <button
-        @click="refreshPrompts"
-        :disabled="isLoading"
-        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-        title="Refresh prompts"
-      >
-        <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          @click="goToCreatePrompt"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Create new prompt"
+        >
+          <Plus :size="16" />
+        </button>
+        <!-- <button
+          @click="refreshPrompts"
+          :disabled="isLoading"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Refresh prompts"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
+        </button> -->
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -116,7 +125,7 @@ import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, Sparkle, ExternalLink } from 'lucide-vue-next'
+import { RefreshCw, Sparkle, ExternalLink, Plus } from 'lucide-vue-next'
 import type { PromptEntity, TemplateInput } from '@abuddy/api'
 
 // Get actors
@@ -144,6 +153,17 @@ const goToPrompt = (prompt: PromptEntity) => {
   const promptsPluginActor = applicationState.system.get('prompts')
   if (promptsPluginActor) {
     promptsPluginActor.send({ type: 'PROMPT.SELECT', promptId: prompt.id })
+  }
+}
+
+const goToCreatePrompt = () => {
+  // Switch to prompts plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
+  
+  // Navigate to create view in the prompts plugin
+  const promptsPluginActor = applicationState.system.get('prompts')
+  if (promptsPluginActor) {
+    promptsPluginActor.send({ type: 'PROMPT.CREATE' })
   }
 }
 
