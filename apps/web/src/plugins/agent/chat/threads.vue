@@ -13,11 +13,11 @@
 
       <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
         <span
-          @click.stop="handleViewThread(currentThread.id)"
+          @click.stop="handleViewThread(currentThread?.id)"
           class="text-center hover:text-neutral-200">
-          {{ currentThread.topic }}
+          {{ currentThread?.topic }}
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
-            {{ currentThread.shortCode }}
+            {{ currentThread?.shortCode }}
           </span>
         </span>
       </div>
@@ -68,7 +68,7 @@ import type { AgentThreadData } from '@abuddy/api'
 import Button from '@/core/design/button.vue'
 
 export interface ThreadsProps {
-  currentThread: AgentThreadData
+  currentThread: AgentThreadData | null;
   threads: ThreadEntity[]
 }
 
@@ -81,12 +81,14 @@ const emit = defineEmits<{
   (e: 'new-thread'): void
 }>()
 
-const handleViewThread = (id: string) => {
+const handleViewThread = (id: string | undefined) => {
+  if (!id) return
   emit('view-thread', id)
   isOpen.value = false
 }
 
-const handleSelectThread = (id: string) => {
+const handleSelectThread = (id: string | undefined) => {
+  if (!id) return
   emit('open-thread-chat', id)
   isOpen.value = false
 }

@@ -58,6 +58,13 @@ export const agentQueries = {
         "timestamp",
       ] as const) as Partial<ThreadEntity>[];
     
+    if (fourMostRecentThreads.length === 0) {
+      return {
+        currentThread: null,
+        threads: [],
+      };
+    }
+    
     const currentThread = fourMostRecentThreads[0];
 
     return {

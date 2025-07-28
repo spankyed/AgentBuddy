@@ -15,6 +15,6 @@ export type AgentThreadData = {
 }
 
 export type AgentStartupData = {
-    currentThread: AgentThreadData;
+    currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
 };
