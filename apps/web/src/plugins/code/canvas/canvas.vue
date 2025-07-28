@@ -7,10 +7,12 @@
     <FileEditor
       :open-files="openFiles"
       :active-file-path="activeFilePath"
+      :root-directory="rootDirectory"
       @select-file="selectFile"
       @close-file="closeFile"
       @content-change="handleContentChange"
       @reorder="handleReorder"
+      @reveal-in-explorer="revealInExplorer"
       class="flex-1 min-h-0"
     />
 
@@ -71,6 +73,7 @@ const promptsActor = actor.system.get('codePrompts')
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
+const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 
 // Computed
 const activeFile = computed(() => 
@@ -233,6 +236,20 @@ const getStatusText = (file: any) => {
     return file.promptEntity.label
   }
   return getFileName(file.path)
+}
+
+const revealInExplorer = (path: string) => {
+  // Switch to explorer panel
+  actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
+  
+  // Get the directory of the file
+  const directory = path.substring(0, path.lastIndexOf('/'))
+  
+  // Navigate to the file's directory in the explorer
+  explorerActor?.send({ 
+    type: 'explorer.NAVIGATE_TO_DIRECTORY', 
+    path: directory 
+  })
 }
 
 // Keyboard shortcuts

@@ -4,9 +4,11 @@
     <Tabs
       :tabs="openFiles"
       :active-tab-path="activeFilePath"
+      :root-directory="rootDirectory"
       @select="selectFile"
       @close="closeFile"
       @reorder="(fromIndex, toIndex) => $emit('reorder', fromIndex, toIndex)"
+      @reveal-in-explorer="(path) => $emit('reveal-in-explorer', path)"
     />
 
     <!-- Editor -->
@@ -75,6 +77,7 @@ import type { PromptTab } from '@/plugins/code/features/prompts/state'
 const props = defineProps<{
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
+  rootDirectory?: string
 }>()
 
 // Debug log
@@ -97,6 +100,7 @@ const emit = defineEmits<{
   closeFile: [path: string]
   contentChange: [path: string, content: string]
   reorder: [fromIndex: number, toIndex: number]
+  'reveal-in-explorer': [path: string]
 }>()
 
 // Terminal output is now handled directly in TerminalView

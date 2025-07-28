@@ -6,63 +6,96 @@
     @drop="handleContainerDrop"
     @dragleave="handleDragLeave"
   >
-    <div
-      v-for="(tab, index) in tabs"
-      :key="tab.path"
-      class="tab-item group relative flex items-center border-r border-neutral-800"
-      :class="[
-        activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
-        draggedIndex === index ? 'opacity-50' : ''
-      ]"
-      :data-index="index"
-      draggable="true"
-      @dragstart="handleDragStart(index, $event)"
-      @dragend="handleDragEnd"
-    >
-      <!-- Drop indicator -->
-      <div
-        v-if="draggedIndex !== null && dropPosition.index === index && dropPosition.side === 'left'"
-        class="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-      />
-      <div
-        v-if="draggedIndex !== null && dropPosition.index === index && dropPosition.side === 'right'"
-        class="absolute right-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-      />
+    <ContextMenuRoot v-for="(tab, index) in tabs" :key="tab.path">
+      <ContextMenuTrigger as-child>
+        <div
+          class="tab-item group relative flex items-center border-r border-neutral-800"
+          :class="[
+            activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
+            draggedIndex === index ? 'opacity-50' : ''
+          ]"
+          :data-index="index"
+          draggable="true"
+          @dragstart="handleDragStart(index, $event)"
+          @dragend="handleDragEnd"
+        >
+          <!-- Drop indicator -->
+          <div
+            v-if="draggedIndex !== null && dropPosition.index === index && dropPosition.side === 'left'"
+            class="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
+          />
+          <div
+            v-if="draggedIndex !== null && dropPosition.index === index && dropPosition.side === 'right'"
+            class="absolute right-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
+          />
+          
+          <button
+            @click="$emit('select', tab.path)"
+            class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
+            :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
+          >
+            <component 
+              :is="getTabIcon(tab)"
+              class="flex-shrink-0 w-4 h-4"
+            />
+            <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+            <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+            <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          </button>
+          <button
+            @click.stop="$emit('close', tab.path)"
+            class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </ContextMenuTrigger>
       
-      <button
-        @click="$emit('select', tab.path)"
-        class="flex items-center gap-2 py-2 pl-3 text-sm transition-colors"
-        :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
-      >
-        <component 
-          :is="getTabIcon(tab)"
-          class="flex-shrink-0 w-4 h-4"
-        />
-        <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
-        <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-        <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-      </button>
-      <button
-        @click.stop="$emit('close', tab.path)"
-        class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-      >
-        <X class="w-3 h-3" />
-      </button>
-    </div>
+      <ContextMenuPortal v-if="shouldShowContextMenu(tab)">
+        <ContextMenuContent
+          class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+        >
+          <ContextMenuItem
+            @select="copyRelativePath(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Copy class="w-4 h-4" />
+            Copy relative path
+          </ContextMenuItem>
+          
+          <ContextMenuItem
+            @select="revealInExplorer(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <FolderOpen class="w-4 h-4" />
+            Reveal in explorer
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenuPortal>
+    </ContextMenuRoot>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play, Sparkle } from 'lucide-vue-next'
+import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play, Sparkle, Copy, FolderOpen } from 'lucide-vue-next'
 import type { OpenFile, TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+  ContextMenuSeparator,
+} from 'reka-ui'
 
 // Props
 const props = defineProps<{
   tabs: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeTabPath: string | null
+  rootDirectory?: string
 }>()
 
 // Emits
@@ -70,6 +103,7 @@ const emit = defineEmits<{
   select: [path: string]
   close: [path: string]
   reorder: [fromIndex: number, toIndex: number]
+  'reveal-in-explorer': [path: string]
 }>()
 
 // Drag state
@@ -79,6 +113,17 @@ const dropPosition = ref<{ index: number | null; side: 'left' | 'right' }>({ ind
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
+}
+
+// Helper to check if we should show context menu (only for regular files with real paths)
+const shouldShowContextMenu = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  // Don't show context menu for terminals, actions, or prompts
+  if (isTerminal(file)) return false
+  if ('isAction' in file && file.isAction) return false
+  if ('isPrompt' in file && file.isPrompt) return false
+  
+  // Only show for files with actual file paths (not special paths like action: or prompt:)
+  return !file.path.includes(':')
 }
 
 // Helper functions
@@ -219,6 +264,37 @@ const handleDragLeave = (event: DragEvent) => {
   if (!container.contains(relatedTarget)) {
     dropPosition.value = { index: null, side: 'left' }
   }
+}
+
+// Context menu actions
+const copyRelativePath = async (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
+  try {
+    let relativePath = tab.path
+    
+    // If rootDirectory is provided, calculate the relative path
+    if (props.rootDirectory) {
+      // Ensure both paths use forward slashes
+      const normalizedRoot = props.rootDirectory.replace(/\\/g, '/')
+      const normalizedPath = tab.path.replace(/\\/g, '/')
+      
+      // Remove the root directory from the path
+      if (normalizedPath.startsWith(normalizedRoot)) {
+        relativePath = normalizedPath.slice(normalizedRoot.length)
+        // Remove leading slash if present
+        if (relativePath.startsWith('/')) {
+          relativePath = relativePath.slice(1)
+        }
+      }
+    }
+    
+    await navigator.clipboard.writeText(relativePath)
+  } catch (err) {
+    console.error('Failed to copy path to clipboard:', err)
+  }
+}
+
+const revealInExplorer = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
+  emit('reveal-in-explorer', tab.path)
 }
 </script>
 
