@@ -61,12 +61,12 @@
 
           <!-- Mode select -->
           <select
-            class="absolute bottom-0 px-2 py-1 mb-2 text-right transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
           >
-          <option value="working">Work</option>
-          <option value="planning">Plan</option>
-          <option value="chat">Chat</option>
-          <option value="note-taking">Take Notes</option>
+            <option value="plan">Plan mode</option>
+            <option value="work">Work mode</option>
+            <option value="chat">Chat mode</option>
+            <option value="note">Take notes</option>
           </select>
         </div>
       </div>
