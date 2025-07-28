@@ -49,6 +49,14 @@
           Rename
         </ContextMenuItem>
         
+        <ContextMenuItem
+          @select="copyRelativePath"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+        >
+          <Copy class="w-4 h-4" />
+          Copy relative path
+        </ContextMenuItem>
+        
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         
         <ContextMenuItem
@@ -74,6 +82,7 @@ import {
   Image,
   Edit2,
   Trash2,
+  Copy,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -94,6 +103,7 @@ interface FileItem {
 
 const props = defineProps<{
   file: FileItem
+  rootDirectory?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -172,5 +182,31 @@ const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const copyRelativePath = async () => {
+  try {
+    let relativePath = props.file.path
+    
+    // If rootDirectory is provided, calculate the relative path
+    if (props.rootDirectory) {
+      // Ensure both paths use forward slashes
+      const normalizedRoot = props.rootDirectory.replace(/\\/g, '/')
+      const normalizedPath = props.file.path.replace(/\\/g, '/')
+      
+      // Remove the root directory from the path
+      if (normalizedPath.startsWith(normalizedRoot)) {
+        relativePath = normalizedPath.slice(normalizedRoot.length)
+        // Remove leading slash if present
+        if (relativePath.startsWith('/')) {
+          relativePath = relativePath.slice(1)
+        }
+      }
+    }
+    
+    await navigator.clipboard.writeText(relativePath)
+  } catch (err) {
+    console.error('Failed to copy path to clipboard:', err)
+  }
 }
 </script>

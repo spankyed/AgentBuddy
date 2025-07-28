@@ -30,6 +30,7 @@
         v-for="file in files"
         :key="file.path"
         :file="file"
+        :root-directory="rootDirectory"
         @click="handleFileClick(file)"
         @rename="handleRename"
         @delete="confirmDelete"
