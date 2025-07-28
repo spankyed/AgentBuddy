@@ -2,7 +2,10 @@
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
-      <h3 class="text-sm font-medium text-neutral-200">Prompts</h3>
+      <div class="flex items-center gap-2">
+        <Sparkle :size="16" class="text-neutral-400" />
+        <h3 class="text-sm font-medium text-neutral-200">Prompts</h3>
+      </div>
       <button
         @click="refreshPrompts"
         :disabled="isLoading"
@@ -37,20 +40,45 @@
       >
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate text-neutral-200">
+            <div class="text-sm font-medium truncate text-neutral-200" :title="prompt.description">
               {{ prompt.label }}
             </div>
-            <div v-if="prompt.description" class="mt-1 text-xs text-neutral-400 line-clamp-2">
-              {{ prompt.description }}
+            <div class="mt-1 space-y-1">
+              <!-- Input Parameters -->
+              <div v-if="prompt.inputs && Object.keys(prompt.inputs).length > 0" class="flex flex-wrap gap-1">
+                <span 
+                  v-for="(input, key) in prompt.inputs" 
+                  :key="key"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400"
+                >
+                  <span class="font-medium">{{ key }}</span>
+                  <span class="text-neutral-500">({{ input.type }})</span>
+                  <span v-if="input.required !== false" class="text-red-400">*</span>
+                </span>
+              </div>
+              <div v-else class="text-xs italic text-neutral-500">
+                No inputs
+              </div>
             </div>
-            <div v-if="prompt.category" class="mt-1">
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-300">
+          </div>
+          
+          <!-- Right side controls -->
+          <div class="flex items-center gap-2 ml-3">
+            <!-- Category Tag -->
+            <div v-if="prompt.category">
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded bg-neutral-700 text-neutral-300">
                 {{ prompt.category }}
               </span>
             </div>
-          </div>
-          <div class="ml-2 text-neutral-500">
-            <Sparkle :size="16" />
+            
+            <!-- External Link Button -->
+            <button
+              @click.stop="goToPrompt(prompt)"
+              class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+              title="Go to prompt"
+            >
+              <ExternalLink :size="16" />
+            </button>
           </div>
         </div>
       </div>
@@ -88,8 +116,8 @@ import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, Sparkle } from 'lucide-vue-next'
-import type { PromptEntity } from '@abuddy/api'
+import { RefreshCw, Sparkle, ExternalLink } from 'lucide-vue-next'
+import type { PromptEntity, TemplateInput } from '@abuddy/api'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -106,6 +134,17 @@ const error = useSelector(promptsActor, (state: any) => state.context.error)
 // Event handlers
 const selectPrompt = (prompt: PromptEntity) => {
   promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: prompt.id })
+}
+
+const goToPrompt = (prompt: PromptEntity) => {
+  // Switch to prompts plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
+  
+  // Select the prompt in the prompts plugin
+  const promptsPluginActor = applicationState.system.get('prompts')
+  if (promptsPluginActor) {
+    promptsPluginActor.send({ type: 'PROMPT.SELECT', promptId: prompt.id })
+  }
 }
 
 const refreshPrompts = () => {
