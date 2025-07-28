@@ -36,6 +36,16 @@
       v-if="isOpen"
       class="px-2 pt-1 border-t border-neutral-800 bg-neutral-900 animate-slide-down"
     >
+
+
+      <div v-if="threads.length === 0" class="py-2 text-center">
+        <div class="flex flex-col items-center space-y-2">
+          <!-- <History :size="32" class="text-neutral-600" /> -->
+          <p class="text-sm text-neutral-500">No threads yet</p>
+          <p class="text-xs text-neutral-600">Recent threads will appear here</p>
+        </div>
+      </div>
+      <div v-else>
         <div
           v-for="thread in threads"
           :key="thread.id"
@@ -57,6 +67,7 @@
           </button>
         </div>
       </div>
+    </div>
   </div>
 </template>
 
