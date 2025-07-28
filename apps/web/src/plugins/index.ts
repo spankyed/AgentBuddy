@@ -16,6 +16,7 @@ import {
   Sparkle,
   Workflow,
   Bird,
+  Settings,
   ListTodo,
   Library as LucideLibrary,
   NotebookText,
@@ -40,7 +41,8 @@ const mockPlugins = [
   // planned
   // mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
   // mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
-  mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
+  // mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
+  mockPlugin({ id: 'settings', label: 'settings', icon: Settings, isPinned: true, }),
 ];
 
 export default [
@@ -54,8 +56,8 @@ export default [
   Brain,
   Database,
   Logs,
-  ...mockPlugins,
   Blank,
+  ...mockPlugins,
 ];
 
 export const defaultPlugin = Agent;
