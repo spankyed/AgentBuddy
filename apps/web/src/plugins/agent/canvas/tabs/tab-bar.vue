@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import TabItem from './tab-item.vue';
-import type { Tab } from '../../types';
+import type { Tab } from '../types';
 
 defineProps<{
   tabs: Tab[];

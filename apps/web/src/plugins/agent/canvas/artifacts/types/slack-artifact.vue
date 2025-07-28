@@ -53,7 +53,7 @@
 
 <script setup lang="ts">
 import { MessageSquare } from 'lucide-vue-next';
-import type { ArtifactItem } from '../../../types';
+import type { ArtifactItem } from '../../types';
 
 defineProps<{
   artifact: ArtifactItem;

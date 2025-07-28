@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
 import { id as threadsId } from '@/plugins/agent/state.ts'
-import type { ArtifactItem } from '../../../types';
+import type { ArtifactItem } from '@/plugins/agent/canvas/types';
 
 defineProps<{
   artifact: ArtifactItem;
@@ -150,7 +150,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
         >
           <template #default="{ item: card }">
             <article
-              class="p-3 transition-all duration-200 rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border border-neutral-800/50 hover:border-neutral-700/50"
+              class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
               <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
@@ -191,7 +191,7 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
           >
             <template #default="{ item: card }">
               <article
-                class="p-3 transition-all duration-200 rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border border-neutral-800/50 hover:border-neutral-700/50"
+                class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border-neutral-800/50 hover:border-neutral-700/50"
                 @click="onCardClick(card)"
               >
                 <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
