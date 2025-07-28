@@ -60,19 +60,26 @@
                 No parameters
               </div>
             </div>
-            <div v-if="action.category" class="mt-1">
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-300">
+          </div>
+          
+          <!-- Right side controls -->
+          <div class="flex items-center gap-2 ml-3">
+            <!-- Category Tag -->
+            <div v-if="action.category">
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded bg-neutral-700 text-neutral-300">
                 {{ action.category }}
               </span>
             </div>
+            
+            <!-- External Link Button -->
+            <button
+              @click.stop="goToAction(action)"
+              class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+              title="Go to action"
+            >
+              <ExternalLink :size="16" />
+            </button>
           </div>
-          <button
-            @click.stop="goToAction(action)"
-            class="p-1 ml-2 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
-            title="Go to action"
-          >
-            <ExternalLink :size="16" />
-          </button>
         </div>
       </div>
     </div>
