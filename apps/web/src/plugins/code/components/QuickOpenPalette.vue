@@ -177,16 +177,40 @@ const filteredResults = computed<EnhancedSearchResult[]>(() => {
     const recentResults: any[] = []
     const otherResults: any[] = []
     
-    // First, add currently open files
-    const openFileResults: EnhancedSearchResult[] = results.value
-      .filter(item => openFilePaths.includes(item.path))
-      .map(item => ({
-        item,
-        score: 20000, // Very high score for open files
-        positions: [],
-        matchRanges: [],
-        isOpen: true
-      }))
+    // First, add currently open files ordered by recency
+    const openFileResults: EnhancedSearchResult[] = []
+    
+    // Order open files by their position in recentlyOpenedFiles
+    for (const recentPath of recentlyOpenedFiles.value) {
+      if (openFilePaths.includes(recentPath)) {
+        const fileItem = results.value.find(item => item.path === recentPath)
+        if (fileItem) {
+          openFileResults.push({
+            item: fileItem,
+            score: 20000 - openFileResults.length * 100, // Higher score for more recently opened
+            positions: [],
+            matchRanges: [],
+            isOpen: true
+          })
+        }
+      }
+    }
+    
+    // Add any open files that aren't in recent files (shouldn't happen, but just in case)
+    for (const openPath of openFilePaths) {
+      if (!openFileResults.some(result => result.item.path === openPath)) {
+        const fileItem = results.value.find(item => item.path === openPath)
+        if (fileItem) {
+          openFileResults.push({
+            item: fileItem,
+            score: 19000, // Lower score for open files not in recent list
+            positions: [],
+            matchRanges: [],
+            isOpen: true
+          })
+        }
+      }
+    }
     
     // Then add recent files (excluding already open ones)
     const recentFileResults: EnhancedSearchResult[] = []
