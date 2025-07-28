@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { FileText, Code, CheckSquare, Image, LayoutDashboard, MessageSquare } from 'lucide-vue-next';
-import type { ArtifactItem, ArtifactType } from '../../types';
+import type { ArtifactItem, ArtifactType } from '../types';
 
 defineProps<{
   artifact: ArtifactItem;

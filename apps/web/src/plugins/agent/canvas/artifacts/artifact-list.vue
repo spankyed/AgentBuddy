@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import ArtifactItem from './artifact-item.vue';
-import type { ArtifactItem as ArtifactType } from '../../types';
+import type { ArtifactItem as ArtifactType } from '../types';
 
 defineProps<{
   artifacts: ArtifactType[];
