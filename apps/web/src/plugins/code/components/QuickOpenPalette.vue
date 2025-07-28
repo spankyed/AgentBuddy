@@ -61,34 +61,34 @@
               />
               
               <!-- File Info -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-baseline gap-2">
+              <div class="flex-1 min-w-0 flex items-center gap-2">
+                <div class="flex-1 min-w-0 flex items-baseline gap-2">
                   <!-- File Name with Highlighting -->
                   <span
                     class="text-sm truncate text-neutral-100"
                     v-html="highlightedName(result)"
                   />
                   
-                  <!-- Recent/Open Indicators -->
-                  <div class="flex items-center gap-1">
-                    <span
-                      v-if="result.isOpen"
-                      class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded"
-                    >
-                      open
-                    </span>
-                    <span
-                      v-else-if="result.isRecent"
-                      class="px-1.5 py-0.5 text-xs bg-neutral-700 text-neutral-400 rounded flex items-center gap-1"
-                    >
-                      <Clock class="w-3 h-3" />
-                      recent
-                    </span>
-                  </div>
-                  
                   <!-- File Path -->
                   <span class="text-xs truncate text-neutral-500">
                     {{ getDirectory(result.item.relativePath) }}
+                  </span>
+                </div>
+                
+                <!-- Recent/Open Indicators -->
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <span
+                    v-if="result.isOpen"
+                    class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded"
+                  >
+                    open
+                  </span>
+                  <span
+                    v-else-if="result.isRecent"
+                    class="px-1.5 py-0.5 text-xs bg-neutral-700 text-neutral-400 rounded flex items-center gap-1"
+                  >
+                    <Clock class="w-3 h-3" />
+                    recent
                   </span>
                 </div>
               </div>
@@ -282,7 +282,10 @@ const handleSearch = () => {
 
 const handleSelect = (index: number) => {
   codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index })
-  codeActor.send({ type: 'OPEN_QUICK_OPEN_RESULT' })
+  const result = filteredResults.value[index]
+  if (result && result.item.type === 'file') {
+    codeActor.send({ type: 'OPEN_QUICK_OPEN_RESULT', path: result.item.path })
+  }
 }
 
 const handleKeydown = (e: KeyboardEvent) => {

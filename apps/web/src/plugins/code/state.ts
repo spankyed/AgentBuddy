@@ -73,7 +73,7 @@ export type Event =
   | { type: 'HIDE_QUICK_OPEN' }
   | { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string }
   | { type: 'SELECT_QUICK_OPEN_RESULT'; index: number }
-  | { type: 'OPEN_QUICK_OPEN_RESULT' };
+  | { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -333,22 +333,21 @@ const codeState = setup({
       };
     }),
     
-    openQuickOpenResult: ({ context, system, self }) => {
-      const result = context.quickOpenResults[context.quickOpenSelectedIndex];
-      if (result && result.type === 'file') {
-        // Track the file as recently opened
-        const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, result.path);
-        self.send({
-          type: 'UPDATE_STATE',
-          updates: { recentlyOpenedFiles: updatedRecentFiles }
-        });
-        
-        // Open file through explorer
-        system.get('explorer')?.send({
-          type: 'explorer.OPEN_FILE',
-          path: result.path
-        });
-      }
+    openQuickOpenResult: ({ context, system, self, event }) => {
+      const ev = event as { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
+      
+      // Track the file as recently opened
+      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path);
+      self.send({
+        type: 'UPDATE_STATE',
+        updates: { recentlyOpenedFiles: updatedRecentFiles }
+      });
+      
+      // Open file through explorer
+      system.get('explorer')?.send({
+        type: 'explorer.OPEN_FILE',
+        path: ev.path
+      });
     },
     
     requestQuickOpenFiles: ({ context, system }) => {
