@@ -5,7 +5,7 @@ import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { EARS } from '@/core/types';
 import { PromptsStartupData, PromptEntity } from './types';
-import { promptQueries, promptCommands } from './repository';
+import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 
@@ -62,12 +62,12 @@ export const promptsSystem = setup({
     sendPromptsStartupData: ({ system }) => {
       system.get(bus).send(emit(prompts, { 
         type: 'PROMPTS_STARTUP',
-        data: promptQueries.startupData()
+        data: repository.promptQueries.startupData()
       }));
     },
     sendPromptData: ({ system, event }) => {
       const ev = typeOf('PROMPT_SELECT', event);
-      const prompt = promptQueries.byId(ev.promptId as EARS.EntityId);
+      const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
         system.get(bus).send(emit(prompts, {
@@ -79,7 +79,7 @@ export const promptsSystem = setup({
     },
     createPrompt: ({ system, event }) => {
       const ev = typeOf('CREATE_PROMPT', event);
-      const result = promptCommands.create({
+      const result = repository.promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
         template: ev.templateFn,
@@ -105,10 +105,10 @@ export const promptsSystem = setup({
       if (ev.templateFn !== undefined) updates.template = ev.templateFn;
       if (ev.description !== undefined) updates.description = ev.description;
       
-      const result = promptCommands.update(ev.promptId as EARS.EntityId, updates);
+      const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, updates);
 
       if (result.success) {
-        const updatedPrompt = promptQueries.byId(ev.promptId as EARS.EntityId);
+        const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
         if (updatedPrompt) {
           system.get(bus).send(emit(prompts, {
             type: 'PROMPT_UPDATED',
@@ -122,7 +122,7 @@ export const promptsSystem = setup({
     },
     deletePrompt: ({ system, event }) => {
       const ev = typeOf('DELETE_PROMPT', event);
-      const result = promptCommands.delete(ev.promptId as EARS.EntityId);
+      const result = repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
       if (result.success) {
         system.get(bus).send(emit(prompts, {
@@ -135,7 +135,7 @@ export const promptsSystem = setup({
     },
     fetchPromptsPage: ({ system, event }) => {
       const ev = typeOf('FETCH_PROMPTS_PAGE', event);
-      const data = promptQueries.startupData(ev.page || 1);
+      const data = repository.promptQueries.startupData(ev.page || 1);
       
       system.get(bus).send(emit(prompts, {
         type: 'PROMPTS_PAGE_LOADED',

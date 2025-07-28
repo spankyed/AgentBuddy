@@ -2,7 +2,7 @@ import * as pty from 'node-pty-prebuilt-multiarch'
 import { v4 as uuidv4 } from 'uuid'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
-import { terminalQueries, terminalCommands } from '../repository'
+import { repository } from '@/repository'
 
 interface Terminal {
   info: TerminalInfo
@@ -86,7 +86,7 @@ class TerminalService {
       this.terminals.set(id, terminal)
       
       // Save terminal metadata to EARS
-      terminalCommands.create({
+      repository.terminalCommands.create({
         id,
         title,
         pid: ptyProcess.pid,
@@ -128,7 +128,7 @@ class TerminalService {
     terminal.info.rows = rows
     
     // Update in EARS storage
-    terminalCommands.resize(id as EARS.EntityId, cols, rows)
+    repository.terminalCommands.resize(id as EARS.EntityId, cols, rows)
     
     return true
   }
@@ -150,7 +150,7 @@ class TerminalService {
       this.terminals.delete(id)
       
       // Mark as closed in EARS storage
-      terminalCommands.markClosed(id as EARS.EntityId)
+      repository.terminalCommands.markClosed(id as EARS.EntityId)
       
       return true
     } catch (error) {
@@ -256,7 +256,7 @@ class TerminalService {
 
   async restoreAll(setupHandlers: (terminalInfo: TerminalInfo) => void): Promise<void> {
     // Get all active terminals from EARS
-    const persistedTerminals = terminalQueries.active()
+    const persistedTerminals = repository.terminalQueries.active()
     
     for (const persistedTerminal of persistedTerminals) {
       try {
@@ -293,7 +293,7 @@ class TerminalService {
         this.terminals.set(persistedTerminal.id, terminal)
         
         // Update PID in EARS since we have a new process
-        terminalCommands.updatePid(persistedTerminal.id, ptyProcess.pid)
+        repository.terminalCommands.updatePid(persistedTerminal.id, ptyProcess.pid)
         
         // Set up handlers for this terminal
         setupHandlers(terminalInfo)
@@ -302,7 +302,7 @@ class TerminalService {
       } catch (error) {
         console.error(`Failed to restore terminal ${persistedTerminal.id}:`, error)
         // Mark as closed if restoration fails
-        terminalCommands.markClosed(persistedTerminal.id)
+        repository.terminalCommands.markClosed(persistedTerminal.id)
       }
     }
   }

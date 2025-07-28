@@ -3,7 +3,7 @@ import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { actionQueries, actionCommands } from '@/systems/actions/repository'
+import { repository } from '@/repository'
 import { EARS } from '@/core/types'
 import type { ActionEntity } from '@/systems/actions/types'
 
@@ -45,7 +45,7 @@ export const actionsSystem = setup({
   actions: {
     listActions: ({ event }) => {
       const ev = event as { type: 'codeActions.LIST'; page?: number }
-      const data = actionQueries.startupData(ev.page || 1)
+      const data = repository.actionQueries.startupData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
         type: 'codeActions.ACTIONS_LISTED',
@@ -56,7 +56,7 @@ export const actionsSystem = setup({
 
     openAction: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_ACTION'; actionId: string }
-      const action = actionQueries.byId(ev.actionId as EARS.EntityId)
+      const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
       
       if (action) {
         // Include the actionFn content directly
@@ -86,12 +86,12 @@ export const actionsSystem = setup({
       const ev = event as { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
       
       // Update the action with new actionFn
-      const result = actionCommands.update(ev.actionId as EARS.EntityId, {
+      const result = repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         actionFn: ev.actionFn
       })
       
       if (result.success) {
-        const updatedAction = actionQueries.byId(ev.actionId as EARS.EntityId)
+        const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
         if (updatedAction) {
           const wrapped = emit(pluginId, {
             type: 'codeActions.ACTION_UPDATED',
@@ -113,7 +113,7 @@ export const actionsSystem = setup({
 
     sendStartupData: () => {
       // Send initial actions list on startup
-      const data = actionQueries.startupData(1)
+      const data = repository.actionQueries.startupData(1)
       
       const wrapped = emit(pluginId, {
         type: 'codeActions.ACTIONS_LISTED',

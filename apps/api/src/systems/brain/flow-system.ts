@@ -1,6 +1,6 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
-import { brainQueries, brainCommands } from './repository';
+import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
@@ -90,7 +90,7 @@ export function createFlowNodeSystem(
 
   if (isRootFlow) {
     // Create root flow TNode
-    const result = brainCommands.createRootFlowTNode(systemActor);
+    const result = repository.brainCommands.createRootFlowTNode(systemActor);
     if (!result.success) {
       throw new Error(`Failed to create root flow TNode: ${result.error}`);
     }
@@ -104,7 +104,7 @@ export function createFlowNodeSystem(
     eventNodes = rootEventNodes;
   } else {
     // Create regular flow TNode
-    const result = brainCommands.createFlowTNode(
+    const result = repository.brainCommands.createFlowTNode(
       flowId,
       eventTNodeId,
       systemActor,
@@ -151,10 +151,10 @@ export function createFlowNodeSystem(
 
           logger.debug(`${context.flowId} received event: ${eventType}`);
 
-          const firstStep = brainQueries.eventFirstStep(eventNode.id!);
+          const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
 
           if (firstStep) {
-            const eventTNodeResult = brainCommands.createEventTNode(eventNode, flowTNodeId, self);
+            const eventTNodeResult = repository.brainCommands.createEventTNode(eventNode, flowTNodeId, self);
             if (!eventTNodeResult.success) {
               throw new Error(`Failed to create event TNode: ${eventTNodeResult.error}`);
             }
@@ -204,7 +204,7 @@ export function createFlowNodeSystem(
               (n) => n.eventType === event.type,
             );
             const firstStep = eventNode
-              ? brainQueries.eventFirstStep(eventNode.id!)
+              ? repository.brainQueries.eventFirstStep(eventNode.id!)
               : null;
             return firstStep
               ? context.activeChildrenCount + 1
@@ -218,7 +218,7 @@ export function createFlowNodeSystem(
           
           // Check if this child has a next node (only for step completions)
           const hasNextNode = typedEv.eventTNodeId && typedEv.stepId
-            ? brainQueries.nextNodeInFlowTrack(typedEv.stepId)
+            ? repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
             : false;
           
           // Update execution context if this was a step completion
@@ -264,7 +264,7 @@ export function createFlowNodeSystem(
           
           // Spawn next node if there is one
           if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
-            const nextNode = brainQueries.nextNodeInFlowTrack(typedEv.stepId);
+            const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
             
             logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
               nextNodeId: nextNode?.id,
@@ -281,7 +281,7 @@ export function createFlowNodeSystem(
           }
         }),
         markFlowCompleted: ({ context, self }) => {
-          brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
+          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
@@ -303,7 +303,7 @@ export function createFlowNodeSystem(
           if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
           
           // Flow is complete if there are no next nodes nor active children
-          const hasNextNode = brainQueries.nextNodeInFlowTrack(typedEv.stepId);
+          const hasNextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
           return !hasNextNode && context.activeChildrenCount === 0;
         },
       },

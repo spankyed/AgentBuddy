@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
-import { agentQueries } from './repository';
+import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
 import { AgentStartupData, AgentThreadData } from './types';
@@ -46,7 +46,7 @@ export const agentSystem = setup({
     sendAgentStartupData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'AGENT_STARTUP',
-        data: agentQueries.startupData()
+        data: repository.agentQueries.startupData()
       }));
     },
 
@@ -55,7 +55,7 @@ export const agentSystem = setup({
 
       system.get(bus).send(emit(agent, { 
         type: 'LOAD_CHAT_THREAD',
-                  data: agentQueries.threadData(threadId),
+                  data: repository.agentQueries.threadData(threadId),
       }));
     },
     sendThreadTabData: ({ system, event }) => {

@@ -5,7 +5,7 @@ import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';
-import { actionQueries, actionCommands } from './repository';
+import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 
@@ -60,12 +60,12 @@ export const actionsSystem = setup({
     sendActionsStartupData: ({ system }) => {
       system.get(bus).send(emit(actions, { 
         type: 'ACTIONS_LISTED',
-        data: actionQueries.startupData()
+        data: repository.actionQueries.startupData()
       }));
     },
     sendActionData: ({ system, event }) => {
       const ev = typeOf('ACTION_SELECT', event);
-      const action = actionQueries.byId(ev.actionId as EARS.EntityId);
+      const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
         system.get(bus).send(emit(actions, {
@@ -77,7 +77,7 @@ export const actionsSystem = setup({
     },
     createAction: ({ system, event }) => {
       const ev = typeOf('CREATE_ACTION', event);
-      const result = actionCommands.create({
+      const result = repository.actionCommands.create({
         label: ev.label,
         parameters: ev.input,
         actionFn: ev.actionFn,
@@ -98,7 +98,7 @@ export const actionsSystem = setup({
     },
     updateAction: ({ system, event }) => {
       const ev = typeOf('UPDATE_ACTION', event);
-      const result = actionCommands.update(ev.actionId as EARS.EntityId, {
+      const result = repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         parameters: ev.input,
         actionFn: ev.actionFn,
@@ -108,7 +108,7 @@ export const actionsSystem = setup({
       });
 
       if (result.success) {
-        const updatedAction = actionQueries.byId(ev.actionId as EARS.EntityId);
+        const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
         if (updatedAction) {
           system.get(bus).send(emit(actions, {
             type: 'ACTION_UPDATED',
@@ -122,7 +122,7 @@ export const actionsSystem = setup({
     },
     deleteAction: ({ system, event }) => {
       const ev = typeOf('DELETE_ACTION', event);
-      const result = actionCommands.delete(ev.actionId as EARS.EntityId);
+      const result = repository.actionCommands.delete(ev.actionId as EARS.EntityId);
       
       if (result.success) {
         system.get(bus).send(emit(actions, {

@@ -7,7 +7,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-h
 import { EARS } from '@/core/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
-import { brainQueries } from './repository';
+import { repository } from '@/repository';
 import { createFlowNodeSystem } from './flow-system';
 import { agent } from '../agent/system';
 import { database } from '../database/system';
@@ -68,7 +68,7 @@ export const brainSystem = setup({
       });
     }),
     sendPluginData: ({ system, context, self }) => {
-      const data = brainQueries.rootData();
+      const data = repository.brainQueries.rootData();
       
       system.get(bus).send(emit(brain, { 
         type: 'RECEIVE_PLUGIN_DATA',
@@ -78,7 +78,7 @@ export const brainSystem = setup({
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
-      const data = brainQueries.extendedTNodeData(tNodeId);
+      const data = repository.brainQueries.extendedTNodeData(tNodeId);
       
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
@@ -87,7 +87,7 @@ export const brainSystem = setup({
       }));
     },
     goBackTNode: ({ system, context }) => {
-      const data = brainQueries.rootData();
+      const data = repository.brainQueries.rootData();
       
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',

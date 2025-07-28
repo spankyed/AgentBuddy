@@ -22,8 +22,7 @@ import type {
   FlowsStartupData 
 } from '../config/types';
 import { availableModels } from '../config/available-models';
-import { promptQueries } from '../../prompts/repository';
-import { actionQueries } from '../../actions/repository';
+import { repository } from '@/repository';
 
 /**
  * Flow Repository - Manages flow, node, and edge operations
@@ -253,8 +252,8 @@ export const flowsQueries = {
       rootFlow,
       selectedFlowId: selectedFlow?.id ?? flowId,
       models: availableModels,
-      prompts: promptQueries.all(),
-      actions: actionQueries.all(),
+      prompts: repository.promptQueries.all(),
+      actions: repository.actionQueries.all(),
     };
   },
 } as const;

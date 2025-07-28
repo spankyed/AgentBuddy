@@ -1,8 +1,7 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/core/utils/debug/logger';
-import { actionQueries } from '@/systems/actions/repository';
-import { flowsQueries } from '@/systems/flows/repository';
+import { repository } from '@/repository';
 import services from '@/services';
 import { z } from 'zod';
 
@@ -61,13 +60,13 @@ export async function actionNodeHandler(
   
   try {
     // Get the linked action via INSTANCE_OF relationship
-    const actionId = flowsQueries.getNodeActionId(node.id);
+    const actionId = repository.flowsQueries.getNodeActionId(node.id);
     
     if (!actionId) {
       throw new Error('No action linked to this node');
     }
     
-    const action = actionQueries.byId(actionId);
+    const action = repository.actionQueries.byId(actionId);
     if (!action) {
       throw new Error(`Action not found: ${actionId}`);
     }

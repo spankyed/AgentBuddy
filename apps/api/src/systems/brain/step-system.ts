@@ -1,7 +1,7 @@
 import { setup, assign, sendParent } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
-import { brainCommands } from './repository';
+import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('step-machine');
@@ -33,7 +33,7 @@ export function createStepNodeSystem(
   executionContext?: ExecutionContext,
   systemActor?: any,
 ) {
-  const result = brainCommands.createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
+  const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
   if (!result.success) {
     throw new Error(`Failed to create step TNode: ${result.error}`);
   }
@@ -57,12 +57,12 @@ export function createStepNodeSystem(
         },
         markCompleted: ({ context, self }) => {
           if (context.tNodeId) {
-            brainCommands.updateTNodeStatus(context.tNodeId, 'completed', context.eventTNodeId, self);
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed', context.eventTNodeId, self);
           }
         },
         markFailed: ({ context, self }) => {
           if (context.tNodeId) {
-            brainCommands.updateTNodeStatus(context.tNodeId, 'failed', context.eventTNodeId, self);
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed', context.eventTNodeId, self);
           }
         },
         notifyComplete: sendParent(({ context, event }) => ({

@@ -3,7 +3,7 @@ import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { promptQueries, promptCommands } from '@/systems/prompts/repository'
+import { repository } from '@/repository'
 import { EARS } from '@/core/types'
 import type { PromptEntity } from '@/systems/prompts/types'
 
@@ -46,7 +46,7 @@ export const promptsSystem = setup({
   actions: {
     listPrompts: ({ event }) => {
       const ev = event as { type: 'codePrompts.LIST'; page?: number }
-      const data = promptQueries.startupData(ev.page || 1)
+      const data = repository.promptQueries.startupData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
         type: 'codePrompts.PROMPTS_LISTED',
@@ -57,7 +57,7 @@ export const promptsSystem = setup({
 
     openPrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-      const prompt = promptQueries.byId(ev.promptId as EARS.EntityId)
+      const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       
       if (prompt) {
         // Include the templateFn content directly
@@ -87,12 +87,12 @@ export const promptsSystem = setup({
       const ev = event as { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
       
       // Update the prompt with new templateFn
-      const result = promptCommands.update(ev.promptId as EARS.EntityId, {
+      const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, {
         template: ev.templateFn
       })
       
       if (result.success) {
-        const updatedPrompt = promptQueries.byId(ev.promptId as EARS.EntityId)
+        const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
         if (updatedPrompt) {
           const wrapped = emit(pluginId, {
             type: 'codePrompts.PROMPT_UPDATED',
@@ -114,7 +114,7 @@ export const promptsSystem = setup({
 
     sendStartupData: () => {
       // Send initial prompts list on startup
-      const data = promptQueries.startupData(1)
+      const data = repository.promptQueries.startupData(1)
       
       const wrapped = emit(pluginId, {
         type: 'codePrompts.PROMPTS_LISTED',
