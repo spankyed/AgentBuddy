@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col h-full overflow-hidden min-w-0">
     <!-- Revert Dialog -->
     <RevertDialog
       :show="!!revertDialogFile"
@@ -88,7 +88,7 @@
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="flex-1 text-sm truncate text-neutral-200">{{ file.path }}</span>
+              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <button
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
@@ -115,7 +115,7 @@
                   : 'hover:bg-neutral-800/50'
               ]"
             >
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1 flex-shrink-0">
                 <button
                   @click.stop="stageFile(file)"
                   class="p-0.5 hover:bg-neutral-700 rounded"
@@ -134,7 +134,7 @@
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="flex-1 text-sm truncate text-neutral-200">{{ file.path }}</span>
+              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <button
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
