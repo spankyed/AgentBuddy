@@ -61,6 +61,8 @@
 
           <!-- Mode select -->
           <select
+            :value="currentMode"
+            @change="handleModeChange"
             class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
           >
             <option value="plan">Plan mode</option>
@@ -89,14 +91,13 @@ import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Component } from 'vue'
 import Button from '@/core/design/button.vue'
-import { applicationState } from '@/app'
-import { useSelector } from '@xstate/vue'
-import { id, type AgentState } from '@/plugins/agent/state'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, ThreadEntity } from '@abuddy/api'
 
 defineProps<{
   currentThread: AgentThreadData
+  threads: ThreadEntity[]
+  currentMode: 'plan' | 'work' | 'chat' | 'note'
 }>()
 
 // Define emits including new button actions
@@ -109,6 +110,7 @@ const emit = defineEmits<{
   (e: 'voice-input'): void
   (e: 'new-thread'): void
   (e: 'stop'): void
+  (e: 'mode-change', mode: string): void
 }>()
 
 
@@ -142,9 +144,6 @@ const leftButtons: ActionButton[] = [
   },
 ]
 
-// Get threads data from the state
-const actor: AgentState = applicationState.system.get(id);
-const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[]);
 
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
@@ -186,6 +185,11 @@ const handleKeydown = (e: KeyboardEvent) => {
 const handleButtonClick = (action: string) => {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   emit(action as any)
+}
+
+const handleModeChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement
+  emit('mode-change', target.value)
 }
 
 const handleSubmit = () => {

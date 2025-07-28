@@ -13,6 +13,8 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
+type AgentMode = 'plan' | 'work' | 'chat' | 'note';
+
 interface AgentContext {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
@@ -21,6 +23,7 @@ interface AgentContext {
   statusColor: StatusColor;
   tabs: Tab[];
   activeTabId: string;
+  mode: AgentMode;
 }
 
 type Brain_FE_AgentEvents = 
@@ -39,6 +42,7 @@ type AgentEvent =
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
+  | { type: 'SET_MODE'; mode: AgentMode }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -69,11 +73,15 @@ const agentState = setup({
       }
       return { statusColor: 'bg-zinc-500' as StatusColor };
     }),
-    sendMessage: ({ event }) => {
+    setMode: assign(({ event }) => ({
+      mode: typeOf('SET_MODE', event).mode
+    })),
+    sendMessage: ({ context, event }) => {
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
         text: typeOf('SEND_MESSAGE', event).text,
+        mode: context.mode,
       });
     },
     addMessage: assign(({ context, event }) => ({
@@ -253,6 +261,7 @@ const agentState = setup({
       selectedArtifactId: 'workload-1',
     }],
     activeTabId: 'dashboard',
+    mode: 'chat' as AgentMode,
   }),
   on: {
     VIEW_THREAD: {
@@ -279,6 +288,9 @@ const agentState = setup({
     },
     RESET_STATUS_COLOR: {
       actions: 'setStatusColor',
+    },
+    SET_MODE: {
+      actions: 'setMode',
     },
     CLEAR_MESSAGES: {
       actions: 'clearMessages'

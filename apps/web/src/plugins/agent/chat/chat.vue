@@ -15,10 +15,13 @@
   <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
   <ChatInput
     :current-thread="currentThread"
+    :threads="threads"
+    :current-mode="currentMode"
     @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
     @new-thread="actor.send({ type: 'CLEAR_MESSAGES' })"
+    @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
   />
 </template>
 
@@ -29,11 +32,13 @@ import ChatInput from './input.vue'
 import { applicationState } from '@/app'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
-import type { AgentThreadData, MessageEntity } from '@abuddy/api'
+import type { AgentThreadData, MessageEntity, ThreadEntity } from '@abuddy/api'
 
 const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
+const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[])
+const currentMode = useSelector(actor, (state) => state.context.mode)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 watch(messages, async () => {

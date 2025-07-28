@@ -17,7 +17,7 @@ export const agent = 'agent' as const;
 const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
-  busEvent('USER_MSG', { text: z.string() }),
+  busEvent('USER_MSG', { text: z.string(), mode: z.enum(['plan', 'work', 'chat', 'note']).optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
   busEvent('CANCEL'),
@@ -93,13 +93,16 @@ export function ${label.replace(/\s+/g, '')}() {
         artifacts: mockArtifacts
       }));
     },
-    fireBrainEvent: ({ system, event }) => {
-      const text = typeOf('USER_MSG', event).text;
+    fbeUserMessage: ({ system, event }) => {
+      const { text, mode } = typeOf('USER_MSG', event);
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.message',
-        payload: text,
+        payload: {
+          text,
+          mode: mode || 'chat',
+        },
       });
     }
   },
@@ -123,7 +126,7 @@ export function ${label.replace(/\s+/g, '')}() {
       idle: {
         on: {
           USER_MSG: {
-            actions: 'fireBrainEvent',
+            actions: 'fbeUserMessage',
           },
         },
       },
