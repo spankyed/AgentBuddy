@@ -40,11 +40,25 @@
       >
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate text-neutral-200">
+            <div class="text-sm font-medium truncate text-neutral-200" :title="action.description">
               {{ action.label }}
             </div>
-            <div v-if="action.description" class="mt-1 text-xs text-neutral-400 line-clamp-2">
-              {{ action.description }}
+            <div class="mt-1 space-y-1">
+              <!-- Input Parameters -->
+              <div v-if="action.input && Object.keys(action.input).length > 0" class="flex flex-wrap gap-1">
+                <span 
+                  v-for="(param, key) in action.input" 
+                  :key="key"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400"
+                >
+                  <span class="font-medium">{{ key }}</span>
+                  <span class="text-neutral-500">({{ param.type }})</span>
+                  <span v-if="param.required" class="text-red-400">*</span>
+                </span>
+              </div>
+              <div v-else class="text-xs italic text-neutral-500">
+                No parameters
+              </div>
             </div>
             <div v-if="action.category" class="mt-1">
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-700 text-neutral-300">
@@ -96,7 +110,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { RefreshCw, Play, ExternalLink } from 'lucide-vue-next'
-import type { ActionEntity } from '@abuddy/api'
+import type { ActionEntity, ActionParameter } from '@abuddy/api'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
