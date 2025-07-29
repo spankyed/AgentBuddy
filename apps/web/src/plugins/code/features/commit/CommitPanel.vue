@@ -154,10 +154,10 @@
               >
                 <Minus class="w-3 h-3 text-neutral-400" />
               </button>
+              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <button
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
@@ -200,10 +200,10 @@
                   <RotateCcw class="w-3 h-3 text-red-400" />
                 </button>
               </div>
+              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
-              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
               <button
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"

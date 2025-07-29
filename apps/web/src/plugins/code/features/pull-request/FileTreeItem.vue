@@ -37,11 +37,11 @@
       class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800"
       :style="{ paddingLeft: `${(level * 16) + 8 + 20}px` }"
     >
-      <span :class="getStatusColor(item.status)" class="w-4 text-xs font-medium">
-        {{ getStatusIcon(item.status) }}
-      </span>
       <FileCode class="w-4 h-4 text-neutral-400" />
       <span class="text-sm text-neutral-200">{{ item.name }}</span>
+      <span :class="getStatusColor(item.status)" class="ml-auto mr-2 w-4 text-xs font-medium">
+        {{ getStatusIcon(item.status) }}
+      </span>
     </button>
   </div>
 </template>
