@@ -37,6 +37,15 @@ export const threadQueries = {
   all: () => 
     findAll<ThreadEntity>(EARS.Entity.Thread),
   
+  allByRecency: () => {
+    const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
+    return threads.sort((a, b) => {
+      const aTime = a.lastMessageTimestamp || a.timestamp;
+      const bTime = b.lastMessageTimestamp || b.timestamp;
+      return bTime - aTime;
+    });
+  },
+  
   // Get thread messages
   messages: (threadId: EARS.EntityId) => 
     qx(threadId)
@@ -109,6 +118,7 @@ export const threadCommands = {
         .put("status", "draft")
         .put("shortCode", shortCode)
         .put("timestamp", ts)
+        .put("lastMessageTimestamp", ts)
         .put("createdAt", ts)
         .put("updatedAt", ts)
         .put("topic", input.topic)

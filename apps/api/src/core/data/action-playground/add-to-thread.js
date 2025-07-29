@@ -51,6 +51,11 @@ export async function addMessageToThread(params, services) {
     throw new Error(result.error || 'Failed to add message to thread');
   }
 
+  // Update thread's lastMessageTimestamp
+  services.repository.threadCommands.update(threadId, {
+    lastMessageTimestamp: result.data.timestamp
+  });
+
   await services.logger.info('Message added to thread', {
     threadId,
     messageId: result.data.id,

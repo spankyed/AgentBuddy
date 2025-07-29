@@ -15,6 +15,7 @@ export interface ThreadEntity extends BaseEntity {
   instructions: string;
   sideTopics?: string[];
   timestamp: number;
+  lastMessageTimestamp?: number;
   shortCode?: string;
   threadType: 'work-item' | 'project' | 'user';
   status: 'draft' | 'queued' | 'active' | 'inactive';

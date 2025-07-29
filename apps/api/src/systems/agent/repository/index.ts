@@ -56,7 +56,7 @@ export const agentQueries = {
   // Get startup data with recent threads
   startupData: (): AgentStartupData => {
     const fourMostRecentThreads = qx(EARS.Entity.Thread)
-      .orderBy('timestamp', 'desc')
+      .orderBy('lastMessageTimestamp', 'desc')
       .limit(4)
       .pick([
         "shortCode",
@@ -64,6 +64,7 @@ export const agentQueries = {
         "instructions",
         "status",
         "timestamp",
+        "lastMessageTimestamp",
       ] as const) as Partial<ThreadEntity>[];
     
     if (fourMostRecentThreads.length === 0) {
@@ -136,6 +137,9 @@ export const agentCommands = {
       
       // Link thread to message
       tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
+      
+      // Update thread's lastMessageTimestamp
+      tx(threadId).put('lastMessageTimestamp', timestamp);
       
       return successResult({
         id: messageId,
