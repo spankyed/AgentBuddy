@@ -1,21 +1,19 @@
 import { z } from 'zod';
+import Services from '@/services';
 
 /**
  * Name: Route Procedure
  * Category: routing
  * Description: Routes user messages to appropriate procedures based on LLM analysis of procedure usage docs
  *
- * @param {Object} params - Message object containing text, optional mode, and optional threadId
- * @param {Object} params.message - The user's message object
- * @param {string} params.message.text - The user's message text
- * @param {string} [params.message.mode] - Optional mode for the message
- * @param {string} [params.message.threadId] - Optional thread ID for context
- * @param {Object} services - Library, logger, LLM, and action services
- * @returns {Promise<Object>} Information about which procedure was selected and whether it was executed
- * @returns {string} returns.procedure - The selected procedure name or 'none'
- * @returns {boolean} returns.executed - Whether a procedure was executed
- * @returns {boolean} returns.success
- * @throws When no procedure documents are found or procedure execution fails
+ * @param {Object} params
+ * @param {Object} params.message
+ * @param {string} params.message.text - User's message text
+ * @param {string} [params.message.mode] - Optional message mode
+ * @param {string} [params.message.threadId] - Optional thread ID
+ * @param {typeof Services} services
+ * @returns {Promise<Object>} Object with procedure name, executed status, and success flag
+ * @throws {Error} When no procedure documents found or execution fails
  */
 export async function routeProcedure(params, services) {
   const { message } = params;

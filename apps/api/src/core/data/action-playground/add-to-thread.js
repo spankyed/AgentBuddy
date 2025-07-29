@@ -1,21 +1,17 @@
+import Services from '@/services';
+
 /**
  * Name: Add Message to Thread
  * Category: messaging
  * Description: Adds a new message to an existing thread or creates a new thread if none provided
  *
- * @param {Object} params - Optional thread ID, message text, and optional sender type (defaults to 'user')
- * @param {string} [params.threadId] - The ID of the thread to which the message will be added (optional - will create new thread if not provided)
- * @param {string} params.text - The content of the message to be added
- * @param {'user' | 'assistant' | 'system'} [params.sender] - The sender of the message
- * @param {Object} services - Repository and logger services
- * @returns {Promise<Object>} The created message information with thread ID
- * @returns {string} returns.id
- * @returns {string} returns.threadId
- * @returns {string} returns.text
- * @returns {string} returns.sender
- * @returns {number} returns.timestamp
- * @returns {boolean} returns.success
- * @throws When text is missing or empty
+ * @param {Object} params
+ * @param {string} [params.threadId] - Optional thread ID (creates new thread if not provided)
+ * @param {string} params.text - Message content
+ * @param {'user'|'assistant'|'system'} [params.sender='user'] - Message sender type
+ * @param {typeof Services} services
+ * @returns {Promise<Object>} Created message with id, threadId, text, sender, timestamp, success
+ * @throws {Error} When text is missing or empty
  */
 export async function addMessageToThread(params, services) {
   const { text, sender = 'user' } = params;
