@@ -13,8 +13,17 @@ import {
   destroyEntity
 } from '@/core/utils/ears/attribute-storage';
 
+// Configuration flag to determine which snapshot directory to use
+// Set to true to use git-tracked snapshots (default), false for runtime snapshots
+const USE_GIT_SNAPSHOTS = true;
+
 const SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots');
 const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots-git');
+
+// Helper function to get the active snapshot directory based on the flag
+function getSnapshotDir(): string {
+  return USE_GIT_SNAPSHOTS ? GIT_SNAPSHOTS_DIR : SNAPSHOTS_DIR;
+}
 
 interface SnapshotData {
   version: string;
@@ -30,8 +39,10 @@ interface SnapshotData {
 }
 
 export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] = []): Promise<string> {
+  const snapshotDir = getSnapshotDir();
+  
   // Ensure snapshots directory exists
-  await fs.mkdir(SNAPSHOTS_DIR, { recursive: true });
+  await fs.mkdir(snapshotDir, { recursive: true });
 
   // Helper function to check if an entity should be excluded
   const shouldExcludeEntity = (entityId: EARS.EntityId): boolean => {
@@ -100,7 +111,7 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
   const filename = name 
     ? `snapshot_${name}-${timestamp}.json`
     : `snapshot_${timestamp}.json`;
-  const filepath = path.join(SNAPSHOTS_DIR, filename);
+  const filepath = path.join(snapshotDir, filename);
 
   // Write snapshot to file
   await fs.writeFile(
@@ -113,15 +124,18 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
 }
 
 export async function loadSnapshot(filename: string): Promise<SnapshotData> {
-  const filepath = path.join(SNAPSHOTS_DIR, filename);
+  const snapshotDir = getSnapshotDir();
+  const filepath = path.join(snapshotDir, filename);
   const content = await fs.readFile(filepath, 'utf-8');
   return JSON.parse(content) as SnapshotData;
 }
 
 export async function listSnapshots(): Promise<string[]> {
+  const snapshotDir = getSnapshotDir();
   try {
-    const files = await fs.readdir(SNAPSHOTS_DIR);
-    return files.filter(f => f.startsWith('snapshot-') && f.endsWith('.json'));
+    const files = await fs.readdir(snapshotDir);
+    // Handle both naming patterns: 'snapshot-' prefix (runtime) and no prefix (git)
+    return files.filter(f => f.endsWith('.json') && f !== 'README.md');
   } catch (error) {
     // Directory doesn't exist yet
     return [];
@@ -177,17 +191,29 @@ export async function restoreSnapshot(snapshotData: SnapshotData): Promise<void>
   }
 }
 
+// Legacy functions - kept for backward compatibility but delegate to unified functions
 export async function listGitSnapshots(): Promise<string[]> {
+  // If we're using git snapshots, this returns the same as listSnapshots
+  // Otherwise, we need to read from the git directory specifically
+  if (USE_GIT_SNAPSHOTS) {
+    return listSnapshots();
+  }
+  
   try {
     const files = await fs.readdir(GIT_SNAPSHOTS_DIR);
     return files.filter(f => f.endsWith('.json') && f !== 'README.md');
   } catch (error) {
-    // Directory doesn't exist yet
     return [];
   }
 }
 
 export async function loadGitSnapshot(filename: string): Promise<SnapshotData> {
+  // If we're using git snapshots, this is the same as loadSnapshot
+  // Otherwise, we need to load from the git directory specifically
+  if (USE_GIT_SNAPSHOTS) {
+    return loadSnapshot(filename);
+  }
+  
   const filepath = path.join(GIT_SNAPSHOTS_DIR, filename);
   const content = await fs.readFile(filepath, 'utf-8');
   return JSON.parse(content) as SnapshotData;
