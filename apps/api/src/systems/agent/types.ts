@@ -3,8 +3,8 @@ import type { EARS, ThreadExtendedData } from "@/types";
 import { ThreadEntity, ContextItemEntity, CanvasContentEntity } from "../threads/types";
 
 export type AgentThreadData = {
-    id: ThreadEntity['id'];
-    shortCode: ThreadEntity['shortCode'];
+    id?: ThreadEntity['id'];
+    shortCode?: ThreadEntity['shortCode'];
     topic: ThreadEntity['topic'];
     instructions: ThreadEntity['instructions'];
     status: ThreadEntity['status'];

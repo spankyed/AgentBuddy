@@ -16,7 +16,7 @@ type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 type AgentMode = 'plan' | 'work' | 'chat' | 'note';
 
 const defaultThread: AgentThreadData = {
-  id: `Thread-${Date.now()}`,
+  id: undefined,
   shortCode: '',
   topic: '',
   instructions: '',
@@ -24,13 +24,7 @@ const defaultThread: AgentThreadData = {
   timestamp: Date.now(),
   messages: [],
   contextItems: [],
-  canvasContent: {
-    id: 'CanvasItem-0',
-    entityType: 'CanvasItem',
-    contentType: 'text',
-    content: 'Waiting for data...',
-    createdAt: Date.now()
-  } as CanvasContentEntity,
+  canvasContent: {} as CanvasContentEntity,
 };
 
 interface AgentContext {
