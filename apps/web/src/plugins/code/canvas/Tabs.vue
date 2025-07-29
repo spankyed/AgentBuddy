@@ -1,7 +1,7 @@
 <template>
   <div 
     v-if="tabs.length > 0" 
-    class="tabs-container flex items-center overflow-x-auto border-b bg-neutral-900 border-neutral-800"
+    class="flex items-center overflow-x-auto border-b tabs-container bg-neutral-900 border-neutral-800"
     @dragover="handleContainerDragOver"
     @drop="handleContainerDrop"
     @dragleave="handleDragLeave"
@@ -9,9 +9,9 @@
     <ContextMenuRoot v-for="(tab, index) in tabs" :key="tab.path">
       <ContextMenuTrigger as-child>
         <div
-          class="tab-item group relative flex items-center border-r border-neutral-800"
+          class="relative flex items-center border-r tab-item group border-neutral-800"
           :class="[
-            activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
+            activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
             draggedIndex === index ? 'opacity-50' : ''
           ]"
           :data-index="index"
