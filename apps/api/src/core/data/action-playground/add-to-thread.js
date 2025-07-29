@@ -71,13 +71,20 @@ export async function addMessageToThread(params, services) {
 
   // If a new thread was created, notify frontend plugins
   if (newThreadCreated && threadData) {
-    // Notify threads plugin about the new thread
+    // Get the full thread data
+    const fullThreadData = services.repository.threadQueries.byId(threadData.id);
+    
+    // Notify threads plugin about the new thread with complete data
     services.emitter.sendToPlugin('threads', {
       type: 'THREAD_CREATED',
       id: threadData.id,
       shortCode: threadData.shortCode,
       entityType: 'Thread',
-      timestamp: threadData.timestamp
+      timestamp: threadData.timestamp,
+      topic: fullThreadData.topic,
+      threadType: fullThreadData.threadType,
+      instructions: fullThreadData.instructions,
+      status: fullThreadData.status
     });
 
     // Get updated thread list for agent plugin

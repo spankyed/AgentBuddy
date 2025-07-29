@@ -59,7 +59,7 @@ export type ThreadsInternalEvents =
 export type OutgoingThreadsEvents = 
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
-  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: ThreadEntity['status'] }
 
 export interface ThreadsContext {}
 
