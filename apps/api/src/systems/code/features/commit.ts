@@ -19,6 +19,8 @@ export const IncomingCommitEvents = [
   busEvent('commit.COMMIT', { message: z.string() }),
   busEvent('commit.GET_CURRENT_BRANCH', {}),
   busEvent('commit.REVERT_FILE', { path: z.string() }),
+  busEvent('commit.GET_ALL_BRANCHES', {}),
+  busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -31,6 +33,8 @@ export type OutgoingCommitEvents =
   | { type: 'commit.FILE_REVERTED'; data: { path: string } }
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
+  | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
+  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
 
 export interface Context {
   gitRepository: GitRepository
@@ -45,6 +49,8 @@ export type Event =
   | { type: 'commit.COMMIT'; message: string }
   | { type: 'commit.GET_CURRENT_BRANCH' }
   | { type: 'commit.REVERT_FILE'; path: string }
+  | { type: 'commit.GET_ALL_BRANCHES' }
+  | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_STARTUP' };
@@ -292,6 +298,54 @@ export const commitSystem = setup({
       }
     },
 
+    getAllBranches: async ({ context }) => {
+      try {
+        const branches = await context.gitRepository.getAllBranches()
+        const wrapped = emit(pluginId, {
+          type: 'commit.BRANCHES_RECEIVED',
+          data: { branches }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    checkoutBranch: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
+      try {
+        await context.gitRepository.checkoutBranch(ev.branchName)
+        
+        // Clear cache and refresh status after branch switch
+        context.gitRepository.clearCache()
+        
+        const wrapped = emit(pluginId, {
+          type: 'commit.BRANCH_CHECKOUT_SUCCESS',
+          data: { branchName: ev.branchName }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        
+        // Refresh git status to show new branch
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+        
+        // Also notify PR system about branch change
+        const prSystem = self.system.get('pr')
+        if (prSystem) {
+          prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
+        }
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
 
     updateRootDirectory: assign({
       gitRepository: ({ event, context }) => {
@@ -356,6 +410,12 @@ export const commitSystem = setup({
         },
         'commit.GET_CURRENT_BRANCH': {
           actions: 'getCurrentBranch'
+        },
+        'commit.GET_ALL_BRANCHES': {
+          actions: 'getAllBranches'
+        },
+        'commit.CHECKOUT_BRANCH': {
+          actions: 'checkoutBranch'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
           actions: ['updateRootDirectory', 'restartGitWatcher']

@@ -631,4 +631,71 @@ export class GitRepository {
     }
     return result.output || ''
   }
+
+  async getAllBranches(): Promise<string[]> {
+    // Get all local and remote branches
+    const result = await this.executeGitCommand(['branch', '-a', '--no-color'])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get branches')
+    }
+    
+    // Parse the output to extract branch names
+    const branches = (result.output || '')
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        // Remove the current branch marker (*) and any leading/trailing whitespace
+        line = line.trim().replace(/^\*\s*/, '')
+        
+        // Handle remote branches - remove "remotes/origin/" prefix
+        if (line.startsWith('remotes/origin/')) {
+          // Skip HEAD pointer
+          if (line.includes('HEAD ->')) return null
+          return line.replace('remotes/origin/', '')
+        }
+        
+        return line
+      })
+      .filter((branch): branch is string => branch !== null)
+      
+    // Remove duplicates (local and remote branches with same name)
+    return [...new Set(branches)]
+  }
+
+  async checkoutBranch(branchName: string): Promise<void> {
+    if (!branchName.trim()) {
+      throw new Error('Branch name cannot be empty')
+    }
+    
+    // Validate branch name to prevent command injection
+    if (!/^[a-zA-Z0-9._\/-]+$/.test(branchName)) {
+      throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
+    }
+    
+    // Try to checkout the branch
+    const result = await this.executeGitCommand(['checkout', branchName])
+    
+    if (!result.success) {
+      // Check if it's because the branch doesn't exist locally
+      if (result.error?.includes('pathspec') && result.error?.includes('did not match')) {
+        // Try to create a new branch tracking the remote
+        const remoteResult = await this.executeGitCommand(['checkout', '-b', branchName, `origin/${branchName}`])
+        if (!remoteResult.success) {
+          // If that fails too, just create a new local branch
+          const newBranchResult = await this.executeGitCommand(['checkout', '-b', branchName])
+          if (!newBranchResult.success) {
+            throw new Error(newBranchResult.error || `Failed to create branch: ${branchName}`)
+          }
+        }
+      } else if (result.error?.includes('Your local changes to the following files would be overwritten')) {
+        // Git is preventing checkout due to conflicts
+        throw new Error('Cannot switch branches: Your uncommitted changes conflict with files in the target branch. Please commit, stash, or discard your changes first.')
+      } else {
+        throw new Error(result.error || `Failed to checkout branch: ${branchName}`)
+      }
+    }
+    
+    // Clear cache after branch switch
+    this.clearCache()
+  }
 }

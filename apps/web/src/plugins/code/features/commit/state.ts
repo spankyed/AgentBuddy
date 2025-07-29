@@ -37,6 +37,9 @@ export interface Context {
   gitDiff: GitDiff | null
   commitMessage: string
   revertDialogFile: GitStatusFile | null
+  availableBranches: string[]
+  branchInput: string
+  isCheckingOutBranch: boolean
 }
 
 export type Event = 
@@ -51,13 +54,18 @@ export type Event =
   | { type: 'commit.REVERT_FILE'; path: string }
   | { type: 'commit.TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
   | { type: 'commit.OPEN_FILE'; file: GitStatusFile }
+  | { type: 'commit.GET_ALL_BRANCHES' }
+  | { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
+  | { type: 'commit.CHECKOUT_BRANCH' }
   | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
   | { type: 'commit.COMMIT_SUCCESS'; message: string }
   | { type: 'commit.FILE_REVERTED'; path: string }
-  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } };
+  | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
+  | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
+  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } };
 
 export const commitState = setup({
   types: {
@@ -172,7 +180,8 @@ export const commitState = setup({
         const ev = event as { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
         return ev.data.message
       },
-      isGitLoading: false
+      isGitLoading: false,
+      isCheckingOutBranch: false
     }),
     
     
@@ -205,6 +214,37 @@ export const commitState = setup({
           updateParentState(self, result)
         }
       })
+    }),
+    
+    getAllBranches: () => {
+      sendToBackend('commit.GET_ALL_BRANCHES', {})
+    },
+    
+    updateBranchInput: assign({
+      branchInput: ({ event }) => {
+        const ev = event as { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
+        return ev.input
+      }
+    }),
+    
+    checkoutBranch: ({ context }) => {
+      if (context.branchInput.trim()) {
+        sendToBackend('commit.CHECKOUT_BRANCH', { branchName: context.branchInput.trim() })
+      }
+    },
+    
+    setCheckingOutBranch: assign({ isCheckingOutBranch: true }),
+    
+    handleBranchesReceived: assign({
+      availableBranches: ({ event }) => {
+        const ev = event as { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
+        return ev.data.branches
+      }
+    }),
+    
+    handleBranchCheckoutSuccess: assign({
+      branchInput: '',
+      isCheckingOutBranch: false
     })
   }
 }).createMachine({
@@ -218,7 +258,10 @@ export const commitState = setup({
     selectedGitFile: null,
     gitDiff: null,
     commitMessage: '',
-    revertDialogFile: null
+    revertDialogFile: null,
+    availableBranches: [],
+    branchInput: '',
+    isCheckingOutBranch: false
   },
   states: {
     idle: {
@@ -276,6 +319,21 @@ export const commitState = setup({
         },
         'commit.OPEN_FILE': {
           actions: 'openFile'
+        },
+        'commit.GET_ALL_BRANCHES': {
+          actions: 'getAllBranches'
+        },
+        'commit.UPDATE_BRANCH_INPUT': {
+          actions: 'updateBranchInput'
+        },
+        'commit.CHECKOUT_BRANCH': {
+          actions: ['setCheckingOutBranch', 'checkoutBranch']
+        },
+        'commit.BRANCHES_RECEIVED': {
+          actions: 'handleBranchesReceived'
+        },
+        'commit.BRANCH_CHECKOUT_SUCCESS': {
+          actions: ['handleBranchCheckoutSuccess', 'getAllBranches']
         }
       }
     }

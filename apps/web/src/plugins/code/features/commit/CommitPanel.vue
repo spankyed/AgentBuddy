@@ -29,6 +29,54 @@
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">{{ gitBranch || 'unknown' }}</span>
       </div>
+      
+      <!-- Branch Checkout -->
+      <div class="relative mt-2">
+        <div class="relative">
+          <input
+            v-model="branchInput"
+            @input="updateBranchInput"
+            @keyup.enter="checkoutBranch"
+            @focus="showBranchDropdown = true"
+            @blur="hideBranchDropdown"
+            :disabled="isCheckingOutBranch"
+            placeholder="Switch branch or create new..."
+            class="w-full px-3 py-1.5 pr-8 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 disabled:opacity-50"
+          />
+          <ChevronDown 
+            :size="14" 
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none"
+          />
+        </div>
+        
+        <!-- Custom Dropdown -->
+        <div 
+          v-if="showBranchDropdown && (filteredBranches.length > 0 || branchInput.trim())"
+          class="absolute z-10 w-full mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-lg max-h-48 overflow-y-auto"
+        >
+          <!-- Create new branch option -->
+          <div 
+            v-if="branchInput.trim() && !availableBranches.includes(branchInput.trim())"
+            @mousedown.prevent="selectBranch(branchInput.trim())"
+            class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2"
+          >
+            <GitBranch :size="12" class="text-green-500" />
+            <span class="text-xs text-neutral-300">Create new branch: <span class="font-medium text-green-400">{{ branchInput }}</span></span>
+          </div>
+          
+          <!-- Existing branches -->
+          <div
+            v-for="branch in filteredBranches"
+            :key="branch"
+            @mousedown.prevent="selectBranch(branch)"
+            class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2"
+          >
+            <GitBranch :size="12" class="text-neutral-400" />
+            <span class="text-xs text-neutral-300">{{ branch }}</span>
+            <CheckCircle v-if="branch === gitBranch" :size="12" class="ml-auto text-green-500" />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Git Error -->
@@ -157,12 +205,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/app'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText } from 'lucide-vue-next'
+import { GitBranch, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle } from 'lucide-vue-next'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
 // Get actors
@@ -178,11 +226,25 @@ const isGitLoading = useSelector(commitActor, (state: any) => state.context.isGi
 const selectedGitFile = useSelector(commitActor, (state: any) => state.context.selectedGitFile)
 const commitMessage = useSelector(commitActor, (state: any) => state.context.commitMessage)
 const revertDialogFile = useSelector(commitActor, (state: any) => state.context.revertDialogFile)
+const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
+const branchInput = useSelector(commitActor, (state: any) => state.context.branchInput)
+const isCheckingOutBranch = useSelector(commitActor, (state: any) => state.context.isCheckingOutBranch)
+
+// Local state
+const showBranchDropdown = ref(false)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
 const unstagedFiles = computed(() => gitStatus.value.filter(f => !f.staged))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
+
+const filteredBranches = computed(() => {
+  const input = branchInput.value.toLowerCase().trim()
+  if (!input) return availableBranches.value
+  return availableBranches.value.filter(branch => 
+    branch.toLowerCase().includes(input)
+  )
+})
 
 // Event handlers
 const refreshStatus = () => {
@@ -229,6 +291,31 @@ const openFile = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 
+const updateBranchInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: target.value })
+}
+
+const checkoutBranch = () => {
+  if (branchInput.value.trim() && !isCheckingOutBranch.value) {
+    commitActor?.send({ type: 'commit.CHECKOUT_BRANCH' })
+    showBranchDropdown.value = false
+  }
+}
+
+const selectBranch = (branch: string) => {
+  commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: branch })
+  commitActor?.send({ type: 'commit.CHECKOUT_BRANCH' })
+  showBranchDropdown.value = false
+}
+
+const hideBranchDropdown = () => {
+  // Small delay to allow click events to fire
+  setTimeout(() => {
+    showBranchDropdown.value = false
+  }, 200)
+}
+
 // Helper functions
 const getStatusIcon = (status: GitStatusFile['status']) => {
   switch (status) {
@@ -261,4 +348,6 @@ const getStatusColor = (status: GitStatusFile['status']) => {
 // Trigger initial load when panel is mounted
 // Git watcher will handle subsequent updates
 refreshStatus()
+// Also get available branches
+commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 </script>
