@@ -36,7 +36,7 @@ export type OutgoingFlowsEvents =
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
-  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
+  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
   | { type: 'EDGE_DELETED'; edgeId: string }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
@@ -164,10 +164,13 @@ export const flowsSystem = setup({
         return;
       }
       
+      const { relId } = result.data;
+      
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
         sourceId: sourceId as EARS.EntityId,
         targetId: targetId as EARS.EntityId,
+        relId,
       }));
     },
     

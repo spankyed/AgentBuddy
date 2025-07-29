@@ -441,6 +441,28 @@ const flowsState = setup({
         tempIdMap: updatedTempIdMap,
       };
     }),
+    
+    /* ── Edge ID reconciliation ────────────────────────────── */
+    reconcileEdgeId: assign(({ context, event }) => {
+      const ev = typeOf('EDGE_CREATED', event);
+      const { sourceId, targetId, relId } = ev;
+      
+      // Find the edge with matching source and target
+      const updatedEdges = context.graph.edges.map(edge => {
+        if (edge.source === sourceId && edge.target === targetId) {
+          // Update the edge ID to the real relation ID
+          return { ...edge, id: relId as EARS.EntityId };
+        }
+        return edge;
+      });
+      
+      return {
+        graph: {
+          ...context.graph,
+          edges: updatedEdges,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -473,6 +495,9 @@ const flowsState = setup({
     },
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
+    },
+    EDGE_CREATED: {
+      actions: 'reconcileEdgeId'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],

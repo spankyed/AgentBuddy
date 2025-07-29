@@ -365,12 +365,24 @@ export const flowsCommands = {
     }
   },
   
-  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): OperationResult => {
+  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): RepositoryResult<{ relId: EARS.EntityId }> => {
     try {
       // In EARS, edges are relationships, not entities
       // We just create the relationship between the nodes
       tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId);
-      return operationSuccess();
+      
+      // Get the relation ID that was just created
+      const relIds = edgeStore.relIds({
+        sourceEntity: sourceId,
+        relationType: EARS.RelKind.TRANSITIONS_TO,
+        targetEntity: targetId,
+      });
+      
+      if (relIds.length === 0) {
+        throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
+      }
+      
+      return successResult({ relId: relIds[0] });
     } catch (error) {
       return errorResult(error);
     }
