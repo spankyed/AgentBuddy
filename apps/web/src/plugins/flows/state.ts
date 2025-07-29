@@ -215,16 +215,11 @@ const flowsState = setup({
       const ev = typeOf('EDGE.DISCONNECT', event);
       if (!context.selectedFlowId) return;
       
-      // Find the edge to get source and target
-      const edge = context.graph.edges.find(e => e.id === ev.edgeId);
-      if (!edge) return;
-      
       trpc.bus.send.mutate({
         systemId: id,
         type: 'DELETE_EDGE',
         flowId: context.selectedFlowId,
-        sourceId: edge.source,
-        targetId: edge.target,
+        edgeId: ev.edgeId,
       });
     },
     

@@ -24,7 +24,7 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
-  busEvent('DELETE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
+  busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -37,7 +37,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
-  | { type: 'EDGE_DELETED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
+  | { type: 'EDGE_DELETED'; edgeId: string }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -172,12 +172,12 @@ export const flowsSystem = setup({
     },
     
     deleteEdge: ({ system, event }) => {
-      const { flowId, sourceId, targetId } = typeOf('DELETE_EDGE', event);
+      const { flowId, edgeId } = typeOf('DELETE_EDGE', event);
       const pluginId = flows;
       
-      logger.info('Deleting edge', { flowId, sourceId, targetId });
+      logger.info('Deleting edge', { flowId, edgeId });
       
-      const result = repository.flowsCommands.deleteEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      const result = repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
       if (!result.success) {
         logger.error('Failed to delete edge', { error: result.error });
         return;
@@ -185,8 +185,7 @@ export const flowsSystem = setup({
       
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_DELETED',
-        sourceId: sourceId as EARS.EntityId,
-        targetId: targetId as EARS.EntityId,
+        edgeId,
       }));
     },
   },
