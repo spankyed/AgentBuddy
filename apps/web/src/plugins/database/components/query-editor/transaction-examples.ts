@@ -34,7 +34,7 @@ const messageId = tx(EARS.Entity.Message)
   .put('text', 'Hello, how can I help you today?')
   .put('timestamp', Date.now())
   .put('sender', 'assistant')
-  .link(EARS.RelKind.belongs_to, threadId)
+  .link(EARS.RelKind.CONTAINS, threadId)
   .id();
 
 // Link message to thread
