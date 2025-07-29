@@ -15,6 +15,24 @@ type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 type AgentMode = 'plan' | 'work' | 'chat' | 'note';
 
+const defaultThread: AgentThreadData = {
+  id: `Thread-${Date.now()}`,
+  shortCode: '',
+  topic: '',
+  instructions: '',
+  status: 'draft',
+  timestamp: Date.now(),
+  messages: [],
+  contextItems: [],
+  canvasContent: {
+    id: 'CanvasItem-0',
+    entityType: 'CanvasItem',
+    contentType: 'text',
+    content: 'Waiting for data...',
+    createdAt: Date.now()
+  } as CanvasContentEntity,
+};
+
 interface AgentContext {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
@@ -26,7 +44,7 @@ interface AgentContext {
   mode: AgentMode;
 }
 
-type Brain_FE_AgentEvents = 
+type Brain_FE_AgentEvents =
   | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
@@ -35,7 +53,7 @@ type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'SEND_MESSAGE'; text: string }
-  | { type: 'CLEAR_MESSAGES' }
+  | { type: 'CLEAR_THREAD' }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   | { type: 'SELECT_TAB'; tabId: string }
@@ -49,7 +67,7 @@ type AgentEvent =
   | TrailClickEvent;
 
 const typeOf = safeEvents<AgentEvent>();
-  
+
 const agentState = setup({
   types: { context: {} as AgentContext, events: {} as AgentEvent },
   actors: {
@@ -67,7 +85,7 @@ const agentState = setup({
         threadId,
       });
     },
-    setStatusColor: assign((_, params?: { color: StatusColor}) => {
+    setStatusColor: assign((_, params?: { color: StatusColor }) => {
       if (params?.color) {
         return { statusColor: params.color };
       }
@@ -88,7 +106,7 @@ const agentState = setup({
     addMessage: assign(({ context, event }) => ({
       currentThread: {
         ...context.currentThread!,
-        messages: [...(context.currentThread?.messages || []), { 
+        messages: [...(context.currentThread?.messages || []), {
           id: Date.now().toString(),
           entityType: 'Message' as const,
           createdAt: Date.now(),
@@ -111,9 +129,9 @@ const agentState = setup({
         } as MessageEntity]
       }
     })),
-    clearMessages: assign(({ context }) => ({
+    clearThread: assign(() => ({
       currentThread: {
-        ...context.currentThread!,
+        ...defaultThread,
         messages: []
       }
     })),
@@ -122,7 +140,7 @@ const agentState = setup({
       const token = typeOf('TOKEN_STREAM', event).token;
       const { currentThread, pendingActionId } = context;
       const messages = currentThread?.messages || [];
-      
+
       if (pendingActionId) {
         return {
           currentThread: {
@@ -178,11 +196,11 @@ const agentState = setup({
     openThreadTab: assign(({ context, event }) => {
       const { threadId, label } = typeOf('OPEN_THREAD_TAB', event);
       const existingTab = context.tabs.find(t => t.id === threadId);
-      
+
       if (existingTab) {
         return { activeTabId: threadId };
       }
-      
+
       return {
         tabs: [...context.tabs, {
           id: threadId,
@@ -196,10 +214,10 @@ const agentState = setup({
     closeTab: assign(({ context, event }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
       if (tabId === 'dashboard') return {}; // Can't close dashboard
-      
+
       const newTabs = context.tabs.filter(t => t.id !== tabId);
       const newActiveTabId = context.activeTabId === tabId ? 'dashboard' : context.activeTabId;
-      
+
       return {
         tabs: newTabs,
         activeTabId: newActiveTabId
@@ -207,8 +225,8 @@ const agentState = setup({
     }),
     selectArtifact: assign(({ context, event }) => {
       const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
-      const tabs = context.tabs.map(tab => 
-        tab.id === context.activeTabId 
+      const tabs = context.tabs.map(tab =>
+        tab.id === context.activeTabId
           ? { ...tab, selectedArtifactId: artifactId }
           : tab
       );
@@ -216,8 +234,8 @@ const agentState = setup({
     }),
     addArtifact: assign(({ context, event }) => {
       const { tabId, artifact } = typeOf('ARTIFACT_ADDED', event);
-      const tabs = context.tabs.map(tab => 
-        tab.id === tabId 
+      const tabs = context.tabs.map(tab =>
+        tab.id === tabId
           ? { ...tab, artifacts: [...tab.artifacts, artifact] }
           : tab
       );
@@ -231,23 +249,7 @@ const agentState = setup({
   id,
   initial: 'canvas',
   context: ({ input }) => ({
-    currentThread: {
-      id: `Thread-${Date.now()}`,
-      shortCode: '',
-      topic: '',
-      instructions: '',
-      status: 'draft',
-      timestamp: Date.now(),
-      messages: [],
-      contextItems: [],
-      canvasContent: { 
-        id: 'CanvasItem-0', 
-        entityType: 'CanvasItem', 
-        contentType: 'text', 
-        content: 'Waiting for data...', 
-        createdAt: Date.now() 
-      } as CanvasContentEntity,
-    } as AgentThreadData,
+    currentThread: defaultThread,
     threads: [],
     messageInput: "",
     pendingActionId: undefined,
@@ -293,8 +295,8 @@ const agentState = setup({
     SET_MODE: {
       actions: 'setMode',
     },
-    CLEAR_MESSAGES: {
-      actions: 'clearMessages'
+    CLEAR_THREAD: {
+      actions: 'clearThread'
     },
     ADD_ASSISTANT_MESSAGE: {
       actions: 'addAssistantMessage'
@@ -327,26 +329,26 @@ const agentState = setup({
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
         const { threadId, artifacts } = typeOf('THREAD_TAB_REQUESTED', event);
-        
+
         // Find thread to get label
         const thread = context.threads.find(t => t.id === threadId);
         const label = thread?.topic || `Thread ${threadId}`;
-        
+
         // Check if tab already exists
         const existingTab = context.tabs.find(t => t.id === threadId);
-        
+
         if (existingTab) {
           // Update artifacts for existing tab
           return {
-            tabs: context.tabs.map(tab => 
-              tab.id === threadId 
+            tabs: context.tabs.map(tab =>
+              tab.id === threadId
                 ? { ...tab, artifacts }
                 : tab
             ),
             activeTabId: threadId
           };
         }
-        
+
         // Create new tab with artifacts
         return {
           tabs: [...context.tabs, {
@@ -374,6 +376,6 @@ const agentState = setup({
       meta: { ...breadcrumb('canvas', 'Agent', true) },
     },
   },
-}); 
+});
 
 export default agentState;
