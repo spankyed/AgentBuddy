@@ -44,6 +44,20 @@ export async function createSnapshot(name?: string, excludeTypes: EARS.Entity[] 
   // Ensure snapshots directory exists
   await fs.mkdir(snapshotDir, { recursive: true });
 
+  // If using git snapshots, delete existing snapshot_* files to replace with new one
+  if (USE_GIT_SNAPSHOTS) {
+    try {
+      const files = await fs.readdir(snapshotDir);
+      const snapshotFiles = files.filter(f => f.startsWith('snapshot_') && f.endsWith('.json'));
+      
+      for (const file of snapshotFiles) {
+        await fs.unlink(path.join(snapshotDir, file));
+      }
+    } catch (error) {
+      // Directory might not exist or have files, which is fine
+    }
+  }
+
   // Helper function to check if an entity should be excluded
   const shouldExcludeEntity = (entityId: EARS.EntityId): boolean => {
     const entityType = entityId.split('-')[0] as EARS.Entity;
