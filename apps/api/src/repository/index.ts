@@ -7,7 +7,7 @@
 
 // Import all system repositories
 import { actionQueries, actionCommands } from '@/systems/actions/repository';
-import { agentQueries } from '@/systems/agent/repository';
+import { agentQueries, agentCommands } from '@/systems/agent/repository';
 import { brainQueries, brainCommands } from '@/systems/brain/repository';
 import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
@@ -22,6 +22,7 @@ export const repository = {
   
   // Agent system
   agentQueries,
+  agentCommands,
   
   // Brain system
   brainQueries,

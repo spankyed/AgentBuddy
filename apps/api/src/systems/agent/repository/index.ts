@@ -1,5 +1,13 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
+import { tx } from '@/core/utils/ears/helpers/transaction';
+import { 
+  successResult,
+  errorResult,
+  RepositoryError,
+  RepositoryErrorCode,
+  type RepositoryResult
+} from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/systems/threads/types';
 import { AgentThreadData, AgentStartupData } from '../types';
@@ -81,5 +89,63 @@ export const agentQueries = {
       } as AgentThreadData,
       threads: fourMostRecentThreads,
     };
+  },
+} as const;
+
+// Commands - write operations that modify data
+export const agentCommands = {
+  addMessage: (params: {
+    threadId: EARS.EntityId;
+    text: string;
+    sender: 'user' | 'assistant' | 'system';
+  }): RepositoryResult<{
+    id: EARS.EntityId;
+    threadId: EARS.EntityId;
+    text: string;
+    sender: string;
+    timestamp: number;
+  }> => {
+    try {
+      const { threadId, text, sender } = params;
+      
+      // Validate thread exists
+      const thread = qx(threadId).id();
+      if (!thread) {
+        throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
+      }
+      
+      // Validate sender
+      const validSenders = ['user', 'assistant', 'system'];
+      if (!validSenders.includes(sender)) {
+        throw new RepositoryError(
+          `Invalid sender type. Must be one of: ${validSenders.join(', ')}`,
+          RepositoryErrorCode.VALIDATION_ERROR
+        );
+      }
+      
+      // Create the message
+      const timestamp = Date.now();
+      const messageId = tx(EARS.Entity.Message)
+        .put('text', text.trim())
+        .put('timestamp', timestamp)
+        .put('sender', sender)
+        .put('createdAt', timestamp)
+        .put('updatedAt', timestamp)
+        .link(EARS.RelKind.CONTAINS, threadId)
+        .id();
+      
+      // Link thread to message
+      tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
+      
+      return successResult({
+        id: messageId,
+        threadId,
+        text: text.trim(),
+        sender,
+        timestamp
+      });
+    } catch (error) {
+      return errorResult(error);
+    }
   },
 } as const;
