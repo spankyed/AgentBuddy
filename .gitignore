@@ -17,5 +17,5 @@ build/
 
 # Database snapshots (runtime)
 apps/api/src/core/data/snapshots/
-apps/api/src/core/data/action-playground/
+apps/api/src/core/data/untracked/
 # Note: Git-tracked snapshots are in snapshots-git/ directory
