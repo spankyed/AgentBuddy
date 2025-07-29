@@ -2,8 +2,12 @@ import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { createLogger } from '@/core/utils/debug/logger';
 import { repository } from '@/repository';
-import services from '@/services';
 import { z } from 'zod';
+
+// Lazy services getter to avoid circular dependency
+function getServices() {
+  return require('@/services').default;
+}
 
 const logger = createLogger('action-node');
 
@@ -31,6 +35,7 @@ async function executeActionFunction(
     const func = new AsyncFunction('params', 'services', 'z', actionFn);
     
     // Execute the function with params, services, and zod
+    const services = getServices();
     const result = await func(params, services, z);
     
     return result;
@@ -95,7 +100,8 @@ export async function actionNodeHandler(
     logger.debug(`Action completed successfully:`, {
       nodeLabel: node.label,
       actionLabel: action.label,
-      resultType: typeof result,
+      // resultType: typeof result,
+      result,
     });
     
     // Send completion event

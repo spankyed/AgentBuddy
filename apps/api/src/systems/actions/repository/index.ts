@@ -14,7 +14,7 @@ import {
   type OperationResult
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
-import { tx } from '@/services/database';
+import { tx } from '@/core/utils/ears/helpers/transaction';
 
 /**
  * Action Repository - Dead simple CRUD operations

@@ -82,6 +82,7 @@ const agentState = setup({
         type: 'USER_MSG',
         text: typeOf('SEND_MESSAGE', event).text,
         mode: context.mode,
+        threadId: context.currentThread?.id,
       });
     },
     addMessage: assign(({ context, event }) => ({

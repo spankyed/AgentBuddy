@@ -67,7 +67,7 @@ tx(agentId)
 const threadId = tx(EARS.Entity.Thread)
   .put('title', 'New Conversation')
   .put('createdAt', Date.now())
-  .link(EARS.RelKind.belongs_to, agentId)
+  .link(EARS.RelKind.CONTAINS, agentId)
   .id();
 
 return { 
