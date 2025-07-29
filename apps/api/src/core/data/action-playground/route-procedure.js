@@ -1,31 +1,23 @@
-import type Services from '@/services';
 import { z } from 'zod';
-
-type Params = {
-  message: {
-    text: string; // The user's message text
-    mode?: string; // Optional mode for the message
-    threadId?: string; // Optional thread ID for context
-  };
-};
-
-type Result = {
-  procedure: string; // The selected procedure name or 'none'
-  executed: boolean; // Whether a procedure was executed
-  success: boolean;
-};
 
 /**
  * Name: Route Procedure
  * Category: routing
  * Description: Routes user messages to appropriate procedures based on LLM analysis of procedure usage docs
  *
- * @param params - Message object containing text, optional mode, and optional threadId
- * @param services - Library, logger, LLM, and action services
- * @returns Information about which procedure was selected and whether it was executed
+ * @param {Object} params - Message object containing text, optional mode, and optional threadId
+ * @param {Object} params.message - The user's message object
+ * @param {string} params.message.text - The user's message text
+ * @param {string} [params.message.mode] - Optional mode for the message
+ * @param {string} [params.message.threadId] - Optional thread ID for context
+ * @param {Object} services - Library, logger, LLM, and action services
+ * @returns {Promise<Object>} Information about which procedure was selected and whether it was executed
+ * @returns {string} returns.procedure - The selected procedure name or 'none'
+ * @returns {boolean} returns.executed - Whether a procedure was executed
+ * @returns {boolean} returns.success
  * @throws When no procedure documents are found or procedure execution fails
  */
-export async function routeProcedure(params: Params, services: typeof Services): Promise<Result> {
+export async function routeProcedure(params, services) {
   const { message } = params;
   const { text, mode, threadId } = message;
 
@@ -57,9 +49,9 @@ export async function routeProcedure(params: Params, services: typeof Services):
       .join('\n\n')
 
     /** 3. Ask the LLM which procedure (if any) matches the user's request */
-    const procedureOptions = [...procedureNames, 'none'] as const;
+    const procedureOptions = [...procedureNames, 'none'];
     const ProcedureSelectionSchema = z.object({
-      procedure: z.enum(procedureOptions as unknown as readonly [string, ...string[]]).describe('Chosen procedure name or "none"')
+      procedure: z.enum(procedureOptions).describe('Chosen procedure name or "none"')
     })
 
     const llmResult = await services.llm.generateObject({
@@ -79,7 +71,7 @@ export async function routeProcedure(params: Params, services: typeof Services):
       temperature: 0
     })
 
-    const { procedure } = llmResult.object as { procedure: string }
+    const { procedure } = llmResult.object;
 
     services.logger.info('procedure check 2', { proceduresPrompt, procedure })
 
