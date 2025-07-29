@@ -709,27 +709,59 @@ export class GitRepository {
     }
   }
 
-  async publishBranch(branchName?: string): Promise<void> {
+  async getCommitsAheadBehind(): Promise<{ ahead: number; behind: number }> {
+    try {
+      // Check if we have an upstream branch
+      const upstream = await this.getUpstreamBranch()
+      if (!upstream) {
+        return { ahead: 0, behind: 0 }
+      }
+      
+      // Count commits ahead
+      const aheadResult = await this.executeGitCommand(['rev-list', '--count', '@{u}..HEAD'])
+      const ahead = aheadResult.success ? parseInt(aheadResult.output?.trim() || '0', 10) : 0
+      
+      // Count commits behind
+      const behindResult = await this.executeGitCommand(['rev-list', '--count', 'HEAD..@{u}'])
+      const behind = behindResult.success ? parseInt(behindResult.output?.trim() || '0', 10) : 0
+      
+      return { ahead, behind }
+    } catch {
+      // If there's an error, return zeros
+      return { ahead: 0, behind: 0 }
+    }
+  }
+
+  async pushBranch(branchName?: string): Promise<void> {
     // Get current branch if not specified
     const branch = branchName || await this.getCurrentBranch()
     
-    // Push the branch to origin with upstream tracking
-    const result = await this.executeGitCommand(['push', '-u', 'origin', branch])
+    // Check if branch is published
+    const isPublished = await this.isCurrentBranchPublished()
+    
+    // Use appropriate push command
+    const args = isPublished 
+      ? ['push'] // Regular push for already published branches
+      : ['push', '-u', 'origin', branch] // Set upstream for new branches
+    
+    const result = await this.executeGitCommand(args)
     
     if (!result.success) {
       // Check for common errors
       if (result.error?.includes('Could not read from remote repository')) {
-        throw new Error('Failed to publish branch: Cannot connect to remote repository. Check your network connection and repository access.')
+        throw new Error('Failed to push: Cannot connect to remote repository. Check your network connection and repository access.')
       } else if (result.error?.includes('remote: Permission')) {
-        throw new Error('Failed to publish branch: Permission denied. Check your repository access rights.')
+        throw new Error('Failed to push: Permission denied. Check your repository access rights.')
       } else if (result.error?.includes('non-fast-forward')) {
-        throw new Error('Failed to publish branch: Remote branch has diverged. Pull changes first.')
+        throw new Error('Failed to push: Remote branch has diverged. Pull changes first.')
+      } else if (result.error?.includes('Everything up-to-date')) {
+        throw new Error('Everything up-to-date. No commits to push.')
       } else {
-        throw new Error(result.error || 'Failed to publish branch')
+        throw new Error(result.error || 'Failed to push changes')
       }
     }
     
-    // Clear cache after publishing
+    // Clear cache after pushing
     this.clearCache()
   }
 }

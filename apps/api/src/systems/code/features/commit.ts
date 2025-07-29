@@ -26,7 +26,7 @@ export const IncomingCommitEvents = [
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
   | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
@@ -36,7 +36,7 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PUBLISHED'; data: { branchName: string } }
+  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
 
 export interface Context {
   gitRepository: GitRepository
@@ -102,14 +102,15 @@ export const commitSystem = setup({
           return
         }
 
-        const [status, branch, hasUpstream] = await Promise.all([
+        const [status, branch, hasUpstream, commitsInfo] = await Promise.all([
           context.gitRepository.getStatus(),
           context.gitRepository.getCurrentBranch(),
-          context.gitRepository.isCurrentBranchPublished()
+          context.gitRepository.isCurrentBranchPublished(),
+          context.gitRepository.getCommitsAheadBehind()
         ])
         const wrapped = emit(pluginId, {
           type: 'commit.STATUS_RECEIVED',
-          data: { files: status, branch, hasUpstream }
+          data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead }
         })
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
@@ -350,13 +351,13 @@ export const commitSystem = setup({
       }
     },
 
-    publishBranch: async ({ context, self }) => {
+    pushBranch: async ({ context, self }) => {
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
-        await context.gitRepository.publishBranch()
+        await context.gitRepository.pushBranch()
         
         const wrapped = emit(pluginId, {
-          type: 'commit.BRANCH_PUBLISHED',
+          type: 'commit.BRANCH_PUSHED',
           data: { branchName: currentBranch }
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -444,7 +445,7 @@ export const commitSystem = setup({
           actions: 'checkoutBranch'
         },
         'commit.PUBLISH_BRANCH': {
-          actions: 'publishBranch'
+          actions: 'pushBranch'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
           actions: ['updateRootDirectory', 'restartGitWatcher']

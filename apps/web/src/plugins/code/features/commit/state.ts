@@ -41,7 +41,8 @@ export interface Context {
   branchInput: string
   isCheckingOutBranch: boolean
   hasUpstream: boolean
-  isPublishing: boolean
+  commitsAhead: number
+  isPushing: boolean
 }
 
 export type Event = 
@@ -59,8 +60,8 @@ export type Event =
   | { type: 'commit.GET_ALL_BRANCHES' }
   | { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
   | { type: 'commit.CHECKOUT_BRANCH' }
-  | { type: 'commit.PUBLISH_BRANCH' }
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+  | { type: 'commit.PUSH_BRANCH' }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
@@ -69,7 +70,7 @@ export type Event =
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PUBLISHED'; data: { branchName: string } };
+  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } };
 
 export const commitState = setup({
   types: {
@@ -168,16 +169,20 @@ export const commitState = setup({
     
     handleStatusReceived: assign({
       gitStatus: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
         return ev.data.files
       },
       gitBranch: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
         return ev.data.branch
       },
       hasUpstream: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
         return ev.data.hasUpstream
+      },
+      commitsAhead: ({ event }) => {
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+        return ev.data.commitsAhead
       },
       isGitLoading: false,
       gitError: null
@@ -190,7 +195,7 @@ export const commitState = setup({
       },
       isGitLoading: false,
       isCheckingOutBranch: false,
-      isPublishing: false
+      isPushing: false
     }),
     
     
@@ -256,14 +261,14 @@ export const commitState = setup({
       isCheckingOutBranch: false
     }),
     
-    publishBranch: () => {
+    pushBranch: () => {
       sendToBackend('commit.PUBLISH_BRANCH', {})
     },
     
-    setPublishing: assign({ isPublishing: true }),
+    setPushing: assign({ isPushing: true }),
     
-    handleBranchPublished: assign({
-      isPublishing: false
+    handleBranchPushed: assign({
+      isPushing: false
     })
   }
 }).createMachine({
@@ -282,7 +287,8 @@ export const commitState = setup({
     branchInput: '',
     isCheckingOutBranch: false,
     hasUpstream: true,
-    isPublishing: false
+    commitsAhead: 0,
+    isPushing: false
   },
   states: {
     idle: {
@@ -356,11 +362,11 @@ export const commitState = setup({
         'commit.BRANCH_CHECKOUT_SUCCESS': {
           actions: ['handleBranchCheckoutSuccess', 'getAllBranches']
         },
-        'commit.PUBLISH_BRANCH': {
-          actions: ['setPublishing', 'publishBranch']
+        'commit.PUSH_BRANCH': {
+          actions: ['setPushing', 'pushBranch']
         },
-        'commit.BRANCH_PUBLISHED': {
-          actions: 'handleBranchPublished'
+        'commit.BRANCH_PUSHED': {
+          actions: 'handleBranchPushed'
         }
       }
     }
