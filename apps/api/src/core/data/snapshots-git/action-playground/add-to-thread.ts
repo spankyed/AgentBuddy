@@ -2,9 +2,9 @@ import type Services from '@/services';
 import { EARS } from '@/types';
 
 type Params = {
-  threadId: EARS.EntityId;
-  text: string;
-  sender?: 'user' | 'assistant' | 'system';
+  threadId: EARS.EntityId; // The ID of the thread to which the message will be added
+  text: string; // The content of the message to be added
+  sender?: 'user' | 'assistant' | 'system'; // The sender of the message
 };
 
 type Result = {
@@ -17,10 +17,10 @@ type Result = {
 };
 
 /**
- * Adds a new message to an existing thread with proper bidirectional linking
- * 
- * @category messaging
- * 
+ * Name: Add Message to Thread
+ * Category: messaging
+ * Description: Adds a new message to an existing thread with proper bidirectional linking
+ *
  * @param params - Thread ID, message text, and optional sender type (defaults to 'user')
  * @param services - Repository and logger services
  * @returns The created message information
