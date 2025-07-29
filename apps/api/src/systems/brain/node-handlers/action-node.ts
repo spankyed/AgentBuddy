@@ -100,7 +100,8 @@ export async function actionNodeHandler(
     logger.debug(`Action completed successfully:`, {
       nodeLabel: node.label,
       actionLabel: action.label,
-      resultType: typeof result,
+      // resultType: typeof result,
+      result,
     });
     
     // Send completion event
