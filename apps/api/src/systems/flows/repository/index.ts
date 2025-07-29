@@ -455,4 +455,35 @@ export const flowsCommands = {
       return errorResult(error);
     }
   },
+  
+  updateEdge: (
+    edgeId: EARS.EntityId, 
+    oldSource: EARS.EntityId,
+    oldTarget: EARS.EntityId,
+    newSource: EARS.EntityId, 
+    newTarget: EARS.EntityId
+  ): RepositoryResult<{ newRelId: EARS.EntityId }> => {
+    try {
+      // First remove the old relation
+      removeRelation(edgeId);
+      
+      // Then create a new relation with the new connections
+      tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
+      
+      // Get the new relation ID
+      const relIds = edgeStore.relIds({
+        sourceEntity: newSource,
+        relationType: EARS.RelKind.TRANSITIONS_TO,
+        targetEntity: newTarget,
+      });
+      
+      if (relIds.length === 0) {
+        throw new RepositoryError('Failed to retrieve updated edge ID', RepositoryErrorCode.OPERATION_FAILED);
+      }
+      
+      return successResult({ newRelId: relIds[0] });
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
 } as const;

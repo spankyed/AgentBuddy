@@ -55,6 +55,7 @@ type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
+  | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
   | { type: 'NODE.CREATE'; nodeType: string }
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
@@ -220,6 +221,46 @@ const flowsState = setup({
         type: 'DELETE_EDGE',
         flowId: context.selectedFlowId,
         edgeId: ev.edgeId,
+      });
+    },
+    
+    reconnectEdge: assign(({ context, event }) => {
+      const ev = typeOf('EDGE.RECONNECT', event);
+      
+      // Update the edge with new source and target
+      const updatedEdges = context.graph.edges.map(edge => {
+        if (edge.id === ev.edgeId) {
+          return { 
+            ...edge, 
+            source: ev.newSource as EARS.EntityId, 
+            target: ev.newTarget as EARS.EntityId 
+          };
+        }
+        return edge;
+      });
+      
+      return {
+        graph: {
+          ...context.graph,
+          edges: updatedEdges,
+        },
+      };
+    }),
+    
+    sendEdgeReconnected: ({ context, event }) => {
+      const ev = typeOf('EDGE.RECONNECT', event);
+      if (!context.selectedFlowId) return;
+      
+      // Send update edge event to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_EDGE',
+        flowId: context.selectedFlowId,
+        edgeId: ev.edgeId,
+        oldSource: ev.oldSource,
+        oldTarget: ev.oldTarget,
+        newSource: ev.newSource,
+        newTarget: ev.newTarget,
       });
     },
     
@@ -463,6 +504,31 @@ const flowsState = setup({
         },
       };
     }),
+    
+    reconcileUpdatedEdgeId: assign(({ context, event }) => {
+      const ev = typeOf('EDGE_UPDATED', event);
+      const { oldEdgeId, newEdgeId, newSource, newTarget } = ev;
+      
+      // Update the edge with the old ID to have the new ID and connections
+      const updatedEdges = context.graph.edges.map(edge => {
+        if (edge.id === oldEdgeId) {
+          return { 
+            ...edge, 
+            id: newEdgeId,
+            source: newSource,
+            target: newTarget
+          };
+        }
+        return edge;
+      });
+      
+      return {
+        graph: {
+          ...context.graph,
+          edges: updatedEdges,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -498,6 +564,9 @@ const flowsState = setup({
     },
     EDGE_CREATED: {
       actions: 'reconcileEdgeId'
+    },
+    EDGE_UPDATED: {
+      actions: 'reconcileUpdatedEdgeId'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],
@@ -545,6 +614,7 @@ const flowsState = setup({
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },
+        'EDGE.RECONNECT': { actions: ['reconnectEdge', 'sendEdgeReconnected'] },
         'NODE.CREATE': {
           actions: 'createNode',
         },

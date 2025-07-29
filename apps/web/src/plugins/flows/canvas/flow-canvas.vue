@@ -38,6 +38,8 @@
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
       @edges-remove="handleEdgesRemove"
+      @edge-update="handleEdgeUpdate"
+      @edge-update-end="handleEdgeUpdateEnd"
     />
 
     <!-- ▸ Node form overlay -->
@@ -64,7 +66,7 @@
 <script setup lang="ts">
 import { computed, type Ref, ref, watch, nextTick } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
 import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
 import type { FlowEntity, NodeEntity } from '@abuddy/api'
@@ -282,6 +284,28 @@ function handleEdgesRemove(edges: { id: string }[]) {
       edgeId: edge.id 
     })
   })
+}
+
+function handleEdgeUpdate(event: EdgeUpdateEvent) {
+  // Edge update event fires when an edge is successfully reconnected
+  const { edge, connection } = event
+  
+  // Only send update if the connection actually changed
+  if (edge.source !== connection.source || edge.target !== connection.target) {
+    actor.send({
+      type: 'EDGE.RECONNECT',
+      edgeId: edge.id,
+      oldSource: edge.source,
+      oldTarget: edge.target,
+      newSource: connection.source!,
+      newTarget: connection.target!,
+    })
+  }
+}
+
+function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
+  // This event fires when edge dragging ends, whether successful or not
+  // Vue Flow handles the visual state automatically
 }
 </script>
 

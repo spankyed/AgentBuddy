@@ -14,7 +14,10 @@
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       :connect-on-click="true"
       :edges-selectable="true"
+      :edges-updatable="true"
       :delete-key-code="['Backspace', 'Delete']"
+      :edge-updater-radius="10"
+      :is-valid-connection="isValidConnection"
       @node-click="handleNodeClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
@@ -22,6 +25,9 @@
       @nodes-initialized="$emit('nodes-initialized')"
       @node-drag-stop="$emit('node-drag-stop', $event)"
       @edges-change="handleEdgesChange"
+      @edge-update-start="handleEdgeUpdateStart"
+      @edge-update="handleEdgeUpdate"
+      @edge-update-end="handleEdgeUpdateEnd"
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -84,8 +90,9 @@ import {
   VueFlow,
   ConnectionLineType,
   MarkerType,
+  useVueFlow,
 } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -110,6 +117,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const { centerNodeInView } = useNodeViewport()
+const { getConnectedEdges, getNodes } = useVueFlow()
 
 const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
@@ -122,6 +130,8 @@ const emit = defineEmits<{
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]
   'edges-remove': [edges: { id: string }[]]
+  'edge-update': [event: EdgeUpdateEvent]
+  'edge-update-end': [event: EdgeMouseEvent]
 }>()
 
 // Watch for selected node changes and center the node
@@ -149,5 +159,27 @@ function handleEdgesChange(changes: any[]) {
 
 async function handleNodeClick(event: NodeMouseEvent) {
   emit('node-click', event)
+}
+
+// Edge reconnection handlers
+function handleEdgeUpdateStart(event: EdgeMouseEvent) {
+  // Edge update start - Vue Flow handles the drag state internally
+}
+
+function handleEdgeUpdate(event: EdgeUpdateEvent) {
+  // Edge update event is fired when edge is successfully reconnected
+  emit('edge-update', event)
+}
+
+function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
+  // Edge update end - Vue Flow handles cleanup
+  emit('edge-update-end', event)
+}
+
+// Validation function to prevent multiple connections per handle
+function isValidConnection(connection: Connection): boolean {
+  // Always return true - let Vue Flow handle validation during edge updates
+  // We'll validate connections in the state machine instead
+  return true
 }
 </script> 

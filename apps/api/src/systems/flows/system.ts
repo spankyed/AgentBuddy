@@ -25,6 +25,14 @@ export const IncomingFlowsEvents = [
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
   busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
+  busEvent('UPDATE_EDGE', { 
+    flowId: z.string(), 
+    edgeId: z.string(), 
+    oldSource: z.string(), 
+    oldTarget: z.string(), 
+    newSource: z.string(), 
+    newTarget: z.string() 
+  }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -38,6 +46,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
   | { type: 'EDGE_DELETED'; edgeId: string }
+  | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -191,6 +200,36 @@ export const flowsSystem = setup({
         edgeId,
       }));
     },
+    
+    updateEdge: ({ system, event }) => {
+      const { flowId, edgeId, oldSource, oldTarget, newSource, newTarget } = typeOf('UPDATE_EDGE', event);
+      const pluginId = flows;
+      
+      logger.info('Updating edge', { flowId, edgeId, oldSource, oldTarget, newSource, newTarget });
+      
+      const result = repository.flowsCommands.updateEdge(
+        edgeId as EARS.EntityId, 
+        oldSource as EARS.EntityId,
+        oldTarget as EARS.EntityId,
+        newSource as EARS.EntityId, 
+        newTarget as EARS.EntityId
+      );
+      
+      if (!result.success) {
+        logger.error('Failed to update edge', { error: result.error });
+        return;
+      }
+      
+      const { newRelId } = result.data;
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'EDGE_UPDATED',
+        oldEdgeId: edgeId as EARS.EntityId,
+        newEdgeId: newRelId,
+        newSource: newSource as EARS.EntityId,
+        newTarget: newTarget as EARS.EntityId,
+      }));
+    },
   },
   guards: {},
   delays: {}
@@ -224,6 +263,9 @@ export const flowsSystem = setup({
         },
         DELETE_EDGE: {
           actions: 'deleteEdge',
+        },
+        UPDATE_EDGE: {
+          actions: 'updateEdge',
         },
       }
     },
