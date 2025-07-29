@@ -24,6 +24,7 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
+  busEvent('DELETE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -36,6 +37,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
+  | { type: 'EDGE_DELETED'; sourceId: EARS.EntityId; targetId: EARS.EntityId }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -168,6 +170,25 @@ export const flowsSystem = setup({
         targetId: targetId as EARS.EntityId,
       }));
     },
+    
+    deleteEdge: ({ system, event }) => {
+      const { flowId, sourceId, targetId } = typeOf('DELETE_EDGE', event);
+      const pluginId = flows;
+      
+      logger.info('Deleting edge', { flowId, sourceId, targetId });
+      
+      const result = repository.flowsCommands.deleteEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
+      if (!result.success) {
+        logger.error('Failed to delete edge', { error: result.error });
+        return;
+      }
+      
+      system.get(bus).send(emit(pluginId, {
+        type: 'EDGE_DELETED',
+        sourceId: sourceId as EARS.EntityId,
+        targetId: targetId as EARS.EntityId,
+      }));
+    },
   },
   guards: {},
   delays: {}
@@ -198,6 +219,9 @@ export const flowsSystem = setup({
         },
         CREATE_EDGE: {
           actions: 'createEdge',
+        },
+        DELETE_EDGE: {
+          actions: 'deleteEdge',
         },
       }
     },

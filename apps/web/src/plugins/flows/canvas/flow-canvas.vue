@@ -37,6 +37,7 @@
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
+      @edges-remove="handleEdgesRemove"
     />
 
     <!-- ▸ Node form overlay -->
@@ -63,7 +64,7 @@
 <script setup lang="ts">
 import { computed, type Ref, ref, watch, nextTick } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge } from '@vue-flow/core'
 import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
 import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
 import type { FlowEntity, NodeEntity } from '@abuddy/api'
@@ -272,6 +273,15 @@ function handleNodeDragStop(event: NodeMouseEvent) {
       position: { x: node.position.x, y: node.position.y }
     })
   }
+}
+
+function handleEdgesRemove(edges: { id: string }[]) {
+  edges.forEach(edge => {
+    actor.send({ 
+      type: 'EDGE.DISCONNECT', 
+      edgeId: edge.id 
+    })
+  })
 }
 </script>
 

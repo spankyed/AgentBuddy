@@ -54,6 +54,7 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
+  | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'NODE.CREATE'; nodeType: string }
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
@@ -197,6 +198,34 @@ const flowsState = setup({
       } else {
         console.log('Cannot create edge yet - nodes still pending:', { src: ev.src, tgt: ev.tgt });
       }
+    },
+    
+    disconnectEdge: assign(({ context, event }) => {
+      const ev = typeOf('EDGE.DISCONNECT', event);
+      
+      return { 
+        graph: {
+          ...context.graph,
+          edges: context.graph.edges.filter(edge => edge.id !== ev.edgeId),
+        },
+      }
+    }),
+    
+    sendEdgeDisconnected: ({ context, event }) => {
+      const ev = typeOf('EDGE.DISCONNECT', event);
+      if (!context.selectedFlowId) return;
+      
+      // Find the edge to get source and target
+      const edge = context.graph.edges.find(e => e.id === ev.edgeId);
+      if (!edge) return;
+      
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_EDGE',
+        flowId: context.selectedFlowId,
+        sourceId: edge.source,
+        targetId: edge.target,
+      });
     },
     
     deselectNode: assign({ selectedNodeId: undefined }),
@@ -495,6 +524,7 @@ const flowsState = setup({
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
+        'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },
         'NODE.CREATE': {
           actions: 'createNode',
         },

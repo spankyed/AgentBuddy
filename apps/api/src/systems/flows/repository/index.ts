@@ -432,4 +432,27 @@ export const flowsCommands = {
       return errorResult(error);
     }
   },
+  
+  deleteEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): OperationResult => {
+    try {
+      // Get the source node to check its type
+      const sourceNode = qx(sourceId).pickOne(['nodeType']) as { nodeType: NodeKind } | undefined;
+      if (!sourceNode) {
+        throw new RepositoryError(`Source node ${sourceId} not found`, RepositoryErrorCode.NOT_FOUND);
+      }
+      
+      // Remove the appropriate relationship based on source node type
+      if (sourceNode.nodeType === 'listen') {
+        // For listen nodes, remove EVENT_TRACE relationship
+        tx(sourceId).unlinkIf(EARS.RelKind.EVENT_TRACE, targetId);
+      } else {
+        // For other nodes, remove TRANSITIONS_TO relationship
+        tx(sourceId).unlinkIf(EARS.RelKind.TRANSITIONS_TO, targetId);
+      }
+      
+      return operationSuccess();
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
 } as const;

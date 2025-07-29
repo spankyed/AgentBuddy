@@ -13,12 +13,15 @@
       }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
       :connect-on-click="true"
+      :edges-selectable="true"
+      :delete-key-code="['Backspace', 'Delete']"
       @node-click="handleNodeClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
       @dragover.prevent
       @nodes-initialized="$emit('nodes-initialized')"
       @node-drag-stop="$emit('node-drag-stop', $event)"
+      @edges-change="handleEdgesChange"
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -118,6 +121,7 @@ const emit = defineEmits<{
   'overlay-click': []
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]
+  'edges-remove': [edges: { id: string }[]]
 }>()
 
 // Watch for selected node changes and center the node
@@ -131,6 +135,17 @@ watch(() => props.selectedNodeId, async (newSelectedId) => {
   }
   previousSelectedId = newSelectedId
 })
+
+function handleEdgesChange(changes: any[]) {
+  // Filter for remove changes
+  const removedEdges = changes
+    .filter(change => change.type === 'remove')
+    .map(change => ({ id: change.id }));
+  
+  if (removedEdges.length > 0) {
+    emit('edges-remove', removedEdges);
+  }
+}
 
 async function handleNodeClick(event: NodeMouseEvent) {
   emit('node-click', event)
