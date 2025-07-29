@@ -40,6 +40,8 @@ export interface Context {
   availableBranches: string[]
   branchInput: string
   isCheckingOutBranch: boolean
+  hasUpstream: boolean
+  isPublishing: boolean
 }
 
 export type Event = 
@@ -57,7 +59,8 @@ export type Event =
   | { type: 'commit.GET_ALL_BRANCHES' }
   | { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
   | { type: 'commit.CHECKOUT_BRANCH' }
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
+  | { type: 'commit.PUBLISH_BRANCH' }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
@@ -65,7 +68,8 @@ export type Event =
   | { type: 'commit.FILE_REVERTED'; path: string }
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
-  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } };
+  | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
+  | { type: 'commit.BRANCH_PUBLISHED'; data: { branchName: string } };
 
 export const commitState = setup({
   types: {
@@ -164,12 +168,16 @@ export const commitState = setup({
     
     handleStatusReceived: assign({
       gitStatus: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
         return ev.data.files
       },
       gitBranch: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
         return ev.data.branch
+      },
+      hasUpstream: ({ event }) => {
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean } }
+        return ev.data.hasUpstream
       },
       isGitLoading: false,
       gitError: null
@@ -181,7 +189,8 @@ export const commitState = setup({
         return ev.data.message
       },
       isGitLoading: false,
-      isCheckingOutBranch: false
+      isCheckingOutBranch: false,
+      isPublishing: false
     }),
     
     
@@ -245,6 +254,16 @@ export const commitState = setup({
     handleBranchCheckoutSuccess: assign({
       branchInput: '',
       isCheckingOutBranch: false
+    }),
+    
+    publishBranch: () => {
+      sendToBackend('commit.PUBLISH_BRANCH', {})
+    },
+    
+    setPublishing: assign({ isPublishing: true }),
+    
+    handleBranchPublished: assign({
+      isPublishing: false
     })
   }
 }).createMachine({
@@ -261,7 +280,9 @@ export const commitState = setup({
     revertDialogFile: null,
     availableBranches: [],
     branchInput: '',
-    isCheckingOutBranch: false
+    isCheckingOutBranch: false,
+    hasUpstream: true,
+    isPublishing: false
   },
   states: {
     idle: {
@@ -334,6 +355,12 @@ export const commitState = setup({
         },
         'commit.BRANCH_CHECKOUT_SUCCESS': {
           actions: ['handleBranchCheckoutSuccess', 'getAllBranches']
+        },
+        'commit.PUBLISH_BRANCH': {
+          actions: ['setPublishing', 'publishBranch']
+        },
+        'commit.BRANCH_PUBLISHED': {
+          actions: 'handleBranchPublished'
         }
       }
     }

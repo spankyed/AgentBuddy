@@ -698,4 +698,38 @@ export class GitRepository {
     // Clear cache after branch switch
     this.clearCache()
   }
+
+  async isCurrentBranchPublished(): Promise<boolean> {
+    try {
+      const upstream = await this.getUpstreamBranch()
+      return upstream !== null
+    } catch {
+      // If there's an error checking upstream, assume unpublished
+      return false
+    }
+  }
+
+  async publishBranch(branchName?: string): Promise<void> {
+    // Get current branch if not specified
+    const branch = branchName || await this.getCurrentBranch()
+    
+    // Push the branch to origin with upstream tracking
+    const result = await this.executeGitCommand(['push', '-u', 'origin', branch])
+    
+    if (!result.success) {
+      // Check for common errors
+      if (result.error?.includes('Could not read from remote repository')) {
+        throw new Error('Failed to publish branch: Cannot connect to remote repository. Check your network connection and repository access.')
+      } else if (result.error?.includes('remote: Permission')) {
+        throw new Error('Failed to publish branch: Permission denied. Check your repository access rights.')
+      } else if (result.error?.includes('non-fast-forward')) {
+        throw new Error('Failed to publish branch: Remote branch has diverged. Pull changes first.')
+      } else {
+        throw new Error(result.error || 'Failed to publish branch')
+      }
+    }
+    
+    // Clear cache after publishing
+    this.clearCache()
+  }
 }

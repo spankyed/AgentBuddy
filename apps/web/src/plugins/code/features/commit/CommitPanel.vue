@@ -96,16 +96,18 @@
           rows="3"
         />
         <button
-          @click="commit"
-          :disabled="!canCommit"
+          @click="handleButtonClick"
+          :disabled="!canClickButton"
           :class="[
             'w-full px-3 py-1.5 rounded text-sm font-medium transition-colors',
-            canCommit
-              ? 'bg-green-600 hover:bg-green-700 text-white'
+            canClickButton
+              ? shouldShowPublish
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
               : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
           ]"
         >
-          Commit
+          {{ buttonText }}
         </button>
       </div>
     </div>
@@ -229,6 +231,8 @@ const revertDialogFile = useSelector(commitActor, (state: any) => state.context.
 const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
 const branchInput = useSelector(commitActor, (state: any) => state.context.branchInput)
 const isCheckingOutBranch = useSelector(commitActor, (state: any) => state.context.isCheckingOutBranch)
+const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
+const isPublishing = useSelector(commitActor, (state: any) => state.context.isPublishing)
 
 // Local state
 const showBranchDropdown = ref(false)
@@ -237,6 +241,22 @@ const showBranchDropdown = ref(false)
 const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
 const unstagedFiles = computed(() => gitStatus.value.filter(f => !f.staged))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
+
+const shouldShowPublish = computed(() => {
+  return stagedFiles.value.length === 0 && !hasUpstream.value
+})
+
+const buttonText = computed(() => {
+  if (isPublishing.value) return 'Publishing...'
+  if (shouldShowPublish.value) return 'Publish'
+  return 'Commit'
+})
+
+const canClickButton = computed(() => {
+  if (isPublishing.value) return false
+  if (shouldShowPublish.value) return true
+  return canCommit.value
+})
 
 const filteredBranches = computed(() => {
   const input = branchInput.value.toLowerCase().trim()
@@ -272,6 +292,18 @@ const updateCommitMessage = (event: Event) => {
 const commit = () => {
   if (canCommit.value) {
     commitActor?.send({ type: 'commit.COMMIT' })
+  }
+}
+
+const publishBranch = () => {
+  commitActor?.send({ type: 'commit.PUBLISH_BRANCH' })
+}
+
+const handleButtonClick = () => {
+  if (shouldShowPublish.value) {
+    publishBranch()
+  } else {
+    commit()
   }
 }
 
