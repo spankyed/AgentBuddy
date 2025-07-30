@@ -55,7 +55,7 @@ export const agentSystem = setup({
 
       system.get(bus).send(emit(agent, { 
         type: 'LOAD_CHAT_THREAD',
-                  data: repository.agentQueries.threadData(threadId),
+        data: repository.agentQueries.threadData(threadId),
       }));
     },
     sendThreadTabData: ({ system, event }) => {

@@ -1,18 +1,31 @@
 import { createLogger } from '@/core/utils/debug/logger';
+import type { PromptContext } from './prompt-context';
 
 const logger = createLogger('template-executor');
 
 /**
  * Executes a prompt template function with the given parameters
  * Templates are stored as function bodies that need to be wrapped
+ * @param templateFn - The template function body as a string
+ * @param params - Parameters to pass to the template
+ * @param context - Optional context providing access to other prompts
  */
-export function executeTemplate(templateFn: string, params: Record<string, any>): string {
+export function executeTemplate(
+  templateFn: string, 
+  params: Record<string, any>,
+  context?: PromptContext
+): string {
   try {
     // Wrap the template body in a function
-    const wrappedFunction = new Function('params', templateFn);
+    // If context is provided, make it available to the template
+    const wrappedFunction = context 
+      ? new Function('params', 'context', templateFn)
+      : new Function('params', templateFn);
     
     // Execute the function with the provided parameters
-    const result = wrappedFunction(params);
+    const result = context 
+      ? wrappedFunction(params, context)
+      : wrappedFunction(params);
     
     if (typeof result !== 'string') {
       throw new Error('Template function must return a string');
