@@ -1,9 +1,9 @@
 <template>
   <div
-    class="relative flex items-center px-4 py-2 text-sm cursor-pointer group transition-colors"
+    class="relative flex items-center px-4 py-2 text-sm transition-colors cursor-pointer group"
     :class="[
       isActive 
-        ? 'bg-neutral-800 text-white border-b-2 border-blue-500' 
+        ? 'bg-neutral-800 text-white border-t border-blue-500' 
         : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
     ]"
     @click="$emit('select')"
