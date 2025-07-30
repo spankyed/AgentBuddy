@@ -9,7 +9,7 @@ import {
   type RepositoryResult
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
-import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/systems/threads/types';
+import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import { AgentThreadData, AgentThreadRefreshData } from '../types';
 
 // type Row = Rows['entity'][number]
@@ -48,8 +48,7 @@ export const agentQueries = {
           ["id", "text", "sender", "timestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
-      contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
-      canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
+      artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
     };
   },
   
@@ -85,8 +84,7 @@ export const agentQueries = {
             ["id", "text", "sender", "timestamp"] as const,
             EARS.Entity.Message,
           ) ?? [] as Partial<MessageEntity>[],
-        contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
-        canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
+        artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
       } as AgentThreadData,
       threads: fourMostRecentThreads,
     };

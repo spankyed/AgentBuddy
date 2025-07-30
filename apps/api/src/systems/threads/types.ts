@@ -21,18 +21,12 @@ export interface ThreadEntity extends BaseEntity {
   status: 'draft' | 'queued' | 'active' | 'inactive';
 }
 
-export interface ContextItemEntity extends BaseEntity {
-  entityType: EARS.Entity.ContextItem;
-  title: string;
-  content: string;
-  itemType: 'text' | 'code' | 'image' | 'json';
-}
-
-export interface CanvasContentEntity extends BaseEntity {
-  entityType: EARS.Entity.CanvasItem;
-  contentType: 'text' | 'code' | 'image' | 'graph' | 'table';
+export interface ArtifactEntity extends BaseEntity {
+  entityType: EARS.Entity.Artifact;
+  title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
   content: string | any;
+  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table';
 }
 
 export interface TagEntity extends BaseEntity {

@@ -1,6 +1,6 @@
 import { BaseEntity } from "@/core/utils/ears";
 import type { EARS, ThreadExtendedData } from "@/types";
-import { ThreadEntity, ContextItemEntity, CanvasContentEntity } from "../threads/types";
+import { ThreadEntity, ArtifactEntity } from "../threads/types";
 
 export type AgentThreadData = {
     id?: ThreadEntity['id'];
@@ -10,8 +10,7 @@ export type AgentThreadData = {
     status: ThreadEntity['status'];
     timestamp: ThreadEntity['timestamp'];
     messages: ThreadExtendedData['messages'];
-    contextItems: ContextItemEntity[];
-    canvasContent: CanvasContentEntity;
+    artifacts: ArtifactEntity[];
 }
 
 export type AgentThreadRefreshData = {

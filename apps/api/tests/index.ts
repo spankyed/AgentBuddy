@@ -5,7 +5,7 @@ import { createLogger } from '@/core/utils/debug/logger';
 import { loadSnapshot as loadSnapshotFile, listSnapshots, restoreSnapshot, listGitSnapshots, loadGitSnapshot } from '@/systems/database/snapshot';
 
 import { FlowEntity, NodeEntity, TNodeEntity } from "@/types";
-import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity, TagEntity } from "@/systems/threads/types";
+import { MessageEntity, ThreadEntity, ArtifactEntity, TagEntity } from "@/systems/threads/types";
 import { PromptEntity } from "@/systems/prompts/types";
 import { ActionEntity } from "@/systems/actions/types";
 import { actionRows } from "./mocks/actions";
@@ -17,8 +17,7 @@ import { threadRows } from "./mocks/threads";
 type Entity =
   MessageEntity
   | ThreadEntity
-  | ContextItemEntity
-  | CanvasContentEntity
+  | ArtifactEntity
   | TagEntity
   | FlowEntity
   | NodeEntity

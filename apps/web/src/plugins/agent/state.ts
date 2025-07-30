@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData } from '@abuddy/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -23,8 +23,7 @@ const defaultThread: AgentThreadData = {
   status: 'draft',
   timestamp: Date.now(),
   messages: [],
-  contextItems: [],
-  canvasContent: {} as CanvasContentEntity,
+  artifacts: [],
 };
 
 interface AgentContext {
