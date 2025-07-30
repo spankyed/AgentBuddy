@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
-import { id as threadsId } from '@/plugins/agent/state.ts'
+import { id as agentId } from '@/plugins/agent/state.ts'
 import type { ArtifactItem } from '@abuddy/api';
 
-defineProps<{
+const props = defineProps<{
   artifact: ArtifactItem;
 }>();
 
@@ -61,21 +61,56 @@ const lists = ref<KanbanList[]>(
   })),
 )
 
-// Seed one mock card into Backlog
-const items = ref<WorkItem[]>([
-  {
-    id: 8,
-    name: 'take out the trash',
-    time: '16:16',
-    date: '31.01.2023',
-    priority: 3,
-    tags: ['home', 'chores'],
-    status: 'active',
-    type: 'work-item',
-    listId: lists.value[0].id, // Backlog
-    index: 0,
-  },
-])
+// Map status to list index
+const statusToListIndex: Record<string, number> = {
+  'backlog': 0,
+  'in-progress': 1,
+  'inProgress': 1,
+  'in-review': 2,
+  'inReview': 2,
+  'open': 3,
+  'done': 4,
+}
+
+// Map list index to status
+const listIndexToStatus: string[] = ['backlog', 'in-progress', 'in-review', 'open', 'done']
+
+// Initialize items from artifact content
+const items = ref<WorkItem[]>([])
+
+// Function to initialize items from artifact data
+function initializeItems() {
+  if (props.artifact?.content?.workItems) {
+    const workItemsByStatus: Record<string, WorkItem[]> = {}
+    
+    // Group items by status and assign listId
+    props.artifact.content.workItems.forEach((item: any) => {
+      const listIndex = statusToListIndex[item.status] ?? 0
+      const listId = lists.value[listIndex].id
+      
+      if (!workItemsByStatus[item.status]) {
+        workItemsByStatus[item.status] = []
+      }
+      
+      workItemsByStatus[item.status].push({
+        ...item,
+        listId,
+        index: workItemsByStatus[item.status].length,
+      })
+    })
+    
+    // Flatten all items into single array
+    items.value = Object.values(workItemsByStatus).flat()
+  }
+}
+
+// Initialize items when component mounts
+initializeItems()
+
+// Watch for artifact changes
+watch(() => props.artifact, () => {
+  initializeItems()
+}, { deep: true })
 
 /* -------------------------------------------------------------------------- */
 /*  Drag‑&‑drop config                                                        */
@@ -92,17 +127,17 @@ const arrangeableOptions = {
 /*  XState integration                                                         */
 /* -------------------------------------------------------------------------- */
 
-const threadsActor = applicationState.system.get(threadsId)
+const agentActor = applicationState.system.get(agentId)
 
 function onCardClick(item: WorkItem) {
-  threadsActor.send({ type: 'SELECT_THREAD', id: String(item.id) })
+  agentActor.send({ type: 'OPEN_THREAD_CHAT', threadId: String(item.id) })
 }
 
 /* -------------------------------------------------------------------------- */
 /*  DnD handlers                                                               */
 /* -------------------------------------------------------------------------- */
 
-function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
+async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
   const targetTable = 'listId' in moving.payload ? items : lists
 
   // no drop target => revert
@@ -118,6 +153,26 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 
   // Keep table array sorted by index
   targetTable.value.sort((a: any, b: any) => a.index - b.index)
+  
+  // If we're moving a work item, update its status in the backend
+  if ('listId' in moving.payload && moving.destination) {
+    const workItem = moving.payload as WorkItem
+    const destinationListId = moving.destination.identifier as symbol
+    
+    // Find the status for the destination list
+    const destinationList = lists.value.find(list => list.id === destinationListId)
+    if (destinationList) {
+      const newStatus = listIndexToStatus[destinationList.index]
+      
+      // Send status update event to agent state machine
+      const agentActor = applicationState.system.get(agentId)
+      agentActor.send({
+        type: 'UPDATE_THREAD_STATUS',
+        threadId: String(workItem.id),
+        status: newStatus as any,
+      })
+    }
+  }
 }
 </script>
 

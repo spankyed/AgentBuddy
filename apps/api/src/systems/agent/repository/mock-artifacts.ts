@@ -179,7 +179,7 @@ export function loadMockThreadWithArtifacts(mockThreadId: EARS.EntityId): void {
     .put('timestamp', timestamp)
     .put('shortCode', 'EX-1')
     .put('threadType', 'work-item')
-    .put('status', 'active')
+    .put('status', 'open')
     .put('createdAt', timestamp)
     .id();
 

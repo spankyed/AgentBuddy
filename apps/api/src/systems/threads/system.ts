@@ -9,6 +9,7 @@ import { repository } from '@/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
 import type { MappedZodLiterals } from '@/core/utils/type-helpers';
+import { agent } from '@/systems/agent/system';
 const threadStartupData = () => repository.threadQueries.startupData();
 
 export const threads = 'threads' as const;
@@ -44,6 +45,10 @@ export const IncomingThreadsEvents = [
     linkedThreads: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
+  busEvent('UPDATE_THREAD_STATUS', {
+    threadId: z.string(),
+    status: z.enum(['backlog', 'open', 'in-progress', 'in-review', 'done']),
+  }),
   busEvent('UPDATE_THREAD_FIELD', {
     threadId: z.string(),
     key: z.string(),
@@ -60,6 +65,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: ThreadEntity['status'] }
+  | { type: 'THREAD_STATUS_UPDATED', threadId: string, status: ThreadEntity['status'] }
 
 export interface ThreadsContext {}
 
@@ -114,14 +120,53 @@ export const threadsSystem = setup({
         data: repository.threadQueries.extendedData(threadId),
       }));
     },
-    updateThreadField: ({ event }) => {
+    updateThreadField: ({ system, event }) => {
       const { key, value, threadId } = typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
       const result = repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
       if (!result.success) {
         console.error('Failed to update thread field:', result.error);
+        return;
       }
+      
+      // If status was updated, emit events and refresh dashboard
+      if (key === 'status') {
+        // Emit status update event to threads plugin
+        system.get(bus).send(emit(threads, { 
+          type: 'THREAD_STATUS_UPDATED',
+          threadId,
+          status: value as ThreadEntity['status'],
+        }));
+        
+        // Trigger dashboard refresh in agent system
+        const agentActor = system.get(agent);
+        agentActor.send({ type: 'REFRESH_DASHBOARD' });
+      }
+    },
+    updateThreadStatus: ({ system, event }) => {
+      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
+      const updates = { 
+        status,
+        updatedAt: Date.now() 
+      };
+      const result = repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      
+      if (!result.success) {
+        console.error('Failed to update thread status:', result.error);
+        return;
+      }
+      
+      // Emit status update event to threads plugin
+      system.get(bus).send(emit(threads, { 
+        type: 'THREAD_STATUS_UPDATED',
+        threadId,
+        status,
+      }));
+      
+      // Trigger dashboard refresh in agent system
+      const agentActor = system.get(agent);
+      agentActor.send({ type: 'REFRESH_DASHBOARD' });
     },
   },
 }).createMachine(
@@ -145,6 +190,9 @@ export const threadsSystem = setup({
           },
           UPDATE_THREAD_FIELD: {
             actions: 'updateThreadField',
+          },
+          UPDATE_THREAD_STATUS: {
+            actions: 'updateThreadStatus',
           },
         },
       },

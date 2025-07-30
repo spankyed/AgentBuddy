@@ -22,6 +22,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 
 type SystemEvent =
   | OutgoingThreadsEvents
+  | { type: 'THREAD_STATUS_UPDATED'; threadId: string; status: ThreadEntity['status'] }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
@@ -96,7 +97,7 @@ const threadsState = setup({
         topic: typedEvent.topic!,
         threadType: typedEvent.threadType!,
         instructions: typedEvent.instructions!,
-        status: typedEvent.status || 'draft',
+        status: typedEvent.status || 'backlog',
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
@@ -111,7 +112,7 @@ const threadsState = setup({
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
-        status: 'draft',
+        status: 'backlog',
         tags: context.create.tags,
         isNew: true,
       };
@@ -209,9 +210,27 @@ const threadsState = setup({
     })),
     updateThreadStatus: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
+      // Send update to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_STATUS',
+        threadId: typedEvent.id,
+        status: typedEvent.status,
+      });
+      // Update local state
       return {
         threads: context.threads.map(t => 
           t.id === typedEvent.id 
+            ? { ...t, status: typedEvent.status }
+            : t
+        )
+      };
+    }),
+    updateThreadStatusFromBackend: assign(({ event, context }) => {
+      const typedEvent = typeOf('THREAD_STATUS_UPDATED', event);
+      return {
+        threads: context.threads.map(t => 
+          t.id === typedEvent.threadId 
             ? { ...t, status: typedEvent.status }
             : t
         )
@@ -240,7 +259,7 @@ const threadsState = setup({
     view: {
       id: '' as ThreadEntity['id'],
       shortCode: '',
-      status: 'draft',
+      status: 'backlog',
       timestamp: 0,
       ...defaultThread,
     } as ThreadViewData,
@@ -270,6 +289,9 @@ const threadsState = setup({
     },
     SET_VIEW_DATA: {
       actions: 'setViewData',
+    },
+    THREAD_STATUS_UPDATED: {
+      actions: 'updateThreadStatusFromBackend',
     },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([

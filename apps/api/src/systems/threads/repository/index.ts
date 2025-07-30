@@ -115,7 +115,7 @@ export const threadCommands = {
       const shortCode = `${code[input.threadType]}-${count}` as ThreadTypeShortCode;
 
       const id = tx(EARS.Entity.Thread)
-        .put("status", "draft")
+        .put("status", "backlog")
         .put("shortCode", shortCode)
         .put("timestamp", ts)
         .put("lastMessageTimestamp", ts)

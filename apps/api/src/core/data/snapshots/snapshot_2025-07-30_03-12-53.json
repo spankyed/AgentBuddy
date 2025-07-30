@@ -1133,7 +1133,7 @@
       "topic": "Example Thread with Artifacts",
       "threadType": "work-item",
       "instructions": "This is a mock thread demonstrating artifacts",
-      "status": "active"
+      "status": "backlog"
     }
   },
   "metadata": {
