@@ -726,7 +726,9 @@ export class GitRepository {
       const behind = behindResult.success ? parseInt(behindResult.output?.trim() || '0', 10) : 0
       
       return { ahead, behind }
-    } catch {
+    } catch (error) {
+      // Log the error for debugging
+      console.error('getCommitsAheadBehind error:', error)
       // If there's an error, return zeros
       return { ahead: 0, behind: 0 }
     }
