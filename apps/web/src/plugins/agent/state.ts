@@ -173,11 +173,16 @@ const agentState = setup({
     setStartupData: assign(({ context, event }) => {
       const typedEvent = typeOf('AGENT_STARTUP', event);
       
+      // Prioritize current thread tab if it exists and has artifacts
+      const currentThreadTab = typedEvent.data.tabs?.find(tab => 
+        tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
+      );
+      
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
-        activeTabId: typedEvent.data.tabs?.[0]?.id || 'dashboard',
+        activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
       };
     }),
     setRefreshThreadsData: assign(({ context, event }) => {

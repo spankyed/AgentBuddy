@@ -10,7 +10,7 @@ import {
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
-import { AgentThreadData, RecentThreadRefreshData, AgentStartupData, Tab } from '../types';
+import { AgentThreadData, RecentThreadRefreshData, AgentStartupData, Tab, ArtifactType, ArtifactItem } from '../types';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -95,6 +95,72 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
   };
 }
 
+// Helper function to get artifacts for a thread/entity
+function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKind = EARS.RelKind.HAS): ArtifactItem[] {
+  const artifacts = qx(entityId)
+    .linksPick(
+      relationKind,
+      ['id', 'title', 'content', 'artifactType'] as const,
+      EARS.Entity.Artifact,
+    );
+  
+  if (!artifacts || artifacts.length === 0) {
+    return [];
+  }
+  
+  return artifacts.map(artifact => ({
+    id: artifact.id,
+    type: (artifact.artifactType || 'text') as ArtifactType,
+    title: String(artifact.title || ''),
+    content: artifact.content,
+    metadata: {
+      createdAt: Date.now()
+    }
+  }));
+}
+
+// Helper function to create a tab from thread data
+function createTabFromThread(
+  thread: { id?: EARS.EntityId; topic?: string; shortCode?: string },
+  artifacts: ArtifactItem[],
+  tabId?: string
+): Tab | null {
+  if (!thread.id || artifacts.length === 0) {
+    return null;
+  }
+  
+  return {
+    id: tabId || thread.id,
+    label: thread.topic || `Thread ${thread.shortCode || ''}`,
+    artifacts,
+    selectedArtifactId: artifacts[0]?.id
+  };
+}
+
+// Helper function to get dashboard tab
+function getDashboardTab(): { tab: Tab | null; threadId: EARS.EntityId | null } {
+  const dashboardThread = qx(EARS.Entity.Thread)
+    .withRole('catchup_thread')
+    .pick(['id', 'topic'] as const)[0];
+  
+  if (!dashboardThread) {
+    return { tab: null, threadId: null };
+  }
+  
+  const artifacts = getArtifactsForEntity(dashboardThread.id);
+  const tab = createTabFromThread(
+    { 
+      id: dashboardThread.id,
+      topic: String(dashboardThread.topic || 'Dashboard'),
+      shortCode: ''
+    },
+    artifacts,
+    'dashboard'
+  );
+  
+  return { tab, threadId: dashboardThread.id };
+}
+
 // Queries - read-only operations that compose data
 export const agentQueries = {
   // Get thread artifacts
@@ -147,50 +213,51 @@ export const agentQueries = {
   
   // Get startup data with recent threads and tabs
   startupData: (): AgentStartupData => {
+    // Get recent threads and current thread data
     const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
     
     // Get dashboard tab
-    const dashboardTab = qx(EARS.Entity.Thread)
-      .withRole('catchup_thread')
-      .pick(['id', 'topic'] as const)[0];
+    const { tab: dashboardTab, threadId: dashboardThreadId } = getDashboardTab();
     
-    // Get dashboard artifacts
-    const dashboardArtifacts = dashboardTab 
-      ? qx(dashboardTab.id)
-          .linksPick(
-            EARS.RelKind.HAS,
-            ['id', 'title', 'content', 'artifactType'] as const,
-            EARS.Entity.Artifact,
-          )?.map(artifact => ({
-            id: artifact.id,
-            type: artifact.artifactType,
-            title: artifact.title || '',
-            content: artifact.content,
-            metadata: {
-              createdAt: Date.now()
-            }
-          })) ?? []
-      : [];
+    // Initialize tabs array
+    const tabs: Tab[] = [];
     
-    // Construct tabs array
-    const tabs: Tab[] = dashboardTab 
-      ? [{
-          id: 'dashboard',
-          label: String(dashboardTab.topic || 'Dashboard'),
-          artifacts: dashboardArtifacts,
-          selectedArtifactId: dashboardArtifacts[0]?.id
-        }]
-      : [];
+    // Add dashboard tab if it exists
+    if (dashboardTab) {
+      tabs.push(dashboardTab);
+    }
     
-    // Get dashboard artifacts using role query
-    const dashboardArtifactsList = qx()
+    // Add current thread tab if it's not the dashboard thread
+    if (currentThreadData?.id && currentThreadData.id !== dashboardThreadId) {
+      const artifacts = qx()
+        .relatedTo(currentThreadData.id)
+        .ofType(EARS.Entity.Artifact)
+        .pick(['id', 'title', 'content', 'artifactType'] as const)
+        .map(artifact => ({
+          id: artifact.id,
+          type: (artifact.artifactType || 'text') as ArtifactType,
+          title: String(artifact.title || ''),
+          content: artifact.content,
+          metadata: {
+            createdAt: Date.now()
+          }
+        })) as ArtifactItem[];
+      
+      const threadTab = createTabFromThread(currentThreadData, artifacts);
+      if (threadTab) {
+        tabs.push(threadTab);
+      }
+    }
+    
+    // Get dashboard artifacts for legacy support
+    const dashboardArtifacts = qx()
       .withRole('dashboard_artifact')
       .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[];
 
     return {
       currentThread: currentThreadData,
       threads,
-      dashboardArtifacts: dashboardArtifactsList,
+      dashboardArtifacts,
       tabs,
     };
   },
