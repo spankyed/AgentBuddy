@@ -88,7 +88,7 @@ export const promptsSystem = setup({
       
       // Update the prompt with new templateFn
       const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, {
-        template: ev.templateFn
+        templateFn: ev.templateFn
       })
       
       if (result.success) {

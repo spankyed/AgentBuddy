@@ -56,14 +56,14 @@ export const promptCommands = {
   create: (input: {
     label: string;
     description?: string;
-    template: string;
+    templateFn: string;
     inputs?: Record<string, any>;
   }): RepositoryResult<PromptEntity> => {
     try {
       if (!input.label?.trim()) {
         throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
       }
-      if (!input.template?.trim()) {
+      if (!input.templateFn?.trim()) {
         throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
       }
       
@@ -82,7 +82,7 @@ export const promptCommands = {
   update: (id: EARS.EntityId, updates: {
     label?: string;
     description?: string;
-    template?: string;
+    templateFn?: string;
     inputs?: Record<string, any>;
   }): OperationResult => {
     try {

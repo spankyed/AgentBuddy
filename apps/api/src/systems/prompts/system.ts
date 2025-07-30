@@ -82,7 +82,7 @@ export const promptsSystem = setup({
       const result = repository.promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
-        template: ev.templateFn,
+        templateFn: ev.templateFn,
         description: ev.description
       });
 
@@ -102,7 +102,7 @@ export const promptsSystem = setup({
       
       if (ev.label !== undefined) updates.label = ev.label;
       if (ev.inputs !== undefined) updates.inputs = ev.inputs;
-      if (ev.templateFn !== undefined) updates.template = ev.templateFn;
+      if (ev.templateFn !== undefined) updates.templateFn = ev.templateFn;
       if (ev.description !== undefined) updates.description = ev.description;
       
       const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, updates);
