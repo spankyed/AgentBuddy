@@ -62,7 +62,7 @@ return `Technical Context:
 
 ## Available Context Methods
 
-The `context` object provides two methods:
+The `context` object is automatically provided to all prompt templates and includes two methods:
 
 1. **`context.getPrompt(label)`** - Returns the prompt entity by label
    ```javascript
