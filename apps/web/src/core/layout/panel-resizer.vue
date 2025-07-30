@@ -101,15 +101,15 @@ onUnmounted(() => {
 
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
-  left: -2px;
+  left: -8px;
   right: -2px;
   bottom: 0;
 }
 
 .panel-resizer--vertical .panel-resizer__handle {
   left: 0;
-  top: -2px;
-  bottom: -2px;
+  top: -5px;
+  bottom: -5px;
   right: 0;
 }
 
