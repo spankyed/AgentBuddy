@@ -97,13 +97,13 @@
                   @click.stop
                   :value="thread.status"
                   @change="(e) => actor.send({ type: 'UPDATE_THREAD_STATUS', id: thread.id, status: (e.target as HTMLSelectElement).value as ThreadEntity['status'] })"
-                  class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200"
+                  class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200 appearance-none"
                 >
-                  <option value="backlog">Backlog</option>
-                  <option value="open">Open</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="in-review">In Review</option>
-                  <option value="done">Done</option>
+                  <option value="backlog" class="bg-neutral-800 text-neutral-300">Backlog</option>
+                  <option value="open" class="bg-neutral-800 text-neutral-300">Open</option>
+                  <option value="in-progress" class="bg-neutral-800 text-neutral-300">In Progress</option>
+                  <option value="in-review" class="bg-neutral-800 text-neutral-300">In Review</option>
+                  <option value="done" class="bg-neutral-800 text-neutral-300">Done</option>
                 </select>
               </td>
               <td class="px-6 py-4">

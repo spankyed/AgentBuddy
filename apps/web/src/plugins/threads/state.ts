@@ -210,6 +210,14 @@ const threadsState = setup({
     })),
     updateThreadStatus: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
+      // Send update to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_STATUS',
+        threadId: typedEvent.id,
+        status: typedEvent.status,
+      });
+      // Update local state
       return {
         threads: context.threads.map(t => 
           t.id === typedEvent.id 
