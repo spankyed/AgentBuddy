@@ -48,8 +48,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-console.log('rops: ', props.node);
-
 // Extract direct parameters
 const parameters = computed(() => {
   const knownFields = ['actionId', 'actionName', 'fieldMappings'];
