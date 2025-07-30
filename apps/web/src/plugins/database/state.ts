@@ -30,6 +30,7 @@ export interface DatabaseContext {
   snapshotMessage: string | null;
   mode: 'query' | 'transaction';
   isMagicPromptLoading: boolean;
+  isRefreshing: boolean;
 }
 
 type SystemEvent = OutgoingDatabaseEvents | 
@@ -44,6 +45,7 @@ type UIEvent =
   | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
   | { type: 'QUERY.UPDATE'; code: string }
   | { type: 'DATABASE.SAVE_SNAPSHOT' }
+  | { type: 'DATABASE.REFRESH_SCHEMA' }
   | { type: 'MODE.TOGGLE' }
   | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
 
@@ -215,6 +217,21 @@ const databaseState = setup({
         currentQuery: query,
       };
     }),
+
+    refreshSchema: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REFRESH_SCHEMA',
+      });
+    },
+
+    setRefreshing: assign({
+      isRefreshing: true,
+    }),
+
+    setRefreshComplete: assign({
+      isRefreshing: false,
+    }),
   },
 }).createMachine({
   id,
@@ -234,9 +251,10 @@ const databaseState = setup({
     snapshotMessage: null,
     mode: 'query',
     isMagicPromptLoading: false,
+    isRefreshing: false,
   },
   on: {
-    DATABASE_REFRESH: { actions: 'setDatabaseRefresh' },
+    DATABASE_REFRESH: { actions: ['setDatabaseRefresh', 'setRefreshComplete'] },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
     TRANSACTION_RESULT: { actions: 'setTransactionResult' },
@@ -270,6 +288,9 @@ const databaseState = setup({
         },
         'MAGIC_PROMPT.GENERATE': {
           actions: ['setMagicPromptLoading', 'generateMagicPrompt'],
+        },
+        'DATABASE.REFRESH_SCHEMA': {
+          actions: ['setRefreshing', 'refreshSchema'],
         },
       },
     },

@@ -34,6 +34,7 @@ export const IncomingDatabaseEvents = [
   busEvent('GENERATE_MAGIC_PROMPT', {
     prompt: z.string(),
   }),
+  busEvent('REFRESH_SCHEMA', {}),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -187,6 +188,9 @@ export const databaseSystem = setup({
         },
         GENERATE_MAGIC_PROMPT: {
           actions: 'handleMagicPrompt',
+        },
+        REFRESH_SCHEMA: {
+          actions: 'sendDatabaseRefresh',
         },
       },
     },

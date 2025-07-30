@@ -2,21 +2,37 @@
   <div class="flex flex-col h-full">
     <!-- Header with Search -->
     <div class="px-4 pt-2 pb-2.5 border-b border-neutral-800">
-      <!-- Search Input -->
-      <div class="relative">
-        <Search class="absolute w-4 h-4 transform -translate-y-1/2 text-neutral-400 left-3 top-1/2" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search schema..."
-          class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-800 bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+      <div class="flex items-center gap-2">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <Search class="absolute w-4 h-4 transform -translate-y-1/2 text-neutral-400 left-3 top-1/2" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search schema..."
+            class="w-full py-2 pl-10 pr-4 text-sm border rounded-lg border-neutral-800 bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute p-1 transform -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700"
+          >
+            <X class="w-3 h-3 text-neutral-500" />
+          </button>
+        </div>
+        <!-- Refresh Button -->
         <button
-          v-if="searchQuery"
-          @click="searchQuery = ''"
-          class="absolute p-1 transform -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700"
+          @click="refreshSchema"
+          :disabled="isRefreshing"
+          class="p-2 transition-colors rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Refresh schema"
         >
-          <X class="w-3 h-3 text-neutral-500" />
+          <RefreshCw 
+            :class="[
+              'w-4 h-4 text-neutral-400',
+              isRefreshing && 'animate-spin'
+            ]" 
+          />
         </button>
       </div>
     </div>
@@ -141,7 +157,8 @@ import {
   Network, 
   Search, 
   X,
-  FoldVertical 
+  FoldVertical,
+  RefreshCw 
 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
@@ -149,6 +166,7 @@ import { applicationState } from '@/app'
 
 const actor: DatabaseState = applicationState.system.get(id)
 const schema = useSelector(actor, (state) => state.context.schema);
+const isRefreshing = useSelector(actor, (state) => state.context.isRefreshing || false);
 
 const searchQuery = ref('');
 const expandedItems = ref<string[]>([]);
@@ -275,6 +293,12 @@ function selectItem(item: TreeItem) {
     type: 'SCHEMA.SELECT',
     itemType: item.type,
     value: item.value
+  });
+}
+
+function refreshSchema() {
+  actor.send({
+    type: 'DATABASE.REFRESH_SCHEMA'
   });
 }
 </script> 
