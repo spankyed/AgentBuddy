@@ -27,6 +27,7 @@ export interface ApplicationContext {
   panelSizes: {
     canvasHeight: number; // percentage of main area height
     inspectionWidth: number; // pixels
+    previousInspectionWidth?: number; // for restoring after collapse
   };
 }
 
@@ -163,9 +164,15 @@ export const createApplicationState = () => setup({
       };
     }),
     toggleInspectionPanel: assign(({ context }) => {
+      const isCollapsed = context.panelSizes.inspectionWidth === 0;
       const newSizes = {
         ...context.panelSizes,
-        inspectionWidth: context.panelSizes.inspectionWidth === 0 ? 448 : 0
+        inspectionWidth: isCollapsed 
+          ? (context.panelSizes.previousInspectionWidth || 448) 
+          : 0,
+        previousInspectionWidth: isCollapsed 
+          ? context.panelSizes.previousInspectionWidth 
+          : context.panelSizes.inspectionWidth
       };
       
       // Save to localStorage

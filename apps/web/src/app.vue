@@ -10,7 +10,7 @@
     
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden">
-        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: `calc(100% - ${panelSizes.inspectionWidth}px)` }">
+        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px - 4px)` : 'calc(100% - 4px)' }">
             <!-- Canvas Area -->
             <CanvasArea
             @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
@@ -36,9 +36,8 @@
             </ChatArea>
         </div>
         
-        <!-- Horizontal Resizer -->
+        <!-- Horizontal Resizer (always visible) -->
         <PanelResizer
-            v-if="panelSizes.inspectionWidth > 0"
             orientation="horizontal"
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"
@@ -94,12 +93,13 @@ const handleInspectionResize = (delta: number) => {
 }
 
 const handleCanvasDoubleClick = () => {
-  // Collapse chat to minimum height (20%)
-  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 80 });
+  // Toggle between collapsed (80%) and default (50%)
+  const isCollapsed = panelSizes.value.canvasHeight >= 80;
+  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 80 });
 }
 
 const handleInspectionDoubleClick = () => {
-  // Toggle inspection panel
+  // Toggle inspection panel between collapsed and default
   send({ type: 'TOGGLE_INSPECTION_PANEL' });
 }
 </script>
