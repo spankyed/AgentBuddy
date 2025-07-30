@@ -14,7 +14,7 @@ export type AgentThreadData = {
     canvasContent: CanvasContentEntity;
 }
 
-export type AgentStartupData = {
+export type AgentThreadRefreshData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
 };

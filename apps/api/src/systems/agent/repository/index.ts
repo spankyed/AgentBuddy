@@ -10,7 +10,7 @@ import {
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/systems/threads/types';
-import { AgentThreadData, AgentStartupData } from '../types';
+import { AgentThreadData, AgentThreadRefreshData } from '../types';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -54,7 +54,7 @@ export const agentQueries = {
   },
   
   // Get startup data with recent threads
-  startupData: (): AgentStartupData => {
+  startupData: (): AgentThreadRefreshData => {
     const fourMostRecentThreads = qx(EARS.Entity.Thread)
       .orderBy('lastMessageTimestamp', 'desc')
       .limit(4)

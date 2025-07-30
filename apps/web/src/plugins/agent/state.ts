@@ -173,7 +173,7 @@ const agentState = setup({
       };
     }),
     setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('AGENT_STARTUP', event);
+      const typedEvent = typeOf('REFRESH_THREADS', event);
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
@@ -270,7 +270,7 @@ const agentState = setup({
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
-    AGENT_STARTUP: {
+    REFRESH_THREADS: {
       actions: 'setPluginData'
     },
     ...TRAIL_CLICK([

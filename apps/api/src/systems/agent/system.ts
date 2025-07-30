@@ -7,7 +7,7 @@ import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
-import { AgentStartupData, AgentThreadData } from './types';
+import { AgentThreadRefreshData, AgentThreadData } from './types';
 import type { EARS } from '@/core/types';
 
 const logger = createLogger('agent');
@@ -26,7 +26,7 @@ export const IncomingAgentEvents = [
 export type AgentInternalEvents = SystemEvents
 
 export type OutgoingAgentEvents =
-  | { type: 'AGENT_STARTUP'; data: AgentStartupData }
+  | { type: 'REFRESH_THREADS'; data: AgentThreadRefreshData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
@@ -43,9 +43,9 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendAgentStartupData: ({ system }) => {
+    sendAgentThreadRefreshData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
-        type: 'AGENT_STARTUP',
+        type: 'REFRESH_THREADS',
         data: repository.agentQueries.startupData()
       }));
     },
@@ -114,7 +114,7 @@ export function ${label.replace(/\s+/g, '')}() {
     context: ({}),
     on: {
       CLIENT_CONNECTED: {
-        actions: 'sendAgentStartupData',
+        actions: 'sendAgentThreadRefreshData',
       },
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',
