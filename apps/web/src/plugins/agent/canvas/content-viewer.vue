@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 h-full p-6 overflow-auto bg-neutral-900">
+  <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
     <div v-if="!artifact" class="flex items-center justify-center h-full">
       <p class="text-neutral-500">Select an artifact to view</p>
     </div>
