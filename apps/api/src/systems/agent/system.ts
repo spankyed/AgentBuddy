@@ -23,6 +23,8 @@ export const IncomingAgentEvents = [
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
   busEvent('REFRESH_DASHBOARD', {}),
   busEvent('CANCEL'),
+  busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
+  busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
 ] as const
 
 export type AgentInternalEvents = SystemEvents

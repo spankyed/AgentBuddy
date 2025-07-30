@@ -54,6 +54,9 @@ type AgentEvent =
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: AgentMode }
   | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: ThreadEntity['status'] }
+  | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
+  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
+  | { type: 'REJECT_TODO_LIST'; artifactId: string }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -266,6 +269,41 @@ const agentState = setup({
         status,
       });
     },
+    updateTodoTask: assign(({ context, event }) => {
+      const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
+      const tabs = context.tabs.map(tab => ({
+        ...tab,
+        artifacts: tab.artifacts.map(artifact => {
+          if (artifact.id === artifactId && artifact.type === 'todo') {
+            const tasks = artifact.content.tasks.map((task: any) =>
+              task.id === taskId ? { ...task, completed } : task
+            );
+            return { ...artifact, content: { ...artifact.content, tasks } };
+          }
+          return artifact;
+        })
+      }));
+      return { tabs };
+    }),
+    approveTodoList: async ({ event }) => {
+      const { artifactId, tasks } = typeOf('APPROVE_TODO_LIST', event);
+      // Send approval to backend
+      await trpc.bus.send.mutate({
+        systemId: id,
+        type: 'APPROVE_TODO_LIST',
+        artifactId,
+        tasks
+      });
+    },
+    rejectTodoList: async ({ event }) => {
+      const { artifactId } = typeOf('REJECT_TODO_LIST', event);
+      // Send rejection to backend
+      await trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REJECT_TODO_LIST',
+        artifactId
+      });
+    },
   },
   guards: {
     targetIs,
@@ -304,6 +342,15 @@ const agentState = setup({
     },
     UPDATE_THREAD_STATUS: {
       actions: 'updateThreadStatus'
+    },
+    UPDATE_TODO_TASK: {
+      actions: 'updateTodoTask'
+    },
+    APPROVE_TODO_LIST: {
+      actions: 'approveTodoList'
+    },
+    REJECT_TODO_LIST: {
+      actions: 'rejectTodoList'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

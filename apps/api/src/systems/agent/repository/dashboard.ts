@@ -71,13 +71,32 @@ export function getDashboardTab(
     }
   };
   
+  // Create todo artifact for testing
+  const mockTodoArtifact: ArtifactItem = {
+    id: `${dashboardThread.id}-todo`,
+    type: 'todo',
+    title: 'Proposed Tasks',
+    content: {
+      tasks: [
+        { id: '1', description: 'Review and merge the pull request for auth fix', completed: false },
+        { id: '2', description: 'Update documentation for new API endpoints', completed: false },
+        { id: '3', description: 'Set up monitoring for production deployment', completed: false },
+        { id: '4', description: 'Schedule team meeting to discuss Q2 roadmap', completed: false },
+      ],
+      status: 'pending'
+    },
+    metadata: {
+      createdAt: Date.now()
+    }
+  };
+  
   const tab = createTabFromThread(
     { 
       id: dashboardThread.id,
       topic: String(dashboardThread.topic || 'Dashboard'),
       shortCode: ''
     },
-    [kanbanArtifact, slackArtifact],
+    [kanbanArtifact, slackArtifact, mockTodoArtifact],
     'dashboard'
   );
   
