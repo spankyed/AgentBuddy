@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props">
+  <BaseNode v-bind="props" :is-active="data.isSelected">
     <!-- Add any variable-specific content here if needed -->
   </BaseNode>
 </template>
@@ -12,6 +12,7 @@ import BaseNode from './BaseNode.vue'
 interface NodeData {
   label: string
   nodeType: NodeKind
+  isSelected?: boolean
   [key: string]: any
 }
 

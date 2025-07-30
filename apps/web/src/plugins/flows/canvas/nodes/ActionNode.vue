@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props">
+  <BaseNode v-bind="props" :is-active="data.isSelected">
     <div v-if="data.actionId" class="flex items-center gap-1.5">
       <svg class="w-2.5 h-2.5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -22,6 +22,7 @@ interface NodeData extends Partial<ActionNode> {
   label: string
   actionId?: string
   params?: Record<string, any>
+  isSelected?: boolean
 }
 
 const props = defineProps<NodeProps<NodeData>>()

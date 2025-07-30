@@ -32,6 +32,7 @@ export type FlowsState = ActorRefFrom<typeof flowsState>
 
 export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
+  editingNodeId?: EARS.EntityId; // Node currently being edited
   selectedFlowId?: EARS.EntityId;
   graph: {
     nodes: NodeEntity[];
@@ -53,6 +54,8 @@ type SystemEvent = OutgoingFlowsEvents
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
+  | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
+  | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
@@ -170,6 +173,8 @@ const flowsState = setup({
 
     /* ── graph interactions ───────────────────────────────── */
     selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
+    editNode: assign({ editingNodeId: ({ event }) => typeOf('NODE.DOUBLE_CLICK', event).nodeId as EARS.EntityId }),
+    closeNodeEditor: assign({ editingNodeId: undefined }),
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
@@ -264,7 +269,7 @@ const flowsState = setup({
       });
     },
     
-    deselectNode: assign({ selectedNodeId: undefined }),
+    deselectNode: assign({ selectedNodeId: undefined, editingNodeId: undefined }),
 
     createNode: assign(({ context, event }) => {
       if (!context.selectedFlowId) {
@@ -301,6 +306,7 @@ const flowsState = setup({
           nodes: [...context.graph.nodes, newNode],
         },
         selectedNodeId: tempId as EARS.EntityId,
+        editingNodeId: tempId as EARS.EntityId, // Also open editor for new nodes
         tempIdMap: {
           ...context.tempIdMap,
           [tempId]: tempId, // Will be updated when we get permanent ID
@@ -351,6 +357,7 @@ const flowsState = setup({
           edges: [...context.graph.edges, tempEdge],
         },
         selectedNodeId: tempId as EARS.EntityId,
+        editingNodeId: tempId as EARS.EntityId, // Also open editor for new connected nodes
         tempIdMap: {
           ...context.tempIdMap,
           [tempId]: tempId,
@@ -435,6 +442,11 @@ const flowsState = setup({
         ? permanentId 
         : context.selectedNodeId;
       
+      // Update editing node ID if it was the temp one
+      const newEditingNodeId = context.editingNodeId === tempId
+        ? permanentId
+        : context.editingNodeId;
+      
       // Update edges that reference the temporary ID
       const updatedEdges = context.graph.edges.map(edge => ({
         ...edge,
@@ -479,6 +491,7 @@ const flowsState = setup({
           positions: updatedPositions,
         },
         selectedNodeId: newSelectedNodeId,
+        editingNodeId: newEditingNodeId,
         tempIdMap: updatedTempIdMap,
       };
     }),
@@ -551,6 +564,7 @@ const flowsState = setup({
   initial: 'list',
   context: {
     selectedNodeId: undefined,
+    editingNodeId: undefined,
     selectedFlowId: undefined,
     graph: {
       nodes: [],
@@ -630,6 +644,8 @@ const flowsState = setup({
       },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
+        'NODE.DOUBLE_CLICK': { actions: 'editNode' },
+        'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },
         'EDGE.RECONNECT': { actions: ['reconnectEdge', 'sendEdgeReconnected'] },

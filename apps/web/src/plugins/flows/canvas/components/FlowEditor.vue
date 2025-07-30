@@ -19,6 +19,7 @@
       :edge-updater-radius="10"
       :is-valid-connection="isValidConnection"
       @node-click="handleNodeClick"
+      @node-double-click="handleNodeDoubleClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
       @dragover.prevent
@@ -121,6 +122,7 @@ const { getConnectedEdges, getNodes } = useVueFlow()
 
 const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
+  'node-double-click': [event: NodeMouseEvent]
   'connect': [params: Connection]
   'drop': [event: DragEvent]
   'go-back': []
@@ -159,6 +161,10 @@ function handleEdgesChange(changes: any[]) {
 
 async function handleNodeClick(event: NodeMouseEvent) {
   emit('node-click', event)
+}
+
+async function handleNodeDoubleClick(event: NodeMouseEvent) {
+  emit('node-double-click', event)
 }
 
 // Edge reconnection handlers

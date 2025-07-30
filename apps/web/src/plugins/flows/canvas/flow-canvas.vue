@@ -29,6 +29,7 @@
       :selected-node-id="selected?.id"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
+      @node-double-click="handleNodeDoubleClick"
       @connect="handleConnect"
       @drop="handleDrop"
       @go-back="handleGoBack"
@@ -44,7 +45,7 @@
 
     <!-- ▸ Node form overlay -->
     <NodeForm
-      :selected-node="selected"
+      :selected-node="editingNode"
       :actions="actions"
       :models="models"
       :prompts="prompts"
@@ -109,6 +110,9 @@ const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) => 
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
+const editingNode = useSelector(actor, (s) => 
+  s.context.graph.nodes.find(node => node.id === s.context.editingNodeId)
+) as Ref<NodeEntity | undefined>
 const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
@@ -122,7 +126,10 @@ const plainNodes = computed(() => {
         x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
         y: positions.value[n.id]?.y ?? 0 
       },
-      data     : n,  // The node itself is the data
+      data     : {
+        ...n,
+        isSelected: n.id === selected.value?.id,  // Add selection state
+      },
     })) as VueFlowNode[]
 
   return mappedNodes
@@ -189,8 +196,12 @@ function handleNodeClick(e: NodeMouseEvent) {
   actor.send({ type: 'NODE.CLICK', nodeId: e.node.id })
 }
 
+function handleNodeDoubleClick(e: NodeMouseEvent) {
+  actor.send({ type: 'NODE.DOUBLE_CLICK', nodeId: e.node.id })
+}
+
 function handleCloseNodeEditor() {
-  actor.send({ type: 'NODE.CLICK', nodeId: '' })
+  actor.send({ type: 'NODE.EDITOR.CLOSE' })
 }
 
 function handleConnect(params: Connection) {

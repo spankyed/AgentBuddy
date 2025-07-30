@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props" :show-target-handle="false">
+  <BaseNode v-bind="props" :show-target-handle="false" :is-active="data.isSelected">
     <template #badge>
       <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wide uppercase bg-blue-500/20 text-blue-300 border border-blue-500/30">
         {{ data.mode === 'entry' ? 'ENTRY' : 'INTERNAL' }}
@@ -24,6 +24,7 @@ interface NodeData extends Partial<ListenNode> {
   label: string
   mode: 'entry' | 'internal'
   eventType?: string
+  isSelected?: boolean
 }
 
 const props = defineProps<NodeProps<NodeData>>()
