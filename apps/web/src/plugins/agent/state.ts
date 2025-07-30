@@ -1,11 +1,10 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ContextItemEntity, CanvasContentEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData } from '@abuddy/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType } from '@abuddy/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
-import type { Tab, ArtifactItem } from './canvas/types';
 
 export const id = 'agent' as const;
 
@@ -23,8 +22,7 @@ const defaultThread: AgentThreadData = {
   status: 'draft',
   timestamp: Date.now(),
   messages: [],
-  contextItems: [],
-  canvasContent: {} as CanvasContentEntity,
+  artifacts: [],
 };
 
 interface AgentContext {
@@ -172,8 +170,24 @@ const agentState = setup({
         currentThread: typedEvent.data,
       };
     }),
-    setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('REFRESH_THREADS', event);
+    setStartupData: assign(({ context, event }) => {
+      const typedEvent = typeOf('AGENT_STARTUP', event);
+      
+      // Prioritize current thread tab if it exists and has artifacts
+      const currentThreadTab = typedEvent.data.tabs?.find(tab => 
+        tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
+      );
+      
+      return {
+        currentThread: typedEvent.data.currentThread,
+        threads: typedEvent.data.threads as ThreadEntity[],
+        tabs: typedEvent.data.tabs || [],
+        activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
+      };
+    }),
+    setRefreshThreadsData: assign(({ context, event }) => {
+      const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
+      
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
@@ -248,15 +262,7 @@ const agentState = setup({
     messageInput: "",
     pendingActionId: undefined,
     statusColor: 'bg-zinc-500' as StatusColor,
-    tabs: [{
-      id: 'dashboard',
-      label: 'Dashboard',
-      artifacts: [
-        { id: 'workload-1', type: 'workload', title: 'Workload', content: null },
-        { id: 'slack-1', type: 'slack', title: 'Slack Recap', content: null },
-      ],
-      selectedArtifactId: 'workload-1',
-    }],
+    tabs: [],
     activeTabId: 'dashboard',
     mode: 'chat' as AgentMode,
   }),
@@ -270,8 +276,11 @@ const agentState = setup({
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
-    REFRESH_THREADS: {
-      actions: 'setPluginData'
+    AGENT_STARTUP: {
+      actions: 'setStartupData'
+    },
+    REFRESH_RECENT_THREADS: {
+      actions: 'setRefreshThreadsData'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

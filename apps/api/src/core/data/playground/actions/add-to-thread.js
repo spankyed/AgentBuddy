@@ -92,7 +92,7 @@ export async function addMessageToThread(params, services) {
     
     // Send updated thread list to agent plugin
     services.emitter.sendToPlugin('agent', {
-      type: 'REFRESH_THREADS',
+      type: 'REFRESH_RECENT_THREADS',
       data: agentStartupData
     });
     

@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { Copy } from 'lucide-vue-next';
-import type { ArtifactItem } from '../../types';
+import type { ArtifactItem } from '@abuddy/api';
 
 const props = defineProps<{
   artifact: ArtifactItem;

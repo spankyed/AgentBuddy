@@ -9,8 +9,8 @@ import {
   type RepositoryResult
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
-import { MessageEntity, ThreadEntity, ContextItemEntity, CanvasContentEntity } from '@/systems/threads/types';
-import { AgentThreadData, AgentThreadRefreshData } from '../types';
+import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
+import { AgentThreadData, RecentThreadRefreshData, AgentStartupData, Tab, ArtifactType, ArtifactItem } from '../types';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -25,8 +25,157 @@ export function byEntityType<
  * Agent Repository - Aggregates data from threads, messages, and other entities
  */
 
+// Helper function to get threads with optional current thread data
+interface ThreadsQueryOptions {
+  limit?: number;
+  orderBy?: keyof ThreadEntity;
+  orderDirection?: 'asc' | 'desc';
+  includeCurrentThreadData?: boolean;
+  threadFields?: readonly (keyof ThreadEntity)[];
+  messageFields?: readonly (keyof MessageEntity)[];
+  artifactFields?: readonly (keyof ArtifactEntity)[];
+}
+
+function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): { 
+  threads: Partial<ThreadEntity>[]; 
+  currentThreadData: AgentThreadData | null 
+} {
+  const {
+    limit = 4,
+    orderBy = 'lastMessageTimestamp',
+    orderDirection = 'desc',
+    includeCurrentThreadData = true,
+    threadFields = [
+      "shortCode",
+      "topic",
+      "instructions",
+      "status",
+      "timestamp",
+      "lastMessageTimestamp",
+    ] as const,
+    messageFields = ["id", "text", "sender", "timestamp"] as const,
+    artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
+  } = options;
+
+  const threads = qx(EARS.Entity.Thread)
+    .orderBy(orderBy, orderDirection)
+    .limit(limit)
+    .pick(threadFields) as Partial<ThreadEntity>[];
+  
+  if (threads.length === 0 || !includeCurrentThreadData) {
+    return {
+      threads,
+      currentThreadData: null
+    };
+  }
+  
+  const currentThread = threads[0];
+  
+  const currentThreadData: AgentThreadData = {
+    id: currentThread.id,
+    shortCode: currentThread.shortCode,
+    topic: currentThread.topic || '',
+    instructions: currentThread.instructions || '',
+    status: currentThread.status || 'draft',
+    timestamp: currentThread.timestamp || Date.now(),
+    messages: currentThread.id 
+      ? (qx(currentThread.id)
+          .linksPick(
+            EARS.RelKind.CONTAINS,
+            messageFields,
+            EARS.Entity.Message,
+          ) ?? []) as Partial<MessageEntity>[]
+      : [],
+    artifacts: (qx(EARS.Entity.Artifact).pick(artifactFields) ?? []) as any as ArtifactEntity[],
+  };
+  
+  return {
+    threads,
+    currentThreadData
+  };
+}
+
+// Helper function to get artifacts for a thread/entity
+function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKind = EARS.RelKind.HAS): ArtifactItem[] {
+  const artifacts = qx(entityId)
+    .linksPick(
+      relationKind,
+      ['id', 'title', 'content', 'artifactType'] as const,
+      EARS.Entity.Artifact,
+    );
+  
+  if (!artifacts || artifacts.length === 0) {
+    return [];
+  }
+  
+  return artifacts.map(artifact => ({
+    id: artifact.id,
+    type: (artifact.artifactType || 'text') as ArtifactType,
+    title: String(artifact.title || ''),
+    content: artifact.content,
+    metadata: {
+      createdAt: Date.now()
+    }
+  }));
+}
+
+// Helper function to create a tab from thread data
+function createTabFromThread(
+  thread: { id?: EARS.EntityId; topic?: string; shortCode?: string },
+  artifacts: ArtifactItem[],
+  tabId?: string
+): Tab | null {
+  if (!thread.id || artifacts.length === 0) {
+    return null;
+  }
+  
+  return {
+    id: tabId || thread.id,
+    label: thread.topic || `Thread ${thread.shortCode || ''}`,
+    artifacts,
+    selectedArtifactId: artifacts[0]?.id
+  };
+}
+
+// Helper function to get dashboard tab
+function getDashboardTab(): { tab: Tab | null; threadId: EARS.EntityId | null } {
+  const dashboardThread = qx(EARS.Entity.Thread)
+    .withRole('catchup_thread')
+    .pick(['id', 'topic'] as const)[0];
+  
+  if (!dashboardThread) {
+    return { tab: null, threadId: null };
+  }
+  
+  const artifacts = getArtifactsForEntity(dashboardThread.id);
+  const tab = createTabFromThread(
+    { 
+      id: dashboardThread.id,
+      topic: String(dashboardThread.topic || 'Dashboard'),
+      shortCode: ''
+    },
+    artifacts,
+    'dashboard'
+  );
+  
+  return { tab, threadId: dashboardThread.id };
+}
+
 // Queries - read-only operations that compose data
 export const agentQueries = {
+  // Get thread artifacts
+  threadArtifacts: (threadId: EARS.EntityId) => {
+    return qx()
+      .relatedTo(threadId)
+      .ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const)
+      .map(artifact => ({
+        id: artifact.id,
+        type: artifact.artifactType,
+        title: artifact.title,
+        content: artifact.content
+      }));
+  },
   // Get thread data with messages and context
   threadData: (threadId: EARS.EntityId): AgentThreadData => {
     const thread = qx(threadId)
@@ -48,47 +197,68 @@ export const agentQueries = {
           ["id", "text", "sender", "timestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
-      contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
-      canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
+      artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
     };
   },
   
-  // Get startup data with recent threads
-  startupData: (): AgentThreadRefreshData => {
-    const fourMostRecentThreads = qx(EARS.Entity.Thread)
-      .orderBy('lastMessageTimestamp', 'desc')
-      .limit(4)
-      .pick([
-        "shortCode",
-        "topic",
-        "instructions",
-        "status",
-        "timestamp",
-        "lastMessageTimestamp",
-      ] as const) as Partial<ThreadEntity>[];
+  // Get refresh threads data (without tabs)
+  refreshThreadsData: (): RecentThreadRefreshData => {
+    const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
     
-    if (fourMostRecentThreads.length === 0) {
-      return {
-        currentThread: null,
-        threads: [],
-      };
+    return {
+      currentThread: currentThreadData,
+      threads,
+    };
+  },
+  
+  // Get startup data with recent threads and tabs
+  startupData: (): AgentStartupData => {
+    // Get recent threads and current thread data
+    const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
+    
+    // Get dashboard tab
+    const { tab: dashboardTab, threadId: dashboardThreadId } = getDashboardTab();
+    
+    // Initialize tabs array
+    const tabs: Tab[] = [];
+    
+    // Add dashboard tab if it exists
+    if (dashboardTab) {
+      tabs.push(dashboardTab);
     }
     
-    const currentThread = fourMostRecentThreads[0];
+    // Add current thread tab if it's not the dashboard thread
+    if (currentThreadData?.id && currentThreadData.id !== dashboardThreadId) {
+      const artifacts = qx()
+        .relatedTo(currentThreadData.id)
+        .ofType(EARS.Entity.Artifact)
+        .pick(['id', 'title', 'content', 'artifactType'] as const)
+        .map(artifact => ({
+          id: artifact.id,
+          type: (artifact.artifactType || 'text') as ArtifactType,
+          title: String(artifact.title || ''),
+          content: artifact.content,
+          metadata: {
+            createdAt: Date.now()
+          }
+        })) as ArtifactItem[];
+      
+      const threadTab = createTabFromThread(currentThreadData, artifacts);
+      if (threadTab) {
+        tabs.push(threadTab);
+      }
+    }
+    
+    // Get dashboard artifacts for legacy support
+    const dashboardArtifacts = qx()
+      .withRole('dashboard_artifact')
+      .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[];
 
     return {
-      currentThread: {
-        ...currentThread,
-        messages: qx(currentThread.id)
-          .linksPick(
-            EARS.RelKind.CONTAINS,
-            ["id", "text", "sender", "timestamp"] as const,
-            EARS.Entity.Message,
-          ) ?? [] as Partial<MessageEntity>[],
-        contextItems: (qx(EARS.Entity.ContextItem).pick(['id', 'content'] as const) ?? []) as any as ContextItemEntity[],
-        canvasContent: qx(EARS.Entity.CanvasItem).pickOne(['id', 'content'] as const) as any as CanvasContentEntity,
-      } as AgentThreadData,
-      threads: fourMostRecentThreads,
+      currentThread: currentThreadData,
+      threads,
+      dashboardArtifacts,
+      tabs,
     };
   },
 } as const;

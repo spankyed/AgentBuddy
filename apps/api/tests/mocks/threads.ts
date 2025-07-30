@@ -150,19 +150,19 @@ export const threadRows: Rows = {
     },
     
     /*───────────────────────────────────────────────────────────────*
-     * ContextItem item entities                                     *
+     * Artifact entities                                             *
      *───────────────────────────────────────────────────────────────*/
     { 
-      id: 'ContextItem-1', 
-      entityType: EARS.Entity.ContextItem, 
+      id: 'Artifact-1', 
+      entityType: EARS.Entity.Artifact, 
       createdAt: nowMs,
       title: 'Project Overview',
       content: 'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using \'Content here, content here\', making it look like readable English.',
-      itemType: 'text'
+      artifactType: 'text'
     },
     { 
-      id: 'ContextItem-2', 
-      entityType: EARS.Entity.ContextItem, 
+      id: 'Artifact-2', 
+      entityType: EARS.Entity.Artifact, 
       createdAt: nowMs,
       title: 'CSS Variables Example',
       content: `
@@ -184,25 +184,22 @@ export const threadRows: Rows = {
   background-color: var(--accent-color);
 }
     `,
-      itemType: 'code'
+      artifactType: 'code'
     },
     { 
-      id: 'ContextItem-3', 
-      entityType: EARS.Entity.ContextItem, 
+      id: 'Artifact-3', 
+      entityType: EARS.Entity.Artifact, 
       createdAt: nowMs,
       title: 'Color Palette',
       content: 'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using \'Content here, content here\', making it look like readable English.',
-      itemType: 'text'
+      artifactType: 'text'
     },
     
-    /*───────────────────────────────────────────────────────────────*
-     * Canvas content                                                *
-     *───────────────────────────────────────────────────────────────*/
     { 
-      id: 'CanvasItem-1', 
-      entityType: EARS.Entity.CanvasItem, 
+      id: 'Artifact-4', 
+      entityType: EARS.Entity.Artifact, 
       createdAt: nowMs,
-      contentType: 'code',
+      artifactType: 'code',
       content: `/* Before: Using hardcoded colors */
 .header {
   background-color: #333;
@@ -284,34 +281,31 @@ export const threadRows: Rows = {
     },
     
     /*───────────────────────────────────────────────────────────────*
-     * Context items                                                 *
+     * Artifacts                                                     *
      *───────────────────────────────────────────────────────────────*/
     {
       source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      target: 'ContextItem-1',
+      target: 'Artifact-1',
       info: {},
     },
     {
       source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      target: 'ContextItem-2',
+      target: 'Artifact-2',
       info: {},
     },
     {
       source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      target: 'ContextItem-3',
+      target: 'Artifact-3',
       info: {},
     },
     
-    /*───────────────────────────────────────────────────────────────*
-     * Canvas content                                                *
-     *───────────────────────────────────────────────────────────────*/
     {
       source: 'Thread-1',
       kind: EARS.RelKind.HAS,
-      target: 'CanvasItem-1',
+      target: 'Artifact-4',
       info: {},
     },
 

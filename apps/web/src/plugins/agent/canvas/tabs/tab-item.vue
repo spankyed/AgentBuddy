@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { X } from 'lucide-vue-next';
-import type { Tab } from '../types';
+import type { Tab } from '@abuddy/api';
 
 defineProps<{
   tab: Tab;

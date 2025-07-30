@@ -529,6 +529,21 @@ const flowsState = setup({
         },
       };
     }),
+    
+    removeDeletedEdge: assign(({ context, event }) => {
+      const ev = typeOf('EDGE_DELETED', event);
+      const { edgeId } = ev;
+      
+      // Remove the edge from the graph
+      const updatedEdges = context.graph.edges.filter(edge => edge.id !== edgeId);
+      
+      return {
+        graph: {
+          ...context.graph,
+          edges: updatedEdges,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -567,6 +582,9 @@ const flowsState = setup({
     },
     EDGE_UPDATED: {
       actions: 'reconcileUpdatedEdgeId'
+    },
+    EDGE_DELETED: {
+      actions: 'removeDeletedEdge'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],

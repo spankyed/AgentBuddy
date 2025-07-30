@@ -32,7 +32,7 @@ export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entit
  * Validate entity ID format
  */
 export function isValidEntityId(id: string): id is EARS.EntityId {
-  return /^(Agent|Brain|Message|Thread|Tag|Relation|ContextItem|CanvasItem|Flow|Node|TNode|Prompt|Action)-/.test(id);
+  return /^(Agent|Brain|Message|Thread|Tag|Relation|Artifact|Flow|Node|TNode|Prompt|Action|Document|Collection|Terminal)-/.test(id);
 }
 
 /**
