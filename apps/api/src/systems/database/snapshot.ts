@@ -18,7 +18,7 @@ import {
 const USE_GIT_SNAPSHOTS = true;
 
 const SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/untracked');
-const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots-git');
+const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots');
 
 // Helper function to get the active snapshot directory based on the flag
 function getSnapshotDir(): string {
