@@ -3,46 +3,42 @@
     <div class="p-6 rounded-lg shadow-md bg-neutral-900 animate-fade-in">
       <h3 class="flex items-center mb-4 space-x-2 text-lg font-semibold text-white">
         <MessageSquare :size="20" />
-        <span>Slack Channel Recap</span>
+        <span>{{ artifact.title || 'Slack Channel Recap' }}</span>
       </h3>
       
-      <!-- Mock Slack Channels -->
-      <div class="space-y-4">
-        <div class="p-4 rounded-lg bg-neutral-800/50">
+      <!-- Dynamic Slack Channels -->
+      <div v-if="channels && channels.length > 0" class="space-y-4">
+        <div 
+          v-for="channel in channels" 
+          :key="channel.name"
+          class="p-4 rounded-lg bg-neutral-800/50"
+        >
           <div class="flex items-start justify-between mb-2">
-            <h4 class="font-medium text-white">#general</h4>
-            <span class="text-xs text-neutral-400">3 unread</span>
+            <h4 class="font-medium text-white">{{ channel.name }}</h4>
+            <span 
+              v-if="channel.unreadCount > 0"
+              class="text-xs text-neutral-400"
+            >
+              {{ channel.unreadCount }} unread
+            </span>
+            <span v-else class="text-xs text-neutral-500">No unread</span>
           </div>
-          <p class="text-sm text-neutral-300">
-            <span class="font-medium">@john:</span> Hey team, the new deployment went smoothly!
+          <p v-if="channel.lastMessage" class="text-sm text-neutral-300">
+            <span class="font-medium">{{ channel.lastMessage.author }}:</span> 
+            {{ channel.lastMessage.text }}
           </p>
-          <p class="mt-1 text-xs text-neutral-500">Last message: 2 hours ago</p>
-        </div>
-        
-        <div class="p-4 rounded-lg bg-neutral-800/50">
-          <div class="flex items-start justify-between mb-2">
-            <h4 class="font-medium text-white">#dev-team</h4>
-            <span class="text-xs text-neutral-400">7 unread</span>
-          </div>
-          <p class="text-sm text-neutral-300">
-            <span class="font-medium">@sarah:</span> Can someone review my PR for the auth fix?
+          <p v-if="channel.lastMessage" class="mt-1 text-xs text-neutral-500">
+            Last message: {{ channel.lastMessage.time }}
           </p>
-          <p class="mt-1 text-xs text-neutral-500">Last message: 45 minutes ago</p>
-        </div>
-        
-        <div class="p-4 rounded-lg bg-neutral-800/50">
-          <div class="flex items-start justify-between mb-2">
-            <h4 class="font-medium text-white">#product-updates</h4>
-            <span class="text-xs text-neutral-400">12 unread</span>
-          </div>
-          <p class="text-sm text-neutral-300">
-            <span class="font-medium">@productbot:</span> New feature request: Dark mode support
-          </p>
-          <p class="mt-1 text-xs text-neutral-500">Last message: 3 hours ago</p>
         </div>
       </div>
       
-      <div class="mt-6 text-center">
+      <!-- Empty state -->
+      <div v-else class="text-center py-8">
+        <p class="text-neutral-400">No channels to display</p>
+      </div>
+      
+      <div v-if="channels && channels.length > 0" class="mt-6 text-center">
         <button class="text-sm text-blue-400 transition-colors hover:text-blue-300">
           View all channels →
         </button>
@@ -52,10 +48,31 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { MessageSquare } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/api';
 
-defineProps<{
+interface SlackChannel {
+  name: string;
+  unreadCount: number;
+  lastMessage?: {
+    author: string;
+    text: string;
+    time: string;
+  };
+}
+
+interface SlackContent {
+  channels: SlackChannel[];
+}
+
+const props = defineProps<{
   artifact: ArtifactItem;
 }>();
+
+// Extract channels from artifact content
+const channels = computed(() => {
+  const content = props.artifact.content as SlackContent;
+  return content?.channels || [];
+});
 </script>
