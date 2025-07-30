@@ -79,6 +79,7 @@ onUnmounted(() => {
   position: relative;
   flex-shrink: 0;
   transition: background-color 0.2s;
+  z-index: 10;
 }
 
 .panel-resizer--horizontal {
@@ -120,5 +121,10 @@ onUnmounted(() => {
 
 .panel-resizer--dragging {
   z-index: 1000;
+}
+
+/* Ensure handle is also elevated */
+.panel-resizer__handle {
+  z-index: 11;
 }
 </style>
