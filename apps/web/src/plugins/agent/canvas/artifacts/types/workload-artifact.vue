@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
 import { id as threadsId } from '@/plugins/agent/state.ts'
 import type { ArtifactItem } from '@abuddy/api';
 
-defineProps<{
+const props = defineProps<{
   artifact: ArtifactItem;
 }>();
 
@@ -61,21 +61,53 @@ const lists = ref<KanbanList[]>(
   })),
 )
 
-// Seed one mock card into Backlog
-const items = ref<WorkItem[]>([
-  {
-    id: 8,
-    name: 'take out the trash',
-    time: '16:16',
-    date: '31.01.2023',
-    priority: 3,
-    tags: ['home', 'chores'],
-    status: 'active',
-    type: 'work-item',
-    listId: lists.value[0].id, // Backlog
-    index: 0,
-  },
-])
+// Map status to list index
+const statusToListIndex: Record<string, number> = {
+  'backlog': 0,
+  'in-progress': 1,
+  'inProgress': 1,
+  'in-review': 2,
+  'inReview': 2,
+  'open': 3,
+  'done': 4,
+}
+
+// Initialize items from artifact content
+const items = ref<WorkItem[]>([])
+
+// Function to initialize items from artifact data
+function initializeItems() {
+  if (props.artifact?.content?.workItems) {
+    const workItemsByStatus: Record<string, WorkItem[]> = {}
+    
+    // Group items by status and assign listId
+    props.artifact.content.workItems.forEach((item: any) => {
+      const listIndex = statusToListIndex[item.status] ?? 0
+      const listId = lists.value[listIndex].id
+      
+      if (!workItemsByStatus[item.status]) {
+        workItemsByStatus[item.status] = []
+      }
+      
+      workItemsByStatus[item.status].push({
+        ...item,
+        listId,
+        index: workItemsByStatus[item.status].length,
+      })
+    })
+    
+    // Flatten all items into single array
+    items.value = Object.values(workItemsByStatus).flat()
+  }
+}
+
+// Initialize items when component mounts
+initializeItems()
+
+// Watch for artifact changes
+watch(() => props.artifact, () => {
+  initializeItems()
+}, { deep: true })
 
 /* -------------------------------------------------------------------------- */
 /*  Drag‑&‑drop config                                                        */
