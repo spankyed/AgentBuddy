@@ -33,7 +33,14 @@ export interface Tab {
   selectedArtifactId?: string;
 }
 
-export type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack';
+export type ArtifactType =
+  'text'
+  | 'code'
+  | 'review'
+  | 'image'
+  | 'kanban'
+  | 'slack'
+  | 'todo';
 
 export interface ArtifactItem {
   id: string;

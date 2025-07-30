@@ -1,6 +1,7 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import type { Tab, ArtifactItem } from '../types';
+import { slackArtifactData } from './mock-artifacts';
 
 // Helper function to get dashboard tab
 export function getDashboardTab(
@@ -59,13 +60,43 @@ export function getDashboardTab(
     }
   };
   
+  // Create slack artifact using imported mock data
+  const slackArtifact: ArtifactItem = {
+    id: `${dashboardThread.id}-slack`,
+    type: slackArtifactData.artifactType,
+    title: slackArtifactData.title,
+    content: slackArtifactData.content,
+    metadata: {
+      createdAt: Date.now()
+    }
+  };
+  
+  // Create todo artifact for testing
+  const mockTodoArtifact: ArtifactItem = {
+    id: `${dashboardThread.id}-todo`,
+    type: 'todo',
+    title: 'Proposed Tasks',
+    content: {
+      tasks: [
+        { id: '1', description: 'Review and merge the pull request for auth fix', completed: false },
+        { id: '2', description: 'Update documentation for new API endpoints', completed: false },
+        { id: '3', description: 'Set up monitoring for production deployment', completed: false },
+        { id: '4', description: 'Schedule team meeting to discuss Q2 roadmap', completed: false },
+      ],
+      status: 'pending'
+    },
+    metadata: {
+      createdAt: Date.now()
+    }
+  };
+  
   const tab = createTabFromThread(
     { 
       id: dashboardThread.id,
       topic: String(dashboardThread.topic || 'Dashboard'),
       shortCode: ''
     },
-    [kanbanArtifact],
+    [kanbanArtifact, slackArtifact, mockTodoArtifact],
     'dashboard'
   );
   

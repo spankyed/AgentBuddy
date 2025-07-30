@@ -20,6 +20,7 @@ import ReviewArtifact from './artifacts/types/review-artifact.vue';
 import ImageArtifact from './artifacts/types/image-artifact.vue';
 import WorkloadArtifact from './artifacts/types/workload-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
+import TodoArtifact from './artifacts/types/todo-artifact.vue';
 
 const props = defineProps<{
   artifact?: ArtifactItem;
@@ -33,6 +34,7 @@ function getArtifactComponent(type: string) {
     image: ImageArtifact,
     kanban: WorkloadArtifact,
     slack: SlackArtifact,
+    todo: TodoArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }
