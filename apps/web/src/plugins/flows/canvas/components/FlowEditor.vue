@@ -114,6 +114,7 @@ interface Props {
   selectedFlowId?: string | null
   selectedFlowLabel?: string
   selectedNodeId?: string
+  editingNodeId?: string
   showOverlay?: boolean
 }
 
@@ -139,16 +140,16 @@ const emit = defineEmits<{
   'edge-update-end': [event: EdgeMouseEvent]
 }>()
 
-// Watch for selected node changes and center the node
-let previousSelectedId: string | undefined = undefined
-watch(() => props.selectedNodeId, async (newSelectedId) => {
-  if (newSelectedId && newSelectedId !== previousSelectedId) {
+// Watch for editing node changes and center the node
+let previousEditingId: string | undefined = undefined
+watch(() => props.editingNodeId, async (newEditingId) => {
+  if (newEditingId && newEditingId !== previousEditingId) {
     // Small delay to ensure node is rendered and dimensions are available
     setTimeout(async () => {
-      await centerNodeInView(newSelectedId)
+      await centerNodeInView(newEditingId)
     }, 100)
   }
-  previousSelectedId = newSelectedId
+  previousEditingId = newEditingId
 })
 
 function handleNodesChange(changes: any[]) {

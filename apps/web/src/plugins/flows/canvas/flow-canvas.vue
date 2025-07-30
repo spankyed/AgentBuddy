@@ -27,6 +27,7 @@
       :selected-flow-id="selectedFlowId"
       :selected-flow-label="currentFlowLabel"
       :selected-node-id="selected?.id"
+      :editing-node-id="editingNode?.id"
       :show-overlay="inListState"
       @node-click="handleNodeClick"
       @node-double-click="handleNodeDoubleClick"
