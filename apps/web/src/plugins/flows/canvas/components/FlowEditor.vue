@@ -25,6 +25,7 @@
       @dragover.prevent
       @nodes-initialized="$emit('nodes-initialized')"
       @node-drag-stop="$emit('node-drag-stop', $event)"
+      @nodes-change="handleNodesChange"
       @edges-change="handleEdgesChange"
       @edge-update-start="handleEdgeUpdateStart"
       @edge-update="handleEdgeUpdate"
@@ -131,6 +132,7 @@ const emit = defineEmits<{
   'overlay-click': []
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]
+  'nodes-remove': [nodes: { id: string }[]]
   'edges-remove': [edges: { id: string }[]]
   'edge-update': [event: EdgeUpdateEvent]
   'edge-update-end': [event: EdgeMouseEvent]
@@ -147,6 +149,17 @@ watch(() => props.selectedNodeId, async (newSelectedId) => {
   }
   previousSelectedId = newSelectedId
 })
+
+function handleNodesChange(changes: any[]) {
+  // Filter for remove changes
+  const removedNodes = changes
+    .filter(change => change.type === 'remove')
+    .map(change => ({ id: change.id }));
+  
+  if (removedNodes.length > 0) {
+    emit('nodes-remove', removedNodes);
+  }
+}
 
 function handleEdgesChange(changes: any[]) {
   // Filter for remove changes

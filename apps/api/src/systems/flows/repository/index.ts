@@ -446,6 +446,110 @@ export const flowsCommands = {
     }
   },
   
+  deleteNode: (nodeId: EARS.EntityId): OperationResult => {
+    try {
+      // First, find the flow that contains this node
+      const allFlows = qx(EARS.Entity.Flow).map((flow) => flow) as EARS.EntityId[];
+      let containingFlowId: EARS.EntityId | undefined;
+      
+      for (const flowId of allFlows) {
+        const nodeIds = qx(flowId)
+          .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+          .map(({ id }) => id);
+        if (nodeIds.includes(nodeId)) {
+          containingFlowId = flowId;
+          break;
+        }
+      }
+      
+      if (!containingFlowId) {
+        throw new RepositoryError(`Node ${nodeId} not found in any flow`, RepositoryErrorCode.NOT_FOUND);
+      }
+      
+      const flowId = containingFlowId;
+      
+      // Get all nodes in the flow to check edges
+      const flowNodes = flowsQueries.flowNodes(flowId);
+      const nodeIds = flowNodes.map(n => n.id).filter(Boolean) as EARS.EntityId[];
+      
+      // Remove all edges connected to this node
+      const edgesToRemove: EARS.EntityId[] = [];
+      
+      // Find edges where this node is the source
+      qx(nodeId)
+        .links(FLOW_EDGE_KINDS, EARS.Entity.Node)
+        .filter(({ id: targetId }) => nodeIds.includes(targetId))
+        .forEach(({ relation, id: target }) => {
+          const relId = edgeStore.relIds({
+            sourceEntity: nodeId,
+            relationType: relation,
+            targetEntity: target,
+          })[0];
+          if (relId) edgesToRemove.push(relId);
+        });
+      
+      // Find edges where this node is the target
+      nodeIds.forEach(sourceId => {
+        if (sourceId === nodeId) return;
+        
+        qx(sourceId)
+          .links(FLOW_EDGE_KINDS, EARS.Entity.Node)
+          .filter(({ id: targetId }) => targetId === nodeId)
+          .forEach(({ relation }) => {
+            const relId = edgeStore.relIds({
+              sourceEntity: sourceId,
+              relationType: relation,
+              targetEntity: nodeId,
+            })[0];
+            if (relId) edgesToRemove.push(relId);
+          });
+      });
+      
+      // Remove all edges
+      edgesToRemove.forEach(edgeId => removeRelation(edgeId));
+      
+      // Remove the CONTAINS relationship from flow to node
+      const containsRelIds = edgeStore.relIds({
+        sourceEntity: flowId,
+        relationType: EARS.RelKind.CONTAINS,
+        targetEntity: nodeId,
+      });
+      containsRelIds.forEach(relId => removeRelation(relId));
+      
+      // Remove EVENT_TRACE relationship if it exists (for listen nodes)
+      const currentNode = flowsQueries.node(nodeId);
+      if (currentNode?.nodeType === 'listen') {
+        const eventTraceRelIds = edgeStore.relIds({
+          sourceEntity: flowId,
+          relationType: EARS.RelKind.EVENT_TRACE,
+          targetEntity: nodeId,
+        });
+        eventTraceRelIds.forEach(relId => removeRelation(relId));
+      }
+      
+      // Remove INSTANCE_OF relationships (for action/llm nodes)
+      const instanceOfTargets = qx(nodeId)
+        .links(EARS.RelKind.INSTANCE_OF)
+        .map(({ id }) => id);
+        
+      instanceOfTargets.forEach(targetId => {
+        const instanceOfRelIds = edgeStore.relIds({
+          sourceEntity: nodeId,
+          relationType: EARS.RelKind.INSTANCE_OF,
+          targetEntity: targetId,
+        });
+        instanceOfRelIds.forEach(relId => removeRelation(relId));
+      });
+      
+      // Finally, delete the node entity
+      tx(nodeId).destroy();
+      
+      return operationSuccess();
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
+  
   deleteEdge: (edgeId: EARS.EntityId): OperationResult => {
     try {
       // Directly remove the relation using its ID

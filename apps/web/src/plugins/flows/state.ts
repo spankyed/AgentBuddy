@@ -56,6 +56,7 @@ type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
   | { type: 'NODE.EDITOR.CLOSE' }
+  | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
@@ -270,6 +271,45 @@ const flowsState = setup({
     },
     
     deselectNode: assign({ selectedNodeId: undefined, editingNodeId: undefined }),
+
+    deleteNode: assign(({ context, event }) => {
+      const ev = typeOf('NODE.DELETE', event);
+      const nodeId = ev.nodeId;
+      
+      // Remove the node from the graph
+      const updatedNodes = context.graph.nodes.filter(n => n.id !== nodeId);
+      
+      // Also remove any edges connected to this node
+      const updatedEdges = context.graph.edges.filter(edge => 
+        edge.source !== nodeId && edge.target !== nodeId
+      );
+      
+      // Clear selection if the deleted node was selected or being edited
+      const newSelectedNodeId = context.selectedNodeId === nodeId ? undefined : context.selectedNodeId;
+      const newEditingNodeId = context.editingNodeId === nodeId ? undefined : context.editingNodeId;
+      
+      return {
+        graph: {
+          ...context.graph,
+          nodes: updatedNodes,
+          edges: updatedEdges,
+        },
+        selectedNodeId: newSelectedNodeId,
+        editingNodeId: newEditingNodeId,
+      };
+    }),
+    
+    sendNodeDeleted: ({ context, event }) => {
+      const ev = typeOf('NODE.DELETE', event);
+      if (!context.selectedFlowId) return;
+      
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_NODE',
+        flowId: context.selectedFlowId,
+        nodeId: ev.nodeId,
+      });
+    },
 
     createNode: assign(({ context, event }) => {
       if (!context.selectedFlowId) {
@@ -600,6 +640,9 @@ const flowsState = setup({
     EDGE_DELETED: {
       actions: 'removeDeletedEdge'
     },
+    NODE_DELETED: {
+      // Backend confirmation - node already removed locally
+    },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -646,6 +689,7 @@ const flowsState = setup({
         'NODE.CLICK': { actions: 'selectNode' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
+        'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },
         'EDGE.RECONNECT': { actions: ['reconnectEdge', 'sendEdgeReconnected'] },

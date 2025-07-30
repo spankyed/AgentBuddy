@@ -38,6 +38,7 @@
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
+      @nodes-remove="handleNodesRemove"
       @edges-remove="handleEdgesRemove"
       @edge-update="handleEdgeUpdate"
       @edge-update-end="handleEdgeUpdateEnd"
@@ -286,6 +287,15 @@ function handleNodeDragStop(event: NodeMouseEvent) {
       position: { x: node.position.x, y: node.position.y }
     })
   }
+}
+
+function handleNodesRemove(nodes: { id: string }[]) {
+  nodes.forEach(node => {
+    actor.send({ 
+      type: 'NODE.DELETE', 
+      nodeId: node.id 
+    })
+  })
 }
 
 function handleEdgesRemove(edges: { id: string }[]) {

@@ -23,6 +23,7 @@ export const IncomingFlowsEvents = [
   busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
+  busEvent('DELETE_NODE', { flowId: z.string(), nodeId: z.string() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
   busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
   busEvent('UPDATE_EDGE', { 
@@ -44,6 +45,7 @@ export type OutgoingFlowsEvents =
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
+  | { type: 'NODE_DELETED'; nodeId: string }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
   | { type: 'EDGE_DELETED'; edgeId: string }
   | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
@@ -161,6 +163,25 @@ export const flowsSystem = setup({
       }));
     },
     
+    deleteNode: ({ system, event }) => {
+      const { flowId, nodeId } = typeOf('DELETE_NODE', event);
+      const pluginId = flows;
+      
+      logger.info('Deleting node', { flowId, nodeId });
+      
+      const deleteResult = repository.flowsCommands.deleteNode(nodeId as EARS.EntityId);
+      if (!deleteResult.success) {
+        logger.error('Failed to delete node', { error: deleteResult.error });
+        return;
+      }
+      
+      // Send confirmation back to frontend
+      system.get(bus).send(emit(pluginId, {
+        type: 'NODE_DELETED',
+        nodeId,
+      }));
+    },
+    
     createEdge: ({ system, event }) => {
       const { flowId, sourceId, targetId } = typeOf('CREATE_EDGE', event);
       const pluginId = flows;
@@ -257,6 +278,9 @@ export const flowsSystem = setup({
         },
         UPDATE_NODE: {
           actions: 'updateNode',
+        },
+        DELETE_NODE: {
+          actions: 'deleteNode',
         },
         CREATE_EDGE: {
           actions: 'createEdge',
