@@ -9,6 +9,7 @@ import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
 import { AgentThreadRefreshData, AgentThreadData } from './types';
 import type { EARS } from '@/core/types';
+import { initializeMockData } from './repository/mock-artifacts';
 
 const logger = createLogger('agent');
 
@@ -43,13 +44,15 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendAgentThreadRefreshData: ({ system }) => {
+    sendRefreshData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
         type: 'REFRESH_THREADS',
         data: repository.agentQueries.startupData()
       }));
     },
-
+    initializeMockData: () => {
+      initializeMockData();
+    },
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
@@ -89,9 +92,10 @@ export const agentSystem = setup({
     id: agent,
     initial: 'idle',
     context: ({}),
+    entry: ['initializeMockData'],
     on: {
       CLIENT_CONNECTED: {
-        actions: 'sendAgentThreadRefreshData',
+        actions: ['sendRefreshData'],
       },
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',

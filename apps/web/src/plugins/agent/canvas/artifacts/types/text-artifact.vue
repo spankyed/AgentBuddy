@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ArtifactItem } from '../../types';
+import type { ArtifactItem } from '@abuddy/api';
 
 defineProps<{
   artifact: ArtifactItem;

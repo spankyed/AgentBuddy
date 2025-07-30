@@ -123,7 +123,8 @@ export function loadDashboardArtifacts(): void {
   const timestamp = Date.now();
   
   dashboardArtifactsData.forEach(artifact => {
-    tx(artifact.id)
+    const id = tx(artifact.id)
+      .put('entityType', EARS.Entity.Artifact)
       .put('title', artifact.title)
       .put('content', artifact.content)
       .put('artifactType', artifact.artifactType)
@@ -134,7 +135,6 @@ export function loadDashboardArtifacts(): void {
 }
 
 // Mock thread with artifacts
-const mockThreadId = 'Thread-mock-1' as EARS.EntityId;
 const mockThreadArtifacts = [
   {
     id: 'Artifact-thread-code-1' as EARS.EntityId,
@@ -168,11 +168,12 @@ This is documentation for the example feature. It includes:
 ];
 
 // Load mock thread and its artifacts into EARS storage
-export function loadMockThreadWithArtifacts(): void {
+export function loadMockThreadWithArtifacts(mockThreadId: EARS.EntityId): void {
   const timestamp = Date.now();
   
   // Create the mock thread
-  tx(mockThreadId)
+  const mId = tx(mockThreadId)
+    .put('entityType', EARS.Entity.Thread)
     .put('topic', 'Example Thread with Artifacts')
     .put('instructions', 'This is a mock thread demonstrating artifacts')
     .put('timestamp', timestamp)
@@ -181,10 +182,11 @@ export function loadMockThreadWithArtifacts(): void {
     .put('status', 'active')
     .put('createdAt', timestamp)
     .id();
-  
+
   // Load thread artifacts
   mockThreadArtifacts.forEach(artifact => {
     tx(artifact.id)
+      .put('entityType', EARS.Entity.Artifact)
       .put('title', artifact.title)
       .put('content', artifact.content)
       .put('artifactType', artifact.artifactType)
@@ -194,6 +196,31 @@ export function loadMockThreadWithArtifacts(): void {
   });
 }
 
-// Initialize mock data on module load
-loadDashboardArtifacts();
-loadMockThreadWithArtifacts();
+// Create dashboard tab and link artifacts
+export function loadDashboardTab(): void {
+  const timestamp = Date.now();
+  
+  // Create dashboard tab (using Thread entity with dashboard role)
+  const dashboardTabId = 'Thread-dashboard' as EARS.EntityId;
+  
+  const tabId = tx(dashboardTabId)
+    .put('topic', 'Dashboard')
+    .put('threadType', 'tab')
+    .put('createdAt', timestamp)
+    .put('entityType', EARS.Entity.Thread)
+    .grant('catchup_thread')
+    .id();
+
+  // Link dashboard artifacts to the dashboard tab
+  dashboardArtifactsData.forEach(artifact => {
+    tx(dashboardTabId).link(EARS.RelKind.HAS, artifact.id);
+  });
+}
+
+// Export a function to initialize mock data after snapshot is loaded
+export function initializeMockData(): void {
+  console.log('=== Initializing mock artifacts data ===');
+  loadDashboardArtifacts();
+  loadDashboardTab();
+  loadMockThreadWithArtifacts('Thread-mock-1' as EARS.EntityId);
+}

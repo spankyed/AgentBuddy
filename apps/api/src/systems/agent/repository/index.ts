@@ -10,7 +10,7 @@ import {
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
-import { AgentThreadData, AgentThreadRefreshData } from '../types';
+import { AgentThreadData, AgentThreadRefreshData, Tab } from '../types';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -79,6 +79,39 @@ export const agentQueries = {
         "lastMessageTimestamp",
       ] as const) as Partial<ThreadEntity>[];
     
+    // Get dashboard tab
+    const dashboardTab = qx(EARS.Entity.Thread)
+      .withRole('catchup_thread')
+      .pick(['id', 'topic'] as const)[0];
+    
+    // Get dashboard artifacts
+    const dashboardArtifacts = dashboardTab 
+      ? qx(dashboardTab.id)
+          .linksPick(
+            EARS.RelKind.HAS,
+            ['id', 'title', 'content', 'artifactType'] as const,
+            EARS.Entity.Artifact,
+          )?.map(artifact => ({
+            id: artifact.id,
+            type: artifact.artifactType,
+            title: artifact.title || '',
+            content: artifact.content,
+            metadata: {
+              createdAt: Date.now()
+            }
+          })) ?? []
+      : [];
+    
+    // Construct tabs array
+    const tabs: Tab[] = dashboardTab 
+      ? [{
+          id: 'dashboard',
+          label: String(dashboardTab.topic || 'Dashboard'),
+          artifacts: dashboardArtifacts,
+          selectedArtifactId: dashboardArtifacts[0]?.id
+        }]
+      : [];
+    
     if (fourMostRecentThreads.length === 0) {
       return {
         currentThread: null,
@@ -86,6 +119,7 @@ export const agentQueries = {
         dashboardArtifacts: qx()
           .withRole('dashboard_artifact')
           .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[],
+        tabs,
       };
     }
     
@@ -106,6 +140,7 @@ export const agentQueries = {
       dashboardArtifacts: qx()
         .withRole('dashboard_artifact')
         .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[],
+      tabs,
     };
   },
 } as const;

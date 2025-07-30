@@ -17,4 +17,27 @@ export type AgentThreadRefreshData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
     dashboardArtifacts: Partial<ArtifactEntity>[];
+    tabs: Tab[];
 };
+
+// UI types for agent canvas
+export interface Tab {
+  id: string;
+  label: string;
+  artifacts: ArtifactItem[];
+  selectedArtifactId?: string;
+}
+
+export type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack';
+
+export interface ArtifactItem {
+  id: string;
+  type: ArtifactType;
+  title: string;
+  content: any;
+  metadata?: {
+    createdAt: number;
+    updatedAt?: number;
+    [key: string]: any;
+  };
+}
