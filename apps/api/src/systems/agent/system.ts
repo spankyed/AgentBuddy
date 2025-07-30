@@ -58,7 +58,7 @@ export const agentSystem = setup({
       }));
     },
     initializeMockData: () => {
-      initializeMockData();
+      // initializeMockData();
     },
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
