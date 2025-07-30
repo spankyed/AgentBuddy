@@ -27,6 +27,19 @@ export function byEntityType<
 
 // Queries - read-only operations that compose data
 export const agentQueries = {
+  // Get thread artifacts
+  threadArtifacts: (threadId: EARS.EntityId) => {
+    return qx()
+      .relatedTo(threadId)
+      .ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const)
+      .map(artifact => ({
+        id: artifact.id,
+        type: artifact.artifactType,
+        title: artifact.title,
+        content: artifact.content
+      }));
+  },
   // Get thread data with messages and context
   threadData: (threadId: EARS.EntityId): AgentThreadData => {
     const thread = qx(threadId)
@@ -70,6 +83,9 @@ export const agentQueries = {
       return {
         currentThread: null,
         threads: [],
+        dashboardArtifacts: qx()
+          .withRole('dashboard_artifact')
+          .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[],
       };
     }
     
@@ -87,6 +103,9 @@ export const agentQueries = {
         artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
       } as AgentThreadData,
       threads: fourMostRecentThreads,
+      dashboardArtifacts: qx()
+        .withRole('dashboard_artifact')
+        .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[],
     };
   },
 } as const;

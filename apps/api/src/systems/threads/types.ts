@@ -26,7 +26,7 @@ export interface ArtifactEntity extends BaseEntity {
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
   content: string | any;
-  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table';
+  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
 }
 
 export interface TagEntity extends BaseEntity {

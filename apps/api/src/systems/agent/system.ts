@@ -59,38 +59,15 @@ export const agentSystem = setup({
       }));
     },
     sendThreadTabData: ({ system, event }) => {
-      const { threadId, label } = typeOf('OPEN_THREAD_TAB', event);
+      const { threadId } = typeOf('OPEN_THREAD_TAB', event);
       
-      // Send mock artifacts for the thread
-      const mockArtifacts = [
-        {
-          id: `${threadId}-code-1`,
-          type: 'code',
-          title: 'Component Code',
-          content: `// ${label} Component
-import React from 'react';
-
-export function ${label.replace(/\s+/g, '')}() {
-  return (
-    <div>
-      <h1>${label}</h1>
-      <p>This is a mock code artifact for ${label}</p>
-    </div>
-  );
-}`
-        },
-        {
-          id: `${threadId}-text-1`,
-          type: 'text',
-          title: 'Documentation',
-          content: `# ${label} Documentation\n\nThis is documentation for the ${label} feature. It includes:\n\n- Overview of functionality\n- Implementation details\n- Usage examples\n- Best practices`
-        }
-      ];
+      // Query the artifacts from repository
+      const artifacts = repository.agentQueries.threadArtifacts(threadId as EARS.EntityId);
       
       system.get(bus).send(emit(agent, { 
         type: 'THREAD_TAB_REQUESTED',
         threadId,
-        artifacts: mockArtifacts
+        artifacts
       }));
     },
     fbeUserMessage: ({ system, event }) => {

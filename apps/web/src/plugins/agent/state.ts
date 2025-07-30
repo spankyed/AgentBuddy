@@ -5,7 +5,7 @@ import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
-import type { Tab, ArtifactItem } from './canvas/types';
+import type { Tab, ArtifactItem, ArtifactType } from './canvas/types';
 
 export const id = 'agent' as const;
 
@@ -171,11 +171,34 @@ const agentState = setup({
         currentThread: typedEvent.data,
       };
     }),
-    setPluginData: assign(({ event }) => {
+    setPluginData: assign(({ context, event }) => {
       const typedEvent = typeOf('REFRESH_THREADS', event);
+      
+      // Update dashboard tab with backend artifacts
+      const updatedTabs = context.tabs.map(tab => {
+        if (tab.id === 'dashboard' && typedEvent.data.dashboardArtifacts) {
+          return {
+            ...tab,
+            artifacts: typedEvent.data.dashboardArtifacts.map(artifact => ({
+              id: artifact.id || '',
+              type: artifact.artifactType as ArtifactType,
+              title: artifact.title || '',
+              content: artifact.content,
+              metadata: {
+                createdAt: artifact.createdAt || Date.now(),
+                updatedAt: artifact.updatedAt
+              }
+            })),
+            selectedArtifactId: typedEvent.data.dashboardArtifacts[0]?.id || 'kanban-1'
+          };
+        }
+        return tab;
+      });
+      
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
+        tabs: updatedTabs,
       };
     }),
     sendOpenThreadView: ({ system, event }) => {
@@ -251,10 +274,10 @@ const agentState = setup({
       id: 'dashboard',
       label: 'Dashboard',
       artifacts: [
-        { id: 'workload-1', type: 'workload', title: 'Workload', content: null },
+        { id: 'kanban-1', type: 'kanban', title: 'Work Overview', content: null },
         { id: 'slack-1', type: 'slack', title: 'Slack Recap', content: null },
       ],
-      selectedArtifactId: 'workload-1',
+      selectedArtifactId: 'kanban-1',
     }],
     activeTabId: 'dashboard',
     mode: 'chat' as AgentMode,

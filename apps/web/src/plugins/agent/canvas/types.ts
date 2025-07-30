@@ -5,7 +5,7 @@ export interface Tab {
   selectedArtifactId?: string;
 }
 
-export type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'workload' | 'slack';
+export type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack';
 
 export interface ArtifactItem {
   id: string;

@@ -31,7 +31,7 @@ function getArtifactComponent(type: string) {
     code: CodeArtifact,
     review: ReviewArtifact,
     image: ImageArtifact,
-    workload: WorkloadArtifact,
+    kanban: WorkloadArtifact,
     slack: SlackArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
