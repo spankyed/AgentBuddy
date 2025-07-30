@@ -1,6 +1,7 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import type { Tab, ArtifactItem } from '../types';
+import { slackArtifactData } from './mock-artifacts';
 
 // Helper function to get dashboard tab
 export function getDashboardTab(
@@ -59,13 +60,24 @@ export function getDashboardTab(
     }
   };
   
+  // Create slack artifact using imported mock data
+  const slackArtifact: ArtifactItem = {
+    id: `${dashboardThread.id}-slack`,
+    type: slackArtifactData.artifactType,
+    title: slackArtifactData.title,
+    content: slackArtifactData.content,
+    metadata: {
+      createdAt: Date.now()
+    }
+  };
+  
   const tab = createTabFromThread(
     { 
       id: dashboardThread.id,
       topic: String(dashboardThread.topic || 'Dashboard'),
       shortCode: ''
     },
-    [kanbanArtifact],
+    [kanbanArtifact, slackArtifact],
     'dashboard'
   );
   

@@ -1,6 +1,61 @@
 import { tx } from '@/core/utils/ears/helpers/transaction';
 import { EARS } from '@/core/types';
 
+// Slack artifact data that can be reused
+export const slackArtifactData = {
+  title: 'Slack Recap',
+  content: {
+    channels: [
+      {
+        name: '#general',
+        unreadCount: 3,
+        lastMessage: {
+          author: '@john',
+          text: 'Hey team, the new deployment went smoothly!',
+          time: '2 hours ago'
+        }
+      },
+      {
+        name: '#dev-team',
+        unreadCount: 7,
+        lastMessage: {
+          author: '@sarah',
+          text: 'Can someone review my PR for the auth fix?',
+          time: '45 minutes ago'
+        }
+      },
+      {
+        name: '#product-updates',
+        unreadCount: 12,
+        lastMessage: {
+          author: '@productbot',
+          text: 'New feature request: Dark mode support',
+          time: '3 hours ago'
+        }
+      },
+      {
+        name: '#random',
+        unreadCount: 25,
+        lastMessage: {
+          author: '@mike',
+          text: 'Anyone up for lunch at the new Thai place?',
+          time: '1 hour ago'
+        }
+      },
+      {
+        name: '#incidents',
+        unreadCount: 0,
+        lastMessage: {
+          author: '@alertbot',
+          text: 'All systems operational',
+          time: '1 day ago'
+        }
+      }
+    ]
+  },
+  artifactType: 'slack' as const,
+};
+
 // Dashboard artifacts mock data
 const dashboardArtifactsData = [
   {
@@ -64,57 +119,7 @@ const dashboardArtifactsData = [
   },
   {
     id: 'Artifact-dashboard-2' as EARS.EntityId,
-    title: 'Slack Recap',
-    content: {
-      channels: [
-        {
-          name: '#general',
-          unreadCount: 3,
-          lastMessage: {
-            author: '@john',
-            text: 'Hey team, the new deployment went smoothly!',
-            time: '2 hours ago'
-          }
-        },
-        {
-          name: '#dev-team',
-          unreadCount: 7,
-          lastMessage: {
-            author: '@sarah',
-            text: 'Can someone review my PR for the auth fix?',
-            time: '45 minutes ago'
-          }
-        },
-        {
-          name: '#product-updates',
-          unreadCount: 12,
-          lastMessage: {
-            author: '@productbot',
-            text: 'New feature request: Dark mode support',
-            time: '3 hours ago'
-          }
-        },
-        {
-          name: '#random',
-          unreadCount: 25,
-          lastMessage: {
-            author: '@mike',
-            text: 'Anyone up for lunch at the new Thai place?',
-            time: '1 hour ago'
-          }
-        },
-        {
-          name: '#incidents',
-          unreadCount: 0,
-          lastMessage: {
-            author: '@alertbot',
-            text: 'All systems operational',
-            time: '1 day ago'
-          }
-        }
-      ]
-    },
-    artifactType: 'slack' as const,
+    ...slackArtifactData,
   }
 ];
 
