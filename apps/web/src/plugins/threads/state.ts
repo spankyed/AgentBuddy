@@ -22,6 +22,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 
 type SystemEvent =
   | OutgoingThreadsEvents
+  | { type: 'THREAD_STATUS_UPDATED'; threadId: string; status: ThreadEntity['status'] }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
@@ -217,6 +218,16 @@ const threadsState = setup({
         )
       };
     }),
+    updateThreadStatusFromBackend: assign(({ event, context }) => {
+      const typedEvent = typeOf('THREAD_STATUS_UPDATED', event);
+      return {
+        threads: context.threads.map(t => 
+          t.id === typedEvent.threadId 
+            ? { ...t, status: typedEvent.status }
+            : t
+        )
+      };
+    }),
     sendUpdateThreadField: ({ event, context }) => {
       const { key, value } = typeOf('UPDATE_THREAD_FIELD', event);
       trpc.bus.send.mutate({
@@ -270,6 +281,9 @@ const threadsState = setup({
     },
     SET_VIEW_DATA: {
       actions: 'setViewData',
+    },
+    THREAD_STATUS_UPDATED: {
+      actions: 'updateThreadStatusFromBackend',
     },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([

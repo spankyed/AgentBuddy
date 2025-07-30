@@ -2,9 +2,8 @@
 import { ref, watch } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
-import { id as threadsId } from '@/plugins/agent/state.ts'
+import { id as agentId } from '@/plugins/agent/state.ts'
 import type { ArtifactItem } from '@abuddy/api';
-import { trpc } from '@/core/trpc';
 
 const props = defineProps<{
   artifact: ArtifactItem;
@@ -128,10 +127,10 @@ const arrangeableOptions = {
 /*  XState integration                                                         */
 /* -------------------------------------------------------------------------- */
 
-const threadsActor = applicationState.system.get(threadsId)
+const agentActor = applicationState.system.get(agentId)
 
 function onCardClick(item: WorkItem) {
-  threadsActor.send({ type: 'SELECT_THREAD', id: String(item.id) })
+  agentActor.send({ type: 'OPEN_THREAD_CHAT', threadId: String(item.id) })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -165,17 +164,13 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
     if (destinationList) {
       const newStatus = listIndexToStatus[destinationList.index]
       
-      // Send status update to backend
-      try {
-        await trpc.bus.send.mutate({
-          systemId: 'threads',
-          type: 'UPDATE_THREAD_STATUS',
-          threadId: String(workItem.id),
-          status: newStatus as any,
-        })
-      } catch (error) {
-        console.error('Failed to update thread status:', error)
-      }
+      // Send status update event to agent state machine
+      const agentActor = applicationState.system.get(agentId)
+      agentActor.send({
+        type: 'UPDATE_THREAD_STATUS',
+        threadId: String(workItem.id),
+        status: newStatus as any,
+      })
     }
   }
 }

@@ -53,6 +53,7 @@ type AgentEvent =
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: AgentMode }
+  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: ThreadEntity['status'] }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -256,6 +257,15 @@ const agentState = setup({
         type: 'REFRESH_DASHBOARD'
       });
     },
+    updateThreadStatus: async ({ event }) => {
+      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
+      await trpc.bus.send.mutate({
+        systemId: 'threads',
+        type: 'UPDATE_THREAD_STATUS',
+        threadId,
+        status,
+      });
+    },
   },
   guards: {
     targetIs,
@@ -291,6 +301,9 @@ const agentState = setup({
     },
     THREAD_STATUS_UPDATED: {
       actions: 'requestDashboardRefresh'
+    },
+    UPDATE_THREAD_STATUS: {
+      actions: 'updateThreadStatus'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],
