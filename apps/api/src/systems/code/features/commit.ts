@@ -22,11 +22,12 @@ export const IncomingCommitEvents = [
   busEvent('commit.GET_ALL_BRANCHES', {}),
   busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
   busEvent('commit.PUBLISH_BRANCH', {}),
+  busEvent('commit.PULL_BRANCH', {}),
 ] as const
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; data: { paths: string[] } }
   | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
@@ -37,6 +38,7 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
+  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
 
 export interface Context {
   gitRepository: GitRepository
@@ -54,6 +56,7 @@ export type Event =
   | { type: 'commit.GET_ALL_BRANCHES' }
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
+  | { type: 'commit.PULL_BRANCH' }
   | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_STARTUP' };
@@ -110,7 +113,7 @@ export const commitSystem = setup({
         ])
         const wrapped = emit(pluginId, {
           type: 'commit.STATUS_RECEIVED',
-          data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead }
+          data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead, commitsBehind: commitsInfo.behind }
         })
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
@@ -373,6 +376,27 @@ export const commitSystem = setup({
       }
     },
 
+    pullBranch: async ({ context, self }) => {
+      try {
+        const currentBranch = await context.gitRepository.getCurrentBranch()
+        await context.gitRepository.pullBranch()
+        
+        const wrapped = emit(pluginId, {
+          type: 'commit.BRANCH_PULLED',
+          data: { branchName: currentBranch }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        
+        // Refresh git status to show updated state
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
 
     updateRootDirectory: assign({
       gitRepository: ({ event, context }) => {
@@ -446,6 +470,9 @@ export const commitSystem = setup({
         },
         'commit.PUBLISH_BRANCH': {
           actions: 'pushBranch'
+        },
+        'commit.PULL_BRANCH': {
+          actions: 'pullBranch'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
           actions: ['updateRootDirectory', 'restartGitWatcher']

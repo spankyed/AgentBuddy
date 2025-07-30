@@ -764,4 +764,36 @@ export class GitRepository {
     // Clear cache after pushing
     this.clearCache()
   }
+
+  async pullBranch(): Promise<void> {
+    // Check if we have an upstream branch
+    const hasUpstream = await this.isCurrentBranchPublished()
+    if (!hasUpstream) {
+      throw new Error('No upstream branch to pull from. Push your branch first.')
+    }
+    
+    // Execute git pull
+    const result = await this.executeGitCommand(['pull'])
+    
+    if (!result.success) {
+      // Handle common pull errors
+      if (result.error?.includes('Automatic merge failed')) {
+        throw new Error('Failed to pull: Merge conflicts detected. Resolve conflicts and commit.')
+      } else if (result.error?.includes('Your local changes')) {
+        throw new Error('Failed to pull: You have uncommitted changes. Commit or stash them first.')
+      } else if (result.error?.includes('Could not read from remote repository')) {
+        throw new Error('Failed to pull: Cannot connect to remote repository. Check your network connection.')
+      } else if (result.error?.includes('Permission denied')) {
+        throw new Error('Failed to pull: Permission denied. Check your repository access rights.')
+      } else if (result.error?.includes('Already up to date')) {
+        // This is actually okay - no changes to pull
+        return
+      } else {
+        throw new Error(result.error || 'Failed to pull changes')
+      }
+    }
+    
+    // Clear cache after pulling
+    this.clearCache()
+  }
 }

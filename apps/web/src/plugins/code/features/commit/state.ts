@@ -42,7 +42,9 @@ export interface Context {
   isCheckingOutBranch: boolean
   hasUpstream: boolean
   commitsAhead: number
+  commitsBehind: number
   isPushing: boolean
+  isPulling: boolean
 }
 
 export type Event = 
@@ -61,7 +63,8 @@ export type Event =
   | { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
   | { type: 'commit.CHECKOUT_BRANCH' }
   | { type: 'commit.PUSH_BRANCH' }
-  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+  | { type: 'commit.PULL_BRANCH' }
+  | { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
   | { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
   | { type: 'commit.FILES_STAGED'; paths: string[] }
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
@@ -70,7 +73,8 @@ export type Event =
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } };
+  | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
+  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } };
 
 export const commitState = setup({
   types: {
@@ -169,20 +173,24 @@ export const commitState = setup({
     
     handleStatusReceived: assign({
       gitStatus: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
         return ev.data.files
       },
       gitBranch: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
         return ev.data.branch
       },
       hasUpstream: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
         return ev.data.hasUpstream
       },
       commitsAhead: ({ event }) => {
-        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number } }
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
         return ev.data.commitsAhead
+      },
+      commitsBehind: ({ event }) => {
+        const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
+        return ev.data.commitsBehind
       },
       isGitLoading: false,
       gitError: null
@@ -195,7 +203,8 @@ export const commitState = setup({
       },
       isGitLoading: false,
       isCheckingOutBranch: false,
-      isPushing: false
+      isPushing: false,
+      isPulling: false
     }),
     
     
@@ -269,6 +278,16 @@ export const commitState = setup({
     
     handleBranchPushed: assign({
       isPushing: false
+    }),
+
+    pullBranch: () => {
+      sendToBackend('commit.PULL_BRANCH', {})
+    },
+    
+    setPulling: assign({ isPulling: true }),
+    
+    handleBranchPulled: assign({
+      isPulling: false
     })
   }
 }).createMachine({
@@ -288,7 +307,9 @@ export const commitState = setup({
     isCheckingOutBranch: false,
     hasUpstream: true,
     commitsAhead: 0,
-    isPushing: false
+    commitsBehind: 0,
+    isPushing: false,
+    isPulling: false
   },
   states: {
     idle: {
@@ -367,6 +388,12 @@ export const commitState = setup({
         },
         'commit.BRANCH_PUSHED': {
           actions: 'handleBranchPushed'
+        },
+        'commit.PULL_BRANCH': {
+          actions: ['setPulling', 'pullBranch']
+        },
+        'commit.BRANCH_PULLED': {
+          actions: 'handleBranchPulled'
         }
       }
     }

@@ -96,17 +96,17 @@
           rows="3"
         />
         <button
-          v-if="shouldShowPushButton"
-          @click="pushBranch"
-          :disabled="isPushing"
+          v-if="shouldShowActionButton"
+          @click="handleActionButton"
+          :disabled="isActionButtonDisabled"
           :class="[
             'w-full px-3 py-1.5 rounded text-sm font-medium transition-colors',
-            !isPushing
+            !isActionButtonDisabled
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
               : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
           ]"
         >
-          {{ pushButtonText }}
+          {{ actionButtonText }}
         </button>
         
         <button
@@ -246,7 +246,9 @@ const branchInput = useSelector(commitActor, (state: any) => state.context.branc
 const isCheckingOutBranch = useSelector(commitActor, (state: any) => state.context.isCheckingOutBranch)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const commitsAhead = useSelector(commitActor, (state: any) => state.context.commitsAhead)
+const commitsBehind = useSelector(commitActor, (state: any) => state.context.commitsBehind)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
+const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
 
 // Local state
 const showBranchDropdown = ref(false)
@@ -256,17 +258,37 @@ const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
 const unstagedFiles = computed(() => gitStatus.value.filter(f => !f.staged))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
 
-const shouldShowPushButton = computed(() => {
-  // Show push button when:
+const shouldShowActionButton = computed(() => {
+  // Show action button when:
   // 1. No upstream (publish) or
-  // 2. Has upstream and commits ahead
-  return !hasUpstream.value || commitsAhead.value > 0
+  // 2. Has upstream and commits ahead (push) or
+  // 3. Has upstream and commits behind (pull)
+  return !hasUpstream.value || commitsAhead.value > 0 || commitsBehind.value > 0
 })
 
-const pushButtonText = computed(() => {
+const actionButtonText = computed(() => {
   if (isPushing.value) return 'Pushing...'
+  if (isPulling.value) return 'Pulling...'
   if (!hasUpstream.value) return 'Publish Branch'
-  return `Push (${commitsAhead.value} commit${commitsAhead.value !== 1 ? 's' : ''})`
+  
+  // If we have both commits ahead and behind, prioritize pull
+  if (commitsBehind.value > 0 && commitsAhead.value === 0) {
+    return `Pull (${commitsBehind.value} commit${commitsBehind.value !== 1 ? 's' : ''} behind)`
+  }
+  
+  if (commitsAhead.value > 0) {
+    return `Push (${commitsAhead.value} commit${commitsAhead.value !== 1 ? 's' : ''})`
+  }
+  
+  return 'Sync'
+})
+
+const isActionButtonPull = computed(() => {
+  return hasUpstream.value && commitsBehind.value > 0 && commitsAhead.value === 0
+})
+
+const isActionButtonDisabled = computed(() => {
+  return isPushing.value || isPulling.value
 })
 
 const filteredBranches = computed(() => {
@@ -306,8 +328,12 @@ const commit = () => {
   }
 }
 
-const pushBranch = () => {
-  commitActor?.send({ type: 'commit.PUSH_BRANCH' })
+const handleActionButton = () => {
+  if (isActionButtonPull.value) {
+    commitActor?.send({ type: 'commit.PULL_BRANCH' })
+  } else {
+    commitActor?.send({ type: 'commit.PUSH_BRANCH' })
+  }
 }
 
 const openRevertDialog = (file: GitStatusFile) => {
