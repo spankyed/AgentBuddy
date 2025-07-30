@@ -15,6 +15,5 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -0.5rem 1rem -0.125rem rgba(0, 0, 0, 0.1), 0 -0.25rem 0.5rem -0.0625rem rgba(0, 0, 0, 0.05);
 }
 </style> 
