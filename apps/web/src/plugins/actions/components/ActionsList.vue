@@ -58,23 +58,15 @@
                 </span>
               </td>
               <td class="px-6 py-4">
-                <div class="flex items-center justify-end gap-1">
-                  <Button
-                    @click.stop="$emit('edit', action.id)"
-                    variant="transparent"
-                    size="sm"
-                    class="transition-opacity opacity-0 group-hover:opacity-100"
-                  >
-                    <Edit2 class="w-4 h-4" />
-                  </Button>
-                  <Button
+                <div class="flex items-center justify-end gap-2">
+                  <button
                     @click.stop="handleDelete(action.id)"
-                    variant="transparent"
-                    size="sm"
-                    class="transition-opacity opacity-0 group-hover:opacity-100"
+                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+                    aria-label="Delete action"
+                    title="Delete action"
                   >
-                    <Trash class="w-4 h-4" />
-                  </Button>
+                    <Trash2 class="w-4 h-4" />
+                  </button>
                 </div>
               </td>
             </tr>
@@ -98,7 +90,7 @@
 
 <script setup lang="ts">
 import type { ActionEntity, EARS } from '@abuddy/api'
-import { Plus, Play, Edit2, Trash } from 'lucide-vue-next'
+import { Plus, Play, Trash2 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 
 interface Props {
@@ -110,7 +102,6 @@ defineProps<Props>()
 const emit = defineEmits<{
   'select': [actionId: EARS.EntityId]
   'create': []
-  'edit': [actionId: EARS.EntityId]
   'delete': [actionId: EARS.EntityId]
 }>()
 

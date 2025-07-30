@@ -6,7 +6,6 @@
       :actions="actions"
       @select="handleSelectAction"
       @create="handleCreateAction"
-      @edit="handleEditAction"
       @delete="handleDeleteAction"
     />
 
@@ -73,10 +72,6 @@ function handleSelectAction(actionId: EARS.EntityId) {
 
 function handleCreateAction() {
   actor.send({ type: 'ACTION.CREATE' });
-}
-
-function handleEditAction(actionId: EARS.EntityId) {
-  actor.send({ type: 'ACTION.EDIT', actionId });
 }
 
 function handleDeleteAction(actionId: EARS.EntityId) {
