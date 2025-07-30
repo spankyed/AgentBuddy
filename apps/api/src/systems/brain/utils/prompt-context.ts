@@ -1,6 +1,4 @@
 import { repository } from '@/repository';
-import { PromptEntity } from '@/systems/prompts/types';
-import { EARS } from '@/core/types';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('prompt-context');
@@ -10,17 +8,12 @@ const logger = createLogger('prompt-context');
  */
 export interface PromptContext {
   /**
-   * Get a prompt by its label
-   */
-  getPrompt(label: string): PromptEntity | undefined;
-  
-  /**
-   * Build another prompt template with the given parameters
-   * @param label - The label of the prompt to build
+   * Use another prompt template with the given parameters
+   * @param label - The label of the prompt to use
    * @param params - Parameters to pass to the prompt template
-   * @returns The built prompt string or undefined if prompt not found
+   * @returns The executed prompt string or undefined if prompt not found
    */
-  buildPrompt(label: string, params: Record<string, any>): string | undefined;
+  usePrompt(label: string, params: Record<string, any>): string | undefined;
 }
 
 /**
@@ -38,12 +31,7 @@ export function createPromptContext(
   currentDepth: number = 0
 ): PromptContext {
   return {
-    getPrompt(label: string): PromptEntity | undefined {
-      logger.debug('Getting prompt by label:', { label });
-      return repository.promptQueries.byLabel(label);
-    },
-    
-    buildPrompt(label: string, params: Record<string, any>): string | undefined {
+    usePrompt(label: string, params: Record<string, any>): string | undefined {
       // Check recursion depth
       if (currentDepth >= MAX_EXECUTION_DEPTH) {
         logger.error('Maximum prompt execution depth exceeded', { 
@@ -54,7 +42,7 @@ export function createPromptContext(
         throw new Error(`Maximum prompt execution depth (${MAX_EXECUTION_DEPTH}) exceeded. Possible circular reference detected.`);
       }
       
-      logger.debug('Building referenced prompt:', { label, params, depth: currentDepth });
+      // logger.debug('Using referenced prompt:', { label, params, depth: currentDepth });
       
       const prompt = repository.promptQueries.byLabel(label);
       if (!prompt) {
@@ -69,18 +57,18 @@ export function createPromptContext(
         // Execute the referenced template with the nested context
         const result = executeTemplateFn(prompt.templateFn, params, nestedContext);
         
-        logger.debug('Referenced prompt built successfully:', { 
-          label, 
-          resultLength: result.length 
-        });
+        // logger.debug('Referenced prompt executed successfully:', { 
+        //   label, 
+        //   resultLength: result.length 
+        // });
         
         return result;
       } catch (error) {
-        logger.error('Failed to build referenced prompt:', { 
-          label, 
-          error, 
-          depth: currentDepth 
-        });
+        // logger.error('Failed to execute referenced prompt:', { 
+        //   label, 
+        //   error, 
+        //   depth: currentDepth 
+        // });
         throw error;
       }
     }

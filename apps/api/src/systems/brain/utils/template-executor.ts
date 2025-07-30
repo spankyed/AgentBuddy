@@ -17,14 +17,14 @@ export function executeTemplate(
 ): string {
   try {
     // Wrap the template body in a function
-    // If context is provided, make it available to the template
+    // If context is provided, inject usePrompt directly
     const wrappedFunction = context 
-      ? new Function('params', 'context', templateFn)
+      ? new Function('params', 'usePrompt', templateFn)
       : new Function('params', templateFn);
     
     // Execute the function with the provided parameters
     const result = context 
-      ? wrappedFunction(params, context)
+      ? wrappedFunction(params, context.usePrompt.bind(context))
       : wrappedFunction(params);
     
     if (typeof result !== 'string') {

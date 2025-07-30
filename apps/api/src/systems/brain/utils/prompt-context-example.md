@@ -26,7 +26,7 @@ Now create a prompt that uses the base prompt:
 // Prompt Label: "user-query-handler"
 // Template Function:
 // Get the base instructions
-const baseInstructions = context.buildPrompt('base-instructions', {
+const baseInstructions = usePrompt('base-instructions', {
   role: 'AI assistant',
   style: params.style || 'friendly'
 });
@@ -34,7 +34,7 @@ const baseInstructions = context.buildPrompt('base-instructions', {
 // Get any additional context prompt if specified
 let additionalContext = '';
 if (params.contextPromptLabel) {
-  const contextResult = context.buildPrompt(params.contextPromptLabel, params);
+  const contextResult = usePrompt(params.contextPromptLabel, params);
   if (contextResult) {
     additionalContext = `\n\n${contextResult}`;
   }
@@ -60,25 +60,23 @@ return `Technical Context:
 - Current topic: ${params.topic || 'general programming'}`;
 ```
 
-## Available Context Methods
+## Available Functions
 
-The `context` object is automatically provided to all prompt templates and includes two methods:
+The `usePrompt` function is automatically injected into all prompt templates:
 
-1. **`context.getPrompt(label)`** - Returns the prompt entity by label
-   ```javascript
-   const promptEntity = context.getPrompt('base-instructions');
-   if (promptEntity) {
-     console.log(promptEntity.description);
-   }
-   ```
+**`usePrompt(label, params)`** - Uses another prompt and returns the result
+```javascript
+const result = usePrompt('base-instructions', {
+  role: 'expert',
+  style: 'concise'
+});
 
-2. **`context.buildPrompt(label, params)`** - Builds another prompt and returns the result
-   ```javascript
-   const result = context.buildPrompt('base-instructions', {
-     role: 'expert',
-     style: 'concise'
-   });
-   ```
+// Check if prompt exists
+if (!result) {
+  // Handle missing prompt
+  return 'Prompt not found';
+}
+```
 
 ## Safety Features
 
