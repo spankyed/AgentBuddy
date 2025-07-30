@@ -35,7 +35,7 @@ export class PromptService {
   async getAndExecute(
     label: string, 
     templateParams: Record<string, any>,
-    withContext: boolean = false
+    withContext: boolean = true
   ): Promise<string | undefined> {
     const prompt = await this.getByLabel(label);
     if (!prompt) {
