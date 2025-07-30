@@ -13,7 +13,12 @@ export type AgentThreadData = {
     artifacts: ArtifactEntity[];
 }
 
-export type AgentThreadRefreshData = {
+export type RecentThreadRefreshData = {
+    currentThread: AgentThreadData | null;
+    threads: Partial<ThreadEntity>[];
+};
+
+export type AgentStartupData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
     dashboardArtifacts: Partial<ArtifactEntity>[];

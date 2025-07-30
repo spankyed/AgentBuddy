@@ -7,7 +7,7 @@ import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
-import { AgentThreadRefreshData, AgentThreadData } from './types';
+import { RecentThreadRefreshData, AgentThreadData, AgentStartupData } from './types';
 import type { EARS } from '@/core/types';
 import { initializeMockData } from './repository/mock-artifacts';
 
@@ -27,7 +27,8 @@ export const IncomingAgentEvents = [
 export type AgentInternalEvents = SystemEvents
 
 export type OutgoingAgentEvents =
-  | { type: 'REFRESH_THREADS'; data: AgentThreadRefreshData }
+  | { type: 'AGENT_STARTUP'; data: AgentStartupData }
+  | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
@@ -44,10 +45,16 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendRefreshData: ({ system }) => {
+    sendStartupData: ({ system }) => {
       system.get(bus).send(emit(agent, { 
-        type: 'REFRESH_THREADS',
+        type: 'AGENT_STARTUP',
         data: repository.agentQueries.startupData()
+      }));
+    },
+    sendRefreshThreads: ({ system }) => {
+      system.get(bus).send(emit(agent, { 
+        type: 'REFRESH_RECENT_THREADS',
+        data: repository.agentQueries.refreshThreadsData()
       }));
     },
     initializeMockData: () => {
@@ -95,7 +102,7 @@ export const agentSystem = setup({
     entry: ['initializeMockData'],
     on: {
       CLIENT_CONNECTED: {
-        actions: ['sendRefreshData'],
+        actions: ['sendStartupData'],
       },
       OPEN_THREAD_CHAT: {
         actions: 'sendThreadChatData',

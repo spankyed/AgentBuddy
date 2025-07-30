@@ -170,14 +170,22 @@ const agentState = setup({
         currentThread: typedEvent.data,
       };
     }),
-    setPluginData: assign(({ context, event }) => {
-      const typedEvent = typeOf('REFRESH_THREADS', event);
+    setStartupData: assign(({ context, event }) => {
+      const typedEvent = typeOf('AGENT_STARTUP', event);
       
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: typedEvent.data.tabs?.[0]?.id || 'dashboard',
+      };
+    }),
+    setRefreshThreadsData: assign(({ context, event }) => {
+      const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
+      
+      return {
+        currentThread: typedEvent.data.currentThread,
+        threads: typedEvent.data.threads as ThreadEntity[],
       };
     }),
     sendOpenThreadView: ({ system, event }) => {
@@ -263,8 +271,11 @@ const agentState = setup({
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
-    REFRESH_THREADS: {
-      actions: 'setPluginData'
+    AGENT_STARTUP: {
+      actions: 'setStartupData'
+    },
+    REFRESH_RECENT_THREADS: {
+      actions: 'setRefreshThreadsData'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],
