@@ -183,7 +183,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
       <section
         v-for="list in lists.filter(l => l.name.toLowerCase() === 'backlog')"
         :key="list.id"
-        class="flex flex-col flex-1 overflow-hidden shadow-sm rounded-xl bg-neutral-800"
+        class="flex flex-col flex-1 overflow-hidden shadow-sm rounded-xl bg-neutral-900"
       >
         <!-- column header -->
         <header
@@ -205,7 +205,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
         >
           <template #default="{ item: card }">
             <article
-              class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border-neutral-800/50 hover:border-neutral-700/50"
+              class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
               <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
@@ -224,7 +224,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
         <section
           v-for="list in lists.filter(l => l.name.toLowerCase() !== 'backlog')"
           :key="list.id"
-          class="flex flex-col overflow-hidden shadow-sm rounded-xl bg-neutral-800"
+          class="flex flex-col overflow-hidden shadow-sm rounded-xl bg-neutral-900"
         >
           <!-- column header -->
           <header
@@ -246,7 +246,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
           >
             <template #default="{ item: card }">
               <article
-                class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border-neutral-800/50 hover:border-neutral-700/50"
+                class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-900/50 hover:bg-neutral-900/80 border-neutral-900/50 hover:border-neutral-700/50"
                 @click="onCardClick(card)"
               >
                 <p class="text-sm font-medium leading-snug text-neutral-100">{{ card.name }}</p>
