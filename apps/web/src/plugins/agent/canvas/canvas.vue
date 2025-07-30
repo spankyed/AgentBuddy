@@ -1,23 +1,23 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
-    <div class="flex items-center border-b border-neutral-800 bg-neutral-900">
-      <!-- Tab Bar -->
-      <TabBar
-        :tabs="tabs"
-        :activeTabId="activeTabId"
-        @select-tab="selectTab"
-        @close-tab="closeTab"
+  <div class="flex h-full bg-neutral-900">
+    <!-- Artifacts Panel (Full Height) -->
+    <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+      <ArtifactList
+        :artifacts="currentTab?.artifacts || []"
+        :selectedArtifactId="currentTab?.selectedArtifactId"
+        @select-artifact="selectArtifact"
       />
     </div>
 
-    <!-- Content Area -->
-    <div class="flex flex-1 overflow-hidden">
-      <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
-        <!-- Artifact List -->
-        <ArtifactList
-          :artifacts="currentTab?.artifacts || []"
-          :selectedArtifactId="currentTab?.selectedArtifactId"
-          @select-artifact="selectArtifact"
+    <!-- Main Content Area -->
+    <div class="flex flex-col flex-1 h-full">
+      <!-- Tab Bar -->
+      <div class="flex items-center border-b border-neutral-800 bg-neutral-900">
+        <TabBar
+          :tabs="tabs"
+          :activeTabId="activeTabId"
+          @select-tab="selectTab"
+          @close-tab="closeTab"
         />
       </div>
       
