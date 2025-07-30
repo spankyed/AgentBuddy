@@ -35,10 +35,11 @@
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
           class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-700 border border-neutral-600 text-neutral-300 hover:bg-neutral-600 focus:outline-none focus:border-neutral-500 transition-all duration-200"
         >
-          <option value="draft">Draft</option>
-          <option value="queued">Queued</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="backlog">Backlog</option>
+          <option value="open">Open</option>
+          <option value="in-progress">In Progress</option>
+          <option value="in-review">In Review</option>
+          <option value="done">Done</option>
         </select>
         <div class="flex gap-2 overflow-hidden max-w-[12rem]">
           <span

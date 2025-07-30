@@ -18,7 +18,7 @@ export interface ThreadEntity extends BaseEntity {
   lastMessageTimestamp?: number;
   shortCode?: string;
   threadType: 'work-item' | 'project' | 'user';
-  status: 'draft' | 'queued' | 'active' | 'inactive';
+  status: 'backlog' | 'open' | 'in-progress' | 'in-review' | 'done';
 }
 
 export interface ArtifactEntity extends BaseEntity {
@@ -38,7 +38,7 @@ export interface TagEntity extends BaseEntity {
 export type ThreadTypeCodes = 'U' | 'P' | 'WI';
 export type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
 
-export const ThreadStatuses = ['draft', 'queued', 'active', 'inactive'] as const;
+export const ThreadStatuses = ['backlog', 'open', 'in-progress', 'in-review', 'done'] as const;
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
 
 export type ThreadStatus = typeof ThreadStatuses[number];

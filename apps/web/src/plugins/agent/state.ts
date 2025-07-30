@@ -19,7 +19,7 @@ const defaultThread: AgentThreadData = {
   shortCode: '',
   topic: '',
   instructions: '',
-  status: 'draft',
+  status: 'backlog',
   timestamp: Date.now(),
   messages: [],
   artifacts: [],
@@ -249,6 +249,13 @@ const agentState = setup({
       );
       return { tabs };
     }),
+    requestDashboardRefresh: async () => {
+      // Request fresh data from backend
+      await trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REFRESH_DASHBOARD'
+      });
+    },
   },
   guards: {
     targetIs,
@@ -281,6 +288,9 @@ const agentState = setup({
     },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'
+    },
+    THREAD_STATUS_UPDATED: {
+      actions: 'requestDashboardRefresh'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

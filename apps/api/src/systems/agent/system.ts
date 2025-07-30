@@ -21,6 +21,7 @@ export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string(), mode: z.enum(['plan', 'work', 'chat', 'note']).optional(), threadId: z.string().optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
+  busEvent('REFRESH_DASHBOARD', {}),
   busEvent('CANCEL'),
 ] as const
 
@@ -55,6 +56,13 @@ export const agentSystem = setup({
       system.get(bus).send(emit(agent, { 
         type: 'REFRESH_RECENT_THREADS',
         data: repository.agentQueries.refreshThreadsData()
+      }));
+    },
+    sendRefreshDashboard: ({ system }) => {
+      // Re-send startup data which includes refreshed dashboard
+      system.get(bus).send(emit(agent, { 
+        type: 'AGENT_STARTUP',
+        data: repository.agentQueries.startupData()
       }));
     },
     initializeMockData: () => {
@@ -109,6 +117,9 @@ export const agentSystem = setup({
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
+      },
+      REFRESH_DASHBOARD: {
+        actions: 'sendRefreshDashboard',
       },
     },
     states: {

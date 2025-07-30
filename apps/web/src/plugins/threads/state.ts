@@ -96,7 +96,7 @@ const threadsState = setup({
         topic: typedEvent.topic!,
         threadType: typedEvent.threadType!,
         instructions: typedEvent.instructions!,
-        status: typedEvent.status || 'draft',
+        status: typedEvent.status || 'backlog',
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
@@ -111,7 +111,7 @@ const threadsState = setup({
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
-        status: 'draft',
+        status: 'backlog',
         tags: context.create.tags,
         isNew: true,
       };
@@ -240,7 +240,7 @@ const threadsState = setup({
     view: {
       id: '' as ThreadEntity['id'],
       shortCode: '',
-      status: 'draft',
+      status: 'backlog',
       timestamp: 0,
       ...defaultThread,
     } as ThreadViewData,

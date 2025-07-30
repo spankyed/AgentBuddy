@@ -70,10 +70,10 @@
                 <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
                 <select
                   disabled
-                  value="draft"
+                  value="backlog"
                   class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md opacity-50 cursor-not-allowed bg-neutral-800 border-neutral-700 text-neutral-300"
                 >
-                  <option value="draft">Draft</option>
+                  <option value="backlog">Backlog</option>
                 </select>
               </div>
             </div>

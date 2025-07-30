@@ -58,10 +58,11 @@
                 @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option value="draft">Draft</option>
-                <option value="queued">Queued</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="backlog">Backlog</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="in-review">In Review</option>
+                <option value="done">Done</option>
               </select>
             </div>
           </div>
@@ -174,7 +175,7 @@ const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThr
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
-const status = useSelector(actor, (state) => state.context.view.status || 'draft');
+const status = useSelector(actor, (state) => state.context.view.status || 'backlog');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 

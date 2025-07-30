@@ -44,6 +44,10 @@ export const IncomingThreadsEvents = [
     linkedThreads: relatedThreadsSchema.optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
+  busEvent('UPDATE_THREAD_STATUS', {
+    threadId: z.string(),
+    status: z.enum(['backlog', 'open', 'in-progress', 'in-review', 'done']),
+  }),
   busEvent('UPDATE_THREAD_FIELD', {
     threadId: z.string(),
     key: z.string(),
@@ -60,6 +64,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: ThreadEntity['status'] }
+  | { type: 'THREAD_STATUS_UPDATED', threadId: string, status: ThreadEntity['status'] }
 
 export interface ThreadsContext {}
 
@@ -123,6 +128,26 @@ export const threadsSystem = setup({
         console.error('Failed to update thread field:', result.error);
       }
     },
+    updateThreadStatus: ({ system, event }) => {
+      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
+      const updates = { 
+        status,
+        updatedAt: Date.now() 
+      };
+      const result = repository.threadCommands.update(threadId as EARS.EntityId, updates);
+      
+      if (!result.success) {
+        console.error('Failed to update thread status:', result.error);
+        return;
+      }
+      
+      // Emit status update event
+      system.get(bus).send(emit(threads, { 
+        type: 'THREAD_STATUS_UPDATED',
+        threadId,
+        status,
+      }));
+    },
   },
 }).createMachine(
   {
@@ -145,6 +170,9 @@ export const threadsSystem = setup({
           },
           UPDATE_THREAD_FIELD: {
             actions: 'updateThreadField',
+          },
+          UPDATE_THREAD_STATUS: {
+            actions: 'updateThreadStatus',
           },
         },
       },

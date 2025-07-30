@@ -4,6 +4,7 @@ import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/app'
 import { id as threadsId } from '@/plugins/agent/state.ts'
 import type { ArtifactItem } from '@abuddy/api';
+import { trpc } from '@/core/trpc';
 
 const props = defineProps<{
   artifact: ArtifactItem;
@@ -72,6 +73,9 @@ const statusToListIndex: Record<string, number> = {
   'done': 4,
 }
 
+// Map list index to status
+const listIndexToStatus: string[] = ['backlog', 'in-progress', 'in-review', 'open', 'done']
+
 // Initialize items from artifact content
 const items = ref<WorkItem[]>([])
 
@@ -134,7 +138,7 @@ function onCardClick(item: WorkItem) {
 /*  DnD handlers                                                               */
 /* -------------------------------------------------------------------------- */
 
-function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
+async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
   const targetTable = 'listId' in moving.payload ? items : lists
 
   // no drop target => revert
@@ -150,6 +154,30 @@ function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
 
   // Keep table array sorted by index
   targetTable.value.sort((a: any, b: any) => a.index - b.index)
+  
+  // If we're moving a work item, update its status in the backend
+  if ('listId' in moving.payload && moving.destination) {
+    const workItem = moving.payload as WorkItem
+    const destinationListId = moving.destination.identifier as symbol
+    
+    // Find the status for the destination list
+    const destinationList = lists.value.find(list => list.id === destinationListId)
+    if (destinationList) {
+      const newStatus = listIndexToStatus[destinationList.index]
+      
+      // Send status update to backend
+      try {
+        await trpc.bus.send.mutate({
+          systemId: 'threads',
+          type: 'UPDATE_THREAD_STATUS',
+          threadId: String(workItem.id),
+          status: newStatus as any,
+        })
+      } catch (error) {
+        console.error('Failed to update thread status:', error)
+      }
+    }
+  }
 }
 </script>
 
