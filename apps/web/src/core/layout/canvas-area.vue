@@ -115,6 +115,6 @@ defineEmits<{
 
 <style lang="scss" module>
 .component {
-  height: 45vh;
+  height: 100%;
 }
 </style>

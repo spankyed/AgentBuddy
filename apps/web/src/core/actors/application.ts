@@ -24,6 +24,10 @@ export interface ApplicationContext {
   plugins: Plugin[];
   breadcrumbs: BreadcrumbItem[];
   targetView: string;
+  panelSizes: {
+    canvasHeight: number; // percentage of main area height
+    inspectionWidth: number; // pixels
+  };
 }
 
 export const application = 'application' as const;
@@ -33,6 +37,8 @@ export type ApplicationEvent =
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
   | { type: 'TRAIL_CLICK'; target: string }
+  | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
+  | { type: 'TOGGLE_INSPECTION_PANEL' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -139,23 +145,64 @@ export const createApplicationState = () => setup({
         enqueue.spawnChild(plugin.state, { systemId: plugin.id });
       }
     }),
+    resizePanel: assign(({ context, event }) => {
+      const { panel, size } = typeOf('RESIZE_PANEL', event);
+      const newSizes = {
+        ...context.panelSizes,
+        ...(panel === 'canvas' 
+          ? { canvasHeight: Math.max(20, Math.min(80, size)) } // 20-80% bounds
+          : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
+        )
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+      
+      return {
+        panelSizes: newSizes
+      };
+    }),
+    toggleInspectionPanel: assign(({ context }) => {
+      const newSizes = {
+        ...context.panelSizes,
+        inspectionWidth: context.panelSizes.inspectionWidth === 0 ? 448 : 0
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+      
+      return {
+        panelSizes: newSizes
+      };
+    }),
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
   },
 }).createMachine({
   id: application,
-  context: ({ input }) => ({
-    plugins: input.plugins,
-    activePlugin: input.plugins[0],
-    defaultPlugin: input.defaultPlugin,
-    breadcrumbs: [],
-    defaultToggles: {
-      canvas: false,
-      panel: false,
-    },
-    targetView: '',
-  }),
+  context: ({ input }) => {
+    // Load saved panel sizes from localStorage or use defaults
+    const savedSizes = localStorage.getItem('agentbuddy-panel-sizes');
+    const defaultSizes = {
+      canvasHeight: 50, // 50% of main area
+      inspectionWidth: 448, // 28rem = 448px (16px base)
+    };
+    const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
+    
+    return {
+      plugins: input.plugins,
+      activePlugin: input.plugins[0],
+      defaultPlugin: input.defaultPlugin,
+      breadcrumbs: [],
+      defaultToggles: {
+        canvas: false,
+        panel: false,
+      },
+      targetView: '',
+      panelSizes,
+    };
+  },
   initial: 'setup',
   entry: [
     'spawnPluginActors',
@@ -206,6 +253,12 @@ export const createApplicationState = () => setup({
         'setActivePlugin',
         'trailNewPlugin',
       ]
+    },
+    RESIZE_PANEL: {
+      actions: 'resizePanel'
+    },
+    TOGGLE_INSPECTION_PANEL: {
+      actions: 'toggleInspectionPanel'
     },
   }
 });
