@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props" :show-source-handle="false" :is-active="data.isSelected">
+  <BaseNode v-bind="props" :show-source-handle="false">
     <div class="space-y-1">
       <div v-if="data.eventType" class="flex items-center gap-1.5">
         <svg class="w-2.5 h-2.5 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +28,6 @@ interface NodeData extends Partial<FireNode> {
   label: string
   eventType?: string
   scope?: 'local' | 'global'
-  isSelected?: boolean
 }
 
 const props = defineProps<NodeProps<NodeData>>()

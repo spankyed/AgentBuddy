@@ -39,6 +39,7 @@
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
       @nodes-remove="handleNodesRemove"
+      @selection-change="handleSelectionChange"
       @edges-remove="handleEdgesRemove"
       @edge-update="handleEdgeUpdate"
       @edge-update-end="handleEdgeUpdateEnd"
@@ -127,10 +128,7 @@ const plainNodes = computed(() => {
         x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
         y: positions.value[n.id]?.y ?? 0 
       },
-      data     : {
-        ...n,
-        isSelected: n.id === selected.value?.id,  // Add selection state
-      },
+      data     : n,  // Let VueFlow handle selection state
     })) as VueFlowNode[]
 
   return mappedNodes
@@ -296,6 +294,30 @@ function handleNodesRemove(nodes: { id: string }[]) {
       nodeId: node.id 
     })
   })
+}
+
+function handleSelectionChange(changes: { id: string; selected: boolean }[]) {
+  // Find the first selected node (VueFlow supports multi-selection, but we only track one)
+  const selectedChange = changes.find(change => change.selected);
+  
+  if (selectedChange) {
+    // A node was selected
+    actor.send({ 
+      type: 'NODE.SELECTION_CHANGE', 
+      nodeId: selectedChange.id,
+      selected: true
+    })
+  } else {
+    // All nodes were deselected
+    const deselectedChange = changes.find(change => !change.selected);
+    if (deselectedChange) {
+      actor.send({ 
+        type: 'NODE.SELECTION_CHANGE', 
+        nodeId: '',
+        selected: false
+      })
+    }
+  }
 }
 
 function handleEdgesRemove(edges: { id: string }[]) {

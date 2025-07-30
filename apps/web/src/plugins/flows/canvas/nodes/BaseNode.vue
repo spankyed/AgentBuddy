@@ -4,7 +4,7 @@
     :class="[
       nodeClasses,
       {
-        'ring-2 ring-offset-2 ring-offset-neutral-900': isActive,
+        'ring-2 ring-offset-2 ring-offset-neutral-900': isActive || selected,
         'cursor-pointer': selectable,
       }
     ]"

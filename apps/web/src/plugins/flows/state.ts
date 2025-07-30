@@ -57,6 +57,7 @@ type UIEvent =
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
+  | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
@@ -174,6 +175,14 @@ const flowsState = setup({
 
     /* ── graph interactions ───────────────────────────────── */
     selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
+    handleSelectionChange: assign(({ event }) => {
+      const ev = typeOf('NODE.SELECTION_CHANGE', event);
+      if (ev.selected && ev.nodeId) {
+        return { selectedNodeId: ev.nodeId as EARS.EntityId };
+      } else {
+        return { selectedNodeId: undefined };
+      }
+    }),
     editNode: assign({ editingNodeId: ({ event }) => typeOf('NODE.DOUBLE_CLICK', event).nodeId as EARS.EntityId }),
     closeNodeEditor: assign({ editingNodeId: undefined }),
     connectEdge: assign(({ context, event }) => {
@@ -687,6 +696,7 @@ const flowsState = setup({
       },
       on: {
         'NODE.CLICK': { actions: 'selectNode' },
+        'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
         'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },

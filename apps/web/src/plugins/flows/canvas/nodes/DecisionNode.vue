@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props" :is-active="data.isSelected">
+  <BaseNode v-bind="props">
     <div v-if="data.conditions && data.conditions.length > 0" class="space-y-1">
       <div class="flex items-center gap-1.5 text-[9px] text-neutral-500 uppercase tracking-wide">
         <svg class="w-2.5 h-2.5 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +36,6 @@ interface NodeData extends Partial<DecisionNode> {
   label: string
   conditions?: Array<{ expr: string; label?: string }>
   elseLabel?: string
-  isSelected?: boolean
 }
 
 const props = defineProps<NodeProps<NodeData>>()

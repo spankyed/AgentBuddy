@@ -133,6 +133,7 @@ const emit = defineEmits<{
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]
   'nodes-remove': [nodes: { id: string }[]]
+  'selection-change': [changes: { id: string; selected: boolean }[]]
   'edges-remove': [edges: { id: string }[]]
   'edge-update': [event: EdgeUpdateEvent]
   'edge-update-end': [event: EdgeMouseEvent]
@@ -158,6 +159,15 @@ function handleNodesChange(changes: any[]) {
   
   if (removedNodes.length > 0) {
     emit('nodes-remove', removedNodes);
+  }
+  
+  // Handle selection changes
+  const selectionChanges = changes
+    .filter(change => change.type === 'select')
+    .map(change => ({ id: change.id, selected: change.selected }));
+  
+  if (selectionChanges.length > 0) {
+    emit('selection-change', selectionChanges);
   }
 }
 
