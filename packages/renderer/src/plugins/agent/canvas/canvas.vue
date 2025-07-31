@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { id, type AgentState } from '@/plugins/agent/state';
 import TabBar from '@/plugins/agent/canvas/tabs/tab-bar.vue';

@@ -65,7 +65,7 @@ import CanvasArea from '@/core/layout/canvas-area.vue'
 import ChatArea from '@/core/layout/chat-area.vue'
 import InspectionPanel from '@/core/layout/inspection-panel.vue'
 import PanelResizer from '@/core/layout/panel-resizer.vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import Router from '@/core/layout/router.vue'
 
 const send = applicationState.send

@@ -142,7 +142,7 @@ import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { ActionParameter } from '@app/api';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 
 const props = defineProps<{
   formData: {

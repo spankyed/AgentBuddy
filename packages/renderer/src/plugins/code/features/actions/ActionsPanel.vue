@@ -123,7 +123,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { RefreshCw, Play, ExternalLink, Plus } from 'lucide-vue-next'
 import type { ActionEntity, ActionParameter } from '@app/api'

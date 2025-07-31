@@ -101,7 +101,7 @@
 import { ref, computed } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import { id as agentId } from '@/plugins/agent/state';
 
 interface TodoTask {

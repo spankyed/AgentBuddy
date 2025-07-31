@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ArrangeableList, DropZone, type MovingItem } from 'vue-arrange'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { id as agentId } from '@/plugins/agent/state.ts'
 import type { ArtifactItem } from '@app/api';
 

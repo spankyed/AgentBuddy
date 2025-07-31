@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
 import { id, type ActionsState } from './state';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import ActionsList from './components/ActionsList.vue';
 import ActionForm from './components/ActionForm.vue';
 import ActionView from './components/ActionView.vue';

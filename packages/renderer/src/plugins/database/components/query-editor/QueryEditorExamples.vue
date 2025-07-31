@@ -17,7 +17,7 @@
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../../state';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import ExampleCard from './ExampleCard.vue';
 import { queryExamples } from './query-examples';
 import { transactionExamples } from './transaction-examples';

@@ -127,7 +127,7 @@ import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 
 const props = defineProps<{
   action?: ActionEntity;

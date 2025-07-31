@@ -52,7 +52,7 @@
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
 import { id, type PromptsState } from './state';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import PromptsList from './components/PromptsList.vue';
 import PromptForm from './components/PromptForm.vue';
 import PromptView from './components/PromptView.vue';

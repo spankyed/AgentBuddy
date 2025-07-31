@@ -40,7 +40,7 @@
 import { ref, watch } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import CodeMirrorEditor from './query-editor/CodeMirrorEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';

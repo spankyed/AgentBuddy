@@ -78,7 +78,7 @@ import type { FlowEntity, NodeEntity } from '@app/api'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import {
   id,
   type FlowsState,

@@ -53,7 +53,7 @@
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id } from '../../state';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import { useResultAnalysis } from './composables/useResultAnalysis';
 import ResultsInfoBar from './components/ResultsInfoBar.vue';
 import ResultStates from './components/ResultStates.vue';

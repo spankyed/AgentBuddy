@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'

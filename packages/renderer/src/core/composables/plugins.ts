@@ -1,4 +1,4 @@
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import type { ActorRefFrom } from 'xstate'
 
 export function useState<T>(pluginId: string): ActorRefFrom<T> {

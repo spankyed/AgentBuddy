@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
 import TnodeItem from './tnode-item.vue'

@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest } from 'lucide-vue-next'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'

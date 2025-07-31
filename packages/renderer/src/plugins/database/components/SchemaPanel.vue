@@ -162,7 +162,7 @@ import {
 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 
 const actor: DatabaseState = applicationState.system.get(id)
 const schema = useSelector(actor, (state) => state.context.schema);

@@ -138,7 +138,7 @@ import type { TemplateInput } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import JsonSchemaEditor from './JsonSchemaEditor.vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 
 const props = defineProps<{
   formData: {

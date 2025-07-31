@@ -105,7 +105,7 @@ const pluginState = setup({
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 
 const pluginId = 'pluginName';
 const actor = applicationState.system.get(pluginId);

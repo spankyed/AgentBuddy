@@ -156,7 +156,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
 import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import Label from '@/core/design/label.vue'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';

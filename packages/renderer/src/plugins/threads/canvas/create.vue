@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { X, Plus, Square } from 'lucide-vue-next'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';

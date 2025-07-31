@@ -125,7 +125,7 @@ import Button from '@/core/design/button.vue';
 import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { PromptEntity } from '@app/api';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 
 const props = defineProps<{
   prompt?: PromptEntity;

@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/state'
 import { 

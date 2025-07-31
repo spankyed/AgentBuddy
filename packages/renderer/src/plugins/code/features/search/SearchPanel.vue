@@ -182,7 +182,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { ChevronRight, FolderOpen, Search } from 'lucide-vue-next'
 

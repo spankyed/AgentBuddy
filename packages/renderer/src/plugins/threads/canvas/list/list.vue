@@ -170,7 +170,7 @@
 <script setup lang="ts">
 import { ref, computed, type Ref } from 'vue'
 import { Search, Plus, Filter, MessageCircleMore } from 'lucide-vue-next'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/design/button.vue'
 import Pagination from '@/core/design/pagination.vue'

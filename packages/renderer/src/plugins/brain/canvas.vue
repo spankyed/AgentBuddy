@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type BrainState } from '@/plugins/brain/state.ts';
 import TNodeTree from './components/TNodeTree.vue';

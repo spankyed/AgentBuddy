@@ -29,7 +29,7 @@
 import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
-import { applicationState } from '@/app'
+import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity } from '@app/api'

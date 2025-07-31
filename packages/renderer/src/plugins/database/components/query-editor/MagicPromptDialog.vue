@@ -35,7 +35,7 @@ import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
 import Dialog from '@/core/design/dialog.vue';
 import Button from '@/core/design/button.vue';
-import { applicationState } from '@/app';
+import { applicationState } from '@/main';
 import { id, type DatabaseState } from '../../state';
 
 defineProps<{
