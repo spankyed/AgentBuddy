@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { trpc, getConnectionStatus } from '@app/preload';
+// import { trpc, getConnectionStatus } from '@app/preload';
 
 // Type definition (temporary until shared types are set up)
 interface WsConnectionStatus {
@@ -11,7 +11,12 @@ interface WsConnectionStatus {
 }
 
 // Connection status
-const connectionStatus = ref<WsConnectionStatus>(getConnectionStatus());
+const connectionStatus = ref<WsConnectionStatus>({
+  connected: false,
+  reconnecting: false,
+  lastError: undefined,
+  reconnectAttempts: 0
+});
 const testResult = ref<string>('');
 const loading = ref(false);
 
