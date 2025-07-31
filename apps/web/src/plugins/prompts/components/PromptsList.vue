@@ -46,7 +46,7 @@
               </td>
               <td class="px-6 py-4">
                 <span
-                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors"
+                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="categoryStyle(prompt.category)"
                 >
                   {{ prompt.category || 'uncategorized' }}
