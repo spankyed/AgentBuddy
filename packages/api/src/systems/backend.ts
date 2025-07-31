@@ -1,0 +1,110 @@
+import { emit as notify, setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import systems from '@/systems';
+import { safeEvents, type SystemId } from '@/core/utils/actor-helpers';
+import { entries } from '@/core/utils';
+import { EARS } from '@/core/types';
+import { createEntity } from '@/core/utils/ears';
+import { createLogger } from '@/core/utils/debug/logger';
+import { rootEvents } from '@/core/router/bus-emitter';
+
+const logger = createLogger('backend');
+
+export type BusEvent = 
+  | { type: 'INCOMING'; event: IncomingSystemEvents }
+  | { type: 'OUTGOING'; event: OutgoingSystemEvents }
+
+export type SystemEvents =
+  | { type: 'CLIENT_CONNECTED'; }
+
+export type BackendEvents =
+  | BusEvent
+  | SystemEvents
+
+export interface BusContext {
+  threads: string[];
+}
+
+export const bus = 'bus' as const;
+
+const typeOf = safeEvents<BackendEvents>();
+export const backendSystem = setup({
+  types: {
+    context: {} as BusContext,
+    events: {} as BackendEvents,
+    emitted: {} as Extract<BackendEvents, { type: 'OUTGOING' }>,
+  },
+  actors: {
+    setupEventListeners: fromCallback(({ sendBack }) => {
+      const incomingHandler = (event: any) => {
+        if (event.systemId !== 'logs') {
+          sendBack({
+            type: 'INCOMING',
+            event,
+          });
+        }
+      };
+
+      const connectedHandler = () => {
+        sendBack({ type: 'CLIENT_CONNECTED' });
+      };
+
+      const onConnectedUnsub = rootEvents.onConnected(connectedHandler)
+      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
+
+      return () => {
+        onConnectedUnsub();
+        onIncomingUnsub();
+      };
+    }),
+  },
+  actions: {
+    setupEventListeners: spawnChild('setupEventListeners'),
+    notify: ({ event }) => {
+      rootEvents.emitOutgoing(typeOf('OUTGOING', event).event);
+    },
+    routeIncoming: ({ event: incoming, system }) => {
+      const { systemId, ...event } = typeOf('INCOMING', incoming).event;
+      system.get(systemId).send(event);
+    },
+    sendConnected: (({ system }) => {
+      for (const id of Object.keys(systems)) {
+        system.get(id).send({ type: 'CLIENT_CONNECTED' });
+      }
+    }),
+    spawnActors: enqueueActions(({ enqueue }) => {
+      for (const [id, state] of entries(systems)) {
+        enqueue.spawnChild(state, { systemId: id as SystemId });
+      }
+    }),
+  }
+}).createMachine(
+  {
+    id: bus,
+    context: {
+      threads: [],
+    },
+    initial: 'disconnected',
+    on: {
+      CLIENT_CONNECTED: {
+        target: '.connected',
+      },
+    },
+    entry: ['spawnActors', 'setupEventListeners'],
+    states: {
+      disconnected: {
+      },
+      connected: {
+        entry: 'sendConnected',
+        on: {
+          INCOMING: {
+            actions: 'routeIncoming'
+          },
+          OUTGOING: {
+            actions: 'notify',
+          },
+        }
+      },
+    }
+  }
+);

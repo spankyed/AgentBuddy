@@ -1,0 +1,801 @@
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import * as path from 'path'
+import * as fs from 'fs/promises'
+import { GitStatusFile } from '../types'
+
+const execFileAsync = promisify(execFile)
+
+interface GitCommandResult {
+  success: boolean
+  output?: string
+  error?: string
+}
+
+interface GitCommandError extends Error {
+  code?: number | string
+  stdout?: string
+  stderr?: string
+}
+
+interface CachedResult<T> {
+  data: T
+  timestamp: number
+}
+
+export class GitRepository {
+  private cache = new Map<string, CachedResult<any>>()
+  private readonly CACHE_TTL = 5000 // 5 seconds
+  
+  constructor(private workingDirectory: string) {
+    this.validateWorkingDirectory(workingDirectory)
+  }
+  
+  private validateWorkingDirectory(dir: string): void {
+    if (!path.isAbsolute(dir)) {
+      throw new Error('Working directory must be an absolute path')
+    }
+    // We'll validate .git existence asynchronously on first command
+  }
+  
+  private async ensureGitRepository(): Promise<void> {
+    const cacheKey = 'gitRepoValidated'
+    if (this.getCached<boolean>(cacheKey)) return
+    
+    try {
+      await fs.access(path.join(this.workingDirectory, '.git'))
+      this.setCached(cacheKey, true)
+    } catch {
+      throw new Error(`Not a git repository: ${this.workingDirectory}`)
+    }
+  }
+  
+  private getCached<T>(key: string): T | null {
+    const cached = this.cache.get(key)
+    if (!cached) return null
+    
+    const now = Date.now()
+    if (now - cached.timestamp > this.CACHE_TTL) {
+      this.cache.delete(key)
+      return null
+    }
+    
+    return cached.data
+  }
+  
+  private setCached<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    })
+  }
+  
+  clearCache(): void {
+    this.cache.clear()
+  }
+  
+  // Invalidate specific cache entries when files change
+  invalidateCache(paths?: string[]): void {
+    if (!paths || paths.length === 0) {
+      // Clear everything if no specific paths
+      this.clearCache()
+      return
+    }
+    
+    // Always invalidate status when any file changes
+    this.cache.delete('status')
+    
+    // If .git files changed, invalidate branch-related caches
+    if (paths.some(p => p.includes('.git'))) {
+      this.cache.delete('baseBranch')
+      this.cache.delete('prBaseBranch')
+      this.cache.delete('gitRepoValidated')
+    }
+    
+    // Invalidate binary file cache for changed files
+    paths.forEach(path => {
+      this.cache.delete(`binary:${path}`)
+    })
+  }
+
+  private async executeGitCommand(args: string[]): Promise<GitCommandResult> {
+    // Always add --color=never to prevent ANSI codes
+    const colorlessArgs = ['-c', 'color.ui=never', ...args]
+    
+    try {
+      const { stdout, stderr } = await execFileAsync('git', colorlessArgs, {
+        cwd: this.workingDirectory,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer limit
+        encoding: 'utf8'
+      })
+      
+      return { success: true, output: stdout }
+    } catch (error) {
+      const gitError = error as GitCommandError
+      
+      // Special cases where non-zero exit codes are expected
+      if (gitError.code === 1 && args[0] === 'diff') {
+        // git diff returns 1 when there are differences
+        return { success: true, output: gitError.stdout || '' }
+      }
+      if (gitError.code === 128 && args[0] === 'show') {
+        // git show returns 128 when object doesn't exist (file not in branch)
+        return { success: true, output: '' }
+      }
+      
+      // Include original error for better debugging
+      return { 
+        success: false, 
+        error: gitError.stderr || gitError.message,
+        output: gitError.stdout // Sometimes useful for debugging
+      }
+    }
+  }
+
+  async getCurrentBranch(): Promise<string> {
+    const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', 'HEAD'])
+    if (result.success && result.output) {
+      return result.output.trim()
+    }
+    throw new Error(result.error || 'Failed to get current branch')
+  }
+
+  async getStatus(): Promise<GitStatusFile[]> {
+    // Check cache first
+    const cached = this.getCached<GitStatusFile[]>('status')
+    if (cached) return cached
+    
+    const result = await this.executeGitCommand(['status', '--porcelain', '-z'])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get git status')
+    }
+    
+    const files: GitStatusFile[] = []
+    const entries = (result.output || '').split('\0').filter(Boolean)
+    
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+      if (entry.length < 3) continue
+      
+      const indexStatus = entry[0]
+      const workingStatus = entry[1]
+      const rest = entry.substring(3)
+      
+      // Handle renames - with -z flag, git status uses NUL-separated format
+      // For renames: RXY oldpath\0newpath where X/Y are similarity scores
+      let fileName: string = rest
+      let originalPath: string | undefined
+      
+      // Handle staged files
+      if (indexStatus !== ' ' && indexStatus !== '?') {
+        // For renames/copies in staged files, we need to handle the two-path format
+        if (indexStatus.startsWith('R') || indexStatus.startsWith('C')) {
+          // Next entry should be the new path
+          if (i + 1 < entries.length) {
+            originalPath = fileName
+            fileName = entries[++i]
+          }
+        }
+        
+        files.push({
+          path: fileName,
+          status: this.mapGitStatus(indexStatus),
+          staged: true,
+          originalPath: originalPath
+        })
+      }
+      
+      // Handle unstaged files
+      if (workingStatus !== ' ') {
+        // For renames/copies in working tree, handle two-path format
+        if (workingStatus.startsWith('R') || workingStatus.startsWith('C')) {
+          // For unstaged renames, we might need to consume the next path
+          // However, git status --porcelain doesn't show unstaged renames with two paths
+          // It shows them as deleted + untracked, so this is mainly for consistency
+        }
+        
+        files.push({
+          path: fileName,
+          status: this.mapGitStatus(workingStatus),
+          staged: false,
+          originalPath: undefined // Unstaged renames appear as D + ?
+        })
+      }
+      
+      // Handle untracked files - don't duplicate them
+      if (indexStatus === '?' && workingStatus === '?') {
+        // Only add if not already added
+        if (!files.some(f => f.path === fileName)) {
+          files.push({
+            path: fileName,
+            status: 'untracked',
+            staged: false
+          })
+        }
+      }
+    }
+    
+    // Cache the result
+    this.setCached('status', files)
+    return files
+  }
+
+  private mapGitStatus(status: string): GitStatusFile['status'] {
+    // Extract the status letter from codes like R100, C85, M, etc.
+    const statusLetter = status.charAt(0)
+    
+    switch (statusLetter) {
+      case 'M': return 'modified'
+      case 'A': return 'added'
+      case 'D': return 'deleted'
+      case 'R': return 'renamed'
+      case 'C': return 'copied'
+      case '?': return 'untracked'
+      case 'T': return 'typechange'
+      case 'U': return 'unmerged'
+      default: return 'modified'
+    }
+  }
+
+  private async isBinaryFile(filePath: string): Promise<boolean> {
+    // Check cache first
+    const cacheKey = `binary:${filePath}`
+    const cached = this.getCached<boolean>(cacheKey)
+    if (cached !== null) return cached
+    
+    // First, try git's built-in binary detection
+    const gitResult = await this.executeGitCommand(['check-attr', 'diff', '--', filePath])
+    if (gitResult.success && gitResult.output) {
+      // Git attributes format: "path: diff: value"
+      const isBinary = gitResult.output.includes(': diff: binary') || 
+                      gitResult.output.includes(': diff: -diff')
+      if (isBinary) {
+        this.setCached(cacheKey, true)
+        return true
+      }
+    }
+    
+    // If git doesn't say it's binary, check if it's text according to git
+    const diffStatResult = await this.executeGitCommand(['diff', '--numstat', '/dev/null', filePath])
+    if (diffStatResult.success && diffStatResult.output) {
+      // Binary files show as "-\t-\tfilename" in numstat
+      if (diffStatResult.output.startsWith('-\t-\t')) {
+        this.setCached(cacheKey, true)
+        return true
+      }
+    }
+    
+    // Fallback to quick heuristic for untracked files
+    try {
+      const stats = await fs.stat(filePath)
+      // Large files are likely binary
+      if (stats.size > 1024 * 1024) {
+        this.setCached(cacheKey, true)
+        return true // > 1MB
+      }
+      
+      // Only read first 512 bytes for performance
+      const buffer = Buffer.alloc(512)
+      const fd = await fs.open(filePath, 'r')
+      try {
+        const { bytesRead } = await fd.read(buffer, 0, 512, 0)
+        if (bytesRead === 0) {
+          this.setCached(cacheKey, false)
+          return false
+        }
+        
+        // Check for BOM (Byte Order Mark) for UTF-16/UTF-32
+        if (bytesRead >= 2) {
+          const bom16LE = buffer[0] === 0xFF && buffer[1] === 0xFE
+          const bom16BE = buffer[0] === 0xFE && buffer[1] === 0xFF
+          if (bom16LE || bom16BE) {
+            this.setCached(cacheKey, false)
+            return false // UTF-16 text file
+          }
+        }
+        
+        if (bytesRead >= 4) {
+          const bom32LE = buffer[0] === 0xFF && buffer[1] === 0xFE && buffer[2] === 0x00 && buffer[3] === 0x00
+          const bom32BE = buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0xFE && buffer[3] === 0xFF
+          if (bom32LE || bom32BE) {
+            this.setCached(cacheKey, false)
+            return false // UTF-32 text file
+          }
+        }
+        
+        // Check for null bytes (but skip if it might be UTF-16/32)
+        let nullCount = 0
+        for (let i = 0; i < bytesRead; i++) {
+          if (buffer[i] === 0) nullCount++
+        }
+        
+        // If many nulls but not in UTF-16/32 pattern, it's binary
+        if (nullCount > bytesRead * 0.3) {
+          this.setCached(cacheKey, true)
+          return true
+        }
+        
+        // Check for high ratio of non-printable characters
+        let nonPrintable = 0
+        for (let i = 0; i < bytesRead; i++) {
+          const byte = buffer[i]
+          if (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13) {
+            nonPrintable++
+          }
+        }
+        
+        const isBinary = nonPrintable / bytesRead > 0.3
+        this.setCached(cacheKey, isBinary)
+        return isBinary
+      } finally {
+        await fd.close()
+      }
+    } catch {
+      this.setCached(cacheKey, false)
+      return false
+    }
+  }
+
+  async getDiff(filePath?: string, staged: boolean = false): Promise<string> {
+    // For untracked files, we need to show the file content as an addition
+    if (filePath) {
+      const status = await this.getStatus()
+      const fileStatus = status.find(f => f.path === filePath)
+      
+      if (fileStatus?.status === 'untracked') {
+        const fullPath = path.join(this.workingDirectory, filePath)
+        
+        // Check if file is binary
+        if (await this.isBinaryFile(fullPath)) {
+          // Return a synthetic diff for binary files
+          const relativePath = path.relative(this.workingDirectory, fullPath)
+          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
+          diff += `new file mode 100644\n`
+          diff += `index 0000000..0000000\n`
+          diff += `Binary files /dev/null and b/${relativePath} differ\n`
+          return diff
+        }
+        
+        // Read the file content and format it as a diff
+        try {
+          const content = await fs.readFile(fullPath, 'utf8')
+          const lines = content.split(/\r?\n/) // Handle CRLF
+          
+          // Format as a git diff for a new file
+          const relativePath = path.relative(this.workingDirectory, fullPath)
+          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
+          diff += `new file mode 100644\n`
+          diff += `index 0000000..0000000\n`
+          diff += `--- /dev/null\n`
+          diff += `+++ b/${relativePath}\n`
+          diff += `@@ -0,0 +1,${lines.length} @@\n`
+          diff += lines.map(line => `+${line}`).join('\n')
+          
+          return diff
+        } catch (error) {
+          throw new Error(`Failed to read untracked file: ${error}`)
+        }
+      }
+    }
+    
+    const args = ['diff', '--binary']
+    if (staged) {
+      args.push('--cached')
+    }
+    if (filePath) {
+      args.push('--', filePath)
+    }
+    
+    const result = await this.executeGitCommand(args)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get diff')
+    }
+    
+    return result.output || ''
+  }
+
+  async getFileContent(filePath: string, version: 'HEAD' | 'working' = 'working'): Promise<string> {
+    if (version === 'working') {
+      // Get current working file content
+      try {
+        // Ensure the file path is relative to the working directory
+        const relativePath = filePath.startsWith(this.workingDirectory) 
+          ? filePath.slice(this.workingDirectory.length + 1)
+          : filePath
+        const fullPath = path.join(this.workingDirectory, relativePath)
+        return await fs.readFile(fullPath, 'utf8')
+      } catch (error) {
+        throw new Error(`Failed to read file: ${error}`)
+      }
+    } else {
+      // Get file content from HEAD
+      const relativePath = filePath.startsWith(this.workingDirectory) 
+        ? filePath.slice(this.workingDirectory.length + 1)
+        : filePath
+      const result = await this.executeGitCommand(['show', `HEAD:${relativePath}`])
+      if (!result.success) {
+        // File might be new (not in HEAD)
+        return ''
+      }
+      return result.output || ''
+    }
+  }
+
+  async stageFiles(filePaths: string[]): Promise<void> {
+    if (filePaths.length === 0) return
+    
+    const result = await this.executeGitCommand(['add', ...filePaths])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to stage files')
+    }
+  }
+
+  async unstageFiles(filePaths: string[]): Promise<void> {
+    if (filePaths.length === 0) return
+    
+    const result = await this.executeGitCommand(['reset', 'HEAD', ...filePaths])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to unstage files')
+    }
+  }
+
+  async revertFile(filePath: string): Promise<void> {
+    // Use git checkout to revert the file to its last committed state
+    const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
+    if (!result.success) {
+      throw new Error(result.error || `Failed to revert file: ${filePath}`)
+    }
+  }
+
+  async commit(message: string): Promise<void> {
+    if (!message.trim()) {
+      throw new Error('Commit message cannot be empty')
+    }
+    
+    const result = await this.executeGitCommand(['commit', '-m', message])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to commit')
+    }
+  }
+
+  async isGitRepository(): Promise<boolean> {
+    const result = await this.executeGitCommand(['rev-parse', '--git-dir'])
+    return result.success
+  }
+
+  async hasUncommittedChanges(): Promise<boolean> {
+    const status = await this.getStatus()
+    return status.length > 0
+  }
+
+  async getStagedFiles(): Promise<GitStatusFile[]> {
+    const status = await this.getStatus()
+    return status.filter(file => file.staged)
+  }
+
+  async getUpstreamBranch(): Promise<string | null> {
+    // Get the upstream branch of HEAD
+    const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+    
+    if (!result.success) {
+      // Check if it's because there's no upstream configured
+      if (result.error?.includes('no upstream configured') || 
+          result.error?.includes('@{u}') ||
+          result.error?.includes('HEAD has no upstream')) {
+        return null // This is expected, not an error
+      }
+      // Otherwise, it's a real error
+      throw new Error(`Failed to get upstream branch: ${result.error}`)
+    }
+    
+    if (result.output) {
+      const upstream = result.output.trim()
+      // Extract branch name from remote/branch format
+      const parts = upstream.split('/')
+      if (parts.length >= 2) {
+        return parts.slice(1).join('/')
+      }
+    }
+    return null
+  }
+
+  async getBaseBranch(options?: { preferUpstream?: boolean }): Promise<string> {
+    const preferUpstream = options?.preferUpstream !== false // Default to true
+    
+    // Check cache first (different cache keys for different modes)
+    const cacheKey = preferUpstream ? 'baseBranch' : 'prBaseBranch'
+    const cached = this.getCached<string>(cacheKey)
+    if (cached) return cached
+    
+    // 1. Try upstream of HEAD first (if preferred)
+    if (preferUpstream) {
+      try {
+        const upstream = await this.getUpstreamBranch()
+        if (upstream) {
+          this.setCached(cacheKey, upstream)
+          return upstream
+        }
+      } catch (error) {
+        // Log but continue with other methods
+        console.warn('Failed to get upstream branch:', error)
+      }
+    }
+    
+    // 2. Try symbolic ref for origin/HEAD
+    const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
+    if (originHeadResult.success && originHeadResult.output) {
+      const branch = originHeadResult.output.trim().replace(/^origin\//, '')
+      if (branch) {
+        this.setCached(cacheKey, branch)
+        return branch
+      }
+    }
+    
+    // 3. Probe for common branch names
+    const checkBranch = async (branch: string): Promise<boolean> => {
+      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
+      return result.success
+    }
+    
+    for (const branch of ['main', 'master', 'develop', 'development']) {
+      if (await checkBranch(branch)) {
+        this.setCached(cacheKey, branch)
+        return branch
+      }
+    }
+    
+    throw new Error(`Could not determine ${preferUpstream ? 'base' : 'PR base'} branch`)
+  }
+
+  async getPRBaseBranch(): Promise<string> {
+    return this.getBaseBranch({ preferUpstream: false })
+  }
+
+  async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
+    const target = targetBranch || 'HEAD'
+    
+    // Get the list of changed files between branches with NUL termination and rename detection
+    const result = await this.executeGitCommand(['diff', '--name-status', '-z', '-M', '-C', `${baseBranch}...${target}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get branch diff')
+    }
+    
+    const files: GitStatusFile[] = []
+    const parts = (result.output || '').split('\0').filter(Boolean)
+    
+    for (let i = 0; i < parts.length; ) {
+      const statusPart = parts[i++]
+      if (!statusPart || i >= parts.length) break
+      
+      // Status is just a letter (M, A, D, R, C, T, U)
+      const status = this.mapGitStatus(statusPart)
+      const path = parts[i++]
+      
+      if (!path) continue
+      
+      // For renames and copies, there's a second path
+      if ((statusPart.startsWith('R') || statusPart.startsWith('C')) && i < parts.length && parts[i]) {
+        const originalPath = path
+        const newPath = parts[i++]
+        files.push({
+          path: newPath,
+          status,
+          staged: false,
+          originalPath
+        })
+      } else {
+        files.push({
+          path,
+          status,
+          staged: false
+        })
+      }
+    }
+    
+    return files
+  }
+
+  async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
+    const target = targetBranch || 'HEAD'
+    
+    // Validate branch names to prevent injection
+    if (!/^[a-zA-Z0-9._/-]+$/.test(baseBranch) || !/^[a-zA-Z0-9._/-]+$/.test(target)) {
+      throw new Error('Invalid branch name')
+    }
+    
+    const result = await this.executeGitCommand(['diff', '--binary', '-M', `${baseBranch}...${target}`, '--', filePath])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get file diff between branches')
+    }
+    
+    return result.output || ''
+  }
+
+  async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
+    // For files with special characters, we need to be careful
+    // If the path contains colons or starts with -, we need special handling
+    let result: GitCommandResult
+    
+    if (filePath.includes(':') || filePath.startsWith('-')) {
+      // Use the rev:./path syntax which is safer for special characters
+      result = await this.executeGitCommand(['show', `${branch}:./${filePath}`])
+    } else {
+      // Standard format for normal paths
+      result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
+    }
+    
+    if (!result.success) {
+      // File might not exist in that branch - this is not an error
+      return ''
+    }
+    return result.output || ''
+  }
+
+  async getAllBranches(): Promise<string[]> {
+    // Get all local and remote branches
+    const result = await this.executeGitCommand(['branch', '-a', '--no-color'])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get branches')
+    }
+    
+    // Parse the output to extract branch names
+    const branches = (result.output || '')
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        // Remove the current branch marker (*) and any leading/trailing whitespace
+        line = line.trim().replace(/^\*\s*/, '')
+        
+        // Handle remote branches - remove "remotes/origin/" prefix
+        if (line.startsWith('remotes/origin/')) {
+          // Skip HEAD pointer
+          if (line.includes('HEAD ->')) return null
+          return line.replace('remotes/origin/', '')
+        }
+        
+        return line
+      })
+      .filter((branch): branch is string => branch !== null)
+      
+    // Remove duplicates (local and remote branches with same name)
+    return [...new Set(branches)]
+  }
+
+  async checkoutBranch(branchName: string): Promise<void> {
+    if (!branchName.trim()) {
+      throw new Error('Branch name cannot be empty')
+    }
+    
+    // Validate branch name to prevent command injection
+    if (!/^[a-zA-Z0-9._\/-]+$/.test(branchName)) {
+      throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
+    }
+    
+    // Try to checkout the branch
+    const result = await this.executeGitCommand(['checkout', branchName])
+    
+    if (!result.success) {
+      // Check if it's because the branch doesn't exist locally
+      if (result.error?.includes('pathspec') && result.error?.includes('did not match')) {
+        // Try to create a new branch tracking the remote
+        const remoteResult = await this.executeGitCommand(['checkout', '-b', branchName, `origin/${branchName}`])
+        if (!remoteResult.success) {
+          // If that fails too, just create a new local branch
+          const newBranchResult = await this.executeGitCommand(['checkout', '-b', branchName])
+          if (!newBranchResult.success) {
+            throw new Error(newBranchResult.error || `Failed to create branch: ${branchName}`)
+          }
+        }
+      } else if (result.error?.includes('Your local changes to the following files would be overwritten')) {
+        // Git is preventing checkout due to conflicts
+        throw new Error('Cannot switch branches: Your uncommitted changes conflict with files in the target branch. Please commit, stash, or discard your changes first.')
+      } else {
+        throw new Error(result.error || `Failed to checkout branch: ${branchName}`)
+      }
+    }
+    
+    // Clear cache after branch switch
+    this.clearCache()
+  }
+
+  async isCurrentBranchPublished(): Promise<boolean> {
+    try {
+      const upstream = await this.getUpstreamBranch()
+      return upstream !== null
+    } catch {
+      // If there's an error checking upstream, assume unpublished
+      return false
+    }
+  }
+
+  async getCommitsAheadBehind(): Promise<{ ahead: number; behind: number }> {
+    try {
+      // Check if we have an upstream branch
+      const upstream = await this.getUpstreamBranch()
+      if (!upstream) {
+        return { ahead: 0, behind: 0 }
+      }
+      
+      // Count commits ahead
+      const aheadResult = await this.executeGitCommand(['rev-list', '--count', '@{u}..HEAD'])
+      const ahead = aheadResult.success ? parseInt(aheadResult.output?.trim() || '0', 10) : 0
+      
+      // Count commits behind
+      const behindResult = await this.executeGitCommand(['rev-list', '--count', 'HEAD..@{u}'])
+      const behind = behindResult.success ? parseInt(behindResult.output?.trim() || '0', 10) : 0
+      
+      return { ahead, behind }
+    } catch (error) {
+      // Log the error for debugging
+      console.error('getCommitsAheadBehind error:', error)
+      // If there's an error, return zeros
+      return { ahead: 0, behind: 0 }
+    }
+  }
+
+  async pushBranch(branchName?: string): Promise<void> {
+    // Get current branch if not specified
+    const branch = branchName || await this.getCurrentBranch()
+    
+    // Check if branch is published
+    const isPublished = await this.isCurrentBranchPublished()
+    
+    // Use appropriate push command
+    const args = isPublished 
+      ? ['push'] // Regular push for already published branches
+      : ['push', '-u', 'origin', branch] // Set upstream for new branches
+    
+    const result = await this.executeGitCommand(args)
+    
+    if (!result.success) {
+      // Check for common errors
+      if (result.error?.includes('Could not read from remote repository')) {
+        throw new Error('Failed to push: Cannot connect to remote repository. Check your network connection and repository access.')
+      } else if (result.error?.includes('remote: Permission')) {
+        throw new Error('Failed to push: Permission denied. Check your repository access rights.')
+      } else if (result.error?.includes('non-fast-forward')) {
+        throw new Error('Failed to push: Remote branch has diverged. Pull changes first.')
+      } else if (result.error?.includes('Everything up-to-date')) {
+        throw new Error('Everything up-to-date. No commits to push.')
+      } else {
+        throw new Error(result.error || 'Failed to push changes')
+      }
+    }
+    
+    // Clear cache after pushing
+    this.clearCache()
+  }
+
+  async pullBranch(): Promise<void> {
+    // Check if we have an upstream branch
+    const hasUpstream = await this.isCurrentBranchPublished()
+    if (!hasUpstream) {
+      throw new Error('No upstream branch to pull from. Push your branch first.')
+    }
+    
+    // Execute git pull
+    const result = await this.executeGitCommand(['pull'])
+    
+    if (!result.success) {
+      // Handle common pull errors
+      if (result.error?.includes('Automatic merge failed')) {
+        throw new Error('Failed to pull: Merge conflicts detected. Resolve conflicts and commit.')
+      } else if (result.error?.includes('Your local changes')) {
+        throw new Error('Failed to pull: You have uncommitted changes. Commit or stash them first.')
+      } else if (result.error?.includes('Could not read from remote repository')) {
+        throw new Error('Failed to pull: Cannot connect to remote repository. Check your network connection.')
+      } else if (result.error?.includes('Permission denied')) {
+        throw new Error('Failed to pull: Permission denied. Check your repository access rights.')
+      } else if (result.error?.includes('Already up to date')) {
+        // This is actually okay - no changes to pull
+        return
+      } else {
+        throw new Error(result.error || 'Failed to pull changes')
+      }
+    }
+    
+    // Clear cache after pulling
+    this.clearCache()
+  }
+}

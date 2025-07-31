@@ -1,0 +1,1010 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2025-07-29T03:41:46.650Z",
+  "entities": {
+    "Tag-1": {
+      "timestamp": 1752548453461,
+      "name": "company",
+      "color": "yellow"
+    },
+    "Tag-2": {
+      "timestamp": 1752548453461,
+      "name": "education",
+      "color": "blue"
+    },
+    "Tag-3": {
+      "timestamp": 1752548453461,
+      "name": "money",
+      "color": "green"
+    },
+    "Tag-4": {
+      "timestamp": 1752548453461,
+      "name": "political",
+      "color": "orange"
+    },
+    "Tag-5": {
+      "timestamp": 1752548453461,
+      "name": "social",
+      "color": "purple"
+    },
+    "Tag-6": {
+      "timestamp": 1752548453461,
+      "name": "confidential",
+      "color": "red"
+    },
+    "Tag-7": {
+      "timestamp": 1752548453461,
+      "name": "health",
+      "color": "pink"
+    },
+    "Flow-a": {
+      "timestamp": 1752548452461,
+      "shortCode": "F-a",
+      "role": "root_flow",
+      "label": "Run Agent Brain",
+      "flowType": "workflow"
+    },
+    "Flow-b": {
+      "timestamp": 1752548452461,
+      "shortCode": "F-b",
+      "label": "Chat Flow",
+      "flowType": "workflow"
+    },
+    "Node-a1": {
+      "timestamp": 1752548452561,
+      "role": "entry_event",
+      "label": "Flow Entry",
+      "nodeType": "listen",
+      "mode": "entry",
+      "eventType": "flow.entry"
+    },
+    "Node-a3": {
+      "timestamp": 1752548452561,
+      "label": "Database Query Prompt",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "database.query.prompt"
+    },
+    "Node-a4s": {
+      "timestamp": 1752548452561,
+      "label": "Keep Alive",
+      "nodeType": "keep_alive"
+    },
+    "Node-b1": {
+      "timestamp": 1752548452561,
+      "label": "User Message",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "user.message"
+    },
+    "Node-b2": {
+      "timestamp": 1752548452571,
+      "role": "selected_node",
+      "label": "System Events",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "system.*"
+    },
+    "Node-b3": {
+      "timestamp": 1752548452581,
+      "role": "final_node",
+      "label": "Message Type",
+      "nodeType": "decision",
+      "conditions": [
+        {
+          "expr": "type === 'question'",
+          "label": "Question"
+        },
+        {
+          "expr": "type === 'command'",
+          "label": "Command"
+        },
+        {
+          "expr": "type === 'chat'",
+          "label": "Chat"
+        }
+      ],
+      "elseLabel": "Unknown"
+    },
+    "Node-b4": {
+      "timestamp": 1752548452591,
+      "label": "Create Context",
+      "nodeType": "create",
+      "entityTypeTarget": "Node"
+    },
+    "Node-b5": {
+      "timestamp": 1752548452601,
+      "label": "Update Context",
+      "nodeType": "update",
+      "entityId": "Node-b4"
+    },
+    "Node-b6": {
+      "timestamp": 1752548452611,
+      "label": "Send Response",
+      "nodeType": "fire",
+      "eventType": "chat.response",
+      "scope": "global"
+    },
+    "Node-b8": {
+      "timestamp": 1752548452631,
+      "label": "Get User Intent",
+      "nodeType": "query",
+      "prompt": "What is the user's intent?",
+      "resultKey": "intent"
+    },
+    "Node-b9": {
+      "timestamp": 1752548452641,
+      "label": "Transform Response",
+      "nodeType": "transform",
+      "script": "return { response: `Intent: ${context.intent}` }",
+      "outputType": "json"
+    },
+    "Node-b10": {
+      "timestamp": 1752548452651,
+      "label": "Log Intent",
+      "nodeType": "fire",
+      "eventType": "system.intent",
+      "scope": "global"
+    },
+    "Node-b11": {
+      "timestamp": 1752548452661,
+      "label": "Command Handler",
+      "nodeType": "flow",
+      "flowRef": "command-flow-3",
+      "propagateCtx": true
+    },
+    "Node-md5kx4ty32qcubraskrcd": {
+      "label": "Generate db query",
+      "nodeType": "action",
+      "description": "",
+      "updatedAt": 1752649999575,
+      "fieldMappings": {
+        "target": "dbPrompt",
+        "source": "$.event.data.payload"
+      },
+      "actionId": "Action-md52nfbn25xw7tivi4r1f",
+      "createdAt": [
+        1752647249590,
+        1752647249589
+      ],
+      "entityType": "Node"
+    },
+    "Node-md5q7ctp34kqwqpamznj": {
+      "label": "User Message",
+      "nodeType": "listen",
+      "mode": "internal",
+      "eventType": "user.message",
+      "description": "",
+      "updatedAt": 1752656158253,
+      "createdAt": [
+        1752656124589,
+        1752656124589
+      ],
+      "entityType": "Node"
+    },
+    "Node-md5qv9uvnuf6rfpwftsu": {
+      "label": "Check procedures",
+      "nodeType": "action",
+      "description": "",
+      "updatedAt": 1752657252238,
+      "fieldMappings": {
+        "target": "message",
+        "source": "$.event.data.payload"
+      },
+      "actionId": "Action-md5pq4n72eykvz5aiioqi",
+      "createdAt": [
+        1752657240487,
+        1752657240487
+      ],
+      "entityType": "Node"
+    },
+    "Prompt-1": {
+      "timestamp": 1751943653461,
+      "label": "Summarize Text",
+      "description": "Summarizes long text into key points",
+      "updatedAt": 1752375653461,
+      "category": "text-processing",
+      "inputs": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "description": "The text to summarize",
+          "required": true,
+          "example": "Long article or document text..."
+        },
+        "maxLength": {
+          "name": "maxLength",
+          "type": "number",
+          "description": "Maximum length of summary in words",
+          "required": false,
+          "defaultValue": 100
+        }
+      },
+      "templateFn": "const { text, maxLength = 100 } = params;\n// prettier-ignore\nreturn `\n  Please summarize the following text in approximately ${maxLength} words:\n\n  ${text}\n\n  Provide a clear, concise summary focusing on the main points.\n`;"
+    },
+    "Prompt-2": {
+      "timestamp": 1752116453461,
+      "label": "Code Review",
+      "description": "Reviews code for quality and suggestions",
+      "updatedAt": 1752462053461,
+      "category": "development",
+      "inputs": {
+        "code": {
+          "name": "code",
+          "type": "string",
+          "description": "The code to review",
+          "required": true
+        },
+        "language": {
+          "name": "language",
+          "type": "string",
+          "description": "Programming language",
+          "required": true,
+          "example": "javascript"
+        },
+        "focusAreas": {
+          "name": "focusAreas",
+          "type": "array",
+          "description": "Specific areas to focus on",
+          "required": false,
+          "defaultValue": [
+            "bugs",
+            "performance",
+            "readability"
+          ]
+        }
+      },
+      "templateFn": "const { code, language, focusAreas = ['bugs', 'performance', 'readability'] } = params;\n// prettier-ignore\nreturn `\n  Please review the following ${language} code:\n\n  \\`\\`\\`${language}\n  ${code}\n  \\`\\`\\`\n\n  Focus on: ${focusAreas.join(', ')}\n\n  Provide specific suggestions for improvements.\n`;",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "line": {
+                  "type": "number"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "warning",
+                    "info"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Prompt-3": {
+      "timestamp": 1752289253461,
+      "label": "Q&A Assistant",
+      "description": "Answers questions based on context",
+      "updatedAt": 1752289253461,
+      "category": "assistant",
+      "inputs": {
+        "question": {
+          "name": "question",
+          "type": "string",
+          "description": "The user's question",
+          "required": true
+        },
+        "context": {
+          "name": "context",
+          "type": "string",
+          "description": "Additional context or knowledge base",
+          "required": false,
+          "defaultValue": ""
+        },
+        "tone": {
+          "name": "tone",
+          "type": "string",
+          "description": "Response tone",
+          "required": false,
+          "defaultValue": "professional"
+        }
+      },
+      "templateFn": "const { question, context = '', tone = 'professional' } = params;\n\nif (context) {\n  // prettier-ignore\n  return `\n    Context:\n    ${context}\n\n    Please answer the following question in a ${tone} tone:\n\n    ${question}\n\n    Provide a clear and helpful response.\n  `;\n}\n\n// prettier-ignore\nreturn `\n  Please answer the following question in a ${tone} tone:\n\n  ${question}\n\n  Provide a clear and helpful response.\n`;"
+    },
+    "Prompt-4": {
+      "timestamp": 1752030053461,
+      "label": "Sentiment Analysis",
+      "description": "Analyzes sentiment and emotion in text",
+      "updatedAt": 1752375653461,
+      "category": "analysis",
+      "inputs": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "description": "The text to analyze",
+          "required": true
+        },
+        "detailed": {
+          "name": "detailed",
+          "type": "boolean",
+          "description": "Include detailed emotion breakdown",
+          "required": false,
+          "defaultValue": false
+        }
+      },
+      "templateFn": "const { text, detailed = false } = params;\n\n// prettier-ignore\nreturn `\n  Please analyze the sentiment of the following text:\n\n  \"${text}\"\n\n  Provide a sentiment analysis that includes:\n  - Overall sentiment (positive, negative, neutral, mixed)\n  - Confidence score (0-100%)\n  - Key emotional indicators\n  ${detailed ? '- Detailed emotion breakdown (joy, anger, fear, sadness, surprise, etc.)\\n- Specific phrases that indicate each emotion\\n- Intensity levels for each emotion detected' : ''}\n\n  Format your response as a clear, structured analysis.\n`;",
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "neutral",
+              "mixed"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "emotions": {
+            "type": "object",
+            "properties": {
+              "joy": {
+                "type": "number"
+              },
+              "anger": {
+                "type": "number"
+              },
+              "fear": {
+                "type": "number"
+              },
+              "sadness": {
+                "type": "number"
+              },
+              "surprise": {
+                "type": "number"
+              }
+            }
+          },
+          "keyPhrases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Prompt-5": {
+      "timestamp": 1751857253461,
+      "label": "Brainstorm Ideas",
+      "description": "Generates creative ideas for a given topic",
+      "updatedAt": 1752289253461,
+      "category": "creative",
+      "inputs": {
+        "topic": {
+          "name": "topic",
+          "type": "string",
+          "description": "The topic to brainstorm about",
+          "required": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "number",
+          "description": "Number of ideas to generate",
+          "required": false,
+          "defaultValue": 5
+        },
+        "constraints": {
+          "name": "constraints",
+          "type": "string",
+          "description": "Any constraints or requirements",
+          "required": false,
+          "defaultValue": ""
+        },
+        "creativity": {
+          "name": "creativity",
+          "type": "string",
+          "description": "Creativity level",
+          "required": false,
+          "defaultValue": "balanced",
+          "example": "conservative, balanced, creative, wild"
+        }
+      },
+      "templateFn": "const { topic, quantity = 5, constraints = '', creativity = 'balanced' } = params;\n\n// prettier-ignore\nreturn `\n\nPlease brainstorm ${quantity} ${creativity} ideas for:\n\n${topic}\n\n${constraints ? 'Constraints/Requirements:\\n' + constraints + '\\n\\n' : ''}Guidelines:\n- Generate ${quantity} distinct ideas\n- Creativity level: ${creativity}\n- Each idea should be practical and actionable\n- Include a brief explanation for each idea\n- Consider different perspectives and approaches\n- Be specific rather than generic\n\nPresent each idea with:\n1. A clear title\n2. A 2-3 sentence description\n3. Key benefits or potential impact\n\n`;"
+    },
+    "Prompt-user-message-analysis": {
+      "timestamp": 1752375653461,
+      "label": "User Message Analysis",
+      "description": "Analyzes user messages to extract intent, entities, and sentiment",
+      "updatedAt": 1752375653461,
+      "category": "analysis",
+      "inputs": {
+        "userMessage": {
+          "name": "userMessage",
+          "type": "string",
+          "description": "The user's message to analyze",
+          "required": true
+        },
+        "additionalContext": {
+          "name": "additionalContext",
+          "type": "string",
+          "description": "Additional context about the conversation",
+          "required": false,
+          "defaultValue": ""
+        }
+      },
+      "templateFn": "const { userMessage, additionalContext = '' } = params;\n\n// prettier-ignore\nreturn `\n  Analyze the following user message and extract key information:\n\n  User Message: \"${userMessage}\"\n\n  ${additionalContext ? `Additional Context: ${additionalContext}\n\n` : ''}\n\n  Please provide a detailed analysis including:\n  1. Summary: A brief summary of what the user is asking or saying\n  2. Intent: The primary intent or goal of the message (e.g., question, request, feedback, etc.)\n  3. Entities: Key entities, topics, or concepts mentioned\n  4. Category: Categorize the message (e.g., technical_support, general_inquiry, feature_request, etc.)\n  5. Urgency: Assess the urgency level (low, medium, high)\n\n  Format your response as a structured analysis.\n`;"
+    },
+    "Prompt-format-response": {
+      "timestamp": 1752375653461,
+      "label": "Construct Response",
+      "description": "Formats AI responses based on analysis results and style preferences",
+      "updatedAt": 1752375653461,
+      "category": "formatting",
+      "inputs": {
+        "userMessage": {
+          "name": "userMessage",
+          "type": "string",
+          "description": "The original user message",
+          "required": true
+        },
+        "analysisResult": {
+          "name": "analysisResult",
+          "type": "object",
+          "description": "The analysis result from the previous step",
+          "required": true
+        },
+        "responseStyle": {
+          "name": "responseStyle",
+          "type": "string",
+          "description": "The desired response style",
+          "required": false,
+          "defaultValue": "helpful and professional"
+        }
+      },
+      "templateFn": "const { userMessage, analysisResult, responseStyle = 'helpful and professional' } = params;\n\n// prettier-ignore\nreturn `\n  Based on the following analysis of the user's message, craft an appropriate response.\n\n  Original User Message: \"${userMessage}\"\n\n  Analysis Result:\n  ${JSON.stringify(analysisResult, null, 2)}\n\n  Please format a response that is ${responseStyle}.\n\n  The response should:\n  1. Address the user's primary intent as identified in the analysis\n  2. Be clear, concise, and helpful\n  3. Include any relevant suggestions or next steps\n  4. Maintain a ${responseStyle} tone throughout\n\n  Format your response as a natural, conversational message.\n`;"
+    },
+    "Action-stream-to-fe": {
+      "timestamp": 1752548453391,
+      "label": "Stream to FE",
+      "description": "Streams a message to the front-end",
+      "updatedAt": 1753691047838,
+      "category": "utility",
+      "input": {
+        "message": {
+          "name": "message",
+          "type": "string",
+          "required": true,
+          "description": "User message"
+        }
+      },
+      "actionFn": "const { message } = params;\n\nconst result = await services.llm.streamText({\n  model: { provider: 'openai', model: 'gpt-4o' },\n  prompt: message,\n  system: 'You are a helpful assistant.',\n  temperature: 0.7,\n  maxTokens: 100,\n});\n\nfor await (const textPart of result.textStream) {\n  services.logger.info('Streaming text to FE', { textPart });\n\n  services.emitter.sendToPlugin('agent', {\n    type: 'TOKEN_STREAM',\n    token: textPart\n  });\n}\n\nawait result.finishReason\n\nservices.emitter.sendToPlugin('agent', {\n  type: 'LLM_DONE',\n});",
+      "output": {
+        "logged": "boolean",
+        "message": "string"
+      }
+    },
+    "Action-md52nfbn25xw7tivi4r1f": {
+      "shortCode": "ACT-4",
+      "label": "Generate db query",
+      "description": "Generate db query from a user prompt",
+      "updatedAt": 1752650219980,
+      "createdAt": [
+        1752616563539,
+        1752616563539
+      ],
+      "entityType": "Action",
+      "category": "",
+      "input": {
+        "dbPrompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Database query or transaction prompt"
+        }
+      },
+      "actionFn": "  const { dbPrompt } = params;\n\n  try {\n    // Get documents from library service\n    const [doc1, doc2] = await Promise.all([\n      services.library.getDocByCode('DOC-1'),\n      services.library.getDocByCode('DOC-2')\n    ]);\n\n    services.logger.info('db example docs', { dbPrompt, doc1, doc2 })\n\n    // Check if documents were found\n    if (!doc1) {\n      throw new Error('Document DOC-1 not found');\n    }\n    if (!doc2) {\n      throw new Error('Document DOC-2 not found');\n    }\n\n    const queryDoc = doc1.content;\n    const transactionDoc = doc2.content;\n\n    // Define schema for message classification\n    const MessageClassificationSchema = z.object({\n      type: z.enum(['query', 'transaction']).describe('Whether the message is a read operation (query) or write operation (transaction)'),\n      reasoning: z.string().describe('Brief explanation of why this classification was chosen')\n    });\n\n    // Classify the user's message\n    const classificationResult = await services.llm.generateObject({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      schema: MessageClassificationSchema,\n      prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):\n\n  Message: \"${dbPrompt}\"\n\n  A query is any operation that reads or retrieves data without modifying it.\n  A transaction is any operation that creates, updates, or deletes data.`,\n      temperature: 0.3,\n    });\n\n    services.logger.info('classificationResult', classificationResult)\n    const classification = classificationResult.object;\n\n    // Select appropriate document based on classification\n    const selectedDoc = classification.type === 'query' ? queryDoc : transactionDoc;\n\n    services.logger.info('Message classified', {\n      type: classification.type,\n      reasoning: classification.reasoning\n    });\n\n    // Generate the database operation code\n    const result = await services.llm.generateText({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      prompt: dbPrompt,\n      system: `\n        <examples>\n        ${selectedDoc}\n        </examples>\n\n        Use the provided examples to write the code to satisfy the user message. Only respond with code (no codeblock backticks).\n      `,\n      temperature: 0.7,\n      maxTokens: 1000,\n    });\n\n    // Emit the generated code to database plugin\n    services.emitter.sendToPlugin('database', {\n      type: 'MAGIC_PROMPT_GENERATED',\n      query: result.text\n    });\n\n  } catch (error) {\n    services.logger.error('Error generating database operation', { error });\n\n    // Emit error to database plugin - note: this event type might not exist\n    // You may need to handle errors differently based on your system\n    services.emitter.sendToPlugin('database', {\n      type: 'QUERY_ERROR',\n      error: error instanceof Error ? error.message : 'Unknown error occurred'\n    });\n  }"
+    },
+    "Action-md5phg7q12zc2h1qyscqe": {
+      "shortCode": "ACT-5",
+      "label": "Google search",
+      "description": "Search for something on google using an automated browser controlled by the assistant.",
+      "updatedAt": 1752685118437,
+      "createdAt": [
+        1752654915926,
+        1752654915926
+      ],
+      "entityType": "Action",
+      "category": "",
+      "input": {
+        "searchQuery": {
+          "type": "string",
+          "required": true,
+          "description": "search query for google"
+        }
+      },
+      "actionFn": "  const { searchQuery } = params;\n\n  /** 0 ▸ spin up a fresh browser instance */\n  const browser = services.browser.createBrowser();   // ← NEW: per-call instance\n\n  try {\n    /* 1 ▸ launch Chromium (headed for demo) */\n    await browser.launch({ headless: false });\n\n    /* 2 ▸ navigate to Google */\n    await browser.goto('https://www.google.com');\n\n    /* 3 ▸ dismiss cookie/consent banner if it shows up */\n    const consentBtn = 'button:has-text(\"Accept\"), button:has-text(\"Accept all\")';\n    if (await browser.isVisible(consentBtn)) {\n      await browser.click(consentBtn);\n    }\n\n    /* 4 ▸ type the query into the (input|textarea)[name=q] and submit */\n    const searchField = 'textarea[name=\"q\"], input[name=\"q\"]';\n    await browser.waitForSelector(searchField, 5_000);\n    await browser.type(searchField, searchQuery);\n    await browser.press('Enter');\n\n    /* 5 ▸ wait for the results container */\n    await browser.waitForSelector('#search', 10_000);\n\n    services.logger.info('Google search completed', { searchQuery });\n  } catch (error) {\n    services.logger.error('Error during Google search', { error });\n  } finally {\n    /* 6 ▸ always close the instance */\n    await browser.close();\n  }"
+    },
+    "Action-md5pq4n72eykvz5aiioqi": {
+      "shortCode": "ACT-6",
+      "label": "Check for procedure",
+      "description": "Checks if user message matches any stored procedures",
+      "updatedAt": 1753691633689,
+      "createdAt": [
+        1752655320835,
+        1752655320835
+      ],
+      "entityType": "Action",
+      "category": "",
+      "input": {
+        "message": {
+          "type": "object",
+          "required": true,
+          "description": ""
+        }
+      },
+      "actionFn": "const { message } = params;\n\nconst { text, mode } = message;\n\ntry {\n  /** ──────────────────────────────────────────────────────────────\n  * 1. Load all procedure-related documents\n  * ──────────────────────────────────────────────────────────────*/\n  const allDocs = await services.library.getWithinFolder('procedures')\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in “procedures” collection')\n  }\n\n  /** 2. Collect the “*.usage” docs and build the LLM prompt */\n  const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n  services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n  if (usageDocs.length === 0) {\n    throw new Error('No “*.usage” documents found')\n  }\n\n  const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n  const proceduresPrompt = usageDocs\n    .map(d => {\n      const name = d.name.replace(/\\.usage$/, '')\n      return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n    })\n    .join('\\n\\n')\n\n  /** 3. Ask the LLM which procedure (if any) matches the user’s request */\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum([...procedureNames, 'none']).describe('Chosen procedure name or \"none\"')\n  })\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n    You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n    <procedures>\n    ${proceduresPrompt}\n    </procedures>\n\n    Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n    \n    User message: \"\"\"${text}\"\"\"\n  `,\n    temperature: 0\n  })\n\n\n\n  const { procedure } = llmResult.object\n\n  services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n\n  /** ──────────────────────────────────────────────────────────────\n   * 4. Route to the chosen procedure or fall back to streaming\n   * ──────────────────────────────────────────────────────────────*/\n  if (procedure !== 'none') {\n    const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n    if (!procDoc) {\n      throw new Error(`Procedure implementation document “${procedure}.procedure” not found`)\n    }\n\n    const actionKey = procDoc.content.trim()\n\n    await services.action.getAndExecute(actionKey, { searchQuery: text })\n  } else {\n    await services.action.getAndExecute('Stream to FE', { message: text })\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  // Fallback behaviour here if needed\n}"
+    },
+    "Action-mdnzpcf0117lx8rgtrrp9": {
+      "shortCode": "ACT-5",
+      "label": "Add Message to Thread",
+      "description": "Adds a new message to an existing thread with proper bidirectional linking",
+      "updatedAt": 1753760471580,
+      "createdAt": [
+        1753760471580,
+        1753760471580
+      ],
+      "entityType": "Action",
+      "category": "",
+      "input": {
+        "threadId": {
+          "type": "string",
+          "required": true,
+          "description": "The ID of the thread to which the message will be added"
+        },
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "The content of the message to be added"
+        },
+        "sender": {
+          "type": "string",
+          "required": true,
+          "description": "The sender of the message"
+        }
+      },
+      "actionFn": "  const { threadId, text, sender = 'user' } = params;\n\n  if (!threadId) {\n    throw new Error('threadId is required');\n  }\n  if (!text || !text.trim()) {\n    throw new Error('text is required and cannot be empty');\n  }\n\n  const result = services.repository.agentCommands.addMessage({\n    threadId,\n    text,\n    sender\n  });\n\n  if (!result.success) {\n    throw new Error(result.error || 'Failed to add message to thread');\n  }\n\n  await services.logger.info('Message added to thread', {\n    threadId,\n    messageId: result.data.id,\n    sender,\n    textLength: text.length\n  });\n\n  return {\n    ...result.data,\n    success: true\n  };"
+    },
+    "Relation-mdnzl6t73c8w70i4vekju": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a1",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t717kk8l8wcrnq1": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a3",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7qud97b8ap0md": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a4s",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t727pzaaozak3m0": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a1",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t71g61cfkusmure": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-md5q7ctp34kqwqpamznj",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73ej9byjffoqu7": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-a3",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73t1gxjdis9qc4": {
+      "relationDetails": {
+        "sourceEntity": "Node-a1",
+        "targetEntity": "Node-a4s",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7rrpyde4g2aol": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b1",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73rxzybyg6fks8": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b2",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t717qn7io5fznkv": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b3",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7l17r9taso81p": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b4",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t77opfemrjqp2a": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b5",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t71fhu22ro3ktd9": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b6",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t71cwvwvvr57uks": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b8",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7p6xxesopw25e": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b9",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7211at6d42daa1": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b10",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7oogvbksjwfm8": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b11",
+        "relationType": "contains",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73ujk8i6fer4sn": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b1",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t71iy25l1bhut4l": {
+      "relationDetails": {
+        "sourceEntity": "Flow-b",
+        "targetEntity": "Node-b2",
+        "relationType": "event_trace",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t72tijxm0ze4w0p": {
+      "relationDetails": {
+        "sourceEntity": "Node-b1",
+        "targetEntity": "Node-b3",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t72zw4o45klfij4": {
+      "relationDetails": {
+        "sourceEntity": "Node-b2",
+        "targetEntity": "Node-b8",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t731fgj9t0zl082": {
+      "relationDetails": {
+        "sourceEntity": "Node-b3",
+        "targetEntity": "Node-b4",
+        "relationType": "transitions_to",
+        "info": {
+          "condition": "Question"
+        }
+      }
+    },
+    "Relation-mdnzl6t722k9wk8e36nzd": {
+      "relationDetails": {
+        "sourceEntity": "Node-b3",
+        "targetEntity": "Node-b11",
+        "relationType": "transitions_to",
+        "info": {
+          "condition": "Command"
+        }
+      }
+    },
+    "Relation-mdnzl6t73ta7o743ecmu5": {
+      "relationDetails": {
+        "sourceEntity": "Node-b11",
+        "targetEntity": "Node-b5",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t733fvha7p6k09r": {
+      "relationDetails": {
+        "sourceEntity": "Node-b4",
+        "targetEntity": "Node-b5",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t7anpbptqwqtcz": {
+      "relationDetails": {
+        "sourceEntity": "Node-b5",
+        "targetEntity": "Node-b6",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73g797nnljsu0e": {
+      "relationDetails": {
+        "sourceEntity": "Node-b8",
+        "targetEntity": "Node-b9",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73nj059o4xs4i6": {
+      "relationDetails": {
+        "sourceEntity": "Node-b9",
+        "targetEntity": "Node-b10",
+        "relationType": "transitions_to",
+        "info": {}
+      }
+    },
+    "Relation-mdnzl6t73ex65djw1pv78": {
+      "relationDetails": {
+        "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
+        "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t71wu8k6hr0pnas": {
+      "relationDetails": {
+        "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
+        "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t7k3qliqsu5uup": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-md5kx4ty32qcubraskrcd",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t73e5rff36gb151": {
+      "relationDetails": {
+        "sourceEntity": "Node-a3",
+        "targetEntity": "Node-md5kx4ty32qcubraskrcd",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-mdnzl6t72vvswrs6fi4j6": {
+      "relationDetails": {
+        "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
+        "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
+        "relationType": "instance_of"
+      }
+    },
+    "Relation-mdnzl6t716hm5e6o8vts8": {
+      "relationDetails": {
+        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
+        "targetEntity": "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t73q6vqq2t48ftz": {
+      "relationDetails": {
+        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
+        "targetEntity": "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t7kwugoo5ludnl": {
+      "relationDetails": {
+        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
+        "targetEntity": "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t7di1dxa0xgq9q": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-md5q7ctp34kqwqpamznj",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t71kuk9pt3jnkvm": {
+      "relationDetails": {
+        "sourceEntity": "Flow-a",
+        "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
+        "relationType": "contains"
+      }
+    },
+    "Relation-mdnzl6t752vtz8436ggg": {
+      "relationDetails": {
+        "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
+        "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
+        "relationType": "transitions_to"
+      }
+    },
+    "Relation-mdnzl6t737q4p6s1aesfk": {
+      "relationDetails": {
+        "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
+        "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
+        "relationType": "instance_of"
+      }
+    },
+    "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e": {
+      "name": "database-examples",
+      "updatedAt": 1752615301331,
+      "createdAt": 1752615301331
+    },
+    "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd": {
+      "name": "procedures",
+      "updatedAt": 1752653630539,
+      "createdAt": 1752653630539
+    },
+    "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa": {
+      "name": "query-examples",
+      "shortCode": "DOC-1",
+      "updatedAt": 1752616081692,
+      "createdAt": 1752616081692,
+      "content": "Prompt: Generate a complex relation query that finds entities with outgoing contains relations and summarizes them (limit 20 results)\nQuery:\tconst results = [];\nconst allEntities = qx().ids();\nfor (const entityId of allEntities) {\nconst targets = qx(entityId).linksTo(‘contains’, Object.values(EARS.Entity)).ids();\nif (targets.length > 0) {\nconst entityData = qx(entityId).pickOne([‘id’]);\nconst allData   = getAll(entityId);\nresults.push({\n…entityData,\n…allData,\nrelationType: ‘contains’,\ntargetCount : targets.length,\ntargets      : targets.slice(0, 5).map(targetId => ({\nid  : targetId,\ntype: targetId.split(’-’)[0]\n}))\n});\n}\n}\nreturn results.slice(0, 20);\n\nPrompt: Generate a query that groups Thread entities by status and returns each status with its count\nQuery:\tconst grouped = qx(EARS.Entity.Thread).groupBy(‘status’);\nreturn Array.from(grouped.entries()).map(([status, items]) => ({\nstatus,\ncount: items.count()\n}));\n\nPrompt: Generate a call that returns comprehensive schema statistics (entities, attributes, relations)\nQuery:\treturn getSchemaStats();\n\nPrompt: Generate a paginated query that returns 10 Thread items per call and exposes items and nextCursor\nQuery:\tconst { items, nextCursor } = qx(EARS.Entity.Thread).page(10);\nreturn items;\n\nPrompt: Generate a query that counts all Thread entities with status completed\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘completed’)\n.count();\n\nPrompt: Generate a query that returns messages linked to Thread-1 via the contains relation (id, text, sender)\nQuery:\treturn qx(‘Thread-1’)\n.linksTo(‘contains’, EARS.Entity.Message)\n.pick([‘id’, ‘text’, ‘sender’]);\n\nPrompt: Generate a query that gets unique role values from Flow entities (id, name, role)\nQuery:\treturn qx(EARS.Entity.Flow)\n.distinct(‘role’)\n.pick([‘id’, ‘name’, ‘role’]);\n\nPrompt: Generate a query that lists all Tag entities ordered by name (id, name, color)\nQuery:\treturn qx().ofType(EARS.Entity.Tag)\n.orderBy(‘name’)\n.pick([‘id’, ‘name’, ‘color’]);\n\nPrompt: Generate a query for the five most-recent active Thread entities, returning all fields\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘active’)\n.orderBy(‘timestamp’, ‘desc’)\n.limit(5)\n.pickAll();\n\nPrompt: Generate a query that returns every attribute for entity Thread-1\nQuery:\treturn qx(‘Thread-1’).pickAll();"
+    },
+    "Document-02634655-36a5-4245-afaf-a41db7215820": {
+      "name": "transaction-examples",
+      "shortCode": "DOC-2",
+      "updatedAt": 1752616292264,
+      "createdAt": 1752616292264,
+      "content": "Prompt: Generate a transaction that defines a Flow entity with attributes, roles, and contains relations in a single call\nQuery:\tconst flowId = tx(EARS.Entity.Flow)\n.define({\nattributes: {\nname: ‘Customer Onboarding’,\ndescription: ‘Automated customer onboarding flow’,\nstatus: ‘draft’,\nversion: ‘1.0.0’\n},\nroles: [‘template’, ‘featured’],\nlinks: {\ncontains: [\ntx(EARS.Entity.Node)\n.put(‘type’, ‘start’)\n.put(‘label’, ‘Begin Onboarding’)\n.id(),\ntx(EARS.Entity.Node)\n.put(‘type’, ‘action’)\n.put(‘label’, ‘Collect Information’)\n.id()\n]\n}\n})\n.id();\nreturn qx(flowId).pickAll();\n\nPrompt: Generate a transaction that builds a three-level thread hierarchy and demonstrates safeLink cycle prevention\nQuery:\tconst root = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Root Thread’)\n.id();\nconst child = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Child Thread’)\n.id();\nconst grandchild = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Grandchild Thread’)\n.id();\ntx(root).safeLink(EARS.RelKind.parent_of, child);\ntx(child).safeLink(EARS.RelKind.parent_of, grandchild);\ntry {\ntx(grandchild).safeLink(EARS.RelKind.parent_of, root, { preventCycles: true });\n} catch (error) {\nreturn { hierarchy: { root, child, grandchild }, cyclePreventionWorking: true };\n}\n\nPrompt: Generate a transaction that creates Agent, Thread, and Tag entities and links them with contains, has, and symmetric relates_to relations\nQuery:\tconst agentId  = tx(EARS.Entity.Agent) .put(‘name’, ‘Multi-Agent’).id();\nconst threadId = tx(EARS.Entity.Thread).put(‘title’, ‘Multi-Agent Thread’).id();\nconst tagId    = tx(EARS.Entity.Tag)  .put(‘name’, ‘important’).put(‘color’, ‘#FF0000’).id();\ntx(agentId) .link(EARS.RelKind.contains , threadId);\ntx(threadId).link(EARS.RelKind.has      , tagId);\ntx(agentId) .link(EARS.RelKind.relates_to, threadId, { symmetric: true });\nreturn {\nentities    : { agentId, threadId, tagId },\nagentThreads: qx(agentId) .linksTo(‘contains’, EARS.Entity.Thread).ids(),\nthreadTags  : qx(threadId).linksTo(‘has’,      EARS.Entity.Tag)   .ids()\n};\n\nPrompt: Generate a transaction that batch-updates multiple attributes on an Agent entity\nQuery:\tconst entityId = tx(EARS.Entity.Agent).put(‘name’, ‘Agent Smith’).id();\ntx(entityId).batchPut({\nstatus      : ‘active’,\nlastActive  : Date.now(),\ncapabilities: [‘chat’, ‘analysis’, ‘search’],\nconfig      : { temperature: 0.7, maxTokens: 1000 }\n});\nreturn qx(entityId).pickAll();\n\nPrompt: Generate a transaction that grants and revokes roles on an Agent and enforces a primary role\nQuery:\tconst agentId = tx(EARS.Entity.Agent)\n.put(‘name’, ‘Role Test Agent’)\n.grant(‘assistant’)\n.grant(‘analyzer’)\n.id();\nconst initialRoles = getRoles(agentId);\ntx(agentId).revoke(‘assistant’).grant(‘supervisor’).ensure(‘primary’);\nconst finalRoles = getRoles(agentId);\nreturn { agentId, initialRoles, finalRoles };\n\nPrompt: Generate a transaction that creates a Thread and an initial Message linked to it, then returns both ids\nQuery:\tconst threadId = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Customer Support’)\n.put(‘status’, ‘open’)\n.put(‘createdAt’, Date.now())\n.id();\nconst messageId = tx(EARS.Entity.Message)\n.put(‘text’, ‘Hello, how can I help you today?’)\n.put(‘timestamp’, Date.now())\n.put(‘sender’, ‘assistant’)\n.link(EARS.RelKind.CONTAINS, threadId)\n.id();\ntx(threadId).link(EARS.RelKind.contains, messageId);\nreturn { threadId, messageId };\n\nPrompt: Generate a transaction that deletes a Tag entity and confirms removal\nQuery:\tconst tempId = tx(EARS.Entity.Tag)\n.put(‘name’, ‘temporary’)\n.put(‘color’, ‘#808080’)\n.id();\nconst exists = qx(tempId).pickOne([‘id’, ‘name’]);\ntx(tempId).destroy();\nconst afterDelete = qx(tempId).pickOne([‘id’]);\nreturn { created: exists, afterDelete: afterDelete || ‘Entity not found (successfully deleted)’ };"
+    },
+    "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613": {
+      "name": "google.examples",
+      "shortCode": "DOC-3",
+      "updatedAt": 1752653655579,
+      "createdAt": 1752653655579,
+      "content": "Can you google how to reset an iPhone 13?\n\nSearch Google for the population of Iceland.\n\nLook up on Google: best Italian restaurants near me.\n\nCould you run a quick Google search for “quantum computing basics”?\n\nFind on Google the weather tomorrow in Tokyo.\n\nGoogle the definition of “serendipity.”\n\nHey, check Google for the latest Tesla stock price.\n\nPull up Google results for “JavaScript debounce vs throttle.”\n\nGo to Google and see who won the 2024 World Series.\n\nUse Google to find a tutorial on knitting socks."
+    },
+    "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9": {
+      "name": "google.usage",
+      "shortCode": "DOC-4",
+      "updatedAt": 1752653684393,
+      "createdAt": 1752653684393,
+      "content": "In case the user wants to google search something."
+    },
+    "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3": {
+      "name": "google.procedure",
+      "shortCode": "DOC-5",
+      "updatedAt": 1752653694470,
+      "createdAt": 1752653694470,
+      "content": "Google search"
+    }
+  },
+  "metadata": {
+    "entityCount": 84,
+    "attributeKinds": [
+      "timestamp",
+      "name",
+      "color",
+      "shortCode",
+      "role",
+      "label",
+      "flowType",
+      "nodeType",
+      "mode",
+      "eventType",
+      "conditions",
+      "elseLabel",
+      "entityTypeTarget",
+      "entityId",
+      "scope",
+      "prompt",
+      "resultKey",
+      "script",
+      "outputType",
+      "flowRef",
+      "propagateCtx",
+      "description",
+      "updatedAt",
+      "fieldMappings",
+      "actionId",
+      "createdAt",
+      "entityType",
+      "category",
+      "inputs",
+      "templateFn",
+      "outputSchema",
+      "input",
+      "actionFn",
+      "output",
+      "relationDetails",
+      "content",
+      "active",
+      "status",
+      "tNodeType",
+      "startedAt",
+      "stepNodeId",
+      "stepNodeType",
+      "nodeAttributes",
+      "parameters"
+    ],
+    "relationKinds": [
+      "contains",
+      "event_trace",
+      "transitions_to",
+      "instance_of",
+      "tracked",
+      "spawned"
+    ],
+    "excludedTypes": [
+      "TNode"
+    ],
+    "excludedRelations": 3
+  }
+}

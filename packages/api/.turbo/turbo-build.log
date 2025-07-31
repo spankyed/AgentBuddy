@@ -1,0 +1,22 @@
+
+> @abuddy/api@1.0.0 build /Users/spankyed/Develop/Projects/AgentBuddy/apps/api
+> tsc -p . && tsup src/types.ts src/server.ts --format esm,cjs --dts
+
+CLI Building entry: src/server.ts, src/types.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.4.0
+CLI Target: es2022
+ESM Build start
+CJS Build start
+CJS dist/types.js  758.00 B
+CJS dist/server.js 299.02 KB
+CJS ⚡️ Build success in 85ms
+ESM dist/types.mjs  0 B
+ESM dist/server.mjs 295.21 KB
+ESM ⚡️ Build success in 85ms
+DTS Build start
+DTS ⚡️ Build success in 5871ms
+DTS dist/server.d.mts 13.00 B
+DTS dist/types.d.mts  58.67 KB
+DTS dist/server.d.ts  13.00 B
+DTS dist/types.d.ts   58.67 KB

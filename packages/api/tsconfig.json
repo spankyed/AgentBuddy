@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,          // ← emit types
+    "declarationMap": true,
+    "emitDeclarationOnly": false,   // emit JS files too
+    "noEmit": false,               // override base config
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+    },
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "allowImportingTsExtensions": false
+  },
+  "include": ["src"]
+}
