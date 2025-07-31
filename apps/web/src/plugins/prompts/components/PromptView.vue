@@ -2,93 +2,74 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div class="flex items-center gap-4">
+      <div>
+        <h2 class="text-base font-semibold text-neutral-100">{{ prompt?.label }}</h2>
+        <p class="text-xs text-neutral-400">Prompt Details</p>
+      </div>
+      <div class="flex items-center gap-2">
         <Button
           @click="$emit('back')"
           variant="transparent"
-          class="!p-2"
         >
-          <ArrowLeft class="w-4 h-4" />
+          Back
         </Button>
-        <div>
-          <h2 class="text-base font-semibold text-neutral-100">Prompt Details</h2>
-          <p class="text-xs text-neutral-400">{{ prompt?.label || 'Untitled prompt' }}</p>
-        </div>
+        <Button
+          @click="$emit('edit')"
+          variant="primary"
+        >
+          <Edit2 class="w-4 h-4" />
+          Edit Prompt
+        </Button>
       </div>
-      <Button 
-        @click="$emit('edit')"
-        variant="primary"
-      >
-        <Edit2 class="w-4 h-4" />
-        <span>Edit Prompt</span>
-      </Button>
     </div>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar" v-if="prompt">
       <div class="max-w-4xl p-6 mx-auto space-y-6">
         <!-- Basic Info -->
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Name</label>
-              <div class="w-full px-4 py-3 text-lg font-medium border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100">
-                {{ prompt.label }}
-              </div>
-            </div>
-            <div v-if="prompt.category">
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Category</label>
-              <div class="w-full px-3 py-3 text-sm font-medium border rounded-md bg-neutral-800 border-neutral-700">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md"
-                  :class="categoryStyle(prompt.category)"
-                >
-                  {{ prompt.category }}
-                </span>
-              </div>
-            </div>
+        <div class="flex items-center gap-4">
+          <div class="flex-1">
+            <h3 class="mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Description</h3>
+            <p class="text-sm text-neutral-300">{{ prompt.description || 'No description' }}</p>
           </div>
-          
-          <div v-if="prompt.description">
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Description</label>
-            <div class="px-4 py-3 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300">
-              {{ prompt.description || 'No description provided' }}
-            </div>
+          <div>
+            <h3 class="mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Category</h3>
+            <span
+              class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md"
+              :class="categoryStyle(prompt.category)"
+            >
+              {{ prompt.category || 'Uncategorized' }}
+            </span>
           </div>
         </div>
 
-        <!-- Input Parameters -->
+        <!-- Parameters -->
         <div class="pt-6 border-t border-neutral-800">
           <CollapsibleSection label="Input Parameters">
             <div v-if="Object.keys(prompt.inputs || {}).length > 0" class="space-y-3">
-              <div 
-                v-for="(input, key) in prompt.inputs" 
+              <div
+                v-for="(input, key) in prompt.inputs"
                 :key="key"
-                class="p-4 border rounded-md bg-neutral-800 border-neutral-700"
+                class="p-4 border rounded-md bg-neutral-800/50 border-neutral-700"
               >
                 <div class="flex items-start justify-between">
-                  <div class="flex-1">
-                    <h4 class="text-sm font-medium text-neutral-100">
-                      {{ input.name }}
-                      <span v-if="input.required !== false" class="text-red-400">*</span>
-                    </h4>
-                    <p v-if="input.description" class="mt-1 text-sm text-neutral-400">
-                      {{ input.description }}
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium text-neutral-100">{{ key }}</span>
+                      <span class="text-xs text-neutral-500">({{ input.type }})</span>
+                      <span v-if="input.required !== false" class="text-xs text-red-400">required</span>
+                    </div>
+                    <p v-if="input.description" class="text-sm text-neutral-400">{{ input.description }}</p>
+                    <p v-if="input.defaultValue !== undefined" class="text-xs text-neutral-500">
+                      Default: <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-300">{{ input.defaultValue }}</code>
                     </p>
                   </div>
-                  <span class="px-2 py-1 text-xs font-medium border rounded bg-neutral-700 border-neutral-600 text-neutral-300">
-                    {{ input.type }}
-                  </span>
-                </div>
-                <div v-if="input.defaultValue !== undefined" class="mt-3">
-                  <span class="text-xs text-neutral-500">Default:</span>
-                  <code class="px-2 py-1 ml-2 text-xs rounded bg-neutral-900 text-neutral-300">
-                    {{ JSON.stringify(input.defaultValue) }}
-                  </code>
                 </div>
               </div>
             </div>
-            <p v-else class="text-sm text-neutral-400">No input parameters defined</p>
+            <div v-else class="p-8 text-center border-2 border-dashed rounded-lg border-neutral-700">
+              <p class="text-sm text-neutral-400">No parameters defined</p>
+            </div>
           </CollapsibleSection>
         </div>
 
@@ -111,27 +92,27 @@
 
         <!-- Output Schema -->
         <div v-if="prompt.outputSchema" class="pt-6 border-t border-neutral-800">
-          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Output Schema</label>
-          <pre class="p-4 overflow-auto text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300">{{ JSON.stringify(prompt.outputSchema, null, 2) }}</pre>
+          <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Expected Output</h3>
+          <pre class="p-4 overflow-auto text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-300">{{ JSON.stringify(prompt.outputSchema, null, 2) }}</pre>
         </div>
 
         <!-- Metadata -->
         <div class="pt-6 border-t border-neutral-800">
-          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Metadata</label>
-          <div class="grid grid-cols-1 gap-3 p-4 text-sm border rounded-md md:grid-cols-2 bg-neutral-800 border-neutral-700">
+          <h3 class="mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Metadata</h3>
+          <dl class="grid grid-cols-2 gap-4">
             <div>
-              <span class="text-neutral-500">Created:</span>
-              <span class="ml-2 text-neutral-100">
-                {{ new Date(prompt.createdAt).toLocaleString() }}
-              </span>
+              <dt class="text-xs text-neutral-500">Created</dt>
+              <dd class="text-sm text-neutral-300">{{ formatDate(prompt.createdAt) }}</dd>
             </div>
-            <div v-if="prompt.updatedAt">
-              <span class="text-neutral-500">Updated:</span>
-              <span class="ml-2 text-neutral-100">
-                {{ new Date(prompt.updatedAt).toLocaleString() }}
-              </span>
+            <div>
+              <dt class="text-xs text-neutral-500">Updated</dt>
+              <dd class="text-sm text-neutral-300">{{ formatDate(prompt.updatedAt) }}</dd>
             </div>
-          </div>
+            <div>
+              <dt class="text-xs text-neutral-500">ID</dt>
+              <dd class="font-mono text-sm text-neutral-300">{{ prompt.id }}</dd>
+            </div>
+          </dl>
         </div>
       </div>
     </div>
@@ -139,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
+import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
 import type { PromptEntity } from '@abuddy/api';
@@ -155,18 +136,18 @@ defineEmits<{
   back: [];
 }>();
 
-// Professional category styling (matching PromptsList.vue)
 function categoryStyle(category?: string) {
-  switch (category) {
-    case 'text-processing':
-      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-    case 'development':
-      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-    case 'assistant':
-      return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
-    default:
-      return 'bg-neutral-800 text-neutral-400 border border-neutral-700';
+  const styles: Record<string, string> = {
+    'text-processing': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
+    'development': 'bg-green-900/30 text-green-400 border border-green-800/50',
+    'assistant': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
   }
+  return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+}
+
+function formatDate(timestamp?: number) {
+  if (!timestamp) return 'N/A';
+  return new Date(timestamp).toLocaleString();
 }
 
 function openInEditor() {

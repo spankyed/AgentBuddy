@@ -28,16 +28,13 @@
       <div class="max-w-4xl p-6 mx-auto">
         <div class="space-y-6">
           <!-- Basic Info -->
-          <div class="space-y-4">
-            <!-- Description -->
-            <div v-if="action?.description">
-              <h3 class="mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Description</h3>
-              <p class="text-sm text-neutral-300">{{ action.description }}</p>
+          <div class="flex items-center gap-4">
+            <div class="flex-1">
+              <h3 class="mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Description</h3>
+              <p class="text-sm text-neutral-300">{{ action?.description || 'No description' }}</p>
             </div>
-
-            <!-- Category -->
             <div>
-              <h3 class="mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Category</h3>
+              <h3 class="mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Category</h3>
               <span
                 class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md"
                 :class="categoryStyle(action?.category)"
