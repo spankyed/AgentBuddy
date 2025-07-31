@@ -1,57 +1,66 @@
 <script setup lang="ts">
+import WebApp from './WebApp.vue';
 import ApiStatus from './components/ApiStatus.vue';
+import { ref } from 'vue';
+
+// Toggle for showing API status (can be toggled with a hotkey)
+const showApiStatus = ref(false);
+
+// Listen for keyboard shortcut to toggle API status
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+    showApiStatus.value = !showApiStatus.value;
+  }
+});
 </script>
 
 <template>
-  <div class="app">
-    <h1>Electron + Vue + tRPC API</h1>
-    <p>
-      Your Electron app with integrated WebSocket API server
-    </p>
-    
+  <!-- Main web app -->
+  <WebApp />
+  
+  <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
+  <div v-if="showApiStatus" class="api-status-overlay">
+    <button @click="showApiStatus = false" class="close-btn">×</button>
     <ApiStatus />
-    
-    <div class="info">
-      <p>
-        Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> for Vue documentation
-      </p>
-      <p>
-        Visit <a href="https://trpc.io/" target="_blank" rel="noopener">trpc.io</a> for tRPC documentation
-      </p>
-    </div>
   </div>
 </template>
 
-<style scoped>
-.app {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+<style>
+/* Import web app styles */
+@import './style.css';
 
-h1 {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.info {
-  margin-top: 40px;
-  padding: 20px;
-  background: #f5f5f5;
+/* API status overlay styles */
+.api-status-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  border: 1px solid #ddd;
   border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  max-width: 400px;
+  padding: 20px;
 }
 
-.info p {
-  margin: 10px 0;
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
-a {
-  color: #2196f3;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
+.close-btn:hover {
+  background: #f0f0f0;
 }
 </style>
