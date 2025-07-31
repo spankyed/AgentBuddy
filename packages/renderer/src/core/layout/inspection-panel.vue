@@ -1,5 +1,10 @@
 <template>
-  <div class="flex flex-col h-full border-l min-w-0 bg-neutral-900 border-neutral-800">
+  <div class="relative flex flex-col h-full min-w-0 border-l bg-neutral-900 border-neutral-800">
+    <!-- Header for window dragging (absolutely positioned) -->
+    <div class="absolute top-0 left-0 right-0 h-[57px] z-10 inspection-header">
+      <!-- Empty header for dragging -->
+    </div>
+    
     <!-- <div class="flex items-center p-4 border-b border-neutral-800">
       <button
         @click="$emit('panel-back')"
@@ -38,4 +43,13 @@ defineEmits<(e: 'panel-toggle' | 'panel-back') => void>();
 
 <style lang="scss" module>
 
+</style>
+
+<style lang="scss">
+/* Make header draggable for window movement */
+.inspection-header {
+  -webkit-app-region: drag;
+  user-select: none;
+  pointer-events: none; /* Allow clicks to pass through to content below */
+}
 </style> 

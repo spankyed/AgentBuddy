@@ -4,12 +4,12 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800" :class="headerClass">
+    <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800 canvas-header" :class="headerClass">
       <!-- ▸ Breadcrumbs (left) -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-500"
+        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 no-drag"
       >
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
@@ -116,5 +116,21 @@ defineEmits<{
 <style lang="scss" module>
 .component {
   height: 100%;
+}
+</style>
+
+<style lang="scss">
+/* Make header draggable for window movement */
+.canvas-header {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* Ensure interactive elements remain clickable */
+.canvas-header .no-drag,
+.canvas-header button,
+.canvas-header a,
+.canvas-header span[class*="cursor-pointer"] {
+  -webkit-app-region: no-drag;
 }
 </style>
