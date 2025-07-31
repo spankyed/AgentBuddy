@@ -3,8 +3,12 @@
   "tasks": {
     "dev":  { "cache": false },
     "build": { "dependsOn": ["^build"] },
+    "build:electron": { "dependsOn": ["@abuddy/api#build", "@abuddy/web#build:electron"] },
     "lint": { "outputs": [] },
-    "typecheck": { "outputs": [] }
+    "typecheck": { "outputs": [] },
+    "start": { "cache": false },
+    "package": { "dependsOn": ["build:electron"] },
+    "make": { "dependsOn": ["build:electron"] }
   },
   "ui": "tui"
 }

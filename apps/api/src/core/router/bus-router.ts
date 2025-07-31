@@ -4,6 +4,7 @@ import { IncomingEventSchema, type OutgoingSystemEvents } from '@/core/router/ev
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/utils/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
+import type { AnyRouter } from '@trpc/server';
 
 const logger = createLogger('bus-router');
 
@@ -67,3 +68,4 @@ export const systemBusRouter = router({
     // }),
 });
 
+export type SystemBusRouter = typeof systemBusRouter;

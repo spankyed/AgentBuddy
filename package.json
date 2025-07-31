@@ -11,7 +11,12 @@
     "test": "turbo run test",
     "test:be": "pnpm --filter @abuddy/api test",
     "be": "pnpm --filter @abuddy/api build",
-    "fe": "pnpm --filter @abuddy/web build"
+    "fe": "pnpm --filter @abuddy/web build",
+    "electron": "pnpm --filter @abuddy/electron start",
+    "electron:dev": "pnpm --filter @abuddy/electron dev",
+    "electron:build": "pnpm --filter @abuddy/electron build",
+    "electron:package": "pnpm --filter @abuddy/electron package",
+    "electron:make": "pnpm --filter @abuddy/electron make"
   },
   "keywords": [],
   "author": "angel santiago",
