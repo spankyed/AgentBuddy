@@ -1,0 +1,2 @@
+# This directory contains runtime snapshots that are NOT tracked in Git
+# Use the snapshots-git/ directory for snapshots that should be committed

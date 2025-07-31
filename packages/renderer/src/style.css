@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#root {
+}
+
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply text-neutral-100 bg-neutral-900;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 1rem;
+  height: 1rem;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+  border: 0.3rem solid transparent;
+
+  /* @apply bg-neutral-800; */
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-600 rounded-full;
+  border: 0.3rem solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-900;
+}
