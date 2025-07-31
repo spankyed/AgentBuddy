@@ -1,0 +1,149 @@
+<template>
+  <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
+      <div>
+        <p class="text-sm text-neutral-400">Manage your prompt templates</p>
+      </div>
+      <Button @click="$emit('create')" variant="primary">
+        <Plus class="w-4 h-4" />
+        <span>Create Prompt</span>
+      </Button>
+    </div>
+
+    <!-- Prompts Table -->
+    <div class="flex-1 overflow-hidden">
+      <div v-if="prompts.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+        <table class="w-full">
+          <thead class="sticky top-0 z-10 bg-neutral-900">
+            <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
+              <th class="px-6 py-3">Name</th>
+              <th class="px-6 py-3">Description</th>
+              <th class="px-6 py-3">Category</th>
+              <th class="px-6 py-3">Inputs</th>
+              <th class="px-6 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            <tr
+              v-for="prompt in prompts"
+              :key="prompt.id"
+              class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
+              @click="$emit('select', prompt.id)"
+            >
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
+                    <Sparkle class="w-4 h-4 text-neutral-400" />
+                  </div>
+                  <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm text-neutral-400 line-clamp-1" :title="prompt.description">
+                  {{ prompt.description || 'No description' }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
+                  :class="categoryStyle(prompt.category)"
+                >
+                  {{ prompt.category || 'uncategorized' }}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <template v-if="Object.keys(prompt.inputs || {}).length > 0">
+                    <span
+                      v-for="input in Object.entries(prompt.inputs || {}).slice(0, 2)"
+                      :key="input[0]"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/50 text-neutral-400 border border-neutral-700 whitespace-nowrap flex-shrink-0"
+                      :title="input[1].description || ''"
+                    >
+                      {{ input[0] }}
+                    </span>
+                    <span
+                      v-if="Object.keys(prompt.inputs || {}).length > 2"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/30 text-neutral-500 whitespace-nowrap flex-shrink-0"
+                      :title="Object.keys(prompt.inputs || {}).slice(2).join(', ')"
+                    >
+                      +{{ Object.keys(prompt.inputs || {}).length - 2 }} more
+                    </span>
+                  </template>
+                  <span v-else class="text-xs text-neutral-500">None</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click.stop="confirmDelete(prompt)"
+                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+                    aria-label="Delete prompt"
+                    title="Delete prompt"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else
+        class="flex flex-col items-center justify-center h-full"
+      >
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
+            <Sparkle class="w-8 h-8 text-neutral-500" />
+          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">No prompts yet</h3>
+          <p class="mb-6 text-sm text-neutral-400">
+            Create your first prompt template to get started with reusable AI workflows
+          </p>
+          <Button @click="$emit('create')" variant="primary">
+            <Plus class="w-4 h-4" />
+            <span>Create Your First Prompt</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { Plus, Edit2, Trash2, Sparkle } from 'lucide-vue-next';
+import Button from '@/core/design/button.vue';
+import type { PromptEntity, EARS } from '@abuddy/api';
+
+defineProps<{ prompts: PromptEntity[] }>();
+const emit = defineEmits<{
+  select: [promptId: EARS.EntityId];
+  create: [];
+  edit: [promptId: EARS.EntityId];
+  delete: [promptId: EARS.EntityId];
+}>();
+
+function confirmDelete(prompt: PromptEntity) {
+  if (confirm(`Are you sure you want to delete "${prompt.label}"?`)) {
+    emit('delete', prompt.id);
+  }
+}
+
+// Professional category styling
+function categoryStyle(category?: string) {
+  switch (category) {
+    case 'text-processing':
+      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+    case 'development':
+      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    case 'assistant':
+      return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    default:
+      return 'bg-neutral-800 text-neutral-400 border border-neutral-700';
+  }
+}
+</script> 

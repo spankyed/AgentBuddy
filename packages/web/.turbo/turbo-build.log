@@ -1,0 +1,15 @@
+
+> @abuddy/web@0.0.0 build /Users/spankyed/Develop/Projects/AgentBuddy/apps/web
+> run-s typecheck build:prod
+
+
+> @abuddy/web@0.0.0 typecheck /Users/spankyed/Develop/Projects/AgentBuddy/apps/web
+> vue-tsc --noEmit
+
+src/plugins/code/components/TerminalView.vue(115,19): error TS2322: Type '{ type: "normal"; class: "normal"; content: string; }[]' is not assignable to type 'Message[]'.
+  Type '{ type: "normal"; class: "normal"; content: string; }' is not assignable to type 'Message'.
+    Types of property 'class' are incompatible.
+      Type '"normal"' is not assignable to type 'TerminalMessageClass | undefined'.
+ ELIFECYCLE  Command failed with exit code 2.
+ERROR: "typecheck" exited with 2.
+ ELIFECYCLE  Command failed with exit code 1.
