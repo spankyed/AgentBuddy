@@ -18,8 +18,6 @@
     "lint": "run-s lint:*"
   },
   "dependencies": {
-    "@app/shared": "*",
-    "@app/preload": "*",
     "vue": "^3.5.18"
   },
   "devDependencies": {

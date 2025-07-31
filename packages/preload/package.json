@@ -15,9 +15,6 @@
       "default": "./dist/exposed.mjs"
     }
   },
-  "dependencies": {
-    "@app/shared": "*"
-  },
   "devDependencies": {
     "@app/electron-versions": "*",
     "mlly": "1.7.4",
