@@ -1,5 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
-import { app } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { AppModule } from '../AppModule.js';
@@ -9,12 +9,30 @@ import { ModuleContext } from '../ModuleContext.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// API server event names
+const API_SERVER_EVENTS = {
+  STARTING: 'api:starting',
+  STARTED: 'api:started',
+  STOPPED: 'api:stopped',
+  ERROR: 'api:error',
+  RESTARTING: 'api:restarting',
+} as const;
+
 export class ApiServer implements AppModule {
   private apiProcess?: ChildProcess;
   private isShuttingDown = false;
   private restartAttempts = 0;
   private readonly maxRestartAttempts = 3;
   private readonly restartDelay = 2000; // 2 seconds
+  private serverReady: Promise<void>;
+  private serverReadyResolve?: () => void;
+
+  constructor() {
+    // Initialize the server ready promise
+    this.serverReady = new Promise<void>((resolve) => {
+      this.serverReadyResolve = resolve;
+    });
+  }
 
   enable(context: ModuleContext): void {
     const { app } = context;
@@ -39,6 +57,12 @@ export class ApiServer implements AppModule {
     });
   }
 
+  private broadcastToWindows(channel: string, data?: any): void {
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send(channel, data);
+    });
+  }
+
   private startApiServer(): void {
     if (this.apiProcess) {
       console.log('API server already running');
@@ -46,6 +70,7 @@ export class ApiServer implements AppModule {
     }
 
     console.log('Starting API server...');
+    this.broadcastToWindows(API_SERVER_EVENTS.STARTING);
 
     // Determine the correct path to the API server
     const isDev = !app.isPackaged;
@@ -69,6 +94,9 @@ export class ApiServer implements AppModule {
           this.launchApiServer(apiPath);
         } else {
           console.error(`API build failed with code ${code}`);
+          this.broadcastToWindows(API_SERVER_EVENTS.ERROR, { 
+            error: `API build failed with code ${code}` 
+          });
         }
       });
     } else {
@@ -93,7 +121,18 @@ export class ApiServer implements AppModule {
 
     // Handle stdout
     this.apiProcess.stdout?.on('data', (data) => {
-      console.log(`[API Server]: ${data.toString()}`);
+      const message = data.toString();
+      console.log(`[API Server]: ${message}`);
+      
+      // Check if server is ready (look for specific startup message)
+      if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
+        console.log('API server is ready!');
+        this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
+        if (this.serverReadyResolve) {
+          this.serverReadyResolve();
+          this.serverReadyResolve = undefined;
+        }
+      }
     });
 
     // Handle stderr
@@ -105,23 +144,39 @@ export class ApiServer implements AppModule {
     this.apiProcess.on('exit', (code, signal) => {
       console.log(`API server exited with code ${code} and signal ${signal}`);
       this.apiProcess = undefined;
+      this.broadcastToWindows(API_SERVER_EVENTS.STOPPED);
+
+      // Reset server ready promise for next start
+      this.serverReady = new Promise<void>((resolve) => {
+        this.serverReadyResolve = resolve;
+      });
 
       // Attempt to restart unless we're shutting down
       if (!this.isShuttingDown && this.restartAttempts < this.maxRestartAttempts) {
         this.restartAttempts++;
         console.log(`Attempting to restart API server (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
+        this.broadcastToWindows(API_SERVER_EVENTS.RESTARTING, {
+          attempt: this.restartAttempts,
+          maxAttempts: this.maxRestartAttempts
+        });
         
         setTimeout(() => {
           this.startApiServer();
         }, this.restartDelay);
       } else if (this.restartAttempts >= this.maxRestartAttempts) {
         console.error('Max restart attempts reached. API server will not be restarted.');
+        this.broadcastToWindows(API_SERVER_EVENTS.ERROR, {
+          error: 'Max restart attempts reached'
+        });
       }
     });
 
     // Handle process errors
     this.apiProcess.on('error', (error) => {
       console.error('Failed to start API server:', error);
+      this.broadcastToWindows(API_SERVER_EVENTS.ERROR, {
+        error: error.message
+      });
     });
 
     // Reset restart attempts on successful start
@@ -159,6 +214,18 @@ export class ApiServer implements AppModule {
       pid: this.apiProcess?.pid,
       restartAttempts: this.restartAttempts
     };
+  }
+
+  // Wait for server to be ready with timeout
+  public waitForReady(timeout = 30000): Promise<void> {
+    return Promise.race([
+      this.serverReady,
+      new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`API server failed to start within ${timeout}ms`));
+        }, timeout);
+      })
+    ]);
   }
 }
 

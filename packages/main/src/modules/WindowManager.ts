@@ -2,20 +2,31 @@ import type {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
 import {BrowserWindow} from 'electron';
 import type {AppInitConfig} from '../AppInitConfig.js';
+import type {ApiServer} from './ApiServer.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
   readonly #renderer: {path: string} | URL;
   readonly #openDevTools;
+  readonly #apiServer?: ApiServer;
 
-  constructor({initConfig, openDevTools = false}: {initConfig: AppInitConfig, openDevTools?: boolean}) {
+  constructor({initConfig, openDevTools = false, apiServer}: {initConfig: AppInitConfig, openDevTools?: boolean, apiServer?: ApiServer}) {
     this.#preload = initConfig.preload;
     this.#renderer = initConfig.renderer;
     this.#openDevTools = openDevTools;
+    this.#apiServer = apiServer;
   }
 
   async enable({app}: ModuleContext): Promise<void> {
     await app.whenReady();
+    
+    // Wait for API server to be ready before creating window
+    if (this.#apiServer) {
+      console.log('Waiting for API server to be ready before creating window...');
+      await this.#apiServer.waitForReady();
+      console.log('API server is ready, creating window...');
+    }
+    
     await this.restoreOrCreateWindow(true);
     app.on('second-instance', () => this.restoreOrCreateWindow(true));
     app.on('activate', () => this.restoreOrCreateWindow(true));

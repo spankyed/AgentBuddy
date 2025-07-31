@@ -11,14 +11,17 @@ import {createApiServer} from './modules/ApiServer.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
+  // Create API server instance first so we can wait for it
+  const apiServer = createApiServer();
+  
   const moduleRunner = createModuleRunner()
-    // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
-    .init(createWindowManagerModule({initConfig, openDevTools: false}))
     .init(disallowMultipleAppInstance())
-    .init(terminateAppOnLastWindowClose())
     .init(hardwareAccelerationMode({enable: false}))
+    .init(apiServer)
+    // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
+    .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer}))
+    .init(terminateAppOnLastWindowClose())
     .init(autoUpdater())
-    .init(createApiServer())
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
