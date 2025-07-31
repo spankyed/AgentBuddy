@@ -36,5 +36,5 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @layer bg-neutral-9000;
+  @apply bg-neutral-900;
 }
