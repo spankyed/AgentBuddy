@@ -92,20 +92,9 @@ export async function routeProcedure(params, services) {
         success: true
       };
     } else {
-      // await services.action.getAndExecute('Stream to FE', { message: text })
-      services.logger.info('About to Add Message to Thread', { text, threadId, sender: 'user' })
-      const addMessageResult = await services.action.getAndExecute('Add Message to Thread', {
-        text,
-        threadId,
-        sender: 'user'
-      })
-
       await services.action.getAndExecute('Stream to FE', {
-        message: text,
-        // threadId,
+        message,
       })
-
-      console.log({ addMessageResult })
 
       return {
         procedure: 'none',
