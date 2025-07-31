@@ -45,6 +45,7 @@ export interface Context {
   commitsBehind: number
   isPushing: boolean
   isPulling: boolean
+  gitRoot: string | null
 }
 
 export type Event = 
@@ -74,7 +75,8 @@ export type Event =
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } };
+  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'commit.GIT_ROOT_RECEIVED'; data: { gitRoot: string } };
 
 export const commitState = setup({
   types: {
@@ -154,13 +156,14 @@ export const commitState = setup({
       gitDiff: null
     }),
     
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self, system, context }) => {
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
-      const parentContext = getParentContext(self)
-      const rootDirectory = parentContext?.rootDirectory || ''
-      const fullPath = rootDirectory.endsWith('/') 
-        ? rootDirectory + ev.file.path 
-        : rootDirectory + '/' + ev.file.path
+      
+      // Git paths are relative to the repository root
+      const gitRoot = context.gitRoot || (getParentContext(self)?.rootDirectory || '')
+      const fullPath = gitRoot.endsWith('/') 
+        ? gitRoot + ev.file.path 
+        : gitRoot + '/' + ev.file.path
       
       // Send events to parent to switch to explorer panel and open file
       updateParentState(self, { selectedPanel: 'explorer' })
@@ -288,6 +291,17 @@ export const commitState = setup({
     
     handleBranchPulled: assign({
       isPulling: false
+    }),
+    
+    requestGitRoot: () => {
+      sendToBackend('commit.GET_GIT_ROOT', {})
+    },
+    
+    assignGitRoot: assign({
+      gitRoot: ({ event }) => {
+        const ev = event as { type: 'commit.GIT_ROOT_RECEIVED'; data: { gitRoot: string } }
+        return ev.data.gitRoot
+      }
     })
   }
 }).createMachine({
@@ -309,7 +323,8 @@ export const commitState = setup({
     commitsAhead: 0,
     commitsBehind: 0,
     isPushing: false,
-    isPulling: false
+    isPulling: false,
+    gitRoot: null
   },
   states: {
     idle: {
@@ -394,8 +409,12 @@ export const commitState = setup({
         },
         'commit.BRANCH_PULLED': {
           actions: 'handleBranchPulled'
+        },
+        'commit.GIT_ROOT_RECEIVED': {
+          actions: 'assignGitRoot'
         }
-      }
+      },
+      entry: 'requestGitRoot'
     }
   }
 });
