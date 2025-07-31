@@ -3,7 +3,6 @@ import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
 import Brain from './brain/plugin.ts';
-import Logs from './logs/plugin.ts';
 import Prompts from './prompts/plugin.ts';
 import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
@@ -55,7 +54,6 @@ export default [
   Flows,
   Brain,
   Database,
-  Logs,
   Blank,
   ...mockPlugins,
 ];
