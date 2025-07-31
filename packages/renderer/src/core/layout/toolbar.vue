@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-[4.5rem] h-full text-white border-r border-neutral-800">
+  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800">
     <!-- Window controls area (macOS traffic lights) -->
     <div class="window-controls-area h-[57px] flex items-center justify-center">
       <WindowControls v-if="!isMac" />
@@ -68,6 +68,13 @@ const isMac = computed(() => {
 </script>
 
 <style lang="scss">
+.toolbar {
+  --toolbar-width: 4.5rem; /* 72px - default width */
+  width: var(--toolbar-width);
+  min-width: var(--toolbar-width);
+  flex-shrink: 0;
+}
+
 .window-controls-area {
   -webkit-app-region: drag;
   user-select: none;
