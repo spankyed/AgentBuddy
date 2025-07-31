@@ -141,14 +141,6 @@ export class GitRepository {
     throw new Error(result.error || 'Failed to get current branch')
   }
 
-  async getGitRoot(): Promise<string> {
-    const result = await this.executeGitCommand(['rev-parse', '--show-toplevel'])
-    if (result.success && result.output) {
-      return result.output.trim()
-    }
-    throw new Error(result.error || 'Failed to get git root')
-  }
-
   async getStatus(): Promise<GitStatusFile[]> {
     // Check cache first
     const cached = this.getCached<GitStatusFile[]>('status')

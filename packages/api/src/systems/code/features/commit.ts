@@ -23,7 +23,6 @@ export const IncomingCommitEvents = [
   busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
   busEvent('commit.PUBLISH_BRANCH', {}),
   busEvent('commit.PULL_BRANCH', {}),
-  busEvent('commit.GET_GIT_ROOT', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -40,7 +39,6 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
-  | { type: 'commit.GIT_ROOT_RECEIVED'; data: { gitRoot: string } }
 
 export interface Context {
   gitRepository: GitRepository
@@ -59,7 +57,6 @@ export type Event =
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.GET_GIT_ROOT' }
   | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_STARTUP' };
@@ -379,23 +376,6 @@ export const commitSystem = setup({
       }
     },
 
-    getGitRoot: async ({ context, self }) => {
-      try {
-        const gitRoot = await context.gitRepository.getGitRoot()
-        const wrapped = emit(pluginId, {
-          type: 'commit.GIT_ROOT_RECEIVED',
-          data: { gitRoot }
-        })
-        rootEvents.emitOutgoing(wrapped.event)
-      } catch (error) {
-        const wrapped = emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message: error instanceof Error ? error.message : 'Failed to get git root' }
-        })
-        rootEvents.emitOutgoing(wrapped.event)
-      }
-    },
-
     pullBranch: async ({ context, self }) => {
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
@@ -493,9 +473,6 @@ export const commitSystem = setup({
         },
         'commit.PULL_BRANCH': {
           actions: 'pullBranch'
-        },
-        'commit.GET_GIT_ROOT': {
-          actions: 'getGitRoot'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
           actions: ['updateRootDirectory', 'restartGitWatcher']
