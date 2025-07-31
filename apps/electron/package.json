@@ -11,6 +11,8 @@
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
+    "rebuild": "electron-rebuild -f -w node-pty",
+    "postinstall": "electron-rebuild",
     "dev": "run-p dev:build dev:start",
     "dev:build": "tsc --watch",
     "dev:start": "nodemon --watch dist --exec electron-forge start"
@@ -30,6 +32,7 @@
     "@electron/fuses": "^1.8.0",
     "@types/node": "^22.15.17",
     "electron": "^35.1.0",
+    "electron-rebuild": "^3.2.9",
     "nodemon": "^3.1.10",
     "typescript": "^5.8.3"
   },

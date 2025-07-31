@@ -1,4 +1,4 @@
-import * as pty from 'node-pty-prebuilt-multiarch'
+import * as pty from 'node-pty'
 import { v4 as uuidv4 } from 'uuid'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'

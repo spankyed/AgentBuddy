@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import App from './app.vue';
 import { createActor } from 'xstate';
 import { application, createApplicationState } from './core/actors/application';
-import plugins, { defaultPlugin } from './plugins';
+import plugins, { defaultPlugin } from './plugins/index-electron';
 import logErrors from '@/core/log-errors';
 import './style.css';
 
@@ -33,7 +33,7 @@ async function initializeApp() {
   }
 
   // Store backend URL globally for tRPC client
-  (window as any).__BACKEND_URL__ = `ws://localhost:${backendPort}`;
+  (window as any).__BACKEND_URL__ = `ws://localhost:${backendPort}/trpc`;
 
   // Create and start the application actor
   const applicationActor = createActor(createApplicationState(), {
