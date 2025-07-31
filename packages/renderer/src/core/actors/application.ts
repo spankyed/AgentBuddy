@@ -68,15 +68,16 @@ export const createApplicationState = () => setup({
     
     backendListener: fromCallback(({ system }) => {
       console.log('connecting to backend');
+      
       const subscription = trpc.bus.sub.subscribe(
         undefined, // sessionId is ignored now
         {
           // onConnectionStateChange(state) {
           // },
-          onError: (error) => {
+          onError: (error: any) => {
             console.error('Error in subscription:', error);
           },
-          onData: (event) => {
+          onData: (event: any) => {
             // console.log('event: ', event);
             const { pluginId, ...ev } = event;
             system.get(pluginId).send(ev);
