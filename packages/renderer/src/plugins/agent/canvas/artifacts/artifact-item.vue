@@ -29,12 +29,12 @@ defineEmits<{
 }>();
 
 function getIcon(type: ArtifactType) {
-  const icons = {
+  const icons: Record<ArtifactType, any> = {
     text: FileText,
     code: Code,
     review: CheckSquare,
     image: Image,
-    workload: LayoutDashboard,
+    kanban: LayoutDashboard,
     slack: MessageSquare,
     todo: ListTodo,
   };

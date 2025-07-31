@@ -254,8 +254,8 @@ const isPulling = useSelector(commitActor, (state: any) => state.context.isPulli
 const showBranchDropdown = ref(false)
 
 // Computed
-const stagedFiles = computed(() => gitStatus.value.filter(f => f.staged))
-const unstagedFiles = computed(() => gitStatus.value.filter(f => !f.staged))
+const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
+const unstagedFiles = computed(() => gitStatus.value.filter((f: any) => !f.staged))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
 
 const shouldShowActionButton = computed(() => {
@@ -294,7 +294,7 @@ const isActionButtonDisabled = computed(() => {
 const filteredBranches = computed(() => {
   const input = branchInput.value.toLowerCase().trim()
   if (!input) return availableBranches.value
-  return availableBranches.value.filter(branch => 
+  return availableBranches.value.filter((branch: string) => 
     branch.toLowerCase().includes(input)
   )
 })

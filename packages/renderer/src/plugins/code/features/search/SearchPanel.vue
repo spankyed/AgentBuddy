@@ -207,7 +207,7 @@ const expandedResults = ref(new Set<string>())
 
 // Computed
 const totalMatches = computed(() => {
-  return searchResults.value.reduce((sum, result) => sum + result.matches.length, 0)
+  return searchResults.value.reduce((sum: number, result: any) => sum + result.matches.length, 0)
 })
 
 const searchPlaceholder = computed(() => {
@@ -362,7 +362,7 @@ watch(searchOptions, (newOptions) => {
 // Auto-expand first few results
 watch(searchResults, (results) => {
   // Auto-expand first 3 results
-  results.slice(0, 3).forEach(result => {
+  results.slice(0, 3).forEach((result: any) => {
     expandedResults.value.add(result.path)
   })
 })

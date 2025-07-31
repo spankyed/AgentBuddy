@@ -184,7 +184,7 @@ const threadsState = setup({
 
       const { messages, linkedThreads, ...rest } = context.view;
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      rest[typedEvent.key] = typedEvent.value as any;
+      (rest as any)[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;
       return {
         threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
