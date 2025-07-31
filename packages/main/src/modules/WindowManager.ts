@@ -1,6 +1,6 @@
 import type {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
-import {BrowserWindow} from 'electron';
+import {BrowserWindow, ipcMain} from 'electron';
 import type {AppInitConfig} from '../AppInitConfig.js';
 import type {ApiServer} from './ApiServer.js';
 
@@ -20,6 +20,9 @@ class WindowManager implements AppModule {
   async enable({app}: ModuleContext): Promise<void> {
     await app.whenReady();
     
+    // Set up window control handlers
+    this.setupWindowControls();
+    
     // Wait for API server to be ready before creating window
     if (this.#apiServer) {
       console.log('Waiting for API server to be ready before creating window...');
@@ -32,6 +35,29 @@ class WindowManager implements AppModule {
     app.on('activate', () => this.restoreOrCreateWindow(true));
   }
 
+  private setupWindowControls(): void {
+    ipcMain.on('window:minimize', () => {
+      const window = BrowserWindow.getFocusedWindow();
+      window?.minimize();
+    });
+
+    ipcMain.on('window:maximize', () => {
+      const window = BrowserWindow.getFocusedWindow();
+      if (window) {
+        if (window.isMaximized()) {
+          window.unmaximize();
+        } else {
+          window.maximize();
+        }
+      }
+    });
+
+    ipcMain.on('window:close', () => {
+      const window = BrowserWindow.getFocusedWindow();
+      window?.close();
+    });
+  }
+
   async createWindow(): Promise<BrowserWindow> {
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
@@ -39,6 +65,10 @@ class WindowManager implements AppModule {
       height: 1200,
       minWidth: 1200,
       minHeight: 800,
+      titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
+      frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
+      transparent: false,
+      vibrancy: 'under-window', // macOS: window vibrancy effect
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

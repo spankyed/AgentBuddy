@@ -1,6 +1,11 @@
 <template>
-  <div class="flex flex-col w-[4.5rem] h-full py-4 text-white border-r border-neutral-800">
-    <div class="flex flex-col h-full">
+  <div class="flex flex-col w-[4.5rem] h-full text-white border-r border-neutral-800">
+    <!-- Window controls area (macOS traffic lights) -->
+    <div class="window-controls-area h-[38px] flex items-center justify-center">
+      <WindowControls v-if="!isMac" />
+    </div>
+    
+    <div class="flex flex-col h-full py-4">
       <!-- Scrollable section -->
       <div class="flex-1 overflow-y-auto scrollbar-hide">
         <div class="flex flex-col items-center space-y-6">
@@ -45,6 +50,7 @@
 <script setup lang="ts">
 import type { Plugin } from '@/core/types';
 import { computed } from 'vue';
+import WindowControls from './WindowControls.vue';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -55,9 +61,23 @@ const props = defineProps<{
 
 const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
 const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
+
+const isMac = computed(() => {
+  return navigator.platform.toLowerCase().includes('mac');
+});
 </script>
 
-<style lang="scss" module>
+<style lang="scss">
+.window-controls-area {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* Ensure buttons in toolbar are not draggable */
+button {
+  -webkit-app-region: no-drag;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
