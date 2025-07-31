@@ -20,7 +20,7 @@
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
               <th class="px-6 py-3">Category</th>
-              <th class="px-6 py-3 text-center">Inputs</th>
+              <th class="px-6 py-3">Inputs</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -52,10 +52,27 @@
                   {{ prompt.category || 'uncategorized' }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-center">
-                <span class="text-sm text-neutral-300">
-                  {{ Object.keys(prompt.inputs || {}).length }}
-                </span>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <template v-if="Object.keys(prompt.inputs || {}).length > 0">
+                    <span
+                      v-for="input in Object.entries(prompt.inputs || {}).slice(0, 2)"
+                      :key="input[0]"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/50 text-neutral-400 border border-neutral-700 whitespace-nowrap flex-shrink-0"
+                      :title="input[1].description || ''"
+                    >
+                      {{ input[0] }}
+                    </span>
+                    <span
+                      v-if="Object.keys(prompt.inputs || {}).length > 2"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/30 text-neutral-500 whitespace-nowrap flex-shrink-0"
+                      :title="Object.keys(prompt.inputs || {}).slice(2).join(', ')"
+                    >
+                      +{{ Object.keys(prompt.inputs || {}).length - 2 }} more
+                    </span>
+                  </template>
+                  <span v-else class="text-xs text-neutral-500">None</span>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2">

@@ -20,7 +20,7 @@
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
               <th class="px-6 py-3">Category</th>
-              <th class="px-6 py-3 text-center">Parameters</th>
+              <th class="px-6 py-3">Inputs</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -52,10 +52,27 @@
                   {{ action.category || 'Uncategorized' }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-center">
-                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-neutral-800 text-neutral-300">
-                  {{ Object.keys(action.input || {}).length }}
-                </span>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                  <template v-if="Object.keys(action.input || {}).length > 0">
+                    <span
+                      v-for="param in Object.entries(action.input || {}).slice(0, 2)"
+                      :key="param[0]"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/50 text-neutral-400 border border-neutral-700 whitespace-nowrap flex-shrink-0"
+                      :title="param[1].description || ''"
+                    >
+                      {{ param[0] }}
+                    </span>
+                    <span
+                      v-if="Object.keys(action.input || {}).length > 2"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/30 text-neutral-500 whitespace-nowrap flex-shrink-0"
+                      :title="Object.keys(action.input || {}).slice(2).join(', ')"
+                    >
+                      +{{ Object.keys(action.input || {}).length - 2 }} more
+                    </span>
+                  </template>
+                  <span v-else class="text-xs text-neutral-500">None</span>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2">
