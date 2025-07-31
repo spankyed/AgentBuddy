@@ -41,11 +41,11 @@
       </template>
       <Background variant="dots" />
       <Controls />
-      <MiniMap 
+      <!-- <MiniMap 
         :maskColor="'#26262650'" 
         :maskStrokeColor="'transparent'" 
         class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
-      />
+      /> -->
 
       <!-- Back button and Actions menu (top left) -->
       <div class="absolute z-10 flex gap-2 top-4 left-4">
@@ -97,7 +97,7 @@ import {
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
-import { MiniMap } from '@vue-flow/minimap'
+// import { MiniMap } from '@vue-flow/minimap'
 import { ChevronLeft } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
