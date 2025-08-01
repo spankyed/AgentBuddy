@@ -419,10 +419,8 @@ export const brainCommands = {
         createdAt: now,
       };
       
-      // Emit TNODE_SPAWNED event for root
-      emitTNodeEvent('TNODE_SPAWNED', { 
-        tNode: rootFlowTNode,
-      }, systemActor);
+      // Don't emit TNODE_SPAWNED for root - we don't want it in the tree
+      // The tree should only show event tracks, not the root flow itself
       
       return successResult({
         rootFlow,
