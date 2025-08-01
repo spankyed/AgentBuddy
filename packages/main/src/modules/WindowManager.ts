@@ -1,8 +1,9 @@
 import type {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
-import {BrowserWindow, ipcMain} from 'electron';
+import {BrowserWindow, ipcMain, app} from 'electron';
 import type {AppInitConfig} from '../AppInitConfig.js';
 import type {ApiServer} from './ApiServer.js';
+import {join} from 'node:path';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -19,6 +20,12 @@ class WindowManager implements AppModule {
 
   async enable({app}: ModuleContext): Promise<void> {
     await app.whenReady();
+    
+    // Set dock icon for macOS in development
+    if (process.platform === 'darwin' && app.dock) {
+      const iconPath = join(process.cwd(), 'buildResources', 'icon.png');
+      app.dock.setIcon(iconPath);
+    }
     
     // Set up window control handlers
     this.setupWindowControls();
@@ -59,12 +66,18 @@ class WindowManager implements AppModule {
   }
 
   async createWindow(): Promise<BrowserWindow> {
+    // Determine icon path based on platform
+    const iconName = process.platform === 'win32' ? 'icon.ico' : 
+                     process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
+    const iconPath = join(process.cwd(), 'buildResources', iconName);
+    
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
       width: 1800,
       height: 1200,
       minWidth: 1200,
       minHeight: 800,
+      icon: iconPath, // Set the window icon
       titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
       frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
       transparent: false,
