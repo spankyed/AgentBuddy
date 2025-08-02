@@ -33,7 +33,7 @@
         
         <!-- Monaco editor for both regular files and diffs -->
         <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
-          <SimpleMonacoEditor
+          <MonacoEditor
             v-if="!isTerminal(activeFile)"
             :key="activeFile.path"
             :model-value="activeFile.content"
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { FileCode } from 'lucide-vue-next'
-import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
+import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import Tabs from './Tabs.vue'
 import type { OpenFile, TerminalTab } from '@/plugins/code/state'
