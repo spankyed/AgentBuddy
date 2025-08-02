@@ -25,7 +25,6 @@
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.37.2",
-    "@guolao/vue-monaco-editor": "^1.5.5",
     "@leeoniya/ufuzzy": "^1.0.18",
     "@statelyai/inspect": "^0.4.0",
     "@trpc/client": "^11.1.2",

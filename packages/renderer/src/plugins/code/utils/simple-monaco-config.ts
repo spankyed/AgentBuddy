@@ -7,6 +7,73 @@ import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 let isInitialized = false
 
+// Common editor options
+const commonEditorOptions = {
+  theme: 'vs-dark',
+  automaticLayout: true,
+  minimap: { enabled: false },
+  fontSize: 14,
+  lineNumbers: 'on' as const,
+  scrollBeyondLastLine: false,
+  wordWrap: 'on' as const,
+  folding: true,
+  bracketPairColorization: { enabled: true },
+  // Disable most IntelliSense features
+  quickSuggestions: false,
+  parameterHints: { enabled: false },
+  suggestOnTriggerCharacters: false,
+  acceptSuggestionOnCommitCharacter: false,
+  acceptSuggestionOnEnter: 'off' as const,
+  snippetSuggestions: 'none' as const,
+  wordBasedSuggestions: 'currentDocument' as const,
+}
+
+// Language map
+const LANGUAGE_MAP: Record<string, string> = {
+  // TypeScript/JavaScript
+  ts: 'typescript',
+  tsx: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  // Vue - using HTML for basic highlighting
+  vue: 'html',
+  // Web
+  html: 'html',
+  htm: 'html',
+  css: 'css',
+  scss: 'scss',
+  sass: 'scss',
+  less: 'less',
+  // Data
+  json: 'json',
+  jsonc: 'json',
+  xml: 'xml',
+  yaml: 'yaml',
+  yml: 'yaml',
+  // Programming
+  py: 'python',
+  java: 'java',
+  c: 'c',
+  cpp: 'cpp',
+  cs: 'csharp',
+  go: 'go',
+  rs: 'rust',
+  php: 'php',
+  rb: 'ruby',
+  swift: 'swift',
+  kt: 'kotlin',
+  // Shell
+  sh: 'shell',
+  bash: 'shell',
+  ps1: 'powershell',
+  // Markup
+  md: 'markdown',
+  // SQL
+  sql: 'sql',
+}
+
 export async function initializeMonaco() {
   if (isInitialized) return
   
@@ -47,7 +114,40 @@ export async function initializeMonaco() {
   isInitialized = true
 }
 
-// Removed all type definitions and project file loading
+export function createDiffEditor(
+  container: HTMLElement,
+  originalValue: string,
+  modifiedValue: string,
+  language: string,
+  options?: monaco.editor.IStandaloneDiffEditorConstructionOptions
+): monaco.editor.IStandaloneDiffEditor {
+  const defaultOptions: monaco.editor.IStandaloneDiffEditorConstructionOptions = {
+    ...commonEditorOptions,
+    // Diff-specific options
+    renderSideBySide: true,
+    enableSplitViewResizing: true,
+    ignoreTrimWhitespace: false,
+    renderIndicators: true,
+    originalEditable: false,
+  }
+  
+  const diffEditor = monaco.editor.createDiffEditor(container, {
+    ...defaultOptions,
+    ...options
+  })
+  
+  // Create models
+  const originalModel = monaco.editor.createModel(originalValue, language)
+  const modifiedModel = monaco.editor.createModel(modifiedValue, language)
+  
+  // Set models
+  diffEditor.setModel({
+    original: originalModel,
+    modified: modifiedModel
+  })
+  
+  return diffEditor
+}
 
 export function createEditor(
   container: HTMLElement,
@@ -56,27 +156,11 @@ export function createEditor(
   options?: monaco.editor.IStandaloneEditorConstructionOptions
 ): monaco.editor.IStandaloneCodeEditor {
   const defaultOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
+    ...commonEditorOptions,
     value,
     language,
-    theme: 'vs-dark',
-    automaticLayout: true,
-    minimap: { enabled: false },
-    fontSize: 14,
-    lineNumbers: 'on',
-    scrollBeyondLastLine: false,
-    wordWrap: 'on',
-    folding: true,
-    bracketPairColorization: { enabled: true },
     formatOnPaste: true,
     formatOnType: true,
-    // Disable most IntelliSense features
-    quickSuggestions: false,
-    parameterHints: { enabled: false },
-    suggestOnTriggerCharacters: false,
-    acceptSuggestionOnCommitCharacter: false,
-    acceptSuggestionOnEnter: 'off',
-    snippetSuggestions: 'none',
-    wordBasedSuggestions: 'currentDocument' as const, // Keep basic word completion
   }
   
   return monaco.editor.create(container, {
@@ -97,51 +181,5 @@ export function getLanguageId(filePath: string): string {
   }
   
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
-  
-  const languageMap: Record<string, string> = {
-    // TypeScript/JavaScript
-    ts: 'typescript',
-    tsx: 'typescript',
-    js: 'javascript',
-    jsx: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    // Vue - using HTML for basic highlighting
-    vue: 'html',
-    // Web
-    html: 'html',
-    htm: 'html',
-    css: 'css',
-    scss: 'scss',
-    sass: 'scss',
-    less: 'less',
-    // Data
-    json: 'json',
-    jsonc: 'json',
-    xml: 'xml',
-    yaml: 'yaml',
-    yml: 'yaml',
-    // Programming
-    py: 'python',
-    java: 'java',
-    c: 'c',
-    cpp: 'cpp',
-    cs: 'csharp',
-    go: 'go',
-    rs: 'rust',
-    php: 'php',
-    rb: 'ruby',
-    swift: 'swift',
-    kt: 'kotlin',
-    // Shell
-    sh: 'shell',
-    bash: 'shell',
-    ps1: 'powershell',
-    // Markup
-    md: 'markdown',
-    // SQL
-    sql: 'sql',
-  }
-  
-  return languageMap[ext] || 'plaintext'
+  return LANGUAGE_MAP[ext] || 'plaintext'
 }
