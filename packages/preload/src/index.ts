@@ -1,6 +1,6 @@
 import {sha256sum} from './nodeCrypto.js';
 import {versions} from './versions.js';
-import {ipcRenderer, contextBridge, webUtils} from 'electron';
+import {ipcRenderer, contextBridge} from 'electron';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
@@ -15,7 +15,7 @@ const windowControls = {
 
 // File utilities
 const fileUtils = {
-  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
 };
 
 // Expose APIs to renderer

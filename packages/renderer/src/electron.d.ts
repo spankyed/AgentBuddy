@@ -7,7 +7,7 @@ declare global {
         close: () => void;
       };
       fileUtils: {
-        getPathForFile: (file: File) => string;
+        selectDirectory: () => Promise<string | null>;
       };
     };
   }
