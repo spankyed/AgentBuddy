@@ -5,6 +5,7 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo } from '../types'
+import { getGitRepositoryRoot } from '../utils/git-root'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -36,7 +37,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
-  currentDirectory: string
+  rootDirectory: string
 }
 
 export type Event = 
@@ -59,7 +60,7 @@ export const terminalSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { currentDirectory: string }
+    input: {} as { rootDirectory: string }
   },
   actions: {
     sendStartupData: () => {
@@ -85,7 +86,7 @@ export const terminalSystem = setup({
       try {
         const terminalInfo = terminalService.create({
           title: ev.title,
-          cwd: ev.cwd || context.currentDirectory,
+          cwd: ev.cwd || context.rootDirectory,
           shell: ev.shell,
           cols: ev.cols || 80,
           rows: ev.rows || 24
@@ -263,14 +264,14 @@ export const terminalSystem = setup({
 
     updateCurrentDirectory: ({ event, context }) => {
       const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
-      context.currentDirectory = ev.path
+      context.rootDirectory = ev.path
     }
   }
 }).createMachine({
   id: 'terminal',
   initial: 'idle',
-  context: ({ input }: { input?: { currentDirectory: string } }) => ({
-    currentDirectory: input?.currentDirectory || process.cwd()
+  context: ({ input }: { input?: { rootDirectory: string } }) => ({
+    rootDirectory: input?.rootDirectory || getGitRepositoryRoot()
   }),
   entry: 'restoreTerminals',
   exit: 'cleanupTerminals',

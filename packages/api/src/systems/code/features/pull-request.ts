@@ -1,4 +1,4 @@
-import { setup } from 'xstate'
+import { setup, assign } from 'xstate'
 import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
@@ -25,30 +25,26 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
-  // We'll get gitRepository from commit system via parent
+  gitRepository: GitRepository
 }
 
 export type Event = 
   | { type: 'pr.GET_BASE_BRANCH' }
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
   | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
-  | { type: 'pr.GIT_STATUS_CHANGED' };
+  | { type: 'pr.GIT_STATUS_CHANGED' }
+  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string };
 
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
-    events: {} as Event
+    events: {} as Event,
+    input: {} as { rootDirectory: string }
   },
   actions: {
-    getBaseBranch: async ({ system }) => {
+    getBaseBranch: async ({ context }) => {
       try {
-        // Get git repository from commit system via parent
-        const commitSystem = system.get('commit') as any
-        const gitRepository = commitSystem?.getSnapshot()?.context?.gitRepository
-        
-        if (!gitRepository) {
-          throw new Error('Git repository not available')
-        }
+        const { gitRepository } = context
         
         const branch = await gitRepository.getPRBaseBranch()
         const wrapped = emit(pluginId, {
@@ -65,16 +61,10 @@ export const pullRequestSystem = setup({
       }
     },
 
-    getBranchDiff: async ({ event, system }) => {
+    getBranchDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
       try {
-        // Get git repository from commit system via parent
-        const commitSystem = system.get('commit') as any
-        const gitRepository = commitSystem?.getSnapshot()?.context?.gitRepository
-        
-        if (!gitRepository) {
-          throw new Error('Git repository not available')
-        }
+        const { gitRepository } = context
         
         const baseBranch = ev.baseBranch || await gitRepository.getPRBaseBranch()
         const files = await gitRepository.getBranchDiff(baseBranch)
@@ -92,16 +82,10 @@ export const pullRequestSystem = setup({
       }
     },
 
-    getBranchFileDiff: async ({ event, system }) => {
+    getBranchFileDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
       try {
-        // Get git repository from commit system via parent
-        const commitSystem = system.get('commit') as any
-        const gitRepository = commitSystem?.getSnapshot()?.context?.gitRepository
-        
-        if (!gitRepository) {
-          throw new Error('Git repository not available')
-        }
+        const { gitRepository } = context
         
         const diff = await gitRepository.getFileDiffBetweenBranches(ev.path, ev.baseBranch)
 
@@ -136,12 +120,21 @@ export const pullRequestSystem = setup({
         data: { timestamp: new Date() }
       })
       rootEvents.emitOutgoing(wrapped.event)
-    }
+    },
+
+    updateRootDirectory: assign({
+      gitRepository: ({ event }) => {
+        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string }
+        return new GitRepository(ev.path)
+      }
+    })
   }
 }).createMachine({
   id: 'pull-request',
   initial: 'idle',
-  context: {},
+  context: ({ input }: { input?: { rootDirectory: string } }) => ({
+    gitRepository: new GitRepository(input?.rootDirectory || process.cwd())
+  }),
   states: {
     idle: {
       on: {
@@ -156,6 +149,9 @@ export const pullRequestSystem = setup({
         },
         'pr.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
+        },
+        'pr.UPDATE_ROOT_DIRECTORY': {
+          actions: 'updateRootDirectory'
         }
       }
     }

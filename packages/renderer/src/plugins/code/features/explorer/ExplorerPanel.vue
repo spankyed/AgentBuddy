@@ -49,7 +49,7 @@
     <!-- Change Directory Button -->
     <div class="p-2 border-t border-neutral-800">
       <button
-        @click="changeDirectory"
+        @click="handleDirectorySelect"
         class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
       >
         Change Directory
@@ -141,10 +141,20 @@ const handleFileClick = (file: FileItem) => {
   }
 }
 
-const changeDirectory = () => {
-  const newPath = prompt('Enter new root directory path:', props.rootDirectory || '')
-  if (newPath && newPath !== props.rootDirectory) {
-    explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
+const handleDirectorySelect = async () => {
+  if (!window.electronAPI?.fileUtils.selectDirectory) {
+    console.error('Directory selection API not available')
+    return
+  }
+
+  try {
+    const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
+    
+    if (directoryPath && directoryPath !== props.rootDirectory) {
+      explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: directoryPath })
+    }
+  } catch (error) {
+    console.error('Error selecting directory:', error)
   }
 }
 </script>

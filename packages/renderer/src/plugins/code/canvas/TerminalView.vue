@@ -131,6 +131,28 @@ onMounted(() => {
     terminalActor?.send({ type: 'terminal.INPUT', terminalId: props.terminalInfo.id, data })
   })
 
+  /* 5a. Custom keyboard handling to handle Shift+Enter as newline */
+  term.attachCustomKeyEventHandler((event) => {
+    // Handle Shift+Enter to insert newline without executing
+    if (event.type === 'keydown' && (event.key === 'Enter' || event.keyCode === 13) && event.shiftKey) {
+      // Send a newline character (LF) instead of carriage return (CR)
+      // This will move to the next line without executing the command
+      terminalActor?.send({ 
+        type: 'terminal.INPUT', 
+        terminalId: props.terminalInfo.id, 
+        data: '\n' 
+      })
+      
+      // Prevent the default Enter behavior
+      event.preventDefault()
+      event.stopPropagation()
+      return false
+    }
+    
+    // Let all other keys pass through normally
+    return true
+  })
+
   term.onResize(({ cols, rows }) => {
     terminalActor?.send({ type: 'terminal.RESIZE', terminalId: props.terminalInfo.id, cols, rows })
   })

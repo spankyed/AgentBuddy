@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
-    <!-- Tabs (for both files and terminals) -->
+    <!-- Tabs -->
     <Tabs
       :tabs="openFiles"
       :active-tab-path="activeFilePath"
@@ -21,37 +21,29 @@
       </div>
       
       <div v-else-if="activeFile" class="absolute inset-0 overflow-hidden">
-        <!-- Single instance of each component type -->
-        <!-- Terminal for terminal tabs -->
+        <!-- Terminal view -->
         <div v-show="isTerminal(activeFile)" class="h-full overflow-hidden">
           <TerminalView
             v-if="isTerminal(activeFile)"
-            :key="(activeFile as TerminalTab).terminalInfo.id"
-            :terminal-info="(activeFile as TerminalTab).terminalInfo"
+            :key="activeFile.terminalInfo.id"
+            :terminal-info="activeFile.terminalInfo"
             class="h-full"
           />
         </div>
         
-        <!-- Diff viewer for diff tabs -->
-        <div v-show="'isDiff' in activeFile && activeFile.isDiff" class="h-full overflow-hidden">
-          <DiffViewer
-            v-if="'isDiff' in activeFile && activeFile.isDiff"
-            :key="activeFile.path"
-            :selected-git-file="(activeFile as any).gitFile!"
-            :git-diff="(activeFile as any).gitDiff!"
-            class="h-full"
-          />
-        </div>
-        
-        <!-- Regular editor for normal files -->
-        <div v-show="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)" class="h-full overflow-hidden">
-          <SimpleMonacoEditor
-            v-if="!isTerminal(activeFile) && !('isDiff' in activeFile && activeFile.isDiff)"
+        <!-- Monaco editor for both regular files and diffs -->
+        <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
+          <MonacoEditor
+            v-if="!isTerminal(activeFile)"
             :key="activeFile.path"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
             theme="vs-dark"
+            :diff-mode="isDiffFile"
+            :original-content="diffOriginalContent"
+            :modified-content="diffModifiedContent"
+            :read-only="isDiffFile"
             class="h-full"
           />
         </div>
@@ -61,17 +53,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { useSelector } from '@xstate/vue'
+import { computed } from 'vue'
 import { FileCode } from 'lucide-vue-next'
-import DiffViewer from './DiffViewer.vue'
-import SimpleMonacoEditor from './SimpleMonacoEditor.vue'
+import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import Tabs from './Tabs.vue'
-import { applicationState } from '@/main'
-import { id, type CodeState, type OpenFile, type TerminalTab } from '@/plugins/code/state'
+import type { OpenFile, TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
+import type { GitDiff } from '@/plugins/code/features/commit/state'
 
 // Props
 const props = defineProps<{
@@ -79,20 +69,6 @@ const props = defineProps<{
   activeFilePath: string | null
   rootDirectory?: string
 }>()
-
-// Debug log
-watch(() => props.openFiles, (newFiles) => {
-  console.log('FileEditor - openFiles changed:', newFiles.length, newFiles.map(f => ({ 
-    path: f.path, 
-    isTerminal: 'isTerminal' in f && f.isTerminal,
-    terminalId: 'isTerminal' in f && f.isTerminal && 'terminalInfo' in f ? (f as TerminalTab).terminalInfo.id : undefined
-  })))
-  console.log('FileEditor - activeFilePath:', props.activeFilePath)
-}, { immediate: true, deep: true })
-
-watch(() => props.activeFilePath, (newPath) => {
-  console.log('FileEditor - activeFilePath changed to:', newPath)
-}, { immediate: true })
 
 // Emits
 const emit = defineEmits<{
@@ -103,21 +79,37 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
 }>()
 
-// Terminal output is now handled directly in TerminalView
-
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
 }
 
-// Terminal output is handled via props
+// Helper to check if file is a diff
+const isDiffFile = computed(() => {
+  return activeFile.value && 'isDiff' in activeFile.value && activeFile.value.isDiff === true
+})
+
+// Get diff content
+const getDiffContent = (file: any): GitDiff | null => {
+  return file && 'gitDiff' in file ? file.gitDiff : null
+}
 
 // Computed
 const activeFile = computed(() => 
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
 
-// Using SimpleMonacoEditor for basic syntax highlighting
+const diffOriginalContent = computed(() => {
+  if (!isDiffFile.value || !activeFile.value) return undefined
+  const diff = getDiffContent(activeFile.value)
+  return diff?.originalContent
+})
+
+const diffModifiedContent = computed(() => {
+  if (!isDiffFile.value || !activeFile.value) return undefined
+  const diff = getDiffContent(activeFile.value)
+  return diff?.modifiedContent
+})
 
 // Event handlers
 const selectFile = (path: string) => {

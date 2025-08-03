@@ -223,14 +223,12 @@ export const explorerState = setup({
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
     },
     
-    assignFiles: enqueueActions(({ enqueue, event, self }) => {
+    assignFiles: assign(({ event, self }) => {
       const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
-      enqueue.assign({
+      updateParentState(self, { isLoading: false, error: null })
+      return {
         files: ev.data.files
-      })
-      enqueue(() => {
-        updateParentState(self, { isLoading: false, error: null })
-      })
+      }
     }),
     
     deleteFile: ({ event }) => {
@@ -282,6 +280,9 @@ export const explorerState = setup({
       localStorage.setItem('code-plugin-root-directory', ev.path)
       sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
+      
+      // Send SET_ROOT_DIRECTORY to the parent code system to update git repositories
+      sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
       
       // Update parent state
       updateParentState(self, { 

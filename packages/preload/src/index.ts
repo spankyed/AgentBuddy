@@ -13,9 +13,15 @@ const windowControls = {
   close: () => ipcRenderer.send('window:close'),
 };
 
+// File utilities
+const fileUtils = {
+  selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
+  fileUtils,
 });
 
 // Export the tRPC client and connection status

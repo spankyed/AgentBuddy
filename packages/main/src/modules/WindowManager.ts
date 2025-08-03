@@ -1,6 +1,6 @@
 import type {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
-import {BrowserWindow, ipcMain, app} from 'electron';
+import {BrowserWindow, ipcMain, app, dialog} from 'electron';
 import type {AppInitConfig} from '../AppInitConfig.js';
 import type {ApiServer} from './ApiServer.js';
 import {join} from 'node:path';
@@ -62,6 +62,23 @@ class WindowManager implements AppModule {
     ipcMain.on('window:close', () => {
       const window = BrowserWindow.getFocusedWindow();
       window?.close();
+    });
+
+    // Handle directory selection dialog
+    ipcMain.handle('dialog:select-directory', async () => {
+      const window = BrowserWindow.getFocusedWindow();
+      if (!window) return null;
+
+      const result = await dialog.showOpenDialog(window, {
+        properties: ['openDirectory'],
+        title: 'Select Directory'
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      return result.filePaths[0];
     });
   }
 

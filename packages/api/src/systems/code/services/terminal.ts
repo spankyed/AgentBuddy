@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
 import { repository } from '@/repository'
+import { getGitRepositoryRoot } from '../utils/git-root'
 
 interface Terminal {
   info: TerminalInfo
@@ -48,7 +49,7 @@ class TerminalService {
     const shell = this.validateShell(requestedShell)
     
     // Validate cwd exists and is accessible
-    const cwd = this.validateCwd(options.cwd || process.cwd())
+    const cwd = this.validateCwd(options.cwd || getGitRepositoryRoot())
     
     // Validate terminal dimensions
     const cols = Math.max(1, Math.min(options.cols || 80, 500))
@@ -230,9 +231,9 @@ class TerminalService {
         return cwd
       }
     } catch (error) {
-      console.warn(`Invalid cwd: ${cwd}, defaulting to process.cwd()`)
+      console.warn(`Invalid cwd: ${cwd}, defaulting to git repository root`)
     }
-    return process.cwd()
+    return getGitRepositoryRoot()
   }
 
   private sanitizeTitle(title: string): string {
