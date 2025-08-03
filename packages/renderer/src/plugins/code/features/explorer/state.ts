@@ -281,6 +281,9 @@ export const explorerState = setup({
       sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
+      // Send SET_ROOT_DIRECTORY to the parent code system to update git repositories
+      sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
+      
       // Update parent state
       updateParentState(self, { 
         rootDirectory: ev.path,
