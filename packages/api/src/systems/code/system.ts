@@ -94,7 +94,12 @@ export const systemMachine = setup({
           rootDirectory: context.rootDirectory
         }
       });
-      enqueue.spawnChild('pullRequestSystem', { systemId: 'pr' });
+      enqueue.spawnChild('pullRequestSystem', { 
+        systemId: 'pr',
+        input: {
+          rootDirectory: context.rootDirectory
+        }
+      });
       enqueue.spawnChild('terminalSystem', { 
         systemId: 'terminal',
         input: {
@@ -142,6 +147,7 @@ export const systemMachine = setup({
       system.get('explorer')?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath });
       system.get('search')?.send({ type: 'search.UPDATE_ROOT_DIRECTORY', path: newPath });
       system.get('commit')?.send({ type: 'commit.UPDATE_ROOT_DIRECTORY', path: newPath });
+      system.get('pr')?.send({ type: 'pr.UPDATE_ROOT_DIRECTORY', path: newPath });
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
