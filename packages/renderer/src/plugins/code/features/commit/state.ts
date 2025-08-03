@@ -158,9 +158,20 @@ export const commitState = setup({
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const rootDirectory = parentContext?.rootDirectory || ''
-      const fullPath = rootDirectory.endsWith('/') 
-        ? rootDirectory + ev.file.path 
-        : rootDirectory + '/' + ev.file.path
+      
+      // Git paths are relative to the repository root
+      // We need to construct the absolute path correctly
+      let fullPath: string
+      if (ev.file.path.startsWith('/')) {
+        // Path is already absolute
+        fullPath = ev.file.path
+      } else {
+        // For git files, the path is relative to the git repository root
+        // which should be the same as our rootDirectory
+        fullPath = rootDirectory.endsWith('/') 
+          ? rootDirectory + ev.file.path 
+          : rootDirectory + '/' + ev.file.path
+      }
       
       // Send events to parent to switch to explorer panel and open file
       updateParentState(self, { selectedPanel: 'explorer' })

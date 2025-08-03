@@ -4,14 +4,18 @@ import { spawn } from 'child_process'
 import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const PROJECT_ROOT = process.cwd()
 
 export class FileSystemRepository {
+  private projectRoot: string
+  
+  constructor(projectRoot?: string) {
+    this.projectRoot = projectRoot || process.cwd()
+  }
   private validatePath(filePath: string): string {
     const normalizedPath = path.normalize(filePath)
     const absolutePath = path.isAbsolute(normalizedPath) 
       ? normalizedPath 
-      : path.join(PROJECT_ROOT, normalizedPath)
+      : path.join(this.projectRoot, normalizedPath)
     
     // const relativePath = path.relative(PROJECT_ROOT, absolutePath)
 

@@ -329,6 +329,10 @@ export const explorerSystem = setup({
         const ev = event as { type: 'explorer.SET_DIRECTORIES'; currentDirectory: string }
         return ev.currentDirectory
       },
+      repository: ({ event }) => {
+        const ev = event as { type: 'explorer.SET_DIRECTORIES'; rootDirectory: string }
+        return new FileSystemRepository(ev.rootDirectory)
+      },
     }),
 
     closeFile: async ({ event, context }) => {
@@ -371,7 +375,7 @@ export const explorerSystem = setup({
     return {
       currentDirectory: input?.currentDirectory || rootDir,
       rootDirectory: rootDir,
-      repository: new FileSystemRepository(),
+      repository: new FileSystemRepository(rootDir),
       fileWatcher: new FileWatcherService(),
     }
   },

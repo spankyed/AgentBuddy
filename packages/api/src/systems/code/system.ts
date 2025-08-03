@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { safeEvents } from '@/core/utils/actor-helpers'
 import { SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
+import { getGitRepositoryRoot } from './utils/git-root'
 
 // child systems
 import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
@@ -81,7 +82,12 @@ export const systemMachine = setup({
           currentDirectory: context.currentDirectory
         }
       });
-      enqueue.spawnChild('searchSystem', { systemId: 'search' });
+      enqueue.spawnChild('searchSystem', { 
+        systemId: 'search',
+        input: {
+          rootDirectory: context.rootDirectory
+        }
+      });
       enqueue.spawnChild('commitSystem', { 
         systemId: 'commit',
         input: {
@@ -134,6 +140,7 @@ export const systemMachine = setup({
       
       // Update child systems
       system.get('explorer')?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath });
+      system.get('search')?.send({ type: 'search.UPDATE_ROOT_DIRECTORY', path: newPath });
       system.get('commit')?.send({ type: 'commit.UPDATE_ROOT_DIRECTORY', path: newPath });
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
@@ -150,7 +157,7 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: (() => {
-    const rootDir = process.cwd().includes('/apps/api') ? process.cwd().replace('/apps/api', '') : process.cwd()
+    const rootDir = getGitRepositoryRoot()
     return {
       currentDirectory: rootDir,
       rootDirectory: rootDir,

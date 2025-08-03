@@ -49,12 +49,14 @@ export type Event =
     }
   | { type: 'search.CANCEL_SEARCH' }
   | { type: 'search.ASSIGN_SEARCH_CONTROLLER'; controller: AbortController }
-  | { type: 'search.CLEAR_SEARCH_CONTROLLER' };
+  | { type: 'search.CLEAR_SEARCH_CONTROLLER' }
+  | { type: 'search.UPDATE_ROOT_DIRECTORY'; path: string };
 
 export const searchSystem = setup({
   types: {
     context: {} as Context,
-    events: {} as Event
+    events: {} as Event,
+    input: {} as { rootDirectory: string },
   },
   actions: {
     searchFiles: async ({ event, context, self }) => {
@@ -154,14 +156,21 @@ export const searchSystem = setup({
     clearSearchController: assign({
       activeSearchController: undefined
     }),
+
+    updateRootDirectory: assign({
+      repository: ({ event }) => {
+        const ev = event as { type: 'search.UPDATE_ROOT_DIRECTORY'; path: string }
+        return new FileSystemRepository(ev.path)
+      }
+    }),
   }
 }).createMachine({
   id: 'search',
   initial: 'idle',
-  context: {
-    repository: new FileSystemRepository(),
+  context: ({ input }: { input?: { rootDirectory: string } }) => ({
+    repository: new FileSystemRepository(input?.rootDirectory || process.cwd()),
     activeSearchController: undefined
-  },
+  }),
   states: {
     idle: {
       on: {
@@ -176,6 +185,9 @@ export const searchSystem = setup({
         },
         'search.CLEAR_SEARCH_CONTROLLER': {
           actions: 'clearSearchController'
+        },
+        'search.UPDATE_ROOT_DIRECTORY': {
+          actions: 'updateRootDirectory'
         }
       }
     }
