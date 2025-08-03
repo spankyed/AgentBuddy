@@ -103,7 +103,7 @@ export const systemMachine = setup({
       enqueue.spawnChild('terminalSystem', { 
         systemId: 'terminal',
         input: {
-          currentDirectory: context.currentDirectory
+          rootDirectory: context.rootDirectory
         }
       });
       enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
