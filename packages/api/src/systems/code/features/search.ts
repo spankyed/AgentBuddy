@@ -167,8 +167,8 @@ export const searchSystem = setup({
 }).createMachine({
   id: 'search',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    repository: new FileSystemRepository(input?.rootDirectory || process.cwd()),
+  context: ({ input }: { input?: { rootDirectory: string | null } }) => ({
+    repository: input?.rootDirectory ? new FileSystemRepository(input.rootDirectory) : null,
     activeSearchController: undefined
   }),
   states: {

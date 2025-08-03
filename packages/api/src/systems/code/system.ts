@@ -1,12 +1,13 @@
 import { setup, enqueueActions, assign } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'
-import { safeEvents } from '@/core/utils/actor-helpers'
+import { safeEvents, emit } from '@/core/utils/actor-helpers'
+import { rootEvents } from '@/core/router/bus-emitter'
 import { SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
-import { getGitRepositoryRoot } from './utils/git-root'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
+import { repository } from '@/repository'
 
 // child systems
 import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
@@ -43,7 +44,7 @@ export type OutgoingCodeEvents =
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
   // Broadcast events (sent to all child systems)
-  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[] } }
+  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[]; rootDirectory: string | null; currentDirectory: string | null } }
 
 // Import only the type needed for broadcast event
 import { TerminalInfo } from './types'
@@ -54,10 +55,10 @@ type CodeInternalEvents = SystemEvents
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
-  currentDirectory: string
-  rootDirectory: string
-  gitRepository: GitRepository
-  gitWatcher: GitWatcherService
+  currentDirectory: string | null
+  rootDirectory: string | null
+  gitRepository: GitRepository | null
+  gitWatcher: GitWatcherService | null
 }
 
 const typeOf = safeEvents<ReceivableEvents>()
@@ -131,6 +132,8 @@ export const systemMachine = setup({
     updateRootDirectory: assign({
       rootDirectory: ({ event }) => {
         const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        // Save to EARS as last opened directory
+        repository.directoryCommands.markAsLastOpened(ev.path)
         return ev.path
       },
       currentDirectory: ({ event }) => {
@@ -177,19 +180,35 @@ export const systemMachine = setup({
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
-    broadcastStartup: ({ system }) => {
+    broadcastStartup: ({ system, context }) => {
       // Send CODE_STARTUP to all children that need it
       system.get('explorer')?.send({ type: 'CODE_STARTUP' });
       system.get('terminal')?.send({ type: 'CODE_STARTUP' });
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
       system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
+      
+      // Send initial directory state to frontend
+      const wrapped = emit(id, {
+        type: 'CODE_STARTUP',
+        data: {
+          terminals: [], // Will be populated by terminal system
+          rootDirectory: context.rootDirectory,
+          currentDirectory: context.currentDirectory
+        }
+      })
+      rootEvents.emitOutgoing(wrapped.event)
     },
     
     setupGitWatcher: async ({ context, system }) => {
+      if (!context.gitWatcher || !context.gitRepository) {
+        // No directory selected yet
+        return
+      }
+      
       // Set up the callback for git changes
       context.gitWatcher.setChangeCallback(() => {
         // Clear git cache when git status changes
-        context.gitRepository.clearCache()
+        context.gitRepository?.clearCache()
         
         // Notify commit system of changes
         system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
@@ -203,6 +222,9 @@ export const systemMachine = setup({
     },
     
     restartGitWatcher: async ({ context }) => {
+      if (!context.gitWatcher) {
+        return
+      }
       // Re-setup the watcher after directory change
       await context.gitWatcher.startWatching()
     }
@@ -211,12 +233,15 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: (() => {
-    const rootDir = getGitRepositoryRoot()
+    // Get last opened directory from EARS
+    const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
+    const rootDir = lastOpenedDir?.path || null
+    
     return {
       currentDirectory: rootDir,
       rootDirectory: rootDir,
-      gitRepository: new GitRepository(rootDir),
-      gitWatcher: new GitWatcherService(rootDir)
+      gitRepository: rootDir ? new GitRepository(rootDir) : null,
+      gitWatcher: rootDir ? new GitWatcherService(rootDir) : null
     }
   })(),
   entry: ['spawnFeatureActors', 'setupGitWatcher'],

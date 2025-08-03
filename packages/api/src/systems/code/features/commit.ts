@@ -82,6 +82,15 @@ export const commitSystem = setup({
     },
 
     getGitStatus: async ({ context }) => {
+      if (!context.gitRepository) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: 'No directory selected. Please select a directory first.' }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        return
+      }
+      
       try {
         // First check if we're in a git repository
         const isGitRepo = await context.gitRepository.isGitRepository()

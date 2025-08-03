@@ -274,7 +274,6 @@ export const explorerState = setup({
     
     setRootDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
-      localStorage.setItem('code-plugin-root-directory', ev.path)
       
       // Send SET_ROOT_DIRECTORY to the parent code system to update everything
       sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })

@@ -40,9 +40,9 @@ export type OutgoingExplorerEvents =
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
 
 export interface Context {
-  currentDirectory: string
-  rootDirectory: string
-  repository: FileSystemRepository
+  currentDirectory: string | null
+  rootDirectory: string | null
+  repository: FileSystemRepository | null
   fileWatcher: FileWatcherService
 }
 
@@ -66,7 +66,7 @@ export const explorerSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string; currentDirectory: string }
+    input: {} as { rootDirectory: string | null; currentDirectory: string | null }
   },
   actions: {
     setupFileWatcher: ({ context, self }) => {
@@ -99,6 +99,20 @@ export const explorerSystem = setup({
 
     listFiles: async ({ event, context }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
+      
+      if (!context.repository) {
+        const wrapped = emit(pluginId, {
+          type: 'explorer.CODE_ERROR',
+          data: {
+            code: 'NO_DIRECTORY',
+            message: 'No directory selected. Please select a directory to browse files.',
+            path: ev.path,
+          },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        return
+      }
+      
       try {
         const path = ev.path || context.currentDirectory
         const content = await context.repository.listDirectory(path)
@@ -350,12 +364,12 @@ export const explorerSystem = setup({
 }).createMachine({
   id: 'explorer',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string; currentDirectory: string } }) => {
-    const rootDir = input?.rootDirectory || process.cwd()
+  context: ({ input }: { input?: { rootDirectory: string | null; currentDirectory: string | null } }) => {
+    const rootDir = input?.rootDirectory || null
     return {
       currentDirectory: input?.currentDirectory || rootDir,
       rootDirectory: rootDir,
-      repository: new FileSystemRepository(rootDir),
+      repository: rootDir ? new FileSystemRepository(rootDir) : null,
       fileWatcher: new FileWatcherService(),
     }
   },

@@ -11,7 +11,7 @@ import { agentQueries, agentCommands } from '@/systems/agent/repository';
 import { brainQueries, brainCommands } from '@/systems/brain/repository';
 import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
-import { terminalQueries, terminalCommands } from '@/systems/code/repository';
+import { terminalQueries, terminalCommands, directoryQueries, directoryCommands } from '@/systems/code/repository';
 import { threadQueries, threadCommands } from '@/systems/threads/repository';
 
 // Export centralized repository
@@ -39,6 +39,10 @@ export const repository = {
   // Code/Terminal system
   terminalQueries,
   terminalCommands,
+  
+  // Code/Directory system
+  directoryQueries,
+  directoryCommands,
   
   // Threads system
   threadQueries,
