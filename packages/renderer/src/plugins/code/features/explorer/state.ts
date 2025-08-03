@@ -223,14 +223,12 @@ export const explorerState = setup({
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
     },
     
-    assignFiles: enqueueActions(({ enqueue, event, self }) => {
+    assignFiles: assign(({ event, self }) => {
       const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
-      enqueue.assign({
+      updateParentState(self, { isLoading: false, error: null })
+      return {
         files: ev.data.files
-      })
-      enqueue(() => {
-        updateParentState(self, { isLoading: false, error: null })
-      })
+      }
     }),
     
     deleteFile: ({ event }) => {
