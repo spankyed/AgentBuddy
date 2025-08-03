@@ -5,7 +5,6 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo } from '../types'
-import { getGitRepositoryRoot } from '../utils/git-root'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -270,8 +269,8 @@ export const terminalSystem = setup({
 }).createMachine({
   id: 'terminal',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    rootDirectory: input?.rootDirectory || getGitRepositoryRoot()
+  context: ({ input }: { input?: { rootDirectory: string | null } }) => ({
+    rootDirectory: input?.rootDirectory || null
   }),
   entry: 'restoreTerminals',
   exit: 'cleanupTerminals',

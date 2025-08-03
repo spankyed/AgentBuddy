@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff } from '../types'
+import { requireGitRepository } from '../utils/git-helpers'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -82,14 +83,7 @@ export const commitSystem = setup({
     },
 
     getGitStatus: async ({ context }) => {
-      if (!context.gitRepository) {
-        const wrapped = emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message: 'No directory selected. Please select a directory first.' }
-        })
-        rootEvents.emitOutgoing(wrapped.event)
-        return
-      }
+      if (!requireGitRepository(context)) return
       
       try {
         // First check if we're in a git repository
@@ -133,6 +127,9 @@ export const commitSystem = setup({
 
     getGitDiff: async ({ event, context }) => {
       const ev = event as { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
 
@@ -181,6 +178,9 @@ export const commitSystem = setup({
 
     stageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.stageFiles(ev.paths)
         const wrapped = emit(pluginId, {
@@ -201,6 +201,9 @@ export const commitSystem = setup({
 
     unstageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.unstageFiles(ev.paths)
         const wrapped = emit(pluginId, {
@@ -221,6 +224,9 @@ export const commitSystem = setup({
 
     revertFile: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_FILE'; path: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.revertFile(ev.path)
         const wrapped = emit(pluginId, {
@@ -251,6 +257,9 @@ export const commitSystem = setup({
 
     commit: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.COMMIT'; message: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         // Check if there are any staged files
         const stagedFiles = await context.gitRepository.getStagedFiles()
@@ -288,6 +297,8 @@ export const commitSystem = setup({
     },
 
     getCurrentBranch: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const branch = await context.gitRepository.getCurrentBranch()
         const wrapped = emit(pluginId, {
@@ -305,6 +316,8 @@ export const commitSystem = setup({
     },
 
     getAllBranches: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const branches = await context.gitRepository.getAllBranches()
         const wrapped = emit(pluginId, {
@@ -323,6 +336,9 @@ export const commitSystem = setup({
 
     checkoutBranch: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.checkoutBranch(ev.branchName)
         
@@ -353,6 +369,8 @@ export const commitSystem = setup({
     },
 
     pushBranch: async ({ context, self }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
         await context.gitRepository.pushBranch()
@@ -375,6 +393,8 @@ export const commitSystem = setup({
     },
 
     pullBranch: async ({ context, self }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
         await context.gitRepository.pullBranch()
@@ -411,10 +431,10 @@ export const commitSystem = setup({
   id: 'commit',
   initial: 'idle',
   context: ({ input }) => {
-    const rootDir = input?.rootDirectory || process.cwd()
+    const rootDir = input?.rootDirectory
     return {
-      gitRepository: input?.gitRepository || new GitRepository(rootDir),
-      gitWatcher: input?.gitWatcher || new GitWatcherService(rootDir)
+      gitRepository: input?.gitRepository || (rootDir ? new GitRepository(rootDir) : null),
+      gitWatcher: input?.gitWatcher || (rootDir ? new GitWatcherService(rootDir) : null)
     }
   },
   states: {

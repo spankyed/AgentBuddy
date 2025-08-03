@@ -5,6 +5,7 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff } from '../types'
+import { requireGitRepository } from '../utils/git-helpers'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -43,6 +44,8 @@ export const pullRequestSystem = setup({
   },
   actions: {
     getBaseBranch: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -63,6 +66,9 @@ export const pullRequestSystem = setup({
 
     getBranchDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -84,6 +90,9 @@ export const pullRequestSystem = setup({
 
     getBranchFileDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -133,7 +142,7 @@ export const pullRequestSystem = setup({
   id: 'pull-request',
   initial: 'idle',
   context: ({ input }) => ({
-    gitRepository: input?.gitRepository || new GitRepository(input?.rootDirectory || process.cwd())
+    gitRepository: input?.gitRepository || (input?.rootDirectory ? new GitRepository(input.rootDirectory) : null)
   }),
   states: {
     idle: {
