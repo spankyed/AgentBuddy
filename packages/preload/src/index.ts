@@ -1,6 +1,6 @@
 import {sha256sum} from './nodeCrypto.js';
 import {versions} from './versions.js';
-import {ipcRenderer, contextBridge} from 'electron';
+import {ipcRenderer, contextBridge, webUtils} from 'electron';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
@@ -13,9 +13,15 @@ const windowControls = {
   close: () => ipcRenderer.send('window:close'),
 };
 
+// File utilities
+const fileUtils = {
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
+  fileUtils,
 });
 
 // Export the tRPC client and connection status

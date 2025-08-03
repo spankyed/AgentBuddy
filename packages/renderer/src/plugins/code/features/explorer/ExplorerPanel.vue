@@ -49,11 +49,21 @@
     <!-- Change Directory Button -->
     <div class="p-2 border-t border-neutral-800">
       <button
-        @click="changeDirectory"
+        @click="triggerDirectorySelect"
         class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
       >
         Change Directory
       </button>
+      <!-- Hidden file input for directory selection -->
+      <input
+        ref="directoryInput"
+        type="file"
+        webkitdirectory
+        directory
+        multiple
+        @change="handleDirectorySelect"
+        class="hidden"
+      />
     </div>
   </div>
 </template>
@@ -141,10 +151,32 @@ const handleFileClick = (file: FileItem) => {
   }
 }
 
-const changeDirectory = () => {
-  const newPath = prompt('Enter new root directory path:', props.rootDirectory || '')
-  if (newPath && newPath !== props.rootDirectory) {
-    explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath })
+// Directory selection refs
+const directoryInput = ref<HTMLInputElement | null>(null)
+
+const triggerDirectorySelect = () => {
+  directoryInput.value?.click()
+}
+
+const handleDirectorySelect = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+  
+  if (files && files.length > 0 && window.electronAPI?.fileUtils) {
+    // When using webkitdirectory, files contains all files in the selected directory
+    // Get the path of the first file to determine the selected directory
+    const firstFilePath = window.electronAPI.fileUtils.getPathForFile(files[0])
+    
+    // Extract the directory path from the file path
+    const lastSlashIndex = firstFilePath.lastIndexOf('/')
+    const directoryPath = firstFilePath.substring(0, lastSlashIndex)
+    
+    if (directoryPath && directoryPath !== props.rootDirectory) {
+      explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: directoryPath })
+    }
+    
+    // Clear the input value to allow selecting the same directory again
+    input.value = ''
   }
 }
 </script>

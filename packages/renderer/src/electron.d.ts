@@ -6,6 +6,9 @@ declare global {
         maximize: () => void;
         close: () => void;
       };
+      fileUtils: {
+        getPathForFile: (file: File) => string;
+      };
     };
   }
 }
