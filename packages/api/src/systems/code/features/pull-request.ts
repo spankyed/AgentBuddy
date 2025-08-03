@@ -33,13 +33,13 @@ export type Event =
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
   | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
   | { type: 'pr.GIT_STATUS_CHANGED' }
-  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string };
+  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository };
 
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string; gitRepository?: GitRepository }
   },
   actions: {
     getBaseBranch: async ({ context }) => {
@@ -124,16 +124,16 @@ export const pullRequestSystem = setup({
 
     updateRootDirectory: assign({
       gitRepository: ({ event }) => {
-        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string }
-        return new GitRepository(ev.path)
+        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository }
+        return ev.gitRepository
       }
     })
   }
 }).createMachine({
   id: 'pull-request',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    gitRepository: new GitRepository(input?.rootDirectory || process.cwd())
+  context: ({ input }) => ({
+    gitRepository: input?.gitRepository || new GitRepository(input?.rootDirectory || process.cwd())
   }),
   states: {
     idle: {

@@ -57,7 +57,7 @@ export type Event =
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
+  | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_STARTUP' };
 
@@ -65,21 +65,10 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string; gitRepository?: GitRepository; gitWatcher?: GitWatcherService }
   },
   actions: {
-    setupGitWatcher: async ({ context, self }) => {
-      // Set up the callback for git changes
-      context.gitWatcher.setChangeCallback(() => {
-        // Clear git cache when git status changes
-        context.gitRepository.clearCache()
-        
-        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      })
-
-      // Start watching git changes
-      await context.gitWatcher.startWatching()
-    },
+    // Git watcher is now managed by parent code system
 
     handleGitStatusChanged: async ({ context, self, system }) => {
       // When git status changes, automatically send the new status to frontend
@@ -399,42 +388,26 @@ export const commitSystem = setup({
     },
 
     updateRootDirectory: assign({
-      gitRepository: ({ event, context }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
-        // Clear the old repository's cache before creating new one
-        if (context.gitRepository) {
-          context.gitRepository.clearCache()
-        }
-        // Use the new root directory path for git operations
-        return new GitRepository(ev.path)
+      gitRepository: ({ event }) => {
+        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        return ev.gitRepository
       },
-      gitWatcher: ({ event, context }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
-        // Stop the old watcher before creating new one
-        if (context.gitWatcher) {
-          context.gitWatcher.stopWatching()
-        }
-        // Create new watcher for the new directory
-        return new GitWatcherService(ev.path)
+      gitWatcher: ({ event }) => {
+        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        return ev.gitWatcher
       }
-    }),
-
-    restartGitWatcher: async ({ context, self }) => {
-      // Re-setup the watcher after directory change
-      await context.gitWatcher.startWatching()
-    }
+    })
   }
 }).createMachine({
   id: 'commit',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => {
+  context: ({ input }) => {
     const rootDir = input?.rootDirectory || process.cwd()
     return {
-      gitRepository: new GitRepository(rootDir),
-      gitWatcher: new GitWatcherService(rootDir)
+      gitRepository: input?.gitRepository || new GitRepository(rootDir),
+      gitWatcher: input?.gitWatcher || new GitWatcherService(rootDir)
     }
   },
-  entry: 'setupGitWatcher',
   states: {
     idle: {
       on: {
@@ -475,7 +448,7 @@ export const commitSystem = setup({
           actions: 'pullBranch'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
-          actions: ['updateRootDirectory', 'restartGitWatcher']
+          actions: 'updateRootDirectory'
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'

@@ -20,7 +20,6 @@ export const IncomingExplorerEvents = [
   busEvent('explorer.RENAME_FILE', { oldPath: z.string(), newPath: z.string() }),
   busEvent('explorer.CREATE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.GET_FILE_INFO', { path: z.string() }),
-  busEvent('explorer.CHANGE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.CLOSE_FILE', { path: z.string() }),
   busEvent('explorer.QUICK_OPEN_SEARCH', { rootDirectory: z.string() }),
 ] as const
@@ -33,7 +32,6 @@ export type OutgoingExplorerEvents =
   | { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
   | { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
   | { type: 'explorer.FILE_INFO'; data: FileInfo }
-  | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
   | { type: 'explorer.FILE_CONTENT'; data: FileContent }
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
@@ -58,7 +56,6 @@ export type Event =
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.GET_FILE_INFO'; path: string }
-  | { type: 'explorer.CHANGE_DIRECTORY'; path: string }
   | { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
@@ -280,31 +277,14 @@ export const explorerSystem = setup({
       }
     },
 
-    changeDirectory: ({ event }) => {
-      const ev = event as { type: 'explorer.CHANGE_DIRECTORY'; path: string }
-      
-      // Send event to frontend
-      const wrapped = emit(pluginId, {
-        type: 'explorer.DIRECTORY_CHANGED',
-        data: { path: ev.path },
-      })
-      rootEvents.emitOutgoing(wrapped.event)
-    },
-
-    assignDirectory: assign({
-      currentDirectory: ({ event }) => {
-        const ev = event as { type: 'explorer.CHANGE_DIRECTORY'; path: string }
-        return ev.path
-      },
-    }),
 
     setRootDirectory: ({ event }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
       
-      // Send event to frontend
+      // Send current directory info to frontend
       const wrapped = emit(pluginId, {
-        type: 'explorer.DIRECTORY_CHANGED',
-        data: { path: ev.path },
+        type: 'explorer.CURRENT_DIRECTORY',
+        data: { path: ev.path, rootDirectory: ev.path },
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -412,9 +392,6 @@ export const explorerSystem = setup({
         },
         'explorer.GET_FILE_INFO': {
           actions: 'getFileInfo'
-        },
-        'explorer.CHANGE_DIRECTORY': {
-          actions: ['assignDirectory', 'changeDirectory']
         },
         'explorer.SET_ROOT_DIRECTORY': {
           actions: ['assignRootDirectory', 'setRootDirectory']

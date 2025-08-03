@@ -75,8 +75,6 @@ export type Event =
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
   | { type: 'explorer.CODE_ERROR'; data: { message: string } }
-  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-  | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
@@ -268,7 +266,6 @@ export const explorerState = setup({
     
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
-      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
@@ -278,11 +275,10 @@ export const explorerState = setup({
     setRootDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
       localStorage.setItem('code-plugin-root-directory', ev.path)
-      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
-      // Send SET_ROOT_DIRECTORY to the parent code system to update git repositories
+      // Send SET_ROOT_DIRECTORY to the parent code system to update everything
       sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
       updateParentState(self, { 

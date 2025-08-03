@@ -5,6 +5,8 @@ import { safeEvents } from '@/core/utils/actor-helpers'
 import { SystemEvents } from '@/systems/backend'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { getGitRepositoryRoot } from './utils/git-root'
+import { GitRepository } from './services/git'
+import { GitWatcherService } from './services/gitwatcher'
 
 // child systems
 import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
@@ -54,6 +56,8 @@ type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalE
 export interface Context {
   currentDirectory: string
   rootDirectory: string
+  gitRepository: GitRepository
+  gitWatcher: GitWatcherService
 }
 
 const typeOf = safeEvents<ReceivableEvents>()
@@ -74,7 +78,7 @@ export const systemMachine = setup({
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
-      // Spawn all child systems with input
+      // Spawn all child systems with input and shared services
       enqueue.spawnChild('explorerSystem', { 
         systemId: 'explorer',
         input: {
@@ -91,13 +95,16 @@ export const systemMachine = setup({
       enqueue.spawnChild('commitSystem', { 
         systemId: 'commit',
         input: {
-          rootDirectory: context.rootDirectory
+          rootDirectory: context.rootDirectory,
+          gitRepository: context.gitRepository,
+          gitWatcher: context.gitWatcher
         }
       });
       enqueue.spawnChild('pullRequestSystem', { 
         systemId: 'pr',
         input: {
-          rootDirectory: context.rootDirectory
+          rootDirectory: context.rootDirectory,
+          gitRepository: context.gitRepository
         }
       });
       enqueue.spawnChild('terminalSystem', { 
@@ -110,13 +117,6 @@ export const systemMachine = setup({
       enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
     }),
 
-    handleChangeDirectory: ({ event, system }) => {
-      system.get('explorer')?.send(event);
-      system.get('terminal')?.send({ 
-        type: 'terminal.UPDATE_CURRENT_DIRECTORY', 
-        path: (event as any).path 
-      });
-    },
 
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
@@ -136,18 +136,44 @@ export const systemMachine = setup({
       currentDirectory: ({ event }) => {
         const ev = typeOf('SET_ROOT_DIRECTORY', event)
         return ev.path
+      },
+      gitRepository: ({ event, context }) => {
+        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        // Clear the old repository's cache before creating new one
+        if (context.gitRepository) {
+          context.gitRepository.clearCache()
+        }
+        return new GitRepository(ev.path)
+      },
+      gitWatcher: ({ event, context }) => {
+        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        // Stop the old watcher before creating new one
+        if (context.gitWatcher) {
+          context.gitWatcher.stopWatching()
+        }
+        return new GitWatcherService(ev.path)
       }
     }),
 
-    notifyChildSystemsOfRootChange: ({ event, system }) => {
+    notifyChildSystemsOfRootChange: ({ event, system, context }) => {
       const ev = typeOf('SET_ROOT_DIRECTORY', event)
       const newPath = ev.path
       
       // Update child systems
       system.get('explorer')?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath });
       system.get('search')?.send({ type: 'search.UPDATE_ROOT_DIRECTORY', path: newPath });
-      system.get('commit')?.send({ type: 'commit.UPDATE_ROOT_DIRECTORY', path: newPath });
-      system.get('pr')?.send({ type: 'pr.UPDATE_ROOT_DIRECTORY', path: newPath });
+      // Pass the new git services to systems that need them
+      system.get('commit')?.send({ 
+        type: 'commit.UPDATE_ROOT_DIRECTORY', 
+        path: newPath,
+        gitRepository: context.gitRepository,
+        gitWatcher: context.gitWatcher
+      });
+      system.get('pr')?.send({ 
+        type: 'pr.UPDATE_ROOT_DIRECTORY', 
+        path: newPath,
+        gitRepository: context.gitRepository
+      });
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
@@ -158,6 +184,28 @@ export const systemMachine = setup({
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
       system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
     },
+    
+    setupGitWatcher: async ({ context, system }) => {
+      // Set up the callback for git changes
+      context.gitWatcher.setChangeCallback(() => {
+        // Clear git cache when git status changes
+        context.gitRepository.clearCache()
+        
+        // Notify commit system of changes
+        system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        
+        // Also notify the PR system
+        system.get('pr')?.send({ type: 'pr.GIT_STATUS_CHANGED' })
+      })
+
+      // Start watching git changes
+      await context.gitWatcher.startWatching()
+    },
+    
+    restartGitWatcher: async ({ context }) => {
+      // Re-setup the watcher after directory change
+      await context.gitWatcher.startWatching()
+    }
   }
 }).createMachine({
   id,
@@ -167,9 +215,11 @@ export const systemMachine = setup({
     return {
       currentDirectory: rootDir,
       rootDirectory: rootDir,
+      gitRepository: new GitRepository(rootDir),
+      gitWatcher: new GitWatcherService(rootDir)
     }
   })(),
-  entry: 'spawnFeatureActors',
+  entry: ['spawnFeatureActors', 'setupGitWatcher'],
   states: {
     idle: {
       on: {
@@ -178,11 +228,7 @@ export const systemMachine = setup({
         },
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {
-          actions: ['updateRootDirectory', 'notifyChildSystemsOfRootChange']
-        },
-        // Handle explorer.CHANGE_DIRECTORY specially to sync with terminal
-        'explorer.CHANGE_DIRECTORY': {
-          actions: 'handleChangeDirectory'
+          actions: ['updateRootDirectory', 'notifyChildSystemsOfRootChange', 'restartGitWatcher']
         },
         // All other events get routed to children
         '*': {
