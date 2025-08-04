@@ -56,6 +56,8 @@ export type Event =
   | { type: 'search.PROGRESS'; data: SearchProgress }
   | { type: 'search.COMPLETE' }
   | { type: 'search.ERROR'; message: string }
+  | { type: 'search.CLEAR_ERROR' }
+  | { type: 'search.DIRECTORY_CHANGED'; rootDirectory: string }
   | { type: 'CODE_STARTUP' };
 
 export const searchState = setup({
@@ -130,6 +132,10 @@ export const searchState = setup({
       searchProgress: null
     }),
     
+    clearError: assign({
+      searchError: null
+    }),
+    
     updateSearchOptions: assign({
       searchOptions: ({ context, event }) => {
         const ev = event as { type: 'search.UPDATE_OPTIONS'; options: Partial<Context['searchOptions']> }
@@ -146,6 +152,14 @@ export const searchState = setup({
           type: 'search.ERROR', 
           message: 'No directory selected. Please select a directory first.' 
         })
+      }
+    },
+    
+    handleDirectoryChanged: ({ self, context, event }) => {
+      const ev = event as { type: 'search.DIRECTORY_CHANGED'; rootDirectory: string }
+      // Clear the "No directory selected" error when a directory is selected
+      if (context.searchError?.includes('No directory selected') && ev.rootDirectory) {
+        self.send({ type: 'search.CLEAR_ERROR' })
       }
     }
   }
@@ -193,6 +207,12 @@ export const searchState = setup({
         },
         'search.ERROR': {
           actions: 'assignSearchError'
+        },
+        'search.CLEAR_ERROR': {
+          actions: 'clearError'
+        },
+        'search.DIRECTORY_CHANGED': {
+          actions: 'handleDirectoryChanged'
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

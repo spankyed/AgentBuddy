@@ -155,10 +155,11 @@ const codeState = setup({
         }
       }
       
-      // If root directory changed, notify commit and PR panels to refresh
+      // If root directory changed, notify commit, PR, and search panels to refresh
       if (ev.updates.rootDirectory && ev.updates.rootDirectory !== context.rootDirectory) {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', rootDirectory: ev.updates.rootDirectory });
       }
       
       return updates
