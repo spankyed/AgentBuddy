@@ -79,8 +79,9 @@ function handleHotReload() {
         electronApp = null;
       }
 
-      /** Spawn a new electron process */
-      electronApp = spawn(String(electronPath), ['--inspect', '.'], {
+      /** Spawn a new electron process (inspection disabled) */
+      // electronApp = spawn(String(electronPath), ['--inspect', '.'], {
+      electronApp = spawn(String(electronPath), ['.'], {
         stdio: 'inherit',
       });
 
