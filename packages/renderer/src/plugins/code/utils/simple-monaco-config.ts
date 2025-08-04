@@ -56,6 +56,18 @@ export function getLanguageId(filePath: string): string {
     return 'typescript'
   }
   
+  // Handle diff file paths (e.g., "diff:path/to/file.ts:staged")
+  if (filePath.startsWith('diff:')) {
+    // Extract the actual file path from diff:path/to/file.ext:staged format
+    const parts = filePath.split(':')
+    if (parts.length >= 2) {
+      // Get the file path part (between 'diff:' and ':staged')
+      const actualPath = parts.slice(1, -1).join(':') // Handle paths with colons
+      const ext = actualPath.split('.').pop()?.toLowerCase() || ''
+      return LANGUAGE_MAP[ext] || 'plaintext'
+    }
+  }
+  
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   return LANGUAGE_MAP[ext] || 'plaintext'
 }
