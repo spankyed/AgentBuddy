@@ -79,9 +79,7 @@ export type CodeState = ActorRefFrom<typeof codeState>;
 
 type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts';
 
-const STORAGE_KEY = 'code-plugin-root-directory'
-const DEFAULT_DIR = '/Users/spankyed/Develop/Projects/AgentBuddy/'
-const savedRootDirectory = localStorage.getItem(STORAGE_KEY) || DEFAULT_DIR
+// Directory will be loaded from backend EARS store
 
 // Helper function to reorder tabs based on stored order
 function reorderTabsByStoredOrder(
@@ -144,7 +142,7 @@ const codeState = setup({
       }
       saveOpenTabs(context.openFiles)
     },
-    updateState: assign(({ event, context }) => {
+    updateState: assign(({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       const updates = { ...context, ...ev.updates }
       
@@ -157,6 +155,12 @@ const codeState = setup({
         }
       }
       
+      // If root directory changed, notify commit and PR panels to refresh
+      if (ev.updates.rootDirectory && ev.updates.rootDirectory !== context.rootDirectory) {
+        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+      }
+      
       return updates
     }),
     assignFiles: assign({
@@ -164,7 +168,7 @@ const codeState = setup({
       error: null
     }),
     initializePlugin: ({ context, system }) => {
-      // Initialize child machines with root directory
+      // Always initialize all child machines
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
@@ -356,14 +360,25 @@ const codeState = setup({
         rootDirectory: context.rootDirectory
       });
     },
+    
+    handleCodeStartup: assign(({ event, context }) => {
+      const ev = event as { type: 'CODE_STARTUP'; data: { rootDirectory: string | null; currentDirectory: string | null } }
+      
+      // Update directory state from backend
+      return {
+        ...context,
+        rootDirectory: ev.data.rootDirectory || '',
+        currentDirectory: ev.data.currentDirectory || ''
+      }
+    }),
   }
 }).createMachine({
   id,
   initial: 'canvas',
   entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
-    rootDirectory: savedRootDirectory,
-    currentDirectory: savedRootDirectory,
+    rootDirectory: '', // Will be loaded from backend EARS store
+    currentDirectory: '', // Will be loaded from backend EARS store
     openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
     activeFilePath: null,
     isLoading: false,
@@ -383,7 +398,7 @@ const codeState = setup({
       on: {
         // Broadcast CODE_STARTUP to all features
         CODE_STARTUP: {
-          actions: ['broadcastToAllFeatures']
+          actions: ['broadcastToAllFeatures', 'handleCodeStartup']
         },
         // Route events to child machines
         '*': {

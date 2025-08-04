@@ -75,13 +75,9 @@ export type Event =
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
   | { type: 'explorer.CODE_ERROR'; data: { message: string } }
-  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-  | { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
-  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-  // Broadcast events
-  | { type: 'CODE_STARTUP'; data: any };
+  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] };
 
 export const explorerState = setup({
   types: {
@@ -200,24 +196,6 @@ export const explorerState = setup({
       updateParentState(self, { currentDirectory: ev.data.path })
     },
     
-    handleDirectoryChanged: ({ event, self, system }) => {
-      const ev = event as { type: 'explorer.DIRECTORY_CHANGED'; data: { path: string } }
-      updateParentState(self, { currentDirectory: ev.data.path })
-      
-      // Refresh git panels if active
-      const parentContext = getParentContext(self)
-      if (parentContext?.selectedPanel === 'commit') {
-        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' })
-      } else if (parentContext?.selectedPanel === 'pr') {
-        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' })
-      }
-    },
-    
-    handleCodeStartup: ({ event, self }) => {
-      // Explorer can handle startup if needed
-      // Currently no specific action required
-    },
-    
     listFiles: ({ event }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
@@ -248,8 +226,11 @@ export const explorerState = setup({
     
     initialize: ({ event, self }) => {
       const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
-      // Update local state and notify parent
-      self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
+      // Only set root directory if we have one
+      if (ev.rootDirectory) {
+        self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
+      }
+      // Otherwise, explorer just waits for a directory to be selected
     },
     
     openFile: ({ event }) => {
@@ -268,7 +249,6 @@ export const explorerState = setup({
     
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
-      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
@@ -277,11 +257,8 @@ export const explorerState = setup({
     
     setRootDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
-      localStorage.setItem('code-plugin-root-directory', ev.path)
-      sendToBackend('explorer.CHANGE_DIRECTORY', { path: ev.path })
-      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
-      // Send SET_ROOT_DIRECTORY to the parent code system to update git repositories
+      // Send SET_ROOT_DIRECTORY to the parent code system to update everything
       sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
       
       // Update parent state
@@ -420,9 +397,6 @@ export const explorerState = setup({
         'explorer.CURRENT_DIRECTORY': {
           actions: 'handleCurrentDirectory'
         },
-        'explorer.DIRECTORY_CHANGED': {
-          actions: 'handleDirectoryChanged'
-        },
         'explorer.WRITE_FILE': {
           actions: 'writeFile'
         },
@@ -434,9 +408,6 @@ export const explorerState = setup({
         },
         'explorer.QUICK_OPEN_RESULTS': {
           actions: 'handleQuickOpenResults'
-        },
-        'CODE_STARTUP': {
-          actions: 'handleCodeStartup'
         }
       }
     }

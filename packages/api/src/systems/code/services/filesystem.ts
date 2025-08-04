@@ -8,8 +8,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 export class FileSystemRepository {
   private projectRoot: string
   
-  constructor(projectRoot?: string) {
-    this.projectRoot = projectRoot || process.cwd()
+  constructor(projectRoot: string) {
+    this.projectRoot = projectRoot
   }
   private validatePath(filePath: string): string {
     const normalizedPath = path.normalize(filePath)

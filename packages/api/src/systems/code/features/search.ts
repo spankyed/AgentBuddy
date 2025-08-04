@@ -32,7 +32,7 @@ export type OutgoingSearchEvents =
   | { type: 'search.ERROR'; data: { message: string } }
 
 export interface Context {
-  repository: FileSystemRepository
+  repository: FileSystemRepository | null
   activeSearchController?: AbortController
 }
 
@@ -56,7 +56,7 @@ export const searchSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string },
+    input: {} as { rootDirectory: string | null },
   },
   actions: {
     searchFiles: async ({ event, context, self }) => {
@@ -70,6 +70,15 @@ export const searchSystem = setup({
         wholeWord?: boolean;
         useRegex?: boolean;
         maxResults?: number;
+      }
+
+      if (!context.repository) {
+        const wrapped = emit(pluginId, {
+          type: 'search.ERROR',
+          data: { message: 'No directory selected. Please select a directory first.' }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        return
       }
 
       // Cancel any existing search
@@ -167,8 +176,8 @@ export const searchSystem = setup({
 }).createMachine({
   id: 'search',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    repository: new FileSystemRepository(input?.rootDirectory || process.cwd()),
+  context: ({ input }: { input?: { rootDirectory: string | null } }) => ({
+    repository: input?.rootDirectory ? new FileSystemRepository(input.rootDirectory) : null,
     activeSearchController: undefined
   }),
   states: {

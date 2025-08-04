@@ -74,7 +74,8 @@ export type Event =
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
-  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } };
+  | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
   types: {
@@ -299,7 +300,16 @@ export const commitState = setup({
     
     handleBranchPulled: assign({
       isPulling: false
-    })
+    }),
+    
+    handleCodeStartup: ({ self }) => {
+      // Check if we have a directory from parent context
+      const parentContext = getParentContext(self)
+      if (parentContext?.rootDirectory) {
+        // Refresh git status when directory is available
+        self.send({ type: 'commit.REFRESH_STATUS' })
+      }
+    }
   }
 }).createMachine({
   id: 'commit',
@@ -405,6 +415,9 @@ export const commitState = setup({
         },
         'commit.BRANCH_PULLED': {
           actions: 'handleBranchPulled'
+        },
+        'CODE_STARTUP': {
+          actions: 'handleCodeStartup'
         }
       }
     }

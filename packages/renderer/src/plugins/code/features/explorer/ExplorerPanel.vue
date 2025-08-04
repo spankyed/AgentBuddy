@@ -34,6 +34,22 @@
       <div class="text-sm text-red-400">{{ error }}</div>
     </div>
     
+    <div v-else-if="!rootDirectory" class="flex-1 flex flex-col items-center justify-center p-4">
+      <FolderOpen :size="48" class="text-neutral-600 mb-3" />
+      <p class="text-neutral-400 text-center mb-4">No directory selected</p>
+      <button
+        @click="handleDirectorySelect"
+        class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+      >
+        Select a Directory
+      </button>
+    </div>
+    
+    <div v-else-if="files.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
+      <FolderOpen :size="48" class="text-neutral-600 mb-3" />
+      <p class="text-neutral-400 text-center">This directory is empty</p>
+    </div>
+    
     <div v-else class="flex-1 overflow-auto">
       <FileItem
         v-for="file in files"
@@ -87,8 +103,8 @@ const explorerActor = codeActor.system.get('explorer')!
 
 // State selectors
 const files = useSelector(explorerActor, (state: any) => state.context.files)
-const isLoading = useSelector(explorerActor, (state: any) => state.context.isLoading)
-const error = useSelector(explorerActor, (state: any) => state.context.error)
+const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
+const error = useSelector(codeActor, (state: any) => state.context.error)
 
 // No emits needed - handle everything internally
 

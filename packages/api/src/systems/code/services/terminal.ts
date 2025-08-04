@@ -1,9 +1,10 @@
 import * as pty from 'node-pty'
 import { v4 as uuidv4 } from 'uuid'
+import * as os from 'os'
+import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
 import { repository } from '@/repository'
-import { getGitRepositoryRoot } from '../utils/git-root'
 
 interface Terminal {
   info: TerminalInfo
@@ -49,7 +50,7 @@ class TerminalService {
     const shell = this.validateShell(requestedShell)
     
     // Validate cwd exists and is accessible
-    const cwd = this.validateCwd(options.cwd || getGitRepositoryRoot())
+    const cwd = this.validateCwd(options.cwd)
     
     // Validate terminal dimensions
     const cols = Math.max(1, Math.min(options.cols || 80, 500))
@@ -222,18 +223,23 @@ class TerminalService {
     return '/bin/bash'
   }
 
-  private validateCwd(cwd: string): string {
+  private validateCwd(cwd?: string): string {
+    if (!cwd) {
+      // No directory provided, use home directory
+      return os.homedir()
+    }
+    
     try {
       // Check if directory exists and is accessible
-      const fs = require('fs')
       const stats = fs.statSync(cwd)
       if (stats.isDirectory()) {
         return cwd
       }
     } catch (error) {
-      console.warn(`Invalid cwd: ${cwd}, defaulting to git repository root`)
+      console.warn(`Invalid cwd: ${cwd}, defaulting to home directory`, error)
     }
-    return getGitRepositoryRoot()
+    // Fall back to home directory if provided path is invalid
+    return os.homedir()
   }
 
   private sanitizeTitle(title: string): string {

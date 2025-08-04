@@ -1,11 +1,10 @@
-import { setup } from 'xstate'
+import { setup, assign } from 'xstate'
 import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo } from '../types'
-import { getGitRepositoryRoot } from '../utils/git-root'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -37,7 +36,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
-  rootDirectory: string
+  rootDirectory: string | null
 }
 
 export type Event = 
@@ -60,16 +59,20 @@ export const terminalSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string | null }
   },
   actions: {
-    sendStartupData: () => {
+    sendStartupData: ({ context }) => {
       // Send terminal list and trigger tab restoration
       const terminals = terminalService.list()
       
       const wrapped = emit(pluginId, {
         type: 'CODE_STARTUP',
-        data: { terminals }
+        data: { 
+          terminals,
+          rootDirectory: context.rootDirectory,
+          currentDirectory: context.rootDirectory
+        }
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -84,9 +87,11 @@ export const terminalSystem = setup({
         rows?: number;
       }
       try {
+        const cwd = ev.cwd || context.rootDirectory
+        console.log('cwd: ', cwd);
         const terminalInfo = terminalService.create({
           title: ev.title,
-          cwd: ev.cwd || context.rootDirectory,
+          cwd: cwd && cwd.trim() ? cwd : undefined,
           shell: ev.shell,
           cols: ev.cols || 80,
           rows: ev.rows || 24
@@ -262,16 +267,18 @@ export const terminalSystem = setup({
       console.log('Terminal restoration complete')
     },
 
-    updateCurrentDirectory: ({ event, context }) => {
-      const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
-      context.rootDirectory = ev.path
-    }
+    updateCurrentDirectory: assign({
+      rootDirectory: ({ event }) => {
+        const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
+        return ev.path
+      }
+    })
   }
 }).createMachine({
   id: 'terminal',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    rootDirectory: input?.rootDirectory || getGitRepositoryRoot()
+  context: ({ input }: { input?: { rootDirectory: string | null } }) => ({
+    rootDirectory: input?.rootDirectory || null
   }),
   entry: 'restoreTerminals',
   exit: 'cleanupTerminals',

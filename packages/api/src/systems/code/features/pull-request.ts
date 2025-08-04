@@ -5,6 +5,7 @@ import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff } from '../types'
+import { requireGitRepository } from '../utils/git-helpers'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -25,7 +26,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
-  gitRepository: GitRepository
+  gitRepository: GitRepository | null
 }
 
 export type Event = 
@@ -33,16 +34,18 @@ export type Event =
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
   | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
   | { type: 'pr.GIT_STATUS_CHANGED' }
-  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string };
+  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository };
 
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null }
   },
   actions: {
     getBaseBranch: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -63,6 +66,9 @@ export const pullRequestSystem = setup({
 
     getBranchDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -84,6 +90,9 @@ export const pullRequestSystem = setup({
 
     getBranchFileDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const { gitRepository } = context
         
@@ -124,16 +133,16 @@ export const pullRequestSystem = setup({
 
     updateRootDirectory: assign({
       gitRepository: ({ event }) => {
-        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string }
-        return new GitRepository(ev.path)
+        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository }
+        return ev.gitRepository
       }
     })
   }
 }).createMachine({
   id: 'pull-request',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => ({
-    gitRepository: new GitRepository(input?.rootDirectory || process.cwd())
+  context: ({ input }) => ({
+    gitRepository: input?.gitRepository || (input?.rootDirectory ? new GitRepository(input.rootDirectory) : null)
   }),
   states: {
     idle: {

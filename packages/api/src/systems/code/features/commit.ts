@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff } from '../types'
+import { requireGitRepository } from '../utils/git-helpers'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -41,8 +42,8 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
 
 export interface Context {
-  gitRepository: GitRepository
-  gitWatcher: GitWatcherService
+  gitRepository: GitRepository | null
+  gitWatcher: GitWatcherService | null
 }
 
 export type Event = 
@@ -57,7 +58,7 @@ export type Event =
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
+  | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_STARTUP' };
 
@@ -65,21 +66,10 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
-    setupGitWatcher: async ({ context, self }) => {
-      // Set up the callback for git changes
-      context.gitWatcher.setChangeCallback(() => {
-        // Clear git cache when git status changes
-        context.gitRepository.clearCache()
-        
-        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      })
-
-      // Start watching git changes
-      await context.gitWatcher.startWatching()
-    },
+    // Git watcher is now managed by parent code system
 
     handleGitStatusChanged: async ({ context, self, system }) => {
       // When git status changes, automatically send the new status to frontend
@@ -93,6 +83,8 @@ export const commitSystem = setup({
     },
 
     getGitStatus: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         // First check if we're in a git repository
         const isGitRepo = await context.gitRepository.isGitRepository()
@@ -135,6 +127,9 @@ export const commitSystem = setup({
 
     getGitDiff: async ({ event, context }) => {
       const ev = event as { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
 
@@ -183,6 +178,9 @@ export const commitSystem = setup({
 
     stageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.stageFiles(ev.paths)
         const wrapped = emit(pluginId, {
@@ -203,6 +201,9 @@ export const commitSystem = setup({
 
     unstageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.unstageFiles(ev.paths)
         const wrapped = emit(pluginId, {
@@ -223,6 +224,9 @@ export const commitSystem = setup({
 
     revertFile: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_FILE'; path: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.revertFile(ev.path)
         const wrapped = emit(pluginId, {
@@ -253,6 +257,9 @@ export const commitSystem = setup({
 
     commit: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.COMMIT'; message: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         // Check if there are any staged files
         const stagedFiles = await context.gitRepository.getStagedFiles()
@@ -290,6 +297,8 @@ export const commitSystem = setup({
     },
 
     getCurrentBranch: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const branch = await context.gitRepository.getCurrentBranch()
         const wrapped = emit(pluginId, {
@@ -307,6 +316,8 @@ export const commitSystem = setup({
     },
 
     getAllBranches: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const branches = await context.gitRepository.getAllBranches()
         const wrapped = emit(pluginId, {
@@ -325,6 +336,9 @@ export const commitSystem = setup({
 
     checkoutBranch: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
+      
+      if (!requireGitRepository(context)) return
+      
       try {
         await context.gitRepository.checkoutBranch(ev.branchName)
         
@@ -355,6 +369,8 @@ export const commitSystem = setup({
     },
 
     pushBranch: async ({ context, self }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
         await context.gitRepository.pushBranch()
@@ -377,6 +393,8 @@ export const commitSystem = setup({
     },
 
     pullBranch: async ({ context, self }) => {
+      if (!requireGitRepository(context)) return
+      
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
         await context.gitRepository.pullBranch()
@@ -399,42 +417,26 @@ export const commitSystem = setup({
     },
 
     updateRootDirectory: assign({
-      gitRepository: ({ event, context }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
-        // Clear the old repository's cache before creating new one
-        if (context.gitRepository) {
-          context.gitRepository.clearCache()
-        }
-        // Use the new root directory path for git operations
-        return new GitRepository(ev.path)
+      gitRepository: ({ event }) => {
+        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        return ev.gitRepository
       },
-      gitWatcher: ({ event, context }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string }
-        // Stop the old watcher before creating new one
-        if (context.gitWatcher) {
-          context.gitWatcher.stopWatching()
-        }
-        // Create new watcher for the new directory
-        return new GitWatcherService(ev.path)
+      gitWatcher: ({ event }) => {
+        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        return ev.gitWatcher
       }
-    }),
-
-    restartGitWatcher: async ({ context, self }) => {
-      // Re-setup the watcher after directory change
-      await context.gitWatcher.startWatching()
-    }
+    })
   }
 }).createMachine({
   id: 'commit',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string } }) => {
-    const rootDir = input?.rootDirectory || process.cwd()
+  context: ({ input }) => {
+    const rootDir = input?.rootDirectory
     return {
-      gitRepository: new GitRepository(rootDir),
-      gitWatcher: new GitWatcherService(rootDir)
+      gitRepository: input?.gitRepository || (rootDir ? new GitRepository(rootDir) : null),
+      gitWatcher: input?.gitWatcher || (rootDir ? new GitWatcherService(rootDir) : null)
     }
   },
-  entry: 'setupGitWatcher',
   states: {
     idle: {
       on: {
@@ -475,7 +477,7 @@ export const commitSystem = setup({
           actions: 'pullBranch'
         },
         'commit.UPDATE_ROOT_DIRECTORY': {
-          actions: ['updateRootDirectory', 'restartGitWatcher']
+          actions: 'updateRootDirectory'
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
