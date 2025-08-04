@@ -3,7 +3,7 @@ import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
@@ -47,10 +47,21 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         ? await getCollectionPath(collection.id as EARS.EntityId)
         : []
 
+      // Handle backward compatibility: convert string content to ContentSection[]
+      let contentSections: ContentSection[]
+      const rawContent = doc.content
+      if (typeof rawContent === 'string') {
+        contentSections = [{ type: 'text', content: rawContent }]
+      } else if (Array.isArray(rawContent)) {
+        contentSections = rawContent as ContentSection[]
+      } else {
+        contentSections = [{ type: 'text', content: '' }]
+      }
+
       return {
         id: doc.id,
         name: doc.name as string,
-        content: doc.content as string,
+        content: contentSections,
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
@@ -92,10 +103,21 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     ? await getCollectionPath(collection.id as EARS.EntityId)
     : []
 
+  // Handle backward compatibility: convert string content to ContentSection[]
+  let contentSections: ContentSection[]
+  const rawContent = document.content
+  if (typeof rawContent === 'string') {
+    contentSections = [{ type: 'text', content: rawContent }]
+  } else if (Array.isArray(rawContent)) {
+    contentSections = rawContent as ContentSection[]
+  } else {
+    contentSections = [{ type: 'text', content: '' }]
+  }
+
   return {
     id: documentId,
     name: document.name as string,
-    content: document.content as string,
+    content: contentSections,
     shortCode: document.shortCode as DocumentShortCode,
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
@@ -119,7 +141,7 @@ export async function getDocumentByShortCode(shortCode: DocumentShortCode): Prom
 
 export async function createDocument(
   name: string,
-  content: string,
+  content: ContentSection[],
   tags: string[],
   collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
@@ -155,7 +177,7 @@ export async function createDocument(
 export async function updateDocument(
   id: EARS.EntityId,
   name: string,
-  content: string,
+  content: ContentSection[],
   tags: string[],
   collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
@@ -626,8 +648,29 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   // Convert documents to document items
   for (const doc of documents) {
     const documentId = doc.id
-    const content = doc.content as string || ''
-    const contentLength = content.length
+    
+    // Handle backward compatibility: convert string content to ContentSection[]
+    let contentSections: ContentSection[]
+    const rawContent = doc.content
+    if (typeof rawContent === 'string') {
+      contentSections = [{ type: 'text', content: rawContent }]
+    } else if (Array.isArray(rawContent)) {
+      contentSections = rawContent as ContentSection[]
+    } else {
+      contentSections = [{ type: 'text', content: '' }]
+    }
+    
+    // Calculate content length for all sections
+    let contentLength = 0
+    for (const section of contentSections) {
+      if (section.type === 'text') {
+        contentLength += section.content.length
+      } else if (section.type === 'field') {
+        contentLength += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
+      } else if (section.type === 'list') {
+        contentLength += section.items.reduce((acc, item) => acc + item.length, 0)
+      }
+    }
     const size = formatFileSize(contentLength)
     
     // Get tags
@@ -641,7 +684,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       name: doc.name as string,
       shortCode: doc.shortCode as DocumentShortCode,
       parentId: folderId,
-      content,
+      content: contentSections,
       tags: tags.map(tag => tag.name as string),
       size,
       kind: 'Document',
@@ -760,7 +803,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       parentId: doc!.collectionId || null,
       content: doc!.content,
       tags: doc!.tags,
-      size: formatFileSize(doc!.content.length),
+      size: formatFileSize(getContentLength(doc!.content)),
       kind: 'Document',
       createdAt: doc!.createdAt,
       updatedAt: new Date(now).toISOString(),
@@ -823,6 +866,20 @@ function formatFileSize(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
+}
+
+function getContentLength(content: ContentSection[]): number {
+  let length = 0
+  for (const section of content) {
+    if (section.type === 'text') {
+      length += section.content.length
+    } else if (section.type === 'field') {
+      length += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
+    } else if (section.type === 'list') {
+      length += section.items.reduce((acc, item) => acc + item.length, 0)
+    }
+  }
+  return length
 }
 
 export async function getCollectionByName(name: string): Promise<CollectionDTO | null> {

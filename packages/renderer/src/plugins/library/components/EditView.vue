@@ -99,16 +99,29 @@
             </div>
           </div>
           
-          <!-- Content Section -->
+          <!-- Content Sections -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Content <span class="text-red-400">*</span>
-            </label>
-            <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;">
-              <textarea
-                v-model="formData.content"
-                placeholder="Enter document content..."
-                class="w-full h-full px-4 py-3 text-sm transition-colors resize-none bg-neutral-800 text-neutral-100 focus:outline-none"
+            <div class="flex items-center justify-between mb-4">
+              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
+                Content <span class="text-red-400">*</span>
+              </label>
+              <button
+                type="button"
+                @click="addContentSection"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
+              >
+                <Plus class="w-4 h-4" />
+                Add Section
+              </button>
+            </div>
+            <div class="space-y-4">
+              <ContentSectionEditor
+                v-for="(section, index) in formData.content"
+                :key="index"
+                :section="section"
+                :show-remove="formData.content.length > 1"
+                @update="updateContentSection(index, $event)"
+                @remove="removeContentSection(index)"
               />
             </div>
           </div>
@@ -120,9 +133,10 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { X, Copy, Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { X, Copy, Check, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
-import type { DocumentDTO, CollectionDTO } from '@app/api'
+import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
+import type { DocumentDTO, CollectionDTO, ContentSection } from '@app/api'
 
 const props = defineProps<{
   document: DocumentDTO
@@ -130,13 +144,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  SAVE_DOCUMENT: [{ name: string; content: string; tags: string[] }]
+  SAVE_DOCUMENT: [{ name: string; content: ContentSection[]; tags: string[] }]
   CANCEL_EDIT: []
 }>()
 
 const formData = reactive({
   name: '',
-  content: '',
+  content: [] as ContentSection[],
   tags: [] as string[],
 })
 
@@ -145,13 +159,13 @@ const copied = ref(false)
 const tagsExpanded = ref(false)
 
 const isValid = computed(() => {
-  return formData.name.trim() !== '' && formData.content.trim() !== ''
+  return formData.name.trim() !== '' && formData.content.length > 0
 })
 
 
 onMounted(() => {
   formData.name = props.document.name
-  formData.content = props.document.content
+  formData.content = [...props.document.content]
   formData.tags = [...props.document.tags]
 })
 
@@ -165,6 +179,18 @@ function addTag() {
 
 function removeTag(index: number) {
   formData.tags.splice(index, 1)
+}
+
+function addContentSection() {
+  formData.content.push({ type: 'text', content: '' } as ContentSection)
+}
+
+function updateContentSection(index: number, section: ContentSection) {
+  formData.content[index] = section
+}
+
+function removeContentSection(index: number) {
+  formData.content.splice(index, 1)
 }
 
 function handleSave() {

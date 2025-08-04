@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection } from '@app/api'
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
@@ -37,7 +37,7 @@ export type LibraryEvents =
   | { type: 'CREATE_DOCUMENT' }
   | { type: 'EDIT_DOCUMENT'; documentId: string }
   | { type: 'DELETE_DOCUMENT'; documentId: string }
-  | { type: 'SAVE_DOCUMENT'; name: string; content: string; tags: string[]; collectionId?: string }
+  | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
   
   // Legacy collection events  

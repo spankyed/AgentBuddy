@@ -95,8 +95,8 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                <span class="text-sm text-neutral-400 line-clamp-1" :title="doc.content">
-                  {{ doc.content || 'No content' }}
+                <span class="text-sm text-neutral-400 line-clamp-1" :title="getContentPreview(doc.content)">
+                  {{ getContentPreview(doc.content) || 'No content' }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -211,7 +211,7 @@ const filteredDocuments = computed(() => {
     const query = props.searchQuery.toLowerCase()
     docs = docs.filter(doc =>
       doc.name.toLowerCase().includes(query) ||
-      doc.content.toLowerCase().includes(query)
+      getContentText(doc.content).toLowerCase().includes(query)
     )
   }
 
@@ -247,6 +247,35 @@ function handleDelete(documentId: string) {
   if (confirm('Are you sure you want to delete this document?')) {
     emit('DELETE_DOCUMENT', { documentId })
   }
+}
+
+function getContentPreview(content: any): string {
+  if (!content || !Array.isArray(content) || content.length === 0) return ''
+  
+  const firstSection = content[0]
+  if (firstSection.type === 'text') {
+    return firstSection.content.substring(0, 100)
+  } else if (firstSection.type === 'field') {
+    return firstSection.fields.map((f: any) => `${f.key}: ${f.value}`).join(', ').substring(0, 100)
+  } else if (firstSection.type === 'list') {
+    return firstSection.items.join(', ').substring(0, 100)
+  }
+  return ''
+}
+
+function getContentText(content: any): string {
+  if (!content || !Array.isArray(content)) return ''
+  
+  return content.map((section: any) => {
+    if (section.type === 'text') {
+      return section.content
+    } else if (section.type === 'field') {
+      return section.fields.map((f: any) => `${f.key}: ${f.value}`).join(' ')
+    } else if (section.type === 'list') {
+      return section.items.join(' ')
+    }
+    return ''
+  }).join(' ')
 }
 
 function formatDate(dateString: string) {
