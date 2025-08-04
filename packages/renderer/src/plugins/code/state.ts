@@ -1,6 +1,7 @@
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
+import type { HotkeyEvent } from '@/core/types';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import type { OutgoingCodeEvents } from '@app/api';
@@ -67,6 +68,8 @@ export type Event =
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
+  // Hotkey events
+  | HotkeyEvent
   // Quick open events
   | { type: 'TOGGLE_QUICK_OPEN' }
   | { type: 'SHOW_QUICK_OPEN' }
@@ -372,6 +375,31 @@ const codeState = setup({
         currentDirectory: ev.data.currentDirectory || ''
       }
     }),
+    
+    handleHotkey: ({ event, self, context }) => {
+      const hotkeyEvent = event as HotkeyEvent;
+      
+      // Check for Cmd+Option+Arrow hotkeys
+      if (hotkeyEvent.metaKey && hotkeyEvent.altKey) {
+        const allPanels: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'terminal', 'actions', 'prompts'];
+        const currentIndex = allPanels.indexOf(context.selectedPanel);
+        
+        if (hotkeyEvent.key === 'ArrowLeft') {
+          hotkeyEvent.preventDefault();
+          // Move to previous panel (wrap around)
+          const newIndex = currentIndex === 0 ? allPanels.length - 1 : currentIndex - 1;
+          self.send({ type: 'SELECT_PANEL', panel: allPanels[newIndex] });
+        } else if (hotkeyEvent.key === 'ArrowRight') {
+          hotkeyEvent.preventDefault();
+          // Move to next panel (wrap around)
+          const newIndex = currentIndex === allPanels.length - 1 ? 0 : currentIndex + 1;
+          self.send({ type: 'SELECT_PANEL', panel: allPanels[newIndex] });
+        }
+      }
+      
+      // Add more hotkey handlers here in the future
+      // For example: Cmd+P for quick open could be added here
+    },
   }
 }).createMachine({
   id,
@@ -416,6 +444,10 @@ const codeState = setup({
         // Panel selection
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        // Hotkey handling
+        HOTKEY_PRESSED: {
+          actions: ['handleHotkey']
         },
         // Quick open events
         TOGGLE_QUICK_OPEN: {
