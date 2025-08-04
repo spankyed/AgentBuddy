@@ -26,7 +26,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
-  gitRepository: GitRepository
+  gitRepository: GitRepository | null
 }
 
 export type Event = 
@@ -40,7 +40,7 @@ export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string; gitRepository?: GitRepository }
+    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null }
   },
   actions: {
     getBaseBranch: async ({ context }) => {

@@ -29,7 +29,8 @@ export type Event =
   | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
-  | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } };
+  | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
+  | { type: 'CODE_STARTUP' };
 
 export const pullRequestState = setup({
   types: {
@@ -121,7 +122,16 @@ export const pullRequestState = setup({
           updateParentState(self, result)
         }
       })
-    })
+    }),
+    
+    handleCodeStartup: ({ self }) => {
+      // Check if we have a directory from parent context
+      const parentContext = getParentContext(self)
+      if (parentContext?.rootDirectory) {
+        // Refresh PR status when directory is available
+        self.send({ type: 'pr.REFRESH_STATUS' })
+      }
+    }
   }
 }).createMachine({
   id: 'pr',
@@ -160,6 +170,9 @@ export const pullRequestState = setup({
         },
         'pr.STATUS_CHANGED': {
           actions: 'refreshPrStatus'
+        },
+        'CODE_STARTUP': {
+          actions: 'handleCodeStartup'
         }
       }
     }

@@ -103,8 +103,8 @@ const explorerActor = codeActor.system.get('explorer')!
 
 // State selectors
 const files = useSelector(explorerActor, (state: any) => state.context.files)
-const isLoading = useSelector(explorerActor, (state: any) => state.context.isLoading)
-const error = useSelector(explorerActor, (state: any) => state.context.error)
+const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
+const error = useSelector(codeActor, (state: any) => state.context.error)
 
 // No emits needed - handle everything internally
 

@@ -142,7 +142,7 @@ const codeState = setup({
       }
       saveOpenTabs(context.openFiles)
     },
-    updateState: assign(({ event, context }) => {
+    updateState: assign(({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       const updates = { ...context, ...ev.updates }
       
@@ -155,6 +155,12 @@ const codeState = setup({
         }
       }
       
+      // If root directory changed, notify commit and PR panels to refresh
+      if (ev.updates.rootDirectory && ev.updates.rootDirectory !== context.rootDirectory) {
+        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+      }
+      
       return updates
     }),
     assignFiles: assign({
@@ -162,7 +168,7 @@ const codeState = setup({
       error: null
     }),
     initializePlugin: ({ context, system }) => {
-      // Initialize child machines with root directory
+      // Always initialize all child machines
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });

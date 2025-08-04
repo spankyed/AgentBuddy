@@ -36,7 +36,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
-  rootDirectory: string
+  rootDirectory: string | null
 }
 
 export type Event = 
@@ -59,16 +59,20 @@ export const terminalSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string }
+    input: {} as { rootDirectory: string | null }
   },
   actions: {
-    sendStartupData: () => {
+    sendStartupData: ({ context }) => {
       // Send terminal list and trigger tab restoration
       const terminals = terminalService.list()
       
       const wrapped = emit(pluginId, {
         type: 'CODE_STARTUP',
-        data: { terminals }
+        data: { 
+          terminals,
+          rootDirectory: context.rootDirectory,
+          currentDirectory: context.rootDirectory
+        }
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -85,7 +89,7 @@ export const terminalSystem = setup({
       try {
         const terminalInfo = terminalService.create({
           title: ev.title,
-          cwd: ev.cwd || context.rootDirectory,
+          cwd: ev.cwd || context.rootDirectory || undefined,
           shell: ev.shell,
           cols: ev.cols || 80,
           rows: ev.rows || 24

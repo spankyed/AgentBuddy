@@ -1,7 +1,7 @@
 import { EARS } from '@/core/types'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { qx } from '@/core/utils/ears/helpers/query'
-import { randomId } from '@/core/utils'
+import { randomId } from '@/core/utils/random-id'
 
 // Define Directory entity type with required attributes
 export interface DirectoryEntity {
@@ -113,7 +113,12 @@ export const directoryCommands = {
   clearAll: (): void => {
     const allDirectories = qx(EARS.Entity.Directory).pickAll() as unknown as DirectoryEntity[]
     allDirectories.forEach(dir => {
-      tx(dir.id).delete()
+      // Remove all attributes to effectively delete the entity
+      tx(dir.id).put('label', null)
+      tx(dir.id).put('path', null)
+      tx(dir.id).put('role', null)
+      tx(dir.id).put('lastAccessedAt', null)
+      tx(dir.id).put('createdAt', null)
     })
   }
 }

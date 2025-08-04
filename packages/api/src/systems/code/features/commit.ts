@@ -42,8 +42,8 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
 
 export interface Context {
-  gitRepository: GitRepository
-  gitWatcher: GitWatcherService
+  gitRepository: GitRepository | null
+  gitWatcher: GitWatcherService | null
 }
 
 export type Event = 
@@ -66,7 +66,7 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string; gitRepository?: GitRepository; gitWatcher?: GitWatcherService }
+    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
     // Git watcher is now managed by parent code system

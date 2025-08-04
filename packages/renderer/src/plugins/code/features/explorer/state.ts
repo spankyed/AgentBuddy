@@ -246,8 +246,11 @@ export const explorerState = setup({
     
     initialize: ({ event, self }) => {
       const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
-      // Update local state and notify parent
-      self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
+      // Only set root directory if we have one
+      if (ev.rootDirectory) {
+        self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
+      }
+      // Otherwise, explorer just waits for a directory to be selected
     },
     
     openFile: ({ event }) => {
@@ -277,7 +280,6 @@ export const explorerState = setup({
       
       // Send SET_ROOT_DIRECTORY to the parent code system to update everything
       sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
-      sendToBackend('explorer.LIST_FILES', { path: ev.path })
       
       // Update parent state
       updateParentState(self, { 

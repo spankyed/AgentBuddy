@@ -10,6 +10,23 @@ import { DirectoryContent, FileContent, FileInfo, CodeSystemError, FileChangeInf
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
 
+// Helper to check if repository exists and emit error if not
+function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
+  if (!context.repository) {
+    const wrapped = emit(pluginId, {
+      type: 'explorer.CODE_ERROR',
+      data: {
+        code: 'INVALID_PATH',
+        message: 'No directory selected.',
+        path,
+      },
+    })
+    rootEvents.emitOutgoing(wrapped.event)
+    return false
+  }
+  return true
+}
+
 // Incoming events from frontend
 export const IncomingExplorerEvents = [
   busEvent('explorer.LIST_FILES', { path: z.string() }),
@@ -90,8 +107,8 @@ export const explorerSystem = setup({
       const wrapped = emit(pluginId, {
         type: 'explorer.CURRENT_DIRECTORY',
         data: {
-          path: context.currentDirectory,
-          rootDirectory: context.rootDirectory
+          path: context.currentDirectory || '',
+          rootDirectory: context.rootDirectory || ''
         },
       })
       rootEvents.emitOutgoing(wrapped.event)
@@ -100,21 +117,10 @@ export const explorerSystem = setup({
     listFiles: async ({ event, context }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
       
-      if (!context.repository) {
-        const wrapped = emit(pluginId, {
-          type: 'explorer.CODE_ERROR',
-          data: {
-            code: 'NO_DIRECTORY',
-            message: 'No directory selected. Please select a directory to browse files.',
-            path: ev.path,
-          },
-        })
-        rootEvents.emitOutgoing(wrapped.event)
-        return
-      }
+      if (!requireRepository(context, ev.path)) return
       
       try {
-        const path = ev.path || context.currentDirectory
+        const path = ev.path || context.currentDirectory || ''
         const content = await context.repository.listDirectory(path)
         const wrapped = emit(pluginId, {
           type: 'explorer.FILES_LISTED',
@@ -136,6 +142,9 @@ export const explorerSystem = setup({
 
     readFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.READ_FILE'; path: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         const content = await context.repository.readFile(ev.path)
         const wrapped = emit(pluginId, {
@@ -161,6 +170,9 @@ export const explorerSystem = setup({
 
     writeFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.WRITE_FILE'; path: string; content: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         await context.repository.writeFile(ev.path, ev.content)
         const wrapped = emit(pluginId, {
@@ -183,6 +195,9 @@ export const explorerSystem = setup({
 
     createFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.CREATE_FILE'; path: string; content?: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         await context.repository.writeFile(ev.path, ev.content || '')
         const wrapped = emit(pluginId, {
@@ -205,6 +220,9 @@ export const explorerSystem = setup({
 
     deleteFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.DELETE_FILE'; path: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         await context.repository.deleteFile(ev.path)
         const wrapped = emit(pluginId, {
@@ -227,6 +245,9 @@ export const explorerSystem = setup({
 
     renameFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
+      
+      if (!requireRepository(context, ev.oldPath)) return
+      
       try {
         await context.repository.renameFile(ev.oldPath, ev.newPath)
         const wrapped = emit(pluginId, {
@@ -249,6 +270,9 @@ export const explorerSystem = setup({
 
     createDirectory: async ({ event, context }) => {
       const ev = event as { type: 'explorer.CREATE_DIRECTORY'; path: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         await context.repository.createDirectory(ev.path)
         const wrapped = emit(pluginId, {
@@ -271,6 +295,9 @@ export const explorerSystem = setup({
 
     getFileInfo: async ({ event, context }) => {
       const ev = event as { type: 'explorer.GET_FILE_INFO'; path: string }
+      
+      if (!requireRepository(context, ev.path)) return
+      
       try {
         const info = await context.repository.getFileInfo(ev.path)
         const wrapped = emit(pluginId, {
@@ -312,6 +339,10 @@ export const explorerSystem = setup({
         const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
         return ev.path
       },
+      repository: ({ event }) => {
+        const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
+        return new FileSystemRepository(ev.path)
+      },
     }),
 
     setDirectories: assign({
@@ -341,6 +372,9 @@ export const explorerSystem = setup({
 
     quickOpenSearch: async ({ event, context }) => {
       const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
+      
+      if (!requireRepository(context, ev.rootDirectory)) return
+      
       try {
         const files = await context.repository.getAllFiles(ev.rootDirectory)
         const wrapped = emit(pluginId, {
@@ -355,6 +389,30 @@ export const explorerSystem = setup({
             code: error.code || 'IO_ERROR',
             message: error.message,
             path: ev.rootDirectory,
+          },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    listRootFiles: async ({ context }) => {
+      if (!requireRepository(context, context.rootDirectory || '')) return
+      
+      try {
+        const path = context.rootDirectory || ''
+        const content = await context.repository.listDirectory(path)
+        const wrapped = emit(pluginId, {
+          type: 'explorer.FILES_LISTED',
+          data: content,
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'explorer.CODE_ERROR',
+          data: {
+            code: error.code || 'IO_ERROR',
+            message: error.message,
+            path: error.path,
           },
         })
         rootEvents.emitOutgoing(wrapped.event)
@@ -408,7 +466,7 @@ export const explorerSystem = setup({
           actions: 'getFileInfo'
         },
         'explorer.SET_ROOT_DIRECTORY': {
-          actions: ['assignRootDirectory', 'setRootDirectory']
+          actions: ['assignRootDirectory', 'setRootDirectory', 'listRootFiles']
         },
         'explorer.CLOSE_FILE': {
           actions: 'closeFile'
