@@ -42,6 +42,7 @@ export type Event =
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
+  | { type: 'terminal.CLEAR_ERROR' }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
 export const terminalState = setup({
@@ -103,6 +104,10 @@ export const terminalState = setup({
         const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
         return context.terminals.filter(t => t.id !== ev.data.terminalId)
       }
+    }),
+    
+    clearTerminalError: assign({
+      terminalError: null
     }),
     
     assignTerminalError: assign({
@@ -264,7 +269,7 @@ export const terminalState = setup({
   },
   on: {
     'terminal.CREATE': {
-      actions: 'createTerminal'
+      actions: ['clearTerminalError', 'createTerminal']
     },
     'terminal.CLOSE': {
       actions: 'closeTerminal'
@@ -285,10 +290,10 @@ export const terminalState = setup({
       actions: 'openTerminalTabs'
     },
     'terminal.TERMINALS_LISTED': {
-      actions: 'assignTerminals'
+      actions: ['clearTerminalError', 'assignTerminals']
     },
     'terminal.CREATED': {
-      actions: 'handleTerminalCreated'
+      actions: ['clearTerminalError', 'handleTerminalCreated']
     },
     'terminal.CLOSED': {
       actions: 'handleTerminalClosed'
@@ -297,7 +302,15 @@ export const terminalState = setup({
       actions: 'handleTerminalOutput'
     },
     'terminal.ERROR': {
-      actions: 'assignTerminalError'
+      actions: ['assignTerminalError', ({ self }) => {
+        // Clear error after 5 seconds
+        setTimeout(() => {
+          self.send({ type: 'terminal.CLEAR_ERROR' })
+        }, 4000)
+      }]
+    },
+    'terminal.CLEAR_ERROR': {
+      actions: 'clearTerminalError'
     },
     'terminal.TERMINAL_TAB_OPENED': {
       actions: 'handleTerminalTabOpened'

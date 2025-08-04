@@ -132,11 +132,13 @@ export const terminalSystem = setup({
     closeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.CLOSE_TERMINAL'; terminalId: string }
       try {
+        const terminal = terminalService.get(ev.terminalId)
+        const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.kill(ev.terminalId)
         if (!success) {
           const wrapped = emit(pluginId, {
             type: 'terminal.ERROR',
-            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
+            data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
           rootEvents.emitOutgoing(wrapped.event)
         }
@@ -152,11 +154,13 @@ export const terminalSystem = setup({
     sendTerminalInput: ({ event }) => {
       const ev = event as { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
       try {
+        const terminal = terminalService.get(ev.terminalId)
+        const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.write(ev.terminalId, ev.data)
         if (!success) {
           const wrapped = emit(pluginId, {
             type: 'terminal.ERROR',
-            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
+            data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
           rootEvents.emitOutgoing(wrapped.event)
         }
@@ -172,11 +176,13 @@ export const terminalSystem = setup({
     resizeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
       try {
+        const terminal = terminalService.get(ev.terminalId)
+        const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.resize(ev.terminalId, ev.cols, ev.rows)
         if (!success) {
           const wrapped = emit(pluginId, {
             type: 'terminal.ERROR',
-            data: { message: `Terminal ${ev.terminalId} not found`, terminalId: ev.terminalId }
+            data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
           rootEvents.emitOutgoing(wrapped.event)
         }
@@ -222,7 +228,7 @@ export const terminalSystem = setup({
           const wrapped = emit(pluginId, {
             type: 'terminal.ERROR',
             data: { 
-              message: `Terminal ${ev.terminalId} not found`, 
+              message: `Terminal not found`, 
               terminalId: ev.terminalId 
             }
           })
