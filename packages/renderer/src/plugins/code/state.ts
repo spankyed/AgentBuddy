@@ -427,7 +427,7 @@ const codeState = setup({
       on: {
         // Broadcast CODE_STARTUP to all features
         CODE_STARTUP: {
-          actions: ['broadcastToAllFeatures', 'handleCodeStartup']
+          actions: ['handleCodeStartup', 'broadcastToAllFeatures']
         },
         // Route events to child machines
         '*': {
