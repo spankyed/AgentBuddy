@@ -53,11 +53,11 @@ export const terminalState = setup({
     createTerminal: ({ event, self }) => {
       const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string }
       const parentContext = getParentContext(self)
-      const currentDir = parentContext?.currentDirectory
+      const rootDir = parentContext?.rootDirectory
       
       sendToBackend('terminal.CREATE_TERMINAL', {
         title: ev.title,
-        cwd: ev.cwd || (currentDir && currentDir.trim() ? currentDir : undefined)
+        cwd: ev.cwd || (rootDir && rootDir.trim() ? rootDir : undefined)
       })
     },
     

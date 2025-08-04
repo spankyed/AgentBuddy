@@ -88,7 +88,6 @@ export const terminalSystem = setup({
       }
       try {
         const cwd = ev.cwd || context.rootDirectory
-        console.log('cwd: ', cwd);
         const terminalInfo = terminalService.create({
           title: ev.title,
           cwd: cwd && cwd.trim() ? cwd : undefined,
