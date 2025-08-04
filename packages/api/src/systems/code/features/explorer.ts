@@ -10,7 +10,6 @@ import { DirectoryContent, FileContent, FileInfo, CodeSystemError, FileChangeInf
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
 
-// Helper to check if repository exists and emit error if not
 function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
   if (!context.repository) {
     const wrapped = emit(pluginId, {
@@ -64,7 +63,6 @@ export interface Context {
 }
 
 export type Event = 
-  | { type: 'explorer.SET_DIRECTORIES'; rootDirectory: string; currentDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.READ_FILE'; path: string }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
@@ -345,20 +343,6 @@ export const explorerSystem = setup({
       },
     }),
 
-    setDirectories: assign({
-      rootDirectory: ({ event }) => {
-        const ev = event as { type: 'explorer.SET_DIRECTORIES'; rootDirectory: string }
-        return ev.rootDirectory
-      },
-      currentDirectory: ({ event }) => {
-        const ev = event as { type: 'explorer.SET_DIRECTORIES'; currentDirectory: string }
-        return ev.currentDirectory
-      },
-      repository: ({ event }) => {
-        const ev = event as { type: 'explorer.SET_DIRECTORIES'; rootDirectory: string }
-        return new FileSystemRepository(ev.rootDirectory)
-      },
-    }),
 
     closeFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
@@ -437,9 +421,6 @@ export const explorerSystem = setup({
       on: {
         'CODE_STARTUP': {
           actions: 'sendCurrentDirectory'
-        },
-        'explorer.SET_DIRECTORIES': {
-          actions: 'setDirectories'
         },
         'explorer.LIST_FILES': {
           actions: 'listFiles'

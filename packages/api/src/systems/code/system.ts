@@ -1,3 +1,9 @@
+/**
+ * Directory State Management:
+ * - rootDirectory is duplicated across parent and children for independence
+ * - Parent broadcasts directory changes to all children
+ * - Directory is persisted to EARS as "lastOpened"
+ */
 import { setup, enqueueActions, assign } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import { z } from 'zod'

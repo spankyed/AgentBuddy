@@ -1,12 +1,3 @@
-/**
- * Shared utilities for parent-child state machine communication
- */
-
-/**
- * Safely update parent state with error handling
- * @param self - The child state machine instance
- * @param updates - Partial state updates to send to parent
- */
 export const updateParentState = (self: any, updates: any) => {
   try {
     if (self._parent) {
