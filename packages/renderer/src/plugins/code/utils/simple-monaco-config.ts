@@ -59,3 +59,32 @@ export function getLanguageId(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   return LANGUAGE_MAP[ext] || 'plaintext'
 }
+
+let monacoInitialized = false
+
+// Initialize Monaco editor with disabled error markers only
+export function initializeMonaco() {
+  if (monacoInitialized) return
+  
+  const monaco = (window as any).monaco
+  if (!monaco) return
+  
+  monacoInitialized = true
+  
+  // Only disable error diagnostics, preserve syntax highlighting
+  const diagnosticsOptions = {
+    noSemanticValidation: true,
+    noSyntaxValidation: true,
+    noSuggestionDiagnostics: true
+  }
+  
+  // Set diagnostics options for TypeScript/JavaScript
+  monaco.languages.typescript?.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  monaco.languages.typescript?.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  
+  // Disable JSON validation
+  monaco.languages.json?.jsonDefaults.setDiagnosticsOptions({ 
+    validate: false,
+    schemas: [] 
+  })
+}
