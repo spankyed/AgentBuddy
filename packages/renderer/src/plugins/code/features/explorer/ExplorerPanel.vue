@@ -19,56 +19,60 @@
       </div>
     </div>
     
-    <DirectoryBreadcrumb
-      :root-directory="rootDirectory"
-      :current-directory="currentDirectory"
-      @navigate="navigateToDirectory"
-      @set-root="setRootDirectory"
-    />
+    <!-- Show breadcrumb and content only when directory is selected -->
+    <template v-if="rootDirectory">
+      <DirectoryBreadcrumb
+        :root-directory="rootDirectory"
+        :current-directory="currentDirectory"
+        @navigate="navigateToDirectory"
+        @set-root="setRootDirectory"
+      />
+      
+      <div v-if="isLoading" class="flex items-center justify-center flex-1">
+        <div class="text-sm text-neutral-400">Loading...</div>
+      </div>
+      
+      <div v-else-if="error" class="flex-1 p-4">
+        <div class="text-sm text-red-400">{{ error }}</div>
+      </div>
+      
+      <div v-else-if="files.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
+        <FolderOpen :size="48" class="text-neutral-600 mb-3" />
+        <p class="text-neutral-400 text-center">This directory is empty</p>
+      </div>
+      
+      <div v-else class="flex-1 overflow-auto">
+        <FileItem
+          v-for="file in files"
+          :key="file.path"
+          :file="file"
+          :root-directory="rootDirectory"
+          @click="handleFileClick(file)"
+          @rename="handleRename"
+          @delete="confirmDelete"
+        />
+      </div>
+      
+      <!-- Change Directory Button -->
+      <div class="p-2 border-t border-neutral-800">
+        <button
+          @click="handleDirectorySelect"
+          class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
+        >
+          Change Directory
+        </button>
+      </div>
+    </template>
     
-    <div v-if="isLoading" class="flex items-center justify-center flex-1">
-      <div class="text-sm text-neutral-400">Loading...</div>
-    </div>
-    
-    <div v-else-if="error" class="flex-1 p-4">
-      <div class="text-sm text-red-400">{{ error }}</div>
-    </div>
-    
-    <div v-else-if="!rootDirectory" class="flex-1 flex flex-col items-center justify-center p-4">
-      <FolderOpen :size="48" class="text-neutral-600 mb-3" />
+    <!-- Show empty state when no directory selected -->
+    <div v-else class="flex-1 flex flex-col items-center justify-start p-4">
+      <!-- <FolderOpen :size="48" class="text-neutral-600 mb-3" /> -->
       <p class="text-neutral-400 text-center mb-4">No directory selected</p>
       <button
         @click="handleDirectorySelect"
         class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
       >
         Select a Directory
-      </button>
-    </div>
-    
-    <div v-else-if="files.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
-      <FolderOpen :size="48" class="text-neutral-600 mb-3" />
-      <p class="text-neutral-400 text-center">This directory is empty</p>
-    </div>
-    
-    <div v-else class="flex-1 overflow-auto">
-      <FileItem
-        v-for="file in files"
-        :key="file.path"
-        :file="file"
-        :root-directory="rootDirectory"
-        @click="handleFileClick(file)"
-        @rename="handleRename"
-        @delete="confirmDelete"
-      />
-    </div>
-    
-    <!-- Change Directory Button -->
-    <div class="p-2 border-t border-neutral-800">
-      <button
-        @click="handleDirectorySelect"
-        class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
-      >
-        Change Directory
       </button>
     </div>
   </div>
