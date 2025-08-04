@@ -50,6 +50,7 @@
           @click="handleFileClick(file)"
           @rename="handleRename"
           @delete="confirmDelete"
+          @open-terminal="handleOpenTerminal"
         />
       </div>
       
@@ -104,6 +105,7 @@ const props = defineProps<{
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const explorerActor = codeActor.system.get('explorer')!
+const terminalActor = codeActor.system.get('terminal')!
 
 // State selectors
 const files = useSelector(explorerActor, (state: any) => state.context.files)
@@ -176,5 +178,9 @@ const handleDirectorySelect = async () => {
   } catch (error) {
     console.error('Error selecting directory:', error)
   }
+}
+
+const handleOpenTerminal = (path: string) => {
+  terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
 }
 </script>

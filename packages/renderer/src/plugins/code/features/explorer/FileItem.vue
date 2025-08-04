@@ -57,6 +57,15 @@
           Copy relative path
         </ContextMenuItem>
         
+        <ContextMenuItem
+          v-if="file.type === 'directory'"
+          @select="$emit('open-terminal', file.path)"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+        >
+          <Terminal class="w-4 h-4" />
+          Open Terminal Here
+        </ContextMenuItem>
+        
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         
         <ContextMenuItem
@@ -83,6 +92,7 @@ import {
   Edit2,
   Trash2,
   Copy,
+  Terminal,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -110,6 +120,7 @@ const emit = defineEmits<{
   'click': [file: FileItem]
   'rename': [oldPath: string, newName: string]
   'delete': [file: FileItem]
+  'open-terminal': [path: string]
 }>()
 
 // Editing state
