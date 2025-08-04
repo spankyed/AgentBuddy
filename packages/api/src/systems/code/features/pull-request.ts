@@ -22,7 +22,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
-  | { type: 'pr.ERROR'; data: { message: string } }
+  | { type: 'pr.ERROR'; message: string }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
 
 export interface Context {
@@ -57,8 +57,8 @@ export const pullRequestSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message: error.message }
+          type: 'pr.ERROR',
+          message: error.message
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
@@ -81,8 +81,8 @@ export const pullRequestSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message: error.message }
+          type: 'pr.ERROR',
+          message: error.message
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
@@ -115,8 +115,8 @@ export const pullRequestSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message: error.message }
+          type: 'pr.ERROR',
+          message: error.message
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
