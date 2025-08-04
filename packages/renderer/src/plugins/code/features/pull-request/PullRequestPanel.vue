@@ -16,25 +16,32 @@
       </button>
     </div>
 
-    <div v-if="prError" class="error-state">
-      <AlertCircle class="w-4 h-4 text-red-500" />
-      <span class="text-sm text-red-500">{{ prError }}</span>
+    <!-- Show only error if no directory selected -->
+    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+      <div class="text-sm text-red-400">{{ prError }}</div>
     </div>
 
-    <div v-else-if="isPrLoading && prFiles.length === 0" class="loading-state">
-      <Loader2 class="w-5 h-5 animate-spin" />
-      <span class="text-sm text-neutral-400">Loading changes...</span>
-    </div>
+    <!-- Show normal UI only when directory is selected -->
+    <template v-else>
+      <div v-if="prError" class="error-state">
+        <AlertCircle class="w-4 h-4 text-red-500" />
+        <span class="text-sm text-red-500">{{ prError }}</span>
+      </div>
 
-    <div v-else-if="prFiles.length === 0" class="empty-state">
-      <GitBranch class="w-5 h-5 text-neutral-500" />
-      <p class="text-sm text-neutral-400">No changes found</p>
-      <p class="mt-1 text-xs text-neutral-500">
-        Comparing with {{ prBaseBranch || 'base branch' }}
-      </p>
-    </div>
+      <div v-else-if="isPrLoading && prFiles.length === 0" class="loading-state">
+        <Loader2 class="w-5 h-5 animate-spin" />
+        <span class="text-sm text-neutral-400">Loading changes...</span>
+      </div>
 
-    <div v-else class="pr-content">
+      <div v-else-if="prFiles.length === 0" class="empty-state">
+        <GitBranch class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">No changes found</p>
+        <p class="mt-1 text-xs text-neutral-500">
+          Comparing with {{ prBaseBranch || 'base branch' }}
+        </p>
+      </div>
+
+      <div v-else class="pr-content">
       <div class="branch-info">
         <GitBranch class="w-3 h-3 text-neutral-500" />
         <span class="text-xs text-neutral-400">
@@ -47,6 +54,7 @@
         @select-file="handleFileSelect"
       />
     </div>
+    </template>
   </div>
 </template>
 
@@ -69,6 +77,11 @@ const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
 const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
 const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
+
+// Computed
+const isNoDirectoryError = computed(() => {
+  return prError.value?.includes('No directory selected')
+})
 
 // Actions
 const refreshStatus = () => {

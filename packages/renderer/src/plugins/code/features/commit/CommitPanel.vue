@@ -7,6 +7,7 @@
       @confirm="confirmRevert"
       @cancel="cancelRevert"
     />
+    
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
       <div class="flex items-center gap-2">
@@ -23,8 +24,15 @@
       </button>
     </div>
     
-    <!-- Branch Info -->
-    <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
+    <!-- Show only error if no directory selected -->
+    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+      <div class="text-sm text-red-400">{{ gitError }}</div>
+    </div>
+    
+    <!-- Show normal UI only when directory is selected -->
+    <template v-else>
+      <!-- Branch Info -->
+      <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
       <div class="flex items-center gap-2">
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">{{ gitBranch || 'unknown' }}</span>
@@ -79,8 +87,8 @@
       </div>
     </div>
 
-    <!-- Git Error -->
-    <div v-if="gitError" class="p-3 border-b border-red-800 bg-red-900/20">
+    <!-- Git Error (only show non-directory errors) -->
+    <div v-if="gitError && !isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ gitError }}</div>
     </div>
 
@@ -216,6 +224,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -257,6 +266,10 @@ const showBranchDropdown = ref(false)
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
 const unstagedFiles = computed(() => gitStatus.value.filter((f: any) => !f.staged))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
+
+const isNoDirectoryError = computed(() => {
+  return gitError.value?.includes('No directory selected')
+})
 
 const shouldShowActionButton = computed(() => {
   // Show action button when:
