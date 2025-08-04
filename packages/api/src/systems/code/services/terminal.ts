@@ -1,6 +1,7 @@
 import * as pty from 'node-pty'
 import { v4 as uuidv4 } from 'uuid'
 import * as os from 'os'
+import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
 import { repository } from '@/repository'
@@ -230,13 +231,12 @@ class TerminalService {
     
     try {
       // Check if directory exists and is accessible
-      const fs = require('fs')
       const stats = fs.statSync(cwd)
       if (stats.isDirectory()) {
         return cwd
       }
     } catch (error) {
-      console.warn(`Invalid cwd: ${cwd}, defaulting to home directory`)
+      console.warn(`Invalid cwd: ${cwd}, defaulting to home directory`, error)
     }
     // Fall back to home directory if provided path is invalid
     return os.homedir()

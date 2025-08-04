@@ -1,4 +1,4 @@
-import { setup } from 'xstate'
+import { setup, assign } from 'xstate'
 import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
@@ -87,9 +87,11 @@ export const terminalSystem = setup({
         rows?: number;
       }
       try {
+        const cwd = ev.cwd || context.rootDirectory
+        console.log('cwd: ', cwd);
         const terminalInfo = terminalService.create({
           title: ev.title,
-          cwd: ev.cwd || context.rootDirectory || undefined,
+          cwd: cwd && cwd.trim() ? cwd : undefined,
           shell: ev.shell,
           cols: ev.cols || 80,
           rows: ev.rows || 24
@@ -265,10 +267,12 @@ export const terminalSystem = setup({
       console.log('Terminal restoration complete')
     },
 
-    updateCurrentDirectory: ({ event, context }) => {
-      const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
-      context.rootDirectory = ev.path
-    }
+    updateCurrentDirectory: assign({
+      rootDirectory: ({ event }) => {
+        const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
+        return ev.path
+      }
+    })
   }
 }).createMachine({
   id: 'terminal',
