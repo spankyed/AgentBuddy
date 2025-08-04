@@ -93,6 +93,10 @@ export class FileSystemRepository {
       const validPath = this.validatePath(filePath)
       const stats = await fs.stat(validPath)
       
+      if (stats.isDirectory()) {
+        throw this.createError('IO_ERROR', 'Cannot read directory as file', filePath)
+      }
+      
       if (stats.size > MAX_FILE_SIZE) {
         throw this.createError('FILE_TOO_LARGE', `File size exceeds ${MAX_FILE_SIZE} bytes`, filePath)
       }
@@ -111,7 +115,10 @@ export class FileSystemRepository {
       if (error.code === 'EACCES') {
         throw this.createError('PERMISSION_DENIED', 'Permission denied', filePath)
       }
-      if (error.code === 'FILE_TOO_LARGE' || error.code === 'INVALID_PATH') {
+      if (error.code === 'EISDIR') {
+        throw this.createError('IO_ERROR', 'Path is a directory, not a file', filePath)
+      }
+      if (error.code === 'FILE_TOO_LARGE' || error.code === 'INVALID_PATH' || error.code === 'IO_ERROR') {
         throw error
       }
       throw this.createError('IO_ERROR', error.message, filePath)

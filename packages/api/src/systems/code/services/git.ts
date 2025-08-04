@@ -73,6 +73,41 @@ export class GitRepository {
   clearCache(): void {
     this.cache.clear()
   }
+
+  private async isDirectory(filePath: string): Promise<boolean> {
+    try {
+      const fullPath = path.join(this.workingDirectory, filePath)
+      const stats = await fs.stat(fullPath)
+      return stats.isDirectory()
+    } catch {
+      return false
+    }
+  }
+
+  private async getUntrackedFilesInDirectory(dirPath: string): Promise<GitStatusFile[]> {
+    try {
+      // Use git ls-files to get untracked files in the directory
+      const result = await this.executeGitCommand([
+        'ls-files', 
+        '--others', 
+        '--exclude-standard',
+        dirPath
+      ])
+      
+      if (!result.success || !result.output) {
+        return []
+      }
+      
+      const files = result.output.trim().split('\n').filter(Boolean)
+      return files.map(filePath => ({
+        path: filePath,
+        status: 'untracked' as const,
+        staged: false
+      }))
+    } catch {
+      return []
+    }
+  }
   
   // Invalidate specific cache entries when files change
   invalidateCache(paths?: string[]): void {
@@ -216,9 +251,21 @@ export class GitRepository {
       }
     }
     
+    // Expand directories to show individual files
+    const expandedFiles: GitStatusFile[] = []
+    for (const file of files) {
+      if (await this.isDirectory(file.path)) {
+        // If it's a directory, get all untracked files inside it
+        const dirFiles = await this.getUntrackedFilesInDirectory(file.path)
+        expandedFiles.push(...dirFiles)
+      } else {
+        expandedFiles.push(file)
+      }
+    }
+    
     // Cache the result
-    this.setCached('status', files)
-    return files
+    this.setCached('status', expandedFiles)
+    return expandedFiles
   }
 
   private mapGitStatus(status: string): GitStatusFile['status'] {
@@ -346,6 +393,15 @@ export class GitRepository {
       if (fileStatus?.status === 'untracked') {
         const fullPath = path.join(this.workingDirectory, filePath)
         
+        // Check if it's a directory
+        if (await this.isDirectory(filePath)) {
+          // Return a synthetic diff for directories
+          let diff = `diff --git a/${filePath} b/${filePath}\n`
+          diff += `new directory\n`
+          diff += `Unable to show diff for directory\n`
+          return diff
+        }
+        
         // Check if file is binary
         if (await this.isBinaryFile(fullPath)) {
           // Return a synthetic diff for binary files
@@ -403,6 +459,12 @@ export class GitRepository {
         const relativePath = filePath.startsWith(this.workingDirectory) 
           ? filePath.slice(this.workingDirectory.length + 1)
           : filePath
+        
+        // Check if it's a directory
+        if (await this.isDirectory(relativePath)) {
+          return '' // Return empty content for directories
+        }
+        
         const fullPath = path.join(this.workingDirectory, relativePath)
         return await fs.readFile(fullPath, 'utf8')
       } catch (error) {
