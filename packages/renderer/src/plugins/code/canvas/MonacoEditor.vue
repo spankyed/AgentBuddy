@@ -78,6 +78,10 @@ const commonOptions = {
   acceptSuggestionOnEnter: 'off' as const,
   snippetSuggestions: 'none' as const,
   wordBasedSuggestions: 'currentDocument' as const,
+  // Disable validation
+  'semanticValidation.enabled': false,
+  'syntaxValidation.enabled': false,
+  validate: false,
 }
 
 // Editor options
@@ -97,14 +101,32 @@ const diffEditorOptions = computed(() => ({
   originalEditable: false,
 }))
 
+// Disable Monaco validation globally
+const disableMonacoValidation = () => {
+  const monaco = (window as any).monaco
+  if (!monaco) return
+  
+  const diagnosticsOptions = {
+    noSemanticValidation: true,
+    noSyntaxValidation: true,
+    noSuggestionDiagnostics: true
+  }
+  
+  monaco.languages.typescript?.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  monaco.languages.typescript?.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
+  monaco.languages.json?.jsonDefaults.setDiagnosticsOptions({ validate: false })
+}
+
 // Handle editor mount
 const handleMount = (editorInstance: any) => {
   editor.value = editorInstance
+  disableMonacoValidation()
 }
 
 // Handle diff editor mount
 const handleDiffMount = (diffEditorInstance: any) => {
   diffEditor.value = diffEditorInstance
+  disableMonacoValidation()
   
   // Set up change listener for modified editor in diff mode
   const modifiedEditor = diffEditorInstance.getModifiedEditor()
