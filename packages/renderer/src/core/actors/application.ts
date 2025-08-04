@@ -1,5 +1,5 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
-import type { Plugin } from '@/core/types';
+import type { Plugin, HotkeyEvent } from '@/core/types';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
@@ -40,6 +40,10 @@ export type ApplicationEvent =
   | { type: 'TRAIL_CLICK'; target: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'TOGGLE_INSPECTION_PANEL' }
+  | HotkeyEvent
+  | { type: 'SWITCH_PLUGIN_UP' }
+  | { type: 'SWITCH_PLUGIN_DOWN' }
+  | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -50,6 +54,45 @@ export const createApplicationState = () => setup({
     input: {} as ApplicationParams,
   },
   actors: {
+    hotkeyListener: fromCallback(({ system }) => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        const isCmd = e.metaKey; // Cmd on Mac, Windows key on PC
+        const isOption = e.altKey; // Option on Mac, Alt on PC
+        
+        // Check for plugin switching hotkeys
+        if (isCmd && isOption) {
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            system.get(application).send({ type: 'SWITCH_PLUGIN_UP' });
+            return;
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            system.get(application).send({ type: 'SWITCH_PLUGIN_DOWN' });
+            return;
+          }
+        }
+        
+        // Forward all hotkeys (including cmd+option+left/right) to the active plugin
+        const hotkeyEvent: HotkeyEvent = {
+          type: 'HOTKEY_PRESSED',
+          key: e.key,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
+          preventDefault: () => e.preventDefault()
+        };
+        
+        system.get(application).send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }),
+    
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target }: UpdateData) =>
         system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target });
@@ -91,6 +134,42 @@ export const createApplicationState = () => setup({
     }),
   },
   actions: {
+    switchPluginByDirection: ({ context, event, self }) => {
+      // Use all plugins for switching
+      const allPlugins = context.plugins;
+      
+      if (allPlugins.length === 0) return;
+      
+      const currentIndex = allPlugins.findIndex(p => p.id === context.activePlugin.id);
+      if (currentIndex === -1) return;
+      
+      let newIndex: number;
+      if (event.type === 'SWITCH_PLUGIN_UP') {
+        newIndex = currentIndex === 0 ? allPlugins.length - 1 : currentIndex - 1;
+      } else {
+        newIndex = currentIndex === allPlugins.length - 1 ? 0 : currentIndex + 1;
+      }
+      
+      const newPluginId = allPlugins[newIndex].id;
+      
+      self.send({
+        type: 'SELECT_PLUGIN',
+        pluginId: newPluginId
+      });
+    },
+    
+    forwardHotkeyToPlugin: ({ context, event, system }) => {
+      try {
+        const activePluginActor = system.get(context.activePlugin.id);
+        if (activePluginActor) {
+          activePluginActor.send(typeOf('FORWARD_HOTKEY', event).event);
+        }
+      } catch (error) {
+        // Silently ignore if plugin can't receive hotkey events
+        console.debug(`Plugin ${context.activePlugin.id} cannot receive hotkey events`, error);
+      }
+    },
+    
     setTargetView: assign(({ event, system }, params?: string) => ({
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
@@ -215,6 +294,7 @@ export const createApplicationState = () => setup({
   entry: [
     'spawnPluginActors',
     'trailActivePlugin',
+    spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
   ],
   states: {
     'setup': {
@@ -267,6 +347,15 @@ export const createApplicationState = () => setup({
     },
     TOGGLE_INSPECTION_PANEL: {
       actions: 'toggleInspectionPanel'
+    },
+    SWITCH_PLUGIN_UP: {
+      actions: 'switchPluginByDirection'
+    },
+    SWITCH_PLUGIN_DOWN: {
+      actions: 'switchPluginByDirection'
+    },
+    FORWARD_HOTKEY: {
+      actions: 'forwardHotkeyToPlugin'
     },
   }
 });

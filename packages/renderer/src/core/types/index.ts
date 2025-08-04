@@ -5,6 +5,16 @@ import type { AnyStateMachine } from 'xstate';
 type RouteName = string;
 export type RouteComponents = Record<RouteName, Component>;
 
+export interface HotkeyEvent {
+  type: 'HOTKEY_PRESSED';
+  key: string;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  preventDefault: () => void;
+}
+
 export interface Plugin {
   /** Toolbar key */
   id: string;
