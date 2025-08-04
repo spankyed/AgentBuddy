@@ -63,9 +63,9 @@ const commonOptions = {
   automaticLayout: true,
   minimap: { enabled: false },
   fontSize: 14,
-  lineNumbers: 'on',
+  lineNumbers: 'on' as const,
   scrollBeyondLastLine: false,
-  wordWrap: 'on',
+  wordWrap: 'on' as const,
   folding: true,
   bracketPairColorization: { enabled: true },
   formatOnPaste: true,
@@ -75,9 +75,9 @@ const commonOptions = {
   parameterHints: { enabled: false },
   suggestOnTriggerCharacters: false,
   acceptSuggestionOnCommitCharacter: false,
-  acceptSuggestionOnEnter: 'off',
-  snippetSuggestions: 'none',
-  wordBasedSuggestions: 'currentDocument',
+  acceptSuggestionOnEnter: 'off' as const,
+  snippetSuggestions: 'none' as const,
+  wordBasedSuggestions: 'currentDocument' as const,
 }
 
 // Editor options

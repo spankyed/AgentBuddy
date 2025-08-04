@@ -77,7 +77,9 @@ export type Event =
   | { type: 'explorer.CODE_ERROR'; data: { message: string } }
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
-  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] };
+  | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
+  // Directory events
+  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } };
 
 export const explorerState = setup({
   types: {

@@ -338,22 +338,22 @@ const filteredLogs = computed(() => {
   
   // Filter by level
   if (filterLevel.value !== 'all') {
-    filtered = filtered.filter(log => log.level === filterLevel.value);
+    filtered = filtered.filter((log: LogEntry) => log.level === filterLevel.value);
   }
   
   // Filter by search term using the search utility
   if (searchTerm.value && searchTerm.value.trim()) {
     const filter = parseSearchTerm(searchTerm.value);
-    filtered = filtered.filter(log => searchLog(log, filter));
+    filtered = filtered.filter((log: LogEntry) => searchLog(log, filter));
   }
   
   return filtered;
 });
 
-const errorCount = computed(() => logs.value.filter(log => log.level === 'error').length);
-const warnCount = computed(() => logs.value.filter(log => log.level === 'warn').length);
-const infoCount = computed(() => logs.value.filter(log => log.level === 'info').length);
-const debugCount = computed(() => logs.value.filter(log => log.level === 'debug').length);
+const errorCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'error').length);
+const warnCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'warn').length);
+const infoCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'info').length);
+const debugCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'debug').length);
 
 const setFilterLevel = (e: Event) => {
   const target = e.target as HTMLSelectElement;
