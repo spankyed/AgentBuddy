@@ -44,7 +44,7 @@ export const pullRequestSystem = setup({
   },
   actions: {
     getBaseBranch: async ({ context }) => {
-      if (!requireGitRepository(context)) return
+      if (!requireGitRepository(context, 'pr.ERROR')) return
       
       try {
         const { gitRepository } = context
@@ -67,7 +67,7 @@ export const pullRequestSystem = setup({
     getBranchDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
       
-      if (!requireGitRepository(context)) return
+      if (!requireGitRepository(context, 'pr.ERROR')) return
       
       try {
         const { gitRepository } = context
@@ -91,7 +91,7 @@ export const pullRequestSystem = setup({
     getBranchFileDiff: async ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
       
-      if (!requireGitRepository(context)) return
+      if (!requireGitRepository(context, 'pr.ERROR')) return
       
       try {
         const { gitRepository } = context

@@ -38,7 +38,17 @@ export const pullRequestState = setup({
     events: {} as Event
   },
   actions: {
-    refreshPrStatus: () => {
+    refreshPrStatus: ({ self }) => {
+      // Check if we have a directory from parent context
+      const parentContext = getParentContext(self)
+      if (!parentContext?.rootDirectory) {
+        // Send error event directly if no directory
+        self.send({ 
+          type: 'pr.ERROR', 
+          message: 'No directory selected. Please select a directory first.' 
+        })
+        return
+      }
       sendToBackend('pr.GET_BASE_BRANCH', {})
       sendToBackend('pr.GET_BRANCH_DIFF', {})
     },
@@ -130,6 +140,12 @@ export const pullRequestState = setup({
       if (parentContext?.rootDirectory) {
         // Refresh PR status when directory is available
         self.send({ type: 'pr.REFRESH_STATUS' })
+      } else {
+        // Show error if no directory
+        self.send({ 
+          type: 'pr.ERROR', 
+          message: 'No directory selected. Please select a directory first.' 
+        })
       }
     }
   }
