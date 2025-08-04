@@ -8,8 +8,15 @@
       </div>
     </div>
     
-    <!-- Search Input Section -->
-    <div class="p-4 border-b border-neutral-800">
+    <!-- Show only error if no directory selected -->
+    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+      <div class="text-sm text-red-400">{{ searchError }}</div>
+    </div>
+    
+    <!-- Show normal UI only when directory is selected -->
+    <template v-else>
+      <!-- Search Input Section -->
+      <div class="p-4 border-b border-neutral-800">
 
 
       <!-- Search Options -->
@@ -176,6 +183,7 @@
     <div v-if="searchResults.length > 0" class="p-2 text-xs border-t border-neutral-800 text-neutral-400">
       {{ totalMatches }} results in {{ searchResults.length }} files
     </div>
+    </template>
   </div>
 </template>
 
@@ -208,6 +216,10 @@ const expandedResults = ref(new Set<string>())
 // Computed
 const totalMatches = computed(() => {
   return searchResults.value.reduce((sum: number, result: any) => sum + result.matches.length, 0)
+})
+
+const isNoDirectoryError = computed(() => {
+  return searchError.value?.includes('No directory selected')
 })
 
 const searchPlaceholder = computed(() => {

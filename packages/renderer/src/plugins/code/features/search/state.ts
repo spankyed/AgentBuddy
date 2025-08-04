@@ -55,7 +55,8 @@ export type Event =
   | { type: 'search.RESULT'; data: SearchResult }
   | { type: 'search.PROGRESS'; data: SearchProgress }
   | { type: 'search.COMPLETE' }
-  | { type: 'search.ERROR'; message: string };
+  | { type: 'search.ERROR'; message: string }
+  | { type: 'CODE_STARTUP' };
 
 export const searchState = setup({
   types: {
@@ -134,7 +135,19 @@ export const searchState = setup({
         const ev = event as { type: 'search.UPDATE_OPTIONS'; options: Partial<Context['searchOptions']> }
         return { ...context.searchOptions, ...ev.options }
       }
-    })
+    }),
+    
+    handleCodeStartup: ({ self }) => {
+      // Check if we have a directory from parent context
+      const parentContext = getParentContext(self)
+      if (!parentContext?.rootDirectory) {
+        // Show error if no directory
+        self.send({ 
+          type: 'search.ERROR', 
+          message: 'No directory selected. Please select a directory first.' 
+        })
+      }
+    }
   }
 }).createMachine({
   id: 'search',
@@ -180,6 +193,9 @@ export const searchState = setup({
         },
         'search.ERROR': {
           actions: 'assignSearchError'
+        },
+        'CODE_STARTUP': {
+          actions: 'handleCodeStartup'
         }
       }
     }
