@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-31T17:40:37.046Z",
+  "timestamp": "2025-08-06T04:27:04.531Z",
   "entities": {
     "Tag-1": {
       "timestamp": 1752548453461,
@@ -594,7 +594,7 @@
       },
       "actionFn": "const { text, threadId, sender = 'user' } = params.message;\n\nif (!text || !text.trim()) {\n  throw new Error('text is required and cannot be empty');\n}\n\n// Create a new thread if threadId is not provided\nlet newThreadCreated = false;\nlet threadData = null;\n\nif (!threadId) {\n  const threadResult = services.repository.threadCommands.create({\n    topic: text.substring(0, 40), // Use first 40 chars of message as topic\n    threadType: 'work-item',\n    instructions: '',\n  });\n\n  if (!threadResult.success) {\n    throw new Error(threadResult.error || 'Failed to create new thread');\n  }\n\n  threadId = threadResult.data.id;\n  threadData = threadResult.data;\n  newThreadCreated = true;\n  \n  await services.logger.info('Created new thread for message', {\n    threadId,\n    topic: text.substring(0, 40),\n  });\n}\n\nconst result = services.repository.agentCommands.addMessage({\n  threadId,\n  text,\n  sender\n});\n\nif (!result.success) {\n  throw new Error(result.error || 'Failed to add message to thread');\n}\n\n// Update thread's lastMessageTimestamp\nservices.repository.threadCommands.update(threadId, {\n  lastMessageTimestamp: result.data.timestamp\n});\n\nawait services.logger.info('Message added to thread', {\n  threadId,\n  messageId: result.data.id,\n  sender,\n  textLength: text.length,\n  newThread: !params.threadId\n});\n\n// If a new thread was created, notify frontend plugins\nif (newThreadCreated && threadData) {\n  // Get the full thread data\n  const fullThreadData = services.repository.threadQueries.byId(threadData.id);\n  \n  // Notify threads plugin about the new thread with complete data\n  services.emitter.sendToPlugin('threads', {\n    type: 'THREAD_CREATED',\n    id: threadData.id,\n    shortCode: threadData.shortCode,\n    entityType: 'Thread',\n    timestamp: threadData.timestamp,\n    topic: fullThreadData.topic,\n    threadType: fullThreadData.threadType,\n    instructions: fullThreadData.instructions,\n    status: fullThreadData.status\n  });\n\n  // Get updated thread list for agent plugin\n  const refreshThreadsData = services.repository.agentQueries.refreshThreadsData();\n  \n  // Send updated thread list to agent plugin\n  services.emitter.sendToPlugin('agent', {\n    type: 'REFRESH_RECENT_THREADS',\n    data: refreshThreadsData\n  });\n  \n  await services.logger.info('Notified frontend plugins about new thread', {\n    threadId: threadData.id,\n    threadCount: refreshThreadsData.threads.length\n  });\n}\n\nreturn {\n  ...result.data,\n  success: true\n};"
     },
-    "Relation-mdrojkqt3j9y9vefuxvc4": {
+    "Relation-mdzghs7d1ct8y0tgzwr3w": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -602,7 +602,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2hfdyh6sgpgoc": {
+    "Relation-mdzghs7e1khxzfh7du4dq": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -610,7 +610,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt31514dtcrdqhc": {
+    "Relation-mdzghs7eocsj0yoykv22": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -618,7 +618,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtmif3sz4xggjh": {
+    "Relation-mdzghs7e304p80h20m49m": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -626,7 +626,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1u5lc58amjgrb": {
+    "Relation-mdzghs7etcisif7n7aoc": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
@@ -634,7 +634,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt6u63siv0tuyh": {
+    "Relation-mdzghs7e3an8cr4fuz80d": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -642,7 +642,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2caearfi63xs1": {
+    "Relation-mdzghs7ej1nyf1y79k37": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -650,7 +650,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2tturdqnh6ca5": {
+    "Relation-mdzghs7eouonu1gz9cw1": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -658,7 +658,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtju7sqieu84n2": {
+    "Relation-mdzghs7ep7jpdy7h5cs0": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -666,7 +666,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3alwt59uwuj96": {
+    "Relation-mdzghs7e128fdqwdqfxqz": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -674,7 +674,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt184ea6i70lbxb": {
+    "Relation-mdzghs7em2ah6rbtjpm2": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -682,7 +682,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt32lmztcx2pp6y": {
+    "Relation-mdzghs7e2c3q06218t6jb": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -690,7 +690,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt23xxtkqc8xnn8": {
+    "Relation-mdzghs7e1xnqxoajhpqe8": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -698,7 +698,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt18v0m0dakqxhc": {
+    "Relation-mdzghs7ewnj5h49dz9o3": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -706,7 +706,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1ogcmbhidvqf1": {
+    "Relation-mdzghs7e3o30x07svkt9s": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -714,7 +714,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2iuvksqdndrgz": {
+    "Relation-mdzghs7e3fwtjq31opygx": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -722,7 +722,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtc9pjthomuzl6": {
+    "Relation-mdzghs7e1q4mw9ekd0dsq": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -730,7 +730,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3a7bb1spzystp": {
+    "Relation-mdzghs7e36q9ylo8gzzp5": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -738,7 +738,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3g8g4cq495jas": {
+    "Relation-mdzghs7e2ihcy001diq1x": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -746,7 +746,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1iz5jojgmgsgd": {
+    "Relation-mdzghs7e3mkvblprudg4x": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -754,7 +754,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtg4e2guhxuqtv": {
+    "Relation-mdzghs7e1d8efygahjww0": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -762,7 +762,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1323tf4xw315s": {
+    "Relation-mdzghs7e3kimjet71qft9": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -772,7 +772,7 @@
         }
       }
     },
-    "Relation-mdrojkqt23mnwjl8s2ofs": {
+    "Relation-mdzghs7e2aaa6lhaibfjr": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -782,7 +782,7 @@
         }
       }
     },
-    "Relation-mdrojkqt3mlk85gvfcm6t": {
+    "Relation-mdzghs7e1bnsa60e7k1pi": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -790,7 +790,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtwayovinh34n": {
+    "Relation-mdzghs7e487mkmrqoto0": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -798,7 +798,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2lmuwfcyd9dd2": {
+    "Relation-mdzghs7e1bh3i1s77zwlk": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -806,7 +806,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2gg2ehsh1gcph": {
+    "Relation-mdzghs7e2h5l6ut363c3x": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -814,7 +814,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqu2drl7m05nbenj": {
+    "Relation-mdzghs7e2ib7lw1rxcrrd": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -822,137 +822,123 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqu2u3i49vqfrejb": {
+    "Relation-mdzghs7e3bq2lyv49b3jr": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu3e7ze27qz1ylo": {
+    "Relation-mdzghs7e1d0th43zt4jsx": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu13rogvx9m9cau": {
+    "Relation-mdzghs7e3s9qed29qo9im": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu3v556iwc126cn": {
+    "Relation-mdzghs7e35o8m5aif7kgt": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqu3eoieriznmjow": {
+    "Relation-mdzghs7e7dmu05xvrlyo": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdrojkqu2kwxlx3e8fbbc": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu1ieiwynfxcayv": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu2ge6ctald5bt1": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu1ju4d6j8hkkmi": {
+    "Relation-mdzghs7e32sro60h0qb2o": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu1fngrhmtffghs": {
+    "Relation-mdzghs7e2bahpjitkpvvz": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu27qeobze6ayoi": {
+    "Relation-mdzghs7exmoj4selizu": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdrojkqu2eugxjz9l28e8": {
+    "Relation-mdzghs7eo6lspjles27r": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-1",
         "relationType": "has"
       }
     },
-    "Relation-mdrojkqu2eqjwhvq3xw41": {
+    "Relation-mdzghs7e35l1cm24ux0lp": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-2",
         "relationType": "has"
       }
     },
-    "Relation-mdrojkqu36pndpi9jlbht": {
+    "Relation-mdzghs7e21rwtttlgs1ge": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-code-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-mdrojkqu1e6504tu5p7zf": {
+    "Relation-mdzghs7e3tzuvh7l2ofzk": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-text-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-mdrojkqu35r93e6yma0k9": {
+    "Relation-mdzghs7e8k7z0jirs7fk": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkquiz3qwc1cdl7g": {
+    "Relation-mdzghs7e2ezcybvfnnjkg": {
       "relationDetails": {
         "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqus5bibu0szeo3": {
+    "Relation-mdzghs7e40n8ibycrt02": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqu3d85rfn2yzn2c": {
+    "Relation-mdzghs7e3ul7tu54kdy4v": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Action-mdnzpcf0117lx8rgtrrp9",
         "relationType": "instance_of"
+      }
+    },
+    "Relation-mdzgv0bn260qt0507x2au": {
+      "relationDetails": {
+        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
+        "targetEntity": "Document-ff4e3503-54a7-4bf8-bfaa-2582c4e22d90",
+        "relationType": "contains"
       }
     },
     "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e": {
@@ -970,35 +956,45 @@
       "shortCode": "DOC-1",
       "updatedAt": 1752616081692,
       "createdAt": 1752616081692,
-      "content": "Prompt: Generate a complex relation query that finds entities with outgoing contains relations and summarizes them (limit 20 results)\nQuery:\tconst results = [];\nconst allEntities = qx().ids();\nfor (const entityId of allEntities) {\nconst targets = qx(entityId).linksTo(‘contains’, Object.values(EARS.Entity)).ids();\nif (targets.length > 0) {\nconst entityData = qx(entityId).pickOne([‘id’]);\nconst allData   = getAll(entityId);\nresults.push({\n…entityData,\n…allData,\nrelationType: ‘contains’,\ntargetCount : targets.length,\ntargets      : targets.slice(0, 5).map(targetId => ({\nid  : targetId,\ntype: targetId.split(’-’)[0]\n}))\n});\n}\n}\nreturn results.slice(0, 20);\n\nPrompt: Generate a query that groups Thread entities by status and returns each status with its count\nQuery:\tconst grouped = qx(EARS.Entity.Thread).groupBy(‘status’);\nreturn Array.from(grouped.entries()).map(([status, items]) => ({\nstatus,\ncount: items.count()\n}));\n\nPrompt: Generate a call that returns comprehensive schema statistics (entities, attributes, relations)\nQuery:\treturn getSchemaStats();\n\nPrompt: Generate a paginated query that returns 10 Thread items per call and exposes items and nextCursor\nQuery:\tconst { items, nextCursor } = qx(EARS.Entity.Thread).page(10);\nreturn items;\n\nPrompt: Generate a query that counts all Thread entities with status completed\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘completed’)\n.count();\n\nPrompt: Generate a query that returns messages linked to Thread-1 via the contains relation (id, text, sender)\nQuery:\treturn qx(‘Thread-1’)\n.linksTo(‘contains’, EARS.Entity.Message)\n.pick([‘id’, ‘text’, ‘sender’]);\n\nPrompt: Generate a query that gets unique role values from Flow entities (id, name, role)\nQuery:\treturn qx(EARS.Entity.Flow)\n.distinct(‘role’)\n.pick([‘id’, ‘name’, ‘role’]);\n\nPrompt: Generate a query that lists all Tag entities ordered by name (id, name, color)\nQuery:\treturn qx().ofType(EARS.Entity.Tag)\n.orderBy(‘name’)\n.pick([‘id’, ‘name’, ‘color’]);\n\nPrompt: Generate a query for the five most-recent active Thread entities, returning all fields\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘active’)\n.orderBy(‘timestamp’, ‘desc’)\n.limit(5)\n.pickAll();\n\nPrompt: Generate a query that returns every attribute for entity Thread-1\nQuery:\treturn qx(‘Thread-1’).pickAll();"
+      "content": [
+        {
+          "type": "text",
+          "content": "Prompt: Generate a complex relation query that finds entities with outgoing contains relations and summarizes them (limit 20 results)\nQuery:\tconst results = [];\nconst allEntities = qx().ids();\nfor (const entityId of allEntities) {\nconst targets = qx(entityId).linksTo(‘contains’, Object.values(EARS.Entity)).ids();\nif (targets.length > 0) {\nconst entityData = qx(entityId).pickOne([‘id’]);\nconst allData   = getAll(entityId);\nresults.push({\n…entityData,\n…allData,\nrelationType: ‘contains’,\ntargetCount : targets.length,\ntargets      : targets.slice(0, 5).map(targetId => ({\nid  : targetId,\ntype: targetId.split(’-’)[0]\n}))\n});\n}\n}\nreturn results.slice(0, 20);\n\nPrompt: Generate a query that groups Thread entities by status and returns each status with its count\nQuery:\tconst grouped = qx(EARS.Entity.Thread).groupBy(‘status’);\nreturn Array.from(grouped.entries()).map(([status, items]) => ({\nstatus,\ncount: items.count()\n}));\n\nPrompt: Generate a call that returns comprehensive schema statistics (entities, attributes, relations)\nQuery:\treturn getSchemaStats();\n\nPrompt: Generate a paginated query that returns 10 Thread items per call and exposes items and nextCursor\nQuery:\tconst { items, nextCursor } = qx(EARS.Entity.Thread).page(10);\nreturn items;\n\nPrompt: Generate a query that counts all Thread entities with status completed\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘completed’)\n.count();\n\nPrompt: Generate a query that returns messages linked to Thread-1 via the contains relation (id, text, sender)\nQuery:\treturn qx(‘Thread-1’)\n.linksTo(‘contains’, EARS.Entity.Message)\n.pick([‘id’, ‘text’, ‘sender’]);\n\nPrompt: Generate a query that gets unique role values from Flow entities (id, name, role)\nQuery:\treturn qx(EARS.Entity.Flow)\n.distinct(‘role’)\n.pick([‘id’, ‘name’, ‘role’]);\n\nPrompt: Generate a query that lists all Tag entities ordered by name (id, name, color)\nQuery:\treturn qx().ofType(EARS.Entity.Tag)\n.orderBy(‘name’)\n.pick([‘id’, ‘name’, ‘color’]);\n\nPrompt: Generate a query for the five most-recent active Thread entities, returning all fields\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘active’)\n.orderBy(‘timestamp’, ‘desc’)\n.limit(5)\n.pickAll();\n\nPrompt: Generate a query that returns every attribute for entity Thread-1\nQuery:\treturn qx(‘Thread-1’).pickAll();"
+        }
+      ]
     },
     "Document-02634655-36a5-4245-afaf-a41db7215820": {
       "name": "transaction-examples",
       "shortCode": "DOC-2",
       "updatedAt": 1752616292264,
       "createdAt": 1752616292264,
-      "content": "Prompt: Generate a transaction that defines a Flow entity with attributes, roles, and contains relations in a single call\nQuery:\tconst flowId = tx(EARS.Entity.Flow)\n.define({\nattributes: {\nname: ‘Customer Onboarding’,\ndescription: ‘Automated customer onboarding flow’,\nstatus: ‘draft’,\nversion: ‘1.0.0’\n},\nroles: [‘template’, ‘featured’],\nlinks: {\ncontains: [\ntx(EARS.Entity.Node)\n.put(‘type’, ‘start’)\n.put(‘label’, ‘Begin Onboarding’)\n.id(),\ntx(EARS.Entity.Node)\n.put(‘type’, ‘action’)\n.put(‘label’, ‘Collect Information’)\n.id()\n]\n}\n})\n.id();\nreturn qx(flowId).pickAll();\n\nPrompt: Generate a transaction that builds a three-level thread hierarchy and demonstrates safeLink cycle prevention\nQuery:\tconst root = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Root Thread’)\n.id();\nconst child = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Child Thread’)\n.id();\nconst grandchild = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Grandchild Thread’)\n.id();\ntx(root).safeLink(EARS.RelKind.parent_of, child);\ntx(child).safeLink(EARS.RelKind.parent_of, grandchild);\ntry {\ntx(grandchild).safeLink(EARS.RelKind.parent_of, root, { preventCycles: true });\n} catch (error) {\nreturn { hierarchy: { root, child, grandchild }, cyclePreventionWorking: true };\n}\n\nPrompt: Generate a transaction that creates Agent, Thread, and Tag entities and links them with contains, has, and symmetric relates_to relations\nQuery:\tconst agentId  = tx(EARS.Entity.Agent) .put(‘name’, ‘Multi-Agent’).id();\nconst threadId = tx(EARS.Entity.Thread).put(‘title’, ‘Multi-Agent Thread’).id();\nconst tagId    = tx(EARS.Entity.Tag)  .put(‘name’, ‘important’).put(‘color’, ‘#FF0000’).id();\ntx(agentId) .link(EARS.RelKind.contains , threadId);\ntx(threadId).link(EARS.RelKind.has      , tagId);\ntx(agentId) .link(EARS.RelKind.relates_to, threadId, { symmetric: true });\nreturn {\nentities    : { agentId, threadId, tagId },\nagentThreads: qx(agentId) .linksTo(‘contains’, EARS.Entity.Thread).ids(),\nthreadTags  : qx(threadId).linksTo(‘has’,      EARS.Entity.Tag)   .ids()\n};\n\nPrompt: Generate a transaction that batch-updates multiple attributes on an Agent entity\nQuery:\tconst entityId = tx(EARS.Entity.Agent).put(‘name’, ‘Agent Smith’).id();\ntx(entityId).batchPut({\nstatus      : ‘active’,\nlastActive  : Date.now(),\ncapabilities: [‘chat’, ‘analysis’, ‘search’],\nconfig      : { temperature: 0.7, maxTokens: 1000 }\n});\nreturn qx(entityId).pickAll();\n\nPrompt: Generate a transaction that grants and revokes roles on an Agent and enforces a primary role\nQuery:\tconst agentId = tx(EARS.Entity.Agent)\n.put(‘name’, ‘Role Test Agent’)\n.grant(‘assistant’)\n.grant(‘analyzer’)\n.id();\nconst initialRoles = getRoles(agentId);\ntx(agentId).revoke(‘assistant’).grant(‘supervisor’).ensure(‘primary’);\nconst finalRoles = getRoles(agentId);\nreturn { agentId, initialRoles, finalRoles };\n\nPrompt: Generate a transaction that creates a Thread and an initial Message linked to it, then returns both ids\nQuery:\tconst threadId = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Customer Support’)\n.put(‘status’, ‘open’)\n.put(‘createdAt’, Date.now())\n.id();\nconst messageId = tx(EARS.Entity.Message)\n.put(‘text’, ‘Hello, how can I help you today?’)\n.put(‘timestamp’, Date.now())\n.put(‘sender’, ‘assistant’)\n.link(EARS.RelKind.CONTAINS, threadId)\n.id();\ntx(threadId).link(EARS.RelKind.contains, messageId);\nreturn { threadId, messageId };\n\nPrompt: Generate a transaction that deletes a Tag entity and confirms removal\nQuery:\tconst tempId = tx(EARS.Entity.Tag)\n.put(‘name’, ‘temporary’)\n.put(‘color’, ‘#808080’)\n.id();\nconst exists = qx(tempId).pickOne([‘id’, ‘name’]);\ntx(tempId).destroy();\nconst afterDelete = qx(tempId).pickOne([‘id’]);\nreturn { created: exists, afterDelete: afterDelete || ‘Entity not found (successfully deleted)’ };"
+      "content": [
+        {
+          "type": "text",
+          "content": "Prompt: Generate a transaction that defines a Flow entity with attributes, roles, and contains relations in a single call\nQuery:\tconst flowId = tx(EARS.Entity.Flow)\n.define({\nattributes: {\nname: ‘Customer Onboarding’,\ndescription: ‘Automated customer onboarding flow’,\nstatus: ‘draft’,\nversion: ‘1.0.0’\n},\nroles: [‘template’, ‘featured’],\nlinks: {\ncontains: [\ntx(EARS.Entity.Node)\n.put(‘type’, ‘start’)\n.put(‘label’, ‘Begin Onboarding’)\n.id(),\ntx(EARS.Entity.Node)\n.put(‘type’, ‘action’)\n.put(‘label’, ‘Collect Information’)\n.id()\n]\n}\n})\n.id();\nreturn qx(flowId).pickAll();\n\nPrompt: Generate a transaction that builds a three-level thread hierarchy and demonstrates safeLink cycle prevention\nQuery:\tconst root = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Root Thread’)\n.id();\nconst child = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Child Thread’)\n.id();\nconst grandchild = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Grandchild Thread’)\n.id();\ntx(root).safeLink(EARS.RelKind.parent_of, child);\ntx(child).safeLink(EARS.RelKind.parent_of, grandchild);\ntry {\ntx(grandchild).safeLink(EARS.RelKind.parent_of, root, { preventCycles: true });\n} catch (error) {\nreturn { hierarchy: { root, child, grandchild }, cyclePreventionWorking: true };\n}\n\nPrompt: Generate a transaction that creates Agent, Thread, and Tag entities and links them with contains, has, and symmetric relates_to relations\nQuery:\tconst agentId  = tx(EARS.Entity.Agent) .put(‘name’, ‘Multi-Agent’).id();\nconst threadId = tx(EARS.Entity.Thread).put(‘title’, ‘Multi-Agent Thread’).id();\nconst tagId    = tx(EARS.Entity.Tag)  .put(‘name’, ‘important’).put(‘color’, ‘#FF0000’).id();\ntx(agentId) .link(EARS.RelKind.contains , threadId);\ntx(threadId).link(EARS.RelKind.has      , tagId);\ntx(agentId) .link(EARS.RelKind.relates_to, threadId, { symmetric: true });\nreturn {\nentities    : { agentId, threadId, tagId },\nagentThreads: qx(agentId) .linksTo(‘contains’, EARS.Entity.Thread).ids(),\nthreadTags  : qx(threadId).linksTo(‘has’,      EARS.Entity.Tag)   .ids()\n};\n\nPrompt: Generate a transaction that batch-updates multiple attributes on an Agent entity\nQuery:\tconst entityId = tx(EARS.Entity.Agent).put(‘name’, ‘Agent Smith’).id();\ntx(entityId).batchPut({\nstatus      : ‘active’,\nlastActive  : Date.now(),\ncapabilities: [‘chat’, ‘analysis’, ‘search’],\nconfig      : { temperature: 0.7, maxTokens: 1000 }\n});\nreturn qx(entityId).pickAll();\n\nPrompt: Generate a transaction that grants and revokes roles on an Agent and enforces a primary role\nQuery:\tconst agentId = tx(EARS.Entity.Agent)\n.put(‘name’, ‘Role Test Agent’)\n.grant(‘assistant’)\n.grant(‘analyzer’)\n.id();\nconst initialRoles = getRoles(agentId);\ntx(agentId).revoke(‘assistant’).grant(‘supervisor’).ensure(‘primary’);\nconst finalRoles = getRoles(agentId);\nreturn { agentId, initialRoles, finalRoles };\n\nPrompt: Generate a transaction that creates a Thread and an initial Message linked to it, then returns both ids\nQuery:\tconst threadId = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Customer Support’)\n.put(‘status’, ‘open’)\n.put(‘createdAt’, Date.now())\n.id();\nconst messageId = tx(EARS.Entity.Message)\n.put(‘text’, ‘Hello, how can I help you today?’)\n.put(‘timestamp’, Date.now())\n.put(‘sender’, ‘assistant’)\n.link(EARS.RelKind.CONTAINS, threadId)\n.id();\ntx(threadId).link(EARS.RelKind.contains, messageId);\nreturn { threadId, messageId };\n\nPrompt: Generate a transaction that deletes a Tag entity and confirms removal\nQuery:\tconst tempId = tx(EARS.Entity.Tag)\n.put(‘name’, ‘temporary’)\n.put(‘color’, ‘#808080’)\n.id();\nconst exists = qx(tempId).pickOne([‘id’, ‘name’]);\ntx(tempId).destroy();\nconst afterDelete = qx(tempId).pickOne([‘id’]);\nreturn { created: exists, afterDelete: afterDelete || ‘Entity not found (successfully deleted)’ };"
+        }
+      ]
     },
-    "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613": {
-      "name": "google.examples",
+    "Document-ff4e3503-54a7-4bf8-bfaa-2582c4e22d90": {
+      "name": "google",
       "shortCode": "DOC-3",
-      "updatedAt": 1752653655579,
-      "createdAt": 1752653655579,
-      "content": "Can you google how to reset an iPhone 13?\n\nSearch Google for the population of Iceland.\n\nLook up on Google: best Italian restaurants near me.\n\nCould you run a quick Google search for “quantum computing basics”?\n\nFind on Google the weather tomorrow in Tokyo.\n\nGoogle the definition of “serendipity.”\n\nHey, check Google for the latest Tesla stock price.\n\nPull up Google results for “JavaScript debounce vs throttle.”\n\nGo to Google and see who won the 2024 World Series.\n\nUse Google to find a tutorial on knitting socks."
-    },
-    "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9": {
-      "name": "google.usage",
-      "shortCode": "DOC-4",
-      "updatedAt": 1752653684393,
-      "createdAt": 1752653684393,
-      "content": "In case the user wants to google search something."
-    },
-    "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3": {
-      "name": "google.procedure",
-      "shortCode": "DOC-5",
-      "updatedAt": 1752653694470,
-      "createdAt": 1752653694470,
-      "content": "Google search"
+      "updatedAt": 1754454417250,
+      "createdAt": 1754454417250,
+      "content": [
+        {
+          "type": "text",
+          "content": "In case the user wants to google something."
+        },
+        {
+          "type": "field",
+          "fields": [
+            {
+              "key": "action",
+              "value": "Google Search"
+            }
+          ]
+        }
+      ]
     },
     "Artifact-dashboard-1": {
       "role": "dashboard_artifact",
@@ -1165,7 +1161,7 @@
     }
   },
   "metadata": {
-    "entityCount": 98,
+    "entityCount": 94,
     "attributeKinds": [
       "timestamp",
       "name",
