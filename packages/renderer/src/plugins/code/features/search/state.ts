@@ -144,15 +144,8 @@ export const searchState = setup({
     }),
     
     handleCodeStartup: ({ self }) => {
-      // Check if we have a directory from parent context
-      const parentContext = getParentContext(self)
-      if (!parentContext?.rootDirectory) {
-        // Show error if no directory
-        self.send({ 
-          type: 'search.ERROR', 
-          message: 'No directory selected. Please select a directory first.' 
-        })
-      }
+      // No immediate action needed on startup
+      // Error will be shown if user tries to search without a directory
     },
     
     handleDirectoryChanged: ({ self, context, event }) => {
