@@ -5,7 +5,7 @@
       <WindowControls v-if="!isMac" />
     </div>
     
-    <div class="flex flex-col h-full py-4">
+    <div class="flex flex-col h-full">
       <!-- Scrollable section -->
       <div class="flex-1 overflow-y-auto scrollbar-hide">
         <div class="flex flex-col items-center space-y-6">
