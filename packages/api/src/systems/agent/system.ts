@@ -90,7 +90,7 @@ export const agentSystem = setup({
         artifacts
       }));
     },
-    fbeUserMessage: ({ system, event }) => {
+    forwardUserMessage: ({ system, event }) => {
       const { text, mode, threadId } = typeOf('USER_MSG', event);
       const brainActor = getActor(system, brain);
       brainActor.send({
@@ -128,7 +128,7 @@ export const agentSystem = setup({
       idle: {
         on: {
           USER_MSG: {
-            actions: 'fbeUserMessage',
+            actions: 'forwardUserMessage',
           },
         },
       },
