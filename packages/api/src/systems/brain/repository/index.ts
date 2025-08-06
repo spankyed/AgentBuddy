@@ -484,7 +484,7 @@ export const brainCommands = {
     systemActor?: any
   ): OperationResult => {
     try {
-      tx(tNodeId).put('status', status);
+      tx(tNodeId).update('status', status);
 
       emitTNodeEvent('TNODE_UPDATED', { 
         data: { tNodeId, status, eventTNodeId }

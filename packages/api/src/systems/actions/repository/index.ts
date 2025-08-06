@@ -104,13 +104,12 @@ export const actionCommands = {
       
       const { parameters, ...rest } = updates;
       
-      // If parameters are provided, we need to replace the entire input object
+      // If parameters are provided, use update to replace the entire input object
       if (parameters !== undefined) {
-        // First, drop the existing input to ensure complete replacement
-        const transaction = tx(id);
-        transaction.drop(EARS.AttrKind.Custom('input'));
-        transaction.put('input', parameters);
-        transaction.merge('updatedAt', Date.now());
+        tx(id).updateBatch({
+          input: parameters,
+          updatedAt: Date.now()
+        });
         
         // Update other fields normally
         if (Object.keys(rest).length > 0) {

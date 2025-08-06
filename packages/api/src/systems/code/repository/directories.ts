@@ -69,9 +69,10 @@ export const directoryCommands = {
     
     if (existing) {
       // Update existing directory
-      tx(existing.id)
-        .merge('lastAccessedAt', now)
-        .merge('label', label || existing.label)
+      tx(existing.id).updateBatch({
+        lastAccessedAt: now,
+        label: label || existing.label
+      })
       
       return existing.id
     }
@@ -96,15 +97,15 @@ export const directoryCommands = {
     // First, remove lastOpened role from any existing directory
     const currentLastOpened = directoryQueries.getLastOpenedDirectory()
     if (currentLastOpened) {
-      tx(currentLastOpened.id)
-        .merge('role', DIRECTORY_ROLE.RECENT)
+      tx(currentLastOpened.id).update('role', DIRECTORY_ROLE.RECENT)
     }
     
     // Save/update the directory and mark it as last opened
     const id = directoryCommands.saveDirectory(path)
-    tx(id)
-      .merge('role', DIRECTORY_ROLE.LAST_OPENED)
-      .merge('lastAccessedAt', Date.now())
+    tx(id).updateBatch({
+      role: DIRECTORY_ROLE.LAST_OPENED,
+      lastAccessedAt: Date.now()
+    })
   },
 
   /**
@@ -113,12 +114,8 @@ export const directoryCommands = {
   clearAll: (): void => {
     const allDirectories = qx(EARS.Entity.Directory).pickAll() as unknown as DirectoryEntity[]
     allDirectories.forEach(dir => {
-      // Remove all attributes to effectively delete the entity
-      tx(dir.id).put('label', null)
-      tx(dir.id).put('path', null)
-      tx(dir.id).put('role', null)
-      tx(dir.id).put('lastAccessedAt', null)
-      tx(dir.id).put('createdAt', null)
+      // Properly destroy the entity instead of nulling attributes
+      tx(dir.id).destroy()
     })
   }
 }

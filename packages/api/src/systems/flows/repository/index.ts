@@ -117,7 +117,7 @@ function updateNodeRelations(nodeType: NodeKind, nodeId: EARS.EntityId, relation
     const relationId = relations[config.field];
     if (relationId) {
       tx(nodeId)
-        .merge(config.field, relationId)
+        .update(config.field, relationId)
         .link(EARS.RelKind.INSTANCE_OF, relationId as EARS.EntityId);
     }
   }
@@ -392,9 +392,10 @@ export const flowsCommands = {
     try {
       const ts = getTimestamp();
       
-      tx(flowId)
-        .merge("label", label)
-        .merge("updatedAt", ts);
+      tx(flowId).updateBatch({
+        label,
+        updatedAt: ts
+      });
       
       return operationSuccess();
     } catch (error) {
@@ -424,21 +425,13 @@ export const flowsCommands = {
       // Build the transaction for node attributes
       const transaction = tx(nodeId);
       
-      // Update each field
+      // Update each field using the new update method that replaces values
       Object.entries(fieldsToUpdate).forEach(([key, value]) => {
-        // For arrays, we need to replace the entire value, not merge
-        if (Array.isArray(value)) {
-          // First drop the old value, then put the new one
-          // ! shouldn't need to do this, but EARS allows multiple attributes with the same key
-          transaction.drop(EARS.AttrKind.Custom(key));
-          transaction.put(key, value);
-        } else {
-          transaction.merge(key as any, value);
-        }
+        transaction.update(key, value);
       });
       
       // Always update the timestamp
-      transaction.merge("updatedAt", ts);
+      transaction.update("updatedAt", ts);
       
       return operationSuccess();
     } catch (error) {

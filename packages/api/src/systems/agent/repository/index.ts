@@ -286,7 +286,7 @@ export const agentCommands = {
       tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
       
       // Update thread's lastMessageTimestamp
-      tx(threadId).put('lastMessageTimestamp', timestamp);
+      tx(threadId).update('lastMessageTimestamp', timestamp);
       
       return successResult({
         id: messageId,

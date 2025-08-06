@@ -60,16 +60,17 @@ export const terminalCommands = {
     const now = Date.now()
     
     // Create terminal entity with all required attributes using the provided ID
-    tx(terminalInfo.id)
-      .put('title', terminalInfo.title)
-      .put('pid', terminalInfo.pid)
-      .put('shell', terminalInfo.shell || '/bin/bash')
-      .put('cwd', terminalInfo.cwd)
-      .put('active', true)
-      .put('cols', terminalInfo.cols)
-      .put('rows', terminalInfo.rows)
-      .put('createdAt', now)
-      .put('updatedAt', now)
+    tx(terminalInfo.id).updateBatch({
+      title: terminalInfo.title,
+      pid: terminalInfo.pid,
+      shell: terminalInfo.shell || '/bin/bash',
+      cwd: terminalInfo.cwd,
+      active: true,
+      cols: terminalInfo.cols,
+      rows: terminalInfo.rows,
+      createdAt: now,
+      updatedAt: now
+    })
     
     return terminalInfo.id
   },
@@ -81,10 +82,11 @@ export const terminalCommands = {
       return
     }
     
-    tx(id)
-      .merge('cols', cols)
-      .merge('rows', rows)
-      .merge('updatedAt', Date.now())
+    tx(id).updateBatch({
+      cols,
+      rows,
+      updatedAt: Date.now()
+    })
   },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
@@ -93,9 +95,10 @@ export const terminalCommands = {
       return
     }
     
-    tx(id)
-      .merge('pid', pid)
-      .merge('updatedAt', Date.now())
+    tx(id).updateBatch({
+      pid,
+      updatedAt: Date.now()
+    })
   },
   
   markClosed: (id: EARS.EntityId): void => {
@@ -105,10 +108,11 @@ export const terminalCommands = {
     }
     
     const now = Date.now()
-    tx(id)
-      .merge('active', false)
-      .merge('closedAt', now)
-      .merge('updatedAt', now)
+    tx(id).updateBatch({
+      active: false,
+      closedAt: now,
+      updatedAt: now
+    })
   },
   
   delete: (id: EARS.EntityId): void => {
@@ -119,10 +123,11 @@ export const terminalCommands = {
     
     // Mark terminal as deleted instead of actually deleting
     const now = Date.now()
-    tx(id)
-      .merge('active', false)
-      .merge('deleted', true)
-      .merge('deletedAt', now)
-      .merge('updatedAt', now)
+    tx(id).updateBatch({
+      active: false,
+      deleted: true,
+      deletedAt: now,
+      updatedAt: now
+    })
   }
 }

@@ -114,17 +114,19 @@ export const threadCommands = {
       };
       const shortCode = `${code[input.threadType]}-${count}` as ThreadTypeShortCode;
 
-      const id = tx(EARS.Entity.Thread)
-        .put("status", "backlog")
-        .put("shortCode", shortCode)
-        .put("timestamp", ts)
-        .put("lastMessageTimestamp", ts)
-        .put("createdAt", ts)
-        .put("updatedAt", ts)
-        .put("topic", input.topic)
-        .put("instructions", input.instructions)
-        .put("threadType", input.threadType)
-        .id();
+      const id = tx(EARS.Entity.Thread).id();
+      
+      tx(id).updateBatch({
+        status: "backlog",
+        shortCode: shortCode,
+        timestamp: ts,
+        lastMessageTimestamp: ts,
+        createdAt: ts,
+        updatedAt: ts,
+        topic: input.topic,
+        instructions: input.instructions,
+        threadType: input.threadType
+      });
 
       // Create relationships
       for (const tag of input.tags ?? []) {
@@ -193,11 +195,14 @@ export const threadCommands = {
         throw new RepositoryError('Tag name is required', RepositoryErrorCode.VALIDATION_ERROR);
       }
       
-      const id = tx(EARS.Entity.Tag)
-        .put("name", name)
-        .put("createdAt", Date.now())
-        .put("updatedAt", Date.now())
-        .id();
+      const id = tx(EARS.Entity.Tag).id();
+      
+      const now = Date.now();
+      tx(id).updateBatch({
+        name: name,
+        createdAt: now,
+        updatedAt: now
+      });
       
       return successResult(id);
     } catch (error) {
