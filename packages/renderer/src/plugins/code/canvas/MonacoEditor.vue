@@ -84,7 +84,13 @@ const switchToFile = (filePath: string, content: string) => {
   // Get or create model for new file
   let model = models.get(filePath)
   if (!model) {
-    const uri = monaco.Uri.parse(`file:///${filePath.replace(/\\/g, '/')}`)
+    // Properly format the file URI based on platform
+    const normalizedPath = filePath.replace(/\\/g, '/')
+    const uri = monaco.Uri.parse(
+      normalizedPath.startsWith('/') 
+        ? `file://${normalizedPath}`  // Unix-like paths already have leading /
+        : `file:///${normalizedPath}` // Windows paths need the extra /
+    )
     model = monaco.editor.createModel(content, resolvedLanguage.value, uri)
     models.set(filePath, model)
     
