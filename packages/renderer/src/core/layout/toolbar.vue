@@ -1,7 +1,7 @@
 <template>
   <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800">
     <!-- Window controls area (macOS traffic lights) -->
-    <div class="window-controls-area h-[57px] flex items-center justify-center">
+    <div class="window-controls-area h-[50px] flex items-center justify-center">
       <WindowControls v-if="!isMac" />
     </div>
     
