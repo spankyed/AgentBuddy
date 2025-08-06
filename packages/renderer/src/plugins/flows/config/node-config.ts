@@ -46,16 +46,16 @@ export type StatusVariant = 'simple' | 'detailed'
 
 // Color scheme classes for each node type (static for Tailwind)
 const NODE_STYLE_CLASSES = {
-  // Clean, flat node styling with subtle borders
+  // Slightly brighter, harmonious backgrounds
   gradient: {
-    purple: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    blue: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    amber: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    cyan: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    orange: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    emerald: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    indigo: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
-    neutral: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm'
+    purple: 'bg-purple-500/[0.15] backdrop-blur-sm border-purple-500/25 hover:bg-purple-500/[0.20] hover:border-purple-500/35 shadow-sm',
+    blue: 'bg-blue-500/[0.15] backdrop-blur-sm border-blue-500/25 hover:bg-blue-500/[0.20] hover:border-blue-500/35 shadow-sm',
+    amber: 'bg-amber-500/[0.15] backdrop-blur-sm border-amber-500/25 hover:bg-amber-500/[0.20] hover:border-amber-500/35 shadow-sm',
+    cyan: 'bg-cyan-500/[0.15] backdrop-blur-sm border-cyan-500/25 hover:bg-cyan-500/[0.20] hover:border-cyan-500/35 shadow-sm',
+    orange: 'bg-orange-500/[0.15] backdrop-blur-sm border-orange-500/25 hover:bg-orange-500/[0.20] hover:border-orange-500/35 shadow-sm',
+    emerald: 'bg-emerald-500/[0.15] backdrop-blur-sm border-emerald-500/25 hover:bg-emerald-500/[0.20] hover:border-emerald-500/35 shadow-sm',
+    indigo: 'bg-indigo-500/[0.15] backdrop-blur-sm border-indigo-500/25 hover:bg-indigo-500/[0.20] hover:border-indigo-500/35 shadow-sm',
+    neutral: 'bg-neutral-500/[0.15] backdrop-blur-sm border-neutral-500/25 hover:bg-neutral-500/[0.20] hover:border-neutral-500/35 shadow-sm'
   },
   // Solid accent colors for meaningful indicators
   solid: {
@@ -327,14 +327,14 @@ export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: N
   const colorKey = getNodeColorKey(effectiveType)
   
   const accentMap: Record<string, string> = {
-    purple: 'bg-purple-400/60',
-    blue: 'bg-blue-400/60',
-    amber: 'bg-amber-400/60',
-    cyan: 'bg-cyan-400/60',
-    orange: 'bg-orange-400/60',
-    emerald: 'bg-emerald-400/60',
-    indigo: 'bg-indigo-400/60',
-    neutral: 'bg-neutral-500/60'
+    purple: 'bg-purple-400/40',
+    blue: 'bg-blue-400/40',
+    amber: 'bg-amber-400/40',
+    cyan: 'bg-cyan-400/40',
+    orange: 'bg-orange-400/40',
+    emerald: 'bg-emerald-400/40',
+    indigo: 'bg-indigo-400/40',
+    neutral: 'bg-neutral-400/40'
   }
   
   return accentMap[colorKey] || accentMap.neutral
