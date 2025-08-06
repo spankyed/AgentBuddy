@@ -59,6 +59,13 @@ export const createApplicationState = () => setup({
         const isCmd = e.metaKey; // Cmd on Mac, Windows key on PC
         const isOption = e.altKey; // Option on Mac, Alt on PC
         
+        // Check for cmd+b to toggle inspection panel
+        if (isCmd && !isOption && e.key === 'b') {
+          e.preventDefault();
+          system.get(application).send({ type: 'TOGGLE_INSPECTION_PANEL' });
+          return;
+        }
+        
         // Check for plugin switching hotkeys
         if (isCmd && isOption) {
           if (e.key === 'ArrowUp') {
