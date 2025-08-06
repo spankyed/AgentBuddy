@@ -376,8 +376,37 @@ const codeState = setup({
       }
     }),
     
-    handleHotkey: ({ event, self, context }) => {
+    handleHotkey: ({ event, self, context, system }) => {
       const hotkeyEvent = event as HotkeyEvent;
+      
+      // Check for Ctrl+` to open terminal at current directory
+      if (hotkeyEvent.ctrlKey && !hotkeyEvent.altKey && hotkeyEvent.key === '`') {
+        console.log('reached Ctrl+` hotkey handler');
+        hotkeyEvent.preventDefault();
+        
+        // Look for an existing terminal at the current directory
+        const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
+          return 'isTerminal' in file && 
+                 file.isTerminal === true && 
+                 file.terminalInfo.cwd === context.currentDirectory;
+        });
+        
+        if (existingTerminal) {
+          // Activate the existing terminal tab
+          self.send({
+            type: 'UPDATE_STATE',
+            updates: { activeFilePath: existingTerminal.path }
+          });
+        } else {
+          // Create a new terminal at the current directory
+          system.get('terminal')?.send({
+            type: 'terminal.CREATE',
+            title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
+            cwd: context.currentDirectory
+          });
+        }
+        return;
+      }
       
       // Check for Cmd+Option+Arrow hotkeys
       if (hotkeyEvent.metaKey && hotkeyEvent.altKey) {
