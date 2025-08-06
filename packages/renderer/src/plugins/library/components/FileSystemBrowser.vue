@@ -1,5 +1,36 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
+    <!-- Input Dialogs -->
+    <InputDialog
+      v-model="folderDialog.show"
+      title="Create New Folder"
+      description="Enter a name for the new folder"
+      placeholder="Folder name"
+      confirm-text="Create"
+      @confirm="handleCreateFolder"
+      @cancel="folderDialog.show = false"
+    />
+    
+    <InputDialog
+      v-model="renameDialog.show"
+      title="Rename Item"
+      description="Enter a new name"
+      placeholder="New name"
+      :initial-value="renameDialog.currentName"
+      confirm-text="Rename"
+      @confirm="handleRename"
+      @cancel="renameDialog.show = false"
+    />
+    
+    <ConfirmDialog
+      v-model="deleteDialog.show"
+      title="Delete Item"
+      :description="deleteDialog.message"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      @confirm="handleDelete"
+      @cancel="deleteDialog.show = false"
+    />
     <!-- Toolbar -->
     <div class="flex flex-col gap-3 px-6 py-3 border-b border-neutral-800">
       <!-- Navigation Row -->
@@ -182,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { 
   Plus, 
   FolderPlus, 
@@ -195,6 +226,8 @@ import {
   Trash2
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
+import InputDialog from './InputDialog.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
 
 const props = defineProps<{
@@ -219,6 +252,23 @@ const emit = defineEmits<{
   BREADCRUMB_CLICK: [{ folderId: string | null }]
   EDIT_DOCUMENT: [{ documentId: string }]
 }>()
+
+// Dialog state
+const folderDialog = reactive({
+  show: false
+})
+
+const renameDialog = reactive({
+  show: false,
+  currentItem: null as LibraryItem | null,
+  currentName: ''
+})
+
+const deleteDialog = reactive({
+  show: false,
+  currentItem: null as LibraryItem | null,
+  message: ''
+})
 
 const sortedItems = computed(() => {
   const sorted = [...props.items].sort((a, b) => {
@@ -300,10 +350,12 @@ function createDocument() {
 }
 
 function createFolder() {
-  const name = prompt('Folder name:')
-  if (name?.trim()) {
-    emit('CREATE_FOLDER', { name: name.trim() })
-  }
+  folderDialog.show = true
+}
+
+function handleCreateFolder(name: string) {
+  emit('CREATE_FOLDER', { name })
+  folderDialog.show = false
 }
 
 function renameItem(item: LibraryItem) {
@@ -311,19 +363,36 @@ function renameItem(item: LibraryItem) {
     // For documents, emit edit document event
     emit('EDIT_DOCUMENT', { documentId: item.id })
   } else {
-    // For folders, rename inline
-    const name = prompt('New name:', item.name)
-    if (name?.trim() && name !== item.name) {
-      emit('RENAME_ITEM', { itemId: item.id, name: name.trim() })
-    }
+    // For folders, show rename dialog
+    renameDialog.currentItem = item
+    renameDialog.currentName = item.name
+    renameDialog.show = true
   }
 }
 
+function handleRename(name: string) {
+  if (renameDialog.currentItem && name !== renameDialog.currentItem.name) {
+    emit('RENAME_ITEM', { itemId: renameDialog.currentItem.id, name })
+  }
+  renameDialog.show = false
+  renameDialog.currentItem = null
+  renameDialog.currentName = ''
+}
+
 function deleteItem(item: LibraryItem) {
-  if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-    emit('SELECT_ITEMS', { itemIds: [item.id] })
+  deleteDialog.currentItem = item
+  deleteDialog.message = `Are you sure you want to delete "${item.name}"?`
+  deleteDialog.show = true
+}
+
+function handleDelete() {
+  if (deleteDialog.currentItem) {
+    emit('SELECT_ITEMS', { itemIds: [deleteDialog.currentItem.id] })
     emit('DELETE_SELECTED_ITEMS')
   }
+  deleteDialog.show = false
+  deleteDialog.currentItem = null
+  deleteDialog.message = ''
 }
 
 function formatDate(dateString: string) {
