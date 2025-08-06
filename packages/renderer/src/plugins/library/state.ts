@@ -281,6 +281,14 @@ export const librarySystem = setup({
     clearEditingDocument: assign({
       editingDocument: undefined,
     }),
+    updateEditingDocument: assign({
+      editingDocument: ({ context, event }) => {
+        if (event.type === 'DOCUMENT_UPDATED' && context.editingDocument?.id === event.data.document.id) {
+          return event.data.document
+        }
+        return context.editingDocument
+      },
+    }),
     setDocuments: assign({
       documents: ({ event }) => {
         if (event.type === 'DOCUMENTS_LOADED') {
@@ -366,6 +374,9 @@ export const librarySystem = setup({
     // Creation success events - refresh current folder
     DOCUMENT_CREATED: {
       actions: 'requestFolderContents',
+    },
+    DOCUMENT_UPDATED: {
+      actions: ['requestFolderContents', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
       actions: 'requestFolderContents',

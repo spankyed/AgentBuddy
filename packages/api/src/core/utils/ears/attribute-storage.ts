@@ -85,9 +85,19 @@ function makeMutator() {
     if (i !== -1) drop(id, kind, i);
   };
 
-  return { add, merge, drop, dropIf };
+  const update = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
+    const b = bucket(kind);
+    // Replace the entire array with a single value
+    b.set(id, [val as EARS.AttributeValue]);
+    // Ensure entity is in index
+    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
+      .add(id);
+    logInternal("AU", false, kind, id, val);
+  };
+
+  return { add, merge, drop, dropIf, update };
 }
-export const { add: putAttr, merge: mergeAttr, drop: dropAttr, dropIf } =
+export const { add: putAttr, merge: mergeAttr, drop: dropAttr, dropIf, update: updateAttr } =
   makeMutator();
 
 /*─────────────────────────────────────────────────────────────

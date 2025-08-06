@@ -144,7 +144,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  SAVE_DOCUMENT: [{ name: string; content: ContentSection[]; tags: string[] }]
+  SAVE_DOCUMENT: [{ name: string; content: ContentSection[]; tags: string[]; collectionId?: string }]
   CANCEL_EDIT: []
 }>()
 
@@ -198,6 +198,7 @@ function handleSave() {
     name: formData.name,
     content: formData.content,
     tags: formData.tags,
+    collectionId: props.document.collectionId,
   })
 }
 

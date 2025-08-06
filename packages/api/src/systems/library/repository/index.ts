@@ -130,7 +130,7 @@ export async function createDocument(
   const documentCount = qx(EARS.Entity.Document).count() + 1
   const shortCode = `DOC-${documentCount}` as DocumentShortCode
 
-  tx(documentId).batchPut({
+  tx(documentId).updateBatch({
     name,
     content,
     shortCode,
@@ -162,12 +162,11 @@ export async function updateDocument(
   const documentId = id
   const now = Date.now()
 
-  tx(documentId)
-    .batchPut({
-      name,
-      content,
-      updatedAt: now,
-    })
+  tx(documentId).updateBatch({
+    name,
+    content,
+    updatedAt: now,
+  })
     
   const existingTags = await qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
@@ -202,17 +201,21 @@ export async function updateDocument(
   }
   const currentCollection = collections[0]
 
-  if (currentCollection && (!collectionId || currentCollection.id !== collectionId)) {
-    edgeStore.unlink({
-      sourceEntity: currentCollection.id as EARS.EntityId,
-      relationType: EARS.RelKind.CONTAINS,
-      targetEntity: documentId
-    })
+  // Only handle collection changes if a collectionId is explicitly provided
+  if (collectionId !== undefined) {
+    if (currentCollection && currentCollection.id !== collectionId) {
+      edgeStore.unlink({
+        sourceEntity: currentCollection.id as EARS.EntityId,
+        relationType: EARS.RelKind.CONTAINS,
+        targetEntity: documentId
+      })
+    }
+    
+    if (collectionId) {
+      tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
+    }
   }
-
-  if (collectionId) {
-    tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
-  }
+  // If collectionId is undefined, we keep the document in its current collection
 
   const document = await getDocument(documentId)
   return document!
@@ -330,7 +333,7 @@ export async function createCollection(
     attrs.description = description
   }
 
-  tx(collectionId).batchPut(attrs)
+  tx(collectionId).updateBatch(attrs)
   if (parentId) {
     tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
   }
@@ -367,7 +370,7 @@ export async function updateCollection(
     attrs.description = description
   }
 
-  tx(collectionId).batchPut(attrs)
+  tx(collectionId).updateBatch(attrs)
   const collections = await qx(collectionId).pickAll()
   const collection = collections[0]
   const documentCount = (await qx(collectionId)
@@ -757,7 +760,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
   const entityId = id
   const now = Date.now()
   
-  tx(entityId).batchPut({
+  tx(entityId).updateBatch({
     name,
     updatedAt: now,
   })
