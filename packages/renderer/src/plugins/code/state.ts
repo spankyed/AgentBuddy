@@ -16,6 +16,94 @@ import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
 
 export const id = 'code' as const;
+
+// Hotkey definitions
+interface HotkeyDefinition {
+  key: string
+  metaKey?: boolean
+  ctrlKey?: boolean
+  altKey?: boolean
+  shiftKey?: boolean
+  description: string
+  handler: (params: {
+    event: HotkeyEvent
+    context: Context
+    self: any
+    system: any
+  }) => void
+}
+
+const ALL_PANELS: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'terminal', 'actions', 'prompts'];
+
+const hotkeys: HotkeyDefinition[] = [
+  {
+    key: '`',
+    ctrlKey: true,
+    description: 'Open terminal at current directory',
+    handler: ({ event, context, self, system }) => {
+      event.preventDefault();
+      
+      // Look for an existing terminal at the current directory
+      const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
+        return 'isTerminal' in file && 
+               file.isTerminal === true && 
+               file.terminalInfo.cwd === context.currentDirectory;
+      });
+      
+      if (existingTerminal) {
+        // Activate the existing terminal tab
+        self.send({
+          type: 'UPDATE_STATE',
+          updates: { activeFilePath: existingTerminal.path }
+        });
+      } else {
+        // Create a new terminal at the current directory
+        system.get('terminal')?.send({
+          type: 'terminal.CREATE',
+          title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
+          cwd: context.currentDirectory
+        });
+      }
+    }
+  },
+  {
+    key: 'ArrowLeft',
+    metaKey: true,
+    altKey: true,
+    description: 'Navigate to previous panel',
+    handler: ({ event, context, self }) => {
+      event.preventDefault();
+      const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
+      const newIndex = currentIndex === 0 ? ALL_PANELS.length - 1 : currentIndex - 1;
+      self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
+    }
+  },
+  {
+    key: 'ArrowRight',
+    metaKey: true,
+    altKey: true,
+    description: 'Navigate to next panel',
+    handler: ({ event, context, self }) => {
+      event.preventDefault();
+      const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
+      const newIndex = currentIndex === ALL_PANELS.length - 1 ? 0 : currentIndex + 1;
+      self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
+    }
+  },
+  // Future hotkeys can be easily added here
+  // { key: 'p', metaKey: true, description: 'Quick open', handler: ... }
+];
+
+// Helper function to match hotkey
+function matchesHotkey(event: HotkeyEvent, hotkey: HotkeyDefinition): boolean {
+  return (
+    event.key === hotkey.key &&
+    (hotkey.metaKey === undefined || event.metaKey === hotkey.metaKey) &&
+    (hotkey.ctrlKey === undefined || event.ctrlKey === hotkey.ctrlKey) &&
+    (hotkey.altKey === undefined || event.altKey === hotkey.altKey) &&
+    (hotkey.shiftKey === undefined || event.shiftKey === hotkey.shiftKey)
+  );
+}
 export interface OpenFile {
   path: string
   content: string
@@ -379,55 +467,12 @@ const codeState = setup({
     handleHotkey: ({ event, self, context, system }) => {
       const hotkeyEvent = event as HotkeyEvent;
       
-      // Check for Ctrl+` to open terminal at current directory
-      if (hotkeyEvent.ctrlKey && !hotkeyEvent.altKey && hotkeyEvent.key === '`') {
-        console.log('reached Ctrl+` hotkey handler');
-        hotkeyEvent.preventDefault();
-        
-        // Look for an existing terminal at the current directory
-        const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
-          return 'isTerminal' in file && 
-                 file.isTerminal === true && 
-                 file.terminalInfo.cwd === context.currentDirectory;
-        });
-        
-        if (existingTerminal) {
-          // Activate the existing terminal tab
-          self.send({
-            type: 'UPDATE_STATE',
-            updates: { activeFilePath: existingTerminal.path }
-          });
-        } else {
-          // Create a new terminal at the current directory
-          system.get('terminal')?.send({
-            type: 'terminal.CREATE',
-            title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
-            cwd: context.currentDirectory
-          });
-        }
-        return;
-      }
+      // Find and execute matching hotkey handler
+      const matchingHotkey = hotkeys.find(hotkey => matchesHotkey(hotkeyEvent, hotkey));
       
-      // Check for Cmd+Option+Arrow hotkeys
-      if (hotkeyEvent.metaKey && hotkeyEvent.altKey) {
-        const allPanels: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'terminal', 'actions', 'prompts'];
-        const currentIndex = allPanels.indexOf(context.selectedPanel);
-        
-        if (hotkeyEvent.key === 'ArrowLeft') {
-          hotkeyEvent.preventDefault();
-          // Move to previous panel (wrap around)
-          const newIndex = currentIndex === 0 ? allPanels.length - 1 : currentIndex - 1;
-          self.send({ type: 'SELECT_PANEL', panel: allPanels[newIndex] });
-        } else if (hotkeyEvent.key === 'ArrowRight') {
-          hotkeyEvent.preventDefault();
-          // Move to next panel (wrap around)
-          const newIndex = currentIndex === allPanels.length - 1 ? 0 : currentIndex + 1;
-          self.send({ type: 'SELECT_PANEL', panel: allPanels[newIndex] });
-        }
+      if (matchingHotkey) {
+        matchingHotkey.handler({ event: hotkeyEvent, context, self, system });
       }
-      
-      // Add more hotkey handlers here in the future
-      // For example: Cmd+P for quick open could be added here
     },
   }
 }).createMachine({

@@ -33,6 +33,51 @@ export interface ApplicationContext {
 
 export const application = 'application' as const;
 
+// Global hotkey definitions
+interface GlobalHotkeyDefinition {
+  key: string
+  metaKey?: boolean
+  ctrlKey?: boolean
+  altKey?: boolean
+  shiftKey?: boolean
+  description: string
+  action: { type: string; payload?: any }
+}
+
+const globalHotkeys: GlobalHotkeyDefinition[] = [
+  {
+    key: 'b',
+    metaKey: true,
+    description: 'Toggle inspection panel',
+    action: { type: 'TOGGLE_INSPECTION_PANEL' }
+  },
+  {
+    key: 'ArrowUp',
+    metaKey: true,
+    altKey: true,
+    description: 'Switch to previous plugin',
+    action: { type: 'SWITCH_PLUGIN_UP' }
+  },
+  {
+    key: 'ArrowDown',
+    metaKey: true,
+    altKey: true,
+    description: 'Switch to next plugin',
+    action: { type: 'SWITCH_PLUGIN_DOWN' }
+  }
+];
+
+// Helper to match keyboard event with hotkey definition
+function matchesGlobalHotkey(e: KeyboardEvent, hotkey: GlobalHotkeyDefinition): boolean {
+  return (
+    e.key === hotkey.key &&
+    (hotkey.metaKey === undefined || e.metaKey === hotkey.metaKey) &&
+    (hotkey.ctrlKey === undefined || e.ctrlKey === hotkey.ctrlKey) &&
+    (hotkey.altKey === undefined || e.altKey === hotkey.altKey) &&
+    (hotkey.shiftKey === undefined || e.shiftKey === hotkey.shiftKey)
+  );
+}
+
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
@@ -56,30 +101,18 @@ export const createApplicationState = () => setup({
   actors: {
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        const isCmd = e.metaKey; // Cmd on Mac, Windows key on PC
-        const isOption = e.altKey; // Option on Mac, Alt on PC
+        // Check for global hotkeys first
+        const matchingGlobalHotkey = globalHotkeys.find(hotkey => 
+          matchesGlobalHotkey(e, hotkey)
+        );
         
-        // Check for cmd+b to toggle inspection panel
-        if (isCmd && !isOption && e.key === 'b') {
+        if (matchingGlobalHotkey) {
           e.preventDefault();
-          system.get(application).send({ type: 'TOGGLE_INSPECTION_PANEL' });
+          system.get(application).send(matchingGlobalHotkey.action);
           return;
         }
         
-        // Check for plugin switching hotkeys
-        if (isCmd && isOption) {
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            system.get(application).send({ type: 'SWITCH_PLUGIN_UP' });
-            return;
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            system.get(application).send({ type: 'SWITCH_PLUGIN_DOWN' });
-            return;
-          }
-        }
-        
-        // Forward all hotkeys (including cmd+option+left/right) to the active plugin
+        // Forward all other hotkeys to the active plugin
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
           key: e.key,
