@@ -193,13 +193,13 @@ export async function restoreSnapshot(snapshotData: SnapshotData): Promise<void>
         }
       } else {
         // Handle regular attributes
-        if (Array.isArray(attrValue)) {
-          for (const val of attrValue) {
-            putAttr(entityId as EARS.EntityId, attrKind as EARS.AttrKind, val);
-          }
-        } else {
+        // if (Array.isArray(attrValue)) {
+        //   for (const val of attrValue) {
+        //     putAttr(entityId as EARS.EntityId, attrKind as EARS.AttrKind, val);
+        //   }
+        // } else {
           putAttr(entityId as EARS.EntityId, attrKind as EARS.AttrKind, attrValue);
-        }
+        // }
       }
     }
   }

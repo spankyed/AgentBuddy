@@ -68,7 +68,7 @@ const currentEvents = computed(() => {
     CREATE_DOCUMENT: () => send({ type: 'CREATE_DOCUMENT' }),
     EDIT_DOCUMENT: (payload: { documentId: string }) => send({ type: 'EDIT_DOCUMENT', ...payload }),
     DELETE_DOCUMENT: (payload: { documentId: string }) => send({ type: 'DELETE_DOCUMENT', ...payload }),
-    SAVE_DOCUMENT: (payload: { name: string; content: string; tags: string[]; collectionId?: string }) =>
+    SAVE_DOCUMENT: (payload: { name: string; content: any; tags: string[]; collectionId?: string }) =>
       send({ type: 'SAVE_DOCUMENT', ...payload }),
     CANCEL_EDIT: () => send({ type: 'CANCEL_EDIT' }),
     VIEW_COLLECTIONS: () => send({ type: 'VIEW_COLLECTIONS' }),

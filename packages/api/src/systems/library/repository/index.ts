@@ -3,7 +3,7 @@ import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
@@ -50,7 +50,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
       return {
         id: doc.id,
         name: doc.name as string,
-        content: doc.content as string,
+        content: doc.content as ContentSection[],
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
@@ -95,7 +95,7 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
   return {
     id: documentId,
     name: document.name as string,
-    content: document.content as string,
+    content: document.content as ContentSection[],
     shortCode: document.shortCode as DocumentShortCode,
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
@@ -119,7 +119,7 @@ export async function getDocumentByShortCode(shortCode: DocumentShortCode): Prom
 
 export async function createDocument(
   name: string,
-  content: string,
+  content: ContentSection[],
   tags: string[],
   collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
@@ -130,7 +130,7 @@ export async function createDocument(
   const documentCount = qx(EARS.Entity.Document).count() + 1
   const shortCode = `DOC-${documentCount}` as DocumentShortCode
 
-  tx(documentId).batchPut({
+  tx(documentId).updateBatch({
     name,
     content,
     shortCode,
@@ -155,19 +155,18 @@ export async function createDocument(
 export async function updateDocument(
   id: EARS.EntityId,
   name: string,
-  content: string,
+  content: ContentSection[],
   tags: string[],
   collectionId?: EARS.EntityId
 ): Promise<DocumentDTO> {
   const documentId = id
   const now = Date.now()
 
-  tx(documentId)
-    .batchPut({
-      name,
-      content,
-      updatedAt: now,
-    })
+  tx(documentId).updateBatch({
+    name,
+    content,
+    updatedAt: now,
+  })
     
   const existingTags = await qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
@@ -202,17 +201,21 @@ export async function updateDocument(
   }
   const currentCollection = collections[0]
 
-  if (currentCollection && (!collectionId || currentCollection.id !== collectionId)) {
-    edgeStore.unlink({
-      sourceEntity: currentCollection.id as EARS.EntityId,
-      relationType: EARS.RelKind.CONTAINS,
-      targetEntity: documentId
-    })
+  // Only handle collection changes if a collectionId is explicitly provided
+  if (collectionId !== undefined) {
+    if (currentCollection && currentCollection.id !== collectionId) {
+      edgeStore.unlink({
+        sourceEntity: currentCollection.id as EARS.EntityId,
+        relationType: EARS.RelKind.CONTAINS,
+        targetEntity: documentId
+      })
+    }
+    
+    if (collectionId) {
+      tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
+    }
   }
-
-  if (collectionId) {
-    tx(collectionId).safeLink(EARS.RelKind.CONTAINS, documentId)
-  }
+  // If collectionId is undefined, we keep the document in its current collection
 
   const document = await getDocument(documentId)
   return document!
@@ -330,7 +333,7 @@ export async function createCollection(
     attrs.description = description
   }
 
-  tx(collectionId).batchPut(attrs)
+  tx(collectionId).updateBatch(attrs)
   if (parentId) {
     tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
   }
@@ -367,7 +370,7 @@ export async function updateCollection(
     attrs.description = description
   }
 
-  tx(collectionId).batchPut(attrs)
+  tx(collectionId).updateBatch(attrs)
   const collections = await qx(collectionId).pickAll()
   const collection = collections[0]
   const documentCount = (await qx(collectionId)
@@ -626,8 +629,20 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   // Convert documents to document items
   for (const doc of documents) {
     const documentId = doc.id
-    const content = doc.content as string || ''
-    const contentLength = content.length
+    
+    const contentSections = doc.content as ContentSection[]
+    
+    // Calculate content length for all sections
+    let contentLength = 0
+    for (const section of contentSections) {
+      if (section.type === 'text') {
+        contentLength += section.text.length
+      } else if (section.type === 'field') {
+        contentLength += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
+      } else if (section.type === 'list') {
+        contentLength += section.items.reduce((acc, item) => acc + item.length, 0)
+      }
+    }
     const size = formatFileSize(contentLength)
     
     // Get tags
@@ -641,7 +656,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       name: doc.name as string,
       shortCode: doc.shortCode as DocumentShortCode,
       parentId: folderId,
-      content,
+      content: contentSections,
       tags: tags.map(tag => tag.name as string),
       size,
       kind: 'Document',
@@ -745,7 +760,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
   const entityId = id
   const now = Date.now()
   
-  tx(entityId).batchPut({
+  tx(entityId).updateBatch({
     name,
     updatedAt: now,
   })
@@ -760,7 +775,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       parentId: doc!.collectionId || null,
       content: doc!.content,
       tags: doc!.tags,
-      size: formatFileSize(doc!.content.length),
+      size: formatFileSize(getContentLength(doc!.content)),
       kind: 'Document',
       createdAt: doc!.createdAt,
       updatedAt: new Date(now).toISOString(),
@@ -823,6 +838,20 @@ function formatFileSize(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
+}
+
+function getContentLength(content: ContentSection[]): number {
+  let length = 0
+  for (const section of content) {
+    if (section.type === 'text') {
+      length += section.text.length
+    } else if (section.type === 'field') {
+      length += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
+    } else if (section.type === 'list') {
+      length += section.items.reduce((acc, item) => acc + item.length, 0)
+    }
+  }
+  return length
 }
 
 export async function getCollectionByName(name: string): Promise<CollectionDTO | null> {

@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection } from '@app/api'
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
@@ -37,7 +37,7 @@ export type LibraryEvents =
   | { type: 'CREATE_DOCUMENT' }
   | { type: 'EDIT_DOCUMENT'; documentId: string }
   | { type: 'DELETE_DOCUMENT'; documentId: string }
-  | { type: 'SAVE_DOCUMENT'; name: string; content: string; tags: string[]; collectionId?: string }
+  | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
   
   // Legacy collection events  
@@ -281,6 +281,14 @@ export const librarySystem = setup({
     clearEditingDocument: assign({
       editingDocument: undefined,
     }),
+    updateEditingDocument: assign({
+      editingDocument: ({ context, event }) => {
+        if (event.type === 'DOCUMENT_UPDATED' && context.editingDocument?.id === event.data.document.id) {
+          return event.data.document
+        }
+        return context.editingDocument
+      },
+    }),
     setDocuments: assign({
       documents: ({ event }) => {
         if (event.type === 'DOCUMENTS_LOADED') {
@@ -366,6 +374,9 @@ export const librarySystem = setup({
     // Creation success events - refresh current folder
     DOCUMENT_CREATED: {
       actions: 'requestFolderContents',
+    },
+    DOCUMENT_UPDATED: {
+      actions: ['requestFolderContents', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
       actions: 'requestFolderContents',

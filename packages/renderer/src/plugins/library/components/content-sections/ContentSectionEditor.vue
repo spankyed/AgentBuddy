@@ -1,0 +1,158 @@
+<template>
+  <div class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
+    <div class="flex items-center justify-between">
+      <select
+        v-if="section && !hasContent"
+        :value="section.type"
+        @change="handleTypeChange($event)"
+        class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500"
+      >
+        <option value="text">Text Block</option>
+        <option value="field">Fields</option>
+        <option value="list">List</option>
+      </select>
+      <span v-else-if="section" class="text-xs font-medium tracking-wider uppercase text-neutral-400">
+        {{ sectionTypeLabel }}
+      </span>
+      <select
+        v-else
+        v-model="selectedType"
+        @change="initializeSection"
+        class="px-3 py-1.5 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+      >
+        <option value="" disabled>Select content type</option>
+        <option value="text">Text Block</option>
+        <option value="field">Field (Key-Value)</option>
+        <option value="list">List</option>
+      </select>
+      <button
+        v-if="showRemove"
+        @click="$emit('remove')"
+        type="button"
+        class="p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
+        title="Remove section"
+      >
+        <X class="w-4 h-4" />
+      </button>
+    </div>
+
+    <component
+      v-if="section"
+      :is="editorComponent"
+      :content="section"
+      @update="handleUpdate"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { X } from 'lucide-vue-next'
+import type { ContentSection, ContentType } from '@app/api'
+import FieldEditor from './FieldEditor.vue'
+import ListEditor from './ListEditor.vue'
+import TextBlockEditor from './TextBlockEditor.vue'
+
+const props = defineProps<{
+  section?: ContentSection
+  showRemove?: boolean
+}>()
+
+const emit = defineEmits<{
+  update: [section: ContentSection]
+  remove: []
+}>()
+
+const selectedType = ref<ContentType | ''>('')
+
+const hasContent = computed(() => {
+  if (!props.section) return false
+  
+  switch (props.section.type) {
+    case 'text':
+      return props.section.text.trim().length > 0
+    case 'field':
+      return props.section.fields.some(f => f.key.trim() || f.value.trim())
+    case 'list':
+      return props.section.items.some(item => item.trim())
+    default:
+      return false
+  }
+})
+
+const sectionTypeLabel = computed(() => {
+  if (!props.section) return ''
+  switch (props.section.type) {
+    case 'field': return 'Fields'
+    case 'list': return 'List'
+    case 'text': return 'Text Block'
+  }
+})
+
+const editorComponent = computed(() => {
+  if (!props.section) return null
+  switch (props.section.type) {
+    case 'field': return FieldEditor as any
+    case 'list': return ListEditor as any
+    case 'text': return TextBlockEditor as any
+  }
+})
+
+const initializeSection = () => {
+  if (!selectedType.value) return
+  
+  let newSection: ContentSection
+  switch (selectedType.value) {
+    case 'field':
+      newSection = { type: 'field', fields: [{ key: '', value: '' }] }
+      break
+    case 'list':
+      newSection = { type: 'list', items: [''] }
+      break
+    case 'text':
+      newSection = { type: 'text', text: '' }
+      break
+  }
+  
+  emit('update', newSection)
+  selectedType.value = ''
+}
+
+const handleTypeChange = (event: Event) => {
+  const newType = (event.target as HTMLSelectElement).value as ContentType
+  
+  let newSection: ContentSection
+  switch (newType) {
+    case 'field':
+      newSection = { type: 'field', fields: [{ key: '', value: '' }] }
+      break
+    case 'list':
+      newSection = { type: 'list', items: [''] }
+      break
+    case 'text':
+      newSection = { type: 'text', text: '' }
+      break
+  }
+  
+  emit('update', newSection)
+}
+
+const handleUpdate = (data: any) => {
+  if (!props.section) return
+  
+  let updatedSection: ContentSection
+  switch (props.section.type) {
+    case 'field':
+      updatedSection = { type: 'field', fields: data }
+      break
+    case 'list':
+      updatedSection = { type: 'list', items: data }
+      break
+    case 'text':
+      updatedSection = { type: 'text', text: data }
+      break
+  }
+  
+  emit('update', updatedSection)
+}
+</script>

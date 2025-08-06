@@ -12,20 +12,45 @@ export const library = 'library' as const
 
 const busEvent = systemBus(library)
 
+// Content section schemas
+const FieldContentSchema = z.object({
+  type: z.literal('field'),
+  fields: z.array(z.object({
+    key: z.string(),
+    value: z.string()
+  }))
+})
+
+const ListContentSchema = z.object({
+  type: z.literal('list'),
+  items: z.array(z.string())
+})
+
+const TextBlockContentSchema = z.object({
+  type: z.literal('text'),
+  text: z.string()
+})
+
+const ContentSectionSchema = z.union([
+  FieldContentSchema,
+  ListContentSchema,
+  TextBlockContentSchema
+])
+
 const IncomingLibraryEvents = [
   busEvent('LIST_DOCUMENTS', {
     collectionId: z.string().optional(),
   }),
   busEvent('CREATE_DOCUMENT', {
     name: z.string(),
-    content: z.string(),
+    content: z.array(ContentSectionSchema),
     tags: z.array(z.string()),
     collectionId: z.string().optional(),
   }),
   busEvent('UPDATE_DOCUMENT', {
     id: z.string(),
     name: z.string(),
-    content: z.string(),
+    content: z.array(ContentSectionSchema),
     tags: z.array(z.string()),
     collectionId: z.string().optional(),
   }),
@@ -118,7 +143,7 @@ export const librarySystem = setup({
       })
     },
     createDocument: async ({ system, event }) => {
-      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: string; tags: string[]; collectionId?: string }
+      const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await repository.createDocument(
         ev.name,
         ev.content,
@@ -135,7 +160,7 @@ export const librarySystem = setup({
       })
     },
     updateDocument: async ({ system, event }) => {
-      const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: string; tags: string[]; collectionId?: string }
+      const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await repository.updateDocument(
         ev.id as EARS.EntityId,
         ev.name,

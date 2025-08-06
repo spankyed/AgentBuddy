@@ -3,7 +3,7 @@
  *───────────────────────────────────────────────────────────────────────────*/
 import {
   destroyEntity,
-  putAttr, mergeAttr, dropAttr, dropIf,
+  putAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   grantRole, revokeRole,
   addRelation, updateRelation, removeRelation,
   createEntity,
@@ -56,6 +56,17 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     merge: (k: EARS.AttrKind, v: unknown, i?: number) => (mergeAttr(id, k, v, i), self),
     drop: (k: EARS.AttrKind, i?: number) => (dropAttr(id, k, i), self),
     dropIf: (k: EARS.AttrKind, c: unknown) => (dropIf(id, k, c), self),
+    update: (k: EARS.AttrKind | string, v: unknown) => {
+      const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
+      updateAttr(id, kind, v);
+      return self;
+    },
+    updateBatch: (attrs: Record<string, unknown>) => {
+      for (const [k, v] of Object.entries(attrs)) {
+        updateAttr(id, EARS.AttrKind.Custom(k), v);
+      }
+      return self;
+    },
 
     /*─ roles ─*/
     grant: (r: string) => {

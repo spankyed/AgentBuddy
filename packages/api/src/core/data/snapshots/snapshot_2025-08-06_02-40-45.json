@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-07-31T17:40:37.046Z",
+  "timestamp": "2025-08-06T06:40:45.239Z",
   "entities": {
     "Tag-1": {
       "timestamp": 1752548453461,
@@ -558,7 +558,7 @@
       "shortCode": "ACT-6",
       "label": "Check for procedure",
       "description": "Checks if user message matches any stored procedures",
-      "updatedAt": 1753923744431,
+      "updatedAt": 1754462433536,
       "createdAt": [
         1752655320835,
         1752655320835
@@ -572,7 +572,7 @@
           "description": ""
         }
       },
-      "actionFn": "  const { message } = params;\n  const { text, mode, threadId } = message;\n\n  try {\n    /** ──────────────────────────────────────────────────────────────\n    * 1. Load all procedure-related documents\n    * ──────────────────────────────────────────────────────────────*/\n    const allDocs = await services.library.getWithinFolder('procedures')\n\n    if (!Array.isArray(allDocs) || allDocs.length === 0) {\n      throw new Error('No procedure documents found in \"procedures\" collection')\n    }\n\n    /** 2. Collect the \"*.usage\" docs and build the LLM prompt */\n    const usageDocs = allDocs.filter(d => d.name.endsWith('.usage'))\n\n    services.logger.info('procedure check 1', { allDocs, usageDocs })\n\n    if (usageDocs.length === 0) {\n      throw new Error('No \"*.usage\" documents found')\n    }\n\n    const procedureNames = usageDocs.map(d => d.name.replace(/\\.usage$/, ''))\n    const proceduresPrompt = usageDocs\n      .map(d => {\n        const name = d.name.replace(/\\.usage$/, '')\n        return `<procedure>Name: ${name} Usage: ${d.content}</procedure>`\n      })\n      .join('\\n\\n')\n\n    /** 3. Ask the LLM which procedure (if any) matches the user's request */\n    const procedureOptions = [...procedureNames, 'none'];\n    const ProcedureSelectionSchema = z.object({\n      procedure: z.enum(procedureOptions).describe('Chosen procedure name or \"none\"')\n    })\n\n    const llmResult = await services.llm.generateObject({\n      model: { provider: 'openai', model: 'gpt-4o' },\n      schema: ProcedureSelectionSchema,\n      prompt: `\n      You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n      <procedures>\n      ${proceduresPrompt}\n      </procedures>\n\n      Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n      \n      User message: \"\"\"${text}\"\"\"\n    `,\n      temperature: 0\n    })\n\n    const { procedure } = llmResult.object;\n\n    services.logger.info('procedure check 2', { proceduresPrompt, procedure })\n\n    /** ──────────────────────────────────────────────────────────────\n     * 4. Route to the chosen procedure or fall back to streaming\n     * ──────────────────────────────────────────────────────────────*/\n    if (procedure !== 'none') {\n      const procDoc = allDocs.find(d => d.name === `${procedure}.procedure`)\n      if (!procDoc) {\n        throw new Error(`Procedure implementation document \"${procedure}.procedure\" not found`)\n      }\n\n      const actionKey = procDoc.content.trim()\n\n      await services.action.getAndExecute(actionKey, { searchQuery: text })\n      \n      return {\n        procedure,\n        executed: true,\n        success: true\n      };\n    } else {\n      await services.action.getAndExecute('Stream to FE', {\n        message,\n      })\n\n      return {\n        procedure: 'none',\n        executed: false,\n        success: true\n      };\n    }\n  } catch (error) {\n    services.logger.error('Procedure routing failed', { error });\n    // Fallback behaviour here if needed\n    throw error;\n  }"
+      "actionFn": "const { message } = params;\nconst { text } = message;\n\ntry {\n  /** 1. Load all procedure documents */\n  const allDocs = await services.library.getWithinFolder('procedures');\n\n  if (!Array.isArray(allDocs) || allDocs.length === 0) {\n    throw new Error('No procedure documents found in \"procedures\" collection');\n  }\n\n  /** 2. Extract usage text and action key from each document */\n  const usableProcedures = allDocs\n    .map(doc => {\n      if (!Array.isArray(doc.content)) return null;\n\n      const usageSection = doc.content.find(c => c.type === 'text' && typeof c.text === 'string');\n      const fieldSection = doc.content.find(c => c.type === 'field' && Array.isArray(c.fields));\n      const actionField = fieldSection?.fields.find(f => f.key === 'action' && typeof f.value === 'string');\n\n      if (!usageSection || !actionField) return null;\n\n      return {\n        name: doc.name,\n        usage: usageSection.text,\n        actionKey: actionField.value,\n      };\n    })\n    .filter(Boolean);\n\n  if (usableProcedures.length === 0) {\n    throw new Error('No usable procedures found with both usage text and action field.');\n  }\n\n  /** 3. Prepare LLM prompt */\n  const procedureNames = usableProcedures.map(p => p.name);\n  const proceduresPrompt = usableProcedures\n    .map(p => `<procedure>Name: ${p.name} Usage: ${p.usage}</procedure>`)\n    .join('\\n\\n');\n\n  const procedureOptions = [...procedureNames, 'none'];\n\n  const ProcedureSelectionSchema = z.object({\n    procedure: z.enum(procedureOptions).describe('Chosen procedure name or \"none\"'),\n  });\n\n  const llmResult = await services.llm.generateObject({\n    model: { provider: 'openai', model: 'gpt-4o' },\n    schema: ProcedureSelectionSchema,\n    prompt: `\n      You are an expert router. Given a user message, decide which procedure (if any) best handles it.\n\n      <procedures>\n      ${proceduresPrompt}\n      </procedures>\n\n      Respond with JSON matching the schema, using one of the procedure names above or \"none\".\n      \n      User message: \"\"\"${text}\"\"\"\n    `,\n    temperature: 0,\n  });\n\n  const procedure = llmResult?.object?.procedure;\n\n  services.logger.info('procedure check', { procedure, proceduresPrompt });\n\n  /** 4. Execute or fallback */\n  const matched = usableProcedures.find(p => p.name === procedure);\n\n  if (matched) {\n    await services.action.getAndExecute(matched.actionKey, { searchQuery: text });\n    return { procedure, executed: true, success: true };\n  } else {\n    await services.action.getAndExecute('Stream to FE', { message });\n    return { procedure: 'none', executed: false, success: true };\n  }\n} catch (error) {\n  services.logger.error('Procedure routing failed', { error });\n  throw error;\n}"
     },
     "Action-mdnzpcf0117lx8rgtrrp9": {
       "shortCode": "ACT-5",
@@ -594,7 +594,7 @@
       },
       "actionFn": "const { text, threadId, sender = 'user' } = params.message;\n\nif (!text || !text.trim()) {\n  throw new Error('text is required and cannot be empty');\n}\n\n// Create a new thread if threadId is not provided\nlet newThreadCreated = false;\nlet threadData = null;\n\nif (!threadId) {\n  const threadResult = services.repository.threadCommands.create({\n    topic: text.substring(0, 40), // Use first 40 chars of message as topic\n    threadType: 'work-item',\n    instructions: '',\n  });\n\n  if (!threadResult.success) {\n    throw new Error(threadResult.error || 'Failed to create new thread');\n  }\n\n  threadId = threadResult.data.id;\n  threadData = threadResult.data;\n  newThreadCreated = true;\n  \n  await services.logger.info('Created new thread for message', {\n    threadId,\n    topic: text.substring(0, 40),\n  });\n}\n\nconst result = services.repository.agentCommands.addMessage({\n  threadId,\n  text,\n  sender\n});\n\nif (!result.success) {\n  throw new Error(result.error || 'Failed to add message to thread');\n}\n\n// Update thread's lastMessageTimestamp\nservices.repository.threadCommands.update(threadId, {\n  lastMessageTimestamp: result.data.timestamp\n});\n\nawait services.logger.info('Message added to thread', {\n  threadId,\n  messageId: result.data.id,\n  sender,\n  textLength: text.length,\n  newThread: !params.threadId\n});\n\n// If a new thread was created, notify frontend plugins\nif (newThreadCreated && threadData) {\n  // Get the full thread data\n  const fullThreadData = services.repository.threadQueries.byId(threadData.id);\n  \n  // Notify threads plugin about the new thread with complete data\n  services.emitter.sendToPlugin('threads', {\n    type: 'THREAD_CREATED',\n    id: threadData.id,\n    shortCode: threadData.shortCode,\n    entityType: 'Thread',\n    timestamp: threadData.timestamp,\n    topic: fullThreadData.topic,\n    threadType: fullThreadData.threadType,\n    instructions: fullThreadData.instructions,\n    status: fullThreadData.status\n  });\n\n  // Get updated thread list for agent plugin\n  const refreshThreadsData = services.repository.agentQueries.refreshThreadsData();\n  \n  // Send updated thread list to agent plugin\n  services.emitter.sendToPlugin('agent', {\n    type: 'REFRESH_RECENT_THREADS',\n    data: refreshThreadsData\n  });\n  \n  await services.logger.info('Notified frontend plugins about new thread', {\n    threadId: threadData.id,\n    threadCount: refreshThreadsData.threads.length\n  });\n}\n\nreturn {\n  ...result.data,\n  success: true\n};"
     },
-    "Relation-mdrojkqt3j9y9vefuxvc4": {
+    "Relation-mdzlm9i4w3zxdvzsp8aa": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -602,7 +602,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2hfdyh6sgpgoc": {
+    "Relation-mdzlm9i53lfo10473uo4c": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -610,7 +610,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt31514dtcrdqhc": {
+    "Relation-mdzlm9i5h1udx3bcp9wm": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -618,7 +618,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtmif3sz4xggjh": {
+    "Relation-mdzlm9i5ta95chgkoqxa": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -626,7 +626,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1u5lc58amjgrb": {
+    "Relation-mdzlm9i5292yqo1o6nsxj": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
@@ -634,7 +634,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt6u63siv0tuyh": {
+    "Relation-mdzlm9i5hss27gwdn2ly": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -642,7 +642,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2caearfi63xs1": {
+    "Relation-mdzlm9i51gsrshkbrq52v": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -650,7 +650,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2tturdqnh6ca5": {
+    "Relation-mdzlm9i53ej21678khp0x": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -658,7 +658,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtju7sqieu84n2": {
+    "Relation-mdzlm9i51ck7mqasrnou6": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -666,7 +666,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3alwt59uwuj96": {
+    "Relation-mdzlm9i51trket7q714y7": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -674,7 +674,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt184ea6i70lbxb": {
+    "Relation-mdzlm9i53d68xs7bq3ogl": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -682,7 +682,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt32lmztcx2pp6y": {
+    "Relation-mdzlm9i53gr7hayqgxlwj": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -690,7 +690,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt23xxtkqc8xnn8": {
+    "Relation-mdzlm9i533or1udryomyj": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -698,7 +698,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt18v0m0dakqxhc": {
+    "Relation-mdzlm9i52yt66ma0dhzfp": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -706,7 +706,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1ogcmbhidvqf1": {
+    "Relation-mdzlm9i52q32djkwv19ye": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -714,7 +714,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2iuvksqdndrgz": {
+    "Relation-mdzlm9i5op508dbdjwji": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -722,7 +722,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtc9pjthomuzl6": {
+    "Relation-mdzlm9i598hc8gj187bw": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -730,7 +730,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3a7bb1spzystp": {
+    "Relation-mdzlm9i5b6fxyqfsjlsv": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -738,7 +738,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt3g8g4cq495jas": {
+    "Relation-mdzlm9i511wp9qajwx80z": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -746,7 +746,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1iz5jojgmgsgd": {
+    "Relation-mdzlm9i51avpsdmbiij2": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -754,7 +754,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtg4e2guhxuqtv": {
+    "Relation-mdzlm9i51dy8q9qmhqrpg": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -762,7 +762,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt1323tf4xw315s": {
+    "Relation-mdzlm9i53rzh2rbzhlth8": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -772,7 +772,7 @@
         }
       }
     },
-    "Relation-mdrojkqt23mnwjl8s2ofs": {
+    "Relation-mdzlm9i53lh95g4et5cdx": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -782,7 +782,7 @@
         }
       }
     },
-    "Relation-mdrojkqt3mlk85gvfcm6t": {
+    "Relation-mdzlm9i5dna7e43q6squ": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -790,7 +790,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqtwayovinh34n": {
+    "Relation-mdzlm9i52hbseqtvb5gpl": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -798,7 +798,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2lmuwfcyd9dd2": {
+    "Relation-mdzlm9i52122zrcofh6ug": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -806,7 +806,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqt2gg2ehsh1gcph": {
+    "Relation-mdzlm9i53q77bpd1cktll": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -814,7 +814,7 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqu2drl7m05nbenj": {
+    "Relation-mdzlm9i5793q6cz07fl8": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -822,137 +822,123 @@
         "info": {}
       }
     },
-    "Relation-mdrojkqu2u3i49vqfrejb": {
+    "Relation-mdzlm9i5kpvghvzh7dsv": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu3e7ze27qz1ylo": {
+    "Relation-mdzlm9i52n5550zpfcvi1": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu13rogvx9m9cau": {
+    "Relation-mdzlm9i546l0edhhbpeb": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu3v556iwc126cn": {
+    "Relation-mdzlm9i53sv1gkv9x3fqm": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqu3eoieriznmjow": {
+    "Relation-mdzlm9i52nsqiv4gyuzew": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdrojkqu2kwxlx3e8fbbc": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu1ieiwynfxcayv": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu2ge6ctald5bt1": {
-      "relationDetails": {
-        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
-        "targetEntity": "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3",
-        "relationType": "contains"
-      }
-    },
-    "Relation-mdrojkqu1ju4d6j8hkkmi": {
+    "Relation-mdzlm9i5nm1jb9fb3bts": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu1fngrhmtffghs": {
+    "Relation-mdzlm9i53n3n3objcob9u": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkqu27qeobze6ayoi": {
+    "Relation-mdzlm9i5igr7vlw1c5h4": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
         "relationType": "instance_of"
       }
     },
-    "Relation-mdrojkqu2eugxjz9l28e8": {
+    "Relation-mdzlm9i5givy7s0d0wv2": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-1",
         "relationType": "has"
       }
     },
-    "Relation-mdrojkqu2eqjwhvq3xw41": {
+    "Relation-mdzlm9i526xd8rmg8iie3": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-2",
         "relationType": "has"
       }
     },
-    "Relation-mdrojkqu36pndpi9jlbht": {
+    "Relation-mdzlm9i5w9yh0r5gxas3": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-code-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-mdrojkqu1e6504tu5p7zf": {
+    "Relation-mdzlm9i51g6i6kwc5guxu": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-text-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-mdrojkqu35r93e6yma0k9": {
+    "Relation-mdzlm9i5768rcsza9t2f": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "contains"
       }
     },
-    "Relation-mdrojkquiz3qwc1cdl7g": {
+    "Relation-mdzlm9i51ad2qdky2k9xz": {
       "relationDetails": {
         "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqus5bibu0szeo3": {
+    "Relation-mdzlm9i52cqou2uikn4m5": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "transitions_to"
       }
     },
-    "Relation-mdrojkqu3d85rfn2yzn2c": {
+    "Relation-mdzlm9i53hen33kuli8wm": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Action-mdnzpcf0117lx8rgtrrp9",
         "relationType": "instance_of"
+      }
+    },
+    "Relation-mdzlmmd21xdh3pce5fb0x": {
+      "relationDetails": {
+        "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
+        "targetEntity": "Document-ff4e3503-54a7-4bf8-bfaa-2582c4e22d90",
+        "relationType": "contains"
       }
     },
     "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e": {
@@ -970,35 +956,45 @@
       "shortCode": "DOC-1",
       "updatedAt": 1752616081692,
       "createdAt": 1752616081692,
-      "content": "Prompt: Generate a complex relation query that finds entities with outgoing contains relations and summarizes them (limit 20 results)\nQuery:\tconst results = [];\nconst allEntities = qx().ids();\nfor (const entityId of allEntities) {\nconst targets = qx(entityId).linksTo(‘contains’, Object.values(EARS.Entity)).ids();\nif (targets.length > 0) {\nconst entityData = qx(entityId).pickOne([‘id’]);\nconst allData   = getAll(entityId);\nresults.push({\n…entityData,\n…allData,\nrelationType: ‘contains’,\ntargetCount : targets.length,\ntargets      : targets.slice(0, 5).map(targetId => ({\nid  : targetId,\ntype: targetId.split(’-’)[0]\n}))\n});\n}\n}\nreturn results.slice(0, 20);\n\nPrompt: Generate a query that groups Thread entities by status and returns each status with its count\nQuery:\tconst grouped = qx(EARS.Entity.Thread).groupBy(‘status’);\nreturn Array.from(grouped.entries()).map(([status, items]) => ({\nstatus,\ncount: items.count()\n}));\n\nPrompt: Generate a call that returns comprehensive schema statistics (entities, attributes, relations)\nQuery:\treturn getSchemaStats();\n\nPrompt: Generate a paginated query that returns 10 Thread items per call and exposes items and nextCursor\nQuery:\tconst { items, nextCursor } = qx(EARS.Entity.Thread).page(10);\nreturn items;\n\nPrompt: Generate a query that counts all Thread entities with status completed\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘completed’)\n.count();\n\nPrompt: Generate a query that returns messages linked to Thread-1 via the contains relation (id, text, sender)\nQuery:\treturn qx(‘Thread-1’)\n.linksTo(‘contains’, EARS.Entity.Message)\n.pick([‘id’, ‘text’, ‘sender’]);\n\nPrompt: Generate a query that gets unique role values from Flow entities (id, name, role)\nQuery:\treturn qx(EARS.Entity.Flow)\n.distinct(‘role’)\n.pick([‘id’, ‘name’, ‘role’]);\n\nPrompt: Generate a query that lists all Tag entities ordered by name (id, name, color)\nQuery:\treturn qx().ofType(EARS.Entity.Tag)\n.orderBy(‘name’)\n.pick([‘id’, ‘name’, ‘color’]);\n\nPrompt: Generate a query for the five most-recent active Thread entities, returning all fields\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘active’)\n.orderBy(‘timestamp’, ‘desc’)\n.limit(5)\n.pickAll();\n\nPrompt: Generate a query that returns every attribute for entity Thread-1\nQuery:\treturn qx(‘Thread-1’).pickAll();"
+      "content": [
+        {
+          "type": "text",
+          "text": "Prompt: Generate a complex relation query that finds entities with outgoing contains relations and summarizes them (limit 20 results)\nQuery:\tconst results = [];\nconst allEntities = qx().ids();\nfor (const entityId of allEntities) {\nconst targets = qx(entityId).linksTo(‘contains’, Object.values(EARS.Entity)).ids();\nif (targets.length > 0) {\nconst entityData = qx(entityId).pickOne([‘id’]);\nconst allData   = getAll(entityId);\nresults.push({\n…entityData,\n…allData,\nrelationType: ‘contains’,\ntargetCount : targets.length,\ntargets      : targets.slice(0, 5).map(targetId => ({\nid  : targetId,\ntype: targetId.split(’-’)[0]\n}))\n});\n}\n}\nreturn results.slice(0, 20);\n\nPrompt: Generate a query that groups Thread entities by status and returns each status with its count\nQuery:\tconst grouped = qx(EARS.Entity.Thread).groupBy(‘status’);\nreturn Array.from(grouped.entries()).map(([status, items]) => ({\nstatus,\ncount: items.count()\n}));\n\nPrompt: Generate a call that returns comprehensive schema statistics (entities, attributes, relations)\nQuery:\treturn getSchemaStats();\n\nPrompt: Generate a paginated query that returns 10 Thread items per call and exposes items and nextCursor\nQuery:\tconst { items, nextCursor } = qx(EARS.Entity.Thread).page(10);\nreturn items;\n\nPrompt: Generate a query that counts all Thread entities with status completed\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘completed’)\n.count();\n\nPrompt: Generate a query that returns messages linked to Thread-1 via the contains relation (id, text, sender)\nQuery:\treturn qx(‘Thread-1’)\n.linksTo(‘contains’, EARS.Entity.Message)\n.pick([‘id’, ‘text’, ‘sender’]);\n\nPrompt: Generate a query that gets unique role values from Flow entities (id, name, role)\nQuery:\treturn qx(EARS.Entity.Flow)\n.distinct(‘role’)\n.pick([‘id’, ‘name’, ‘role’]);\n\nPrompt: Generate a query that lists all Tag entities ordered by name (id, name, color)\nQuery:\treturn qx().ofType(EARS.Entity.Tag)\n.orderBy(‘name’)\n.pick([‘id’, ‘name’, ‘color’]);\n\nPrompt: Generate a query for the five most-recent active Thread entities, returning all fields\nQuery:\treturn qx(EARS.Entity.Thread)\n.where(‘status’, ‘active’)\n.orderBy(‘timestamp’, ‘desc’)\n.limit(5)\n.pickAll();\n\nPrompt: Generate a query that returns every attribute for entity Thread-1\nQuery:\treturn qx(‘Thread-1’).pickAll();"
+        }
+      ]
     },
     "Document-02634655-36a5-4245-afaf-a41db7215820": {
       "name": "transaction-examples",
       "shortCode": "DOC-2",
       "updatedAt": 1752616292264,
       "createdAt": 1752616292264,
-      "content": "Prompt: Generate a transaction that defines a Flow entity with attributes, roles, and contains relations in a single call\nQuery:\tconst flowId = tx(EARS.Entity.Flow)\n.define({\nattributes: {\nname: ‘Customer Onboarding’,\ndescription: ‘Automated customer onboarding flow’,\nstatus: ‘draft’,\nversion: ‘1.0.0’\n},\nroles: [‘template’, ‘featured’],\nlinks: {\ncontains: [\ntx(EARS.Entity.Node)\n.put(‘type’, ‘start’)\n.put(‘label’, ‘Begin Onboarding’)\n.id(),\ntx(EARS.Entity.Node)\n.put(‘type’, ‘action’)\n.put(‘label’, ‘Collect Information’)\n.id()\n]\n}\n})\n.id();\nreturn qx(flowId).pickAll();\n\nPrompt: Generate a transaction that builds a three-level thread hierarchy and demonstrates safeLink cycle prevention\nQuery:\tconst root = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Root Thread’)\n.id();\nconst child = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Child Thread’)\n.id();\nconst grandchild = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Grandchild Thread’)\n.id();\ntx(root).safeLink(EARS.RelKind.parent_of, child);\ntx(child).safeLink(EARS.RelKind.parent_of, grandchild);\ntry {\ntx(grandchild).safeLink(EARS.RelKind.parent_of, root, { preventCycles: true });\n} catch (error) {\nreturn { hierarchy: { root, child, grandchild }, cyclePreventionWorking: true };\n}\n\nPrompt: Generate a transaction that creates Agent, Thread, and Tag entities and links them with contains, has, and symmetric relates_to relations\nQuery:\tconst agentId  = tx(EARS.Entity.Agent) .put(‘name’, ‘Multi-Agent’).id();\nconst threadId = tx(EARS.Entity.Thread).put(‘title’, ‘Multi-Agent Thread’).id();\nconst tagId    = tx(EARS.Entity.Tag)  .put(‘name’, ‘important’).put(‘color’, ‘#FF0000’).id();\ntx(agentId) .link(EARS.RelKind.contains , threadId);\ntx(threadId).link(EARS.RelKind.has      , tagId);\ntx(agentId) .link(EARS.RelKind.relates_to, threadId, { symmetric: true });\nreturn {\nentities    : { agentId, threadId, tagId },\nagentThreads: qx(agentId) .linksTo(‘contains’, EARS.Entity.Thread).ids(),\nthreadTags  : qx(threadId).linksTo(‘has’,      EARS.Entity.Tag)   .ids()\n};\n\nPrompt: Generate a transaction that batch-updates multiple attributes on an Agent entity\nQuery:\tconst entityId = tx(EARS.Entity.Agent).put(‘name’, ‘Agent Smith’).id();\ntx(entityId).batchPut({\nstatus      : ‘active’,\nlastActive  : Date.now(),\ncapabilities: [‘chat’, ‘analysis’, ‘search’],\nconfig      : { temperature: 0.7, maxTokens: 1000 }\n});\nreturn qx(entityId).pickAll();\n\nPrompt: Generate a transaction that grants and revokes roles on an Agent and enforces a primary role\nQuery:\tconst agentId = tx(EARS.Entity.Agent)\n.put(‘name’, ‘Role Test Agent’)\n.grant(‘assistant’)\n.grant(‘analyzer’)\n.id();\nconst initialRoles = getRoles(agentId);\ntx(agentId).revoke(‘assistant’).grant(‘supervisor’).ensure(‘primary’);\nconst finalRoles = getRoles(agentId);\nreturn { agentId, initialRoles, finalRoles };\n\nPrompt: Generate a transaction that creates a Thread and an initial Message linked to it, then returns both ids\nQuery:\tconst threadId = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Customer Support’)\n.put(‘status’, ‘open’)\n.put(‘createdAt’, Date.now())\n.id();\nconst messageId = tx(EARS.Entity.Message)\n.put(‘text’, ‘Hello, how can I help you today?’)\n.put(‘timestamp’, Date.now())\n.put(‘sender’, ‘assistant’)\n.link(EARS.RelKind.CONTAINS, threadId)\n.id();\ntx(threadId).link(EARS.RelKind.contains, messageId);\nreturn { threadId, messageId };\n\nPrompt: Generate a transaction that deletes a Tag entity and confirms removal\nQuery:\tconst tempId = tx(EARS.Entity.Tag)\n.put(‘name’, ‘temporary’)\n.put(‘color’, ‘#808080’)\n.id();\nconst exists = qx(tempId).pickOne([‘id’, ‘name’]);\ntx(tempId).destroy();\nconst afterDelete = qx(tempId).pickOne([‘id’]);\nreturn { created: exists, afterDelete: afterDelete || ‘Entity not found (successfully deleted)’ };"
+      "content": [
+        {
+          "type": "text",
+          "text": "Prompt: Generate a transaction that defines a Flow entity with attributes, roles, and contains relations in a single call\nQuery:\tconst flowId = tx(EARS.Entity.Flow)\n.define({\nattributes: {\nname: ‘Customer Onboarding’,\ndescription: ‘Automated customer onboarding flow’,\nstatus: ‘draft’,\nversion: ‘1.0.0’\n},\nroles: [‘template’, ‘featured’],\nlinks: {\ncontains: [\ntx(EARS.Entity.Node)\n.put(‘type’, ‘start’)\n.put(‘label’, ‘Begin Onboarding’)\n.id(),\ntx(EARS.Entity.Node)\n.put(‘type’, ‘action’)\n.put(‘label’, ‘Collect Information’)\n.id()\n]\n}\n})\n.id();\nreturn qx(flowId).pickAll();\n\nPrompt: Generate a transaction that builds a three-level thread hierarchy and demonstrates safeLink cycle prevention\nQuery:\tconst root = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Root Thread’)\n.id();\nconst child = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Child Thread’)\n.id();\nconst grandchild = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Grandchild Thread’)\n.id();\ntx(root).safeLink(EARS.RelKind.parent_of, child);\ntx(child).safeLink(EARS.RelKind.parent_of, grandchild);\ntry {\ntx(grandchild).safeLink(EARS.RelKind.parent_of, root, { preventCycles: true });\n} catch (error) {\nreturn { hierarchy: { root, child, grandchild }, cyclePreventionWorking: true };\n}\n\nPrompt: Generate a transaction that creates Agent, Thread, and Tag entities and links them with contains, has, and symmetric relates_to relations\nQuery:\tconst agentId  = tx(EARS.Entity.Agent) .put(‘name’, ‘Multi-Agent’).id();\nconst threadId = tx(EARS.Entity.Thread).put(‘title’, ‘Multi-Agent Thread’).id();\nconst tagId    = tx(EARS.Entity.Tag)  .put(‘name’, ‘important’).put(‘color’, ‘#FF0000’).id();\ntx(agentId) .link(EARS.RelKind.contains , threadId);\ntx(threadId).link(EARS.RelKind.has      , tagId);\ntx(agentId) .link(EARS.RelKind.relates_to, threadId, { symmetric: true });\nreturn {\nentities    : { agentId, threadId, tagId },\nagentThreads: qx(agentId) .linksTo(‘contains’, EARS.Entity.Thread).ids(),\nthreadTags  : qx(threadId).linksTo(‘has’,      EARS.Entity.Tag)   .ids()\n};\n\nPrompt: Generate a transaction that batch-updates multiple attributes on an Agent entity\nQuery:\tconst entityId = tx(EARS.Entity.Agent).put(‘name’, ‘Agent Smith’).id();\ntx(entityId).batchPut({\nstatus      : ‘active’,\nlastActive  : Date.now(),\ncapabilities: [‘chat’, ‘analysis’, ‘search’],\nconfig      : { temperature: 0.7, maxTokens: 1000 }\n});\nreturn qx(entityId).pickAll();\n\nPrompt: Generate a transaction that grants and revokes roles on an Agent and enforces a primary role\nQuery:\tconst agentId = tx(EARS.Entity.Agent)\n.put(‘name’, ‘Role Test Agent’)\n.grant(‘assistant’)\n.grant(‘analyzer’)\n.id();\nconst initialRoles = getRoles(agentId);\ntx(agentId).revoke(‘assistant’).grant(‘supervisor’).ensure(‘primary’);\nconst finalRoles = getRoles(agentId);\nreturn { agentId, initialRoles, finalRoles };\n\nPrompt: Generate a transaction that creates a Thread and an initial Message linked to it, then returns both ids\nQuery:\tconst threadId = tx(EARS.Entity.Thread)\n.put(‘title’, ‘Customer Support’)\n.put(‘status’, ‘open’)\n.put(‘createdAt’, Date.now())\n.id();\nconst messageId = tx(EARS.Entity.Message)\n.put(‘text’, ‘Hello, how can I help you today?’)\n.put(‘timestamp’, Date.now())\n.put(‘sender’, ‘assistant’)\n.link(EARS.RelKind.CONTAINS, threadId)\n.id();\ntx(threadId).link(EARS.RelKind.contains, messageId);\nreturn { threadId, messageId };\n\nPrompt: Generate a transaction that deletes a Tag entity and confirms removal\nQuery:\tconst tempId = tx(EARS.Entity.Tag)\n.put(‘name’, ‘temporary’)\n.put(‘color’, ‘#808080’)\n.id();\nconst exists = qx(tempId).pickOne([‘id’, ‘name’]);\ntx(tempId).destroy();\nconst afterDelete = qx(tempId).pickOne([‘id’]);\nreturn { created: exists, afterDelete: afterDelete || ‘Entity not found (successfully deleted)’ };"
+        }
+      ]
     },
-    "Document-b4ae7bf5-e2af-4e8f-9919-a9d785083613": {
-      "name": "google.examples",
+    "Document-ff4e3503-54a7-4bf8-bfaa-2582c4e22d90": {
+      "name": "google",
       "shortCode": "DOC-3",
-      "updatedAt": 1752653655579,
-      "createdAt": 1752653655579,
-      "content": "Can you google how to reset an iPhone 13?\n\nSearch Google for the population of Iceland.\n\nLook up on Google: best Italian restaurants near me.\n\nCould you run a quick Google search for “quantum computing basics”?\n\nFind on Google the weather tomorrow in Tokyo.\n\nGoogle the definition of “serendipity.”\n\nHey, check Google for the latest Tesla stock price.\n\nPull up Google results for “JavaScript debounce vs throttle.”\n\nGo to Google and see who won the 2024 World Series.\n\nUse Google to find a tutorial on knitting socks."
-    },
-    "Document-26190ac4-a86a-4b2b-a648-010ca6da74b9": {
-      "name": "google.usage",
-      "shortCode": "DOC-4",
-      "updatedAt": 1752653684393,
-      "createdAt": 1752653684393,
-      "content": "In case the user wants to google search something."
-    },
-    "Document-af7517e4-e1ec-4a0f-9d2a-69ead0d70eb3": {
-      "name": "google.procedure",
-      "shortCode": "DOC-5",
-      "updatedAt": 1752653694470,
-      "createdAt": 1752653694470,
-      "content": "Google search"
+      "updatedAt": 1754462423990,
+      "createdAt": 1754454417250,
+      "content": [
+        {
+          "type": "text",
+          "text": "In case the user wants to google something."
+        },
+        {
+          "type": "field",
+          "fields": [
+            {
+              "key": "action",
+              "value": "Google search"
+            }
+          ]
+        }
+      ]
     },
     "Artifact-dashboard-1": {
       "role": "dashboard_artifact",
@@ -1165,7 +1161,7 @@
     }
   },
   "metadata": {
-    "entityCount": 98,
+    "entityCount": 94,
     "attributeKinds": [
       "timestamp",
       "name",

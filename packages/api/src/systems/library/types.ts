@@ -2,10 +2,29 @@ import type { EARS, BaseEntity } from '@/core/types'
 
 export type DocumentShortCode = `DOC-${number}`;
 
+export type ContentType = 'field' | 'list' | 'text'
+
+export interface FieldContent {
+  type: 'field'
+  fields: Array<{ key: string; value: string }>
+}
+
+export interface ListContent {
+  type: 'list'
+  items: string[]
+}
+
+export interface TextBlockContent {
+  type: 'text'
+  text: string
+}
+
+export type ContentSection = FieldContent | ListContent | TextBlockContent
+
 export interface Document extends BaseEntity {
   _type: EARS.Entity.Document
   name: string
-  content: string
+  content: ContentSection[]
   shortCode: DocumentShortCode
 }
 
@@ -18,7 +37,7 @@ export interface Collection extends BaseEntity {
 export interface DocumentDTO {
   id: EARS.EntityId
   name: string
-  content: string
+  content: ContentSection[]
   shortCode: DocumentShortCode
   tags: string[]
   collectionId?: EARS.EntityId
@@ -58,7 +77,7 @@ export interface DocumentItem {
   name: string
   shortCode: DocumentShortCode
   parentId: EARS.EntityId | null
-  content: string
+  content: ContentSection[]
   tags: string[]
   size: string // Content length formatted (e.g., "1.2 KB")
   kind: 'Document'
