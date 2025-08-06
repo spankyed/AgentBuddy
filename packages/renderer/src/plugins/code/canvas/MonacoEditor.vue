@@ -12,9 +12,7 @@
     />
     <VueMonacoEditor
       v-else
-      v-model:value="editorValue"
       :theme="theme || 'vs-dark'"
-      :language="resolvedLanguage"
       :options="editorOptions"
       @mount="handleMount"
       class="h-full"
@@ -23,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, shallowRef } from 'vue'
+import { ref, computed, watch, shallowRef, onBeforeUnmount } from 'vue'
 import { VueMonacoEditor, VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import { getLanguageId, initializeMonaco } from '@/plugins/code/utils/simple-monaco-config'
 
@@ -47,11 +45,13 @@ const emit = defineEmits<{
 }>()
 
 // Editor instances
-const editor = shallowRef()
-const diffEditor = shallowRef()
+const editor = shallowRef<any>()
+const diffEditor = shallowRef<any>()
 
-// Local value for two-way binding
-const editorValue = ref(props.modelValue)
+// Model and view state management
+const models = new Map<string, any>()
+const viewStates = new Map<string, any>()
+const currentModelPath = ref<string | undefined>()
 
 // Computed language
 const resolvedLanguage = computed(() => {
@@ -97,10 +97,72 @@ const diffEditorOptions = computed(() => ({
   originalEditable: false,
 }))
 
+// Get or create model for a file
+const getOrCreateModel = (filePath: string, content: string, language: string) => {
+  const monaco = (window as any).monaco
+  if (!monaco) return null
+  
+  let model = models.get(filePath)
+  if (!model) {
+    // Create a new model for this file
+    const uri = monaco.Uri.parse(`file:///${filePath.replace(/\\/g, '/')}`)
+    model = monaco.editor.createModel(content, language, uri)
+    models.set(filePath, model)
+    
+    // Listen for content changes on the model
+    model.onDidChangeContent(() => {
+      if (currentModelPath.value === filePath) {
+        const value = model.getValue()
+        emit('update:modelValue', value)
+        emit('change', value)
+      }
+    })
+  } else {
+    // Update existing model content if it's different
+    if (model.getValue() !== content) {
+      model.setValue(content)
+    }
+  }
+  
+  return model
+}
+
+// Switch to a different file/model
+const switchToFile = (filePath: string, content: string, language: string) => {
+  if (!editor.value || props.diffMode) return
+  
+  // Save current view state before switching
+  if (currentModelPath.value) {
+    const viewState = editor.value.saveViewState()
+    if (viewState) {
+      viewStates.set(currentModelPath.value, viewState)
+    }
+  }
+  
+  // Get or create the model for the new file
+  const model = getOrCreateModel(filePath, content, language)
+  if (!model) return
+  
+  // Set the new model
+  editor.value.setModel(model)
+  currentModelPath.value = filePath
+  
+  // Restore view state if available
+  const savedViewState = viewStates.get(filePath)
+  if (savedViewState) {
+    editor.value.restoreViewState(savedViewState)
+  }
+}
+
 // Handle editor mount
 const handleMount = (editorInstance: any) => {
   editor.value = editorInstance
   initializeMonaco()
+  
+  // Initialize with the first file if provided
+  if (props.filePath && props.modelValue) {
+    switchToFile(props.filePath, props.modelValue, resolvedLanguage.value)
+  }
 }
 
 // Handle diff editor mount
@@ -119,24 +181,44 @@ const handleDiffMount = (diffEditorInstance: any) => {
   })
 }
 
-// Watch for value changes from parent
-watch(() => props.modelValue, (newValue) => {
-  if (newValue !== editorValue.value) {
-    editorValue.value = newValue
+// Watch for file/content changes
+watch(
+  () => [props.filePath, props.modelValue, props.language],
+  ([newPath, newContent, newLang]) => {
+    if (!props.diffMode && newPath && newContent !== undefined && editor.value) {
+      // Switch to the new file
+      switchToFile(newPath as string, newContent as string, newLang as string || resolvedLanguage.value)
+    } else if (!props.diffMode && currentModelPath.value && models.has(currentModelPath.value)) {
+      // Update current model content if no path change
+      const model = models.get(currentModelPath.value)
+      if (model && model.getValue() !== newContent) {
+        model.setValue(newContent as string)
+      }
+    }
   }
-})
-
-// Emit changes
-watch(editorValue, (newValue) => {
-  if (newValue !== props.modelValue) {
-    emit('update:modelValue', newValue)
-    emit('change', newValue)
-  }
-})
+)
 
 // Watch for diff content changes
 watch(() => [props.originalContent, props.modifiedContent], () => {
   // VueMonacoDiffEditor handles prop changes automatically
+})
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  // Save current view state
+  if (editor.value && currentModelPath.value) {
+    const viewState = editor.value.saveViewState()
+    if (viewState) {
+      viewStates.set(currentModelPath.value, viewState)
+    }
+  }
+  
+  // Dispose all models
+  models.forEach((model) => {
+    model.dispose()
+  })
+  models.clear()
+  viewStates.clear()
 })
 </script>
 

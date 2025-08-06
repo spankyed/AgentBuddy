@@ -35,7 +35,6 @@
         <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
           <MonacoEditor
             v-if="!isTerminal(activeFile)"
-            :key="activeFile.path"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
