@@ -11,12 +11,40 @@
       @cancel="cancelDelete"
     />
     
+    <!-- Create Folder Dialog -->
+    <Dialog
+      v-model="showCreateFolderDialog"
+      title="Create New Folder"
+      description="Enter a name for the new folder"
+      show-default-actions
+      confirm-text="Create"
+      @confirm="handleCreateFolder"
+      @cancel="cancelCreateFolder"
+    >
+      <input
+        v-model="newFolderName"
+        @keydown.enter="handleCreateFolder"
+        placeholder="Folder name"
+        class="w-full px-3 py-2 mt-2 text-sm border rounded bg-neutral-900 border-neutral-600 text-neutral-200 focus:outline-none focus:border-blue-500"
+        ref="folderNameInput"
+      />
+    </Dialog>
+    
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
       <div class="flex items-center gap-2">
         <FolderOpen :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Explorer</h3>
       </div>
+      <!-- Create folder button - only show when a directory is selected -->
+      <button
+        v-if="rootDirectory"
+        @click="openCreateFolderDialog"
+        class="p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
+        title="Create new folder"
+      >
+        <FolderPlus :size="16" />
+      </button>
     </div>
     
     <!-- Show breadcrumb and content only when directory is selected -->
@@ -87,7 +115,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
-import { FolderOpen } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus } from 'lucide-vue-next'
 
 interface FileItem {
   path: string
@@ -117,6 +145,11 @@ const error = useSelector(codeActor, (state: any) => state.context.error)
 // Delete functionality
 const showDeleteDialog = ref(false)
 const fileToDelete = ref<FileItem | null>(null)
+
+// Create folder functionality
+const showCreateFolderDialog = ref(false)
+const newFolderName = ref('')
+const folderNameInput = ref<HTMLInputElement | null>(null)
 
 const confirmDelete = (file: FileItem) => {
   fileToDelete.value = file
@@ -182,5 +215,32 @@ const handleDirectorySelect = async () => {
 
 const handleOpenTerminal = (path: string) => {
   terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
+}
+
+const openCreateFolderDialog = () => {
+  newFolderName.value = ''
+  showCreateFolderDialog.value = true
+  // Focus input after dialog opens
+  setTimeout(() => {
+    folderNameInput.value?.focus()
+  }, 100)
+}
+
+const handleCreateFolder = () => {
+  const trimmedName = newFolderName.value.trim()
+  if (trimmedName) {
+    // Create the folder in the current directory
+    const currentDir = props.currentDirectory || props.rootDirectory
+    if (currentDir) {
+      const newFolderPath = `${currentDir}/${trimmedName}`
+      explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newFolderPath })
+    }
+  }
+  cancelCreateFolder()
+}
+
+const cancelCreateFolder = () => {
+  showCreateFolderDialog.value = false
+  newFolderName.value = ''
 }
 </script>

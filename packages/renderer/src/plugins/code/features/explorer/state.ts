@@ -58,6 +58,7 @@ export type Event =
   | { type: 'explorer.INITIALIZE'; rootDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.CREATE_FILE'; name: string }
+  | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.DELETE_FILE'; path: string }
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
   | { type: 'explorer.OPEN_FILE'; path: string }
@@ -69,6 +70,7 @@ export type Event =
   | { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
   | { type: 'explorer.FILE_DELETED'; path: string }
   | { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
+  | { type: 'explorer.DIRECTORY_CREATED'; path: string }
   | { type: 'explorer.ERROR'; message: string }
   // Backend events that affect file state (now with explorer. prefix)
   | { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
@@ -216,6 +218,11 @@ export const explorerState = setup({
       sendToBackend('explorer.DELETE_FILE', { path: ev.path })
     },
     
+    createDirectory: ({ event }) => {
+      const ev = event as { type: 'explorer.CREATE_DIRECTORY'; path: string }
+      sendToBackend('explorer.CREATE_DIRECTORY', { path: ev.path })
+    },
+    
     renameFile: ({ event }) => {
       const ev = event as { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
       sendToBackend('explorer.RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
@@ -315,6 +322,14 @@ export const explorerState = setup({
       }
     },
     
+    handleDirectoryCreated: ({ event, self }) => {
+      const ev = event as { type: 'explorer.DIRECTORY_CREATED'; path: string }
+      const parentContext = getParentContext(self)
+      
+      // Refresh file list to show new directory
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
+    },
+    
     writeFile: ({ event }) => {
       const ev = event as { type: 'explorer.WRITE_FILE'; path: string; content: string }
       sendToBackend('explorer.WRITE_FILE', { path: ev.path, content: ev.content })
@@ -356,6 +371,9 @@ export const explorerState = setup({
         'explorer.DELETE_FILE': {
           actions: 'deleteFile'
         },
+        'explorer.CREATE_DIRECTORY': {
+          actions: 'createDirectory'
+        },
         'explorer.RENAME_FILE': {
           actions: 'renameFile'
         },
@@ -379,6 +397,9 @@ export const explorerState = setup({
         },
         'explorer.FILE_RENAMED': {
           actions: 'handleFileRenamed'
+        },
+        'explorer.DIRECTORY_CREATED': {
+          actions: 'handleDirectoryCreated'
         },
         'explorer.ERROR': {
           actions: 'assignError'
