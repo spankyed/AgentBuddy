@@ -182,7 +182,7 @@ function removeTag(index: number) {
 }
 
 function addContentSection() {
-  formData.content.push({ type: 'text', content: '' } as ContentSection)
+  formData.content.push({ type: 'text', text: '' } as ContentSection)
 }
 
 function updateContentSection(index: number, section: ContentSection) {

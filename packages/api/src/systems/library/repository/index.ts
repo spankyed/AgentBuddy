@@ -636,7 +636,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     let contentLength = 0
     for (const section of contentSections) {
       if (section.type === 'text') {
-        contentLength += section.content.length
+        contentLength += section.text.length
       } else if (section.type === 'field') {
         contentLength += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
       } else if (section.type === 'list') {
@@ -844,7 +844,7 @@ function getContentLength(content: ContentSection[]): number {
   let length = 0
   for (const section of content) {
     if (section.type === 'text') {
-      length += section.content.length
+      length += section.text.length
     } else if (section.type === 'field') {
       length += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
     } else if (section.type === 'list') {

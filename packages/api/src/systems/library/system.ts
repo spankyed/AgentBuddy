@@ -28,7 +28,7 @@ const ListContentSchema = z.object({
 
 const TextBlockContentSchema = z.object({
   type: z.literal('text'),
-  content: z.string()
+  text: z.string()
 })
 
 const ContentSectionSchema = z.union([

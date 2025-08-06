@@ -70,7 +70,7 @@ const hasContent = computed(() => {
   
   switch (props.section.type) {
     case 'text':
-      return props.section.content.trim().length > 0
+      return props.section.text.trim().length > 0
     case 'field':
       return props.section.fields.some(f => f.key.trim() || f.value.trim())
     case 'list':
@@ -110,7 +110,7 @@ const initializeSection = () => {
       newSection = { type: 'list', items: [''] }
       break
     case 'text':
-      newSection = { type: 'text', content: '' }
+      newSection = { type: 'text', text: '' }
       break
   }
   
@@ -130,7 +130,7 @@ const handleTypeChange = (event: Event) => {
       newSection = { type: 'list', items: [''] }
       break
     case 'text':
-      newSection = { type: 'text', content: '' }
+      newSection = { type: 'text', text: '' }
       break
   }
   
@@ -149,7 +149,7 @@ const handleUpdate = (data: any) => {
       updatedSection = { type: 'list', items: data }
       break
     case 'text':
-      updatedSection = { type: 'text', content: data }
+      updatedSection = { type: 'text', text: data }
       break
   }
   

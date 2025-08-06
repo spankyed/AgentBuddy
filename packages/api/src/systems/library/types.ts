@@ -16,7 +16,7 @@ export interface ListContent {
 
 export interface TextBlockContent {
   type: 'text'
-  content: string
+  text: string
 }
 
 export type ContentSection = FieldContent | ListContent | TextBlockContent

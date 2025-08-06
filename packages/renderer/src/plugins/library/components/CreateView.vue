@@ -134,7 +134,7 @@ const emit = defineEmits<{
 
 const formData = reactive({
   name: '',
-  content: [{ type: 'text', content: '' }] as ContentSection[],
+  content: [{ type: 'text', text: '' }] as ContentSection[],
   tags: [] as string[],
   collectionId: props.selectedCollectionId,
 })
@@ -165,7 +165,7 @@ function removeTag(index: number) {
 }
 
 function addContentSection() {
-  formData.content.push({ type: 'text', content: '' } as ContentSection)
+  formData.content.push({ type: 'text', text: '' } as ContentSection)
 }
 
 function updateContentSection(index: number, section: ContentSection) {
