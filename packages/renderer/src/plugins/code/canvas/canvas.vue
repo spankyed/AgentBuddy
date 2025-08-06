@@ -60,7 +60,7 @@ import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
-import QuickOpenPalette from '@/plugins/code/components/QuickOpenPalette.vue'
+import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = applicationState.system.get(id)
