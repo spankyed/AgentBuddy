@@ -8,16 +8,18 @@
       <input
         :value="field.key"
         @input="updateField(index, 'key', ($event.target as HTMLInputElement).value)"
+        @keydown.enter.prevent="handleKeyEnter(index)"
         type="text"
         placeholder="Key"
-        class="flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        class="field-editor-key flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
       />
       <input
         :value="field.value"
         @input="updateField(index, 'value', ($event.target as HTMLInputElement).value)"
+        @keydown.enter.prevent="handleValueEnter(index)"
         type="text"
         placeholder="Value"
-        class="flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        class="field-editor-value flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
       />
       <button
         @click="removeField(index)"
@@ -67,5 +69,34 @@ const addField = () => {
 const removeField = (index: number) => {
   const newFields = fields.value.filter((_, i) => i !== index)
   emit('update', newFields)
+}
+
+const handleKeyEnter = (index: number) => {
+  // Move focus to value input
+  setTimeout(() => {
+    const valueInputs = document.querySelectorAll<HTMLInputElement>('.field-editor-value')
+    if (valueInputs[index]) {
+      valueInputs[index].focus()
+    }
+  }, 0)
+}
+
+const handleValueEnter = (index: number) => {
+  // Only add new field if current one has content
+  const field = fields.value[index]
+  if (field.key.trim() || field.value.trim()) {
+    const newFields = [...fields.value]
+    // Insert new empty field after current one
+    newFields.splice(index + 1, 0, { key: '', value: '' })
+    emit('update', newFields)
+    
+    // Focus the new key input after Vue updates the DOM
+    setTimeout(() => {
+      const keyInputs = document.querySelectorAll<HTMLInputElement>('.field-editor-key')
+      if (keyInputs[index + 1]) {
+        keyInputs[index + 1].focus()
+      }
+    }, 0)
+  }
 }
 </script>
