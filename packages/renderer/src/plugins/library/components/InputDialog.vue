@@ -60,7 +60,7 @@ const emit = defineEmits<{
 const localValue = ref('')
 
 // Update local value when initial value changes or dialog opens
-watch(() => [props.modelValue, props.initialValue], ([isOpen, initial]) => {
+watch(() => [props.modelValue, props.initialValue] as const, ([isOpen, initial]) => {
   if (isOpen) {
     localValue.value = initial || ''
   }
