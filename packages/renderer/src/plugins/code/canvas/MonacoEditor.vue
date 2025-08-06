@@ -77,20 +77,16 @@ const switchToFile = (filePath: string, content: string) => {
   // Save current file's view state
   const currentModel = editor.value.getModel()
   if (currentModel) {
-    const currentPath = currentModel.uri.path.slice(1) // Remove leading /
-    viewStates.set(currentPath, editor.value.saveViewState())
+    // Get the path from the model's URI for consistency
+    const currentModelPath = currentModel.uri.fsPath || currentModel.uri.path
+    viewStates.set(currentModelPath, editor.value.saveViewState())
   }
   
   // Get or create model for new file
   let model = models.get(filePath)
   if (!model) {
-    // Properly format the file URI based on platform
-    const normalizedPath = filePath.replace(/\\/g, '/')
-    const uri = monaco.Uri.parse(
-      normalizedPath.startsWith('/') 
-        ? `file://${normalizedPath}`  // Unix-like paths already have leading /
-        : `file:///${normalizedPath}` // Windows paths need the extra /
-    )
+    // Use Monaco's file URI helper which handles paths correctly
+    const uri = monaco.Uri.file(filePath)
     model = monaco.editor.createModel(content, resolvedLanguage.value, uri)
     models.set(filePath, model)
     
