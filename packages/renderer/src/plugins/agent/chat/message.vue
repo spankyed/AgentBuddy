@@ -45,6 +45,16 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
           </button>
+          
+          <button 
+            @click="copyMessageText"
+            class="p-1.5 hover:bg-neutral-700 transition-colors"
+            title="Copy message text"
+          >
+            <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
         </div>
       </div>
         
@@ -94,6 +104,14 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
 const emit = defineEmits<ChatMessageEmits>()
 
 const isUser = computed(() => props.message.sender === 'user')
+
+const copyMessageText = async () => {
+  try {
+    await navigator.clipboard.writeText(props.message.text)
+  } catch (error) {
+    console.error('Failed to copy text:', error)
+  }
+}
 
 const formatTime = (date: Date | string | null | undefined) => {
   if (!date) return ''
