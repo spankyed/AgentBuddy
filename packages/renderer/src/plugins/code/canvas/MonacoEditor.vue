@@ -24,6 +24,7 @@
 import { computed, watch, shallowRef, onBeforeUnmount } from 'vue'
 import { VueMonacoEditor, VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import { getLanguageId, initializeMonaco } from '@/plugins/code/utils/simple-monaco-config'
+import { registerInsertConsoleLogAction } from '@/plugins/code/actions/insert-console-log'
 
 const props = defineProps<{
   modelValue: string
@@ -109,6 +110,13 @@ const switchToFile = (filePath: string, content: string) => {
 const handleMount = (editorInstance: any) => {
   editor.value = editorInstance
   initializeMonaco()
+  
+  // Register custom actions
+  const monaco = (window as any).monaco
+  if (monaco) {
+    registerInsertConsoleLogAction(editorInstance, monaco)
+  }
+  
   if (props.filePath && props.modelValue) {
     switchToFile(props.filePath, props.modelValue)
   }
