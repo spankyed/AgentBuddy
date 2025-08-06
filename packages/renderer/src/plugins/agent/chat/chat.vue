@@ -1,28 +1,32 @@
 <template>
-  <!-- Agent Chat Content -->
-  <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-    <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
-      <p class="text-gray-500">Start a conversation for this thread</p>
+  <div class="flex flex-col h-full overflow-hidden">
+    <!-- Agent Chat Content -->
+    <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
+      <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
+        <p class="text-gray-500">Start a conversation for this thread</p>
+      </div>
+      <div v-else class="w-9/12 py-2 mx-auto space-y-1">
+        <ChatMessage 
+          v-for="message in messages" 
+          :key="message.id" 
+          :message="message" 
+        />
+      </div>
     </div>
-    <div v-else class="w-9/12 py-2 mx-auto space-y-1">
-      <ChatMessage 
-        v-for="message in messages" 
-        :key="message.id" 
-        :message="message" 
-      />
-    </div>
-  </div>
-  <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
-  <ChatInput
+    <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
+    <div class="flex-shrink-0 w-full overflow-visible" :class="$style.inputContainer">
+      <ChatInput
     :current-thread="currentThread"
     :threads="threads"
     :current-mode="currentMode"
     @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
-    @new-thread="actor.send({ type: 'CLEAR_THREAD' })"
-    @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
-  />
+      @new-thread="actor.send({ type: 'CLEAR_THREAD' })"
+      @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
+    />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -55,5 +59,12 @@ watch(messages, async () => {
   flex-direction: column;
   overflow-y: auto;
   scroll-behavior: smooth;
+  min-height: 0;
+}
+
+.inputContainer {
+  max-height: 60vh;
+  overflow-y: auto;
+  min-height: min-content;
 }
 </style> 

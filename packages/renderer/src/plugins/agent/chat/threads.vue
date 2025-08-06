@@ -34,7 +34,7 @@
 
     <div 
       v-if="isOpen"
-      class="px-2 pt-1 border-t border-neutral-800 bg-neutral-900 animate-slide-down"
+      class="px-2 pt-1 border-t border-neutral-800 bg-neutral-900 animate-slide-down max-h-48 overflow-y-auto"
     >
 
 

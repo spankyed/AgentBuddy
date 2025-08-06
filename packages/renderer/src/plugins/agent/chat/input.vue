@@ -1,10 +1,10 @@
 <template>
-  <div class="overflow-visible">
+  <div class="flex flex-col w-full max-h-[60vh]">
     <form 
       @submit.prevent="handleSubmit"
-      class="pb-4 max-w-[80%] mx-auto"
+      class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
-      <div class="relative flex flex-col border rounded-lg bg-neutral-800" :class="$style.input">
+      <div class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible" :class="$style.input">
         <StatusIndicator/>
 
         <!-- Editor container -->
@@ -14,7 +14,7 @@
             ref="editorRef"
             contenteditable="true"
             translate="no"
-            class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-80 focus:outline-none"
+            class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
             @input="handleInput"
             @keydown="handleKeydown"
             data-placeholder="Message Agent"
@@ -74,13 +74,15 @@
       </div>
     </form>
 
-    <Threads
-      :current-thread="currentThread"
-      :threads="threads"
-      @view-thread="(threadId: string) => emit('view-thread', threadId)"
-      @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
-      @new-thread="emit('new-thread')"
-    />
+    <div class="flex-shrink-0 overflow-y-auto">
+      <Threads
+        :current-thread="currentThread"
+        :threads="threads"
+        @view-thread="(threadId: string) => emit('view-thread', threadId)"
+        @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
+        @new-thread="emit('new-thread')"
+      />
+    </div>
   </div>
 </template>
 
