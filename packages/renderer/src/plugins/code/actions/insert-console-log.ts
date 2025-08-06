@@ -17,66 +17,100 @@ export function registerInsertConsoleLogAction(editor: any, monaco: any) {
       const selectedText = model.getValueInRange(selection)
       
       if (selectedText) {
-        // Get the current position
-        const position = ed.getPosition()
-        
         // Create the console.log statement
         const consoleLogStatement = `console.log('${selectedText}', ${selectedText})`
         
-        // If text is selected, insert at cursor position
-        const insertPosition = selection.isEmpty() ? position : selection.getEndPosition()
+        // Get the line where selection ends
+        const insertLineNumber = selection.getEndPosition().lineNumber
+        const currentLineContent = model.getLineContent(insertLineNumber)
+        const leadingWhitespace = currentLineContent.match(/^(\s*)/)?.[1] || ''
+        const totalLines = model.getLineCount()
         
-        // Check if we need to add a new line
-        const lineContent = model.getLineContent(insertPosition.lineNumber)
-        const isEndOfLine = insertPosition.column > lineContent.length
-        
-        // Prepare the text to insert
-        let textToInsert = consoleLogStatement
-        if (!isEndOfLine) {
-          // If not at end of line, insert on new line below
-          textToInsert = '\n' + consoleLogStatement
+        // Check if we're on the last line
+        if (insertLineNumber === totalLines) {
+          // Insert at end of current line with newline before
+          const lineLength = currentLineContent.length
+          ed.executeEdits('insert-console-log', [{
+            range: new monaco.Range(
+              insertLineNumber,
+              lineLength + 1,
+              insertLineNumber,
+              lineLength + 1
+            ),
+            text: `\n${leadingWhitespace}${consoleLogStatement}`,
+            forceMoveMarkers: true
+          }])
+          
+          // Move cursor to end of inserted console.log
+          ed.setPosition({
+            lineNumber: insertLineNumber + 1,
+            column: leadingWhitespace.length + consoleLogStatement.length + 1
+          })
+        } else {
+          // Insert on new line below the current line
+          ed.executeEdits('insert-console-log', [{
+            range: new monaco.Range(
+              insertLineNumber + 1,
+              1,
+              insertLineNumber + 1,
+              1
+            ),
+            text: `${leadingWhitespace}${consoleLogStatement}\n`,
+            forceMoveMarkers: true
+          }])
+          
+          // Move cursor to end of inserted console.log
+          ed.setPosition({
+            lineNumber: insertLineNumber + 1,
+            column: leadingWhitespace.length + consoleLogStatement.length + 1
+          })
         }
-        
-        // Execute the edit
-        ed.executeEdits('insert-console-log', [{
-          range: new monaco.Range(
-            insertPosition.lineNumber,
-            insertPosition.column,
-            insertPosition.lineNumber,
-            insertPosition.column
-          ),
-          text: textToInsert,
-          forceMoveMarkers: true
-        }])
-        
-        // Move cursor to end of inserted text
-        const newPosition = isEndOfLine 
-          ? { lineNumber: insertPosition.lineNumber, column: insertPosition.column + consoleLogStatement.length }
-          : { lineNumber: insertPosition.lineNumber + 1, column: consoleLogStatement.length + 1 }
-        ed.setPosition(newPosition)
       } else {
-        // No text selected, insert empty console.log with cursor inside
+        // No text selected, insert empty console.log on new line below
         const position = ed.getPosition()
         const lineContent = model.getLineContent(position.lineNumber)
         const leadingWhitespace = lineContent.match(/^(\s*)/)?.[1] || ''
+        const totalLines = model.getLineCount()
         
-        // Insert console.log on new line with proper indentation
-        ed.executeEdits('insert-console-log', [{
-          range: new monaco.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column
-          ),
-          text: `\n${leadingWhitespace}console.log()`,
-          forceMoveMarkers: true
-        }])
-        
-        // Position cursor inside the parentheses
-        ed.setPosition({
-          lineNumber: position.lineNumber + 1,
-          column: leadingWhitespace.length + 13 // "console.log(".length + indentation
-        })
+        // Check if we're on the last line
+        if (position.lineNumber === totalLines) {
+          // Insert at end of current line with newline before
+          const lineLength = lineContent.length
+          ed.executeEdits('insert-console-log', [{
+            range: new monaco.Range(
+              position.lineNumber,
+              lineLength + 1,
+              position.lineNumber,
+              lineLength + 1
+            ),
+            text: `\n${leadingWhitespace}console.log()`,
+            forceMoveMarkers: true
+          }])
+          
+          // Position cursor inside the parentheses
+          ed.setPosition({
+            lineNumber: position.lineNumber + 1,
+            column: leadingWhitespace.length + 13 // "console.log(".length + indentation
+          })
+        } else {
+          // Insert on new line below current line
+          ed.executeEdits('insert-console-log', [{
+            range: new monaco.Range(
+              position.lineNumber + 1,
+              1,
+              position.lineNumber + 1,
+              1
+            ),
+            text: `${leadingWhitespace}console.log()\n`,
+            forceMoveMarkers: true
+          }])
+          
+          // Position cursor inside the parentheses
+          ed.setPosition({
+            lineNumber: position.lineNumber + 1,
+            column: leadingWhitespace.length + 13 // "console.log(".length + indentation
+          })
+        }
       }
     }
   })
