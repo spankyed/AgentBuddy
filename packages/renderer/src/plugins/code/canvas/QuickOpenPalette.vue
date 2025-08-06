@@ -49,10 +49,14 @@
               v-for="(result, index) in filteredResults"
               :key="result.item.path"
               :ref="el => setResultRef(el, index)"
-              class="flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer hover:bg-neutral-800"
-              :class="{ 'bg-neutral-800': index === selectedIndex }"
+              class="flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer"
+              :class="{ 
+                'bg-neutral-800': index === selectedIndex,
+                'hover:bg-neutral-800': !isKeyboardNavigation
+              }"
               @click="handleSelect(index)"
-              @mouseenter="selectedIndex = index"
+              @mouseenter="handleMouseEnter(index)"
+              @mousemove="handleMouseMove"
             >
               <!-- File Icon -->
               <component
@@ -168,6 +172,7 @@ const searchInput = ref<HTMLInputElement>()
 const resultsContainer = ref<HTMLDivElement>()
 const searchQuery = ref('')
 const resultRefs = ref<(HTMLElement | null)[]>([])
+const isKeyboardNavigation = ref(false)
 
 // Computed filtered results
 const filteredResults = computed<EnhancedSearchResult[]>(() => {
@@ -321,6 +326,7 @@ const handleKeydown = (e: KeyboardEvent) => {
       
     case 'ArrowDown':
       e.preventDefault()
+      isKeyboardNavigation.value = true
       if (filteredResults.value.length > 0) {
         const newIndex = Math.min(selectedIndex.value + 1, filteredResults.value.length - 1)
         codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: newIndex })
@@ -330,6 +336,7 @@ const handleKeydown = (e: KeyboardEvent) => {
       
     case 'ArrowUp':
       e.preventDefault()
+      isKeyboardNavigation.value = true
       if (filteredResults.value.length > 0) {
         const newIndex = Math.max(selectedIndex.value - 1, 0)
         codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: newIndex })
@@ -347,7 +354,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 const scrollToSelected = (index: number) => {
-  nextTick(() => {
+  requestAnimationFrame(() => {
     const element = resultRefs.value[index]
     if (element && resultsContainer.value) {
       const container = resultsContainer.value
@@ -356,10 +363,15 @@ const scrollToSelected = (index: number) => {
       const containerTop = container.scrollTop
       const containerBottom = containerTop + container.clientHeight
       
-      if (elementTop < containerTop) {
-        container.scrollTop = elementTop
+      // If selecting first item, always scroll to top
+      if (index === 0) {
+        container.scrollTo({ top: 0, behavior: 'auto' })
+      } else if (elementTop < containerTop) {
+        // Scroll up to show the element at the top of the viewport
+        container.scrollTo({ top: elementTop, behavior: 'auto' })
       } else if (elementBottom > containerBottom) {
-        container.scrollTop = elementBottom - container.clientHeight
+        // Scroll down to show the element at the bottom of the viewport
+        container.scrollTo({ top: elementBottom - container.clientHeight, behavior: 'auto' })
       }
     }
   })
@@ -411,6 +423,16 @@ const getDirectory = (relativePath: string) => {
   return relativePath.substring(0, lastSlash)
 }
 
+const handleMouseEnter = (index: number) => {
+  if (!isKeyboardNavigation.value) {
+    codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index })
+  }
+}
+
+const handleMouseMove = () => {
+  isKeyboardNavigation.value = false
+}
+
 const highlightedName = (result: any) => {
   if (result.matchRanges.length === 0) {
     return result.item.name
@@ -449,6 +471,7 @@ watch(isVisible, (visible) => {
 // Reset selected index when results change
 watch(filteredResults, () => {
   codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: 0 })
+  resultRefs.value = []
 })
 
 // Global escape key handler
