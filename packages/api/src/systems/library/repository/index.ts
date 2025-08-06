@@ -47,21 +47,10 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         ? await getCollectionPath(collection.id as EARS.EntityId)
         : []
 
-      // Handle backward compatibility: convert string content to ContentSection[]
-      let contentSections: ContentSection[]
-      const rawContent = doc.content
-      if (typeof rawContent === 'string') {
-        contentSections = [{ type: 'text', content: rawContent }]
-      } else if (Array.isArray(rawContent)) {
-        contentSections = rawContent as ContentSection[]
-      } else {
-        contentSections = [{ type: 'text', content: '' }]
-      }
-
       return {
         id: doc.id,
         name: doc.name as string,
-        content: contentSections,
+        content: doc.content as ContentSection[],
         shortCode: doc.shortCode as DocumentShortCode,
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
@@ -103,21 +92,10 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     ? await getCollectionPath(collection.id as EARS.EntityId)
     : []
 
-  // Handle backward compatibility: convert string content to ContentSection[]
-  let contentSections: ContentSection[]
-  const rawContent = document.content
-  if (typeof rawContent === 'string') {
-    contentSections = [{ type: 'text', content: rawContent }]
-  } else if (Array.isArray(rawContent)) {
-    contentSections = rawContent as ContentSection[]
-  } else {
-    contentSections = [{ type: 'text', content: '' }]
-  }
-
   return {
     id: documentId,
     name: document.name as string,
-    content: contentSections,
+    content: document.content as ContentSection[],
     shortCode: document.shortCode as DocumentShortCode,
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
@@ -649,16 +627,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   for (const doc of documents) {
     const documentId = doc.id
     
-    // Handle backward compatibility: convert string content to ContentSection[]
-    let contentSections: ContentSection[]
-    const rawContent = doc.content
-    if (typeof rawContent === 'string') {
-      contentSections = [{ type: 'text', content: rawContent }]
-    } else if (Array.isArray(rawContent)) {
-      contentSections = rawContent as ContentSection[]
-    } else {
-      contentSections = [{ type: 'text', content: '' }]
-    }
+    const contentSections = doc.content as ContentSection[]
     
     // Calculate content length for all sections
     let contentLength = 0
