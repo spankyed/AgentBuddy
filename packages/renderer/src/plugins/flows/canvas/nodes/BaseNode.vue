@@ -4,26 +4,22 @@
     :class="[
       nodeClasses,
       {
-        'ring-2 ring-offset-2 ring-offset-neutral-900': isActive || selected,
+        'ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/10': isActive || selected,
         'cursor-pointer': selectable,
       }
     ]"
   >
-    <!-- Glow effect on hover -->
-    <div 
-      class="absolute inset-0 transition-opacity duration-300 rounded-lg opacity-0 group-hover:opacity-100 blur-xl"
-      :class="glowClasses"
-    />
+    <!-- Remove glow effect for cleaner look -->
     
     <!-- Main content -->
     <div class="relative z-10">
       <!-- Header -->
       <div class="flex items-center gap-2">
         <div 
-          class="w-1.5 h-1.5 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-neutral-900/50"
+          class="w-2 h-2 rounded-full flex-shrink-0"
           :class="iconClasses"
         />
-        <span class="text-xs font-medium tracking-tight text-white/90">{{ data.label }}</span>
+        <span class="text-sm font-medium text-neutral-100">{{ data.label }}</span>
       </div>
       
       <!-- Custom content slot -->
@@ -35,7 +31,7 @@
       <div class="mt-1.5 flex items-center gap-1.5" v-if="data.nodeType || $slots.badge">
         <span 
           v-if="data.nodeType"
-          class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wide uppercase"
+          class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase"
           :class="badgeClasses"
         >
           {{ formatNodeType(data.nodeType) }}
@@ -59,18 +55,18 @@
       </div>
     </div>
     
-    <!-- Connection handles with better styling -->
+    <!-- Connection handles with better visibility -->
     <Handle
       v-if="showTargetHandle"
       type="target"
       :position="Position.Left"
-      class="!w-2 !h-2 !bg-neutral-700 !border-2 !border-neutral-600 hover:!bg-neutral-600 transition-colors"
+      class="!w-2.5 !h-2.5 !bg-neutral-700 !border-2 !border-neutral-600 hover:!bg-blue-500 hover:!border-blue-400 transition-all"
     />
     <Handle
       v-if="showSourceHandle"
       type="source"
       :position="Position.Right"
-      class="!w-2 !h-2 !bg-neutral-700 !border-2 !border-neutral-600 hover:!bg-neutral-600 transition-colors"
+      class="!w-2.5 !h-2.5 !bg-neutral-700 !border-2 !border-neutral-600 hover:!bg-blue-500 hover:!border-blue-400 transition-all"
     />
   </div>
 </template>
@@ -84,7 +80,7 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeClasses, getNodeGlowClasses, getNodeBadgeClasses, getNodeIconDotClasses, getNodeStatusClasses } from '../../config/node-config'
+import { getNodeClasses, getNodeGlowClasses, getNodeBadgeClasses, getNodeIconDotClasses, getNodeStatusClasses, getNodeAccentBarClasses } from '../../config/node-config'
 import type { NodeKind } from '@app/api'
 
 interface BaseNodeData {
@@ -133,6 +129,11 @@ const badgeClasses = computed(() => {
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
   return getNodeStatusClasses(props.data.status, 'simple') as string
+})
+
+const accentBarClasses = computed(() => {
+  const type = props.data.nodeType || 'action'
+  return getNodeAccentBarClasses(type)
 })
 
 const formatNodeType = (type: string) => {

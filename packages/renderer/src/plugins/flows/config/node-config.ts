@@ -46,18 +46,18 @@ export type StatusVariant = 'simple' | 'detailed'
 
 // Color scheme classes for each node type (static for Tailwind)
 const NODE_STYLE_CLASSES = {
-  // Gradient patterns for main node styling
+  // Clean, flat node styling with subtle borders
   gradient: {
-    purple: 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 ring-purple-400',
-    blue: 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 ring-blue-400',
-    amber: 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/30 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/20 ring-amber-400',
-    cyan: 'bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 ring-cyan-400',
-    orange: 'bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30 hover:border-orange-400/50 hover:shadow-lg hover:shadow-orange-500/20 ring-orange-400',
-    emerald: 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 ring-emerald-400',
-    indigo: 'bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 hover:border-indigo-400/50 hover:shadow-lg hover:shadow-indigo-500/20 ring-indigo-400',
-    neutral: 'bg-gradient-to-br from-neutral-700/50 to-neutral-800/30 border-neutral-600 hover:border-neutral-500 hover:shadow-lg hover:shadow-neutral-500/20 ring-neutral-400'
+    purple: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    blue: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    amber: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    cyan: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    orange: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    emerald: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    indigo: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm',
+    neutral: 'bg-neutral-800/70 backdrop-blur-sm border-neutral-700/60 hover:bg-neutral-800/90 hover:border-neutral-600/60 shadow-sm'
   },
-  // Solid background colors
+  // Solid accent colors for meaningful indicators
   solid: {
     purple: 'bg-purple-500',
     blue: 'bg-blue-500',
@@ -68,38 +68,38 @@ const NODE_STYLE_CLASSES = {
     indigo: 'bg-indigo-500',
     neutral: 'bg-neutral-500'
   },
-  // Glow effects
+  // Glow effects - much more subtle
   glow: {
-    purple: 'bg-purple-500/20',
-    blue: 'bg-blue-500/20',
-    amber: 'bg-amber-500/20',
-    cyan: 'bg-cyan-500/20',
-    orange: 'bg-orange-500/20',
-    emerald: 'bg-emerald-500/20',
-    indigo: 'bg-indigo-500/20',
-    neutral: 'bg-neutral-500/20'
+    purple: 'bg-purple-500/5',
+    blue: 'bg-blue-500/5',
+    amber: 'bg-amber-500/5',
+    cyan: 'bg-cyan-500/5',
+    orange: 'bg-orange-500/5',
+    emerald: 'bg-emerald-500/5',
+    indigo: 'bg-indigo-500/5',
+    neutral: 'bg-neutral-500/5'
   },
-  // Badge styles
+  // Subtle badge styles
   badge: {
-    purple: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-    blue: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-    amber: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-    cyan: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
-    orange: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
-    emerald: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-    indigo: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
-    neutral: 'bg-neutral-700/50 text-neutral-300 border border-neutral-600'
+    purple: 'bg-neutral-700/40 text-purple-300/80 font-medium',
+    blue: 'bg-neutral-700/40 text-blue-300/80 font-medium',
+    amber: 'bg-neutral-700/40 text-amber-300/80 font-medium',
+    cyan: 'bg-neutral-700/40 text-cyan-300/80 font-medium',
+    orange: 'bg-neutral-700/40 text-orange-300/80 font-medium',
+    emerald: 'bg-neutral-700/40 text-emerald-300/80 font-medium',
+    indigo: 'bg-neutral-700/40 text-indigo-300/80 font-medium',
+    neutral: 'bg-neutral-700/40 text-neutral-400 font-medium'
   },
-  // Ring colors for icon dots
+  // Ring colors for icon dots - very subtle
   ring: {
-    purple: 'ring-purple-500/30',
-    blue: 'ring-blue-500/30',
-    amber: 'ring-amber-500/30',
-    cyan: 'ring-cyan-500/30',
-    orange: 'ring-orange-500/30',
-    emerald: 'ring-emerald-500/30',
-    indigo: 'ring-indigo-500/30',
-    neutral: 'ring-neutral-500/30'
+    purple: 'ring-purple-500/20',
+    blue: 'ring-blue-500/20',
+    amber: 'ring-amber-500/20',
+    cyan: 'ring-cyan-500/20',
+    orange: 'ring-orange-500/20',
+    emerald: 'ring-emerald-500/20',
+    indigo: 'ring-indigo-500/20',
+    neutral: 'ring-neutral-600/30'
   },
   // Canvas styles (legacy)
   canvas: {
@@ -170,8 +170,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     label: 'Keep Alive',
     icon: Activity,
     color: 'text-neutral-400',
-    bgColor: 'bg-neutral-500/10',
-    hoverBgColor: 'group-hover:bg-neutral-500/15',
+    bgColor: 'bg-neutral-700/20',
+    hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode'
   },
@@ -180,8 +180,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     label: 'Action',
     icon: Play,
     color: 'text-neutral-400',
-    bgColor: 'bg-neutral-500/10',
-    hoverBgColor: 'group-hover:bg-neutral-500/15',
+    bgColor: 'bg-neutral-700/20',
+    hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'ActionNode'
   },
@@ -303,7 +303,7 @@ const getNodeColorKey = (nodeType: string): keyof typeof NODE_STYLE_CLASSES.grad
  * Returns complete node styling classes including gradients, borders, and hover effects
  */
 export const getNodeClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
-  const baseClasses = 'px-3 py-2 rounded-md border backdrop-blur-sm transition-all duration-200'
+  const baseClasses = 'px-4 py-3 rounded-lg border backdrop-blur-sm transition-all duration-200'
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   
@@ -317,6 +317,27 @@ export const getNodeGlowClasses = (nodeType: NodeKind | string, options?: NodeSt
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   return NODE_STYLE_CLASSES.glow[colorKey]
+}
+
+/**
+ * Returns accent bar classes for left border
+ */
+export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
+  const effectiveType = resolveNodeType(nodeType, options)
+  const colorKey = getNodeColorKey(effectiveType)
+  
+  const accentMap: Record<string, string> = {
+    purple: 'bg-purple-400/60',
+    blue: 'bg-blue-400/60',
+    amber: 'bg-amber-400/60',
+    cyan: 'bg-cyan-400/60',
+    orange: 'bg-orange-400/60',
+    emerald: 'bg-emerald-400/60',
+    indigo: 'bg-indigo-400/60',
+    neutral: 'bg-neutral-500/60'
+  }
+  
+  return accentMap[colorKey] || accentMap.neutral
 }
 
 /**
@@ -460,15 +481,15 @@ export const getPaletteIconClasses = (type: string): string => {
 export const getPaletteIconComponentClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
   
-  // Map color keys to text classes
+  // Map color keys to text classes - muted and sophisticated
   const textColorMap: Record<string, string> = {
-    purple: 'text-purple-400 group-hover:text-purple-300',
-    blue: 'text-blue-400 group-hover:text-blue-300',
-    amber: 'text-amber-400 group-hover:text-amber-300',
-    cyan: 'text-cyan-400 group-hover:text-cyan-300',
-    orange: 'text-orange-400 group-hover:text-orange-300',
-    emerald: 'text-emerald-400 group-hover:text-emerald-300',
-    indigo: 'text-indigo-400 group-hover:text-indigo-300',
+    purple: 'text-purple-300/70 group-hover:text-purple-300/90',
+    blue: 'text-blue-300/70 group-hover:text-blue-300/90',
+    amber: 'text-amber-300/70 group-hover:text-amber-300/90',
+    cyan: 'text-cyan-300/70 group-hover:text-cyan-300/90',
+    orange: 'text-orange-300/70 group-hover:text-orange-300/90',
+    emerald: 'text-emerald-300/70 group-hover:text-emerald-300/90',
+    indigo: 'text-indigo-300/70 group-hover:text-indigo-300/90',
     neutral: 'text-neutral-400 group-hover:text-neutral-300'
   }
   
