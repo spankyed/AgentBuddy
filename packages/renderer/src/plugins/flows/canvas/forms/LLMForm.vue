@@ -227,11 +227,7 @@
               </div>
             </div>
           </div>
-          <div class="px-4 py-3 border-t border-neutral-700 bg-neutral-800/50">
-            <p class="text-xs text-neutral-500">
-              <span class="font-medium">Tip:</span> Use JSONPath expressions like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.event.data.text</code> or <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.lastStep.result</code>
-            </p>
-          </div>
+          <TipSection :example-categories="tipExamples" />
         </div>
       </div>
     </div>
@@ -255,6 +251,7 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
+import TipSection from '../components/TipSection.vue'
 import type { ModelConfig, PromptEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '../../types/form-props'
 
@@ -275,6 +272,18 @@ const promptQuery = ref('')
 const isPromptDropdownOpen = ref(false)
 const modelQuery = ref('')
 const isModelDropdownOpen = ref(false)
+
+// Tip examples configuration
+const tipExamples = [
+  {
+    label: 'Context Variables',
+    examples: ['$.event.data.text', '$.lastStep.result', '$.context.userId', '$.history[0]']
+  },
+  {
+    label: 'System Variables',
+    examples: ['$.timestamp', '$.flowId', '$.sessionId', '$.variables.*']
+  }
+]
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 

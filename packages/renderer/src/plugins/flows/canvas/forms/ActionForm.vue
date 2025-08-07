@@ -149,11 +149,7 @@
               </div>
             </div>
           </div>
-          <div class="px-4 py-3 border-t border-neutral-700 bg-neutral-800/50">
-            <p class="text-xs text-neutral-500">
-              <span class="font-medium">Tip:</span> Use JSONPath expressions like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.event.data.text</code> or <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.lastStep.result</code> to map values, or enter literal values like <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">"hello"</code> or <code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">123</code>
-            </p>
-          </div>
+          <TipSection :example-categories="tipExamples" />
         </div>
       </div>
     </div>
@@ -177,6 +173,7 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
+import TipSection from '../components/TipSection.vue'
 import type { ActionEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '../../types/form-props'
 
@@ -192,6 +189,22 @@ const emit = defineEmits<{
 // UI state only
 const actionQuery = ref('')
 const isActionDropdownOpen = ref(false)
+
+// Tip examples configuration
+const tipExamples = [
+  {
+    label: 'JSONPath Expressions',
+    examples: [
+      '$.event.data.payload', '$.lastStep.result', '$.steps[1].result',
+      '$.steps[label=First Step].result',
+      '$.context.*', '$.variables.myVar'
+    ]
+  },
+  {
+    label: 'Literal Values',
+    examples: ['"hello"', '123', 'true', '{"key": "value"}']
+  }
+]
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
