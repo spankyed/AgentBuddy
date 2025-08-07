@@ -27,7 +27,7 @@
       </div>
 
       <!-- Pinned bottom section -->
-      <div class="flex flex-col items-center pt-6 mt-auto space-y-6 border-t border-neutral-800">
+      <div class="flex flex-col items-center py-6 mt-auto space-y-6 border-t border-neutral-800">
         <button
           v-for="item in pinnedItems"
           :key="item.id"
