@@ -95,7 +95,7 @@
                 @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option value="work-item">Work Item</option>
+                <option value="work-item">Task</option>
                 <option value="project">Project</option>
               </select>
             </div>
