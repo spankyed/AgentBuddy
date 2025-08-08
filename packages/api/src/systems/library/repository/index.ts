@@ -10,7 +10,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
   let query = qx(EARS.Entity.Document)
 
   if (collectionId) {
-    const documentsInCollection = await qx(collectionId as EARS.EntityId)
+    const documentsInCollection = qx(collectionId as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()
 
@@ -27,15 +27,15 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
 
   const documentsWithDetails = await Promise.all(
     documents.map(async (doc) => {
-      const tags = await qx(doc.id)
+      const tags = qx(doc.id)
         .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
         .pick(['name'])
 
       // Find collections that contain this document
-      const allCollections = await qx(EARS.Entity.Collection).pickAll()
+      const allCollections = qx(EARS.Entity.Collection).pickAll()
       const collections = []
       for (const col of allCollections) {
-        const docs = await qx(col.id as EARS.EntityId)
+        const docs = qx(col.id as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
           .ids()
         if (docs.includes(doc.id as EARS.EntityId)) {
@@ -67,20 +67,20 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
 
 export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null> {
   const documentId = id
-  const documents = await qx(documentId).pickAll()
+  const documents = qx(documentId).pickAll()
   const document = documents[0]
 
   if (!document) return null
 
-  const tags = await qx(documentId as EARS.EntityId)
+  const tags = qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
     .pick(['name'])
 
   // Find collections that contain this document
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   const collections = []
   for (const col of allCollections) {
-    const docs = await qx(col.id as EARS.EntityId)
+    const docs = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     if (docs.includes(documentId as EARS.EntityId)) {
@@ -107,7 +107,7 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
 }
 
 export async function getDocumentByShortCode(shortCode: DocumentShortCode): Promise<DocumentDTO | null> {
-  const documents = await qx(EARS.Entity.Document)
+  const documents = qx(EARS.Entity.Document)
     .where('shortCode', shortCode)
     .pickAll()
   
@@ -173,7 +173,7 @@ export async function updateDocument(
     updatedAt: now,
   })
     
-  const existingTags = await qx(documentId as EARS.EntityId)
+  const existingTags = qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
     .pickAll()
 
@@ -194,10 +194,10 @@ export async function updateDocument(
   }
 
   // Find collections that contain this document
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   const collections = []
   for (const col of allCollections) {
-    const docs = await qx(col.id as EARS.EntityId)
+    const docs = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     if (docs.includes(documentId as EARS.EntityId)) {
@@ -233,7 +233,7 @@ export async function updateDocument(
 export async function deleteDocument(id: EARS.EntityId): Promise<void> {
   const documentId = id
 
-  const tags = await qx(documentId as EARS.EntityId)
+  const tags = qx(documentId as EARS.EntityId)
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
     .pickAll()
 
@@ -248,10 +248,10 @@ export async function deleteDocument(id: EARS.EntityId): Promise<void> {
   }
 
   // Find collections that contain this document
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   const collections = []
   for (const col of allCollections) {
-    const docs = await qx(col.id as EARS.EntityId)
+    const docs = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     if (docs.includes(documentId as EARS.EntityId)) {
@@ -275,16 +275,16 @@ export async function deleteDocument(id: EARS.EntityId): Promise<void> {
 }
 
 export async function getCollections(): Promise<CollectionDTO[]> {
-  const allCollections = await qx(EARS.Entity.Collection)
+  const allCollections = qx(EARS.Entity.Collection)
     .pick(['name', 'description', 'createdAt', 'updatedAt'])
   
   const rootCollections = []
   for (const col of allCollections) {
     // Check if this collection has a parent (is a child of another collection)
-    const allParents = await qx(EARS.Entity.Collection).pickAll()
+    const allParents = qx(EARS.Entity.Collection).pickAll()
     let hasParent = false
     for (const parent of allParents) {
-      const children = await qx(parent.id as EARS.EntityId)
+      const children = qx(parent.id as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .ids()
       if (children.includes(col.id as EARS.EntityId)) {
@@ -300,11 +300,11 @@ export async function getCollections(): Promise<CollectionDTO[]> {
   const buildCollectionTree = async (collections: any[]): Promise<CollectionDTO[]> => {
     return Promise.all(
       collections.map(async (col) => {
-        const childCollections = await qx(col.id as EARS.EntityId)
+        const childCollections = qx(col.id as EARS.EntityId)
           .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
           .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
-        const documentCount = (await qx(col.id as EARS.EntityId)
+        const documentCount = (qx(col.id as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
           .ids()).length
 
@@ -383,13 +383,13 @@ export async function updateCollection(
   }
 
   tx(collectionId).updateBatch(attrs)
-  const collections = await qx(collectionId).pickAll()
+  const collections = qx(collectionId).pickAll()
   const collection = collections[0]
-  const documentCount = (await qx(collectionId)
+  const documentCount = (qx(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .pickAll()).length
 
-  const childCollections = await qx(collectionId)
+  const childCollections = qx(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
     .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
@@ -398,11 +398,11 @@ export async function updateCollection(
   const buildChildren = async (children: any[]): Promise<CollectionDTO[]> => {
     return Promise.all(
       children.map(async (child) => {
-        const childDocCount = (await qx(child.id as EARS.EntityId)
+        const childDocCount = (qx(child.id as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
           .pickAll()).length
         const childPath = await getCollectionPath(child.id as EARS.EntityId)
-        const grandChildren = await qx(child.id as EARS.EntityId)
+        const grandChildren = qx(child.id as EARS.EntityId)
           .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
           .pick(['name', 'description', 'createdAt', 'updatedAt'])
 
@@ -435,7 +435,7 @@ export async function updateCollection(
 export async function deleteCollection(id: EARS.EntityId): Promise<void> {
   const collectionId = id
 
-  const documents = await qx(collectionId)
+  const documents = qx(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .pickAll()
 
@@ -448,10 +448,10 @@ export async function deleteCollection(id: EARS.EntityId): Promise<void> {
   }
 
   // Find parent collections
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   const parents = []
   for (const col of allCollections) {
-    const children = await qx(col.id as EARS.EntityId)
+    const children = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .ids()
     if (children.includes(collectionId)) {
@@ -468,7 +468,7 @@ export async function deleteCollection(id: EARS.EntityId): Promise<void> {
     })
   }
 
-  const children = await qx(collectionId)
+  const children = qx(collectionId)
     .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
     .pickAll()
 
@@ -493,10 +493,10 @@ export async function moveDocument(
   const docId = documentId
 
   // Find collections that contain this document
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   const collections = []
   for (const col of allCollections) {
-    const docs = await qx(col.id as EARS.EntityId)
+    const docs = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .ids()
     if (docs.includes(docId)) {
@@ -526,17 +526,17 @@ async function getCollectionPath(collectionId: EARS.EntityId): Promise<string[]>
   let currentId: EARS.EntityId | null = collectionId
 
   while (currentId) {
-    const collections = await qx(currentId).pickAll()
+    const collections = qx(currentId).pickAll()
     const collection = collections[0]
     if (collection) {
       path.unshift(collection.name as string)
     }
 
     // Find parent collections
-    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    const allCollections = qx(EARS.Entity.Collection).pickAll()
     const parents = []
     for (const col of allCollections) {
-      const children = await qx(col.id as EARS.EntityId)
+      const children = qx(col.id as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .ids()
       if (children.includes(currentId as EARS.EntityId)) {
@@ -561,12 +561,12 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   
   if (folderId === null) {
     // Root directory - get collections without parents
-    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    const allCollections = qx(EARS.Entity.Collection).pickAll()
     for (const col of allCollections) {
-      const allParents = await qx(EARS.Entity.Collection).pickAll()
+      const allParents = qx(EARS.Entity.Collection).pickAll()
       let hasParent = false
       for (const parent of allParents) {
-        const children = await qx(parent.id as EARS.EntityId)
+        const children = qx(parent.id as EARS.EntityId)
           .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
           .ids()
         if (children.includes(col.id as EARS.EntityId)) {
@@ -580,7 +580,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     }
   } else {
     // Get child collections of this folder
-    folders = await qx(folderId)
+    folders = qx(folderId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pick(['name', 'description', 'createdAt', 'updatedAt'])
   }
@@ -588,10 +588,10 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   // Convert collections to folder items
   for (const folder of folders) {
     const folderId = folder.id
-    const childCollections = await qx(folder.id as EARS.EntityId)
+    const childCollections = qx(folder.id as EARS.EntityId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pickAll()
-    const documents = await qx(folder.id as EARS.EntityId)
+    const documents = qx(folder.id as EARS.EntityId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()
     const childCount = childCollections.length + documents.length
@@ -614,12 +614,12 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   
   if (folderId === null) {
     // Root directory - get documents not in any collection
-    const allDocuments = await qx(EARS.Entity.Document).pickAll()
+    const allDocuments = qx(EARS.Entity.Document).pickAll()
     for (const doc of allDocuments) {
-      const allCollections = await qx(EARS.Entity.Collection).pickAll()
+      const allCollections = qx(EARS.Entity.Collection).pickAll()
       let inCollection = false
       for (const col of allCollections) {
-        const docs = await qx(col.id as EARS.EntityId)
+        const docs = qx(col.id as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
           .ids()
         if (docs.includes(doc.id as EARS.EntityId)) {
@@ -633,7 +633,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     }
   } else {
     // Get documents in this collection
-    documents = await qx(folderId)
+    documents = qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
   }
@@ -658,7 +658,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     const size = formatFileSize(contentLength)
     
     // Get tags
-    const tags = await qx(doc.id as EARS.EntityId)
+    const tags = qx(doc.id as EARS.EntityId)
       .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
       .pick(['name'])
     
@@ -705,7 +705,7 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
   
   // Walk up the parent chain to build breadcrumbs
   while (currentId) {
-    const collections = await qx(currentId).pickAll()
+    const collections = qx(currentId).pickAll()
     const collection = collections[0]
     if (collection) {
       breadcrumbs.unshift({
@@ -716,10 +716,10 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
     }
     
     // Find parent
-    const allCollections = await qx(EARS.Entity.Collection).pickAll()
+    const allCollections = qx(EARS.Entity.Collection).pickAll()
     let parentId: EARS.EntityId | null = null
     for (const col of allCollections) {
-      const children = await qx(col.id as EARS.EntityId)
+      const children = qx(col.id as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .ids()
       if (children.includes(currentId)) {
@@ -735,9 +735,9 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
 
 export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.EntityId | null> {
   // Find parent collection
-  const allCollections = await qx(EARS.Entity.Collection).pickAll()
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
   for (const col of allCollections) {
-    const children = await qx(col.id as EARS.EntityId)
+    const children = qx(col.id as EARS.EntityId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .ids()
     if (children.includes(folderId)) {
@@ -749,7 +749,7 @@ export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.E
 
 export async function migrateDocumentShortCodes(): Promise<void> {
   // Get all documents
-  const allDocuments = await qx(EARS.Entity.Document).pickAll()
+  const allDocuments = qx(EARS.Entity.Document).pickAll()
   
   let migratedCount = 0
   for (let i = 0; i < allDocuments.length; i++) {
@@ -899,7 +899,7 @@ export async function getCollectionByName(name: string): Promise<CollectionDTO |
 }
 
 export async function getDocumentsInCollection(collectionId: EARS.EntityId): Promise<DocumentDTO[]> {
-  const documentIds = await qx(collectionId)
+  const documentIds = qx(collectionId)
     .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
     .ids()
   

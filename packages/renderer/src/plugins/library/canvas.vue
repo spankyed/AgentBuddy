@@ -28,6 +28,8 @@ const currentComponent = computed(() => {
       return EditView
     case 'create-index':
       return CreateIndexView
+    case 'edit-index':
+      return CreateIndexView // Reuse with edit mode
     case 'browser':
     default:
       return FileSystemBrowser
@@ -63,6 +65,11 @@ const currentProps = computed(() => {
       }
     case 'create-index':
       return {}
+    case 'edit-index':
+      return {
+        editMode: true,
+        initialData: context.value.editingIndex,
+      }
     default:
       return base
   }
@@ -79,6 +86,10 @@ const currentEvents = computed(() => {
     CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
     SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
     CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
+    EDIT_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'EDIT_SEARCH_INDEX', ...payload }),
+    UPDATE_SEARCH_INDEX: (payload: { indexId: string; config: any }) => send({ type: 'UPDATE_SEARCH_INDEX', ...payload }),
+    DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
+    CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
     VIEW_COLLECTIONS: () => send({ type: 'VIEW_COLLECTIONS' }),
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),

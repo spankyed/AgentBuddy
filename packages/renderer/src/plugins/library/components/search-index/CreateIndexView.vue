@@ -3,12 +3,12 @@
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-neutral-800">
       <div>
-        <h2 class="text-lg font-semibold text-neutral-100">Create Search Index</h2>
+        <h2 class="text-lg font-semibold text-neutral-100">{{ editMode ? 'Edit' : 'Create' }} Search Index</h2>
         <p class="text-sm text-neutral-500">Configure text embedding and vector search for documents</p>
       </div>
       <div class="flex items-center gap-2">
         <Button
-          @click="emit('CANCEL_CREATE_INDEX')"
+          @click="handleCancel"
           variant="transparent"
         >
           Cancel
@@ -18,7 +18,7 @@
           :disabled="!isValid"
           variant="primary"
         >
-          Create Index
+          {{ editMode ? 'Update' : 'Create' }} Index
         </Button>
       </div>
     </div>
@@ -77,16 +77,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import Button from '@/core/design/button.vue'
 import DetailsSection from './DetailsSection.vue'
 import ScopeSection from './ScopeSection.vue'
 import SectionsConfig from './SectionsConfig.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
+import type { SearchIndex } from '@app/api'
+
+const props = defineProps<{
+  editMode?: boolean
+  initialData?: SearchIndex
+}>()
 
 const emit = defineEmits<{
   SAVE_SEARCH_INDEX: [config: SearchIndexFormData]
+  UPDATE_SEARCH_INDEX: [payload: { indexId: string; config: SearchIndexFormData }]
   CANCEL_CREATE_INDEX: []
+  CANCEL_EDIT_INDEX: []
 }>()
 
 const tabs = [
@@ -122,7 +130,41 @@ const isValid = computed(() => {
 
 function handleSave() {
   if (isValid.value) {
-    emit('SAVE_SEARCH_INDEX', formData)
+    if (props.editMode && props.initialData) {
+      emit('UPDATE_SEARCH_INDEX', { 
+        indexId: props.initialData.id, 
+        config: formData 
+      })
+    } else {
+      emit('SAVE_SEARCH_INDEX', formData)
+    }
   }
 }
+
+function handleCancel() {
+  if (props.editMode) {
+    emit('CANCEL_EDIT_INDEX')
+  } else {
+    emit('CANCEL_CREATE_INDEX')
+  }
+}
+
+// Initialize form data from existing index when in edit mode
+onMounted(() => {
+  if (props.editMode && props.initialData) {
+    Object.assign(formData, {
+      name: props.initialData.name,
+      description: props.initialData.description,
+      embeddingModel: props.initialData.embeddingModel,
+      indexMetric: props.initialData.indexMetric,
+      connectors: props.initialData.connectors,
+      excludeAllSubfolders: props.initialData.excludeAllSubfolders,
+      excludedFolderIds: props.initialData.excludedFolderIds,
+      excludedDocumentIds: props.initialData.excludedDocumentIds,
+      enableSectionIndexing: props.initialData.enableSectionIndexing,
+      segmentRules: props.initialData.segmentRules,
+      constructTemplate: props.initialData.constructTemplate,
+    })
+  }
+})
 </script>

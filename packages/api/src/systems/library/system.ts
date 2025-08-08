@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import type { EARS } from '@/core/types'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, BreadcrumbItem } from './types'
+import type { SearchIndex } from './types/search-index'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import * as repository from './repository'
@@ -98,6 +99,9 @@ const IncomingLibraryEvents = [
     targetFolderId: z.string().nullable(),
   }),
   // Search index events
+  busEvent('LIST_SEARCH_INDICES', {
+    folderId: z.string().nullable(),
+  }),
   busEvent('CREATE_SEARCH_INDEX', {
     config: z.object({
       name: z.string(),
@@ -169,8 +173,9 @@ export type OutgoingLibraryEvents =
   | { type: 'ITEMS_DELETED'; data: { ids: string[] } }
   | { type: 'ITEMS_MOVED'; data: { ids: string[]; targetFolderId: string | null } }
   // Search index events
-  | { type: 'SEARCH_INDEX_CREATED'; data: { index: any } }
-  | { type: 'SEARCH_INDEX_UPDATED'; data: { index: any } }
+  | { type: 'SEARCH_INDICES_LOADED'; data: { indices: SearchIndex[] } }
+  | { type: 'SEARCH_INDEX_CREATED'; data: { index: SearchIndex } }
+  | { type: 'SEARCH_INDEX_UPDATED'; data: { index: SearchIndex } }
   | { type: 'SEARCH_INDEX_DELETED'; data: { indexId: string } }
   | { type: 'SEARCH_RESULTS'; data: { results: any[] } }
   | { type: 'INDEXING_PROGRESS'; data: { indexId: string; progress: number; total: number } }
@@ -428,6 +433,21 @@ export const librarySystem = setup({
       })
     },
     // Search index actions
+    listSearchIndices: async ({ system, event }) => {
+      const ev = event as { type: 'LIST_SEARCH_INDICES'; folderId: string | null }
+      const searchIndexRepo = await import('./repository/search-index')
+      const indices = await searchIndexRepo.getSearchIndicesForFolder(
+        ev.folderId ? ev.folderId as EARS.EntityId : null
+      )
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SEARCH_INDICES_LOADED' as const,
+          pluginId: 'library',
+          data: { indices },
+        },
+      })
+    },
     createSearchIndex: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
       const searchIndexRepo = await import('./repository/search-index')
@@ -556,6 +576,9 @@ export const librarySystem = setup({
           actions: ['moveItems'],
         },
         // Search index events
+        LIST_SEARCH_INDICES: {
+          actions: ['listSearchIndices'],
+        },
         CREATE_SEARCH_INDEX: {
           actions: ['createSearchIndex'],
         },

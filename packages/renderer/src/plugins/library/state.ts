@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
 
@@ -14,7 +14,7 @@ export interface LibraryContext {
   collections: CollectionDTO[]
   selectedDocumentId?: string
   selectedCollectionId?: string
-  currentView: 'browser' | 'create' | 'edit' | 'create-index'
+  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index'
   editingDocument?: DocumentDTO
   searchQuery: string
   selectedTags: string[]
@@ -28,6 +28,11 @@ export interface LibraryContext {
   sortDirection: 'asc' | 'desc'
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
+  
+  // Search index fields
+  searchIndices: SearchIndex[]
+  editingIndexId?: string
+  editingIndex?: SearchIndex
 }
 
 export type LibraryEvents =
@@ -45,6 +50,11 @@ export type LibraryEvents =
   | { type: 'CREATE_SEARCH_INDEX' }
   | { type: 'SAVE_SEARCH_INDEX'; config: SearchIndexFormData }
   | { type: 'CANCEL_CREATE_INDEX' }
+  | { type: 'LIST_SEARCH_INDICES' }
+  | { type: 'EDIT_SEARCH_INDEX'; indexId: string }
+  | { type: 'UPDATE_SEARCH_INDEX'; indexId: string; config: SearchIndexFormData }
+  | { type: 'DELETE_SEARCH_INDEX'; indexId: string }
+  | { type: 'CANCEL_EDIT_INDEX' }
   
   // Legacy collection events  
   | { type: 'VIEW_COLLECTIONS' }
@@ -311,6 +321,70 @@ export const librarySystem = setup({
         return []
       },
     }),
+    
+    // Search index actions
+    requestSearchIndices: ({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'LIST_SEARCH_INDICES',
+        folderId: context.currentFolderId,
+      })
+    },
+    setSearchIndices: assign({
+      searchIndices: ({ event }) => {
+        if (event.type === 'SEARCH_INDICES_LOADED') {
+          return event.data.indices
+        }
+        return []
+      },
+    }),
+    saveSearchIndex: ({ context, event }) => {
+      if (event.type === 'SAVE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_SEARCH_INDEX',
+          config: event.config,
+          folderId: context.currentFolderId,
+        })
+      }
+    },
+    updateSearchIndex: ({ event }) => {
+      if (event.type === 'UPDATE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'UPDATE_SEARCH_INDEX',
+          id: event.indexId,
+          config: event.config,
+        })
+      }
+    },
+    deleteSearchIndex: ({ event }) => {
+      if (event.type === 'DELETE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'DELETE_SEARCH_INDEX',
+          id: event.indexId,
+        })
+      }
+    },
+    setEditingIndex: assign({
+      editingIndexId: ({ event }) => {
+        if (event.type === 'EDIT_SEARCH_INDEX') {
+          return event.indexId
+        }
+        return undefined
+      },
+      editingIndex: ({ context, event }) => {
+        if (event.type === 'EDIT_SEARCH_INDEX') {
+          return context.searchIndices.find(idx => idx.id === event.indexId)
+        }
+        return undefined
+      },
+    }),
+    clearEditingIndex: assign({
+      editingIndexId: undefined,
+      editingIndex: undefined,
+    }),
   },
 }).createMachine({
   id: 'library',
@@ -332,6 +406,11 @@ export const librarySystem = setup({
     sortDirection: 'asc',
     breadcrumbs: [],
     editingItem: undefined,
+    
+    // Search index fields
+    searchIndices: [],
+    editingIndexId: undefined,
+    editingIndex: undefined,
   },
   on: {
     PLUGIN_ACTIVATED: {
@@ -340,7 +419,7 @@ export const librarySystem = setup({
     
     // New file browser events
     FOLDER_CONTENTS_LOADED: {
-      actions: 'setFolderContents',
+      actions: ['setFolderContents', 'requestSearchIndices'],
     },
     NAVIGATION_CHANGED: {
       actions: 'updateNavigation',
@@ -401,6 +480,20 @@ export const librarySystem = setup({
     COLLECTIONS_LOADED: {
       actions: 'setCollections',
     },
+    
+    // Search index events
+    SEARCH_INDICES_LOADED: {
+      actions: 'setSearchIndices',
+    },
+    SEARCH_INDEX_CREATED: {
+      actions: 'requestSearchIndices',
+    },
+    SEARCH_INDEX_UPDATED: {
+      actions: 'requestSearchIndices',
+    },
+    SEARCH_INDEX_DELETED: {
+      actions: 'requestSearchIndices',
+    },
   },
   states: {
     browser: {
@@ -415,6 +508,10 @@ export const librarySystem = setup({
           actions: 'setEditingDocument',
         },
         CREATE_SEARCH_INDEX: 'createIndex',
+        EDIT_SEARCH_INDEX: {
+          target: 'editIndex',
+          actions: 'setEditingIndex',
+        },
         TRAIL_CLICK: [
           {
             guard: ({ event }) => event.trail.includes('Create'),
@@ -468,16 +565,25 @@ export const librarySystem = setup({
       on: {
         SAVE_SEARCH_INDEX: {
           target: 'browser',
-          actions: ({ event, context }) => {
-            trpc.bus.send.mutate({
-              systemId: id,
-              type: 'CREATE_SEARCH_INDEX',
-              config: event.config,
-              folderId: context.currentFolderId,
-            })
-          },
+          actions: 'saveSearchIndex',
         },
         CANCEL_CREATE_INDEX: 'browser',
+      },
+    },
+    editIndex: {
+      entry: assign({ currentView: 'edit-index' }),
+      meta: {
+        breadcrumb: 'Edit Search Index',
+      },
+      on: {
+        UPDATE_SEARCH_INDEX: {
+          target: 'browser',
+          actions: ['updateSearchIndex', 'clearEditingIndex'],
+        },
+        CANCEL_EDIT_INDEX: {
+          target: 'browser',
+          actions: 'clearEditingIndex',
+        },
       },
     },
   },
