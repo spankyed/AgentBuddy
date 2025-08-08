@@ -35,15 +35,15 @@
           class="flex flex-wrap items-center gap-2 p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md"
         >
           <!-- Type Select -->
-          <Select
+          <select
             v-model="rule.type"
+            @change="updateValue"
             class="w-32 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
-            @update:modelValue="updateValue"
           >
               <option value="text">Text Block</option>
               <option value="list">List</option>
               <option value="field">Field</option>
-            </Select>
+            </select>
             
             <!-- Occurrence Input -->
             <OccurrenceInput
@@ -59,6 +59,19 @@
             class="w-40 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 outline-none focus:border-neutral-600 placeholder-neutral-500"
             @input="updateValue"
           />
+          
+          <!-- Index Mode for list and field types -->
+          <div v-if="rule.type === 'list' || rule.type === 'field'" class="flex items-center gap-2">
+            <label class="text-xs text-neutral-400">Mode:</label>
+            <select
+              v-model="rule.indexMode"
+              @change="updateValue"
+              class="w-28 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
+            >
+              <option value="combined">Combined</option>
+              <option value="separate">Separate</option>
+            </select>
+          </div>
             
           <!-- Remove Button -->
           <button
@@ -148,7 +161,6 @@ import { ref, watch } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
 import OccurrenceInput from './form/OccurrenceInput.vue'
-import Select from '@/core/design/Select.vue'
 import CopyFeedback from '@/core/design/CopyFeedback.vue'
 import type { SearchIndexFormData, SegmentRule } from '../../types/search-index'
 
@@ -185,7 +197,8 @@ function addRule() {
   const newRule: SegmentRule = {
     id: `rule-${Date.now()}`,
     type: 'text',
-    occurrence: 'all'
+    occurrence: 'all',
+    indexMode: 'combined'
   }
   localData.value.segmentRules.push(newRule)
   updateValue()
@@ -198,6 +211,7 @@ function removeRule(id: string) {
   updateValue()
 }
 
+
 function getSegmentVariable(index: number): string {
   return `{{segment ${index}}}`
 }
@@ -209,17 +223,40 @@ function getTemplatePreview(): string {
     field: '[field key: value ...]'
   }
   
-  return localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
+  // Check if any rules use separate mode
+  const hasSeparateMode = localData.value.segmentRules.some(r => 
+    (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+  )
+  
+  let previewText = localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
     const index = parseInt(num) - 1
     const rule = localData.value.segmentRules[index]
     if (!rule) return '[segment content...]'
     
+    // Handle separate mode for lists and fields
+    if (rule.indexMode === 'separate' && (rule.type === 'list' || rule.type === 'field')) {
+      if (rule.type === 'field' && rule.key) {
+        return `[${rule.key}: value_N]`
+      } else if (rule.type === 'field') {
+        return '[field_N: value_N]'
+      }
+      return '[list item_N]'
+    }
+    
+    // Combined mode or text type
     if (rule.type === 'field' && rule.key) {
       return `[${rule.key}: value...]`
     }
     
     return placeholders[rule.type] || '[segment content...]'
   })
+  
+  // Add note about separate indexing if applicable
+  if (hasSeparateMode) {
+    previewText += '\n\n📝 Note: Fields marked with _N will create separate index entries for each item'
+  }
+  
+  return previewText
 }
 
 async function copyVariable(variable: string) {

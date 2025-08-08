@@ -51,7 +51,7 @@
             </div>
           </div>
           <div class="text-xs text-neutral-500">
-            {{ index.documentCount }} documents • {{ getModelLabel(index.embeddingModel) }}
+            {{ index.documentCount }} {{ getIndexedItemsLabel(index) }} • {{ getModelLabel(index.embeddingModel) }}
           </div>
         </div>
       </div>
@@ -212,6 +212,19 @@ function getModelLabel(modelId: string): string {
   }
   // Fallback for unknown models
   return modelId
+}
+
+function getIndexedItemsLabel(index: any): string {
+  // Check if this index uses multi-indexing (separate mode for lists/fields)
+  const hasMultiIndexing = index.enableSectionIndexing && 
+    index.segmentRules?.some((r: any) => 
+      (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+    )
+  
+  if (hasMultiIndexing) {
+    return index.documentCount === 1 ? 'chunk' : 'chunks'
+  }
+  return index.documentCount === 1 ? 'document' : 'documents'
 }
 
 const deleteConfirm = ref({

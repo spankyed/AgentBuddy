@@ -18,6 +18,7 @@ export interface SegmentRule {
   type: 'text' | 'list' | 'field'
   occurrence: string // String representation of Occurrence
   key?: string // Only for 'field' type
+  indexMode: 'combined' | 'separate' // For list and field types - how to index items
 }
 
 export interface SearchIndexConfig {
@@ -42,10 +43,19 @@ export interface SearchIndexConfig {
 export interface SearchIndex extends SearchIndexConfig {
   id: EARS.EntityId
   folderId: EARS.EntityId | null // The folder this index belongs to
-  documentCount: number // Number of indexed documents
+  documentCount: number // Number of indexed items (documents or chunks when using separate mode)
   vectorDimensions: number // Dimension of vectors (384, 1536, 3072)
   createdAt: number
   updatedAt: number
+}
+
+export interface ChunkInfo {
+  sourceDocId: EARS.EntityId
+  segmentIndex: number  // Which segment rule this came from
+  itemIndex?: number    // For separated lists/fields - which item
+  totalChunks: number   // Total chunks from this document
+  chunkType: 'full' | 'segment-item' // Whether it's a full doc or segment item
+  chunkKey: string      // Unique identifier for this chunk
 }
 
 export interface IndexedDocument {
@@ -53,6 +63,7 @@ export interface IndexedDocument {
   vectorId: number // USearch internal ID
   embedding: Float32Array
   text: string // The processed text that was embedded
+  chunkInfo?: ChunkInfo // Information about the chunk
   metadata: {
     shortCode: string
     name: string

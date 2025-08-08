@@ -156,7 +156,7 @@ export async function indexDocumentsInFolder(
     indexCache.set(indexId, index)
   }
   
-  // Load existing mappings
+  // Load existing mappings - now uses chunk keys instead of doc IDs
   const mappings = searchService.loadMappings(indexId)
   
   // Get documents to index
@@ -164,47 +164,115 @@ export async function indexDocumentsInFolder(
   
   let vectorId = mappings.size
   
+  // Check if we need multi-indexing
+  const needsMultiIndex = searchIndex.enableSectionIndexing && 
+    searchIndex.segmentRules.some(r => 
+      (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+    )
+  
+  
   for (const doc of documents) {
-    // Skip if already indexed
-    if (mappings.has(doc.id)) {
-      continue
+    if (needsMultiIndex) {
+      // Process with multi-indexing
+      const chunks = searchService.processDocumentContentMultiIndex(doc.content, searchIndex)
+      
+      for (const chunk of chunks) {
+        // Create unique chunk key
+        const chunkKey = chunk.itemIndex !== undefined
+          ? `${doc.id}-seg${chunk.segmentIndex}-item${chunk.itemIndex}`
+          : `${doc.id}-seg${chunk.segmentIndex}`
+        
+        // Skip if already indexed
+        if (mappings.has(chunkKey)) {
+          continue
+        }
+        
+        // Generate embedding
+        const embeddingResult = await searchService.embedText(chunk.text, searchIndex.embeddingModel)
+        
+        // Add to index
+        index.add(BigInt(vectorId), embeddingResult.embedding)
+        
+        // Save mapping
+        mappings.set(chunkKey, vectorId)
+        
+        // Save indexed document metadata with chunk info
+        const indexedDoc: IndexedDocument = {
+          documentId: doc.id as EARS.EntityId,
+          vectorId,
+          embedding: embeddingResult.embedding,
+          text: chunk.text,
+          chunkInfo: {
+            sourceDocId: doc.id as EARS.EntityId,
+            segmentIndex: chunk.segmentIndex,
+            itemIndex: chunk.itemIndex,
+            totalChunks: chunks.length,
+            chunkType: chunk.itemIndex !== undefined ? 'segment-item' : 'full',
+            chunkKey
+          },
+          metadata: {
+            shortCode: doc.shortCode,
+            name: doc.name,
+            indexedAt: Date.now(),
+          },
+        }
+        
+        // Store indexed document in EARS
+        const indexedDocId = `IndexedDoc-${indexId}-${chunkKey}` as EARS.EntityId
+        tx(indexedDocId).updateBatch(indexedDoc as any)
+        
+        vectorId++
+      }
+    } else {
+      // Original single-document indexing
+      const chunkKey = doc.id
+      
+      // Skip if already indexed
+      if (mappings.has(chunkKey)) {
+        continue
+      }
+      
+      // Process content
+      const text = searchService.processDocumentContent(doc.content, searchIndex)
+      
+      // Generate embedding
+      const embeddingResult = await searchService.embedText(text, searchIndex.embeddingModel)
+      
+      // Add to index
+      index.add(BigInt(vectorId), embeddingResult.embedding)
+      
+      // Save mapping
+      mappings.set(chunkKey, vectorId)
+      
+      // Save indexed document metadata
+      const indexedDoc: IndexedDocument = {
+        documentId: doc.id as EARS.EntityId,
+        vectorId,
+        embedding: embeddingResult.embedding,
+        text,
+        metadata: {
+          shortCode: doc.shortCode,
+          name: doc.name,
+          indexedAt: Date.now(),
+        },
+      }
+      
+      // Store indexed document in EARS
+      const indexedDocId = `IndexedDoc-${indexId}-${doc.id}` as EARS.EntityId
+      tx(indexedDocId).updateBatch(indexedDoc as any)
+      
+      vectorId++
     }
-    
-    // Process content
-    const text = searchService.processDocumentContent(doc.content, searchIndex)
-    
-    // Generate embedding
-    const embeddingResult = await searchService.embedText(text, searchIndex.embeddingModel)
-    
-    // Add to index
-    index.add(BigInt(vectorId), embeddingResult.embedding)
-    
-    // Save mapping
-    mappings.set(doc.id, vectorId)
-    
-    // Save indexed document metadata
-    const indexedDoc: IndexedDocument = {
-      documentId: doc.id as EARS.EntityId,
-      vectorId,
-      embedding: embeddingResult.embedding,
-      text,
-      metadata: {
-        shortCode: doc.shortCode,
-        name: doc.name,
-        indexedAt: Date.now(),
-      },
-    }
-    
-    // Store indexed document in EARS
-    const indexedDocId = `IndexedDoc-${indexId}-${doc.id}` as EARS.EntityId
-    tx(indexedDocId).updateBatch(indexedDoc as any)
-    
-    vectorId++
   }
   
-  // Update document count
+  // Update document count (now counts chunks, not just documents)
   searchIndex.documentCount = mappings.size
-  tx(indexId).put('documentCount', searchIndex.documentCount)
+  // Update the full searchIndex object to ensure all fields are preserved
+  tx(indexId).updateBatch({
+    ...searchIndex,
+    type: 'SearchIndex',
+    documentCount: mappings.size
+  })
   
   // Save index and mappings (only save index if we have documents)
   if (mappings.size > 0) {
@@ -243,45 +311,118 @@ export async function indexDocument(
   // Load existing mappings
   const mappings = searchService.loadMappings(indexId)
   
-  // Remove old vector if exists
-  if (mappings.has(documentId)) {
-    const oldVectorId = mappings.get(documentId)!
+  // Remove old chunks for this document
+  const keysToRemove: string[] = []
+  for (const [key, _] of mappings) {
+    if (key === documentId || key.startsWith(`${documentId}-`)) {
+      keysToRemove.push(key)
+    }
+  }
+  
+  for (const key of keysToRemove) {
+    const oldVectorId = mappings.get(key)!
     index.remove(BigInt(oldVectorId))
+    mappings.delete(key)
+    
+    // Delete old indexed document from EARS
+    const oldIndexedDocId = `IndexedDoc-${indexId}-${key}` as EARS.EntityId
+    tx(oldIndexedDocId).destroy()
   }
   
-  // Process content
-  const text = searchService.processDocumentContent(document.content, searchIndex)
+  // Check if we need multi-indexing
+  const needsMultiIndex = searchIndex.enableSectionIndexing && 
+    searchIndex.segmentRules.some(r => 
+      (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+    )
   
-  // Generate embedding
-  const embeddingResult = await searchService.embedText(text, searchIndex.embeddingModel)
   
-  // Add to index with new vector ID
-  const vectorId = mappings.size
-  index.add(BigInt(vectorId), embeddingResult.embedding)
+  let vectorId = mappings.size
   
-  // Update mapping
-  mappings.set(documentId, vectorId)
-  
-  // Save indexed document metadata
-  const indexedDoc: IndexedDocument = {
-    documentId,
-    vectorId,
-    embedding: embeddingResult.embedding,
-    text,
-    metadata: {
-      shortCode: document.shortCode,
-      name: document.name,
-      indexedAt: Date.now(),
-    },
+  if (needsMultiIndex) {
+    // Process with multi-indexing
+    const chunks = searchService.processDocumentContentMultiIndex(document.content, searchIndex)
+    
+    for (const chunk of chunks) {
+      // Create unique chunk key
+      const chunkKey = chunk.itemIndex !== undefined
+        ? `${documentId}-seg${chunk.segmentIndex}-item${chunk.itemIndex}`
+        : `${documentId}-seg${chunk.segmentIndex}`
+      
+      // Generate embedding
+      const embeddingResult = await searchService.embedText(chunk.text, searchIndex.embeddingModel)
+      
+      // Add to index
+      index.add(BigInt(vectorId), embeddingResult.embedding)
+      
+      // Save mapping
+      mappings.set(chunkKey, vectorId)
+      
+      // Save indexed document metadata with chunk info
+      const indexedDoc: IndexedDocument = {
+        documentId,
+        vectorId,
+        embedding: embeddingResult.embedding,
+        text: chunk.text,
+        chunkInfo: {
+          sourceDocId: documentId,
+          segmentIndex: chunk.segmentIndex,
+          itemIndex: chunk.itemIndex,
+          totalChunks: chunks.length,
+          chunkType: chunk.itemIndex !== undefined ? 'segment-item' : 'full',
+          chunkKey
+        },
+        metadata: {
+          shortCode: document.shortCode,
+          name: document.name,
+          indexedAt: Date.now(),
+        },
+      }
+      
+      // Store indexed document in EARS
+      const indexedDocId = `IndexedDoc-${indexId}-${chunkKey}` as EARS.EntityId
+      tx(indexedDocId).updateBatch(indexedDoc as any)
+      
+      vectorId++
+    }
+  } else {
+    // Original single-document indexing
+    const text = searchService.processDocumentContent(document.content, searchIndex)
+    
+    // Generate embedding
+    const embeddingResult = await searchService.embedText(text, searchIndex.embeddingModel)
+    
+    // Add to index
+    index.add(BigInt(vectorId), embeddingResult.embedding)
+    
+    // Update mapping
+    mappings.set(documentId, vectorId)
+    
+    // Save indexed document metadata
+    const indexedDoc: IndexedDocument = {
+      documentId,
+      vectorId,
+      embedding: embeddingResult.embedding,
+      text,
+      metadata: {
+        shortCode: document.shortCode,
+        name: document.name,
+        indexedAt: Date.now(),
+      },
+    }
+    
+    // Store indexed document in EARS
+    const indexedDocId = `IndexedDoc-${indexId}-${documentId}` as EARS.EntityId
+    tx(indexedDocId).updateBatch(indexedDoc as any)
   }
-  
-  // Store indexed document in EARS
-  const indexedDocId = `IndexedDoc-${indexId}-${documentId}` as EARS.EntityId
-  tx(indexedDocId).updateBatch(indexedDoc as any)
   
   // Update document count
   searchIndex.documentCount = mappings.size
-  tx(indexId).put('documentCount', searchIndex.documentCount)
+  // Update the full searchIndex object to ensure all fields are preserved
+  tx(indexId).updateBatch({
+    ...searchIndex,
+    type: 'SearchIndex',
+    documentCount: mappings.size
+  })
   
   // Save index and mappings
   await searchService.saveIndex(index, searchService.getIndexPath(indexId))
@@ -305,16 +446,25 @@ export async function removeDocumentFromIndex(
   // Load existing mappings
   const mappings = searchService.loadMappings(indexId)
   
-  // Remove vector if exists
-  if (mappings.has(documentId)) {
-    const vectorId = mappings.get(documentId)!
+  // Remove all chunks for this document
+  const keysToRemove: string[] = []
+  for (const [key, _] of mappings) {
+    if (key === documentId || key.startsWith(`${documentId}-`)) {
+      keysToRemove.push(key)
+    }
+  }
+  
+  for (const key of keysToRemove) {
+    const vectorId = mappings.get(key)!
     index.remove(BigInt(vectorId))
-    mappings.delete(documentId)
+    mappings.delete(key)
     
     // Delete indexed document from EARS
-    const indexedDocId = `IndexedDoc-${indexId}-${documentId}` as EARS.EntityId
+    const indexedDocId = `IndexedDoc-${indexId}-${key}` as EARS.EntityId
     tx(indexedDocId).destroy()
-    
+  }
+  
+  if (keysToRemove.length > 0) {
     // Save updated index and mappings
     await searchService.saveIndex(index, searchService.getIndexPath(indexId))
     searchService.saveMappings(indexId, mappings)
@@ -323,7 +473,12 @@ export async function removeDocumentFromIndex(
     const searchIndex = await getSearchIndex(indexId)
     if (searchIndex) {
       searchIndex.documentCount = mappings.size
-      tx(indexId).put('documentCount', searchIndex.documentCount)
+      // Update the full searchIndex object to ensure all fields are preserved
+      tx(indexId).updateBatch({
+        ...searchIndex,
+        type: 'SearchIndex',
+        documentCount: mappings.size
+      })
     }
   }
 }
@@ -351,12 +506,12 @@ export async function searchInIndex(
   // Search
   const results = index.search(queryEmbedding.embedding, limit)
   
-  // Load mappings to get document IDs
+  // Load mappings to get chunk keys
   const mappings = searchService.loadMappings(indexId)
   const reverseMappings = new Map(Array.from(mappings).map(([k, v]) => [v, k]))
   
-  // Build search results
-  const searchResults: IndexSearchResult[] = []
+  // Build search results - deduplicate by document ID
+  const searchResultsMap = new Map<string, IndexSearchResult>()
   
   // Handle search results
   if (results.keys && results.distances) {
@@ -367,24 +522,35 @@ export async function searchInIndex(
       const key = Number(keys[i])
       const distance = distances[i]
       
-      const documentId = reverseMappings.get(key)
-      if (!documentId) continue
+      const chunkKey = reverseMappings.get(key)
+      if (!chunkKey) continue
       
       // Load indexed document metadata
-      const indexedDocId = `IndexedDoc-${indexId}-${documentId}` as EARS.EntityId
+      const indexedDocId = `IndexedDoc-${indexId}-${chunkKey}` as EARS.EntityId
       const indexedDocs = qx(indexedDocId).pickAll()
       const indexedDoc = indexedDocs[0] as unknown as IndexedDocument
       
       if (indexedDoc) {
-        searchResults.push({
-          documentId: documentId as EARS.EntityId,
-          score: distance,
-          text: indexedDoc.text,
-          metadata: indexedDoc.metadata,
-        })
+        const docId = indexedDoc.documentId
+        
+        // If we already have a result for this document, keep the best score
+        const existing = searchResultsMap.get(docId)
+        if (!existing || distance > existing.score) {
+          searchResultsMap.set(docId, {
+            documentId: docId,
+            score: distance,
+            text: indexedDoc.text,
+            metadata: indexedDoc.metadata,
+          })
+        }
       }
     }
   }
+  
+  // Convert map to array and sort by score
+  const searchResults = Array.from(searchResultsMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
   
   return searchResults
 }

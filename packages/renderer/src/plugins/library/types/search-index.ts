@@ -10,6 +10,7 @@ export interface SegmentRule {
   type: ContentType
   occurrence: string // "first" | "last" | "all" | N | N-X
   key?: string // Only for 'field' type
+  indexMode: 'combined' | 'separate' // For list and field types - how to index items
 }
 
 export interface SearchIndexConfig {
