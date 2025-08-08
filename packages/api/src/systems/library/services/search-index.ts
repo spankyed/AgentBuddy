@@ -84,6 +84,22 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
   }
 }
 
+// Convert a content section to text
+function sectionToText(section: ContentSection, key?: string): string {
+  if (section.type === 'text') {
+    return section.text
+  } else if (section.type === 'list') {
+    return section.items.join(', ')
+  } else if (section.type === 'field') {
+    if (key) {
+      const field = section.fields.find(f => f.key === key)
+      return field ? field.value : ''
+    }
+    return section.fields.map(f => `${f.key}: ${f.value}`).join('; ')
+  }
+  return ''
+}
+
 // Parse occurrence string to typed Occurrence
 export function parseOccurrence(value: string): Occurrence {
   const trimmed = value.trim().toLowerCase()
@@ -147,21 +163,10 @@ function extractSections(
     selectedSections = matchingSections.slice(from, to)
   }
   
-  // Convert selected sections to text
-  return selectedSections.map(section => {
-    if (section.type === 'text') {
-      return section.text
-    } else if (section.type === 'list') {
-      return section.items.join(', ')
-    } else if (section.type === 'field') {
-      if (key) {
-        const field = section.fields.find(f => f.key === key)
-        return field ? field.value : ''
-      }
-      return section.fields.map(f => `${f.key}: ${f.value}`).join('; ')
-    }
-    return ''
-  }).filter(text => text.length > 0)
+  // Convert selected sections to text using the reusable helper
+  return selectedSections
+    .map(section => sectionToText(section, key))
+    .filter(text => text.length > 0)
 }
 
 // Process document content according to index configuration
@@ -169,18 +174,22 @@ export function processDocumentContent(
   content: ContentSection[],
   config: SearchIndexConfig
 ): string {
-  if (!config.enableSectionIndexing) {
-    // Simple concatenation of all content
-    return content.map(section => {
-      if (section.type === 'text') {
-        return section.text
-      } else if (section.type === 'list') {
-        return section.items.join(' ')
-      } else if (section.type === 'field') {
-        return section.fields.map(f => `${f.key}: ${f.value}`).join(' ')
-      }
-      return ''
-    }).join(' ')
+  // If no section indexing and no segment rules, use first content section as segment 1
+  if (!config.enableSectionIndexing || config.segmentRules.length === 0) {
+    // Get the first content section as text using the helper
+    let firstSectionText = ''
+    if (content.length > 0) {
+      firstSectionText = sectionToText(content[0])
+    }
+    
+    // Apply the template with segment 1
+    let result = config.constructTemplate || '{{segment 1}}'
+    result = result.replaceAll('{{segment 1}}', firstSectionText)
+    
+    // If there are other segment placeholders, replace them with empty strings
+    result = result.replace(/\{\{segment \d+\}\}/g, '')
+    
+    return result.trim() || firstSectionText // Fallback to first section if template produces empty string
   }
   
   // Apply segment rules and template

@@ -22,6 +22,15 @@
             <span class="text-sm text-neutral-200">{{ index.name }}</span>
             <div class="flex items-center gap-1">
               <button
+                @click="send({ type: 'TEST_SEARCH_INDEX', indexId: index.id })"
+                class="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                title="Test"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+              <button
                 @click="send({ type: 'EDIT_SEARCH_INDEX', indexId: index.id })"
                 class="p-1 text-neutral-400 hover:text-neutral-200 transition-colors"
                 title="Edit"

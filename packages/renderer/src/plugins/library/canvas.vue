@@ -1,9 +1,13 @@
 <template>
-  <component
-    :is="currentComponent"
-    v-bind="currentProps"
-    v-on="currentEvents"
-  />
+  <div>
+    <component
+      v-if="currentComponent"
+      :is="currentComponent"
+      v-bind="currentProps"
+      v-on="currentEvents"
+    />
+    <TestIndexModal v-if="context.currentView === 'test-index'" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -14,6 +18,7 @@ import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
 import CreateIndexView from './components/search-index/CreateIndexView.vue'
+import TestIndexModal from './components/search-index/TestIndexModal.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
 const actor = useState<typeof librarySystem>(id)
@@ -30,6 +35,8 @@ const currentComponent = computed(() => {
       return CreateIndexView
     case 'edit-index':
       return CreateIndexView // Reuse with edit mode
+    case 'test-index':
+      return null // Don't render any component, just the modal
     case 'browser':
     default:
       return FileSystemBrowser

@@ -14,7 +14,7 @@ export interface LibraryContext {
   collections: CollectionDTO[]
   selectedDocumentId?: string
   selectedCollectionId?: string
-  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index'
+  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
   searchQuery: string
   selectedTags: string[]
@@ -33,6 +33,13 @@ export interface LibraryContext {
   searchIndices: SearchIndex[]
   editingIndexId?: string
   editingIndex?: SearchIndex
+  
+  // Search test fields
+  testingIndexId?: string
+  testingIndex?: SearchIndex
+  testQuery: string
+  testResults: any[]
+  isSearching: boolean
 }
 
 export type LibraryEvents =
@@ -55,6 +62,12 @@ export type LibraryEvents =
   | { type: 'UPDATE_SEARCH_INDEX'; indexId: string; config: SearchIndexFormData }
   | { type: 'DELETE_SEARCH_INDEX'; indexId: string }
   | { type: 'CANCEL_EDIT_INDEX' }
+  
+  // Search test events
+  | { type: 'TEST_SEARCH_INDEX'; indexId: string }
+  | { type: 'UPDATE_TEST_QUERY'; query: string }
+  | { type: 'EXECUTE_TEST_SEARCH' }
+  | { type: 'CANCEL_TEST_SEARCH' }
   
   // Legacy collection events  
   | { type: 'VIEW_COLLECTIONS' }
@@ -385,6 +398,63 @@ export const librarySystem = setup({
       editingIndexId: undefined,
       editingIndex: undefined,
     }),
+    
+    // Search test actions
+    setTestingIndex: assign({
+      testingIndexId: ({ event }) => {
+        if (event.type === 'TEST_SEARCH_INDEX') {
+          return event.indexId
+        }
+        return undefined
+      },
+      testingIndex: ({ context, event }) => {
+        if (event.type === 'TEST_SEARCH_INDEX') {
+          return context.searchIndices.find(idx => idx.id === event.indexId)
+        }
+        return undefined
+      },
+      testQuery: '',
+      testResults: [],
+      isSearching: false,
+    }),
+    updateTestQuery: assign({
+      testQuery: ({ event }) => {
+        if (event.type === 'UPDATE_TEST_QUERY') {
+          return event.query
+        }
+        return ''
+      },
+    }),
+    executeTestSearch: ({ context }) => {
+      if (context.testingIndexId && context.testQuery) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'SEARCH_IN_INDEX',
+          indexId: context.testingIndexId,
+          query: context.testQuery,
+          limit: 10,
+        })
+      }
+    },
+    setSearching: assign({
+      isSearching: true,
+    }),
+    setSearchResults: assign({
+      testResults: ({ event }) => {
+        if (event.type === 'SEARCH_RESULTS') {
+          return event.data.results
+        }
+        return []
+      },
+      isSearching: false,
+    }),
+    clearTestSearch: assign({
+      testingIndexId: undefined,
+      testingIndex: undefined,
+      testQuery: '',
+      testResults: [],
+      isSearching: false,
+    }),
   },
 }).createMachine({
   id: 'library',
@@ -411,6 +481,13 @@ export const librarySystem = setup({
     searchIndices: [],
     editingIndexId: undefined,
     editingIndex: undefined,
+    
+    // Search test fields
+    testingIndexId: undefined,
+    testingIndex: undefined,
+    testQuery: '',
+    testResults: [],
+    isSearching: false,
   },
   on: {
     PLUGIN_ACTIVATED: {
@@ -494,6 +571,9 @@ export const librarySystem = setup({
     SEARCH_INDEX_DELETED: {
       actions: 'requestSearchIndices',
     },
+    SEARCH_RESULTS: {
+      actions: 'setSearchResults',
+    },
   },
   states: {
     browser: {
@@ -511,6 +591,10 @@ export const librarySystem = setup({
         EDIT_SEARCH_INDEX: {
           target: 'editIndex',
           actions: 'setEditingIndex',
+        },
+        TEST_SEARCH_INDEX: {
+          target: 'testIndex',
+          actions: 'setTestingIndex',
         },
         TRAIL_CLICK: [
           {
@@ -583,6 +667,24 @@ export const librarySystem = setup({
         CANCEL_EDIT_INDEX: {
           target: 'browser',
           actions: 'clearEditingIndex',
+        },
+      },
+    },
+    testIndex: {
+      entry: assign({ currentView: 'test-index' }),
+      meta: {
+        breadcrumb: 'Test Search Index',
+      },
+      on: {
+        UPDATE_TEST_QUERY: {
+          actions: 'updateTestQuery',
+        },
+        EXECUTE_TEST_SEARCH: {
+          actions: ['setSearching', 'executeTestSearch'],
+        },
+        CANCEL_TEST_SEARCH: {
+          target: 'browser',
+          actions: 'clearTestSearch',
         },
       },
     },

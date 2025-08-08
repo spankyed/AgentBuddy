@@ -37,15 +37,14 @@ export async function createSearchIndex(
   // Create USearch index
   const index = searchService.createIndex(config)
   
-  // Save metadata and empty index to disk
+  // Save metadata and mappings (but not the index yet, as it's empty)
   searchService.saveMetadata(indexId, searchIndex)
-  await searchService.saveIndex(index, searchService.getIndexPath(indexId))
   searchService.saveMappings(indexId, new Map())
   
   // Cache the index
   indexCache.set(indexId, index)
   
-  // Index documents in the folder
+  // Index documents in the folder (this will save the index after adding documents)
   await indexDocumentsInFolder(indexId, folderId)
   
   return searchIndex
@@ -106,15 +105,14 @@ export async function updateSearchIndex(
     // Create new index
     const index = searchService.createIndex(config)
     
-    // Save metadata and empty index
+    // Save metadata and mappings (but not the index yet, as it's empty)
     searchService.saveMetadata(indexId, updatedIndex)
-    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
     searchService.saveMappings(indexId, new Map())
     
     // Update cache
     indexCache.set(indexId, index)
     
-    // Re-index all documents
+    // Re-index all documents (this will save the index after adding documents)
     await indexDocumentsInFolder(indexId, existingIndex.folderId)
   } else {
     // Just update metadata
@@ -208,8 +206,10 @@ export async function indexDocumentsInFolder(
   searchIndex.documentCount = mappings.size
   tx(indexId).put('documentCount', searchIndex.documentCount)
   
-  // Save index and mappings
-  await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+  // Save index and mappings (only save index if we have documents)
+  if (mappings.size > 0) {
+    await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+  }
   searchService.saveMappings(indexId, mappings)
   searchService.saveMetadata(indexId, searchIndex)
 }
@@ -451,14 +451,13 @@ async function reindexAllDocuments(indexId: EARS.EntityId): Promise<void> {
   // Create new index
   const index = searchService.createIndex(searchIndex)
   
-  // Save empty index
-  await searchService.saveIndex(index, searchService.getIndexPath(indexId))
+  // Save mappings (but not the index yet, as it's empty)
   searchService.saveMappings(indexId, new Map())
   
   // Update cache
   indexCache.set(indexId, index)
   
-  // Re-index all documents
+  // Re-index all documents (this will save the index after adding documents)
   await indexDocumentsInFolder(indexId, searchIndex.folderId)
 }
 
