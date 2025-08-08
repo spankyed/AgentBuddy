@@ -1,7 +1,6 @@
 import type { EARS } from '@/core/types'
-import type { ContentSection } from '../types'
-
-import type { EmbeddingModelId } from './embedding-models'
+import type { ContentSection } from '@/systems/library/types'
+import type { EmbeddingModelId } from '@/systems/library/search-index/types/embedding-models'
 
 export type EmbeddingModel = EmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'

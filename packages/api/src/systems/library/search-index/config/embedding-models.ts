@@ -1,4 +1,4 @@
-import type { ModelProvider, EmbeddingModelConfig, EmbeddingModelId } from '../types/embedding-models'
+import type { ModelProvider, EmbeddingModelConfig, EmbeddingModelId } from '@/systems/library/search-index/types/embedding-models'
 
 // Model ID constants for type safety
 export const EMBEDDING_MODELS = {

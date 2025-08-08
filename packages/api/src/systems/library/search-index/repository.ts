@@ -3,10 +3,10 @@ import { Index } from 'usearch'
 import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { EARS } from '@/core/types'
-import type { SearchIndex, SearchIndexConfig, IndexedDocument, IndexSearchResult } from '../types/search-index'
-import type { DocumentDTO } from '../types'
-import * as searchService from '../services/search-index'
-import * as repository from './index'
+import type { SearchIndex, SearchIndexConfig, IndexedDocument, IndexSearchResult } from './types/search-index'
+import type { DocumentDTO } from '@/systems/library/types'
+import * as searchService from './service'
+import * as repository from '@/systems/library/repository/index'
 
 // In-memory cache for frequently accessed indices
 const indexCache = new Map<string, Index>()

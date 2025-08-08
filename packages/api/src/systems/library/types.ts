@@ -1,7 +1,7 @@
 import type { EARS, BaseEntity } from '@/core/types'
 
 // Re-export embedding model types
-export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from './types/embedding-models'
+export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from '@/systems/library/search-index/types/embedding-models'
 // Re-export search index types  
 export type {
   EmbeddingModel,
@@ -13,7 +13,7 @@ export type {
   IndexedDocument,
   IndexSearchResult,
   EmbeddingResult
-} from './types/search-index'
+} from './search-index/types/search-index'
 
 export type DocumentShortCode = `DOC-${number}`;
 

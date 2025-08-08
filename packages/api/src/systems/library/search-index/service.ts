@@ -2,11 +2,11 @@ import { FlagEmbedding } from 'fastembed'
 import { Index, MetricKind, ScalarKind } from 'usearch'
 import * as fs from 'fs'
 import * as path from 'path'
-import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex, EmbeddingModel } from '../types/search-index'
-import type { ContentSection } from '../types'
+import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex, EmbeddingModel } from '@/systems/library/search-index/types/search-index'
+import type { ContentSection } from '@/systems/library/types'
 import type { EARS } from '@/core/types'
-import { getModelConfig, getModelDimensions } from '../config/embedding-models'
-import { getFastEmbedModel } from '../config/fastembed-mapping'
+import { getModelConfig, getModelDimensions } from '@/systems/library/search-index/config/embedding-models'
+import { getFastEmbedModel } from '@/systems/library/search-index/config/fastembed-mapping'
 
 // Initialize embedding models (lazy loading)
 let embeddingModels: Map<string, FlagEmbedding | null> = new Map()

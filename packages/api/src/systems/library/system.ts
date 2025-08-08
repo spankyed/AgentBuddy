@@ -3,12 +3,12 @@ import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import type { EARS } from '@/core/types'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, BreadcrumbItem } from './types'
-import type { SearchIndex } from './types/search-index'
+import type { SearchIndex } from './search-index/types/search-index'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import * as repository from './repository'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
-import { EMBEDDING_MODELS } from './config/embedding-models'
+import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 
 export const library = 'library' as const
 
@@ -456,7 +456,7 @@ export const librarySystem = setup({
     // Search index actions
     listSearchIndices: async ({ system, event }) => {
       const ev = event as { type: 'LIST_SEARCH_INDICES'; folderId: string | null }
-      const searchIndexRepo = await import('./repository/search-index')
+      const searchIndexRepo = await import('./search-index/repository')
       const indices = await searchIndexRepo.getSearchIndicesForFolder(
         ev.folderId ? ev.folderId as EARS.EntityId : null
       )
@@ -471,7 +471,7 @@ export const librarySystem = setup({
     },
     createSearchIndex: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
-      const searchIndexRepo = await import('./repository/search-index')
+      const searchIndexRepo = await import('./search-index/repository')
       const index = await searchIndexRepo.createSearchIndex(
         ev.config,
         ev.folderId ? ev.folderId as EARS.EntityId : null
@@ -487,7 +487,7 @@ export const librarySystem = setup({
     },
     updateSearchIndex: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
-      const searchIndexRepo = await import('./repository/search-index')
+      const searchIndexRepo = await import('./search-index/repository')
       const index = await searchIndexRepo.updateSearchIndex(
         ev.id as EARS.EntityId,
         ev.config
@@ -503,7 +503,7 @@ export const librarySystem = setup({
     },
     deleteSearchIndex: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
-      const searchIndexRepo = await import('./repository/search-index')
+      const searchIndexRepo = await import('./search-index/repository')
       await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -516,7 +516,7 @@ export const librarySystem = setup({
     },
     searchInIndex: async ({ system, event }) => {
       const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
-      const searchIndexRepo = await import('./repository/search-index')
+      const searchIndexRepo = await import('./search-index/repository')
       const results = await searchIndexRepo.searchInIndex(
         ev.indexId as EARS.EntityId,
         ev.query,
