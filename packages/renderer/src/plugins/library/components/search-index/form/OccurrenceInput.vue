@@ -35,6 +35,13 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
+type Occurrence =
+  | 'first'
+  | 'last'
+  | 'all'
+  | { index: number }
+  | { from: number; to: number }
+
 const props = defineProps<{
   modelValue: string
 }>()
@@ -71,6 +78,32 @@ function validateOccurrence(): boolean {
   return isValid.value
 }
 
+function parseOccurrence(value: string): Occurrence | null {
+  const trimmed = value.trim().toLowerCase()
+  
+  // Check for keywords
+  if (trimmed === 'first' || trimmed === 'last' || trimmed === 'all') {
+    return trimmed as 'first' | 'last' | 'all'
+  }
+  
+  // Check for single number (N)
+  const singleNumber = /^(\d+)$/.exec(trimmed)
+  if (singleNumber) {
+    return { index: parseInt(singleNumber[1]) }
+  }
+  
+  // Check for range (N-X)
+  const range = /^(\d+)-(\d+)$/.exec(trimmed)
+  if (range) {
+    return { 
+      from: parseInt(range[1]), 
+      to: parseInt(range[2]) 
+    }
+  }
+  
+  return null
+}
+
 function validateAndFormat() {
   setTimeout(() => {
     if (!keepTooltipOpen.value) {
@@ -84,4 +117,8 @@ function validateAndFormat() {
   }
   validateOccurrence()
 }
+
+// Export the parser for use in other components
+export { parseOccurrence }
+export type { Occurrence }
 </script>
