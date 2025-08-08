@@ -119,6 +119,6 @@ function validateAndFormat() {
 }
 
 // Export the parser for use in other components
-export { parseOccurrence }
-export type { Occurrence }
+// export { parseOccurrence }
+// export type { Occurrence }
 </script>
