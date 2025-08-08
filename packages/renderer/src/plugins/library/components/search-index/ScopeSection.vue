@@ -190,25 +190,25 @@ const showFolderSuggestions = ref(false)
 const showDocumentSuggestions = ref(false)
 
 // Mock data for all available folders and documents (in real app, would fetch from API)
-const allFolders = ref([
-  { id: 'folder-1', name: 'Research', path: '/Library/Research' },
-  { id: 'folder-2', name: 'Projects', path: '/Library/Projects' },
-  { id: 'folder-3', name: 'Archive', path: '/Library/Archive' },
-  { id: 'folder-4', name: 'Templates', path: '/Library/Templates' },
-  { id: 'folder-5', name: 'Documentation', path: '/Library/Documentation' },
-  { id: 'folder-6', name: 'Resources', path: '/Library/Resources' },
-  { id: 'folder-7', name: 'Examples', path: '/Library/Examples' },
+const allFolders = ref<{ id: EARS.EntityId; name: string; path: string }[]>([
+  { id: 'Collection-folder-1' as EARS.EntityId, name: 'Research', path: '/Library/Research' },
+  { id: 'Collection-folder-2' as EARS.EntityId, name: 'Projects', path: '/Library/Projects' },
+  { id: 'Collection-folder-3' as EARS.EntityId, name: 'Archive', path: '/Library/Archive' },
+  { id: 'Collection-folder-4' as EARS.EntityId, name: 'Templates', path: '/Library/Templates' },
+  { id: 'Collection-folder-5' as EARS.EntityId, name: 'Documentation', path: '/Library/Documentation' },
+  { id: 'Collection-folder-6' as EARS.EntityId, name: 'Resources', path: '/Library/Resources' },
+  { id: 'Collection-folder-7' as EARS.EntityId, name: 'Examples', path: '/Library/Examples' },
 ])
 
-const allDocuments = ref([
-  { id: 'doc-1', name: 'API Documentation', shortCode: 'DOC-1001' },
-  { id: 'doc-2', name: 'User Guide', shortCode: 'DOC-1002' },
-  { id: 'doc-3', name: 'Technical Specs', shortCode: 'DOC-1003' },
-  { id: 'doc-4', name: 'Release Notes v2.0', shortCode: 'DOC-1004' },
-  { id: 'doc-5', name: 'Architecture Overview', shortCode: 'DOC-1005' },
-  { id: 'doc-6', name: 'Security Guidelines', shortCode: 'DOC-1006' },
-  { id: 'doc-7', name: 'Performance Report', shortCode: 'DOC-1007' },
-  { id: 'doc-8', name: 'Test Results', shortCode: 'DOC-1008' },
+const allDocuments = ref<{ id: EARS.EntityId; name: string; shortCode: string }[]>([
+  { id: 'Document-doc-1' as EARS.EntityId, name: 'API Documentation', shortCode: 'DOC-1001' },
+  { id: 'Document-doc-2' as EARS.EntityId, name: 'User Guide', shortCode: 'DOC-1002' },
+  { id: 'Document-doc-3' as EARS.EntityId, name: 'Technical Specs', shortCode: 'DOC-1003' },
+  { id: 'Document-doc-4' as EARS.EntityId, name: 'Release Notes v2.0', shortCode: 'DOC-1004' },
+  { id: 'Document-doc-5' as EARS.EntityId, name: 'Architecture Overview', shortCode: 'DOC-1005' },
+  { id: 'Document-doc-6' as EARS.EntityId, name: 'Security Guidelines', shortCode: 'DOC-1006' },
+  { id: 'Document-doc-7' as EARS.EntityId, name: 'Performance Report', shortCode: 'DOC-1007' },
+  { id: 'Document-doc-8' as EARS.EntityId, name: 'Test Results', shortCode: 'DOC-1008' },
 ])
 
 // Filtered suggestions based on search query and not already excluded
@@ -265,7 +265,7 @@ function searchDocuments() {
   showDocumentSuggestions.value = true
 }
 
-function selectFolder(folder: any) {
+function selectFolder(folder: { id: EARS.EntityId; name: string; path: string }) {
   if (!localData.value.excludedFolderIds.includes(folder.id)) {
     localData.value.excludedFolderIds.push(folder.id)
     updateValue()
@@ -274,7 +274,7 @@ function selectFolder(folder: any) {
   showFolderSuggestions.value = false
 }
 
-function selectDocument(doc: any) {
+function selectDocument(doc: { id: EARS.EntityId; name: string; shortCode: string }) {
   if (!localData.value.excludedDocumentIds.includes(doc.id)) {
     localData.value.excludedDocumentIds.push(doc.id)
     updateValue()
