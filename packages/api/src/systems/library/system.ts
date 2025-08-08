@@ -97,6 +97,57 @@ const IncomingLibraryEvents = [
     ids: z.array(z.string()),
     targetFolderId: z.string().nullable(),
   }),
+  // Search index events
+  busEvent('CREATE_SEARCH_INDEX', {
+    config: z.object({
+      name: z.string(),
+      description: z.string(),
+      embeddingModel: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'all-MiniLM-L6-v2']),
+      indexMetric: z.enum(['cosine', 'dot_product']),
+      connectors: z.number(),
+      excludeAllSubfolders: z.boolean(),
+      excludedFolderIds: z.array(z.string()),
+      excludedDocumentIds: z.array(z.string()),
+      enableSectionIndexing: z.boolean(),
+      segmentRules: z.array(z.object({
+        id: z.string(),
+        type: z.enum(['text', 'list', 'field']),
+        occurrence: z.string(),
+        key: z.string().optional(),
+      })),
+      constructTemplate: z.string(),
+    }),
+    folderId: z.string().nullable(),
+  }),
+  busEvent('UPDATE_SEARCH_INDEX', {
+    id: z.string(),
+    config: z.object({
+      name: z.string(),
+      description: z.string(),
+      embeddingModel: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'all-MiniLM-L6-v2']),
+      indexMetric: z.enum(['cosine', 'dot_product']),
+      connectors: z.number(),
+      excludeAllSubfolders: z.boolean(),
+      excludedFolderIds: z.array(z.string()),
+      excludedDocumentIds: z.array(z.string()),
+      enableSectionIndexing: z.boolean(),
+      segmentRules: z.array(z.object({
+        id: z.string(),
+        type: z.enum(['text', 'list', 'field']),
+        occurrence: z.string(),
+        key: z.string().optional(),
+      })),
+      constructTemplate: z.string(),
+    }),
+  }),
+  busEvent('DELETE_SEARCH_INDEX', {
+    id: z.string(),
+  }),
+  busEvent('SEARCH_IN_INDEX', {
+    indexId: z.string(),
+    query: z.string(),
+    limit: z.number().optional(),
+  }),
 ] as const
 
 export type OutgoingLibraryEvents =
@@ -117,6 +168,12 @@ export type OutgoingLibraryEvents =
   | { type: 'ITEM_RENAMED'; data: { item: LibraryItem } }
   | { type: 'ITEMS_DELETED'; data: { ids: string[] } }
   | { type: 'ITEMS_MOVED'; data: { ids: string[]; targetFolderId: string | null } }
+  // Search index events
+  | { type: 'SEARCH_INDEX_CREATED'; data: { index: any } }
+  | { type: 'SEARCH_INDEX_UPDATED'; data: { index: any } }
+  | { type: 'SEARCH_INDEX_DELETED'; data: { indexId: string } }
+  | { type: 'SEARCH_RESULTS'; data: { results: any[] } }
+  | { type: 'INDEXING_PROGRESS'; data: { indexId: string; progress: number; total: number } }
 
 // Removed OutgoingSystemEvents helper - using direct event structure instead
 
@@ -370,6 +427,69 @@ export const librarySystem = setup({
         },
       })
     },
+    // Search index actions
+    createSearchIndex: async ({ system, event }) => {
+      const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
+      const searchIndexRepo = await import('./repository/search-index')
+      const index = await searchIndexRepo.createSearchIndex(
+        ev.config,
+        ev.folderId ? ev.folderId as EARS.EntityId : null
+      )
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SEARCH_INDEX_CREATED' as const,
+          pluginId: 'library',
+          data: { index },
+        },
+      })
+    },
+    updateSearchIndex: async ({ system, event }) => {
+      const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
+      const searchIndexRepo = await import('./repository/search-index')
+      const index = await searchIndexRepo.updateSearchIndex(
+        ev.id as EARS.EntityId,
+        ev.config
+      )
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SEARCH_INDEX_UPDATED' as const,
+          pluginId: 'library',
+          data: { index },
+        },
+      })
+    },
+    deleteSearchIndex: async ({ system, event }) => {
+      const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
+      const searchIndexRepo = await import('./repository/search-index')
+      await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SEARCH_INDEX_DELETED' as const,
+          pluginId: 'library',
+          data: { indexId: ev.id },
+        },
+      })
+    },
+    searchInIndex: async ({ system, event }) => {
+      const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
+      const searchIndexRepo = await import('./repository/search-index')
+      const results = await searchIndexRepo.searchInIndex(
+        ev.indexId as EARS.EntityId,
+        ev.query,
+        ev.limit
+      )
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SEARCH_RESULTS' as const,
+          pluginId: 'library',
+          data: { results },
+        },
+      })
+    },
   },
 }).createMachine({
   id: library,
@@ -434,6 +554,19 @@ export const librarySystem = setup({
         },
         MOVE_ITEMS: {
           actions: ['moveItems'],
+        },
+        // Search index events
+        CREATE_SEARCH_INDEX: {
+          actions: ['createSearchIndex'],
+        },
+        UPDATE_SEARCH_INDEX: {
+          actions: ['updateSearchIndex'],
+        },
+        DELETE_SEARCH_INDEX: {
+          actions: ['deleteSearchIndex'],
+        },
+        SEARCH_IN_INDEX: {
+          actions: ['searchInIndex'],
         },
       },
     },

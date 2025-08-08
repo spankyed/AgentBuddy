@@ -1,5 +1,6 @@
 import type { EARS } from '@app/api'
-import type { ContentType } from '@app/api/src/systems/library/types'
+
+type ContentType = 'field' | 'list' | 'text'
 
 export type EmbeddingModel = 'text-embedding-3-small' | 'text-embedding-3-large' | 'all-MiniLM-L6-v2'
 export type IndexMetric = 'cosine' | 'dot_product'

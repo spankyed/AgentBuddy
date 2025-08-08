@@ -4,6 +4,7 @@ import { tx } from '@/core/utils/ears/helpers/transaction'
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
+import * as searchIndexRepo from './search-index'
 
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
@@ -149,6 +150,10 @@ export async function createDocument(
   }
 
   const document = await getDocument(documentId)
+  
+  // Auto-index in search indices
+  await searchIndexRepo.autoIndexNewDocument(documentId)
+  
   return document!
 }
 
@@ -218,6 +223,10 @@ export async function updateDocument(
   // If collectionId is undefined, we keep the document in its current collection
 
   const document = await getDocument(documentId)
+  
+  // Re-index in search indices (content or location may have changed)
+  await searchIndexRepo.autoIndexNewDocument(documentId)
+  
   return document!
 }
 
@@ -258,6 +267,9 @@ export async function deleteDocument(id: EARS.EntityId): Promise<void> {
       targetEntity: documentId
     })
   }
+
+  // Remove from all search indices
+  await searchIndexRepo.removeDocumentFromAllIndices(documentId)
 
   tx(documentId).destroy()
 }

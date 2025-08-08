@@ -49,17 +49,26 @@
         <form @submit.prevent="handleSave">
           <!-- Details Tab -->
           <div v-if="activeTab === 'details'">
-            <DetailsSection v-model="formData" />
+            <DetailsSection 
+              :modelValue="formData" 
+              @update:modelValue="Object.assign(formData, $event)"
+            />
           </div>
 
           <!-- Scope Tab -->
           <div v-if="activeTab === 'scope'">
-            <ScopeSection v-model="formData" />
+            <ScopeSection 
+              :modelValue="formData"
+              @update:modelValue="Object.assign(formData, $event)"
+            />
           </div>
 
           <!-- Sections Tab -->
           <div v-if="activeTab === 'sections'">
-            <SectionsConfig v-model="formData" />
+            <SectionsConfig 
+              :modelValue="formData"
+              @update:modelValue="Object.assign(formData, $event)"
+            />
           </div>
         </form>
       </div>

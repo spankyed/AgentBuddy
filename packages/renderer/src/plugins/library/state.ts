@@ -468,13 +468,12 @@ export const librarySystem = setup({
       on: {
         SAVE_SEARCH_INDEX: {
           target: 'browser',
-          actions: ({ event }) => {
-            // TODO: Send to backend when ready
-            console.log('Creating search index with config:', event.config)
+          actions: ({ event, context }) => {
             trpc.bus.send.mutate({
               systemId: id,
               type: 'CREATE_SEARCH_INDEX',
               config: event.config,
+              folderId: context.currentFolderId,
             })
           },
         },

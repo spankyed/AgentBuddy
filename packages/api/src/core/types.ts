@@ -20,6 +20,7 @@ export namespace EARS {
     Action = 'Action',
     Document = 'Document',
     Collection = 'Collection',
+    SearchIndex = 'SearchIndex',
     Terminal = 'Terminal',
     Directory = 'Directory',
   }
