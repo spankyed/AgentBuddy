@@ -449,8 +449,8 @@ export async function searchInIndex(
   const mappings = searchService.loadMappings(indexId)
   const reverseMappings = new Map(Array.from(mappings).map(([k, v]) => [v, k]))
   
-  // Build search results - deduplicate by document ID
-  const searchResultsMap = new Map<string, IndexSearchResult>()
+  // Build search results - return all chunks with their metadata
+  const searchResults: IndexSearchResult[] = []
   
   // Handle search results
   if (results.keys && results.distances) {
@@ -470,26 +470,19 @@ export async function searchInIndex(
       const indexedDoc = indexedDocs[0] as unknown as IndexedDocument
       
       if (indexedDoc) {
-        const docId = indexedDoc.documentId
-        
-        // If we already have a result for this document, keep the best score
-        const existing = searchResultsMap.get(docId)
-        if (!existing || distance > existing.score) {
-          searchResultsMap.set(docId, {
-            documentId: docId,
-            score: distance,
-            text: indexedDoc.text,
-            metadata: indexedDoc.metadata,
-          })
-        }
+        searchResults.push({
+          documentId: indexedDoc.documentId,
+          score: distance,
+          text: indexedDoc.text,
+          metadata: indexedDoc.metadata,
+          chunkInfo: indexedDoc.chunkInfo, // Include chunk information if available
+        })
       }
     }
   }
   
-  // Convert map to array and sort by score
-  const searchResults = Array.from(searchResultsMap.values())
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
+  // Sort by score (lowest distance first - better matches)
+  searchResults.sort((a, b) => a.score - b.score)
   
   return searchResults
 }

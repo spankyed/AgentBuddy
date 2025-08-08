@@ -1,7 +1,7 @@
 <template>
   <teleport to="body">
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="bg-neutral-800 rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
+      <div class="bg-neutral-800 rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh] flex flex-col">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold text-neutral-100">
             Test Search: {{ testingIndex?.name }}
@@ -10,9 +10,7 @@
             @click="cancel"
             class="p-1 text-neutral-400 hover:text-neutral-200 transition-colors"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="w-5 h-5" />
           </button>
         </div>
 
@@ -44,9 +42,7 @@
         <!-- Results -->
         <div class="flex-1 overflow-y-auto">
           <div v-if="testResults.length === 0 && !isSearching" class="text-center py-8 text-neutral-500">
-            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Search class="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>Enter a query and click search to test this index</p>
           </div>
 
@@ -54,41 +50,167 @@
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
 
-          <div v-else-if="testResults.length > 0" class="space-y-3">
-            <div class="text-sm text-neutral-400 mb-2">
-              Found {{ testResults.length }} results
+          <div v-else-if="testResults.length > 0" class="space-y-4">
+            <!-- Results Summary -->
+            <div class="flex items-center justify-between text-sm text-neutral-400 pb-2 border-b border-neutral-700">
+              <span>Found {{ testResults.length }} {{ testResults.length === 1 ? 'chunk' : 'chunks' }} across {{ uniqueDocumentCount }} {{ uniqueDocumentCount === 1 ? 'document' : 'documents' }}</span>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="expandAll"
+                  class="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 rounded transition-colors"
+                >
+                  Expand All
+                </button>
+                <button
+                  @click="collapseAll"
+                  class="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 rounded transition-colors"
+                >
+                  Collapse All
+                </button>
+              </div>
             </div>
-            <div
-              v-for="(result, index) in testResults"
-              :key="index"
-              class="p-4 bg-neutral-900 rounded-lg border border-neutral-700"
-            >
-              <div class="flex items-start justify-between mb-2">
-                <div class="flex-1">
-                  <h4 class="text-sm font-medium text-neutral-200 mb-1">
-                    {{ result.metadata?.name || `Document ${result.documentId}` }}
-                  </h4>
-                  <div class="text-xs text-neutral-500">
-                    {{ result.metadata?.shortCode || result.documentId }}
+
+            <!-- Grouped Results by Document -->
+            <div v-for="[docId, chunks] in groupedResults" :key="docId" class="border border-neutral-700 rounded-lg overflow-hidden">
+              <!-- Document Header -->
+              <div class="px-4 py-3 bg-neutral-900/50 border-b border-neutral-700">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <FileText class="w-4 h-4 text-neutral-500" />
+                    <div>
+                      <h4 class="text-sm font-medium text-neutral-200">
+                        {{ chunks[0].metadata?.name || `Document ${docId}` }}
+                      </h4>
+                      <div class="text-xs text-neutral-500 mt-0.5">
+                        {{ chunks[0].metadata?.shortCode || docId }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-xs text-neutral-400">
+                    {{ chunks.length }} {{ chunks.length === 1 ? 'chunk' : 'chunks' }} found
                   </div>
                 </div>
-                <div class="ml-4">
-                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md"
-                        :class="getSimilarityClass(result.score)">
-                    {{ getSimilarityPercentage(result.score) }}% match
-                  </span>
-                </div>
               </div>
-              
-              <div class="mt-3 text-sm text-neutral-400">
-                <p class="line-clamp-3">{{ result.text }}</p>
+
+              <!-- Document Chunks -->
+              <div class="divide-y divide-neutral-700/50">
+                <div
+                  v-for="(result, index) in chunks"
+                  :key="`${docId}-${index}`"
+                  class="p-4 hover:bg-neutral-900/30 transition-colors"
+                >
+                  <!-- Chunk Header -->
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-2">
+                        <!-- Chunk Type Badge -->
+                        <span 
+                          class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded"
+                          :class="getChunkTypeBadgeClass(result.chunkInfo)"
+                        >
+                          <Hash class="w-3 h-3 mr-1" />
+                          {{ getChunkTypeLabel(result.chunkInfo) }}
+                        </span>
+                        
+                        <!-- Segment Info -->
+                        <span v-if="result.chunkInfo" class="text-xs text-neutral-500">
+                          Segment {{ result.chunkInfo.segmentIndex + 1 }}
+                          <span v-if="result.chunkInfo.itemIndex !== undefined">
+                            • Item {{ result.chunkInfo.itemIndex + 1 }}
+                          </span>
+                        </span>
+
+                        <!-- Chunk Key -->
+                        <button
+                          v-if="result.chunkInfo"
+                          @click="copyChunkKey(result.chunkInfo.chunkKey)"
+                          class="ml-auto text-xs text-neutral-600 hover:text-neutral-400 transition-colors flex items-center gap-1"
+                          :title="result.chunkInfo.chunkKey"
+                        >
+                          <Key class="w-3 h-3" />
+                          <span class="font-mono">{{ truncateChunkKey(result.chunkInfo.chunkKey) }}</span>
+                          <Copy class="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <!-- Score Display -->
+                      <div class="flex items-center gap-4 text-xs">
+                        <div class="flex items-center gap-2">
+                          <span class="text-neutral-500">Score:</span>
+                          <span 
+                            class="inline-flex items-center px-2 py-0.5 font-medium rounded"
+                            :class="getSimilarityClass(result.score)"
+                          >
+                            {{ getSimilarityPercentage(result.score) }}%
+                          </span>
+                        </div>
+                        <div class="text-neutral-600">
+                          Distance: {{ result.score.toFixed(4) }}
+                        </div>
+                        <div class="text-neutral-600">
+                          Metric: {{ testingIndex?.indexMetric || 'cosine' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Text Content -->
+                  <div class="mt-3">
+                    <div 
+                      class="text-sm text-neutral-300 bg-neutral-900/50 rounded p-3 font-mono"
+                      :class="{ 'cursor-pointer hover:bg-neutral-900/70': !expandedChunks.has(getChunkId(result, index)) }"
+                      @click="toggleChunkExpansion(result, index)"
+                    >
+                      <div v-if="expandedChunks.has(getChunkId(result, index))">
+                        <!-- Full text with preserved formatting -->
+                        <pre class="whitespace-pre-wrap break-words">{{ result.text }}</pre>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-700">
+                          <span class="text-xs text-neutral-500">
+                            {{ result.text.length }} characters
+                          </span>
+                          <button
+                            @click.stop="copyText(result.text)"
+                            class="text-xs text-neutral-500 hover:text-neutral-300 flex items-center gap-1 transition-colors"
+                          >
+                            <Copy class="w-3 h-3" />
+                            Copy Text
+                          </button>
+                        </div>
+                      </div>
+                      <div v-else class="relative">
+                        <!-- Truncated text -->
+                        <p class="line-clamp-3">{{ result.text }}</p>
+                        <div class="absolute bottom-0 right-0 bg-gradient-to-l from-neutral-900/50 to-transparent pl-8 pr-2">
+                          <span class="text-xs text-blue-400">Click to expand...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Chunk Metadata (if expanded) -->
+                  <div v-if="expandedChunks.has(getChunkId(result, index)) && result.chunkInfo" class="mt-3 p-3 bg-neutral-900/30 rounded text-xs text-neutral-500">
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <span class="text-neutral-600">Total chunks in doc:</span>
+                        <span class="ml-2 text-neutral-400">{{ result.chunkInfo.totalChunks }}</span>
+                      </div>
+                      <div>
+                        <span class="text-neutral-600">Indexed at:</span>
+                        <span class="ml-2 text-neutral-400">{{ formatDate(result.metadata.indexedAt) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Footer -->
-        <div class="mt-4 pt-4 border-t border-neutral-700 flex justify-end">
+        <div class="mt-4 pt-4 border-t border-neutral-700 flex justify-between items-center">
+          <div v-if="testResults.length > 0" class="text-xs text-neutral-500">
+            Showing {{ Math.min(testResults.length, 50) }} of {{ testResults.length }} results
+          </div>
           <button
             @click="cancel"
             class="px-4 py-2 text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
@@ -98,6 +220,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Copy Feedback Toast -->
+    <Transition name="fade">
+      <div v-if="showCopyFeedback" class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+        {{ copyFeedbackMessage }}
+      </div>
+    </Transition>
   </teleport>
 </template>
 
@@ -108,6 +237,7 @@ import { applicationState } from '@/main'
 import { id, type LibraryEvents } from '../../state'
 import type { ActorRefFrom } from 'xstate'
 import { librarySystem } from '../../state'
+import { FileText, Search, X, Hash, Key, Copy } from 'lucide-vue-next'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor
@@ -120,6 +250,40 @@ const isSearching = useSelector(actor, (state) => state.context.isSearching)
 const send = (event: LibraryEvents) => actor.send(event)
 
 const localQuery = ref('')
+const expandedChunks = ref(new Set<string>())
+const showCopyFeedback = ref(false)
+const copyFeedbackMessage = ref('')
+
+// Computed properties
+const groupedResults = computed(() => {
+  const grouped = new Map()
+  for (const result of testResults.value) {
+    if (!grouped.has(result.documentId)) {
+      grouped.set(result.documentId, [])
+    }
+    grouped.get(result.documentId).push(result)
+  }
+  
+  // Sort chunks within each document by score (lowest distance first - better matches)
+  for (const [docId, chunks] of grouped) {
+    chunks.sort((a: any, b: any) => a.score - b.score)
+  }
+  
+  // Sort the documents by their best chunk's score (lowest distance first)
+  const sortedGrouped = new Map(
+    [...grouped.entries()].sort((a, b) => {
+      const bestScoreA = a[1][0].score // First chunk after sorting has best score
+      const bestScoreB = b[1][0].score
+      return bestScoreA - bestScoreB // Lower distance = better match
+    })
+  )
+  
+  return sortedGrouped
+})
+
+const uniqueDocumentCount = computed(() => {
+  return groupedResults.value.size
+})
 
 // Sync with state machine
 watch(testQuery, (newVal) => {
@@ -132,6 +296,7 @@ watch(localQuery, (newVal) => {
 
 function executeSearch() {
   if (localQuery.value && !isSearching.value) {
+    expandedChunks.value.clear()
     send({ type: 'EXECUTE_TEST_SEARCH' })
   }
 }
@@ -140,20 +305,106 @@ function cancel() {
   send({ type: 'CANCEL_TEST_SEARCH' })
 }
 
+function getChunkId(result: any, index: number): string {
+  return `${result.documentId}-${index}`
+}
+
+function toggleChunkExpansion(result: any, index: number) {
+  const chunkId = getChunkId(result, index)
+  if (expandedChunks.value.has(chunkId)) {
+    expandedChunks.value.delete(chunkId)
+  } else {
+    expandedChunks.value.add(chunkId)
+  }
+}
+
+function expandAll() {
+  for (const [docId, chunks] of groupedResults.value) {
+    chunks.forEach((chunk: any, index: number) => {
+      expandedChunks.value.add(getChunkId(chunk, index))
+    })
+  }
+}
+
+function collapseAll() {
+  expandedChunks.value.clear()
+}
+
 function getSimilarityPercentage(score: number): string {
   // Convert distance to similarity percentage
-  // Lower distance = higher similarity
-  // Assuming cosine distance ranges from 0 to 2
-  const similarity = Math.max(0, Math.min(100, (1 - score / 2) * 100))
+  // For cosine distance: 0 = identical, 2 = opposite
+  // For dot product: higher is better (can be negative)
+  const metric = testingIndex.value?.indexMetric || 'cosine'
+  let similarity: number
+  
+  if (metric === 'cosine') {
+    similarity = Math.max(0, Math.min(100, (1 - score / 2) * 100))
+  } else {
+    // dot_product - normalize to 0-100 range
+    similarity = Math.max(0, Math.min(100, (score + 1) * 50))
+  }
+  
   return similarity.toFixed(1)
 }
 
 function getSimilarityClass(score: number): string {
-  const similarity = (1 - score / 2) * 100
-  if (similarity >= 80) return 'bg-green-500/20 text-green-400 border border-green-500/30'
-  if (similarity >= 60) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-  if (similarity >= 40) return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+  const percentage = parseFloat(getSimilarityPercentage(score))
+  if (percentage >= 80) return 'bg-green-500/20 text-green-400 border border-green-500/30'
+  if (percentage >= 60) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+  if (percentage >= 40) return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
   return 'bg-red-500/20 text-red-400 border border-red-500/30'
+}
+
+function getChunkTypeBadgeClass(chunkInfo: any): string {
+  if (!chunkInfo) return 'bg-neutral-700 text-neutral-400'
+  if (chunkInfo.chunkType === 'full') return 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+  return 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+}
+
+function getChunkTypeLabel(chunkInfo: any): string {
+  if (!chunkInfo) return 'Document'
+  if (chunkInfo.chunkType === 'full') return 'Full Document'
+  return `Segment Item`
+}
+
+function truncateChunkKey(key: string): string {
+  if (key.length <= 20) return key
+  return key.substring(0, 8) + '...' + key.substring(key.length - 8)
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Text copied to clipboard'
+    setTimeout(() => {
+      showCopyFeedback.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy text:', err)
+  }
+}
+
+async function copyChunkKey(key: string) {
+  try {
+    await navigator.clipboard.writeText(key)
+    showCopyFeedback.value = true
+    copyFeedbackMessage.value = 'Chunk key copied'
+    setTimeout(() => {
+      showCopyFeedback.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy chunk key:', err)
+  }
 }
 </script>
 
@@ -163,5 +414,19 @@ function getSimilarityClass(score: number): string {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+pre {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 </style>

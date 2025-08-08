@@ -76,6 +76,7 @@ export interface IndexSearchResult {
   score: number // Similarity score
   text: string
   metadata: IndexedDocument['metadata']
+  chunkInfo?: ChunkInfo // Optional chunk information for multi-indexed content
 }
 
 export interface EmbeddingResult {
