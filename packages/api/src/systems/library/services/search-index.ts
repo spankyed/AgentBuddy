@@ -1,42 +1,54 @@
-import { EmbeddingModel, FlagEmbedding } from 'fastembed'
+import { FlagEmbedding } from 'fastembed'
 import { Index } from 'usearch'
 import * as fs from 'fs'
 import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex } from '../types/search-index'
 import type { ContentSection } from '../types'
 import type { EARS } from '@/core/types'
+import { getModelConfig, getModelDimensions } from '../config/embedding-models'
+import { getFastEmbedModel } from '../config/fastembed-mapping'
 
 // Initialize embedding models (lazy loading)
 let embeddingModels: Map<string, FlagEmbedding | null> = new Map()
 
-export async function getEmbeddingModel(modelName: string): Promise<FlagEmbedding | null> {
-  if (!embeddingModels.has(modelName)) {
+export async function getEmbeddingModel(modelId: string): Promise<FlagEmbedding | null> {
+  if (!embeddingModels.has(modelId)) {
     let model: FlagEmbedding | null = null
+    const config = getModelConfig(modelId)
     
-    if (modelName === 'all-MiniLM-L6-v2') {
+    if (config && config.provider === 'fastembed' && config.fastEmbedModel) {
       // Use fastembed for local model
-      model = await FlagEmbedding.init({
-        model: EmbeddingModel.BGEBaseEN,
-        // cacheDir: './data/models',
-        // maxLength: 512,
-      })
+      const fastEmbedModel = getFastEmbedModel(config.fastEmbedModel)
+      if (fastEmbedModel) {
+        model = await FlagEmbedding.init({
+          model: fastEmbedModel,
+          // cacheDir: './data/models',
+          maxLength: config.maxTokens,
+        })
+      }
     } else {
       // For OpenAI models, we'll handle separately with OpenAI API
       // Store null and handle in embedText function
       model = null
     }
     
-    embeddingModels.set(modelName, model)
+    embeddingModels.set(modelId, model)
   }
   
-  return embeddingModels.get(modelName) || null
+  return embeddingModels.get(modelId) || null
 }
 
-export async function embedText(text: string, modelName: string): Promise<EmbeddingResult> {
-  if (modelName === 'all-MiniLM-L6-v2') {
-    const model = await getEmbeddingModel(modelName)
+export async function embedText(text: string, modelId: string): Promise<EmbeddingResult> {
+  const config = getModelConfig(modelId)
+  
+  if (!config) {
+    throw new Error(`Unknown embedding model: ${modelId}`)
+  }
+  
+  if (config.provider === 'fastembed') {
+    const model = await getEmbeddingModel(modelId)
     if (!model) {
-      throw new Error(`Failed to initialize embedding model: ${modelName}`)
+      throw new Error(`Failed to initialize embedding model: ${config.displayName}`)
     }
     const embeddings = await model.queryEmbed(text)
     const embedding = embeddings[0]
@@ -48,9 +60,9 @@ export async function embedText(text: string, modelName: string): Promise<Embedd
     return {
       text,
       embedding: new Float32Array(embedding),
-      model: modelName as any,
+      model: modelId as any,
     }
-  } else {
+  } else if (config.provider === 'openai') {
     // Handle OpenAI embeddings
     const openai = await import('openai')
     const client = new openai.OpenAI({
@@ -58,15 +70,17 @@ export async function embedText(text: string, modelName: string): Promise<Embedd
     })
     
     const response = await client.embeddings.create({
-      model: modelName,
+      model: config.apiModelName!,
       input: text,
     })
     
     return {
       text,
       embedding: new Float32Array(response.data[0].embedding),
-      model: modelName as any,
+      model: modelId as any,
     }
+  } else {
+    throw new Error(`Unsupported embedding provider: ${config.provider}`)
   }
 }
 
@@ -189,17 +203,8 @@ export function processDocumentContent(
 }
 
 // Get vector dimensions for embedding model
-export function getVectorDimensions(modelName: string): number {
-  switch (modelName) {
-    case 'all-MiniLM-L6-v2':
-      return 384
-    case 'text-embedding-3-small':
-      return 1536
-    case 'text-embedding-3-large':
-      return 3072
-    default:
-      return 384
-  }
+export function getVectorDimensions(modelId: string): number {
+  return getModelDimensions(modelId)
 }
 
 // Create a new USearch index

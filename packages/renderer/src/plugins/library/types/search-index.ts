@@ -1,8 +1,8 @@
-import type { EARS } from '@app/api'
+import type { EARS, EmbeddingModelId } from '@app/api'
 
 type ContentType = 'field' | 'list' | 'text'
 
-export type EmbeddingModel = 'text-embedding-3-small' | 'text-embedding-3-large' | 'all-MiniLM-L6-v2'
+export type EmbeddingModel = EmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'
 
 export interface SegmentRule {

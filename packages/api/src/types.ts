@@ -29,17 +29,6 @@ export type * from './systems/actions/types';
 
 export type { OutgoingLibraryEvents } from './systems/library/system';
 export type * from './systems/library/types';
-export type { 
-  SearchIndex, 
-  SearchIndexConfig, 
-  IndexedDocument, 
-  SearchResult as LibrarySearchResult,
-  EmbeddingModel,
-  IndexMetric,
-  SegmentRule,
-  Occurrence,
-  EmbeddingResult
-} from './systems/library/types/search-index';
 
 export type { OutgoingCodeEvents } from './systems/code/system';
 export type * from './systems/code/types';

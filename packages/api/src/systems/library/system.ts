@@ -8,6 +8,7 @@ import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import * as repository from './repository'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
+import { EMBEDDING_MODELS } from './config/embedding-models'
 
 export const library = 'library' as const
 
@@ -106,7 +107,16 @@ const IncomingLibraryEvents = [
     config: z.object({
       name: z.string(),
       description: z.string(),
-      embeddingModel: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'all-MiniLM-L6-v2']),
+      embeddingModel: z.enum([
+        EMBEDDING_MODELS.MINILM_L6_V2,
+        EMBEDDING_MODELS.BGE_SMALL_EN,
+        EMBEDDING_MODELS.BGE_SMALL_EN_V15,
+        EMBEDDING_MODELS.BGE_BASE_EN,
+        EMBEDDING_MODELS.BGE_BASE_EN_V15,
+        EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
+        EMBEDDING_MODELS.OPENAI_SMALL,
+        EMBEDDING_MODELS.OPENAI_LARGE,
+      ]),
       indexMetric: z.enum(['cosine', 'dot_product']),
       connectors: z.number(),
       excludeAllSubfolders: z.boolean(),
@@ -128,7 +138,16 @@ const IncomingLibraryEvents = [
     config: z.object({
       name: z.string(),
       description: z.string(),
-      embeddingModel: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'all-MiniLM-L6-v2']),
+      embeddingModel: z.enum([
+        EMBEDDING_MODELS.MINILM_L6_V2,
+        EMBEDDING_MODELS.BGE_SMALL_EN,
+        EMBEDDING_MODELS.BGE_SMALL_EN_V15,
+        EMBEDDING_MODELS.BGE_BASE_EN,
+        EMBEDDING_MODELS.BGE_BASE_EN_V15,
+        EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
+        EMBEDDING_MODELS.OPENAI_SMALL,
+        EMBEDDING_MODELS.OPENAI_LARGE,
+      ]),
       indexMetric: z.enum(['cosine', 'dot_product']),
       connectors: z.number(),
       excludeAllSubfolders: z.boolean(),

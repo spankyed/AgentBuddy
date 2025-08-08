@@ -3,7 +3,7 @@ import { Index } from 'usearch'
 import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { EARS } from '@/core/types'
-import type { SearchIndex, SearchIndexConfig, IndexedDocument, SearchResult } from '../types/search-index'
+import type { SearchIndex, SearchIndexConfig, IndexedDocument, IndexSearchResult } from '../types/search-index'
 import type { DocumentDTO } from '../types'
 import * as searchService from '../services/search-index'
 import * as repository from './index'
@@ -332,7 +332,7 @@ export async function searchInIndex(
   indexId: EARS.EntityId,
   query: string,
   limit: number = 10
-): Promise<SearchResult[]> {
+): Promise<IndexSearchResult[]> {
   const searchIndex = await getSearchIndex(indexId)
   if (!searchIndex) {
     throw new Error(`Search index ${indexId} not found`)
@@ -356,7 +356,7 @@ export async function searchInIndex(
   const reverseMappings = new Map(Array.from(mappings).map(([k, v]) => [v, k]))
   
   // Build search results
-  const searchResults: SearchResult[] = []
+  const searchResults: IndexSearchResult[] = []
   
   // Handle search results
   if (results.keys && results.distances) {

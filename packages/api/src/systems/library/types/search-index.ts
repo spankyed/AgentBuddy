@@ -1,7 +1,9 @@
 import type { EARS } from '@/core/types'
 import type { ContentSection } from '../types'
 
-export type EmbeddingModel = 'text-embedding-3-small' | 'text-embedding-3-large' | 'all-MiniLM-L6-v2'
+import type { EmbeddingModelId } from './embedding-models'
+
+export type EmbeddingModel = EmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'
 
 export type Occurrence =
@@ -58,7 +60,7 @@ export interface IndexedDocument {
   }
 }
 
-export interface SearchResult {
+export interface IndexSearchResult {
   documentId: EARS.EntityId
   score: number // Similarity score
   text: string

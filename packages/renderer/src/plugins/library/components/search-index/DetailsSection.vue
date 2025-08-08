@@ -38,9 +38,16 @@
         class="w-full pl-3 py-2 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-neutral-100 text-sm focus:border-neutral-600"
         @update:modelValue="updateValue"
       >
-        <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (Fast, Local)</option>
-        <option value="text-embedding-3-small">OpenAI text-embedding-3-small</option>
-        <option value="text-embedding-3-large">OpenAI text-embedding-3-large</option>
+        <optgroup label="Local Models (Fast, No API Key)">
+          <option v-for="model in localModels" :key="model.id" :value="model.id">
+            {{ model.displayName }} ({{ model.dimensions }}d, {{ model.speed }})
+          </option>
+        </optgroup>
+        <optgroup label="API Models (Requires OpenAI Key)">
+          <option v-for="model in apiModels" :key="model.id" :value="model.id">
+            {{ model.displayName }} ({{ model.dimensions }}d)
+          </option>
+        </optgroup>
       </Select>
     </div>
 
@@ -104,10 +111,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import SegmentedSlider from './form/SegmentedSlider.vue'
 import Select from '@/core/design/Select.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
+import { EMBEDDING_MODEL_CONFIGS, getLocalModels, getApiModels, EMBEDDING_MODELS } from '../../config/embedding-models'
 
 const props = defineProps<{
   modelValue: SearchIndexFormData
@@ -126,6 +134,10 @@ const connectorOptions = [
   { value: 64, label: '64' }
 ]
 
+// Get available models
+const localModels = computed(() => getLocalModels())
+const apiModels = computed(() => getApiModels())
+
 watch(() => props.modelValue, (newValue) => {
   localData.value = { ...newValue }
 }, { deep: true })
@@ -143,4 +155,12 @@ function getConnectorDescription(value: number): string {
     default: return 'Custom'
   }
 }
+
+// Initialize with default model
+onMounted(() => {
+  if (!localData.value.embeddingModel) {
+    localData.value.embeddingModel = EMBEDDING_MODELS.BGE_SMALL_EN_V15
+    updateValue()
+  }
+})
 </script>

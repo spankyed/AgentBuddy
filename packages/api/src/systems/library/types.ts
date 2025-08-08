@@ -1,5 +1,20 @@
 import type { EARS, BaseEntity } from '@/core/types'
 
+// Re-export embedding model types
+export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from './types/embedding-models'
+// Re-export search index types  
+export type {
+  EmbeddingModel,
+  IndexMetric,
+  Occurrence,
+  SegmentRule,
+  SearchIndexConfig,
+  SearchIndex,
+  IndexedDocument,
+  IndexSearchResult,
+  EmbeddingResult
+} from './types/search-index'
+
 export type DocumentShortCode = `DOC-${number}`;
 
 export type ContentType = 'field' | 'list' | 'text'

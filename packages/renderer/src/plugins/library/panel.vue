@@ -138,6 +138,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
+import { getModelConfig } from './config/embedding-models'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor
@@ -195,17 +196,13 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString()
 }
 
-function getModelLabel(model: string): string {
-  switch (model) {
-    case 'all-MiniLM-L6-v2':
-      return 'Local'
-    case 'text-embedding-3-small':
-      return 'OpenAI Small'
-    case 'text-embedding-3-large':
-      return 'OpenAI Large'
-    default:
-      return model
+function getModelLabel(modelId: string): string {
+  const config = getModelConfig(modelId)
+  if (config) {
+    return `${config.displayName} (${config.dimensions}d)`
   }
+  // Fallback for unknown models
+  return modelId
 }
 
 const deleteConfirm = ref({
