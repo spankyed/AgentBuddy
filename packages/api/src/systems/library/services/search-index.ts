@@ -1,5 +1,5 @@
 import { FlagEmbedding } from 'fastembed'
-import { Index } from 'usearch'
+import { Index, MetricKind, ScalarKind } from 'usearch'
 import * as fs from 'fs'
 import * as path from 'path'
 import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex, EmbeddingModel } from '../types/search-index'
@@ -50,16 +50,19 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
     if (!model) {
       throw new Error(`Failed to initialize embedding model: ${config.displayName}`)
     }
-    const embeddings = await model.queryEmbed(text)
-    const embedding = embeddings[0]
+    // queryEmbed returns a Promise<number[]>, not Promise<number[][]>
+    const embedding = await model.queryEmbed(text)
     
-    if (!embedding) {
+    if (!embedding || embedding.length === 0) {
       throw new Error('Failed to generate embedding')
     }
     
+    // Convert number[] to Float32Array
+    const embeddingArray = new Float32Array(embedding)
+    
     return {
       text,
-      embedding: new Float32Array(embedding),
+      embedding: embeddingArray,
       model: modelId as EmbeddingModel,
     }
   } else if (config.provider === 'openai') {
@@ -219,9 +222,21 @@ export function getVectorDimensions(modelId: string): number {
 // Create a new USearch index
 export function createIndex(config: SearchIndexConfig): Index {
   const dimensions = getVectorDimensions(config.embeddingModel)
-  const metric = config.indexMetric === 'cosine' ? 'cos' as any : 'ip' as any // cos = cosine, ip = inner product (dot)
+  const metric = config.indexMetric === 'cosine' ? MetricKind.Cos : MetricKind.IP
   
-  return new Index(dimensions, metric)
+  // USearch Index constructor expects: new Index(options)
+  // where options includes: dimensions, metric, connectivity, etc.
+
+  // return new Index(dimensions, metric)
+  return new Index({
+    dimensions,
+    metric,
+    quantization: ScalarKind.F32,
+    connectivity: config.connectors || 16,
+    expansion_add: 0,
+    expansion_search: 0,
+    multi: false,
+  })
 }
 
 // Load index from disk
