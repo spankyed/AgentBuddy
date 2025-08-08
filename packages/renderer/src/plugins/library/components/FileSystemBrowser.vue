@@ -31,6 +31,7 @@
       @confirm="handleDelete"
       @cancel="deleteDialog.show = false"
     />
+    
     <!-- Toolbar -->
     <div class="flex flex-col gap-3 px-6 py-3 border-b border-neutral-800">
       <!-- Navigation Row -->
@@ -77,6 +78,15 @@
           <Button @click="createDocument" variant="primary" size="sm">
             <FileText class="w-4 h-4" />
             <span>New Document</span>
+          </Button>
+          <Button 
+            @click="createSearchIndex" 
+            variant="transparent" 
+            size="sm"
+            class="border-primary-500/30 hover:border-primary-500/50 hover:bg-primary-500/10 hover:text-primary-400"
+          >
+            <Search class="w-4 h-4" />
+            <span>Create Index</span>
           </Button>
           <Button 
             @click="createFolder" 
@@ -223,7 +233,8 @@ import {
   ChevronLeft, 
   ArrowUpDown,
   Edit2,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import InputDialog from './InputDialog.vue'
@@ -251,6 +262,7 @@ const emit = defineEmits<{
   DELETE_SELECTED_ITEMS: []
   BREADCRUMB_CLICK: [{ folderId: string | null }]
   EDIT_DOCUMENT: [{ documentId: string }]
+  CREATE_SEARCH_INDEX: []
 }>()
 
 // Dialog state
@@ -356,6 +368,10 @@ function createFolder() {
 function handleCreateFolder(name: string) {
   emit('CREATE_FOLDER', { name })
   folderDialog.show = false
+}
+
+function createSearchIndex() {
+  emit('CREATE_SEARCH_INDEX')
 }
 
 function renameItem(item: LibraryItem) {

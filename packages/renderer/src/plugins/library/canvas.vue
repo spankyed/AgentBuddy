@@ -13,6 +13,7 @@ import { useState } from '@/core/composables/plugins'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
+import CreateIndexView from './components/CreateIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
 const actor = useState<typeof librarySystem>(id)
@@ -25,6 +26,8 @@ const currentComponent = computed(() => {
       return CreateView
     case 'edit':
       return EditView
+    case 'create-index':
+      return CreateIndexView
     case 'browser':
     default:
       return FileSystemBrowser
@@ -58,6 +61,8 @@ const currentProps = computed(() => {
         ...base,
         document: context.value.editingDocument,
       }
+    case 'create-index':
+      return {}
     default:
       return base
   }
@@ -71,6 +76,9 @@ const currentEvents = computed(() => {
     SAVE_DOCUMENT: (payload: { name: string; content: any; tags: string[]; collectionId?: string }) =>
       send({ type: 'SAVE_DOCUMENT', ...payload }),
     CANCEL_EDIT: () => send({ type: 'CANCEL_EDIT' }),
+    CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
+    SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
+    CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
     VIEW_COLLECTIONS: () => send({ type: 'VIEW_COLLECTIONS' }),
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),

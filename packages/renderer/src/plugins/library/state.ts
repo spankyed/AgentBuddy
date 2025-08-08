@@ -1,5 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection } from '@app/api'
+import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
@@ -13,7 +14,7 @@ export interface LibraryContext {
   collections: CollectionDTO[]
   selectedDocumentId?: string
   selectedCollectionId?: string
-  currentView: 'browser' | 'create' | 'edit'
+  currentView: 'browser' | 'create' | 'edit' | 'create-index'
   editingDocument?: DocumentDTO
   searchQuery: string
   selectedTags: string[]
@@ -39,6 +40,11 @@ export type LibraryEvents =
   | { type: 'DELETE_DOCUMENT'; documentId: string }
   | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
+  
+  // Search Index events
+  | { type: 'CREATE_SEARCH_INDEX' }
+  | { type: 'SAVE_SEARCH_INDEX'; config: SearchIndexFormData }
+  | { type: 'CANCEL_CREATE_INDEX' }
   
   // Legacy collection events  
   | { type: 'VIEW_COLLECTIONS' }
@@ -408,6 +414,7 @@ export const librarySystem = setup({
           target: 'edit',
           actions: 'setEditingDocument',
         },
+        CREATE_SEARCH_INDEX: 'createIndex',
         TRAIL_CLICK: [
           {
             guard: ({ event }) => event.trail.includes('Create'),
@@ -416,6 +423,10 @@ export const librarySystem = setup({
           {
             guard: ({ event }) => event.trail.includes('Edit'),
             target: 'edit',
+          },
+          {
+            guard: ({ event }) => event.trail.includes('Index'),
+            target: 'createIndex',
           },
         ],
       },
@@ -447,6 +458,27 @@ export const librarySystem = setup({
           target: 'browser',
           actions: 'clearEditingDocument',
         },
+      },
+    },
+    createIndex: {
+      entry: assign({ currentView: 'create-index' }),
+      meta: {
+        breadcrumb: 'Create Search Index',
+      },
+      on: {
+        SAVE_SEARCH_INDEX: {
+          target: 'browser',
+          actions: ({ event }) => {
+            // TODO: Send to backend when ready
+            console.log('Creating search index with config:', event.config)
+            trpc.bus.send.mutate({
+              systemId: id,
+              type: 'CREATE_SEARCH_INDEX',
+              config: event.config,
+            })
+          },
+        },
+        CANCEL_CREATE_INDEX: 'browser',
       },
     },
   },
