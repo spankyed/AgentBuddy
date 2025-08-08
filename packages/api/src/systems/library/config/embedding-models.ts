@@ -23,7 +23,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Lightweight and fast local model, good for general English text',
     provider: 'fastembed',
     dimensions: 384,
-    fastEmbedModel: 'AllMiniLML6V2',  // Store as string
+    fastEmbedModel: 'AllMiniLML6V2',
     maxTokens: 256,
     speed: 'fast',
     quality: 'good',
@@ -34,7 +34,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Balanced local model for English text',
     provider: 'fastembed',
     dimensions: 384,
-    fastEmbedModel: 'BGESmallEN',  // Store as string
+    fastEmbedModel: 'BGESmallEN',
     maxTokens: 512,
     speed: 'fast',
     quality: 'better',
@@ -45,7 +45,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Latest BGE small model, top MTEB performance',
     provider: 'fastembed',
     dimensions: 384,
-    fastEmbedModel: 'BGESmallENV15',  // Store as string
+    fastEmbedModel: 'BGESmallENV15',
     maxTokens: 512,
     speed: 'fast',
     quality: 'better',
@@ -56,7 +56,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Larger local model with better accuracy',
     provider: 'fastembed',
     dimensions: 768,
-    fastEmbedModel: 'BGEBaseEN',  // Store as string
+    fastEmbedModel: 'BGEBaseEN',
     maxTokens: 512,
     speed: 'medium',
     quality: 'better',
@@ -67,7 +67,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Latest BGE base model with improved performance',
     provider: 'fastembed',
     dimensions: 768,
-    fastEmbedModel: 'BGEBaseENV15',  // Store as string
+    fastEmbedModel: 'BGEBaseENV15',
     maxTokens: 512,
     speed: 'medium',
     quality: 'best',
@@ -78,7 +78,7 @@ export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModelId, EmbeddingModelCon
     description: 'Large multilingual model for diverse languages',
     provider: 'fastembed',
     dimensions: 1024,
-    fastEmbedModel: 'MLE5Large',  // Store as string
+    fastEmbedModel: 'MLE5Large',
     maxTokens: 512,
     speed: 'slow',
     quality: 'best',
@@ -126,4 +126,3 @@ export function getLocalModels(): EmbeddingModelConfig[] {
 export function getApiModels(): EmbeddingModelConfig[] {
   return Object.values(EMBEDDING_MODEL_CONFIGS).filter(m => m.provider === 'openai')
 }
-

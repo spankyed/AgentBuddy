@@ -1,5 +1,16 @@
-// Client-side embedding model configuration
-// This duplicates the backend configuration to avoid importing runtime code from the API
+/**
+ * Client-side embedding model configuration
+ * 
+ * This intentionally duplicates the backend configuration because:
+ * 1. We cannot import runtime code from the API package in the frontend
+ * 2. The API package exports only types, not runtime values
+ * 3. Importing runtime code would pull in server dependencies (fastembed, onnxruntime)
+ *    that cannot run in the browser
+ * 
+ * Any changes to model configurations must be made in both:
+ * - /packages/api/src/systems/library/config/embedding-models.ts (backend)
+ * - /packages/renderer/src/plugins/library/config/embedding-models.ts (frontend)
+ */
 
 import type { EmbeddingModelId, EmbeddingModelConfig, ModelProvider } from '@app/api'
 
@@ -129,4 +140,3 @@ export function getLocalModels(): EmbeddingModelConfig[] {
 export function getApiModels(): EmbeddingModelConfig[] {
   return Object.values(EMBEDDING_MODEL_CONFIGS).filter(m => m.provider === 'openai')
 }
-

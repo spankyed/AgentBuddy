@@ -2,7 +2,7 @@ import { FlagEmbedding } from 'fastembed'
 import { Index } from 'usearch'
 import * as fs from 'fs'
 import * as path from 'path'
-import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex } from '../types/search-index'
+import type { SearchIndexConfig, EmbeddingResult, Occurrence, SegmentRule, SearchIndex, EmbeddingModel } from '../types/search-index'
 import type { ContentSection } from '../types'
 import type { EARS } from '@/core/types'
 import { getModelConfig, getModelDimensions } from '../config/embedding-models'
@@ -60,7 +60,7 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
     return {
       text,
       embedding: new Float32Array(embedding),
-      model: modelId as any,
+      model: modelId as EmbeddingModel,
     }
   } else if (config.provider === 'openai') {
     // Handle OpenAI embeddings
@@ -77,7 +77,7 @@ export async function embedText(text: string, modelId: string): Promise<Embeddin
     return {
       text,
       embedding: new Float32Array(response.data[0].embedding),
-      model: modelId as any,
+      model: modelId as EmbeddingModel,
     }
   } else {
     throw new Error(`Unsupported embedding provider: ${config.provider}`)
