@@ -42,7 +42,7 @@
           >
               <option value="text">Text Block</option>
               <option value="list">List</option>
-              <option value="field">Key:Value</option>
+              <option value="field">Field</option>
             </Select>
             
             <!-- Occurrence Input -->
@@ -55,7 +55,7 @@
           <input
             v-if="rule.type === 'field'"
             v-model="rule.key"
-            placeholder="Key name"
+            placeholder="Field key"
             class="w-40 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 outline-none focus:border-neutral-600 placeholder-neutral-500"
             @input="updateValue"
           />
