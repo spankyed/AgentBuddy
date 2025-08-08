@@ -118,14 +118,20 @@
           v-model="localData.constructTemplate"
           placeholder="e.g., {{segment 1}}: {{segment 2}}"
           rows="3"
-          class="w-full px-3 py-2 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-neutral-100 text-sm outline-none focus:border-neutral-600 placeholder-neutral-500 resize-none font-mono"
+          class="w-full px-3 pt-2 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-neutral-100 text-sm outline-none focus:border-neutral-600 placeholder-neutral-500 resize-none font-mono"
           @input="updateValue"
         />
           
         <!-- Preview -->
-        <div v-if="localData.constructTemplate" class="mt-3">
-          <p class="text-xs text-neutral-500 mb-1">Preview:</p>
-          <div class="p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md text-sm text-neutral-300 font-mono whitespace-pre-wrap">
+        <div v-if="localData.constructTemplate">
+          <button
+            type="button"
+            @click="showPreview = !showPreview"
+            class="text-xs text-neutral-500 mb-1 hover:text-neutral-400 transition-colors"
+          >
+            Preview {{ showPreview ? '▼' : '▶' }}
+          </button>
+          <div v-if="showPreview" class="p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md text-sm text-neutral-300 font-mono whitespace-pre-wrap">
             {{ getTemplatePreview() }}
           </div>
         </div>
@@ -164,6 +170,9 @@ const documentTemplateExpanded = ref(true)
 const showCopyFeedback = ref(false)
 const copyMessage = ref('')
 
+// Preview state
+const showPreview = ref(false)
+
 watch(() => props.modelValue, (newValue) => {
   localData.value = { ...newValue }
 }, { deep: true })
@@ -194,11 +203,23 @@ function getSegmentVariable(index: number): string {
 }
 
 function getTemplatePreview(): string {
-  let preview = localData.value.constructTemplate
-  for (let i = 1; i <= Math.max(1, localData.value.segmentRules.length); i++) {
-    preview = preview.replace(`{{segment ${i}}}`, `[Segment ${i} content]`)
+  const placeholders: Record<string, string> = {
+    text: '[text block]',
+    list: '[list items 1, 2, ...]',
+    field: '[field key: value ...]'
   }
-  return preview
+  
+  return localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
+    const index = parseInt(num) - 1
+    const rule = localData.value.segmentRules[index]
+    if (!rule) return '[segment content...]'
+    
+    if (rule.type === 'field' && rule.key) {
+      return `[${rule.key}: value...]`
+    }
+    
+    return placeholders[rule.type] || '[segment content...]'
+  })
 }
 
 async function copyVariable(variable: string) {
