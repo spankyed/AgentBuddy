@@ -165,7 +165,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Folder, FileText, X, Plus, ChevronDown, ChevronRight } from 'lucide-vue-next'
-import ToggleSwitch from '../form/ToggleSwitch.vue'
+import ToggleSwitch from './form/ToggleSwitch.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
 import type { EARS } from '@app/api'
 

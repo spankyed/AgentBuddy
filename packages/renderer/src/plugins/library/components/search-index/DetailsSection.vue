@@ -107,7 +107,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import SegmentedSlider from '../form/SegmentedSlider.vue'
+import SegmentedSlider from './form/SegmentedSlider.vue'
 import Select from '@/core/design/Select.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
 

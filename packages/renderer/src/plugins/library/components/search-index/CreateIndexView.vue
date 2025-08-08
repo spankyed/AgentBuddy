@@ -70,10 +70,10 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import Button from '@/core/design/button.vue'
-import DetailsSection from './search-index/DetailsSection.vue'
-import ScopeSection from './search-index/ScopeSection.vue'
-import SectionsConfig from './search-index/SectionsConfig.vue'
-import type { SearchIndexFormData } from '../types/search-index'
+import DetailsSection from './DetailsSection.vue'
+import ScopeSection from './ScopeSection.vue'
+import SectionsConfig from './SectionsConfig.vue'
+import type { SearchIndexFormData } from '../../types/search-index'
 
 const emit = defineEmits<{
   SAVE_SEARCH_INDEX: [config: SearchIndexFormData]

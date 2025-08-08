@@ -13,7 +13,7 @@ import { useState } from '@/core/composables/plugins'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
-import CreateIndexView from './components/CreateIndexView.vue'
+import CreateIndexView from './components/search-index/CreateIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
 const actor = useState<typeof librarySystem>(id)

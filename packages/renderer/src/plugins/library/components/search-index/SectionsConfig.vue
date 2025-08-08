@@ -140,8 +140,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
-import ToggleSwitch from '../form/ToggleSwitch.vue'
-import OccurrenceInput from '../form/OccurrenceInput.vue'
+import ToggleSwitch from './form/ToggleSwitch.vue'
+import OccurrenceInput from './form/OccurrenceInput.vue'
 import Select from '@/core/design/Select.vue'
 import CopyFeedback from '@/core/design/CopyFeedback.vue'
 import type { SearchIndexFormData, SegmentRule } from '../../types/search-index'
