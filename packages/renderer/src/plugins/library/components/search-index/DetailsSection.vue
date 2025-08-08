@@ -89,17 +89,15 @@
 
       <!-- Connectors -->
       <div>
-        <label class="block text-xs font-medium text-neutral-400 mb-1.5">
+        <label class="flex items-center gap-2 text-xs font-medium text-neutral-400 mb-1.5">
           GRAPH CONNECTIVITY
+          <span class="text-xs font-normal text-neutral-500">{{ getConnectorDescription(localData.connectors) }}</span>
         </label>
         <SegmentedSlider
           v-model="localData.connectors"
           :options="connectorOptions"
           @update:modelValue="updateValue"
         />
-        <p class="text-xs text-neutral-500 mt-1">
-          {{ getConnectorDescription(localData.connectors) }}
-        </p>
       </div>
     </div>
   </div>
