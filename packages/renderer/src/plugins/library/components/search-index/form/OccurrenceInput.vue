@@ -4,11 +4,9 @@
       v-model="localValue"
       type="text"
       placeholder="all"
-      class="w-24 px-2 py-1 bg-neutral-700 border rounded text-sm text-neutral-200 outline-none placeholder-neutral-500"
+      class="w-24 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 outline-none focus:border-neutral-600 placeholder-neutral-500"
       :class="[
-        isValid 
-          ? 'border-neutral-600 focus:border-primary-500' 
-          : 'border-red-400 focus:border-red-500'
+        !isValid && 'border-red-400 focus:border-red-500'
       ]"
       @input="handleInput"
       @blur="validateAndFormat"
