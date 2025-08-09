@@ -134,41 +134,37 @@
                       {{ getSimilarityPercentage(result.score) }}%
                     </span>
                   </div>
-
-                  <!-- Action Buttons -->
-                  <div class="flex items-center gap-2">
-                    <!-- Status Text -->
-                    <span v-if="!expandedChunks.has(getChunkId(result, index))" class="text-xs text-blue-400">
-                      Click to expand
-                    </span>
-                    <span v-else class="text-xs text-neutral-500">
-                      {{ result.text.length }} chars
-                    </span>
-                  </div>
                 </div>
                 
                 <!-- Text Content and Footer -->
                 <div 
-                  class="bg-neutral-900 rounded p-3"
+                  class="bg-neutral-900 rounded p-3 relative"
                 >
-                  <div class="text-sm text-neutral-300 font-mono relative">
+                  <!-- Copy Button at top right -->
+                  <button
+                    @click.stop="copyText(result.text)"
+                    class="absolute top-2 right-2 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
+                    title="Copy chunk text"
+                  >
+                    <Copy class="w-3 h-3" />
+                  </button>
+                  
+                  <div class="text-sm text-neutral-300 font-mono">
                     <div v-if="expandedChunks.has(getChunkId(result, index))">
                       <!-- Full text with preserved formatting -->
                       <pre class="whitespace-pre-wrap break-words">{{ result.text }}</pre>
+                      <div class="text-xs text-neutral-500 mt-2">
+                        {{ result.text.length }} chars
+                      </div>
                     </div>
-                    <div v-else>
-                      <!-- Truncated text -->
+                    <div v-else class="relative">
+                      <!-- Truncated text with gradient and ...more -->
                       <p class="line-clamp-3">{{ result.text }}</p>
+                      <div class="absolute bottom-0 right-0 flex items-center">
+                        <div class="w-20 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
+                        <span class="text-neutral-300 bg-neutral-900 pl-1">...more</span>
+                      </div>
                     </div>
-                    
-                    <!-- Copy Button (overlay at bottom right) -->
-                    <button
-                      @click.stop="copyText(result.text)"
-                      class="absolute bottom-0 right-0 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800/90 hover:bg-neutral-700 rounded transition-colors backdrop-blur-sm"
-                      title="Copy chunk text"
-                    >
-                      <Copy class="w-3 h-3" />
-                    </button>
                   </div>
                   
                   <!-- Footer with Metadata (only show when expanded) -->
