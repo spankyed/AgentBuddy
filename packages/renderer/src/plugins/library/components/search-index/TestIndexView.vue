@@ -160,10 +160,10 @@
                       </div>
                     </div>
                     <div v-else class="relative text-sm text-neutral-300 font-mono">
-                      <div class="line-clamp-3-custom">
+                      <div class="line-clamp-3-custom" :ref="el => setTextRef(el, result, index)">
                         {{ result.text }}
                       </div>
-                      <div class="absolute bottom-0 right-0 flex items-center pointer-events-none">
+                      <div v-if="isTruncated(result, index)" class="absolute bottom-0 right-0 flex items-center pointer-events-none">
                         <div class="w-16 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
                         <span class="text-neutral-300 bg-neutral-900 pr-1">...more</span>
                       </div>
@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type Ref } from 'vue'
+import { ref, computed, watch, nextTick, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id, type LibraryEvents } from '../../state'
@@ -226,6 +226,7 @@ const expandedChunks = ref(new Set<string>())
 const expandedDocuments = ref(new Set<string>())
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
+const truncatedTexts = ref(new Map<string, boolean>())
 
 // Computed properties
 const groupedResults = computed(() => {
@@ -264,6 +265,7 @@ const executeSearch = () => {
 // Auto-expand documents when results come in
 watch(testResults, (newResults) => {
   if (newResults.length > 0) {
+    truncatedTexts.value.clear() // Clear truncation tracking for new results
     groupedResults.value.forEach((_, docId) => expandedDocuments.value.add(docId))
   }
 })
@@ -358,6 +360,21 @@ async function copyToClipboard(text: string, message: string = 'Copied to clipbo
 
 const copyText = (text: string) => copyToClipboard(text, 'Text copied to clipboard')
 const copyChunkKey = (key: string) => copyToClipboard(key, 'Chunk key copied')
+
+// Check if text is truncated
+const setTextRef = (el: HTMLElement | null, result: IndexSearchResult, index: number) => {
+  if (el) {
+    nextTick(() => {
+      // Check if the element's scroll height is greater than its client height
+      const isTruncated = el.scrollHeight > el.clientHeight
+      truncatedTexts.value.set(getChunkId(result, index), isTruncated)
+    })
+  }
+}
+
+const isTruncated = (result: IndexSearchResult, index: number): boolean => {
+  return truncatedTexts.value.get(getChunkId(result, index)) || false
+}
 </script>
 
 <style scoped>
