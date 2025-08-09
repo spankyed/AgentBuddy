@@ -17,12 +17,13 @@ import {
 // Set to true to use git-tracked snapshots (default), false for runtime snapshots
 const USE_GIT_SNAPSHOTS = true;
 
-const SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/untracked');
+// const UNTRACKED_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/untracked');
 const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots');
 
 // Helper function to get the active snapshot directory based on the flag
 function getSnapshotDir(): string {
-  return USE_GIT_SNAPSHOTS ? GIT_SNAPSHOTS_DIR : SNAPSHOTS_DIR;
+  return GIT_SNAPSHOTS_DIR;
+  // return USE_GIT_SNAPSHOTS ? GIT_SNAPSHOTS_DIR : UNTRACKED_SNAPSHOTS_DIR;
 }
 
 interface SnapshotData {
