@@ -130,7 +130,10 @@
                     </button>
                     
                     <!-- Score Badge -->
-                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-neutral-700 text-neutral-300">
+                    <span 
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded"
+                      :class="getScoreBadgeClass(result.score)"
+                    >
                       {{ getSimilarityPercentage(result.score) }}%
                     </span>
                   </div>
@@ -302,6 +305,22 @@ const getSimilarityPercentage = (score: number): string => {
     ? Math.max(0, Math.min(100, (1 - score / 2) * 100))
     : Math.max(0, Math.min(100, (score + 1) * 50))
   return similarity.toFixed(1)
+}
+
+const getScoreBadgeClass = (score: number): string => {
+  const percentage = parseFloat(getSimilarityPercentage(score))
+  
+  // Color gradient from red to green based on percentage, with platinum for perfect matches
+  if (percentage >= 100) return 'bg-gradient-to-r from-white/40 via-slate-100/50 to-white/40 text-white font-semibold border border-white/60 ring-1 ring-white/30 shadow-lg shadow-white/25'
+  if (percentage >= 90) return 'bg-green-500/20 text-green-400 border border-green-500/30'
+  if (percentage >= 80) return 'bg-green-500/15 text-green-400 border border-green-500/25'
+  if (percentage >= 70) return 'bg-lime-500/20 text-lime-400 border border-lime-500/30'
+  if (percentage >= 60) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+  if (percentage >= 50) return 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+  if (percentage >= 40) return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+  if (percentage >= 30) return 'bg-orange-600/20 text-orange-500 border border-orange-600/30'
+  if (percentage >= 20) return 'bg-red-500/15 text-red-400 border border-red-500/25'
+  return 'bg-red-500/20 text-red-400 border border-red-500/30'
 }
 
 

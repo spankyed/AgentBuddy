@@ -140,12 +140,17 @@
           <button
             type="button"
             @click="showPreview = !showPreview"
-            class="text-xs text-neutral-500 mb-1 hover:text-neutral-400 transition-colors"
+            class="text-xs text-neutral-500 mb-3 hover:text-neutral-400 transition-colors"
           >
-            Preview {{ showPreview ? '▼' : '▶' }}
+            {{ showPreview ? '▼' : '▶' }} Preview 
           </button>
-          <div v-if="showPreview" class="p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md text-sm text-neutral-300 font-mono whitespace-pre-wrap">
-            {{ getTemplatePreview() }}
+          <div v-if="showPreview" class="space-y-2">
+            <div class="p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md text-sm text-neutral-300 font-mono whitespace-pre-wrap">
+              {{ getTemplatePreview() }}
+            </div>
+            <p v-if="hasSeparateMode" class="text-xs text-neutral-500">
+              Note: Fields marked with _n will create separate index entries for each item
+            </p>
           </div>
         </div>
       </div>
@@ -157,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { X, Plus, ChevronDown } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
 import OccurrenceInput from './form/OccurrenceInput.vue'
@@ -184,6 +189,13 @@ const copyMessage = ref('')
 
 // Preview state
 const showPreview = ref(false)
+
+// Check if any rules use separate mode
+const hasSeparateMode = computed(() => 
+  localData.value.segmentRules.some(r => 
+    (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+  )
+)
 
 watch(() => props.modelValue, (newValue) => {
   localData.value = { ...newValue }
@@ -219,16 +231,11 @@ function getSegmentVariable(index: number): string {
 function getTemplatePreview(): string {
   const placeholders: Record<string, string> = {
     text: '[text block]',
-    list: '[list items 1, 2, ...]',
-    field: '[field key: value ...]'
+    list: '[list item_1, item_2, ...]',
+    field: '[field key_1: value_1, key_2: value_2, ...]'
   }
   
-  // Check if any rules use separate mode
-  const hasSeparateMode = localData.value.segmentRules.some(r => 
-    (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
-  )
-  
-  let previewText = localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
+  return localData.value.constructTemplate.replace(/\{\{segment (\d+)\}\}/g, (match, num) => {
     const index = parseInt(num) - 1
     const rule = localData.value.segmentRules[index]
     if (!rule) return '[segment content...]'
@@ -236,11 +243,11 @@ function getTemplatePreview(): string {
     // Handle separate mode for lists and fields
     if (rule.indexMode === 'separate' && (rule.type === 'list' || rule.type === 'field')) {
       if (rule.type === 'field' && rule.key) {
-        return `[${rule.key}: value_N]`
+        return `[${rule.key}: value_n]`
       } else if (rule.type === 'field') {
-        return '[field_N: value_N]'
+        return '[field_n: value_n]'
       }
-      return '[list item_N]'
+      return '[list item_n]'
     }
     
     // Combined mode or text type
@@ -250,13 +257,6 @@ function getTemplatePreview(): string {
     
     return placeholders[rule.type] || '[segment content...]'
   })
-  
-  // Add note about separate indexing if applicable
-  if (hasSeparateMode) {
-    previewText += '\n\n📝 Note: Fields marked with _N will create separate index entries for each item'
-  }
-  
-  return previewText
 }
 
 async function copyVariable(variable: string) {
