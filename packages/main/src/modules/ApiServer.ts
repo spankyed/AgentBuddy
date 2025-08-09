@@ -114,7 +114,8 @@ export class ApiServer implements AppModule {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
         API_PORT: '3001',
-        DATABASE_PATH: path.join(app.getPath('userData'), 'database.db')
+        DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
+        USER_DATA_PATH: app.getPath('userData')
       },
       stdio: ['ignore', 'pipe', 'pipe']
     });

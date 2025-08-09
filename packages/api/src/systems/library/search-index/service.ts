@@ -7,6 +7,15 @@ import type { ContentSection } from '@/systems/library/types'
 import type { EARS } from '@/core/types'
 import { getModelConfig, getModelDimensions } from '@/systems/library/search-index/config/embedding-models'
 import { getFastEmbedModel } from '@/systems/library/search-index/config/fastembed-mapping'
+import { 
+  getSearchIndicesPath, 
+  getModelsCachePath, 
+  ensureDirectoryExists,
+  getIndexFilePath,
+  getIndexMetadataPath,
+  getIndexMappingsPath,
+  getIndexPath
+} from '@/core/utils/paths'
 
 // Initialize embedding models (lazy loading)
 let embeddingModels: Map<string, FlagEmbedding | null> = new Map()
@@ -20,9 +29,12 @@ export async function getEmbeddingModel(modelId: string): Promise<FlagEmbedding 
       // Use fastembed for local model
       const fastEmbedModel = getFastEmbedModel(config.fastEmbedModel)
       if (fastEmbedModel) {
+        const cacheDir = getModelsCachePath()
+        ensureDirectoryExists(cacheDir)
+        
         model = await FlagEmbedding.init({
           model: fastEmbedModel,
-          // cacheDir: './data/models',
+          cacheDir,
           maxLength: config.maxTokens,
         })
       }
@@ -428,37 +440,26 @@ export async function saveIndex(index: Index, indexPath: string): Promise<void> 
   await index.save(indexPath)
 }
 
-const INDEX_DIR = path.join(process.cwd(), '/src/core/data/search-indices')
-// Get index file path
-export function getIndexPath(indexId: EARS.EntityId): string {
-  return path.join(INDEX_DIR, indexId, 'index.usearch')
-}
-
-// Get metadata file path
-export function getMetadataPath(indexId: EARS.EntityId): string {
-  return path.join(INDEX_DIR, indexId, 'metadata.json')
-}
-
-// Get mappings file path
-export function getMappingsPath(indexId: EARS.EntityId): string {
-  return path.join(INDEX_DIR, indexId, 'mappings.json')
-}
+// Re-export path functions for backward compatibility
+export { 
+  getIndexFilePath as getIndexPath,
+  getIndexMetadataPath as getMetadataPath,
+  getIndexMappingsPath as getMappingsPath
+} from '@/core/utils/paths'
 
 // Save index metadata
 export function saveMetadata(indexId: EARS.EntityId, metadata: any): void {
-  const metadataPath = getMetadataPath(indexId)
+  const metadataPath = getIndexMetadataPath(indexId)
   const dir = path.dirname(metadataPath)
   
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
+  ensureDirectoryExists(dir)
   
   fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2))
 }
 
 // Load index metadata
 export function loadMetadata(indexId: EARS.EntityId): any | null {
-  const metadataPath = getMetadataPath(indexId)
+  const metadataPath = getIndexMetadataPath(indexId)
   
   if (!fs.existsSync(metadataPath)) {
     return null
@@ -469,12 +470,10 @@ export function loadMetadata(indexId: EARS.EntityId): any | null {
 
 // Save document-to-vector mappings
 export function saveMappings(indexId: EARS.EntityId, mappings: Map<string, number>): void {
-  const mappingsPath = getMappingsPath(indexId)
+  const mappingsPath = getIndexMappingsPath(indexId)
   const dir = path.dirname(mappingsPath)
   
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
+  ensureDirectoryExists(dir)
   
   const obj = Object.fromEntries(mappings)
   fs.writeFileSync(mappingsPath, JSON.stringify(obj, null, 2))
@@ -482,7 +481,7 @@ export function saveMappings(indexId: EARS.EntityId, mappings: Map<string, numbe
 
 // Load document-to-vector mappings
 export function loadMappings(indexId: EARS.EntityId): Map<string, number> {
-  const mappingsPath = getMappingsPath(indexId)
+  const mappingsPath = getIndexMappingsPath(indexId)
   
   if (!fs.existsSync(mappingsPath)) {
     return new Map()
@@ -494,7 +493,7 @@ export function loadMappings(indexId: EARS.EntityId): Map<string, number> {
 
 // Delete index files
 export function deleteIndexFiles(indexId: EARS.EntityId): void {
-  const indexDir = path.join('./data/search-indices', indexId)
+  const indexDir = path.join(getSearchIndicesPath(), indexId)
   
   if (fs.existsSync(indexDir)) {
     fs.rmSync(indexDir, { recursive: true })
