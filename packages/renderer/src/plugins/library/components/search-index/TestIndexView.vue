@@ -28,13 +28,13 @@
 
     <!-- Search Input Section -->
     <div class="bg-neutral-850 border-b border-neutral-800">
-      <div class="max-w-4xl mx-auto px-6 py-4">
-        <input
+      <div class="max-w-3xl mx-auto px-6 py-4">
+        <textarea
           v-model="localQuery"
-          @keyup.enter="executeSearch"
-          type="text"
+          @keydown.enter="handleEnterKey"
           placeholder="Enter your search query..."
-          class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none overflow-y-auto"
+          style="field-sizing: content; max-height: 5lh;"
           :disabled="isSearching"
         />
       </div>
@@ -259,6 +259,13 @@ const uniqueDocumentCount = computed(() => groupedResults.value.size)
 // Sync with state machine
 watch(testQuery, (newVal) => localQuery.value = newVal)
 watch(localQuery, (newVal) => send({ type: 'UPDATE_TEST_QUERY', query: newVal }))
+
+const handleEnterKey = (event: KeyboardEvent) => {
+  if (!event.shiftKey) {
+    event.preventDefault()
+    executeSearch()
+  }
+}
 
 const executeSearch = () => {
   if (localQuery.value && !isSearching.value) {
