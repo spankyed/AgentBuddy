@@ -76,17 +76,17 @@
           </div>
 
           <!-- Grouped Results by Document -->
-          <div v-for="[docId, chunks] in groupedResults" :key="docId" class="mb-4 border border-neutral-700 rounded-lg overflow-hidden">
+          <div v-for="[docId, chunks] of groupedResults" :key="docId" class="mb-4 border border-neutral-700 rounded-lg overflow-hidden">
             <!-- Document Header -->
             <div 
-              @click="toggleDocumentExpansion(docId)"
+              @click="toggleDocumentExpansion(docId as string)"
               class="px-4 py-3 bg-neutral-850 border-b border-neutral-700 cursor-pointer hover:bg-neutral-800 transition-colors"
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <ChevronRight 
                     class="w-4 h-4 text-neutral-500 transition-transform"
-                    :class="{ 'rotate-90': expandedDocuments.has(docId) }"
+                    :class="{ 'rotate-90': expandedDocuments.has(docId as string) }"
                   />
                   <FileText class="w-4 h-4 text-neutral-500" />
                   <h4 class="text-sm font-medium text-neutral-200">
@@ -103,7 +103,7 @@
             </div>
 
             <!-- Document Chunks -->
-            <div v-if="expandedDocuments.has(docId)" class="divide-y divide-neutral-700/50">
+            <div v-if="expandedDocuments.has(docId as string)" class="divide-y divide-neutral-700/50">
               <div
                 v-for="(result, index) in chunks"
                 :key="`${docId}-${index}`"
@@ -120,7 +120,7 @@
 
                     <!-- Chunk Type Badge (Clickable to copy ID) -->
                     <button
-                      @click.stop="copyChunkKey(result.chunkInfo?.chunkKey)"
+                      @click.stop="copyChunkKey(result.chunkInfo?.chunkKey || '')"
                       class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded cursor-pointer hover:opacity-80 transition-opacity"
                       :class="getChunkTypeBadgeClass(result.chunkInfo)"
                       :title="result.chunkInfo?.chunkKey || 'Copy chunk ID'"
@@ -140,29 +140,32 @@
                 <div 
                   class="bg-neutral-900 rounded p-3 relative"
                 >
-                  <!-- Copy Button at top right -->
-                  <button
-                    @click.stop="copyText(result.text)"
-                    class="absolute top-2 right-2 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
-                    title="Copy chunk text"
-                  >
-                    <Copy class="w-3 h-3" />
-                  </button>
-                  
                   <div class="text-sm text-neutral-300 font-mono">
                     <div v-if="expandedChunks.has(getChunkId(result, index))">
-                      <!-- Full text with preserved formatting -->
                       <pre class="whitespace-pre-wrap break-words">{{ result.text }}</pre>
-                      <div class="text-xs text-neutral-500 mt-2">
-                        {{ result.text.length }} chars
+                      <div class="flex items-center justify-between mt-2">
+                        <span class="text-xs text-neutral-500">{{ result.text.length }} chars</span>
+                        <button
+                          @click.stop="copyText(result.text)"
+                          class="p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
+                          title="Copy chunk text"
+                        >
+                          <Copy class="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                     <div v-else class="relative">
-                      <!-- Truncated text with gradient and ...more -->
                       <p class="line-clamp-3">{{ result.text }}</p>
                       <div class="absolute bottom-0 right-0 flex items-center">
                         <div class="w-20 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
                         <span class="text-neutral-300 bg-neutral-900 pl-1">...more</span>
+                        <button
+                          @click.stop="copyText(result.text)"
+                          class="ml-2 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
+                          title="Copy chunk text"
+                        >
+                          <Copy class="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -198,22 +201,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id, type LibraryEvents } from '../../state'
 import type { ActorRefFrom } from 'xstate'
 import { librarySystem } from '../../state'
-import { FileText, Search, Hash, Key, Copy, ChevronRight } from 'lucide-vue-next'
+import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
+import type { IndexSearchResult, SearchIndex } from '@app/api'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor
 
-const testingIndex = useSelector(actor, (state) => state.context.testingIndex)
-const testQuery = useSelector(actor, (state) => state.context.testQuery)
-const testResults = useSelector(actor, (state) => state.context.testResults)
-const isSearching = useSelector(actor, (state) => state.context.isSearching)
+const testingIndex = useSelector(actor, (state) => state.context.testingIndex) as Ref<SearchIndex | null>
+const testQuery = useSelector(actor, (state) => state.context.testQuery) as Ref<string>
+const testResults = useSelector(actor, (state) => state.context.testResults) as Ref<IndexSearchResult[]>
+const isSearching = useSelector(actor, (state) => state.context.isSearching) as Ref<boolean>
 
 const send = (event: LibraryEvents) => actor.send(event)
 
@@ -225,45 +229,31 @@ const copyFeedbackMessage = ref('')
 
 // Computed properties
 const groupedResults = computed(() => {
-  const grouped = new Map()
-  for (const result of testResults.value) {
-    if (!grouped.has(result.documentId)) {
-      grouped.set(result.documentId, [])
-    }
-    grouped.get(result.documentId).push(result)
-  }
+  const grouped = new Map<string, IndexSearchResult[]>()
   
-  // Sort chunks within each document by score (lowest distance first - better matches)
-  for (const [docId, chunks] of grouped) {
-    chunks.sort((a: any, b: any) => a.score - b.score)
-  }
+  // Group results by document
+  testResults.value.forEach((result: IndexSearchResult) => {
+    const chunks = grouped.get(result.documentId) || []
+    chunks.push(result)
+    grouped.set(result.documentId, chunks)
+  })
   
-  // Sort the documents by their best chunk's score (lowest distance first)
-  const sortedGrouped = new Map(
-    [...grouped.entries()].sort((a, b) => {
-      const bestScoreA = a[1][0].score // First chunk after sorting has best score
-      const bestScoreB = b[1][0].score
-      return bestScoreA - bestScoreB // Lower distance = better match
-    })
+  // Sort chunks within each document and documents by best score
+  return new Map(
+    [...grouped.entries()]
+      .map(([docId, chunks]): [string, IndexSearchResult[]] => 
+        [docId, chunks.sort((a, b) => a.score - b.score)])
+      .sort((a, b) => a[1][0].score - b[1][0].score)
   )
-  
-  return sortedGrouped
 })
 
-const uniqueDocumentCount = computed(() => {
-  return groupedResults.value.size
-})
+const uniqueDocumentCount = computed(() => groupedResults.value.size)
 
 // Sync with state machine
-watch(testQuery, (newVal) => {
-  localQuery.value = newVal
-})
+watch(testQuery, (newVal) => localQuery.value = newVal)
+watch(localQuery, (newVal) => send({ type: 'UPDATE_TEST_QUERY', query: newVal }))
 
-watch(localQuery, (newVal) => {
-  send({ type: 'UPDATE_TEST_QUERY', query: newVal })
-})
-
-function executeSearch() {
+const executeSearch = () => {
   if (localQuery.value && !isSearching.value) {
     expandedChunks.value.clear()
     expandedDocuments.value.clear()
@@ -274,142 +264,84 @@ function executeSearch() {
 // Auto-expand documents when results come in
 watch(testResults, (newResults) => {
   if (newResults.length > 0) {
-    for (const [docId] of groupedResults.value) {
-      expandedDocuments.value.add(docId)
-    }
+    groupedResults.value.forEach((_, docId) => expandedDocuments.value.add(docId))
   }
 })
 
-function cancel() {
-  send({ type: 'CANCEL_TEST_SEARCH' })
+const cancel = () => send({ type: 'CANCEL_TEST_SEARCH' })
+
+const getChunkId = (result: IndexSearchResult, index: number): string => `${result.documentId}-${index}`
+
+const toggleExpansion = (set: Set<string>, id: string) => {
+  set.has(id) ? set.delete(id) : set.add(id)
 }
 
-function getChunkId(result: any, index: number): string {
-  return `${result.documentId}-${index}`
-}
+const toggleChunkExpansion = (result: IndexSearchResult, index: number) => 
+  toggleExpansion(expandedChunks.value, getChunkId(result, index))
 
-function toggleChunkExpansion(result: any, index: number) {
-  const chunkId = getChunkId(result, index)
-  if (expandedChunks.value.has(chunkId)) {
-    expandedChunks.value.delete(chunkId)
-  } else {
-    expandedChunks.value.add(chunkId)
-  }
-}
+const toggleDocumentExpansion = (docId: string) => 
+  toggleExpansion(expandedDocuments.value, docId)
 
-function toggleDocumentExpansion(docId: string) {
-  if (expandedDocuments.value.has(docId)) {
-    expandedDocuments.value.delete(docId)
-  } else {
+const expandAll = () => {
+  groupedResults.value.forEach((chunks, docId) => {
     expandedDocuments.value.add(docId)
-  }
-}
-
-function expandAll() {
-  for (const [docId, chunks] of groupedResults.value) {
-    expandedDocuments.value.add(docId)
-    chunks.forEach((chunk: any, index: number) => {
+    chunks.forEach((chunk, index) => 
       expandedChunks.value.add(getChunkId(chunk, index))
-    })
-  }
+    )
+  })
 }
 
-function collapseAll() {
+const collapseAll = () => {
   expandedChunks.value.clear()
   expandedDocuments.value.clear()
 }
 
-function getSimilarityPercentage(score: number): string {
-  // Convert distance to similarity percentage
-  // For cosine distance: 0 = identical, 2 = opposite
-  // For dot product: higher is better (can be negative)
+const getSimilarityPercentage = (score: number): string => {
   const metric = testingIndex.value?.indexMetric || 'cosine'
-  let similarity: number
-  
-  if (metric === 'cosine') {
-    similarity = Math.max(0, Math.min(100, (1 - score / 2) * 100))
-  } else {
-    // dot_product - normalize to 0-100 range
-    similarity = Math.max(0, Math.min(100, (score + 1) * 50))
-  }
-  
+  const similarity = metric === 'cosine'
+    ? Math.max(0, Math.min(100, (1 - score / 2) * 100))
+    : Math.max(0, Math.min(100, (score + 1) * 50))
   return similarity.toFixed(1)
 }
 
-function getSimilarityClass(score: number): string {
-  const percentage = parseFloat(getSimilarityPercentage(score))
-  if (percentage >= 80) return 'bg-green-500/20 text-green-400 border border-green-500/30'
-  if (percentage >= 60) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-  if (percentage >= 40) return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-  return 'bg-red-500/20 text-red-400 border border-red-500/30'
-}
 
-function getChunkTypeBadgeClass(chunkInfo: any): string {
+const getChunkTypeBadgeClass = (chunkInfo: IndexSearchResult['chunkInfo']): string => {
   if (!chunkInfo) return 'bg-neutral-700 text-neutral-400'
-  if (chunkInfo.chunkType === 'full') return 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-  return 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+  return chunkInfo.chunkType === 'full' 
+    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+    : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
 }
 
-function getItemLabel(chunkInfo: any): string {
+const getItemLabel = (chunkInfo: IndexSearchResult['chunkInfo']): string => {
   if (!chunkInfo) return 'Document'
   if (chunkInfo.chunkType === 'full') return 'Full Document'
-  if (chunkInfo.itemIndex !== undefined) {
-    return `Item ${chunkInfo.itemIndex + 1}`
-  }
-  return 'Segment'
+  return chunkInfo.itemIndex !== undefined 
+    ? `Item ${chunkInfo.itemIndex + 1}`
+    : 'Segment'
 }
 
-function getChunkTypeLabel(chunkInfo: any): string {
-  if (!chunkInfo) return 'Document'
-  if (chunkInfo.chunkType === 'full') return 'Full Document'
-  return `Segment Item`
-}
 
-function getSegmentLabel(chunkInfo: any): string {
-  if (!chunkInfo) return 'Document'
-  if (chunkInfo.chunkType === 'full') return 'Full Document'
-  return `Segment ${chunkInfo.segmentIndex + 1}`
-}
-
-function truncateChunkKey(key: string): string {
-  if (key.length <= 20) return key
-  return key.substring(0, 8) + '...' + key.substring(key.length - 8)
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('en-US', {
+const formatDate = (timestamp: number): string => 
+  new Date(timestamp).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   })
-}
 
-async function copyText(text: string) {
+async function copyToClipboard(text: string, message: string = 'Copied to clipboard') {
   try {
     await navigator.clipboard.writeText(text)
     showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Text copied to clipboard'
-    setTimeout(() => {
-      showCopyFeedback.value = false
-    }, 2000)
+    copyFeedbackMessage.value = message
+    setTimeout(() => showCopyFeedback.value = false, 2000)
   } catch (err) {
-    console.error('Failed to copy text:', err)
+    console.error('Failed to copy:', err)
   }
 }
 
-async function copyChunkKey(key: string) {
-  try {
-    await navigator.clipboard.writeText(key)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Chunk key copied'
-    setTimeout(() => {
-      showCopyFeedback.value = false
-    }, 2000)
-  } catch (err) {
-    console.error('Failed to copy chunk key:', err)
-  }
-}
+const copyText = (text: string) => copyToClipboard(text, 'Text copied to clipboard')
+const copyChunkKey = (key: string) => copyToClipboard(key, 'Chunk key copied')
 </script>
 
 <style scoped>
@@ -420,17 +352,11 @@ async function copyChunkKey(key: string) {
   overflow: hidden;
 }
 
-.fade-enter-active,
-.fade-leave-active {
+.fade-enter-active, .fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.fade-enter-from, .fade-leave-to {
   opacity: 0;
-}
-
-pre {
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 </style>
