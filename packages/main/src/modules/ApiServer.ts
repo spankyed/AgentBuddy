@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { AppModule } from '../AppModule.js';
 import { ModuleContext } from '../ModuleContext.js';
@@ -100,13 +101,43 @@ export class ApiServer implements AppModule {
         }
       });
     } else {
-      // In production, assume the API is already built
-      apiPath = path.join(process.resourcesPath, 'api');
+      // In production, the API is in the app resources folder
+      // Since we disabled asar, it's directly accessible
+      apiPath = path.join(process.resourcesPath, 'app', 'packages', 'api');
+      
+      // Fallback to node_modules/@app/api if it exists there
+      if (!fs.existsSync(apiPath)) {
+        apiPath = path.join(process.resourcesPath, 'app', 'node_modules', '@app', 'api');
+      }
+      
+      console.log('Production API path:', apiPath);
       this.launchApiServer(apiPath);
     }
   }
 
   private launchApiServer(apiPath: string): void {
+    console.log('Attempting to launch API server from:', apiPath);
+    
+    // Check if the path exists
+    if (!fs.existsSync(apiPath)) {
+      console.error('API path does not exist:', apiPath);
+      this.broadcastToWindows(API_SERVER_EVENTS.ERROR, { 
+        error: `API path does not exist: ${apiPath}` 
+      });
+      return;
+    }
+    
+    const serverPath = path.join(apiPath, 'dist', 'server.js');
+    if (!fs.existsSync(serverPath)) {
+      console.error('Server file does not exist:', serverPath);
+      this.broadcastToWindows(API_SERVER_EVENTS.ERROR, { 
+        error: `Server file does not exist: ${serverPath}` 
+      });
+      return;
+    }
+    
+    console.log('Server file found at:', serverPath);
+    
     // Spawn the API server process
     this.apiProcess = spawn('node', ['dist/server.js'], {
       cwd: apiPath,

@@ -1,4 +1,4 @@
-import {initApp} from '@app/main';
+import {initApp} from './main/dist/index.js';
 import {fileURLToPath} from 'node:url';
 
 if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true' || !!process.env.CI) {
@@ -26,11 +26,11 @@ initApp(
     renderer: (process.env.MODE === 'development' && !!process.env.VITE_DEV_SERVER_URL) ?
       new URL(process.env.VITE_DEV_SERVER_URL)
       : {
-        path: fileURLToPath(import.meta.resolve('@app/renderer')),
+        path: fileURLToPath(new URL('./renderer/dist/index.html', import.meta.url)),
       },
 
     preload: {
-      path: fileURLToPath(import.meta.resolve('@app/preload/exposed.mjs')),
+      path: fileURLToPath(new URL('./preload/dist/exposed.mjs', import.meta.url)),
     },
   },
 );

@@ -24,6 +24,15 @@ export default /** @type import('electron-builder').Configuration */
     '!node_modules/@app/**',
     ...await getListOfFilesFromEachWorkspace(),
   ],
+  // Unpack native modules and API from asar for proper execution
+  asarUnpack: [
+    'node_modules/@app/api/**/*',
+    'node_modules/better-sqlite3/**/*',
+    'node_modules/node-pty/**/*',
+    'node_modules/usearch/**/*',
+    'node_modules/fastembed/**/*',
+    'node_modules/onnxruntime-node/**/*'
+  ],
 });
 
 /**
