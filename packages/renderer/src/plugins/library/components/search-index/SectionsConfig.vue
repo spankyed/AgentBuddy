@@ -76,8 +76,8 @@
                 @change="updateValue"
                 class="w-28 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
               >
-                <option value="combined">Together</option>
-                <option value="separate">Individual</option>
+                <option value="combined">together</option>
+                <option value="separate">individual</option>
               </select>
             </div>
             
@@ -158,7 +158,7 @@
               {{ getTemplatePreview() }}
             </div>
             <p v-if="hasSeparateMode" class="text-xs text-neutral-500">
-              Note: Fields marked with _n will create separate index entries for each item
+              Fields marked with _n will create separate index entries for each item
             </p>
           </div>
         </div>
