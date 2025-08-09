@@ -428,19 +428,20 @@ export async function saveIndex(index: Index, indexPath: string): Promise<void> 
   await index.save(indexPath)
 }
 
+const INDEX_DIR = path.join(process.cwd(), '/src/core/data/search-indices')
 // Get index file path
 export function getIndexPath(indexId: EARS.EntityId): string {
-  return path.join('./data/search-indices', indexId, 'index.usearch')
+  return path.join(INDEX_DIR, indexId, 'index.usearch')
 }
 
 // Get metadata file path
 export function getMetadataPath(indexId: EARS.EntityId): string {
-  return path.join('./data/search-indices', indexId, 'metadata.json')
+  return path.join(INDEX_DIR, indexId, 'metadata.json')
 }
 
 // Get mappings file path
 export function getMappingsPath(indexId: EARS.EntityId): string {
-  return path.join('./data/search-indices', indexId, 'mappings.json')
+  return path.join(INDEX_DIR, indexId, 'mappings.json')
 }
 
 // Save index metadata
