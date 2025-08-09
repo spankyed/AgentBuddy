@@ -247,7 +247,7 @@ const groupedResults = computed(() => {
   
   // Sort chunks within each document and documents by best score
   return new Map(
-    [...grouped.entries()]
+    Array.from(grouped.entries())
       .map(([docId, chunks]): [string, IndexSearchResult[]] => 
         [docId, chunks.sort((a, b) => a.score - b.score)])
       .sort((a, b) => a[1][0].score - b[1][0].score)
