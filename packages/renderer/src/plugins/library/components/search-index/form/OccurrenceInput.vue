@@ -9,25 +9,39 @@
         !isValid && 'border-red-400 focus:border-red-500'
       ]"
       @input="handleInput"
-      @blur="validateAndFormat"
-      @focus="showTooltip = true"
+      @blur="handleBlur"
+      @focus="handleFocus"
     />
     
-    <!-- Tooltip -->
+    <!-- Dropdown with hints -->
     <div 
-      v-if="showTooltip"
-      @mouseenter="keepTooltipOpen = true"
-      @mouseleave="keepTooltipOpen = false"
-      class="absolute top-full left-0 mt-1 p-2 bg-neutral-900 border border-neutral-700 rounded-md shadow-xl z-10 whitespace-nowrap"
+      v-if="showDropdown"
+      @mouseenter="keepDropdownOpen = true"
+      @mouseleave="keepDropdownOpen = false"
+      class="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-md shadow-xl z-10 whitespace-nowrap overflow-hidden"
     >
-      <p class="text-xs text-neutral-400 mb-1">Examples:</p>
-      <ul class="text-xs text-neutral-500 space-y-0.5">
-        <li><code class="text-primary-500 font-mono">first</code> - First occurrence</li>
-        <li><code class="text-primary-500 font-mono">last</code> - Last occurrence</li>
-        <li><code class="text-primary-500 font-mono">all</code> - All occurrences</li>
-        <li><code class="text-primary-500 font-mono">3</code> - Third occurrence</li>
-        <li><code class="text-primary-500 font-mono">2-5</code> - 2nd to 5th</li>
-      </ul>
+      <!-- Quick Select Options -->
+      <div class="border-b border-neutral-800">
+        <button
+          v-for="option in quickOptions"
+          :key="option.value"
+          type="button"
+          @click="selectOption(option.value)"
+          class="w-full px-3 py-1.5 text-xs text-left hover:bg-neutral-800 transition-colors flex items-center justify-between group"
+        >
+          <span class="text-neutral-300 group-hover:text-neutral-100">{{ option.label }}</span>
+          <code class="text-primary-500 font-mono ml-3">{{ option.value }}</code>
+        </button>
+      </div>
+      
+      <!-- Examples -->
+      <div class="p-2">
+        <p class="text-xs text-neutral-500 mb-1">Other examples:</p>
+        <ul class="text-xs text-neutral-600 space-y-0.5">
+          <li><code class="text-neutral-500 font-mono">3</code> - Third occurrence</li>
+          <li><code class="text-neutral-500 font-mono">2-5</code> - 2nd to 5th</li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
@@ -52,8 +66,14 @@ const emit = defineEmits<{
 
 const localValue = ref(props.modelValue)
 const isValid = ref(true)
-const showTooltip = ref(false)
-const keepTooltipOpen = ref(false)
+const showDropdown = ref(false)
+const keepDropdownOpen = ref(false)
+
+const quickOptions = [
+  { value: 'first', label: 'First occurrence' },
+  { value: 'last', label: 'Last occurrence' },
+  { value: 'all', label: 'All occurrences' },
+]
 
 watch(() => props.modelValue, (newValue) => {
   localValue.value = newValue
@@ -104,10 +124,14 @@ function parseOccurrence(value: string): Occurrence | null {
   return null
 }
 
-function validateAndFormat() {
+function handleFocus() {
+  showDropdown.value = true
+}
+
+function handleBlur() {
   setTimeout(() => {
-    if (!keepTooltipOpen.value) {
-      showTooltip.value = false
+    if (!keepDropdownOpen.value) {
+      showDropdown.value = false
     }
   }, 200)
   
@@ -115,6 +139,14 @@ function validateAndFormat() {
     localValue.value = 'all'
     emit('update:modelValue', localValue.value)
   }
+  validateOccurrence()
+}
+
+function selectOption(value: string) {
+  localValue.value = value
+  emit('update:modelValue', value)
+  showDropdown.value = false
+  keepDropdownOpen.value = false
   validateOccurrence()
 }
 
