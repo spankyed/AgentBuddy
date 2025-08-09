@@ -97,7 +97,12 @@
                   </h4>
                 </div>
                 <div class="text-xs text-neutral-400">
-                  {{ chunks.length }} {{ chunks.length === 1 ? 'chunk' : 'chunks' }} found
+                  <span v-if="chunks.length === 1 && (!chunks[0].chunkInfo || chunks[0].chunkInfo.chunkType === 'full')">
+                    Document
+                  </span>
+                  <span v-else>
+                    {{ chunks.length }} {{ chunks.length === 1 ? 'chunk' : 'chunks' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -127,12 +132,12 @@
                       Segment {{ result.chunkInfo.segmentIndex + 1 }}
                     </span>
 
-                    <!-- Chunk Type Badge (Clickable to copy ID) -->
+                    <!-- Chunk/Document Type Badge (Clickable to copy ID) -->
                     <button
-                      @click.stop="copyChunkKey(result.chunkInfo?.chunkKey || '')"
+                      @click.stop="copyResultKey(result)"
                       class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded cursor-pointer hover:opacity-80 transition-opacity"
                       :class="getChunkTypeBadgeClass(result.chunkInfo)"
-                      :title="result.chunkInfo?.chunkKey || 'Copy chunk ID'"
+                      :title="getResultKeyTooltip(result)"
                     >
                       <Hash class="w-3 h-3 mr-1" />
                       {{ getItemLabel(result.chunkInfo) }}
@@ -150,14 +155,11 @@
                 
                 <!-- Text Content and Footer -->
                 <div 
-                  class="bg-neutral-900 rounded p-3 relative"
+                  class="bg-neutral-900 rounded p-3 pb-0 relative"
                 >
                   <div class="text-sm text-neutral-300 font-mono">
                     <div v-if="expandedChunks.has(getChunkId(result, index))">
                       <pre class="whitespace-pre-wrap break-words">{{ result.text }}</pre>
-                      <div class="text-xs text-neutral-500 mt-2">
-                        {{ result.text.length }} chars
-                      </div>
                     </div>
                     <div v-else class="relative text-sm text-neutral-300 font-mono">
                       <div class="line-clamp-3-custom" :ref="el => setTextRef(el, result, index)">
@@ -178,9 +180,13 @@
                         <span class="text-neutral-700">•</span>
                         <span>Metric: {{ testingIndex?.indexMetric || 'cosine' }}</span>
                       </div>
-                      <span v-if="result.metadata?.indexedAt">
-                        Indexed: {{ formatDate(result.metadata.indexedAt) }}
-                      </span>
+                      <div class="flex items-center gap-2">
+                        <span>{{ result.text.length }} chars</span>
+                        <span v-if="result.metadata?.indexedAt" class="flex items-center gap-2">
+                          <span class="text-neutral-700">•</span>
+                          <span>Indexed: {{ formatDate(result.metadata.indexedAt) }}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -359,7 +365,19 @@ async function copyToClipboard(text: string, message: string = 'Copied to clipbo
 }
 
 const copyText = (text: string) => copyToClipboard(text, 'Text copied to clipboard')
-const copyChunkKey = (key: string) => copyToClipboard(key, 'Chunk key copied')
+
+const copyResultKey = (result: IndexSearchResult) => {
+  const key = result.chunkInfo?.chunkKey || result.documentId
+  const message = result.chunkInfo ? 'Chunk key copied' : 'Document ID copied'
+  copyToClipboard(key, message)
+}
+
+const getResultKeyTooltip = (result: IndexSearchResult): string => {
+  if (result.chunkInfo?.chunkKey) {
+    return `Copy chunk ID: ${result.chunkInfo.chunkKey}`
+  }
+  return `Copy document ID: ${result.documentId}`
+}
 
 // Check if text is truncated
 const setTextRef = (el: HTMLElement | null, result: IndexSearchResult, index: number) => {
