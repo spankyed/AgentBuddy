@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, type Ref } from 'vue'
+import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id, type LibraryEvents } from '../../state'
@@ -387,8 +387,8 @@ const getResultKeyTooltip = (result: IndexSearchResult): string => {
 }
 
 // Check if text is truncated
-const setTextRef = (el: HTMLElement | null, result: IndexSearchResult, index: number) => {
-  if (el) {
+const setTextRef = (el: Element | ComponentPublicInstance | null, result: IndexSearchResult, index: number) => {
+  if (el && el instanceof HTMLElement) {
     nextTick(() => {
       // Check if the element's scroll height is greater than its client height
       const isTruncated = el.scrollHeight > el.clientHeight
