@@ -159,11 +159,13 @@
                         {{ result.text.length }} chars
                       </div>
                     </div>
-                    <div v-else class="relative">
-                      <p class="line-clamp-3">{{ result.text }}</p>
-                      <div class="absolute bottom-0 right-0 flex items-center">
-                        <div class="w-20 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
-                        <span class="text-neutral-300 bg-neutral-900 pl-1">...more</span>
+                    <div v-else class="relative text-sm text-neutral-300 font-mono">
+                      <div class="line-clamp-3-custom">
+                        {{ result.text }}
+                      </div>
+                      <div class="absolute bottom-0 right-0 flex items-center pointer-events-none">
+                        <div class="w-16 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
+                        <span class="text-neutral-300 bg-neutral-900 pr-1">...more</span>
                       </div>
                     </div>
                   </div>
@@ -359,11 +361,11 @@ const copyChunkKey = (key: string) => copyToClipboard(key, 'Chunk key copied')
 </script>
 
 <style scoped>
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+.line-clamp-3-custom {
+  max-height: 4.5em; /* Approximately 3 lines */
   overflow: hidden;
+  word-break: break-word;
+  line-height: 1.5em;
 }
 
 .fade-enter-active, .fade-leave-active {
