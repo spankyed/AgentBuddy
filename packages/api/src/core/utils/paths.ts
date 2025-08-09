@@ -78,3 +78,19 @@ export function getIndexMetadataPath(indexId: string): string {
 export function getIndexMappingsPath(indexId: string): string {
   return path.join(getIndexPath(indexId), 'mappings.json')
 }
+
+/**
+ * Get the snapshots directory path
+ */
+export function getSnapshotsPath(): string {
+  const userDataPath = getUserDataPath()
+  
+  // In development, use the src/core/data structure
+  // In production, use the user data directory
+  if (process.env.USER_DATA_PATH) {
+    return path.join(userDataPath, 'snapshots')
+  } else {
+    // Development path - maintain compatibility with existing structure
+    return path.join(userDataPath, 'src', 'core', 'data', 'snapshots')
+  }
+}
