@@ -107,9 +107,18 @@
               <div
                 v-for="(result, index) in chunks"
                 :key="`${docId}-${index}`"
-                class="p-4 hover:bg-neutral-850 transition-colors cursor-pointer"
+                class="p-4 hover:bg-neutral-850 transition-colors cursor-pointer relative"
                 @click="toggleChunkExpansion(result, index)"
               >
+                <!-- Copy Button at top right -->
+                <button
+                  @click.stop="copyText(result.text)"
+                  class="absolute top-4 right-4 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors z-10"
+                  title="Copy chunk text"
+                >
+                  <Copy class="w-3 h-3" />
+                </button>
+                
                 <!-- Chunk Header -->
                 <div class="flex items-center justify-between gap-2 mb-2">
                   <div class="flex items-center gap-2 pl-3">
@@ -146,15 +155,8 @@
                   <div class="text-sm text-neutral-300 font-mono">
                     <div v-if="expandedChunks.has(getChunkId(result, index))">
                       <pre class="whitespace-pre-wrap break-words">{{ result.text }}</pre>
-                      <div class="flex items-center justify-between mt-2">
-                        <span class="text-xs text-neutral-500">{{ result.text.length }} chars</span>
-                        <button
-                          @click.stop="copyText(result.text)"
-                          class="p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
-                          title="Copy chunk text"
-                        >
-                          <Copy class="w-3 h-3" />
-                        </button>
+                      <div class="text-xs text-neutral-500 mt-2">
+                        {{ result.text.length }} chars
                       </div>
                     </div>
                     <div v-else class="relative">
@@ -162,13 +164,6 @@
                       <div class="absolute bottom-0 right-0 flex items-center">
                         <div class="w-20 h-6 bg-gradient-to-r from-transparent to-neutral-900"></div>
                         <span class="text-neutral-300 bg-neutral-900 pl-1">...more</span>
-                        <button
-                          @click.stop="copyText(result.text)"
-                          class="ml-2 p-1 text-neutral-500 hover:text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
-                          title="Copy chunk text"
-                        >
-                          <Copy class="w-3 h-3" />
-                        </button>
                       </div>
                     </div>
                   </div>
