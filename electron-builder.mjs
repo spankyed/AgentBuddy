@@ -13,6 +13,8 @@ export default /** @type import('electron-builder').Configuration */
   linux: {
     target: ['deb'],
   },
+  // Skip native dependency rebuild since we handle it in build.sh
+  npmRebuild: false,
   /**
    * It is recommended to avoid using non-standard characters such as spaces in artifact names,
    * as they can unpredictably change during deployment, making them impossible to locate and download for update.
@@ -21,17 +23,33 @@ export default /** @type import('electron-builder').Configuration */
   files: [
     'LICENSE*',
     pkg.main,
-    '!node_modules/@app/**',
-    ...await getListOfFilesFromEachWorkspace(),
+    'packages/**/*',
+    'node_modules/**/*',
+    '!**/test/**',
+    '!**/*.md',
+    '!**/LICENSE*',
+    '!**/.git',
+    '!**/*.map',
+    '!**/*.ts',
+    '!**/*.tsx',
+    '!**/tsconfig.json',
+    '!**/vite.config.*',
+    '!**/tailwind.config.*',
+    '!**/postcss.config.*',
+    '!packages/*/src/**',
+    '!packages/renderer/public/**',
+    // Include API's node_modules explicitly
+    'packages/api/node_modules/**/*'
   ],
-  // Unpack native modules and API from asar for proper execution
-  asarUnpack: [
-    'node_modules/@app/api/**/*',
-    'node_modules/better-sqlite3/**/*',
-    'node_modules/node-pty/**/*',
-    'node_modules/usearch/**/*',
-    'node_modules/fastembed/**/*',
-    'node_modules/onnxruntime-node/**/*'
+  // Disable asar to ensure API server can access its dependencies
+  asar: false,
+  // Include extra resources if needed
+  extraResources: [
+    {
+      from: 'packages/api/local_cache',
+      to: 'api/local_cache',
+      filter: ['**/*']
+    }
   ],
 });
 

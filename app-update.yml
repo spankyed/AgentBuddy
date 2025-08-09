@@ -1,0 +1,4 @@
+provider: github
+owner: spankyed
+repo: AgentBuddy
+updaterCacheDirName: agentbuddy-updater
