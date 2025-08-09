@@ -31,68 +31,77 @@
         <div class="space-y-2">
           <div
             v-for="rule in localData.segmentRules"
-          :key="rule.id"
-          class="flex flex-wrap items-center gap-2 p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-md"
-        >
-          <!-- Type Select -->
-          <select
-            v-model="rule.type"
-            @change="updateValue"
-            class="w-32 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
+            :key="rule.id"
+            class="flex flex-wrap items-start gap-3 p-3 bg-neutral-800/30 border border-neutral-700/50 rounded-lg"
           >
-              <option value="text">Text Block</option>
-              <option value="list">List</option>
-              <option value="field">Field</option>
-            </select>
+            <!-- Content Type -->
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-neutral-500">Type</label>
+              <select
+                v-model="rule.type"
+                @change="updateValue"
+                class="w-32 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
+              >
+                <option value="text">Text Block</option>
+                <option value="list">List</option>
+                <option value="field">Field</option>
+              </select>
+            </div>
             
-            <!-- Occurrence Input -->
-            <OccurrenceInput
-              v-model="rule.occurrence"
-              @update:modelValue="updateValue"
-            />
+            <!-- Occurrence -->
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-neutral-500">Occurrence</label>
+              <OccurrenceInput
+                v-model="rule.occurrence"
+                @update:modelValue="updateValue"
+              />
+            </div>
             
-          <!-- Key Input (only for field type) -->
-          <input
-            v-if="rule.type === 'field'"
-            v-model="rule.key"
-            placeholder="Field key"
-            class="w-40 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 outline-none focus:border-neutral-600 placeholder-neutral-500"
-            @input="updateValue"
-          />
-          
-          <!-- Index Mode for list and field types -->
-          <div v-if="rule.type === 'list' || rule.type === 'field'" class="flex items-center gap-2">
-            <label class="text-xs text-neutral-400">Mode:</label>
-            <select
-              v-model="rule.indexMode"
-              @change="updateValue"
-              class="w-28 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
+            <!-- Field Key (only for field type) -->
+            <div v-if="rule.type === 'field'" class="flex flex-col gap-1">
+              <label class="text-xs text-neutral-500">Key</label>
+              <input
+                v-model="rule.key"
+                placeholder="e.g., action"
+                class="w-32 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 outline-none focus:border-neutral-600 placeholder-neutral-600"
+                @input="updateValue"
+              />
+            </div>
+            
+            <!-- Index Mode (for list and field types) -->
+            <div v-if="rule.type === 'list' || rule.type === 'field'" class="flex flex-col gap-1">
+              <label class="text-xs text-neutral-500">Items</label>
+              <select
+                v-model="rule.indexMode"
+                @change="updateValue"
+                class="w-28 px-2 py-1 bg-neutral-800/50 border border-neutral-700/50 rounded-md text-sm text-neutral-100 focus:border-neutral-600"
+              >
+                <option value="combined">Together</option>
+                <option value="separate">Individual</option>
+              </select>
+            </div>
+            
+            <!-- Remove Button -->
+            <button
+              type="button"
+              @click="removeRule(rule.id)"
+              class="ml-auto self-center p-1 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+              title="Remove rule"
             >
-              <option value="combined">Combined</option>
-              <option value="separate">Separate</option>
-            </select>
+              <X class="w-4 h-4" />
+            </button>
           </div>
-            
-          <!-- Remove Button -->
-          <button
-            type="button"
-            @click="removeRule(rule.id)"
-            class="ml-auto p-1 text-neutral-400 hover:text-red-400"
-          >
-            <X class="w-4 h-4" />
-          </button>
         </div>
-      </div>
         
         <!-- Add Rule Button -->
         <button
           v-if="segmentRulesExpanded"
           type="button"
           @click="addRule"
-          class="px-4 py-2 text-sm text-neutral-400 border border-neutral-700/50 rounded-md hover:border-neutral-600 hover:text-neutral-300"
+          class="flex items-center gap-2 px-4 py-2 text-sm text-neutral-400 bg-neutral-800/20 border border-dashed border-neutral-700/50 rounded-lg hover:border-neutral-600 hover:text-neutral-300 hover:bg-neutral-800/30 transition-colors"
         >
-          <Plus class="w-4 h-4 inline mr-1" />
-          Add Rule
+          <Plus class="w-4 h-4" />
+          <span>Add Rule</span>
         </button>
       </div>
     </div>
