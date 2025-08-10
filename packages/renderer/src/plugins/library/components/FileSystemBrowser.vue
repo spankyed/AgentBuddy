@@ -148,8 +148,8 @@
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
                   <span 
                     v-if="editingItemId !== item.id"
-                    @dblclick.stop="startEditingItem(item.id, item.name)"
-                    class="text-sm cursor-text"
+                    @click.stop="handleNameClick(item, $event)"
+                    class="text-sm cursor-pointer"
                     :class="item.type === 'folder' 
                       ? 'font-medium text-neutral-100' 
                       : 'font-normal text-neutral-200'"
@@ -275,6 +275,7 @@ const emit = defineEmits<{
 // Edit state
 const editingItemId = ref<string | null>(null)
 const editingName = ref('')
+const lastSelectedItemId = ref<string | null>(null)
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -361,13 +362,33 @@ function selectItem(item: LibraryItem, event: MouseEvent) {
       ? props.selectedItems.filter(id => id !== item.id)
       : [...props.selectedItems, item.id]
     emit('SELECT_ITEMS', { itemIds: newSelection })
+    // Clear last selected if multiple items selected
+    if (newSelection.length !== 1) {
+      lastSelectedItemId.value = null
+    }
   } else {
     // Single select
     emit('SELECT_ITEMS', { itemIds: [item.id] })
+    lastSelectedItemId.value = item.id
+  }
+}
+
+function handleNameClick(item: LibraryItem, event: MouseEvent) {
+  // If the item is already selected (and is the only selection), start editing
+  if (props.selectedItems.includes(item.id) && props.selectedItems.length === 1 && lastSelectedItemId.value === item.id) {
+    event.preventDefault()
+    event.stopPropagation()
+    startEditingItem(item.id, item.name)
+  } else {
+    // Otherwise, just select the item
+    selectItem(item, event)
+    lastSelectedItemId.value = item.id
   }
 }
 
 function doubleClickItem(item: LibraryItem) {
+  // Double-click navigates into folders or opens documents
+  // It no longer triggers rename
   emit('DOUBLE_CLICK_ITEM', { item })
 }
 
@@ -427,6 +448,8 @@ function confirmEdit(itemId: string) {
 function cancelEdit() {
   editingItemId.value = null
   editingName.value = ''
+  // Reset selection tracking after edit
+  lastSelectedItemId.value = null
 }
 
 function createSearchIndex() {
