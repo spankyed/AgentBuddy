@@ -26,10 +26,6 @@
                 <span class="text-xs text-neutral-400">
                   {{ index.documentCount }} {{ getIndexedItemsLabel(index) }}
                 </span>
-                <span class="text-xs text-neutral-500">•</span>
-                <span class="text-xs text-neutral-400">
-                  {{ getModelLabel(index.embeddingModel) }}
-                </span>
               </div>
             </div>
             <div class="flex items-center gap-1 ml-2">
