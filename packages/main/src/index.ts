@@ -4,7 +4,7 @@ import {disallowMultipleAppInstance} from './modules/SingleInstanceApp.js';
 import {createWindowManagerModule} from './modules/WindowManager.js';
 import {terminateAppOnLastWindowClose} from './modules/ApplicationTerminatorOnLastWindowClose.js';
 import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.js';
-import {autoUpdater} from './modules/AutoUpdater.js';
+// import {autoUpdater} from './modules/AutoUpdater.js';
 import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createApiServer} from './modules/ApiServer.js';
@@ -21,7 +21,8 @@ export async function initApp(initConfig: AppInitConfig) {
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer}))
     .init(terminateAppOnLastWindowClose())
-    .init(autoUpdater())
+    // Disable auto-updater until GitHub releases are configured
+    // .init(autoUpdater())
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))

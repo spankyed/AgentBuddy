@@ -15,18 +15,23 @@ interface Props {
 
 const props = defineProps<Props>();
 
-function isVueComponent(x: Component | RouteComponents | undefined): x is RouteComponents {
+function isRouteComponents(x: Component | RouteComponents | undefined): x is RouteComponents {
+  // RouteComponents is an object with string keys mapping to components
+  // A Vue component won't have string keys like this
   return (
     typeof x === 'object' &&
-    (x as RouteComponents).render !== undefined &&
-    (x as RouteComponents).setup !== undefined
+    x !== null &&
+    !('render' in x || 'setup' in x || '__file' in x) &&
+    Object.keys(x).length > 0 &&
+    typeof Object.keys(x)[0] === 'string'
   );
 }
 
 const resolved = computed<Component | undefined>(() => {
   if (!props.views) return undefined;
 
-  if (!isVueComponent(props.views)) {
+  if (isRouteComponents(props.views)) {
+    // Multiple views - it's a RouteComponents object
     // Prefer an explicit match, otherwise first component in the record
 
     const target: string = props.target || '';

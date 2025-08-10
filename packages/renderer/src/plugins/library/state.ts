@@ -1,5 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
+import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
 
 export const id = 'library' as const
@@ -13,7 +14,7 @@ export interface LibraryContext {
   collections: CollectionDTO[]
   selectedDocumentId?: string
   selectedCollectionId?: string
-  currentView: 'browser' | 'create' | 'edit'
+  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
   searchQuery: string
   selectedTags: string[]
@@ -27,6 +28,18 @@ export interface LibraryContext {
   sortDirection: 'asc' | 'desc'
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
+  
+  // Search index fields
+  searchIndices: SearchIndex[]
+  editingIndexId?: string
+  editingIndex?: SearchIndex
+  
+  // Search test fields
+  testingIndexId?: string
+  testingIndex?: SearchIndex
+  testQuery: string
+  testResults: any[]
+  isSearching: boolean
 }
 
 export type LibraryEvents =
@@ -39,6 +52,22 @@ export type LibraryEvents =
   | { type: 'DELETE_DOCUMENT'; documentId: string }
   | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
+  
+  // Search Index events
+  | { type: 'CREATE_SEARCH_INDEX' }
+  | { type: 'SAVE_SEARCH_INDEX'; config: SearchIndexFormData }
+  | { type: 'CANCEL_CREATE_INDEX' }
+  | { type: 'LIST_SEARCH_INDICES' }
+  | { type: 'EDIT_SEARCH_INDEX'; indexId: string }
+  | { type: 'UPDATE_SEARCH_INDEX'; indexId: string; config: SearchIndexFormData }
+  | { type: 'DELETE_SEARCH_INDEX'; indexId: string }
+  | { type: 'CANCEL_EDIT_INDEX' }
+  
+  // Search test events
+  | { type: 'TEST_SEARCH_INDEX'; indexId: string }
+  | { type: 'UPDATE_TEST_QUERY'; query: string }
+  | { type: 'EXECUTE_TEST_SEARCH' }
+  | { type: 'CANCEL_TEST_SEARCH' }
   
   // Legacy collection events  
   | { type: 'VIEW_COLLECTIONS' }
@@ -305,6 +334,127 @@ export const librarySystem = setup({
         return []
       },
     }),
+    
+    // Search index actions
+    requestSearchIndices: ({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'LIST_SEARCH_INDICES',
+        folderId: context.currentFolderId,
+      })
+    },
+    setSearchIndices: assign({
+      searchIndices: ({ event }) => {
+        if (event.type === 'SEARCH_INDICES_LOADED') {
+          return event.data.indices
+        }
+        return []
+      },
+    }),
+    saveSearchIndex: ({ context, event }) => {
+      if (event.type === 'SAVE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_SEARCH_INDEX',
+          config: event.config,
+          folderId: context.currentFolderId,
+        })
+      }
+    },
+    updateSearchIndex: ({ event }) => {
+      if (event.type === 'UPDATE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'UPDATE_SEARCH_INDEX',
+          id: event.indexId,
+          config: event.config,
+        })
+      }
+    },
+    deleteSearchIndex: ({ event }) => {
+      if (event.type === 'DELETE_SEARCH_INDEX') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'DELETE_SEARCH_INDEX',
+          id: event.indexId,
+        })
+      }
+    },
+    setEditingIndex: assign({
+      editingIndexId: ({ event }) => {
+        if (event.type === 'EDIT_SEARCH_INDEX') {
+          return event.indexId
+        }
+        return undefined
+      },
+      editingIndex: ({ context, event }) => {
+        if (event.type === 'EDIT_SEARCH_INDEX') {
+          return context.searchIndices.find(idx => idx.id === event.indexId)
+        }
+        return undefined
+      },
+    }),
+    clearEditingIndex: assign({
+      editingIndexId: undefined,
+      editingIndex: undefined,
+    }),
+    
+    // Search test actions
+    setTestingIndex: assign({
+      testingIndexId: ({ event }) => {
+        if (event.type === 'TEST_SEARCH_INDEX') {
+          return event.indexId
+        }
+        return undefined
+      },
+      testingIndex: ({ context, event }) => {
+        if (event.type === 'TEST_SEARCH_INDEX') {
+          return context.searchIndices.find(idx => idx.id === event.indexId)
+        }
+        return undefined
+      },
+      testQuery: '',
+      testResults: [],
+      isSearching: false,
+    }),
+    updateTestQuery: assign({
+      testQuery: ({ event }) => {
+        if (event.type === 'UPDATE_TEST_QUERY') {
+          return event.query
+        }
+        return ''
+      },
+    }),
+    executeTestSearch: ({ context }) => {
+      if (context.testingIndexId && context.testQuery) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'SEARCH_IN_INDEX',
+          indexId: context.testingIndexId,
+          query: context.testQuery,
+          limit: 10,
+        })
+      }
+    },
+    setSearching: assign({
+      isSearching: true,
+    }),
+    setSearchResults: assign({
+      testResults: ({ event }) => {
+        if (event.type === 'SEARCH_RESULTS') {
+          return event.data.results
+        }
+        return []
+      },
+      isSearching: false,
+    }),
+    clearTestSearch: assign({
+      testingIndexId: undefined,
+      testingIndex: undefined,
+      testQuery: '',
+      testResults: [],
+      isSearching: false,
+    }),
   },
 }).createMachine({
   id: 'library',
@@ -326,6 +476,18 @@ export const librarySystem = setup({
     sortDirection: 'asc',
     breadcrumbs: [],
     editingItem: undefined,
+    
+    // Search index fields
+    searchIndices: [],
+    editingIndexId: undefined,
+    editingIndex: undefined,
+    
+    // Search test fields
+    testingIndexId: undefined,
+    testingIndex: undefined,
+    testQuery: '',
+    testResults: [],
+    isSearching: false,
   },
   on: {
     PLUGIN_ACTIVATED: {
@@ -334,7 +496,7 @@ export const librarySystem = setup({
     
     // New file browser events
     FOLDER_CONTENTS_LOADED: {
-      actions: 'setFolderContents',
+      actions: ['setFolderContents', 'requestSearchIndices'],
     },
     NAVIGATION_CHANGED: {
       actions: 'updateNavigation',
@@ -395,6 +557,23 @@ export const librarySystem = setup({
     COLLECTIONS_LOADED: {
       actions: 'setCollections',
     },
+    
+    // Search index events
+    SEARCH_INDICES_LOADED: {
+      actions: 'setSearchIndices',
+    },
+    SEARCH_INDEX_CREATED: {
+      actions: 'requestSearchIndices',
+    },
+    SEARCH_INDEX_UPDATED: {
+      actions: 'requestSearchIndices',
+    },
+    SEARCH_INDEX_DELETED: {
+      actions: 'requestSearchIndices',
+    },
+    SEARCH_RESULTS: {
+      actions: 'setSearchResults',
+    },
   },
   states: {
     browser: {
@@ -408,6 +587,15 @@ export const librarySystem = setup({
           target: 'edit',
           actions: 'setEditingDocument',
         },
+        CREATE_SEARCH_INDEX: 'createIndex',
+        EDIT_SEARCH_INDEX: {
+          target: 'editIndex',
+          actions: 'setEditingIndex',
+        },
+        TEST_SEARCH_INDEX: {
+          target: 'testIndex',
+          actions: 'setTestingIndex',
+        },
         TRAIL_CLICK: [
           {
             guard: ({ event }) => event.trail.includes('Create'),
@@ -416,6 +604,10 @@ export const librarySystem = setup({
           {
             guard: ({ event }) => event.trail.includes('Edit'),
             target: 'edit',
+          },
+          {
+            guard: ({ event }) => event.trail.includes('Index'),
+            target: 'createIndex',
           },
         ],
       },
@@ -446,6 +638,53 @@ export const librarySystem = setup({
         CANCEL_EDIT: {
           target: 'browser',
           actions: 'clearEditingDocument',
+        },
+      },
+    },
+    createIndex: {
+      entry: assign({ currentView: 'create-index' }),
+      meta: {
+        breadcrumb: 'Create Search Index',
+      },
+      on: {
+        SAVE_SEARCH_INDEX: {
+          target: 'browser',
+          actions: 'saveSearchIndex',
+        },
+        CANCEL_CREATE_INDEX: 'browser',
+      },
+    },
+    editIndex: {
+      entry: assign({ currentView: 'edit-index' }),
+      meta: {
+        breadcrumb: 'Edit Search Index',
+      },
+      on: {
+        UPDATE_SEARCH_INDEX: {
+          target: 'browser',
+          actions: ['updateSearchIndex', 'clearEditingIndex'],
+        },
+        CANCEL_EDIT_INDEX: {
+          target: 'browser',
+          actions: 'clearEditingIndex',
+        },
+      },
+    },
+    testIndex: {
+      entry: assign({ currentView: 'test-index' }),
+      meta: {
+        breadcrumb: 'Test Search Index',
+      },
+      on: {
+        UPDATE_TEST_QUERY: {
+          actions: 'updateTestQuery',
+        },
+        EXECUTE_TEST_SEARCH: {
+          actions: ['setSearching', 'executeTestSearch'],
+        },
+        CANCEL_TEST_SEARCH: {
+          target: 'browser',
+          actions: 'clearTestSearch',
         },
       },
     },

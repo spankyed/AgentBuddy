@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { EARS } from '@/core/types';
+import { getSnapshotsPath } from '@/core/utils/paths';
 import { 
   getAllEntities, 
   getAll, 
@@ -17,12 +18,9 @@ import {
 // Set to true to use git-tracked snapshots (default), false for runtime snapshots
 const USE_GIT_SNAPSHOTS = true;
 
-const SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/untracked');
-const GIT_SNAPSHOTS_DIR = path.join(process.cwd(), '/src/core/data/snapshots');
-
 // Helper function to get the active snapshot directory based on the flag
 function getSnapshotDir(): string {
-  return USE_GIT_SNAPSHOTS ? GIT_SNAPSHOTS_DIR : SNAPSHOTS_DIR;
+  return getSnapshotsPath();
 }
 
 interface SnapshotData {
@@ -214,7 +212,8 @@ export async function listGitSnapshots(): Promise<string[]> {
   }
   
   try {
-    const files = await fs.readdir(GIT_SNAPSHOTS_DIR);
+    const snapshotsDir = getSnapshotsPath();
+    const files = await fs.readdir(snapshotsDir);
     return files.filter(f => f.endsWith('.json') && f !== 'README.md');
   } catch (error) {
     return [];
@@ -228,7 +227,8 @@ export async function loadGitSnapshot(filename: string): Promise<SnapshotData> {
     return loadSnapshot(filename);
   }
   
-  const filepath = path.join(GIT_SNAPSHOTS_DIR, filename);
+  const snapshotsDir = getSnapshotsPath();
+  const filepath = path.join(snapshotsDir, filename);
   const content = await fs.readFile(filepath, 'utf-8');
   return JSON.parse(content) as SnapshotData;
 }

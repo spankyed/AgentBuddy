@@ -1,9 +1,12 @@
 <template>
-  <component
-    :is="currentComponent"
-    v-bind="currentProps"
-    v-on="currentEvents"
-  />
+  <div>
+    <component
+      v-if="currentComponent"
+      :is="currentComponent"
+      v-bind="currentProps"
+      v-on="currentEvents"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -13,6 +16,8 @@ import { useState } from '@/core/composables/plugins'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
+import CreateIndexView from './components/search-index/CreateIndexView.vue'
+import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
 const actor = useState<typeof librarySystem>(id)
@@ -25,6 +30,12 @@ const currentComponent = computed(() => {
       return CreateView
     case 'edit':
       return EditView
+    case 'create-index':
+      return CreateIndexView
+    case 'edit-index':
+      return CreateIndexView // Reuse with edit mode
+    case 'test-index':
+      return TestIndexView
     case 'browser':
     default:
       return FileSystemBrowser
@@ -58,6 +69,13 @@ const currentProps = computed(() => {
         ...base,
         document: context.value.editingDocument,
       }
+    case 'create-index':
+      return {}
+    case 'edit-index':
+      return {
+        editMode: true,
+        initialData: context.value.editingIndex,
+      }
     default:
       return base
   }
@@ -71,6 +89,13 @@ const currentEvents = computed(() => {
     SAVE_DOCUMENT: (payload: { name: string; content: any; tags: string[]; collectionId?: string }) =>
       send({ type: 'SAVE_DOCUMENT', ...payload }),
     CANCEL_EDIT: () => send({ type: 'CANCEL_EDIT' }),
+    CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
+    SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
+    CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
+    EDIT_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'EDIT_SEARCH_INDEX', ...payload }),
+    UPDATE_SEARCH_INDEX: (payload: { indexId: string; config: any }) => send({ type: 'UPDATE_SEARCH_INDEX', ...payload }),
+    DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
+    CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
     VIEW_COLLECTIONS: () => send({ type: 'VIEW_COLLECTIONS' }),
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),
