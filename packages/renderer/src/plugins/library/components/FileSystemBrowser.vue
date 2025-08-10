@@ -66,15 +66,11 @@
         
         <!-- Actions -->
         <div class="flex items-center gap-2">
-          <Button @click="createDocument" variant="primary" size="sm">
-            <FileText class="w-4 h-4" />
-            <span>New Document</span>
-          </Button>
           <Button 
             @click="createSearchIndex" 
             variant="transparent" 
             size="sm"
-            class="border-primary-500/30 hover:border-primary-500/50 hover:bg-primary-500/10 hover:text-primary-400"
+            class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
           >
             <Search class="w-4 h-4" />
             <span>Create Index</span>
@@ -87,6 +83,10 @@
           >
             <FolderPlus class="w-4 h-4" />
             <span>New Folder</span>
+          </Button>
+          <Button @click="createDocument" variant="primary" size="sm">
+            <FileText class="w-4 h-4" />
+            <span>New Document</span>
           </Button>
         </div>
       </div>
