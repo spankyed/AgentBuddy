@@ -54,11 +54,21 @@
         
         <!-- Actions -->
         <div class="flex items-center gap-2">
-          <!-- Selection indicator and delete -->
+          <!-- Selection indicator and actions -->
           <template v-if="selectedItems.length > 0">
             <span class="text-sm text-neutral-400 mr-2">
               {{ selectedItems.length }} selected
             </span>
+            <Button
+              v-if="currentFolderId !== null"
+              @click="moveSelectedItemsUp"
+              variant="transparent"
+              size="sm"
+              class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+              title="Move selected items up a level"
+            >
+              <ArrowUp class="w-4 h-4" />
+            </Button>
             <Button
               @click="deleteSelectedItems"
               variant="transparent"
@@ -244,7 +254,8 @@ import {
   ChevronLeft,
   Edit2,
   Trash2,
-  Search
+  Search,
+  ArrowUp
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -429,6 +440,21 @@ function handleDelete() {
 }
 
 
+function moveSelectedItemsUp() {
+  if (props.selectedItems.length === 0 || props.currentFolderId === null) return
+  
+  // Find the parent folder ID from breadcrumbs
+  const parentFolderId = props.breadcrumbs.length > 1
+    ? props.breadcrumbs[props.breadcrumbs.length - 2].id
+    : null
+  
+  // Emit move items to parent folder
+  emit('MOVE_ITEMS', { 
+    itemIds: props.selectedItems, 
+    targetFolderId: parentFolderId 
+  })
+}
+
 function deleteSelectedItems() {
   if (props.selectedItems.length === 0) return
   
@@ -460,9 +486,13 @@ function handleKeyDown(event: KeyboardEvent) {
   if (isModified && event.key === 'a') {
     event.preventDefault()
     toggleSelectAll()
-  } else if ((event.key === 'Delete' || event.key === 'Backspace') && hasSelection) {
+  } else if (event.key === 'Delete' && hasSelection) {
     event.preventDefault()
     deleteSelectedItems()
+  } else if (event.key === 'Backspace' && hasSelection && props.currentFolderId !== null) {
+    // Backspace moves items up a level when in a folder
+    event.preventDefault()
+    moveSelectedItemsUp()
   } else if (event.key === 'Escape' && hasSelection) {
     event.preventDefault()
     clearSelection()
