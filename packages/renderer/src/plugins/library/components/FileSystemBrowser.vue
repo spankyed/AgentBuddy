@@ -99,7 +99,7 @@
 
     <!-- File Table -->
     <div class="flex-1 overflow-hidden">
-      <div class="h-full overflow-y-auto custom-scrollbar">
+      <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
@@ -135,12 +135,13 @@
                 @drop="handleDrop($event, item, index, currentFolderId)"
                 @dragend="handleDragEnd"
               >
+              <td class="px-6 py-3 relative">
                 <!-- Drop indicator -->
                 <div 
+                  v-if="draggedOverId === item.id && dropPosition && dropPosition !== 'inside'"
                   class="drop-indicator"
-                  :style="getDropIndicatorStyle(item)"
+                  :class="dropPosition === 'before' ? 'drop-before' : 'drop-after'"
                 />
-              <td class="px-6 py-3">
                 <div class="flex items-center gap-3">
                   <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
@@ -498,6 +499,14 @@ onUnmounted(() => {
   background-color: rgb(59, 130, 246);
   pointer-events: none;
   z-index: 10;
+}
+
+.drop-indicator.drop-before {
+  top: -1px;
+}
+
+.drop-indicator.drop-after {
+  bottom: -1px;
 }
 
 .empty-drop-zone {
