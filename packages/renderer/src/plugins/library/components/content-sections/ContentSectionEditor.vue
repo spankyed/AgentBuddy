@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
+  <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
       <select
         v-if="section && !hasContent"
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { X } from 'lucide-vue-next'
 import type { ContentSection, ContentType } from '@app/api'
 import FieldEditor from './FieldEditor.vue'
@@ -61,9 +61,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   update: [section: ContentSection]
   remove: []
+  'type-changed': []
 }>()
 
 const selectedType = ref<ContentType | ''>('')
+const sectionRef = ref<HTMLDivElement | null>(null)
 
 const hasContent = computed(() => {
   if (!props.section) return false
@@ -118,7 +120,7 @@ const initializeSection = () => {
   selectedType.value = ''
 }
 
-const handleTypeChange = (event: Event) => {
+const handleTypeChange = async (event: Event) => {
   const newType = (event.target as HTMLSelectElement).value as ContentType
   
   let newSection: ContentSection
@@ -135,6 +137,8 @@ const handleTypeChange = (event: Event) => {
   }
   
   emit('update', newSection)
+  await nextTick()
+  emit('type-changed')
 }
 
 const handleUpdate = (data: any) => {
@@ -155,4 +159,12 @@ const handleUpdate = (data: any) => {
   
   emit('update', updatedSection)
 }
+
+const scrollIntoView = () => {
+  sectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+defineExpose({
+  scrollIntoView
+})
 </script>

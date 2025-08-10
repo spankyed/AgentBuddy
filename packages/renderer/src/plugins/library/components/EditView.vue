@@ -118,10 +118,12 @@
               <ContentSectionEditor
                 v-for="(section, index) in formData.content"
                 :key="index"
+                :ref="el => setSectionRef(el, index)"
                 :section="section"
                 :show-remove="formData.content.length > 1"
                 @update="updateContentSection(index, $event)"
                 @remove="removeContentSection(index)"
+                @type-changed="handleTypeChanged(index)"
               />
             </div>
           </div>
@@ -132,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import { X, Copy, Check, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
@@ -157,6 +159,7 @@ const formData = reactive({
 const newTag = ref('')
 const copied = ref(false)
 const tagsExpanded = ref(false)
+const sectionRefs = ref<(InstanceType<typeof ContentSectionEditor> | null)[]>([])
 
 const isValid = computed(() => {
   return formData.name.trim() !== '' && formData.content.length > 0
@@ -208,5 +211,16 @@ function copyShortCode() {
   setTimeout(() => {
     copied.value = false
   }, 2000)
+}
+
+function setSectionRef(el: any, index: number) {
+  if (el) {
+    sectionRefs.value[index] = el
+  }
+}
+
+async function handleTypeChanged(index: number) {
+  await nextTick()
+  sectionRefs.value[index]?.scrollIntoView()
 }
 </script>
