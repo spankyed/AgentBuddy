@@ -853,8 +853,14 @@ export async function migrateDisplayOrders(): Promise<void> {
   let docOrder = 1000
   
   for (const doc of allDocuments) {
-    if (!doc.displayOrder) {
-      tx(doc.id as EARS.EntityId).put('displayOrder', docOrder)
+    const displayOrder = doc.displayOrder
+    
+    // Clean up arrays from previous bug and ensure all docs have a displayOrder
+    if (Array.isArray(displayOrder)) {
+      tx(doc.id as EARS.EntityId).update('displayOrder', displayOrder[0] || docOrder)
+      docOrder += 1000
+    } else if (!displayOrder) {
+      tx(doc.id as EARS.EntityId).update('displayOrder', docOrder)
       docOrder += 1000
     }
   }
@@ -864,8 +870,14 @@ export async function migrateDisplayOrders(): Promise<void> {
   let colOrder = 1000
   
   for (const col of allCollections) {
-    if (!col.displayOrder) {
-      tx(col.id as EARS.EntityId).put('displayOrder', colOrder)
+    const displayOrder = col.displayOrder
+    
+    // Clean up arrays from previous bug and ensure all collections have a displayOrder
+    if (Array.isArray(displayOrder)) {
+      tx(col.id as EARS.EntityId).update('displayOrder', displayOrder[0] || colOrder)
+      colOrder += 1000
+    } else if (!displayOrder) {
+      tx(col.id as EARS.EntityId).update('displayOrder', colOrder)
       colOrder += 1000
     }
   }
@@ -982,7 +994,7 @@ export async function moveItems(ids: EARS.EntityId[], targetFolderId: EARS.Entit
       
       // Update display order
       const displayOrder = await getNextDisplayOrder(targetFolderId)
-      tx(collectionId).put('displayOrder', displayOrder)
+      tx(collectionId).update('displayOrder', displayOrder)
     }
   }
 }
@@ -1078,7 +1090,7 @@ export async function reorderItems(
   // Update display orders
   for (let i = 0; i < finalItems.length; i++) {
     const newOrder = (i + 1) * 1000
-    tx(finalItems[i].id).put('displayOrder', newOrder)
+    tx(finalItems[i].id).update('displayOrder', newOrder)
   }
 }
 
