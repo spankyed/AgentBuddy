@@ -41,12 +41,14 @@ export interface Document extends BaseEntity {
   name: string
   content: ContentSection[]
   shortCode: DocumentShortCode
+  displayOrder?: number
 }
 
 export interface Collection extends BaseEntity {
   _type: EARS.Entity.Collection
   name: string
   description?: string
+  displayOrder?: number
 }
 
 export interface DocumentDTO {
@@ -57,6 +59,7 @@ export interface DocumentDTO {
   tags: string[]
   collectionId?: EARS.EntityId
   collectionPath?: string[]
+  displayOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -69,6 +72,7 @@ export interface CollectionDTO {
   path: string[]
   documentCount: number
   childCollections: CollectionDTO[]
+  displayOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -82,6 +86,7 @@ export interface FolderItem {
   childCount: number
   size: string // Display as "-- items" or "X items"
   kind: 'Folder'
+  displayOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -96,6 +101,7 @@ export interface DocumentItem {
   tags: string[]
   size: string // Content length formatted (e.g., "1.2 KB")
   kind: 'Document'
+  displayOrder: number
   createdAt: string
   updatedAt: string
 }

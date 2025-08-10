@@ -6,6 +6,64 @@ import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 import * as searchIndexRepo from '../search-index/repository'
 
+async function getNextDisplayOrder(parentId: EARS.EntityId | null): Promise<number> {
+  // Get all items in the parent folder
+  let maxOrder = 0
+  
+  if (parentId === null) {
+    // Root level - check both collections and documents
+    const collections = qx(EARS.Entity.Collection).pickAll()
+    const documents = qx(EARS.Entity.Document).pickAll()
+    
+    // Find root collections
+    for (const col of collections) {
+      const hasParent = qx(EARS.Entity.Collection).pickAll().some(parent => {
+        const children = qx(parent.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+          .ids()
+        return children.includes(col.id as EARS.EntityId)
+      })
+      if (!hasParent && col.displayOrder) {
+        maxOrder = Math.max(maxOrder, col.displayOrder as number)
+      }
+    }
+    
+    // Find root documents
+    for (const doc of documents) {
+      const inCollection = qx(EARS.Entity.Collection).pickAll().some(col => {
+        const docs = qx(col.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+          .ids()
+        return docs.includes(doc.id as EARS.EntityId)
+      })
+      if (!inCollection && doc.displayOrder) {
+        maxOrder = Math.max(maxOrder, doc.displayOrder as number)
+      }
+    }
+  } else {
+    // In a folder - check children
+    const childCollections = qx(parentId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .pickAll()
+    const childDocuments = qx(parentId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .pickAll()
+    
+    for (const col of childCollections) {
+      if (col.displayOrder) {
+        maxOrder = Math.max(maxOrder, col.displayOrder as number)
+      }
+    }
+    for (const doc of childDocuments) {
+      if (doc.displayOrder) {
+        maxOrder = Math.max(maxOrder, doc.displayOrder as number)
+      }
+    }
+  }
+  
+  return maxOrder + 1000 // Increment by 1000 to leave room for reordering
+}
+
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
 
@@ -56,6 +114,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
         collectionPath,
+        displayOrder: (doc.displayOrder as number) || 0,
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
       }
@@ -101,6 +160,7 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
     collectionPath,
+    displayOrder: (document.displayOrder as number) || 0,
     createdAt: new Date(document.createdAt as number).toISOString(),
     updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
   }
@@ -130,11 +190,15 @@ export async function createDocument(
   // Generate shortcode
   const documentCount = qx(EARS.Entity.Document).count() + 1
   const shortCode = `DOC-${documentCount}` as DocumentShortCode
+  
+  // Get display order
+  const displayOrder = await getNextDisplayOrder(collectionId || null)
 
   tx(documentId).updateBatch({
     name,
     content,
     shortCode,
+    displayOrder,
     createdAt: now,
     updatedAt: now,
   })
@@ -317,6 +381,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
           path,
           documentCount,
           childCollections: await buildCollectionTree(childCollections),
+          displayOrder: (col.displayOrder as number) || 0,
           createdAt: new Date(col.createdAt as number).toISOString(),
           updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
         }
@@ -334,9 +399,13 @@ export async function createCollection(
 ): Promise<CollectionDTO> {
   const collectionId = `Collection-${uuid()}` as EARS.EntityId
   const now = Date.now()
+  
+  // Get display order
+  const displayOrder = await getNextDisplayOrder(parentId || null)
 
   const attrs: Record<string, any> = {
     name,
+    displayOrder,
     createdAt: now,
     updatedAt: now,
   }
@@ -360,6 +429,7 @@ export async function createCollection(
     path,
     documentCount: 0,
     childCollections: [],
+    displayOrder,
     createdAt: new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
   }
@@ -413,6 +483,7 @@ export async function updateCollection(
           path: childPath,
           documentCount: childDocCount,
           childCollections: await buildChildren(grandChildren),
+          displayOrder: (child.displayOrder as number) || 0,
           createdAt: new Date(child.createdAt as number).toISOString(),
           updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
         }
@@ -427,6 +498,7 @@ export async function updateCollection(
     path,
     documentCount,
     childCollections: await buildChildren(childCollections),
+    displayOrder: (collection!.displayOrder as number) || 0,
     createdAt: new Date(collection!.createdAt as number).toISOString(),
     updatedAt: new Date(collection!.updatedAt as number || collection!.createdAt as number).toISOString(),
   }
@@ -582,7 +654,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Get child collections of this folder
     folders = qx(folderId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pick(['name', 'description', 'createdAt', 'updatedAt'])
+      .pick(['name', 'description', 'displayOrder', 'createdAt', 'updatedAt'])
   }
   
   // Convert collections to folder items
@@ -604,6 +676,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       childCount,
       size: childCount === 1 ? '1 item' : `${childCount} items`,
       kind: 'Folder',
+      displayOrder: (folder.displayOrder as number) || 0,
       createdAt: new Date(folder.createdAt as number).toISOString(),
       updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
     })
@@ -635,7 +708,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Get documents in this collection
     documents = qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
+      .pick(['name', 'content', 'shortCode', 'displayOrder', 'createdAt', 'updatedAt'])
   }
   
   // Convert documents to document items
@@ -672,6 +745,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       tags: tags.map(tag => tag.name as string),
       size,
       kind: 'Document',
+      displayOrder: (doc.displayOrder as number) || 0,
       createdAt: new Date(doc.createdAt as number).toISOString(),
       updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
     })
@@ -683,9 +757,13 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   
   return {
     items: items.sort((a, b) => {
-      // Folders first, then documents, then alphabetical
+      // Folders first, then by display order
       if (a.type !== b.type) {
         return a.type === 'folder' ? -1 : 1
+      }
+      // Sort by display order, fall back to name if orders are equal
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder
       }
       return a.name.localeCompare(b.name)
     }),
@@ -747,6 +825,7 @@ export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.E
   return null
 }
 
+// ! Wtf is this?
 export async function migrateDocumentShortCodes(): Promise<void> {
   // Get all documents
   const allDocuments = qx(EARS.Entity.Document).pickAll()
@@ -764,7 +843,31 @@ export async function migrateDocumentShortCodes(): Promise<void> {
   }
   
   if (migratedCount > 0) {
-    console.log(`Migrated ${migratedCount} documents with shortcodes`)
+    // Migrated documents with shortcodes
+  }
+}
+
+export async function migrateDisplayOrders(): Promise<void> {
+  // Migrate documents
+  const allDocuments = qx(EARS.Entity.Document).pickAll()
+  let docOrder = 1000
+  
+  for (const doc of allDocuments) {
+    if (!doc.displayOrder) {
+      tx(doc.id as EARS.EntityId).put('displayOrder', docOrder)
+      docOrder += 1000
+    }
+  }
+  
+  // Migrate collections
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
+  let colOrder = 1000
+  
+  for (const col of allCollections) {
+    if (!col.displayOrder) {
+      tx(col.id as EARS.EntityId).put('displayOrder', colOrder)
+      colOrder += 1000
+    }
   }
 }
 
@@ -794,6 +897,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       tags: doc.tags,
       size: formatFileSize(getContentLength(content)),
       kind: 'Document',
+      displayOrder: (doc.displayOrder as number) || 0,
       createdAt: doc.createdAt,
       updatedAt: new Date(now).toISOString(),
     }
@@ -823,6 +927,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       childCount,
       size: `${childCount} items`,
       kind: 'Folder',
+      displayOrder: (collection.displayOrder as number) || 0,
       createdAt: new Date(collection.createdAt as number).toISOString(),
       updatedAt: new Date(now).toISOString(),
     }
@@ -842,10 +947,138 @@ export async function deleteItems(ids: EARS.EntityId[]): Promise<void> {
 
 export async function moveItems(ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null): Promise<void> {
   for (const id of ids) {
-    // For now, only support moving documents
     if (id.startsWith('Document-')) {
       await moveDocument(id, targetFolderId || undefined)
+    } else if (id.startsWith('Collection-')) {
+      // Move collection to new parent
+      const collectionId = id
+      
+      // Find current parent
+      const allCollections = qx(EARS.Entity.Collection).pickAll()
+      let currentParent: EARS.EntityId | null = null
+      for (const col of allCollections) {
+        const children = qx(col.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+          .ids()
+        if (children.includes(collectionId)) {
+          currentParent = col.id as EARS.EntityId
+          break
+        }
+      }
+      
+      // Remove from current parent if exists
+      if (currentParent) {
+        edgeStore.unlink({
+          sourceEntity: currentParent,
+          relationType: EARS.RelKind.PARENT_OF,
+          targetEntity: collectionId
+        })
+      }
+      
+      // Add to new parent if specified
+      if (targetFolderId) {
+        tx(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
+      }
+      
+      // Update display order
+      const displayOrder = await getNextDisplayOrder(targetFolderId)
+      tx(collectionId).put('displayOrder', displayOrder)
     }
+  }
+}
+
+export async function reorderItems(
+  itemIds: EARS.EntityId[],
+  targetIndex: number,
+  targetFolderId: EARS.EntityId | null
+): Promise<void> {
+  // Get all items in the target folder
+  let allItems: Array<{ id: EARS.EntityId; displayOrder: number; type: 'document' | 'folder' }> = []
+  
+  if (targetFolderId === null) {
+    // Root level items
+    const collections = qx(EARS.Entity.Collection).pickAll()
+    const documents = qx(EARS.Entity.Document).pickAll()
+    
+    // Find root collections
+    for (const col of collections) {
+      const hasParent = qx(EARS.Entity.Collection).pickAll().some(parent => {
+        const children = qx(parent.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+          .ids()
+        return children.includes(col.id as EARS.EntityId)
+      })
+      if (!hasParent) {
+        allItems.push({
+          id: col.id as EARS.EntityId,
+          displayOrder: (col.displayOrder as number) || 0,
+          type: 'folder'
+        })
+      }
+    }
+    
+    // Find root documents
+    for (const doc of documents) {
+      const inCollection = qx(EARS.Entity.Collection).pickAll().some(col => {
+        const docs = qx(col.id as EARS.EntityId)
+          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+          .ids()
+        return docs.includes(doc.id as EARS.EntityId)
+      })
+      if (!inCollection) {
+        allItems.push({
+          id: doc.id as EARS.EntityId,
+          displayOrder: (doc.displayOrder as number) || 0,
+          type: 'document'
+        })
+      }
+    }
+  } else {
+    // Items in a specific folder
+    const childCollections = qx(targetFolderId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .pickAll()
+    const childDocuments = qx(targetFolderId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .pickAll()
+    
+    for (const col of childCollections) {
+      allItems.push({
+        id: col.id as EARS.EntityId,
+        displayOrder: (col.displayOrder as number) || 0,
+        type: 'folder'
+      })
+    }
+    for (const doc of childDocuments) {
+      allItems.push({
+        id: doc.id as EARS.EntityId,
+        displayOrder: (doc.displayOrder as number) || 0,
+        type: 'document'
+      })
+    }
+  }
+  
+  // Sort by display order, folders first
+  allItems.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+    return a.displayOrder - b.displayOrder
+  })
+  
+  // Remove items being moved from the list
+  const itemsToMove = allItems.filter(item => itemIds.includes(item.id))
+  const remainingItems = allItems.filter(item => !itemIds.includes(item.id))
+  
+  // Insert items at the target position
+  const finalItems = [
+    ...remainingItems.slice(0, targetIndex),
+    ...itemsToMove,
+    ...remainingItems.slice(targetIndex)
+  ]
+  
+  // Update display orders
+  for (let i = 0; i < finalItems.length; i++) {
+    const newOrder = (i + 1) * 1000
+    tx(finalItems[i].id).put('displayOrder', newOrder)
   }
 }
 
@@ -901,6 +1134,7 @@ export async function getCollectionByName(name: string): Promise<CollectionDTO |
     path,
     documentCount,
     childCollections: childCollections as unknown as CollectionDTO[],
+    displayOrder: (collection.displayOrder as number) || 0,
     createdAt: new Date(collection.createdAt as number).toISOString(),
     updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
   }

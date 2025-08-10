@@ -138,6 +138,12 @@ const currentEvents = computed(() => {
       // Clear the itemToEdit flag once editing has started
       send({ type: 'CLEAR_ITEM_TO_EDIT' })
     },
+    MOVE_ITEMS: (payload: { itemIds: string[]; targetFolderId: string }) => {
+      send({ type: 'MOVE_ITEMS', ...payload })
+    },
+    REORDER_ITEMS: (payload: { itemIds: string[]; targetIndex: number; targetFolderId: string | null }) => {
+      send({ type: 'REORDER_ITEMS', ...payload })
+    },
   }
 
   return {

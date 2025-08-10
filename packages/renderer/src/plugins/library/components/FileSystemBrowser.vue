@@ -115,18 +115,31 @@
               <tr
                 v-for="(item, index) in sortedItems"
                 :key="item.id"
-                class="transition-colors duration-150 cursor-pointer group select-none"
+                class="transition-colors duration-150 cursor-pointer group select-none relative draggable-item"
                 :class="[
                   selectedItems.includes(item.id) 
                     ? 'bg-blue-500/30' 
                     : index % 2 === 1 
                       ? 'bg-neutral-800/20' 
                       : '',
-                  !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30'
+                  !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30',
+                  getItemClass(item)
                 ]"
+                :draggable="!editingItemId"
                 @click="selectItem(item, $event)"
                 @dblclick="doubleClickItem(item)"
+                @dragstart="handleDragStart($event, item)"
+                @dragover="handleDragOver($event, item, index)"
+                @dragenter="handleDragEnter($event, item)"
+                @dragleave="handleDragLeave($event)"
+                @drop="handleDrop($event, item, index, currentFolderId)"
+                @dragend="handleDragEnd"
               >
+                <!-- Drop indicator -->
+                <div 
+                  class="drop-indicator"
+                  :style="getDropIndicatorStyle(item)"
+                />
               <td class="px-6 py-3">
                 <div class="flex items-center gap-3">
                   <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
@@ -198,12 +211,14 @@
               </td>
             </tr>
             </template>
-            <!-- Fill remaining space with empty rows -->
+            <!-- Fill remaining space with empty rows (also acts as drop zone) -->
             <tr
               v-for="n in Math.max(0, 8 - sortedItems.length)"
               :key="`empty-${n}`"
-              class="pointer-events-none"
+              class="empty-drop-zone"
               :class="(sortedItems.length + n - 1) % 2 === 1 ? 'bg-neutral-800/20' : ''"
+              @dragover.prevent="handleDragOver($event, null)"
+              @drop="handleDropOnEmpty($event)"
             >
               <td class="px-6 py-3">&nbsp;</td>
               <td class="px-6 py-3">&nbsp;</td>
@@ -236,6 +251,7 @@ import TableHeader from './TableHeader.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
 import { useSelection } from '../composables/useSelection'
 import { useInlineEdit } from '../composables/useInlineEdit'
+import { useDragDrop } from '../composables/useDragDrop'
 import { generateUniqueFolderName, formatDate } from '../utils/naming'
 
 const props = defineProps<{
@@ -262,6 +278,8 @@ const emit = defineEmits<{
   EDIT_DOCUMENT: [{ documentId: string }]
   CREATE_SEARCH_INDEX: []
   START_EDITING_ITEM: [{ itemId: string }]
+  MOVE_ITEMS: [{ itemIds: string[]; targetFolderId: string }]
+  REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
 }>()
 
 // Composables
@@ -271,6 +289,29 @@ const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggle
   () => props.selectedItems,
   emit
 )
+
+const { 
+  isDragging,
+  draggedOverId,
+  dropPosition,
+  handleDragStart,
+  handleDragOver,
+  handleDragEnter,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd,
+  getItemClass,
+  getDropIndicatorStyle
+} = useDragDrop({
+  items: computed(() => props.items),
+  selectedItems: computed(() => props.selectedItems),
+  onMove: (itemIds, targetFolderId) => {
+    emit('MOVE_ITEMS', { itemIds, targetFolderId })
+  },
+  onReorder: (itemIds, targetIndex, targetFolderId) => {
+    emit('REORDER_ITEMS', { itemIds, targetIndex, targetFolderId })
+  }
+})
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -291,6 +332,18 @@ const deleteDialog = reactive({
 
 
 const sortedItems = computed(() => {
+  // If no explicit sort is selected, use displayOrder (the user's custom order)
+  if (props.sortBy === 'name' && props.sortDirection === 'asc') {
+    // Default sort - use displayOrder
+    return [...props.items].sort((a, b) => {
+      // Folders always come first
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+      // Then sort by displayOrder
+      return a.displayOrder - b.displayOrder
+    })
+  }
+  
+  // Otherwise use the selected sort
   const compareFunctions = {
     name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
     modified: (a: LibraryItem, b: LibraryItem) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
@@ -392,6 +445,11 @@ function deleteSelectedItems() {
   deleteDialog.show = true
 }
 
+function handleDropOnEmpty(event: DragEvent) {
+  // When dropping on empty space, move items to current folder
+  handleDrop(event, null, sortedItems.value.length, props.currentFolderId)
+}
+
 function handleKeyDown(event: KeyboardEvent) {
   if (editingItemId.value) return
   
@@ -420,3 +478,33 @@ onUnmounted(() => {
 })
 
 </script>
+
+<style scoped>
+/* Drag and drop visual feedback */
+.draggable-item {
+  position: relative;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.draggable-item.dragging {
+  opacity: 0.5;
+}
+
+.drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: rgb(59, 130, 246);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.empty-drop-zone {
+  min-height: 40px;
+}
+
+.empty-drop-zone.drag-over {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+</style>

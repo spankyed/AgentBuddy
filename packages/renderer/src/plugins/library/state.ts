@@ -95,9 +95,12 @@ export type LibraryEvents =
   | { type: 'DELETE_SELECTED_ITEMS' }
   | { type: 'CREATE_FOLDER'; name: string }
   | { type: 'SORT_BY'; column: 'name' | 'modified' | 'size' | 'kind' }
+  | { type: 'MOVE_ITEMS'; itemIds: string[]; targetFolderId: string }
+  | { type: 'REORDER_ITEMS'; itemIds: string[]; targetIndex: number; targetFolderId: string | null }
   | { type: 'SEARCH'; query: string }
   | { type: 'BREADCRUMB_CLICK'; folderId: string | null }
   | { type: 'CLEAR_ITEM_TO_EDIT' }
+  | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
   | OutgoingLibraryEvents
 
 export const librarySystem = setup({
@@ -170,6 +173,27 @@ export const librarySystem = setup({
           systemId: id,
           type: 'DELETE_ITEMS',
           ids: context.selectedItems,
+        })
+      }
+    },
+    moveItems: ({ event }) => {
+      if (event.type === 'MOVE_ITEMS') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'MOVE_ITEMS',
+          ids: event.itemIds,
+          targetFolderId: event.targetFolderId,
+        })
+      }
+    },
+    reorderItems: ({ event }) => {
+      if (event.type === 'REORDER_ITEMS') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'REORDER_ITEMS',
+          itemIds: event.itemIds,
+          targetIndex: event.targetIndex,
+          targetFolderId: event.targetFolderId,
         })
       }
     },
@@ -545,6 +569,12 @@ export const librarySystem = setup({
     CREATE_FOLDER: {
       actions: 'createFolder',
     },
+    MOVE_ITEMS: {
+      actions: 'moveItems',
+    },
+    REORDER_ITEMS: {
+      actions: 'reorderItems',
+    },
     CLEAR_ITEM_TO_EDIT: {
       actions: assign({
         itemToEdit: null
@@ -574,6 +604,12 @@ export const librarySystem = setup({
       actions: 'requestFolderContents',
     },
     ITEMS_DELETED: {
+      actions: 'requestFolderContents',
+    },
+    ITEMS_MOVED: {
+      actions: 'requestFolderContents',
+    },
+    ITEMS_REORDERED: {
       actions: 'requestFolderContents',
     },
     
