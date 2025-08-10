@@ -32,6 +32,7 @@ export interface PromptsContext {
   formData: {
     label: string;
     description?: string;
+    category?: string;
     inputs: Record<string, TemplateInput>;
     templateFn: string;
     outputSchema?: any;
@@ -46,7 +47,7 @@ type UIEvent =
   | { type: 'PROMPT.SAVE_NEW' }
   | { type: 'PROMPT.UPDATE' }
   | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
-  | { type: 'PROMPT.EDIT'; promptId: EARS.EntityId }
+  | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
@@ -77,7 +78,7 @@ const promptsState = setup({
 
     /* ── prompt interactions ────────────────────────────── */
     selectPrompt: ({ event, context }) => {
-      const ev = typeOf(['PROMPT.SELECT', 'PROMPT.EDIT'], event);
+      const ev = typeOf('PROMPT.SELECT', event);
       if (context.selectedPromptId === ev.promptId) {
         return
       }
@@ -97,6 +98,7 @@ const promptsState = setup({
         formData: {
           label: ev.data.label,
           description: ev.data.description,
+          category: ev.data.category,
           inputs: ev.data.inputs,
           templateFn: ev.data.templateFn,
           outputSchema: ev.data.outputSchema,
@@ -108,6 +110,7 @@ const promptsState = setup({
       formData: {
         label: '',
         description: '',
+        category: '',
         inputs: {},
         templateFn: '// Your template function body here\nreturn `Your prompt template`;',
         outputSchema: undefined,
@@ -222,6 +225,16 @@ const promptsState = setup({
         },
       };
     }),
+
+    updateFormCategory: assign(({ event, context }) => {
+      const ev = typeOf('FORM.UPDATE_CATEGORY', event);
+      return {
+        formData: {
+          ...context.formData,
+          category: ev.category,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -237,6 +250,7 @@ const promptsState = setup({
     formData: {
       label: '',
       description: '',
+      category: '',
       inputs: {},
       templateFn: '',
       outputSchema: undefined,
@@ -247,7 +261,7 @@ const promptsState = setup({
     PROMPT_SELECTED: { actions: 'loadPromptData' },
     PROMPT_CREATED: { 
       actions: 'addCreatedPrompt',
-      target: '.view'
+      target: '.detail'
     },
     PROMPT_UPDATED: { 
       actions: 'updatePromptInList'
@@ -259,8 +273,7 @@ const promptsState = setup({
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
-      ['.view', 'view'],
-      ['.edit', 'edit'],
+      ['.detail', 'detail'],
     ]),
   },
   states: {
@@ -270,15 +283,11 @@ const promptsState = setup({
       on: {
         'PROMPT.SELECT': {
           actions: 'selectPrompt',
-          target: 'view',
+          target: 'detail',
         },
         'PROMPT.CREATE': {
           actions: 'initCreateForm',
           target: 'create',
-        },
-        'PROMPT.EDIT': {
-          actions: 'selectPrompt',
-          target: 'edit',
         },
         'PROMPT.DELETE': {
           actions: 'sendDeletePrompt',
@@ -294,6 +303,7 @@ const promptsState = setup({
         'FORM.UPDATE_INPUTS': { actions: 'updateFormInputs' },
         'FORM.UPDATE_TEMPLATE': { actions: 'updateFormTemplate' },
         'FORM.UPDATE_OUTPUT_SCHEMA': { actions: 'updateFormOutputSchema' },
+        'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
         'PROMPT.SAVE_NEW': {
           actions: 'sendCreatePrompt',
         },
@@ -302,32 +312,13 @@ const promptsState = setup({
         },
       },
     },
-    view: {
-      tags: ['view-prompt'],
+    detail: {
+      tags: ['detail-prompt'],
       meta: {
         ...breadcrumbWithParams<PromptsContext>({
-          target: 'view',
+          target: 'detail',
           getLabel: (ctx) => {
             return ctx.selectedPrompt?.label || ctx.selectedPromptId || '';
-          }
-        })
-      },
-      on: {
-        'PROMPT.EDIT': {
-          target: 'edit',
-        },
-        'GO.BACK': {
-          target: 'list',
-        },
-      },
-    },
-    edit: {
-      tags: ['edit-prompt'],
-      meta: {
-        ...breadcrumbWithParams<PromptsContext>({
-          target: 'edit',
-          getLabel: (ctx) => {
-            return `Edit: ${ctx.selectedPrompt?.label || ctx.selectedPromptId || ''}`;
           }
         })
       },
@@ -337,12 +328,12 @@ const promptsState = setup({
         'FORM.UPDATE_INPUTS': { actions: 'updateFormInputs' },
         'FORM.UPDATE_TEMPLATE': { actions: 'updateFormTemplate' },
         'FORM.UPDATE_OUTPUT_SCHEMA': { actions: 'updateFormOutputSchema' },
+        'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
         'PROMPT.UPDATE': {
           actions: 'sendUpdatePrompt',
-          target: 'view',
         },
         'GO.BACK': {
-          target: 'view',
+          target: 'list',
         },
       },
     },

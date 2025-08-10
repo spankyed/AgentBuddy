@@ -11,40 +11,33 @@
     />
 
     <!-- Create View -->
-    <PromptForm
+    <PromptDetail
       v-else-if="state.hasTag('create-prompt')"
+      :prompt="null"
       :form-data="formData"
-      mode="create"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-inputs="handleUpdateInputs"
       @update-template="handleUpdateTemplate"
       @update-output-schema="handleUpdateOutputSchema"
+      @update-category="handleUpdateCategory"
       @save="handleSaveNew"
-      @cancel="handleGoBack"
-    />
-
-    <!-- View/Read-only -->
-    <PromptView
-      v-else-if="state.hasTag('view-prompt')"
-      :prompt="selectedPrompt"
-      @edit="handleEditCurrent"
       @back="handleGoBack"
     />
 
-    <!-- Edit View -->
-    <PromptForm
-      v-else-if="state.hasTag('edit-prompt')"
+    <!-- Detail View (always editable) -->
+    <PromptDetail
+      v-else-if="state.hasTag('detail-prompt')"
+      :prompt="selectedPrompt"
       :form-data="formData"
-      mode="edit"
-      :prompt-id="selectedPrompt?.id"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-inputs="handleUpdateInputs"
       @update-template="handleUpdateTemplate"
       @update-output-schema="handleUpdateOutputSchema"
+      @update-category="handleUpdateCategory"
       @save="handleUpdatePrompt"
-      @cancel="handleGoBack"
+      @back="handleGoBack"
     />
   </div>
 </template>
@@ -54,8 +47,7 @@ import { useSelector } from '@xstate/vue';
 import { id, type PromptsState } from './state';
 import { applicationState } from '@/main';
 import PromptsList from './components/PromptsList.vue';
-import PromptForm from './components/PromptForm.vue';
-import PromptView from './components/PromptView.vue';
+import PromptDetail from './components/PromptDetail.vue';
 import type { EARS, TemplateInput } from '@app/api';
 
 const actor: PromptsState = applicationState.system.get(id);
@@ -74,7 +66,9 @@ function handleCreatePrompt() {
 }
 
 function handleEditPrompt(promptId: EARS.EntityId) {
-  actor.send({ type: 'PROMPT.EDIT', promptId });
+  // Navigate to detail page, then toggle edit mode
+  actor.send({ type: 'PROMPT.SELECT', promptId });
+  // Note: The detail view will handle editing functionality
 }
 
 function handleDeletePrompt(promptId: EARS.EntityId) {
@@ -102,18 +96,16 @@ function handleUpdateOutputSchema(outputSchema: any) {
   actor.send({ type: 'FORM.UPDATE_OUTPUT_SCHEMA', outputSchema });
 }
 
+function handleUpdateCategory(category: string) {
+  actor.send({ type: 'FORM.UPDATE_CATEGORY', category });
+}
+
 function handleSaveNew() {
   actor.send({ type: 'PROMPT.SAVE_NEW' });
 }
 
 function handleUpdatePrompt() {
   actor.send({ type: 'PROMPT.UPDATE' });
-}
-
-function handleEditCurrent() {
-  if (selectedPrompt.value) {
-    actor.send({ type: 'PROMPT.EDIT', promptId: selectedPrompt.value.id });
-  }
 }
 
 function handleGoBack() {

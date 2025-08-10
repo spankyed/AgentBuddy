@@ -3,29 +3,27 @@
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div>
-        <h2 class="text-base font-semibold text-neutral-100">
-          {{ mode === 'create' ? 'Create Action' : 'Edit Action' }}
-        </h2>
-        <p class="text-xs text-neutral-400">{{ mode === 'create' ? 'Create a new action function' : 'Modify action details' }}</p>
+        <h2 class="text-base font-semibold text-neutral-100">{{ action ? action.label : 'New Action' }}</h2>
+        <p class="text-xs text-neutral-400">{{ action ? 'Edit Action' : 'Create Action' }}</p>
       </div>
       <div class="flex items-center gap-2">
         <Button
-          @click="$emit('cancel')"
+          @click="$emit('back')"
           variant="transparent"
         >
-          Cancel
+          Back
         </Button>
         <Button
           @click="handleSave"
           :disabled="!isValid"
           variant="primary"
         >
-          {{ mode === 'create' ? 'Create Action' : 'Save Changes' }}
+          {{ action ? 'Save Changes' : 'Create Action' }}
         </Button>
       </div>
     </div>
 
-    <!-- Form Content -->
+    <!-- Content -->
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl p-6 mx-auto">
         <div class="space-y-6">
@@ -88,12 +86,11 @@
 
           <!-- Action Function -->
           <div class="pt-6 border-t border-neutral-800">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-4">
               <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
                 Action Function <span class="text-red-400">*</span>
               </label>
               <button
-                v-if="mode === 'edit'"
                 @click="openInEditor"
                 class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               >
@@ -112,22 +109,41 @@
             </div>
           </div>
 
-          <!-- Output Schema (Optional) -->
+          <!-- Output Schema -->
           <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Output <span class="text-xs text-neutral-500">(Optional)</span>
-            </label>
-            <p class="mb-4 text-xs text-neutral-500">
-              Define the expected output structure or type.
-            </p>
-            <textarea
-              :value="JSON.stringify(formData.output || {}, null, 2)"
-              @input="handleOutputChange"
-              rows="4"
-              class="w-full px-4 py-3 font-mono text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-              placeholder='{ "success": "boolean", "data": "any" }'
-            />
+            <CollapsibleSection label="Output Schema (Optional)" :defaultOpen="!!formData.output">
+              <div class="space-y-4">
+                <p class="text-xs text-neutral-500">
+                  Define the expected output structure or type.
+                </p>
+                <JsonSchemaEditor
+                  :value="formData.output"
+                  @update="$emit('update-output', $event)"
+                />
+              </div>
+            </CollapsibleSection>
           </div>
+
+          <!-- Metadata -->
+          <div class="pt-6 border-t border-neutral-800">
+            <CollapsibleSection label="Metadata">
+              <dl class="grid grid-cols-2 gap-4">
+                <div>
+                  <dt class="text-xs text-neutral-500">Created</dt>
+                  <dd class="text-sm text-neutral-300">{{ formatDate(action?.createdAt) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-neutral-500">Updated</dt>
+                  <dd class="text-sm text-neutral-300">{{ formatDate(action?.updatedAt) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-neutral-500">ID</dt>
+                  <dd class="font-mono text-sm text-neutral-300">{{ action?.id }}</dd>
+                </div>
+              </dl>
+            </CollapsibleSection>
+          </div>
+
         </div>
       </div>
     </div>
@@ -136,15 +152,18 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ExternalLink } from 'lucide-vue-next';
+import type { ActionEntity, ActionParameter } from '@app/api';
+import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/design/button.vue';
 import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
-import type { ActionParameter } from '@app/api';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
+import ActionFunctionViewer from './ActionFunctionViewer.vue';
+import JsonSchemaEditor from '@/core/design/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
 
 const props = defineProps<{
+  action?: ActionEntity;
   formData: {
     label: string;
     description?: string;
@@ -153,8 +172,6 @@ const props = defineProps<{
     actionFn: string;
     output?: any;
   };
-  mode: 'create' | 'edit';
-  actionId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -165,7 +182,7 @@ const emit = defineEmits<{
   'update-action': [value: string];
   'update-output': [value: any];
   save: [];
-  cancel: [];
+  back: [];
 }>();
 
 const isValid = computed(() => {
@@ -178,18 +195,8 @@ function handleSave() {
   }
 }
 
-function handleOutputChange(event: Event) {
-  const value = (event.target as HTMLTextAreaElement).value;
-  try {
-    const parsed = JSON.parse(value);
-    emit('update-output', parsed);
-  } catch {
-    // Invalid JSON, ignore
-  }
-}
-
 function openInEditor() {
-  if (!props.actionId) return;
+  if (!props.action) return;
   
   // First, switch to the code plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
@@ -209,10 +216,26 @@ function openInEditor() {
       if (actionsActor) {
         actionsActor.send({ 
           type: 'codeActions.OPEN_ACTION', 
-          actionId: props.actionId
+          actionId: props.action!.id 
         });
       }
     }
-  }, 100);
+  }, 10);
+}
+
+function formatDate(timestamp?: number) {
+  if (!timestamp) return 'N/A';
+  return new Date(timestamp).toLocaleString();
+}
+
+function categoryStyle(category?: string) {
+  const styles: Record<string, string> = {
+    'database': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
+    'communication': 'bg-green-900/30 text-green-400 border border-green-800/50',
+    'integration': 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50',
+    'utility': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
+    'storage': 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50',
+  }
+  return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
 }
 </script>

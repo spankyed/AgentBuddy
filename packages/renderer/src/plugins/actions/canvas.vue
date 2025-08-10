@@ -10,10 +10,10 @@
     />
 
     <!-- Create View -->
-    <ActionForm
+    <ActionDetail
       v-else-if="state.hasTag('create-action')"
+      :action="null"
       :form-data="formData"
-      mode="create"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-parameters="handleUpdateParameters"
@@ -21,23 +21,14 @@
       @update-output="handleUpdateOutput"
       @update-category="handleUpdateCategory"
       @save="handleSaveNew"
-      @cancel="handleGoBack"
-    />
-
-    <!-- View/Read-only -->
-    <ActionView
-      v-else-if="state.hasTag('view-action')"
-      :action="selectedAction"
-      @edit="handleEditCurrent"
       @back="handleGoBack"
     />
 
-    <!-- Edit View -->
-    <ActionForm
-      v-else-if="state.hasTag('edit-action')"
+    <!-- Detail View (always editable) -->
+    <ActionDetail
+      v-else-if="state.hasTag('detail-action')"
+      :action="selectedAction"
       :form-data="formData"
-      :action-id="selectedAction?.id"
-      mode="edit"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-parameters="handleUpdateParameters"
@@ -45,7 +36,7 @@
       @update-output="handleUpdateOutput"
       @update-category="handleUpdateCategory"
       @save="handleUpdateActionSave"
-      @cancel="handleGoBack"
+      @back="handleGoBack"
     />
   </div>
 </template>
@@ -55,8 +46,7 @@ import { useSelector } from '@xstate/vue';
 import { id, type ActionsState } from './state';
 import { applicationState } from '@/main';
 import ActionsList from './components/ActionsList.vue';
-import ActionForm from './components/ActionForm.vue';
-import ActionView from './components/ActionView.vue';
+import ActionDetail from './components/ActionDetail.vue';
 import type { EARS, ActionParameter } from '@app/api';
 
 const actor: ActionsState = applicationState.system.get(id);
@@ -109,12 +99,6 @@ function handleSaveNew() {
 
 function handleUpdateActionSave() {
   actor.send({ type: 'ACTION.UPDATE' });
-}
-
-function handleEditCurrent() {
-  if (selectedAction.value) {
-    actor.send({ type: 'ACTION.EDIT', actionId: selectedAction.value.id });
-  }
 }
 
 function handleGoBack() {

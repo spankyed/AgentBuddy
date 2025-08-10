@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ChevronDown } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -29,5 +29,9 @@ const props = defineProps<{
   defaultOpen?: boolean;
 }>();
 
-const isOpen = ref(props.defaultOpen ?? true);
+const isOpen = ref(true);
+
+onMounted(() => {
+  isOpen.value = props.defaultOpen ?? true;
+});
 </script>
