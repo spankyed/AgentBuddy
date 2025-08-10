@@ -12,6 +12,7 @@ export interface ProcessHandlers {
 export class ProcessManager {
   private process?: ChildProcess;
   private handlers: ProcessHandlers;
+  private serverReady = false;
 
   constructor(handlers: ProcessHandlers = {}) {
     this.handlers = handlers;
@@ -19,6 +20,7 @@ export class ProcessManager {
 
   setProcess(process: ChildProcess): void {
     this.process = process;
+    this.serverReady = false;
     this.attachHandlers();
   }
 
@@ -30,11 +32,12 @@ export class ProcessManager {
       this.process.stdout.on('data', (data) => {
         const message = data.toString();
         
-        // Check for server ready message
-        if (message.includes('WebSocket Server listening')) {
+        // Check for server ready message (only trigger once)
+        if (!this.serverReady && message.includes('WebSocket Server listening')) {
           const portMatch = message.match(/ws:\/\/localhost:(\d+)/);
           if (portMatch && this.handlers.onReady) {
             const port = parseInt(portMatch[1], 10);
+            this.serverReady = true;
             this.handlers.onReady(port);
           }
         }
