@@ -2,6 +2,12 @@ import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
+import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
+import {
+  targetIs,
+  TRAIL_CLICK,
+  type TrailClickEvent,
+} from '@/core/actors/route-trailer'
 
 export const id = 'library' as const
 import type { SnapshotFrom } from 'xstate'
@@ -460,6 +466,9 @@ export const librarySystem = setup({
       isSearching: false,
     }),
   },
+  guards: {
+    targetIs,
+  },
 }).createMachine({
   id: 'library',
   initial: 'browser',
@@ -592,13 +601,19 @@ export const librarySystem = setup({
     SEARCH_RESULTS: {
       actions: 'setSearchResults',
     },
+    ...TRAIL_CLICK([
+      ['.browser', 'browser'],
+      ['.create', 'create'],
+      ['.edit', 'edit'],
+      ['.createIndex', 'createIndex'],
+      ['.editIndex', 'editIndex'],
+      ['.testIndex', 'testIndex'],
+    ]),
   },
   states: {
     browser: {
       entry: assign({ currentView: 'browser' }),
-      meta: {
-        breadcrumb: { label: 'Library', target: 'browser' },
-      },
+      meta: breadcrumb('browser', 'Library', true),
       on: {
         CREATE_DOCUMENT: 'create',
         EDIT_DOCUMENT: {
@@ -614,27 +629,11 @@ export const librarySystem = setup({
           target: 'testIndex',
           actions: 'setTestingIndex',
         },
-        TRAIL_CLICK: [
-          {
-            guard: ({ event }) => event.trail.includes('Create'),
-            target: 'create',
-          },
-          {
-            guard: ({ event }) => event.trail.includes('Edit'),
-            target: 'edit',
-          },
-          {
-            guard: ({ event }) => event.trail.includes('Index'),
-            target: 'createIndex',
-          },
-        ],
       },
     },
     create: {
       entry: assign({ currentView: 'create' }),
-      meta: {
-        breadcrumb: { label: 'New Document', target: 'create' },
-      },
+      meta: breadcrumb('create', 'New Document'),
       on: {
         SAVE_DOCUMENT: {
           target: 'browser',
@@ -645,9 +644,10 @@ export const librarySystem = setup({
     },
     edit: {
       entry: assign({ currentView: 'edit' }),
-      meta: {
-        breadcrumb: { label: 'Edit Document', target: 'edit' },
-      },
+      meta: breadcrumbWithParams<LibraryContext>({
+        target: 'edit',
+        getLabel: (ctx) => `Edit: ${ctx.editingDocument?.name || 'Document'}`,
+      }),
       on: {
         SAVE_DOCUMENT: {
           target: 'browser',
@@ -661,9 +661,7 @@ export const librarySystem = setup({
     },
     createIndex: {
       entry: assign({ currentView: 'create-index' }),
-      meta: {
-        breadcrumb: { label: 'Create Search Index', target: 'createIndex' },
-      },
+      meta: breadcrumb('createIndex', 'Create Search Index'),
       on: {
         SAVE_SEARCH_INDEX: {
           target: 'browser',
@@ -674,9 +672,10 @@ export const librarySystem = setup({
     },
     editIndex: {
       entry: assign({ currentView: 'edit-index' }),
-      meta: {
-        breadcrumb: { label: 'Edit Search Index', target: 'editIndex' },
-      },
+      meta: breadcrumbWithParams<LibraryContext>({
+        target: 'editIndex',
+        getLabel: (ctx) => `Edit Index: ${ctx.editingIndex?.name || 'Index'}`,
+      }),
       on: {
         UPDATE_SEARCH_INDEX: {
           target: 'browser',
@@ -690,9 +689,10 @@ export const librarySystem = setup({
     },
     testIndex: {
       entry: assign({ currentView: 'test-index' }),
-      meta: {
-        breadcrumb: { label: 'Test Search Index', target: 'testIndex' },
-      },
+      meta: breadcrumbWithParams<LibraryContext>({
+        target: 'testIndex',
+        getLabel: (ctx) => `Test Index: ${ctx.testingIndex?.name || 'Index'}`,
+      }),
       on: {
         UPDATE_TEST_QUERY: {
           actions: 'updateTestQuery',
