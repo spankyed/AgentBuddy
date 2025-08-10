@@ -597,7 +597,7 @@ export const librarySystem = setup({
     browser: {
       entry: assign({ currentView: 'browser' }),
       meta: {
-        breadcrumb: 'Library',
+        breadcrumb: { label: 'Library', target: 'browser' },
       },
       on: {
         CREATE_DOCUMENT: 'create',
@@ -633,7 +633,7 @@ export const librarySystem = setup({
     create: {
       entry: assign({ currentView: 'create' }),
       meta: {
-        breadcrumb: 'New Document',
+        breadcrumb: { label: 'New Document', target: 'create' },
       },
       on: {
         SAVE_DOCUMENT: {
@@ -646,7 +646,7 @@ export const librarySystem = setup({
     edit: {
       entry: assign({ currentView: 'edit' }),
       meta: {
-        breadcrumb: 'Edit Document',
+        breadcrumb: { label: 'Edit Document', target: 'edit' },
       },
       on: {
         SAVE_DOCUMENT: {
@@ -662,7 +662,7 @@ export const librarySystem = setup({
     createIndex: {
       entry: assign({ currentView: 'create-index' }),
       meta: {
-        breadcrumb: 'Create Search Index',
+        breadcrumb: { label: 'Create Search Index', target: 'createIndex' },
       },
       on: {
         SAVE_SEARCH_INDEX: {
@@ -675,7 +675,7 @@ export const librarySystem = setup({
     editIndex: {
       entry: assign({ currentView: 'edit-index' }),
       meta: {
-        breadcrumb: 'Edit Search Index',
+        breadcrumb: { label: 'Edit Search Index', target: 'editIndex' },
       },
       on: {
         UPDATE_SEARCH_INDEX: {
@@ -691,7 +691,7 @@ export const librarySystem = setup({
     testIndex: {
       entry: assign({ currentView: 'test-index' }),
       meta: {
-        breadcrumb: 'Test Search Index',
+        breadcrumb: { label: 'Test Search Index', target: 'testIndex' },
       },
       on: {
         UPDATE_TEST_QUERY: {
