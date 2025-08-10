@@ -119,8 +119,8 @@ const isEmpty = computed(() =>
   items.value.length === 0 || items.value.every(item => !item.trim())
 )
 
-// Show bulk mode by default for empty lists, or when explicitly opened
-const showBulkMode = ref(isEmpty.value)
+// Show bulk mode only when explicitly opened
+const showBulkMode = ref(false)
 
 // Count items from bulk text
 const itemCount = computed(() => {
@@ -168,7 +168,7 @@ const openBulkMode = () => {
 const closeBulkMode = () => {
   bulkText.value = ''
   splitByParagraphs.value = false
-  showBulkMode.value = isEmpty.value // Keep open for empty lists
+  showBulkMode.value = false // Always close when cancel is clicked
 }
 
 // Individual item management
@@ -199,10 +199,6 @@ const handleEnter = async (index: number) => {
   }
 }
 
-// Reset to bulk mode when list becomes empty
-watch(isEmpty, (nowEmpty) => {
-  if (nowEmpty) {
-    showBulkMode.value = true
-  }
-})
+// No longer automatically show bulk mode when list becomes empty
+// Users can click "Bulk Add" button when needed
 </script>
