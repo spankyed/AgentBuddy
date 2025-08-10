@@ -66,11 +66,11 @@ export class ApiServer implements AppModule {
 
   private startApiServer(): void {
     if (this.apiProcess) {
-      console.log('API server already running');
+      // API server already running
       return;
     }
 
-    console.log('Starting API server...');
+    // Starting API server
     this.broadcastToWindows(API_SERVER_EVENTS.STARTING);
 
     // Determine the correct path to the API server
@@ -91,7 +91,7 @@ export class ApiServer implements AppModule {
 
       buildProcess.on('close', (code) => {
         if (code === 0) {
-          console.log('API build completed successfully');
+          // API build completed successfully
           this.launchApiServer(apiPath);
         } else {
           console.error(`API build failed with code ${code}`);
@@ -110,13 +110,13 @@ export class ApiServer implements AppModule {
         apiPath = path.join(process.resourcesPath, 'app', 'node_modules', '@app', 'api');
       }
       
-      console.log('Production API path:', apiPath);
+      // Production API path
       this.launchApiServer(apiPath);
     }
   }
 
   private launchApiServer(apiPath: string): void {
-    console.log('Attempting to launch API server from:', apiPath);
+    // Attempting to launch API server
     
     // Check if the path exists
     if (!fs.existsSync(apiPath)) {
@@ -136,7 +136,7 @@ export class ApiServer implements AppModule {
       return;
     }
     
-    console.log('Server file found at:', serverPath);
+    // Server file found
     
     // Spawn the API server process using Electron's Node.js
     // In production, use Electron's Node.js executable to ensure native module compatibility
@@ -168,11 +168,12 @@ export class ApiServer implements AppModule {
       this.apiProcess.stdout.on('data', (data) => {
         try {
           const message = data.toString();
-          console.log(`[API Server]: ${message}`);
+          // Log API server output for debugging if needed
+          // console.log(`[API Server]: ${message}`);
           
           // Check if server is ready (look for specific startup message)
           if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
-            console.log('API server is ready!');
+            // API server is ready
             this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
             if (this.serverReadyResolve) {
               this.serverReadyResolve();
@@ -208,7 +209,7 @@ export class ApiServer implements AppModule {
 
     // Handle process exit
     this.apiProcess.on('exit', (code, signal) => {
-      console.log(`API server exited with code ${code} and signal ${signal}`);
+      console.error(`API server exited with code ${code} and signal ${signal}`);
       this.apiProcess = undefined;
       this.broadcastToWindows(API_SERVER_EVENTS.STOPPED);
 
@@ -220,7 +221,7 @@ export class ApiServer implements AppModule {
       // Attempt to restart unless we're shutting down
       if (!this.isShuttingDown && this.restartAttempts < this.maxRestartAttempts) {
         this.restartAttempts++;
-        console.log(`Attempting to restart API server (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
+        console.warn(`Attempting to restart API server (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
         this.broadcastToWindows(API_SERVER_EVENTS.RESTARTING, {
           attempt: this.restartAttempts,
           maxAttempts: this.maxRestartAttempts
@@ -248,7 +249,7 @@ export class ApiServer implements AppModule {
     // Reset restart attempts on successful start
     setTimeout(() => {
       if (this.apiProcess && !this.apiProcess.killed) {
-        console.log('API server started successfully');
+        // API server started successfully
         this.restartAttempts = 0;
       }
     }, 5000);
@@ -259,7 +260,7 @@ export class ApiServer implements AppModule {
       return;
     }
 
-    console.log('Stopping API server...');
+    // Stopping API server
     
     // Remove all listeners to prevent EPIPE errors
     this.apiProcess.stdout?.removeAllListeners();
@@ -279,7 +280,7 @@ export class ApiServer implements AppModule {
     // Force kill after timeout
     setTimeout(() => {
       if (this.apiProcess && !this.apiProcess.killed) {
-        console.log('Force killing API server...');
+        // Force killing API server
         try {
           this.apiProcess.kill('SIGKILL');
         } catch (error) {

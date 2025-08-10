@@ -118,11 +118,5 @@ export default /** @type import('electron-builder').Configuration */
   ],
   
   // Disable publishing and auto-updater
-  publish: null,
-  // publish: {
-  //   provider: 'github',
-  //   owner: 'spankyed',
-  //   repo: 'AgentBuddy',
-  //   releaseType: 'draft'
-  // }
+  publish: null
 });
