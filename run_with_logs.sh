@@ -11,9 +11,6 @@ mkdir -p "$LOG_DIR"
 # Kill any existing instances
 echo "Stopping any existing app instances..."
 pkill -f "AgentBuddy" 2>/dev/null || true
-pkill -f "root\.app" 2>/dev/null || true
-# More specific pattern to avoid killing unrelated processes
-pkill -f "Contents/MacOS/root" 2>/dev/null || true
 sleep 2
 
 # Clear console
@@ -29,26 +26,22 @@ echo ""
 
 # Check if app exists in various locations
 # IMPORTANT: Always prefer the dist version which has the correctly built modules
-if [ -d "dist/mac-arm64/root.app" ]; then
-    APP_PATH="dist/mac-arm64/root.app/Contents/MacOS/root"
+if [ -d "dist/mac-arm64/AgentBuddy.app" ]; then
+    APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy"
     echo "✓ Found app in dist folder (using this version)"
-elif [ -d "/Applications/root.app" ]; then
-    APP_PATH="/Applications/root.app/Contents/MacOS/root"
-    echo "✓ Found root.app in Applications folder"
-    echo "  Note: If you get MODULE_VERSION errors, use the dist version instead"
 elif [ -d "/Applications/AgentBuddy.app" ]; then
-    APP_PATH="/Applications/AgentBuddy.app/Contents/MacOS/root"
+    APP_PATH="/Applications/AgentBuddy.app/Contents/MacOS/AgentBuddy"
     echo "✓ Found AgentBuddy in Applications folder"
     echo "  Note: If you get MODULE_VERSION errors, use the dist version instead"
 else
     echo "✗ Error: App not found!"
     echo ""
     echo "Please build the app first with: ./build.sh"
-    echo "The built app will be at: dist/mac-arm64/root.app"
+    echo "The built app will be at: dist/mac-arm64/AgentBuddy.app"
     echo ""
     echo "To install (optional):"
-    echo "  1. Open dist/root-*.dmg"
-    echo "  2. Drag root.app to Applications"
+    echo "  1. Open dist/AgentBuddy-*.dmg"
+    echo "  2. Drag AgentBuddy.app to Applications"
     exit 1
 fi
 

@@ -17,7 +17,7 @@ export default /** @type import('electron-builder').Configuration */
   
   // Build options
   artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
-  generateUpdatesFilesForAllChannels: true,
+  generateUpdatesFilesForAllChannels: false,
   
   // Platform targets
   mac: {
@@ -117,11 +117,12 @@ export default /** @type import('electron-builder').Configuration */
     }
   ],
   
-  // Publishing configuration (optional)
-  publish: {
-    provider: 'github',
-    owner: 'spankyed',
-    repo: 'AgentBuddy',
-    releaseType: 'draft'
-  }
+  // Disable publishing and auto-updater
+  publish: null,
+  // publish: {
+  //   provider: 'github',
+  //   owner: 'spankyed',
+  //   repo: 'AgentBuddy',
+  //   releaseType: 'draft'
+  // }
 });
