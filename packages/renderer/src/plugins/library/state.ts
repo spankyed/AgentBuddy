@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
@@ -8,6 +8,23 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
+import { tagStorage } from './services/tagStorage'
+
+// Helper function to convert DocumentItem to DocumentDTO
+function documentItemToDTO(item: DocumentItem): DocumentDTO {
+  return {
+    id: item.id,
+    name: item.name,
+    content: item.content,
+    shortCode: item.shortCode,
+    tags: item.tags || [],
+    collectionId: item.parentId || undefined,
+    collectionPath: [], // Not available in DocumentItem
+    displayOrder: item.displayOrder,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  }
+}
 
 export const id = 'library' as const
 import type { SnapshotFrom } from 'xstate'
@@ -24,6 +41,7 @@ export interface LibraryContext {
   currentFolderId: string | null
   currentPath: string[]
   selectedItems: string[]
+  selectedDocument: DocumentDTO | null
   sortBy: 'name' | 'modified' | 'size' | 'kind'
   sortDirection: 'asc' | 'desc'
   breadcrumbs: BreadcrumbItem[]
@@ -133,10 +151,9 @@ export const librarySystem = setup({
     },
     createDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT') {
-        // Use event.collectionId if provided (and not empty string), otherwise use context.currentFolderId
-        const targetCollectionId = (event.collectionId && event.collectionId.trim() !== '') 
-          ? event.collectionId 
-          : (context.currentFolderId || undefined)
+        const targetCollectionId = event.collectionId?.trim() || context.currentFolderId || undefined
+        
+        if (event.tags?.length) tagStorage.addTags(event.tags)
         
         trpc.bus.send.mutate({
           systemId: id,
@@ -205,18 +222,39 @@ export const librarySystem = setup({
     },
 
     // State update actions
-    setFolderContents: assign({
-      items: ({ event }) => (event as any).data.items || [],
-      currentFolderId: ({ event }) => (event as any).data.currentFolderId || null,
-      currentPath: ({ event }) => (event as any).data.currentPath || [],
-      breadcrumbs: ({ event }) => (event as any).data.breadcrumbs || [],
+    setFolderContents: assign(({ event }) => {
+      if (event.type !== 'FOLDER_CONTENTS_LOADED') {
+        return {}
+      }
+      const { data } = event
+      const items = data.items || []
+      const documents = items
+        .filter((item): item is DocumentItem => item.type === 'document')
+        .map(documentItemToDTO)
+      tagStorage.updateTagsFromDocuments(documents)
+      
+      return {
+        items,
+        documents,
+        currentFolderId: data.currentFolderId || null,
+        currentPath: data.currentPath || [],
+        breadcrumbs: data.breadcrumbs || [],
+        searchIndices: data.searchIndices || []
+      }
     }),
     updateNavigation: assign({
       currentFolderId: ({ event }) => (event as any).data.folderId || null,
       currentPath: ({ event }) => (event as any).data.path || [],
     }),
     selectItems: assign({
-      selectedItems: ({ event }) => (event as any).itemIds || [],
+      selectedItems: ({ event }) => event.type === 'SELECT_ITEMS' ? event.itemIds || [] : [],
+      selectedDocument: ({ event, context }) => {
+        if (event.type === 'SELECT_ITEMS' && event.itemIds?.length === 1) {
+          const item = context.items.find(i => i.id === event.itemIds[0])
+          return item?.type === 'document' ? documentItemToDTO(item as DocumentItem) : null
+        }
+        return null
+      }
     }),
     setSortOrder: assign({
       sortBy: ({ event }) => (event as any).column || 'name',
@@ -228,6 +266,7 @@ export const librarySystem = setup({
     }),
     clearSelection: assign({
       selectedItems: [],
+      selectedDocument: null,
     }),
 
     requestCollections: () => {
@@ -238,6 +277,16 @@ export const librarySystem = setup({
     },
     updateDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT' && context.editingDocument) {
+        // Update tags in localStorage
+        const oldTags = context.editingDocument.tags || []
+        const newTags = event.tags || []
+        
+        const removed = oldTags.filter(tag => !newTags.includes(tag))
+        const added = newTags.filter(tag => !oldTags.includes(tag))
+        
+        if (removed.length) tagStorage.removeTags(removed)
+        if (added.length) tagStorage.addTags(added)
+        
         trpc.bus.send.mutate({
           systemId: id,
           type: 'UPDATE_DOCUMENT',
@@ -292,7 +341,10 @@ export const librarySystem = setup({
     setDocuments: assign({
       documents: ({ event }) => {
         if (event.type === 'DOCUMENTS_LOADED') {
-          return event.data.documents
+          const documents = event.data.documents
+          // Sync tags to localStorage
+          tagStorage.updateTagsFromDocuments(documents)
+          return documents
         }
         return []
       },
@@ -443,6 +495,7 @@ export const librarySystem = setup({
     currentFolderId: null,
     currentPath: [],
     selectedItems: [],
+    selectedDocument: null,
     sortBy: 'name',
     sortDirection: 'asc',
     breadcrumbs: [],

@@ -290,7 +290,7 @@ const emit = defineEmits<{
   EDIT_DOCUMENT: [{ documentId: string }]
   CREATE_SEARCH_INDEX: []
   START_EDITING_ITEM: [{ itemId: string }]
-  MOVE_ITEMS: [{ itemIds: string[]; targetFolderId: string }]
+  MOVE_ITEMS: [{ itemIds: string[]; targetFolderId: string | null }]
   REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
 }>()
 

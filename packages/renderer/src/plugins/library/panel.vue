@@ -65,22 +65,73 @@
       </div>
     </div>
     
-    <!-- Document details functionality has been moved to the main interface -->
+    <!-- Selected Document Details -->
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">Selected Document</h3>
-      <div class="text-sm text-neutral-500">
-        Document details are now displayed in the main file browser interface.
+      <div v-if="selectedDocument" class="space-y-3">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-neutral-400">Name:</span>
+            <span class="text-sm font-medium text-neutral-200">{{ selectedDocument.name }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-neutral-400">Code:</span>
+            <span class="font-mono text-xs text-blue-400">{{ selectedDocument.shortCode }}</span>
+          </div>
+        </div>
+        
+        <!-- Content Overview -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-medium text-neutral-400">Content Overview:</h4>
+          <div class="space-y-1.5">
+            <div 
+              v-for="(section, index) in selectedDocument.content" 
+              :key="index"
+              class="px-2 py-1.5 bg-neutral-800 rounded text-xs"
+            >
+              <template v-if="section.type === 'text'">
+                <span class="text-neutral-500">Text:</span>
+                <span class="ml-1 text-neutral-300">{{ truncateText((section as TextBlockContent).text, 50) }}</span>
+              </template>
+              <template v-else-if="section.type === 'field'">
+                <span class="text-neutral-500">Fields ({{ countValidFields((section as FieldContent).fields) }}):</span>
+                <span class="ml-1 text-neutral-300">{{ getFieldPreview((section as FieldContent).fields) }}</span>
+              </template>
+              <template v-else-if="section.type === 'list'">
+                <span class="text-neutral-500">List ({{ countValidItems((section as ListContent).items) }} items)</span>
+              </template>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Document Tags -->
+        <div v-if="selectedDocument.tags.length > 0" class="space-y-2">
+          <h4 class="text-xs font-medium text-neutral-400">Tags:</h4>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="tag in selectedDocument.tags"
+              :key="tag"
+              class="inline-flex items-center px-2 py-0.5 text-xs rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30"
+            >
+              {{ tag }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div v-else class="text-sm text-neutral-500">
+        Select a document to view details
       </div>
     </div>
     
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">All Tags</h3>
-      <div v-if="allTags.length > 0" class="flex flex-wrap gap-2">
+      <div v-if="sortedTags.length > 0" class="flex flex-wrap gap-2">
         <button
-          v-for="tag in allTags"
+          v-for="tag in sortedTags"
           :key="tag"
-          @click="() => {}"
-          class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md transition-colors bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300"
+          @click="filterByTag(tag)"
+          :class="getTagClass(tagCounts[tag])"
+          class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
         >
           {{ tag }} ({{ tagCounts[tag] }})
         </button>
@@ -123,6 +174,7 @@ import { applicationState } from '@/main'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 import { getModelConfig } from './config/embedding-models'
+import type { ContentSection, TextBlockContent, FieldContent, ListContent } from '@app/api'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor
@@ -130,16 +182,11 @@ const actor = applicationState.system.get(id) as LibraryActor
 // Individual selectors for each context property
 const documents = useSelector(actor, (state) => state.context.documents)
 const collections = useSelector(actor, (state) => state.context.collections)
-// Legacy selector removed - selectedDocumentId no longer exists
+const selectedDocument = useSelector(actor, (state) => state.context.selectedDocument)
 const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
 
 const send = (event: LibraryEvents) => actor.send(event)
-
-const selectedDocument = computed(() => {
-  // Legacy functionality - selectedDocumentId no longer exists
-  return null
-})
 
 const totalCollections = computed(() => {
   let count = 0
@@ -160,7 +207,7 @@ const totalCollections = computed(() => {
 const allTags = computed(() => {
   const tags = new Set<string>()
   documents.value.forEach(doc => {
-    doc.tags.forEach(tag => tags.add(tag))
+    doc.tags?.forEach(tag => tags.add(tag))
   })
   return Array.from(tags).sort()
 })
@@ -174,6 +221,53 @@ const tagCounts = computed(() => {
   })
   return counts
 })
+
+const sortedTags = computed(() => {
+  return allTags.value.sort((a, b) => {
+    const countDiff = tagCounts.value[b] - tagCounts.value[a]
+    return countDiff !== 0 ? countDiff : a.localeCompare(b)
+  })
+})
+
+function getTagClass(count: number): string {
+  const counts = Object.values(tagCounts.value)
+  if (counts.length === 0) {
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+  }
+  
+  const maxCount = Math.max(...counts)
+  if (maxCount === 0) {
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+  }
+  
+  const percentage = (count / maxCount) * 100
+  
+  if (percentage >= 75) {
+    return 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
+  } else if (percentage >= 50) {
+    return 'bg-neutral-700 text-neutral-300 border border-neutral-600 hover:bg-neutral-600'
+  } else {
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+  }
+}
+
+const filterByTag = (tag: string) => {} // TODO: Implement tag filtering
+
+const truncateText = (text: string, maxLength: number): string => 
+  text?.length > maxLength ? `${text.substring(0, maxLength)}...` : text || ''
+
+const countValidFields = (fields: Array<{ key: string; value: string }>): number =>
+  fields.filter(f => f.key.trim() || f.value.trim()).length
+
+const countValidItems = (items: string[]): number =>
+  items.filter(item => item.trim()).length
+
+const getFieldPreview = (fields: Array<{ key: string; value: string }>): string => {
+  const validFields = fields.filter(f => f.key.trim())
+  if (!validFields.length) return 'No fields'
+  const preview = validFields.slice(0, 2).map(f => f.key).join(', ')
+  return validFields.length > 2 ? `${preview}, ...` : preview
+}
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
