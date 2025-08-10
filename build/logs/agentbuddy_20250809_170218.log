@@ -1,0 +1,235 @@
+Starting API server...
+Production API path: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Attempting to launch API server from: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Server file found at: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js
+Waiting for API server to be ready before creating window...
+(node:78840) UnhandledPromiseRejectionWarning: HttpError: 404 
+"method: GET url: https://github.com/spankyed/AgentBuddy/releases.atom\n\nPlease double check that your authentication token is correct. Due to security reasons, actual status maybe not reported, but 404.\n"
+Headers: {
+  "cache-control": "no-cache",
+  "content-length": "9",
+  "content-security-policy": "default-src 'none'; base-uri 'self'; connect-src 'self'; form-action 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline'",
+  "content-type": "text/plain; charset=utf-8",
+  "date": "Sat, 09 Aug 2025 21:02:21 GMT",
+  "referrer-policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+  "server": "github.com",
+  "strict-transport-security": "max-age=31536000; includeSubdomains; preload",
+  "vary": "X-PJAX, X-PJAX-Container, Turbo-Visit, Turbo-Frame, X-Requested-With,Accept-Encoding, Accept, X-Requested-With",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "deny",
+  "x-github-request-id": "F139:27D997:57FBCA:6D761E:6897B75C",
+  "x-xss-protection": "0",
+  "set-cookie": [
+    "_gh_sess=%2FgoAEY%2BTiwlAW7pdgEN0rRYNZknJ1Ii8AQvdJR6OhhX2ymD4JpJx7FUvfkzwA1OkXwFx2Zphy0fmCu6i7GMMWI1chVrC6UIRqwpghopToFM2eix6n80qJIE5yRfyC5p2q7oe0C0Nj7aYr6jpbIpjETEy%2Fr2ROqeexGsVCerDTKb263d%2F3kzMpFB%2BpMfQbDwPIblYRILc9TRZJG7qGl0kvKRO5ZgplN%2FmZOh8ES1tykDjIQn7p5VRHWZDPJ7XqCMtRgnFg71552zdGSuWnWHH3Q%3D%3D--n6jni9OhLg2gb4xB--RfaTMQxwdtmS4Fwb2fveqA%3D%3D; Path=/; HttpOnly; Secure; SameSite=Lax",
+    "_octo=GH1.1.104449949.1754773341; Path=/; Domain=github.com; Expires=Sun, 09 Aug 2026 21:02:21 GMT; Secure; SameSite=Lax",
+    "logged_in=no; Path=/; Domain=github.com; Expires=Sun, 09 Aug 2026 21:02:21 GMT; HttpOnly; Secure; SameSite=Lax"
+  ]
+}
+    at createHttpError (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/builder-util-runtime/out/httpExecutor.js:21:12)
+    at ElectronHttpExecutor.handleResponse (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/builder-util-runtime/out/httpExecutor.js:121:20)
+    at ClientRequest.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/builder-util-runtime/out/httpExecutor.js:87:26)
+    at ClientRequest.emit (node:events:518:28)
+    at SimpleURLLoaderWrapper.<anonymous> (node:electron/js2c/browser_init:2:123663)
+    at SimpleURLLoaderWrapper.emit (node:events:518:28)
+(Use `root --trace-warnings ...` to show where the warning was created)
+(node:78840) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 1)
+[API Server Error]: innerError Error: Cannot find module '../build/Debug/pty.node'
+Require stack:
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:34:15)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js',
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js'
+  ]
+}
+
+[API Server Error]: node:internal/modules/cjs/loader:1921
+  return process.dlopen(module, path.toNamespacedPath(filename));
+                 ^
+
+Error: The module '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/build/Release/pty.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 136. This version of Node.js requires
+NODE_MODULE_VERSION 127. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object..node (node:internal/modules/cjs/loader:1921:18)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:29:11)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.17.1
+
+API server exited with code 1 and signal null
+Attempting to restart API server (attempt 1/3)...
+Starting API server...
+Production API path: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Attempting to launch API server from: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Server file found at: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js
+[API Server Error]: innerError Error: Cannot find module '../build/Debug/pty.node'
+Require stack:
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:34:15)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js',
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js'
+  ]
+}
+
+[API Server Error]: node:internal/modules/cjs/loader:1921
+  return process.dlopen(module, path.toNamespacedPath(filename));
+                 ^
+
+Error: The module '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/build/Release/pty.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 136. This version of Node.js requires
+NODE_MODULE_VERSION 127. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object..node (node:internal/modules/cjs/loader:1921:18)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:29:11)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.17.1
+
+API server exited with code 1 and signal null
+Attempting to restart API server (attempt 2/3)...
+Starting API server...
+Production API path: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Attempting to launch API server from: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Server file found at: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js
+[API Server Error]: innerError Error: Cannot find module '../build/Debug/pty.node'
+Require stack:
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:34:15)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js',
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js'
+  ]
+}
+
+[API Server Error]: node:internal/modules/cjs/loader:1921
+  return process.dlopen(module, path.toNamespacedPath(filename));
+                 ^
+
+Error: The module '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/build/Release/pty.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 136. This version of Node.js requires
+NODE_MODULE_VERSION 127. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object..node (node:internal/modules/cjs/loader:1921:18)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:29:11)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.17.1
+
+API server exited with code 1 and signal null
+Attempting to restart API server (attempt 3/3)...
+Starting API server...
+Production API path: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Attempting to launch API server from: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api
+Server file found at: /Applications/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js
+[API Server Error]: innerError Error: Cannot find module '../build/Debug/pty.node'
+Require stack:
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js
+- /Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:34:15)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js',
+    '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/index.js'
+  ]
+}
+
+[API Server Error]: node:internal/modules/cjs/loader:1921
+  return process.dlopen(module, path.toNamespacedPath(filename));
+                 ^
+
+Error: The module '/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/build/Release/pty.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 136. This version of Node.js requires
+NODE_MODULE_VERSION 127. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object..node (node:internal/modules/cjs/loader:1921:18)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (/Applications/AgentBuddy.app/Contents/Resources/app/node_modules/node-pty/lib/unixTerminal.js:29:11)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.17.1
+
+API server exited with code 1 and signal null
+Max restart attempts reached. API server will not be restarted.

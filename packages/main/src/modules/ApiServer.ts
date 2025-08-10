@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { AppModule } from '../AppModule.js';
 import { ModuleContext } from '../ModuleContext.js';
@@ -65,11 +66,11 @@ export class ApiServer implements AppModule {
 
   private startApiServer(): void {
     if (this.apiProcess) {
-      console.log('API server already running');
+      // API server already running
       return;
     }
 
-    console.log('Starting API server...');
+    // Starting API server
     this.broadcastToWindows(API_SERVER_EVENTS.STARTING);
 
     // Determine the correct path to the API server
@@ -90,7 +91,7 @@ export class ApiServer implements AppModule {
 
       buildProcess.on('close', (code) => {
         if (code === 0) {
-          console.log('API build completed successfully');
+          // API build completed successfully
           this.launchApiServer(apiPath);
         } else {
           console.error(`API build failed with code ${code}`);
@@ -100,50 +101,115 @@ export class ApiServer implements AppModule {
         }
       });
     } else {
-      // In production, assume the API is already built
-      apiPath = path.join(process.resourcesPath, 'api');
+      // In production, the API is in the app resources folder
+      // Since we disabled asar, it's directly accessible
+      apiPath = path.join(process.resourcesPath, 'app', 'packages', 'api');
+      
+      // Fallback to node_modules/@app/api if it exists there
+      if (!fs.existsSync(apiPath)) {
+        apiPath = path.join(process.resourcesPath, 'app', 'node_modules', '@app', 'api');
+      }
+      
+      // Production API path
       this.launchApiServer(apiPath);
     }
   }
 
   private launchApiServer(apiPath: string): void {
-    // Spawn the API server process
-    this.apiProcess = spawn('node', ['dist/server.js'], {
+    // Attempting to launch API server
+    
+    // Check if the path exists
+    if (!fs.existsSync(apiPath)) {
+      console.error('API path does not exist:', apiPath);
+      this.broadcastToWindows(API_SERVER_EVENTS.ERROR, { 
+        error: `API path does not exist: ${apiPath}` 
+      });
+      return;
+    }
+    
+    const serverPath = path.join(apiPath, 'dist', 'server.js');
+    if (!fs.existsSync(serverPath)) {
+      console.error('Server file does not exist:', serverPath);
+      this.broadcastToWindows(API_SERVER_EVENTS.ERROR, { 
+        error: `Server file does not exist: ${serverPath}` 
+      });
+      return;
+    }
+    
+    // Server file found
+    
+    // Spawn the API server process using Electron's Node.js
+    // In production, use Electron's Node.js executable to ensure native module compatibility
+    const nodeExecutable = app.isPackaged 
+      ? process.execPath  // Use Electron's built-in Node
+      : 'node';           // Use system Node in development
+    
+    // When using Electron's executable, we need to pass the script as an argument
+    const execArgs = app.isPackaged 
+      ? [path.join(apiPath, 'dist', 'server.js')]
+      : ['dist/server.js'];
+    
+    this.apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
         API_PORT: '3001',
         DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
-        USER_DATA_PATH: app.getPath('userData')
+        USER_DATA_PATH: app.getPath('userData'),
+        // Ensure Electron's Node environment is used
+        ELECTRON_RUN_AS_NODE: '1'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
-    // Handle stdout
-    this.apiProcess.stdout?.on('data', (data) => {
-      const message = data.toString();
-      console.log(`[API Server]: ${message}`);
-      
-      // Check if server is ready (look for specific startup message)
-      if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
-        console.log('API server is ready!');
-        this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
-        if (this.serverReadyResolve) {
-          this.serverReadyResolve();
-          this.serverReadyResolve = undefined;
+    // Handle stdout with error handling
+    if (this.apiProcess.stdout) {
+      this.apiProcess.stdout.on('data', (data) => {
+        try {
+          const message = data.toString();
+          // Log API server output for debugging if needed
+          // console.log(`[API Server]: ${message}`);
+          
+          // Check if server is ready (look for specific startup message)
+          if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
+            // API server is ready
+            this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
+            if (this.serverReadyResolve) {
+              this.serverReadyResolve();
+              this.serverReadyResolve = undefined;
+            }
+          }
+        } catch (error) {
+          console.error('Error handling API stdout:', error);
         }
-      }
-    });
+      });
+      
+      // Handle stdout errors
+      this.apiProcess.stdout.on('error', (error) => {
+        console.error('API stdout error:', error);
+      });
+    }
 
-    // Handle stderr
-    this.apiProcess.stderr?.on('data', (data) => {
-      console.error(`[API Server Error]: ${data.toString()}`);
-    });
+    // Handle stderr with error handling
+    if (this.apiProcess.stderr) {
+      this.apiProcess.stderr.on('data', (data) => {
+        try {
+          console.error(`[API Server Error]: ${data.toString()}`);
+        } catch (error) {
+          console.error('Error handling API stderr:', error);
+        }
+      });
+      
+      // Handle stderr errors
+      this.apiProcess.stderr.on('error', (error) => {
+        console.error('API stderr error:', error);
+      });
+    }
 
     // Handle process exit
     this.apiProcess.on('exit', (code, signal) => {
-      console.log(`API server exited with code ${code} and signal ${signal}`);
+      console.error(`API server exited with code ${code} and signal ${signal}`);
       this.apiProcess = undefined;
       this.broadcastToWindows(API_SERVER_EVENTS.STOPPED);
 
@@ -155,7 +221,7 @@ export class ApiServer implements AppModule {
       // Attempt to restart unless we're shutting down
       if (!this.isShuttingDown && this.restartAttempts < this.maxRestartAttempts) {
         this.restartAttempts++;
-        console.log(`Attempting to restart API server (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
+        console.warn(`Attempting to restart API server (attempt ${this.restartAttempts}/${this.maxRestartAttempts})...`);
         this.broadcastToWindows(API_SERVER_EVENTS.RESTARTING, {
           attempt: this.restartAttempts,
           maxAttempts: this.maxRestartAttempts
@@ -183,7 +249,7 @@ export class ApiServer implements AppModule {
     // Reset restart attempts on successful start
     setTimeout(() => {
       if (this.apiProcess && !this.apiProcess.killed) {
-        console.log('API server started successfully');
+        // API server started successfully
         this.restartAttempts = 0;
       }
     }, 5000);
@@ -194,16 +260,32 @@ export class ApiServer implements AppModule {
       return;
     }
 
-    console.log('Stopping API server...');
+    // Stopping API server
+    
+    // Remove all listeners to prevent EPIPE errors
+    this.apiProcess.stdout?.removeAllListeners();
+    this.apiProcess.stderr?.removeAllListeners();
+    
+    // Destroy the streams to prevent further writes
+    this.apiProcess.stdout?.destroy();
+    this.apiProcess.stderr?.destroy();
     
     // Try graceful shutdown first
-    this.apiProcess.kill('SIGTERM');
+    try {
+      this.apiProcess.kill('SIGTERM');
+    } catch (error) {
+      console.error('Error sending SIGTERM to API server:', error);
+    }
 
     // Force kill after timeout
     setTimeout(() => {
       if (this.apiProcess && !this.apiProcess.killed) {
-        console.log('Force killing API server...');
-        this.apiProcess.kill('SIGKILL');
+        // Force killing API server
+        try {
+          this.apiProcess.kill('SIGKILL');
+        } catch (error) {
+          console.error('Error sending SIGKILL to API server:', error);
+        }
       }
     }, 5000);
   }

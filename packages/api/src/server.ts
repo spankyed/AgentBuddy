@@ -38,9 +38,17 @@ import { loadSnapshot } from '@/core/data';
 
 const port = 3001;
 
-const wss = new WebSocketServer({ port, path: '/trpc' });
+// Create WebSocket server without path - tRPC will handle the routing
+const wss = new WebSocketServer({ 
+  port,
+  // Allow any origin in development/production
+  verifyClient: () => {
+    // Accept all connections
+    return true;
+  }
+});
 
-logger.info(`✅ WebSocket Server listening on ws://localhost:${port}`);
+logger.info(`✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`);
 
 const handler = applyWSSHandler({ wss, router: appRouter, createContext });
 

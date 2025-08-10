@@ -1,6 +1,7 @@
-import {initApp} from '@app/main';
+import {initApp} from './main/dist/index.js';
 import {fileURLToPath} from 'node:url';
 
+// Handle errors appropriately based on environment
 if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true' || !!process.env.CI) {
   function showAndExit(...args) {
     console.error(...args);
@@ -9,6 +10,22 @@ if (process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 't
 
   process.on('uncaughtException', showAndExit);
   process.on('unhandledRejection', showAndExit);
+} else {
+  // In production, handle EPIPE errors gracefully
+  process.on('uncaughtException', (error) => {
+    // EPIPE errors are common when child processes exit
+    if (error.code === 'EPIPE') {
+      console.warn('EPIPE error caught (child process pipe closed):', error.message);
+
+      return; // Silently ignore EPIPE errors
+    }
+    // For other errors, log but don't crash the app
+    console.error('Uncaught exception:', error);
+  });
+  
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled promise rejection:', reason);
+  });
 }
 
 // noinspection JSIgnoredPromiseFromCall
@@ -26,11 +43,11 @@ initApp(
     renderer: (process.env.MODE === 'development' && !!process.env.VITE_DEV_SERVER_URL) ?
       new URL(process.env.VITE_DEV_SERVER_URL)
       : {
-        path: fileURLToPath(import.meta.resolve('@app/renderer')),
+        path: fileURLToPath(new URL('./renderer/dist/index.html', import.meta.url)),
       },
 
     preload: {
-      path: fileURLToPath(import.meta.resolve('@app/preload/exposed.mjs')),
+      path: fileURLToPath(new URL('./preload/dist/exposed.mjs', import.meta.url)),
     },
   },
 );

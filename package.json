@@ -1,13 +1,13 @@
 {
-  "name": "root",
-  "description": "Secure boilerplate for Electron app based on Vite",
-  "version": "3.1.0",
+  "name": "abuddy",
+  "description": "Vibe working platform",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "author": {
-    "email": "kozackunisoft@gmail.com",
-    "name": "Alex Kozack",
-    "url": "https://kozack.me"
+    "email": "angel.santiago@tutanota.com",
+    "name": "Angel Santiago",
+    "url": "https://clientlabs.com"
   },
   "main": "packages/entry-point.mjs",
   "workspaces": [
@@ -24,9 +24,15 @@
     "typecheck": "npm run typecheck -ws --if-present",
     "create-renderer": "cd packages && node ./integrate-renderer/create-renderer.js",
     "integrate-renderer": "npm start --workspace @app/integrate-renderer",
-    "init": "npm run create-renderer && npm run integrate-renderer && npm install"
+    "init": "npm run create-renderer && npm run integrate-renderer && npm install",
+    "rebuild": "cd packages/api && npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64",
+    "rebuild:dev": "cd packages/api && npm rebuild",
+    "package": "npm run build && npm run package:mac",
+    "package:mac": "electron-builder --mac --arm64",
+    "package:all": "electron-builder --mac --win --linux"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.54.1",
     "@types/node": "24.1.0",
