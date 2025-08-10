@@ -14,7 +14,8 @@
   "dependencies": {
     "@app/api": "*",
     "@app/preload": "*",
-    "@app/renderer": "*"
+    "@app/renderer": "*",
+    "get-port": "^7.1.0"
   },
   "devDependencies": {
     "@app/electron-versions": "*",
