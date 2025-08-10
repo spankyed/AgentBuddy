@@ -21,7 +21,8 @@ export async function initApp(initConfig: AppInitConfig) {
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer}))
     .init(terminateAppOnLastWindowClose())
-    .init(autoUpdater())
+    // Disable auto-updater until GitHub releases are configured
+    // .init(autoUpdater())
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
