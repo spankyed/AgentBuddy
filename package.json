@@ -26,6 +26,7 @@
     "integrate-renderer": "npm start --workspace @app/integrate-renderer",
     "init": "npm run create-renderer && npm run integrate-renderer && npm install",
     "rebuild": "cd packages/api && npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64",
+    "rebuild:dev": "cd packages/api && npm rebuild",
     "package": "npm run build && npm run package:mac",
     "package:mac": "electron-builder --mac --arm64",
     "package:all": "electron-builder --mac --win --linux"
