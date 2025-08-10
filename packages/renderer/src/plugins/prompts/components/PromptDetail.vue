@@ -111,9 +111,6 @@
         <div class="pt-6 border-t border-neutral-800">
           <CollapsibleSection label="Output Schema (Optional)" :defaultOpen="!!formData.outputSchema">
             <div class="space-y-4">
-              <p class="text-xs text-neutral-500">
-                Define a JSON schema for structured output from the LLM.
-              </p>
               <JsonSchemaEditor
                 :value="formData.outputSchema"
                 @update="$emit('update-output-schema', $event)"

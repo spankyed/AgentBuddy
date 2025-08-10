@@ -114,9 +114,6 @@
           <div class="pt-6 border-t border-neutral-800">
             <CollapsibleSection label="Output Schema (Optional)" :defaultOpen="!!formData.output">
               <div class="space-y-4">
-                <p class="text-xs text-neutral-500">
-                  Define the expected output structure or type.
-                </p>
                 <JsonSchemaEditor
                   :value="formData.output"
                   @update="$emit('update-output', $event)"
