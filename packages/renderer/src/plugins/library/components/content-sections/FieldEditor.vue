@@ -5,13 +5,13 @@
       :key="index"
       class="flex items-center gap-2"
     >
-      <input
-        :value="field.key"
-        @input="updateField(index, 'key', ($event.target as HTMLInputElement).value)"
-        @keydown.enter.prevent="handleKeyEnter(index)"
-        type="text"
+      <Autocomplete
+        :model-value="field.key"
+        @update:model-value="(value) => updateField(index, 'key', value)"
+        @enter="handleKeyEnter(index)"
+        :suggestions="commonKeys"
         placeholder="Key"
-        class="field-editor-key flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        input-class="field-editor-key flex-1 px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
       />
       <input
         :value="field.value"
@@ -45,6 +45,7 @@
 import { computed } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
 import type { FieldContent } from '@app/api'
+import Autocomplete from '@/design/components/Autocomplete.vue'
 
 const props = defineProps<{
   content: FieldContent
@@ -55,6 +56,22 @@ const emit = defineEmits<{
 }>()
 
 const fields = computed(() => props.content.fields)
+
+const commonKeys = [
+  'action',
+  'directory',
+  'id',
+  'value',
+  'name',
+  'type',
+  'path',
+  'url',
+  'description',
+  'status',
+  'message',
+  'data',
+  'config',
+]
 
 const updateField = (index: number, field: 'key' | 'value', value: string) => {
   const newFields = [...fields.value]
