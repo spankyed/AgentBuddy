@@ -91,6 +91,7 @@
                 Action Function <span class="text-red-400">*</span>
               </label>
               <button
+                v-if="action"
                 @click="openInEditor"
                 class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               >
