@@ -24,9 +24,14 @@
     "typecheck": "npm run typecheck -ws --if-present",
     "create-renderer": "cd packages && node ./integrate-renderer/create-renderer.js",
     "integrate-renderer": "npm start --workspace @app/integrate-renderer",
-    "init": "npm run create-renderer && npm run integrate-renderer && npm install"
+    "init": "npm run create-renderer && npm run integrate-renderer && npm install",
+    "rebuild": "cd packages/api && npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64",
+    "package": "npm run build && npm run package:mac",
+    "package:mac": "electron-builder --mac --arm64",
+    "package:all": "electron-builder --mac --win --linux"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.54.1",
     "@types/node": "24.1.0",

@@ -1,115 +1,74 @@
 #!/bin/bash
 
+# Final Production Build Script for AgentBuddy
+# Simple, reliable, no unnecessary complexity
+
 set -e  # Exit on error
 
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 echo "=========================================="
-echo "Building AgentBuddy for Production"
+echo "🚀 AgentBuddy Production Build"
 echo "=========================================="
 echo ""
 
-# Clean previous builds
-echo "Step 1: Cleaning previous builds..."
-rm -rf dist/
-rm -rf packages/*/dist/
-rm -rf packages/api/node_modules
-echo "✓ Cleaned previous builds"
+# Step 1: Clean previous builds
+echo -e "${BLUE}[1/5]${NC} Cleaning previous builds..."
+rm -rf dist/ packages/*/dist/
+rm -rf packages/api/node_modules packages/api/package-lock.json
+echo -e "${GREEN}✓${NC} Clean complete"
 echo ""
 
-# Install dependencies
-echo "Step 2: Installing root dependencies..."
-npm install
-echo "✓ Root dependencies installed"
+# Step 2: Install root dependencies
+echo -e "${BLUE}[2/5]${NC} Installing dependencies..."
+npm install --silent
+echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
-# Build all packages
-echo "Step 3: Building all packages..."
+# Step 3: Build TypeScript/Vite packages
+echo -e "${BLUE}[3/5]${NC} Building packages..."
 npm run build
-echo "✓ All packages built"
+echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 
-# Install API dependencies in its own node_modules
-echo "Step 4: Installing API runtime dependencies..."
+# Step 4: Setup API dependencies and rebuild native modules
+echo -e "${BLUE}[4/5]${NC} Setting up API with native modules..."
 cd packages/api
 
-# Remove existing node_modules to ensure clean install
-rm -rf node_modules
-rm -rf package-lock.json
-
-# Install dependencies locally without workspace hoisting
-npm install --no-workspaces
-echo "✓ API dependencies installed locally"
+# Install without workspace hoisting
+npm install --no-workspaces --silent
 
 # Rebuild native modules for Electron
-echo ""
-echo "Step 5: Rebuilding native modules for Electron..."
-# Get Electron's exact node version and path
-cd ../..
-ELECTRON_VERSION=$(npx electron --version | sed 's/v//')
-NODE_VERSION=$(npx electron -p "process.versions.node")
-ELECTRON_PATH=$(which npx)
-ELECTRON_PATH="${ELECTRON_PATH%/*}/electron"
+npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64
 
-echo "Using Electron version: $ELECTRON_VERSION"
-echo "Electron's Node.js version: $NODE_VERSION"
-echo "Electron binary: $ELECTRON_PATH"
-
-# Go back to API directory
-cd packages/api
-
-# First, remove all native module builds
-echo "Cleaning native module builds..."
-find node_modules -name "*.node" -delete 2>/dev/null || true
-rm -rf node_modules/*/build 2>/dev/null || true
-rm -rf node_modules/*/*/build 2>/dev/null || true
-
-# Use electron-rebuild with exact Electron version
-echo "Rebuilding with @electron/rebuild..."
-npx @electron/rebuild \
-  --force \
-  --module-dir . \
-  --electron-version 37.2.4 \
-  --arch arm64
-
-# Verify the rebuild
-echo ""
-echo "Verifying native modules..."
-for module in better-sqlite3 node-pty usearch onnxruntime-node; do
+# Verify native modules
+for module in better-sqlite3 node-pty usearch; do
   if [ -d "node_modules/$module" ]; then
-    echo -n "  $module: "
-    find "node_modules/$module" -name "*.node" -type f | head -1 | xargs file 2>/dev/null | grep -o "arm64" || echo "not found"
+    echo -e "  ${GREEN}✓${NC} $module"
   fi
 done
 
-echo "✓ Native modules rebuilt for Electron in packages/api/node_modules"
-
-# Return to root
 cd ../..
-
-# No need to copy packages - they're already in packages/ folder
-echo ""
-echo "Step 6: Packages ready for electron-builder..."
-echo "✓ Packages remain in packages/ folder"
+echo -e "${GREEN}✓${NC} Native modules ready"
 echo ""
 
-# Run electron-builder
-echo "Step 7: Running electron-builder..."
+# Step 5: Package with electron-builder
+echo -e "${BLUE}[5/5]${NC} Packaging application..."
 npx electron-builder build --config electron-builder.mjs --mac --arm64
-echo "✓ Electron app packaged"
+echo -e "${GREEN}✓${NC} Application packaged"
 echo ""
 
 echo "=========================================="
-echo "Build Complete!"
+echo "✅ Build Complete!"
 echo "=========================================="
 echo ""
-echo "The packaged app is available at:"
-echo "  - DMG: dist/root-*.dmg"
-echo "  - ZIP: dist/root-*.zip"
-echo "  - App: dist/mac-arm64/root.app"
+echo "📁 Output:"
+echo "  • App: dist/mac-arm64/root.app"
+echo "  • DMG: dist/root-*.dmg"
+echo "  • ZIP: dist/root-*.zip"
 echo ""
-echo "To install the app:"
-echo "  1. Open the DMG file"
-echo "  2. Drag root.app to Applications"
-echo ""
-echo "To test the app, run:"
-echo "  ./run_with_logs.sh"
+echo "🧪 Test with: ./run_with_logs.sh"
 echo ""
