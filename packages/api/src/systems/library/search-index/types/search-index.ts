@@ -60,7 +60,7 @@ export interface ChunkInfo {
 export interface IndexedDocument {
   documentId: EARS.EntityId
   vectorId: number // USearch internal ID
-  embedding: Float32Array
+  embedding?: Float32Array // Optional - not stored to save memory
   text: string // The processed text that was embedded
   chunkInfo?: ChunkInfo // Information about the chunk
   metadata: {
