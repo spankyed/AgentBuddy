@@ -1,15 +1,6 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Input Dialogs -->
-    <InputDialog
-      v-model="folderDialog.show"
-      title="Create New Folder"
-      description="Enter a name for the new folder"
-      placeholder="Folder name"
-      confirm-text="Create"
-      @confirm="handleCreateFolder"
-      @cancel="folderDialog.show = false"
-    />
     
     <InputDialog
       v-model="renameDialog.show"
@@ -156,13 +147,27 @@
                   <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
                   <span 
-                    class="text-sm"
+                    v-if="editingItemId !== item.id"
+                    @dblclick.stop="item.type === 'folder' && startEditingItem(item.id, item.name)"
+                    class="text-sm cursor-text"
                     :class="item.type === 'folder' 
                       ? 'font-medium text-neutral-100' 
                       : 'font-normal text-neutral-200'"
                   >
                     {{ item.name }}
                   </span>
+                  <input
+                    v-else
+                    :id="`edit-input-${item.id}`"
+                    v-model="editingName"
+                    @click.stop
+                    @dblclick.stop
+                    @keydown.enter.stop="confirmEdit(item.id)"
+                    @keydown.escape.stop="cancelEdit"
+                    @blur="confirmEdit(item.id)"
+                    type="text"
+                    class="flex-1 px-2 py-0.5 text-sm bg-neutral-800 border border-blue-500 rounded text-neutral-100 focus:outline-none"
+                  />
                 </div>
               </td>
               <td class="px-6 py-3">
@@ -223,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref, nextTick, watch } from 'vue'
 import { 
   Plus, 
   FolderPlus, 
@@ -249,6 +254,7 @@ const props = defineProps<{
   sortDirection: 'asc' | 'desc'
   currentFolderId: string | null
   breadcrumbs: BreadcrumbItem[]
+  itemToEdit?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -263,11 +269,23 @@ const emit = defineEmits<{
   BREADCRUMB_CLICK: [{ folderId: string | null }]
   EDIT_DOCUMENT: [{ documentId: string }]
   CREATE_SEARCH_INDEX: []
+  START_EDITING_ITEM: [{ itemId: string }]
 }>()
 
-// Dialog state
-const folderDialog = reactive({
-  show: false
+// Edit state
+const editingItemId = ref<string | null>(null)
+const editingName = ref('')
+
+// Watch for external edit requests
+watch(() => props.itemToEdit, (newItemId) => {
+  if (newItemId) {
+    const item = props.items.find(i => i.id === newItemId)
+    if (item) {
+      startEditingItem(item.id, item.name)
+      // Notify parent that editing has started
+      emit('START_EDITING_ITEM', { itemId: item.id })
+    }
+  }
 })
 
 const renameDialog = reactive({
@@ -362,12 +380,49 @@ function createDocument() {
 }
 
 function createFolder() {
-  folderDialog.show = true
+  // Generate a unique default name
+  let baseName = 'New Folder'
+  let counter = 1
+  let finalName = baseName
+  
+  // Check for existing folders with similar names
+  const existingNames = props.items
+    .filter(item => item.type === 'folder')
+    .map(item => item.name)
+  
+  while (existingNames.includes(finalName)) {
+    finalName = `${baseName} ${counter}`
+    counter++
+  }
+  
+  // Emit the create event with the default name
+  emit('CREATE_FOLDER', { name: finalName })
+  
+  // The state machine will handle setting the new folder in edit mode
 }
 
-function handleCreateFolder(name: string) {
-  emit('CREATE_FOLDER', { name })
-  folderDialog.show = false
+function startEditingItem(itemId: string, currentName: string) {
+  editingItemId.value = itemId
+  editingName.value = currentName
+  nextTick(() => {
+    const input = document.querySelector(`#edit-input-${itemId}`) as HTMLInputElement
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  })
+}
+
+function confirmEdit(itemId: string) {
+  if (editingName.value && editingName.value !== '') {
+    emit('RENAME_ITEM', { itemId, name: editingName.value })
+  }
+  cancelEdit()
+}
+
+function cancelEdit() {
+  editingItemId.value = null
+  editingName.value = ''
 }
 
 function createSearchIndex() {
@@ -379,10 +434,8 @@ function renameItem(item: LibraryItem) {
     // For documents, emit edit document event
     emit('EDIT_DOCUMENT', { documentId: item.id })
   } else {
-    // For folders, show rename dialog
-    renameDialog.currentItem = item
-    renameDialog.currentName = item.name
-    renameDialog.show = true
+    // For folders, start inline editing
+    startEditingItem(item.id, item.name)
   }
 }
 

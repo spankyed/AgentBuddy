@@ -28,6 +28,7 @@ export interface LibraryContext {
   sortDirection: 'asc' | 'desc'
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
+  itemToEdit?: string | null
   
   // Search index fields
   searchIndices: SearchIndex[]
@@ -90,6 +91,7 @@ export type LibraryEvents =
   | { type: 'SORT_BY'; column: 'name' | 'modified' | 'size' | 'kind' }
   | { type: 'SEARCH'; query: string }
   | { type: 'BREADCRUMB_CLICK'; folderId: string | null }
+  | { type: 'CLEAR_ITEM_TO_EDIT' }
   | OutgoingLibraryEvents
 
 export const librarySystem = setup({
@@ -532,6 +534,11 @@ export const librarySystem = setup({
     CREATE_FOLDER: {
       actions: 'createFolder',
     },
+    CLEAR_ITEM_TO_EDIT: {
+      actions: assign({
+        itemToEdit: null
+      })
+    },
     
     // Creation success events - refresh current folder
     DOCUMENT_CREATED: {
@@ -541,7 +548,16 @@ export const librarySystem = setup({
       actions: ['requestFolderContents', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
-      actions: 'requestFolderContents',
+      actions: [
+        'requestFolderContents',
+        assign({
+          itemToEdit: ({ event }) => {
+            // Set the new folder to be edited
+            const createdEvent = event as OutgoingLibraryEvents & { type: 'COLLECTION_CREATED'; data: { collection: CollectionDTO } }
+            return createdEvent.data?.collection?.id || null
+          }
+        })
+      ],
     },
     ITEM_RENAMED: {
       actions: 'requestFolderContents',

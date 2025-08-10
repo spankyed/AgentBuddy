@@ -59,6 +59,7 @@ const currentProps = computed(() => {
         sortDirection: context.value.sortDirection,
         currentFolderId: context.value.currentFolderId,
         breadcrumbs: context.value.breadcrumbs,
+        itemToEdit: context.value.itemToEdit,
       }
     case 'create':
       return {
@@ -133,6 +134,10 @@ const currentEvents = computed(() => {
       send({ type: 'DELETE_SELECTED_ITEMS' }),
     BREADCRUMB_CLICK: (payload: { folderId: string | null }) =>
       send({ type: 'BREADCRUMB_CLICK', ...payload }),
+    START_EDITING_ITEM: () => {
+      // Clear the itemToEdit flag once editing has started
+      send({ type: 'CLEAR_ITEM_TO_EDIT' })
+    },
   }
 
   return {

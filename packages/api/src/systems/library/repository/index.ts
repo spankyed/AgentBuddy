@@ -779,17 +779,22 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
   
   if (type === 'document') {
     const doc = await getDocument(entityId)
+    if (!doc) {
+      throw new Error(`Document ${entityId} not found`)
+    }
+    // Ensure content is an array
+    const content = doc.content || []
     return {
       type: 'document',
       id: entityId,
       name,
-      shortCode: doc!.shortCode,
-      parentId: doc!.collectionId || null,
-      content: doc!.content,
-      tags: doc!.tags,
-      size: formatFileSize(getContentLength(doc!.content)),
+      shortCode: doc.shortCode,
+      parentId: doc.collectionId || null,
+      content: content,
+      tags: doc.tags,
+      size: formatFileSize(getContentLength(content)),
       kind: 'Document',
-      createdAt: doc!.createdAt,
+      createdAt: doc.createdAt,
       updatedAt: new Date(now).toISOString(),
     }
   } else {
@@ -852,7 +857,10 @@ function formatFileSize(bytes: number): string {
   return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
 }
 
-function getContentLength(content: ContentSection[]): number {
+function getContentLength(content: ContentSection[] | undefined | null): number {
+  if (!content || !Array.isArray(content)) {
+    return 0
+  }
   let length = 0
   for (const section of content) {
     if (section.type === 'text') {
