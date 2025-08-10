@@ -138,15 +138,27 @@ export class ApiServer implements AppModule {
     
     console.log('Server file found at:', serverPath);
     
-    // Spawn the API server process
-    this.apiProcess = spawn('node', ['dist/server.js'], {
+    // Spawn the API server process using Electron's Node.js
+    // In production, use Electron's Node.js executable to ensure native module compatibility
+    const nodeExecutable = app.isPackaged 
+      ? process.execPath  // Use Electron's built-in Node
+      : 'node';           // Use system Node in development
+    
+    // When using Electron's executable, we need to pass the script as an argument
+    const execArgs = app.isPackaged 
+      ? [path.join(apiPath, 'dist', 'server.js')]
+      : ['dist/server.js'];
+    
+    this.apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
         API_PORT: '3001',
         DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
-        USER_DATA_PATH: app.getPath('userData')
+        USER_DATA_PATH: app.getPath('userData'),
+        // Ensure Electron's Node environment is used
+        ELECTRON_RUN_AS_NODE: '1'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     });
