@@ -349,6 +349,11 @@ actions: {
 }
 ```
 
+## Debugging
+
+- Run `npm run type-check` to type check the FE
+
+
 ## Performance Considerations
 
 - Use selective selectors to prevent unnecessary re-renders

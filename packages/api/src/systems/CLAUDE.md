@@ -78,8 +78,8 @@ Each system's repository handles data operations:
 - `mock-data.ts` - Development data
 
 Use EARS helpers to interact with long-lived BE data:
-- `qx()` - Query execution, used for querying and reading data
-- `tx()` - Transaction execution, used for creation and mutation
+- `qx()` - Query execution, used for querying and reading data (NOT ASYNC DO NOT await)
+- `tx()` - Transaction execution, used for creation and mutation (NOT ASYNC DO NOT await)
 
 ## Common State Machine Patterns
 
@@ -194,7 +194,8 @@ actions: {
 
 ## Debugging
 
-- Run `pnpm build` to build the backend
+- Run `npm run build` to build the backend
+- Run `npm run dev:types` to run type check for the backend
 
 
 ## Performance Considerations
