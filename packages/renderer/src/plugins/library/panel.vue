@@ -65,9 +65,13 @@
       </div>
     </div>
     
-    <!-- Selected Document Details -->
+    <!-- Selected Items Details -->
     <div class="pt-6 border-t border-neutral-800">
-      <h3 class="mb-3 text-sm font-semibold text-neutral-100">Selected Document</h3>
+      <h3 class="mb-3 text-sm font-semibold text-neutral-100">
+        {{ selectedItemsCount > 1 ? `Selected Items (${selectedItemsCount})` : 'Selected Document' }}
+      </h3>
+      
+      <!-- Single Document Selected -->
       <div v-if="selectedDocument" class="space-y-3">
         <div class="space-y-2">
           <div class="flex items-center justify-between">
@@ -118,8 +122,42 @@
           </div>
         </div>
       </div>
+      
+      <!-- Multiple Items Selected -->
+      <div v-else-if="selectedItemsCount > 1" class="space-y-3">
+        <div class="space-y-2 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-neutral-400">Documents:</span>
+            <span class="font-medium text-neutral-200">{{ selectedDocumentsCount }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-neutral-400">Folders:</span>
+            <span class="font-medium text-neutral-200">{{ selectedFoldersCount }}</span>
+          </div>
+        </div>
+        
+        <!-- Combined Tags from Selected Documents -->
+        <div v-if="selectedItemsTags.length > 0" class="space-y-2">
+          <h4 class="text-xs font-medium text-neutral-400">Combined Tags:</h4>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="tag in selectedItemsTags"
+              :key="tag"
+              class="inline-flex items-center px-2 py-0.5 text-xs rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/30"
+            >
+              {{ tag }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="pt-2 text-xs text-neutral-500">
+          Use bulk actions to manage multiple items at once
+        </div>
+      </div>
+      
+      <!-- Nothing Selected -->
       <div v-else class="text-sm text-neutral-500">
-        Select a document to view details
+        Select items to view details
       </div>
     </div>
     
@@ -185,6 +223,8 @@ const collections = useSelector(actor, (state) => state.context.collections)
 const selectedDocument = useSelector(actor, (state) => state.context.selectedDocument)
 const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
+const items = useSelector(actor, (state) => state.context.items)
+const selectedItems = useSelector(actor, (state) => state.context.selectedItems)
 
 const send = (event: LibraryEvents) => actor.send(event)
 
@@ -227,6 +267,35 @@ const sortedTags = computed(() => {
     const countDiff = tagCounts.value[b] - tagCounts.value[a]
     return countDiff !== 0 ? countDiff : a.localeCompare(b)
   })
+})
+
+// Multi-selection computed properties
+const selectedItemsCount = computed(() => selectedItems.value?.length || 0)
+
+const selectedDocumentsCount = computed(() => {
+  return items.value.filter(item => 
+    selectedItems.value.includes(item.id) && item.type === 'document'
+  ).length
+})
+
+const selectedFoldersCount = computed(() => {
+  return items.value.filter(item => 
+    selectedItems.value.includes(item.id) && item.type === 'folder'
+  ).length
+})
+
+const selectedItemsTags = computed(() => {
+  const tags = new Set<string>()
+  
+  items.value
+    .filter(item => selectedItems.value.includes(item.id) && item.type === 'document')
+    .forEach((item: any) => {
+      if (item.tags?.length) {
+        item.tags.forEach((tag: string) => tags.add(tag))
+      }
+    })
+  
+  return Array.from(tags).sort()
 })
 
 function getTagClass(count: number): string {

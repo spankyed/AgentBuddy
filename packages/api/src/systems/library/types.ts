@@ -113,6 +113,7 @@ export interface FolderContents {
   currentPath: string[]
   currentFolderId: EARS.EntityId | null
   breadcrumbs: BreadcrumbItem[]
+  searchIndices?: any[] // Will be properly typed on frontend via schema
 }
 
 export interface BreadcrumbItem {
