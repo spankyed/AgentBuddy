@@ -6,6 +6,62 @@ import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 import * as searchIndexRepo from '../search-index/repository'
 
+// ================ Helper Functions ================
+
+const findParentCollection = (childId: EARS.EntityId): EARS.EntityId | null => 
+  qx(EARS.Entity.Collection).pickAll().find(col => 
+    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).ids().includes(childId)
+  )?.id as EARS.EntityId || null
+
+const isRootCollection = (id: EARS.EntityId): boolean => !findParentCollection(id)
+
+const findDocumentCollection = (docId: EARS.EntityId): EARS.EntityId | null =>
+  qx(EARS.Entity.Collection).pickAll().find(col =>
+    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
+  )?.id as EARS.EntityId || null
+
+const getDisplayOrder = (item: any): number => {
+  const d = item?.displayOrder
+  return Array.isArray(d) ? d[0] || 0 : (d as number) || 0
+}
+
+const getItemsForReordering = (folderId: EARS.EntityId | null) => {
+  if (folderId === null) {
+    return [
+      ...qx(EARS.Entity.Collection).pickAll()
+        .filter(c => isRootCollection(c.id as EARS.EntityId))
+        .map(c => ({ id: c.id as EARS.EntityId, displayOrder: getDisplayOrder(c), type: 'folder' as const })),
+      ...qx(EARS.Entity.Document).pickAll()
+        .filter(d => !findDocumentCollection(d.id as EARS.EntityId))
+        .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
+    ]
+  }
+  return [
+    ...qx(folderId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pickAll()
+      .map(c => ({ id: c.id as EARS.EntityId, displayOrder: getDisplayOrder(c), type: 'folder' as const })),
+    ...qx(folderId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll()
+      .map(d => ({ id: d.id as EARS.EntityId, displayOrder: getDisplayOrder(d), type: 'document' as const }))
+  ]
+}
+
+const createTagsForEntity = (entityId: EARS.EntityId, tagNames: string[]) =>
+  tagNames.forEach(name => {
+    const tagId = `Tag-${uuid()}` as EARS.EntityId
+    tx(tagId).put('name', name)
+    tx(entityId).link(EARS.RelKind.HAS, tagId)
+  })
+
+const removeAllTagsFromEntity = (entityId: EARS.EntityId) =>
+  qx(entityId).linksTo(EARS.RelKind.HAS, EARS.Entity.Tag).pickAll().forEach(tag => {
+    edgeStore.unlink({ sourceEntity: entityId, relationType: EARS.RelKind.HAS, targetEntity: tag.id as EARS.EntityId })
+    tx(tag.id as EARS.EntityId).destroy()
+  })
+
+async function getNextDisplayOrder(parentId: EARS.EntityId | null): Promise<number> {
+  const items = getItemsForReordering(parentId)
+  return Math.max(0, ...items.map(i => i.displayOrder)) + 1000
+}
+
 export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]> {
   let query = qx(EARS.Entity.Document)
 
@@ -31,18 +87,9 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
         .pick(['name'])
 
-      // Find collections that contain this document
-      const allCollections = qx(EARS.Entity.Collection).pickAll()
-      const collections = []
-      for (const col of allCollections) {
-        const docs = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()
-        if (docs.includes(doc.id as EARS.EntityId)) {
-          collections.push(col)
-        }
-      }
-      const collection = collections[0]
+      // Find collection that contains this document
+      const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
+      const collection = collectionId ? qx(collectionId).pickAll()[0] : null
 
       const collectionPath = collection
         ? await getCollectionPath(collection.id as EARS.EntityId)
@@ -56,6 +103,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
         collectionPath,
+        displayOrder: getDisplayOrder(doc),
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
       }
@@ -76,18 +124,9 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
     .pick(['name'])
 
-  // Find collections that contain this document
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  const collections = []
-  for (const col of allCollections) {
-    const docs = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .ids()
-    if (docs.includes(documentId as EARS.EntityId)) {
-      collections.push(col)
-    }
-  }
-  const collection = collections[0]
+  const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
+    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+  )
 
   const collectionPath = collection
     ? await getCollectionPath(collection.id as EARS.EntityId)
@@ -101,6 +140,7 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
     collectionPath,
+    displayOrder: getDisplayOrder(document),
     createdAt: new Date(document.createdAt as number).toISOString(),
     updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
   }
@@ -130,20 +170,20 @@ export async function createDocument(
   // Generate shortcode
   const documentCount = qx(EARS.Entity.Document).count() + 1
   const shortCode = `DOC-${documentCount}` as DocumentShortCode
+  
+  // Get display order
+  const displayOrder = await getNextDisplayOrder(collectionId || null)
 
   tx(documentId).updateBatch({
     name,
     content,
     shortCode,
+    displayOrder,
     createdAt: now,
     updatedAt: now,
   })
 
-  for (const tagName of tags) {
-    const tagId = `Tag-${uuid()}` as EARS.EntityId
-    tx(tagId).put('name', tagName)
-    tx(documentId).link(EARS.RelKind.HAS, tagId)
-  }
+  createTagsForEntity(documentId, tags)
 
   if (collectionId) {
     tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
@@ -173,25 +213,8 @@ export async function updateDocument(
     updatedAt: now,
   })
     
-  const existingTags = qx(documentId as EARS.EntityId)
-    .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-    .pickAll()
-
-  // Remove all existing tags
-  for (const tag of existingTags) {
-    edgeStore.unlink({
-      sourceEntity: documentId,
-      relationType: EARS.RelKind.HAS,
-      targetEntity: tag.id as EARS.EntityId
-    })
-    tx(tag.id as EARS.EntityId).destroy()
-  }
-
-  for (const tagName of tags) {
-    const tagId = `Tag-${uuid()}` as EARS.EntityId
-    tx(tagId).put('name', tagName)
-    tx(documentId).link(EARS.RelKind.HAS, tagId)
-  }
+  removeAllTagsFromEntity(documentId)
+  createTagsForEntity(documentId, tags)
 
   // Find collections that contain this document
   const allCollections = qx(EARS.Entity.Collection).pickAll()
@@ -233,32 +256,11 @@ export async function updateDocument(
 export async function deleteDocument(id: EARS.EntityId): Promise<void> {
   const documentId = id
 
-  const tags = qx(documentId as EARS.EntityId)
-    .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-    .pickAll()
+  removeAllTagsFromEntity(documentId)
 
-  // Remove all tags
-  for (const tag of tags) {
-    edgeStore.unlink({
-      sourceEntity: documentId,
-      relationType: EARS.RelKind.HAS,
-      targetEntity: tag.id as EARS.EntityId
-    })
-    tx(tag.id as EARS.EntityId).destroy()
-  }
-
-  // Find collections that contain this document
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  const collections = []
-  for (const col of allCollections) {
-    const docs = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .ids()
-    if (docs.includes(documentId as EARS.EntityId)) {
-      collections.push(col)
-    }
-  }
-  const collection = collections[0]
+  const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
+    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
+  )
 
   if (collection) {
     edgeStore.unlink({
@@ -275,56 +277,24 @@ export async function deleteDocument(id: EARS.EntityId): Promise<void> {
 }
 
 export async function getCollections(): Promise<CollectionDTO[]> {
-  const allCollections = qx(EARS.Entity.Collection)
+  const rootCollections = qx(EARS.Entity.Collection)
     .pick(['name', 'description', 'createdAt', 'updatedAt'])
-  
-  const rootCollections = []
-  for (const col of allCollections) {
-    // Check if this collection has a parent (is a child of another collection)
-    const allParents = qx(EARS.Entity.Collection).pickAll()
-    let hasParent = false
-    for (const parent of allParents) {
-      const children = qx(parent.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(col.id as EARS.EntityId)) {
-        hasParent = true
-        break
-      }
-    }
-    if (!hasParent) {
-      rootCollections.push(col)
-    }
-  }
+    .filter(col => isRootCollection(col.id as EARS.EntityId))
 
-  const buildCollectionTree = async (collections: any[]): Promise<CollectionDTO[]> => {
-    return Promise.all(
-      collections.map(async (col) => {
-        const childCollections = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .pick(['name', 'description', 'createdAt', 'updatedAt'])
+  const buildTree = async (cols: any[]): Promise<CollectionDTO[]> =>
+    Promise.all(cols.map(async col => ({
+      id: col.id,
+      name: col.name as string,
+      description: col.description as string | undefined,
+      path: await getCollectionPath(col.id as EARS.EntityId),
+      documentCount: qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
+      childCollections: await buildTree(qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+      displayOrder: getDisplayOrder(col),
+      createdAt: new Date(col.createdAt as number).toISOString(),
+      updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
+    })))
 
-        const documentCount = (qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()).length
-
-        const path = await getCollectionPath(col.id as EARS.EntityId)
-
-        return {
-          id: col.id,
-          name: col.name as string,
-          description: col.description as string | undefined,
-          path,
-          documentCount,
-          childCollections: await buildCollectionTree(childCollections),
-          createdAt: new Date(col.createdAt as number).toISOString(),
-          updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
-        }
-      })
-    )
-  }
-
-  return buildCollectionTree(rootCollections)
+  return buildTree(rootCollections)
 }
 
 export async function createCollection(
@@ -334,9 +304,13 @@ export async function createCollection(
 ): Promise<CollectionDTO> {
   const collectionId = `Collection-${uuid()}` as EARS.EntityId
   const now = Date.now()
+  
+  // Get display order
+  const displayOrder = await getNextDisplayOrder(parentId || null)
 
   const attrs: Record<string, any> = {
     name,
+    displayOrder,
     createdAt: now,
     updatedAt: now,
   }
@@ -360,6 +334,7 @@ export async function createCollection(
     path,
     documentCount: 0,
     childCollections: [],
+    displayOrder,
     createdAt: new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
   }
@@ -395,30 +370,18 @@ export async function updateCollection(
 
   const path = await getCollectionPath(collectionId)
 
-  const buildChildren = async (children: any[]): Promise<CollectionDTO[]> => {
-    return Promise.all(
-      children.map(async (child) => {
-        const childDocCount = (qx(child.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .pickAll()).length
-        const childPath = await getCollectionPath(child.id as EARS.EntityId)
-        const grandChildren = qx(child.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .pick(['name', 'description', 'createdAt', 'updatedAt'])
-
-        return {
-          id: child.id,
-          name: child.name as string,
-          description: child.description as string | undefined,
-          path: childPath,
-          documentCount: childDocCount,
-          childCollections: await buildChildren(grandChildren),
-          createdAt: new Date(child.createdAt as number).toISOString(),
-          updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
-        }
-      })
-    )
-  }
+  const buildChildren = async (children: any[]): Promise<CollectionDTO[]> =>
+    Promise.all(children.map(async child => ({
+      id: child.id,
+      name: child.name as string,
+      description: child.description as string | undefined,
+      path: await getCollectionPath(child.id as EARS.EntityId),
+      documentCount: qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).pickAll().length,
+      childCollections: await buildChildren(qx(child.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+      displayOrder: getDisplayOrder(child),
+      createdAt: new Date(child.createdAt as number).toISOString(),
+      updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
+    })))
 
   return {
     id: collectionId,
@@ -427,6 +390,7 @@ export async function updateCollection(
     path,
     documentCount,
     childCollections: await buildChildren(childCollections),
+    displayOrder: getDisplayOrder(collection!),
     createdAt: new Date(collection!.createdAt as number).toISOString(),
     updatedAt: new Date(collection!.updatedAt as number || collection!.createdAt as number).toISOString(),
   }
@@ -447,18 +411,7 @@ export async function deleteCollection(id: EARS.EntityId): Promise<void> {
     })
   }
 
-  // Find parent collections
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  const parents = []
-  for (const col of allCollections) {
-    const children = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .ids()
-    if (children.includes(collectionId)) {
-      parents.push(col)
-    }
-  }
-  const parent = parents[0]
+  const parent = findParentCollection(collectionId) ? qx(findParentCollection(collectionId)!).pickAll()[0] : null
 
   if (parent) {
     edgeStore.unlink({
@@ -492,18 +445,9 @@ export async function moveDocument(
 ): Promise<DocumentDTO> {
   const docId = documentId
 
-  // Find collections that contain this document
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  const collections = []
-  for (const col of allCollections) {
-    const docs = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .ids()
-    if (docs.includes(docId)) {
-      collections.push(col)
-    }
-  }
-  const currentCollection = collections[0]
+  const currentCollection = qx(EARS.Entity.Collection).pickAll().find(col => 
+    qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(docId)
+  )
 
   if (currentCollection) {
     edgeStore.unlink({
@@ -524,30 +468,11 @@ export async function moveDocument(
 async function getCollectionPath(collectionId: EARS.EntityId): Promise<string[]> {
   const path: string[] = []
   let currentId: EARS.EntityId | null = collectionId
-
   while (currentId) {
-    const collections = qx(currentId).pickAll()
-    const collection = collections[0]
-    if (collection) {
-      path.unshift(collection.name as string)
-    }
-
-    // Find parent collections
-    const allCollections = qx(EARS.Entity.Collection).pickAll()
-    const parents = []
-    for (const col of allCollections) {
-      const children = qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(currentId as EARS.EntityId)) {
-        parents.push(col)
-      }
-    }
-    const parent = parents[0]
-
-    currentId = parent ? (parent.id as EARS.EntityId) : null
+    const collection = qx(currentId).pickAll()[0]
+    if (collection) path.unshift(collection.name as string)
+    currentId = findParentCollection(currentId)
   }
-
   return path
 }
 
@@ -563,18 +488,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Root directory - get collections without parents
     const allCollections = qx(EARS.Entity.Collection).pickAll()
     for (const col of allCollections) {
-      const allParents = qx(EARS.Entity.Collection).pickAll()
-      let hasParent = false
-      for (const parent of allParents) {
-        const children = qx(parent.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .ids()
-        if (children.includes(col.id as EARS.EntityId)) {
-          hasParent = true
-          break
-        }
-      }
-      if (!hasParent) {
+      if (isRootCollection(col.id as EARS.EntityId)) {
         folders.push(col)
       }
     }
@@ -582,7 +496,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Get child collections of this folder
     folders = qx(folderId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pick(['name', 'description', 'createdAt', 'updatedAt'])
+      .pick(['name', 'description', 'displayOrder', 'createdAt', 'updatedAt'])
   }
   
   // Convert collections to folder items
@@ -604,6 +518,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       childCount,
       size: childCount === 1 ? '1 item' : `${childCount} items`,
       kind: 'Folder',
+      displayOrder: getDisplayOrder(folder),
       createdAt: new Date(folder.createdAt as number).toISOString(),
       updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
     })
@@ -614,28 +529,12 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   
   if (folderId === null) {
     // Root directory - get documents not in any collection
-    const allDocuments = qx(EARS.Entity.Document).pickAll()
-    for (const doc of allDocuments) {
-      const allCollections = qx(EARS.Entity.Collection).pickAll()
-      let inCollection = false
-      for (const col of allCollections) {
-        const docs = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()
-        if (docs.includes(doc.id as EARS.EntityId)) {
-          inCollection = true
-          break
-        }
-      }
-      if (!inCollection) {
-        documents.push(doc)
-      }
-    }
+    documents = qx(EARS.Entity.Document).pickAll().filter(doc => !findDocumentCollection(doc.id as EARS.EntityId))
   } else {
     // Get documents in this collection
     documents = qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
+      .pick(['name', 'content', 'shortCode', 'displayOrder', 'createdAt', 'updatedAt'])
   }
   
   // Convert documents to document items
@@ -672,6 +571,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       tags: tags.map(tag => tag.name as string),
       size,
       kind: 'Document',
+      displayOrder: getDisplayOrder(doc),
       createdAt: new Date(doc.createdAt as number).toISOString(),
       updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
     })
@@ -683,9 +583,13 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
   
   return {
     items: items.sort((a, b) => {
-      // Folders first, then documents, then alphabetical
+      // Folders first, then by display order
       if (a.type !== b.type) {
         return a.type === 'folder' ? -1 : 1
+      }
+      // Sort by display order, fall back to name if orders are equal
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder
       }
       return a.name.localeCompare(b.name)
     }),
@@ -716,56 +620,42 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
     }
     
     // Find parent
-    const allCollections = qx(EARS.Entity.Collection).pickAll()
-    let parentId: EARS.EntityId | null = null
-    for (const col of allCollections) {
-      const children = qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(currentId)) {
-        parentId = col.id as EARS.EntityId
-        break
-      }
-    }
-    currentId = parentId
+    currentId = findParentCollection(currentId)
   }
   
   return breadcrumbs
 }
 
 export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.EntityId | null> {
-  // Find parent collection
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  for (const col of allCollections) {
-    const children = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .ids()
-    if (children.includes(folderId)) {
-      return col.id as EARS.EntityId
-    }
-  }
-  return null
+  return findParentCollection(folderId)
 }
 
+// ! todo remove - Migration: ensures all documents have shortcodes
 export async function migrateDocumentShortCodes(): Promise<void> {
-  // Get all documents
   const allDocuments = qx(EARS.Entity.Document).pickAll()
-  
-  let migratedCount = 0
-  for (let i = 0; i < allDocuments.length; i++) {
-    const doc = allDocuments[i]
-    
-    // Check if document already has a shortCode
-    if (!doc.shortCode) {
-      const shortCode = `DOC-${i + 1}` as DocumentShortCode
-      tx(doc.id as EARS.EntityId).put('shortCode', shortCode)
-      migratedCount++
+  allDocuments.forEach((doc, i) => {
+    if (!doc.shortCode) tx(doc.id as EARS.EntityId).put('shortCode', `DOC-${i + 1}` as DocumentShortCode)
+  })
+}
+
+// ! todo remove - Migration: fixes display order arrays and ensures all items have display orders
+export async function migrateDisplayOrders(): Promise<void> {
+  let order = 1000
+  qx(EARS.Entity.Document).pickAll().forEach(doc => {
+    const d = doc.displayOrder
+    if (Array.isArray(d) || !d) {
+      tx(doc.id as EARS.EntityId).update('displayOrder', Array.isArray(d) ? (d[0] || order) : order)
+      order += 1000
     }
-  }
-  
-  if (migratedCount > 0) {
-    console.log(`Migrated ${migratedCount} documents with shortcodes`)
-  }
+  })
+  order = 1000
+  qx(EARS.Entity.Collection).pickAll().forEach(col => {
+    const d = col.displayOrder
+    if (Array.isArray(d) || !d) {
+      tx(col.id as EARS.EntityId).update('displayOrder', Array.isArray(d) ? (d[0] || order) : order)
+      order += 1000
+    }
+  })
 }
 
 export async function renameItem(id: EARS.EntityId, name: string, type: 'document' | 'folder'): Promise<LibraryItem> {
@@ -794,6 +684,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       tags: doc.tags,
       size: formatFileSize(getContentLength(content)),
       kind: 'Document',
+      displayOrder: getDisplayOrder(doc),
       createdAt: doc.createdAt,
       updatedAt: new Date(now).toISOString(),
     }
@@ -803,17 +694,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
     const childCount = 0 // Simplified for now
     
     // Find parent folder
-    const allCollections = await qx(EARS.Entity.Collection).pickAll()
-    let parentId: EARS.EntityId | null = null
-    for (const col of allCollections) {
-      const children = await qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(entityId)) {
-        parentId = col.id as EARS.EntityId
-        break
-      }
-    }
+    const parentId = findParentCollection(entityId)
     
     return {
       type: 'folder',
@@ -823,6 +704,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       childCount,
       size: `${childCount} items`,
       kind: 'Folder',
+      displayOrder: getDisplayOrder(collection),
       createdAt: new Date(collection.createdAt as number).toISOString(),
       updatedAt: new Date(now).toISOString(),
     }
@@ -842,36 +724,80 @@ export async function deleteItems(ids: EARS.EntityId[]): Promise<void> {
 
 export async function moveItems(ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null): Promise<void> {
   for (const id of ids) {
-    // For now, only support moving documents
     if (id.startsWith('Document-')) {
       await moveDocument(id, targetFolderId || undefined)
+    } else if (id.startsWith('Collection-')) {
+      // Move collection to new parent
+      const collectionId = id
+      
+      const currentParent = findParentCollection(collectionId)
+      
+      // Remove from current parent if exists
+      if (currentParent) {
+        edgeStore.unlink({
+          sourceEntity: currentParent,
+          relationType: EARS.RelKind.PARENT_OF,
+          targetEntity: collectionId
+        })
+      }
+      
+      // Add to new parent if specified
+      if (targetFolderId) {
+        tx(targetFolderId).link(EARS.RelKind.PARENT_OF, collectionId)
+      }
+      
+      // Update display order
+      const displayOrder = await getNextDisplayOrder(targetFolderId)
+      tx(collectionId).update('displayOrder', displayOrder)
     }
   }
 }
 
-function formatFileSize(bytes: number): string {
+export async function reorderItems(
+  itemIds: EARS.EntityId[],
+  targetIndex: number,
+  targetFolderId: EARS.EntityId | null
+): Promise<void> {
+  // Get all items in the target folder
+  const allItems = getItemsForReordering(targetFolderId)
+  
+  // Sort by display order, folders first
+  allItems.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+    return a.displayOrder - b.displayOrder
+  })
+  
+  // Remove items being moved from the list
+  const itemsToMove = allItems.filter(item => itemIds.includes(item.id))
+  const remainingItems = allItems.filter(item => !itemIds.includes(item.id))
+  
+  // Insert items at the target position
+  const finalItems = [
+    ...remainingItems.slice(0, targetIndex),
+    ...itemsToMove,
+    ...remainingItems.slice(targetIndex)
+  ]
+  
+  // Update display orders
+  for (let i = 0; i < finalItems.length; i++) {
+    const newOrder = (i + 1) * 1000
+    tx(finalItems[i].id).update('displayOrder', newOrder)
+  }
+}
+
+const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
+  const k = 1024, sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i]
+  return Math.round(bytes / Math.pow(k, i) * 10) / 10 + ' ' + sizes[i]
 }
 
-function getContentLength(content: ContentSection[] | undefined | null): number {
-  if (!content || !Array.isArray(content)) {
-    return 0
-  }
-  let length = 0
-  for (const section of content) {
-    if (section.type === 'text') {
-      length += section.text.length
-    } else if (section.type === 'field') {
-      length += section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0)
-    } else if (section.type === 'list') {
-      length += section.items.reduce((acc, item) => acc + item.length, 0)
-    }
-  }
-  return length
+const getContentLength = (content: ContentSection[] | undefined | null): number => {
+  if (!content || !Array.isArray(content)) return 0
+  return content.reduce((length, section) => 
+    length + (section.type === 'text' ? section.text.length :
+    section.type === 'field' ? section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0) :
+    section.type === 'list' ? section.items.reduce((acc, item) => acc + item.length, 0) : 0), 0)
 }
 
 export async function getCollectionByName(name: string): Promise<CollectionDTO | null> {
@@ -901,6 +827,7 @@ export async function getCollectionByName(name: string): Promise<CollectionDTO |
     path,
     documentCount,
     childCollections: childCollections as unknown as CollectionDTO[],
+    displayOrder: getDisplayOrder(collection),
     createdAt: new Date(collection.createdAt as number).toISOString(),
     updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
   }

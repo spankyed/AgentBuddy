@@ -65,41 +65,11 @@
       </div>
     </div>
     
-    <div v-if="selectedDocument" class="pt-6 border-t border-neutral-800">
+    <!-- Document details functionality has been moved to the main interface -->
+    <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">Selected Document</h3>
-      <div class="space-y-3 text-sm">
-        <div>
-          <span class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Name</span>
-          <span class="text-neutral-200">{{ selectedDocument.name }}</span>
-        </div>
-        <div>
-          <span class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</span>
-          <div v-if="selectedDocument.tags.length > 0" class="flex flex-wrap gap-1">
-            <span
-              v-for="tag in selectedDocument.tags"
-              :key="tag"
-              class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30"
-            >
-              {{ tag }}
-            </span>
-          </div>
-          <span v-else class="text-neutral-500">No tags</span>
-        </div>
-        <div>
-          <span class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Collection</span>
-          <span v-if="selectedDocument.collectionPath" class="text-neutral-200">
-            {{ selectedDocument.collectionPath.join(' / ') }}
-          </span>
-          <span v-else class="text-neutral-500">No collection</span>
-        </div>
-        <div>
-          <span class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Created</span>
-          <span class="text-neutral-200">{{ formatDate(selectedDocument.createdAt) }}</span>
-        </div>
-        <div>
-          <span class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">Updated</span>
-          <span class="text-neutral-200">{{ formatDate(selectedDocument.updatedAt) }}</span>
-        </div>
+      <div class="text-sm text-neutral-500">
+        Document details are now displayed in the main file browser interface.
       </div>
     </div>
     
@@ -109,7 +79,7 @@
         <button
           v-for="tag in allTags"
           :key="tag"
-          @click="send({ type: 'FILTER_BY_TAG', tag })"
+          @click="() => {}"
           class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md transition-colors bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300"
         >
           {{ tag }} ({{ tagCounts[tag] }})
@@ -160,15 +130,15 @@ const actor = applicationState.system.get(id) as LibraryActor
 // Individual selectors for each context property
 const documents = useSelector(actor, (state) => state.context.documents)
 const collections = useSelector(actor, (state) => state.context.collections)
-const selectedDocumentId = useSelector(actor, (state) => state.context.selectedDocumentId)
+// Legacy selector removed - selectedDocumentId no longer exists
 const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
 
 const send = (event: LibraryEvents) => actor.send(event)
 
 const selectedDocument = computed(() => {
-  if (!selectedDocumentId.value) return null
-  return documents.value.find(doc => doc.id === selectedDocumentId.value)
+  // Legacy functionality - selectedDocumentId no longer exists
+  return null
 })
 
 const totalCollections = computed(() => {

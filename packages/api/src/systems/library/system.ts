@@ -99,6 +99,11 @@ const IncomingLibraryEvents = [
     ids: z.array(z.string()),
     targetFolderId: z.string().nullable(),
   }),
+  busEvent('REORDER_ITEMS', {
+    itemIds: z.array(z.string()),
+    targetIndex: z.number(),
+    targetFolderId: z.string().nullable(),
+  }),
   // Search index events
   busEvent('LIST_SEARCH_INDICES', {
     folderId: z.string().nullable(),
@@ -193,6 +198,7 @@ export type OutgoingLibraryEvents =
   | { type: 'ITEM_RENAMED'; data: { item: LibraryItem } }
   | { type: 'ITEMS_DELETED'; data: { ids: string[] } }
   | { type: 'ITEMS_MOVED'; data: { ids: string[]; targetFolderId: string | null } }
+  | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
   // Search index events
   | { type: 'SEARCH_INDICES_LOADED'; data: { indices: SearchIndex[] } }
   | { type: 'SEARCH_INDEX_CREATED'; data: { index: SearchIndex } }
@@ -367,8 +373,9 @@ export const librarySystem = setup({
       })
     },
     sendInitialData: async ({ system }) => {
-      // Run migration for documents without shortcodes
+      // Run migrations
       await repository.migrateDocumentShortCodes()
+      await repository.migrateDisplayOrders()
       
       const [documents, collections] = await Promise.all([
         repository.getDocuments(),
@@ -450,6 +457,22 @@ export const librarySystem = setup({
           type: 'ITEMS_MOVED' as const,
           pluginId: 'library',
           data: { ids: ev.ids, targetFolderId: ev.targetFolderId },
+        },
+      })
+    },
+    reorderItems: async ({ system, event }) => {
+      const ev = event as { type: 'REORDER_ITEMS'; itemIds: string[]; targetIndex: number; targetFolderId: string | null }
+      await repository.reorderItems(
+        ev.itemIds.map(id => id as EARS.EntityId),
+        ev.targetIndex,
+        ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null
+      )
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'ITEMS_REORDERED' as const,
+          pluginId: 'library',
+          data: { itemIds: ev.itemIds, targetFolderId: ev.targetFolderId },
         },
       })
     },
@@ -595,6 +618,9 @@ export const librarySystem = setup({
         },
         MOVE_ITEMS: {
           actions: ['moveItems'],
+        },
+        REORDER_ITEMS: {
+          actions: ['reorderItems'],
         },
         // Search index events
         LIST_SEARCH_INDICES: {

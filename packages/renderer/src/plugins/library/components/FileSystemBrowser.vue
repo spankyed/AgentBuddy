@@ -54,11 +54,21 @@
         
         <!-- Actions -->
         <div class="flex items-center gap-2">
-          <!-- Selection indicator and delete -->
+          <!-- Selection indicator and actions -->
           <template v-if="selectedItems.length > 0">
             <span class="text-sm text-neutral-400 mr-2">
               {{ selectedItems.length }} selected
             </span>
+            <Button
+              v-if="currentFolderId !== null"
+              @click="moveSelectedItemsUp"
+              variant="transparent"
+              size="sm"
+              class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+              title="Move selected items up a level"
+            >
+              <ArrowUp class="w-4 h-4" />
+            </Button>
             <Button
               @click="deleteSelectedItems"
               variant="transparent"
@@ -99,7 +109,7 @@
 
     <!-- File Table -->
     <div class="flex-1 overflow-hidden">
-      <div class="h-full overflow-y-auto custom-scrollbar">
+      <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
@@ -115,19 +125,33 @@
               <tr
                 v-for="(item, index) in sortedItems"
                 :key="item.id"
-                class="transition-colors duration-150 cursor-pointer group select-none"
+                class="transition-colors duration-150 cursor-pointer group select-none relative draggable-item"
                 :class="[
                   selectedItems.includes(item.id) 
                     ? 'bg-blue-500/30' 
                     : index % 2 === 1 
                       ? 'bg-neutral-800/20' 
                       : '',
-                  !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30'
+                  !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30',
+                  getItemClass(item)
                 ]"
+                :draggable="!editingItemId"
                 @click="selectItem(item, $event)"
                 @dblclick="doubleClickItem(item)"
+                @dragstart="handleDragStart($event, item)"
+                @dragover="handleDragOver($event, item, index)"
+                @dragenter="handleDragEnter($event, item)"
+                @dragleave="handleDragLeave($event)"
+                @drop="handleDrop($event, item, index, currentFolderId)"
+                @dragend="handleDragEnd"
               >
-              <td class="px-6 py-3">
+              <td class="px-6 py-3 relative">
+                <!-- Drop indicator -->
+                <div 
+                  v-if="draggedOverId === item.id && dropPosition && dropPosition !== 'inside'"
+                  class="drop-indicator"
+                  :class="dropPosition === 'before' ? 'drop-before' : 'drop-after'"
+                />
                 <div class="flex items-center gap-3">
                   <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
@@ -198,12 +222,14 @@
               </td>
             </tr>
             </template>
-            <!-- Fill remaining space with empty rows -->
+            <!-- Fill remaining space with empty rows (also acts as drop zone) -->
             <tr
               v-for="n in Math.max(0, 8 - sortedItems.length)"
               :key="`empty-${n}`"
-              class="pointer-events-none"
+              class="empty-drop-zone"
               :class="(sortedItems.length + n - 1) % 2 === 1 ? 'bg-neutral-800/20' : ''"
+              @dragover.prevent="handleDragOver($event, null)"
+              @drop="handleDropOnEmpty($event)"
             >
               <td class="px-6 py-3">&nbsp;</td>
               <td class="px-6 py-3">&nbsp;</td>
@@ -228,7 +254,8 @@ import {
   ChevronLeft,
   Edit2,
   Trash2,
-  Search
+  Search,
+  ArrowUp
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -236,6 +263,7 @@ import TableHeader from './TableHeader.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
 import { useSelection } from '../composables/useSelection'
 import { useInlineEdit } from '../composables/useInlineEdit'
+import { useDragDrop } from '../composables/useDragDrop'
 import { generateUniqueFolderName, formatDate } from '../utils/naming'
 
 const props = defineProps<{
@@ -262,6 +290,8 @@ const emit = defineEmits<{
   EDIT_DOCUMENT: [{ documentId: string }]
   CREATE_SEARCH_INDEX: []
   START_EDITING_ITEM: [{ itemId: string }]
+  MOVE_ITEMS: [{ itemIds: string[]; targetFolderId: string }]
+  REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
 }>()
 
 // Composables
@@ -271,6 +301,29 @@ const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggle
   () => props.selectedItems,
   emit
 )
+
+const { 
+  isDragging,
+  draggedOverId,
+  dropPosition,
+  handleDragStart,
+  handleDragOver,
+  handleDragEnter,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd,
+  getItemClass,
+  getDropIndicatorStyle
+} = useDragDrop({
+  items: computed(() => props.items),
+  selectedItems: computed(() => props.selectedItems),
+  onMove: (itemIds, targetFolderId) => {
+    emit('MOVE_ITEMS', { itemIds, targetFolderId })
+  },
+  onReorder: (itemIds, targetIndex, targetFolderId) => {
+    emit('REORDER_ITEMS', { itemIds, targetIndex, targetFolderId })
+  }
+})
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -291,6 +344,18 @@ const deleteDialog = reactive({
 
 
 const sortedItems = computed(() => {
+  // If no explicit sort is selected, use displayOrder (the user's custom order)
+  if (props.sortBy === 'name' && props.sortDirection === 'asc') {
+    // Default sort - use displayOrder
+    return [...props.items].sort((a, b) => {
+      // Folders always come first
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+      // Then sort by displayOrder
+      return a.displayOrder - b.displayOrder
+    })
+  }
+  
+  // Otherwise use the selected sort
   const compareFunctions = {
     name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
     modified: (a: LibraryItem, b: LibraryItem) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
@@ -375,6 +440,21 @@ function handleDelete() {
 }
 
 
+function moveSelectedItemsUp() {
+  if (props.selectedItems.length === 0 || props.currentFolderId === null) return
+  
+  // Find the parent folder ID from breadcrumbs
+  const parentFolderId = props.breadcrumbs.length > 1
+    ? props.breadcrumbs[props.breadcrumbs.length - 2].id
+    : null
+  
+  // Emit move items to parent folder
+  emit('MOVE_ITEMS', { 
+    itemIds: props.selectedItems, 
+    targetFolderId: parentFolderId 
+  })
+}
+
 function deleteSelectedItems() {
   if (props.selectedItems.length === 0) return
   
@@ -392,6 +472,11 @@ function deleteSelectedItems() {
   deleteDialog.show = true
 }
 
+function handleDropOnEmpty(event: DragEvent) {
+  // When dropping on empty space, move items to current folder
+  handleDrop(event, null, sortedItems.value.length, props.currentFolderId)
+}
+
 function handleKeyDown(event: KeyboardEvent) {
   if (editingItemId.value) return
   
@@ -401,9 +486,13 @@ function handleKeyDown(event: KeyboardEvent) {
   if (isModified && event.key === 'a') {
     event.preventDefault()
     toggleSelectAll()
-  } else if ((event.key === 'Delete' || event.key === 'Backspace') && hasSelection) {
+  } else if (event.key === 'Delete' && hasSelection) {
     event.preventDefault()
     deleteSelectedItems()
+  } else if (event.key === 'Backspace' && hasSelection && props.currentFolderId !== null) {
+    // Backspace moves items up a level when in a folder
+    event.preventDefault()
+    moveSelectedItemsUp()
   } else if (event.key === 'Escape' && hasSelection) {
     event.preventDefault()
     clearSelection()
@@ -420,3 +509,41 @@ onUnmounted(() => {
 })
 
 </script>
+
+<style scoped>
+/* Drag and drop visual feedback */
+.draggable-item {
+  position: relative;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.draggable-item.dragging {
+  opacity: 0.5;
+}
+
+.drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: rgb(59, 130, 246);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.drop-indicator.drop-before {
+  top: -1px;
+}
+
+.drop-indicator.drop-after {
+  bottom: -1px;
+}
+
+.empty-drop-zone {
+  min-height: 40px;
+}
+
+.empty-drop-zone.drag-over {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+</style>

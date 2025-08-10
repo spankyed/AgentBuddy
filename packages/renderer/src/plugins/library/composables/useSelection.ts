@@ -40,10 +40,14 @@ export function useSelection(
       }
       shiftAnchorId.value = item.id
     } else {
-      // Single select
-      emit('SELECT_ITEMS', { itemIds: [item.id] })
-      lastSelectedItemId.value = item.id
-      shiftAnchorId.value = item.id
+      // Single select - but preserve multi-selection if clicking on already selected item (for drag)
+      const current = selectedItems()
+      if (!current.includes(item.id) || current.length === 1) {
+        // Only change selection if clicking on unselected item or if only one item selected
+        emit('SELECT_ITEMS', { itemIds: [item.id] })
+        lastSelectedItemId.value = item.id
+        shiftAnchorId.value = item.id
+      }
     }
   }
 
