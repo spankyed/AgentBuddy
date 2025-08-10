@@ -27,6 +27,21 @@ module.exports = {
           600: '#1E6FD9',  // Darker shade for active/pressed
           700: '#1A5BB4',  // Even darker shade for disabled
         }
+      },
+      keyframes: {
+        'slide-up': {
+          '0%': { 
+            opacity: '0',
+            transform: 'translateY(10px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          }
+        }
+      },
+      animation: {
+        'slide-up': 'slide-up 0.2s ease-out'
       }
     }
   },

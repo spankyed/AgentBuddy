@@ -74,7 +74,7 @@
       </div>
     </form>
 
-    <div class="flex-shrink-0 overflow-y-auto">
+    <div class="flex-shrink-0">
       <Threads
         :current-thread="currentThread"
         :threads="threads"
