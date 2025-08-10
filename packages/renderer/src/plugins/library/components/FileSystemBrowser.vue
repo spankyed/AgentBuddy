@@ -35,7 +35,7 @@
               class="px-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
               :class="currentFolderId === null ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
             >
-              Library
+              Home
             </button>
             <template v-if="breadcrumbs.length > 0">
               <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
