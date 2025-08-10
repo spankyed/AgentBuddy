@@ -181,7 +181,7 @@
                 </span>
               </td>
               <td class="px-6 py-3">
-                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100">
+                <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="renameItem(item)"
                     class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
