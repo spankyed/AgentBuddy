@@ -1,8 +1,11 @@
 #!/bin/bash
 
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Get timestamp for log files
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-LOG_DIR="logs"
+LOG_DIR="$SCRIPT_DIR/logs"
 LOG_FILE="${LOG_DIR}/agentbuddy_${TIMESTAMP}.log"
 
 # Create logs directory if it doesn't exist
@@ -26,8 +29,8 @@ echo ""
 
 # Check if app exists in various locations
 # IMPORTANT: Always prefer the dist version which has the correctly built modules
-if [ -d "dist/mac-arm64/AgentBuddy.app" ]; then
-    APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy"
+if [ -d "$SCRIPT_DIR/../dist/mac-arm64/AgentBuddy.app" ]; then
+    APP_PATH="$SCRIPT_DIR/../dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy"
     echo "✓ Found app in dist folder (using this version)"
 elif [ -d "/Applications/AgentBuddy.app" ]; then
     APP_PATH="/Applications/AgentBuddy.app/Contents/MacOS/AgentBuddy"
@@ -36,8 +39,8 @@ elif [ -d "/Applications/AgentBuddy.app" ]; then
 else
     echo "✗ Error: App not found!"
     echo ""
-    echo "Please build the app first with: ./build.sh"
-    echo "The built app will be at: dist/mac-arm64/AgentBuddy.app"
+    echo "Please build the app first with: ./build/build.sh"
+    echo "The built app will be at: ../dist/mac-arm64/AgentBuddy.app"
     echo ""
     echo "To install (optional):"
     echo "  1. Open dist/AgentBuddy-*.dmg"

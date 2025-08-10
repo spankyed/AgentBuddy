@@ -5,6 +5,10 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located and move to project root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR/.."
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -84,5 +88,5 @@ echo "  • App: dist/mac-arm64/abuddy.app"
 echo "  • DMG: dist/abuddy-*.dmg"
 echo "  • ZIP: dist/abuddy-*.zip"
 echo ""
-echo "🧪 Test with: ./run_with_logs.sh"
+echo "🧪 Test with: ./build/run_with_logs.sh"
 echo ""
