@@ -18,6 +18,8 @@
   },
   "scripts": {
     "build": "npm run build -ws --if-present",
+    "build-app": "sh build/build.sh",
+    "run-app": "sh build/run_with_logs.sh",
     "compile": "npm run build && electron-builder build --config electron-builder.mjs",
     "test": "npx playwright test ./tests/e2e.spec.ts",
     "start": "node packages/dev-mode.js",
