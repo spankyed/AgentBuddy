@@ -4,8 +4,8 @@
 
 set -e
 
-APP_NAME="root"
-VERSION="3.1.0"
+APP_NAME="abuddy"
+VERSION="0.0.1"
 DMG_NAME="${APP_NAME}-${VERSION}-mac-arm64.dmg"
 VOLUME_NAME="${APP_NAME}"
 SOURCE_DIR="dist/mac-arm64"
