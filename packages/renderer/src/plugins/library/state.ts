@@ -167,16 +167,18 @@ export const librarySystem = setup({
         })
       }
     },
-    renameItem: ({ event }) => {
+    renameItem: ({ context, event }) => {
       if (event.type === 'RENAME_ITEM') {
-        // Determine if it's a document or folder based on the current items
-        // This is a simplified approach - in practice you'd track the item type
+        // Find the item in the current items list to determine its type
+        const item = context.items.find(i => i.id === event.itemId)
+        const itemType = item?.type === 'folder' ? 'folder' : 'document'
+        
         trpc.bus.send.mutate({
           systemId: id,
           type: 'RENAME_ITEM',
           id: event.itemId,
           name: event.name,
-          itemType: 'document', // Default to document for now
+          itemType: itemType,
         })
       }
     },

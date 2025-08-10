@@ -148,7 +148,7 @@
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
                   <span 
                     v-if="editingItemId !== item.id"
-                    @dblclick.stop="item.type === 'folder' && startEditingItem(item.id, item.name)"
+                    @dblclick.stop="startEditingItem(item.id, item.name)"
                     class="text-sm cursor-text"
                     :class="item.type === 'folder' 
                       ? 'font-medium text-neutral-100' 
@@ -415,7 +415,11 @@ function startEditingItem(itemId: string, currentName: string) {
 
 function confirmEdit(itemId: string) {
   if (editingName.value && editingName.value !== '') {
-    emit('RENAME_ITEM', { itemId, name: editingName.value })
+    // Find the item to determine its type
+    const item = props.items.find(i => i.id === itemId)
+    if (item) {
+      emit('RENAME_ITEM', { itemId, name: editingName.value })
+    }
   }
   cancelEdit()
 }
@@ -430,13 +434,8 @@ function createSearchIndex() {
 }
 
 function renameItem(item: LibraryItem) {
-  if (item.type === 'document') {
-    // For documents, emit edit document event
-    emit('EDIT_DOCUMENT', { documentId: item.id })
-  } else {
-    // For folders, start inline editing
-    startEditingItem(item.id, item.name)
-  }
+  // Start inline editing for both documents and folders
+  startEditingItem(item.id, item.name)
 }
 
 function handleRename(name: string) {
