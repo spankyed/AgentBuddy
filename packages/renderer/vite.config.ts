@@ -44,6 +44,6 @@ export default defineConfig({
   // },
   define: {
     // Define any environment variables the web app expects
-    'import.meta.env.VITE_API_WS': JSON.stringify('ws://localhost:3001/trpc')
+    'import.meta.env.VITE_API_WS': JSON.stringify('ws://localhost:3001')
   }
 })

@@ -163,26 +163,48 @@ export class ApiServer implements AppModule {
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
-    // Handle stdout
-    this.apiProcess.stdout?.on('data', (data) => {
-      const message = data.toString();
-      console.log(`[API Server]: ${message}`);
-      
-      // Check if server is ready (look for specific startup message)
-      if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
-        console.log('API server is ready!');
-        this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
-        if (this.serverReadyResolve) {
-          this.serverReadyResolve();
-          this.serverReadyResolve = undefined;
+    // Handle stdout with error handling
+    if (this.apiProcess.stdout) {
+      this.apiProcess.stdout.on('data', (data) => {
+        try {
+          const message = data.toString();
+          console.log(`[API Server]: ${message}`);
+          
+          // Check if server is ready (look for specific startup message)
+          if (message.includes('WebSocket Server listening') || message.includes('✅ WebSocket Server listening')) {
+            console.log('API server is ready!');
+            this.broadcastToWindows(API_SERVER_EVENTS.STARTED);
+            if (this.serverReadyResolve) {
+              this.serverReadyResolve();
+              this.serverReadyResolve = undefined;
+            }
+          }
+        } catch (error) {
+          console.error('Error handling API stdout:', error);
         }
-      }
-    });
+      });
+      
+      // Handle stdout errors
+      this.apiProcess.stdout.on('error', (error) => {
+        console.error('API stdout error:', error);
+      });
+    }
 
-    // Handle stderr
-    this.apiProcess.stderr?.on('data', (data) => {
-      console.error(`[API Server Error]: ${data.toString()}`);
-    });
+    // Handle stderr with error handling
+    if (this.apiProcess.stderr) {
+      this.apiProcess.stderr.on('data', (data) => {
+        try {
+          console.error(`[API Server Error]: ${data.toString()}`);
+        } catch (error) {
+          console.error('Error handling API stderr:', error);
+        }
+      });
+      
+      // Handle stderr errors
+      this.apiProcess.stderr.on('error', (error) => {
+        console.error('API stderr error:', error);
+      });
+    }
 
     // Handle process exit
     this.apiProcess.on('exit', (code, signal) => {
@@ -239,14 +261,30 @@ export class ApiServer implements AppModule {
 
     console.log('Stopping API server...');
     
+    // Remove all listeners to prevent EPIPE errors
+    this.apiProcess.stdout?.removeAllListeners();
+    this.apiProcess.stderr?.removeAllListeners();
+    
+    // Destroy the streams to prevent further writes
+    this.apiProcess.stdout?.destroy();
+    this.apiProcess.stderr?.destroy();
+    
     // Try graceful shutdown first
-    this.apiProcess.kill('SIGTERM');
+    try {
+      this.apiProcess.kill('SIGTERM');
+    } catch (error) {
+      console.error('Error sending SIGTERM to API server:', error);
+    }
 
     // Force kill after timeout
     setTimeout(() => {
       if (this.apiProcess && !this.apiProcess.killed) {
         console.log('Force killing API server...');
-        this.apiProcess.kill('SIGKILL');
+        try {
+          this.apiProcess.kill('SIGKILL');
+        } catch (error) {
+          console.error('Error sending SIGKILL to API server:', error);
+        }
       }
     }, 5000);
   }
