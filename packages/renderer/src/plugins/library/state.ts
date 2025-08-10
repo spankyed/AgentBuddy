@@ -619,7 +619,7 @@ export const librarySystem = setup({
       entry: assign({ currentView: 'edit' }),
       meta: breadcrumbWithParams<LibraryContext>({
         target: 'edit',
-        getLabel: (ctx) => `Edit: ${ctx.editingDocument?.name || 'Document'}`,
+        getLabel: (ctx) => `${ctx.editingDocument?.name || 'Document'}`,
       }),
       on: {
         SAVE_DOCUMENT: {
@@ -647,7 +647,7 @@ export const librarySystem = setup({
       entry: assign({ currentView: 'edit-index' }),
       meta: breadcrumbWithParams<LibraryContext>({
         target: 'editIndex',
-        getLabel: (ctx) => `Edit Index: ${ctx.editingIndex?.name || 'Index'}`,
+        getLabel: (ctx) => `${ctx.editingIndex?.name || 'Index'}`,
       }),
       on: {
         UPDATE_SEARCH_INDEX: {
@@ -664,7 +664,7 @@ export const librarySystem = setup({
       entry: assign({ currentView: 'test-index' }),
       meta: breadcrumbWithParams<LibraryContext>({
         target: 'testIndex',
-        getLabel: (ctx) => `Test Index: ${ctx.testingIndex?.name || 'Index'}`,
+        getLabel: (ctx) => `${ctx.testingIndex?.name || 'Index'}`,
       }),
       on: {
         UPDATE_TEST_QUERY: {
