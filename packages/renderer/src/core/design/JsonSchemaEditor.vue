@@ -1,5 +1,8 @@
 <template>
   <div class="space-y-2">
+    <p class="text-xs text-neutral-500">
+      Define an output schema for structured output. Example: <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-400">{{ '{ "type": "object", "properties": { ... } }' }}</code>
+    </p>
     <div class="relative">
       <div 
         ref="editorContainer" 
@@ -16,9 +19,6 @@
         </span>
       </div>
     </div>
-    <p class="text-xs text-neutral-500">
-      Define a JSON schema for structured output. Example: <code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-400">{{ '{ "type": "object", "properties": { ... } }' }}</code>
-    </p>
   </div>
 </template>
 

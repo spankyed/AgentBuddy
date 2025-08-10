@@ -47,7 +47,6 @@ type UIEvent =
   | { type: 'ACTION.SAVE_NEW' }
   | { type: 'ACTION.UPDATE' }
   | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
-  | { type: 'ACTION.EDIT'; actionId: EARS.EntityId }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
@@ -79,7 +78,7 @@ const actionsState = setup({
 
     /* ── action interactions ────────────────────────────── */
     selectAction: ({ event, context }) => {
-      const ev = typeOf(['ACTION.SELECT', 'ACTION.EDIT'], event);
+      const ev = typeOf('ACTION.SELECT', event);
       if (context.selectedActionId === ev.actionId) {
         return
       }
@@ -99,6 +98,7 @@ const actionsState = setup({
         formData: {
           label: ev.data.label,
           description: ev.data.description,
+          category: ev.data.category,
           input: ev.data.input,
           actionFn: ev.data.actionFn,
           output: ev.data.output,
@@ -261,7 +261,7 @@ const actionsState = setup({
     ACTION_SELECTED: { actions: 'loadActionData' },
     ACTION_CREATED: { 
       actions: 'addCreatedAction',
-      target: '.view'
+      target: '.detail'
     },
     ACTION_UPDATED: { 
       actions: 'updateActionInList'
@@ -273,8 +273,7 @@ const actionsState = setup({
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
-      ['.view', 'view'],
-      ['.edit', 'edit'],
+      ['.detail', 'detail'],
     ]),
   },
   states: {
@@ -284,15 +283,11 @@ const actionsState = setup({
       on: {
         'ACTION.SELECT': {
           actions: 'selectAction',
-          target: 'view',
+          target: 'detail',
         },
         'ACTION.CREATE': {
           actions: 'initCreateForm',
           target: 'create',
-        },
-        'ACTION.EDIT': {
-          actions: 'selectAction',
-          target: 'edit',
         },
         'ACTION.DELETE': {
           actions: 'sendDeleteAction',
@@ -317,32 +312,13 @@ const actionsState = setup({
         },
       },
     },
-    view: {
-      tags: ['view-action'],
+    detail: {
+      tags: ['detail-action'],
       meta: {
         ...breadcrumbWithParams<ActionsContext>({
-          target: 'view',
+          target: 'detail',
           getLabel: (ctx) => {
             return ctx.selectedAction?.label || ctx.selectedActionId || '';
-          }
-        })
-      },
-      on: {
-        'ACTION.EDIT': {
-          target: 'edit',
-        },
-        'GO.BACK': {
-          target: 'list',
-        },
-      },
-    },
-    edit: {
-      tags: ['edit-action'],
-      meta: {
-        ...breadcrumbWithParams<ActionsContext>({
-          target: 'edit',
-          getLabel: (ctx) => {
-            return `Edit: ${ctx.selectedAction?.label || ctx.selectedActionId || ''}`;
           }
         })
       },
@@ -355,10 +331,9 @@ const actionsState = setup({
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
         'ACTION.UPDATE': {
           actions: 'sendUpdateAction',
-          target: 'view',
         },
         'GO.BACK': {
-          target: 'view',
+          target: 'list',
         },
       },
     },
