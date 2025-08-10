@@ -10,10 +10,10 @@
       @delete="handleDeletePrompt"
     />
 
-    <!-- Create View -->
+    <!-- Create/Edit View -->
     <PromptDetail
-      v-else-if="state.hasTag('create-prompt')"
-      :prompt="null"
+      v-else-if="state.hasTag('create-prompt') || state.hasTag('detail-prompt')"
+      :prompt="state.hasTag('detail-prompt') ? selectedPrompt : null"
       :form-data="formData"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
@@ -21,22 +21,7 @@
       @update-template="handleUpdateTemplate"
       @update-output-schema="handleUpdateOutputSchema"
       @update-category="handleUpdateCategory"
-      @save="handleSaveNew"
-      @back="handleGoBack"
-    />
-
-    <!-- Detail View (always editable) -->
-    <PromptDetail
-      v-else-if="state.hasTag('detail-prompt')"
-      :prompt="selectedPrompt"
-      :form-data="formData"
-      @update-label="handleUpdateLabel"
-      @update-description="handleUpdateDescription"
-      @update-inputs="handleUpdateInputs"
-      @update-template="handleUpdateTemplate"
-      @update-output-schema="handleUpdateOutputSchema"
-      @update-category="handleUpdateCategory"
-      @save="handleUpdatePrompt"
+      @save="state.hasTag('create-prompt') ? handleSaveNew : handleUpdatePrompt"
       @back="handleGoBack"
     />
   </div>

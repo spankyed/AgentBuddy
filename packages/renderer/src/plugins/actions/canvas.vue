@@ -9,10 +9,10 @@
       @delete="handleDeleteAction"
     />
 
-    <!-- Create View -->
+    <!-- Create/Edit View -->
     <ActionDetail
-      v-else-if="state.hasTag('create-action')"
-      :action="null"
+      v-else-if="state.hasTag('create-action') || state.hasTag('detail-action')"
+      :action="state.hasTag('detail-action') ? selectedAction : null"
       :form-data="formData"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
@@ -20,22 +20,7 @@
       @update-action="handleUpdateAction"
       @update-output="handleUpdateOutput"
       @update-category="handleUpdateCategory"
-      @save="handleSaveNew"
-      @back="handleGoBack"
-    />
-
-    <!-- Detail View (always editable) -->
-    <ActionDetail
-      v-else-if="state.hasTag('detail-action')"
-      :action="selectedAction"
-      :form-data="formData"
-      @update-label="handleUpdateLabel"
-      @update-description="handleUpdateDescription"
-      @update-parameters="handleUpdateParameters"
-      @update-action="handleUpdateAction"
-      @update-output="handleUpdateOutput"
-      @update-category="handleUpdateCategory"
-      @save="handleUpdateActionSave"
+      @save="state.hasTag('create-action') ? handleSaveNew : handleUpdateActionSave"
       @back="handleGoBack"
     />
   </div>
