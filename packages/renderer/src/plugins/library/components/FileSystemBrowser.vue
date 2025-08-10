@@ -146,28 +146,34 @@
                 <div class="flex items-center gap-3">
                   <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
                   <FileText v-else class="w-4 h-4 text-neutral-400" />
-                  <span 
-                    v-if="editingItemId !== item.id"
-                    @click.stop="handleNameClick(item, $event)"
-                    class="text-sm cursor-pointer"
-                    :class="item.type === 'folder' 
-                      ? 'font-medium text-neutral-100' 
-                      : 'font-normal text-neutral-200'"
-                  >
-                    {{ item.name }}
-                  </span>
-                  <input
-                    v-else
-                    :id="`edit-input-${item.id}`"
-                    v-model="editingName"
-                    @click.stop
-                    @dblclick.stop
-                    @keydown.enter.stop="confirmEdit(item.id)"
-                    @keydown.escape.stop="cancelEdit"
-                    @blur="confirmEdit(item.id)"
-                    type="text"
-                    class="flex-1 px-2 py-0.5 text-sm bg-neutral-800 border border-blue-500 rounded text-neutral-100 focus:outline-none"
-                  />
+                  <div class="min-w-0 relative">
+                    <!-- Name display (visible or invisible placeholder) -->
+                    <span 
+                      @click.stop="handleNameClick(item, $event)"
+                      class="text-sm"
+                      :class="[
+                        item.type === 'folder' ? 'font-medium' : 'font-normal',
+                        editingItemId === item.id ? 'invisible' : 'cursor-pointer',
+                        editingItemId !== item.id && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200')
+                      ]"
+                    >
+                      {{ item.name }}
+                    </span>
+                    <!-- Edit input (overlays when editing) -->
+                    <input
+                      v-if="editingItemId === item.id"
+                      :id="`edit-input-${item.id}`"
+                      v-model="editingName"
+                      @click.stop
+                      @keydown.enter.stop="confirmEdit(item.id)"
+                      @keydown.escape.stop="cancelEdit"
+                      @blur="confirmEdit(item.id)"
+                      type="text"
+                      class="absolute inset-0 px-0.5 text-sm bg-neutral-850 border border-blue-400 text-neutral-100 focus:outline-none rounded-sm"
+                      :class="item.type === 'folder' ? 'font-medium' : 'font-normal'"
+                      :style="`width: min(max(${editingName.length + 2}ch, 10ch), 40ch);`"
+                    />
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-3">
