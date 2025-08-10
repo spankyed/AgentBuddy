@@ -1,13 +1,13 @@
 {
-  "name": "root",
-  "description": "Secure boilerplate for Electron app based on Vite",
-  "version": "3.1.0",
+  "name": "abuddy",
+  "description": "Vibe working platform",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "author": {
-    "email": "kozackunisoft@gmail.com",
-    "name": "Alex Kozack",
-    "url": "https://kozack.me"
+    "email": "angel.santiago@tutanota.com",
+    "name": "Angel Santiago",
+    "url": "https://clientlabs.com"
   },
   "main": "packages/entry-point.mjs",
   "workspaces": [
