@@ -7,7 +7,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // base: './', // Use relative paths for Electron compatibility
+  base: './', // Use relative paths for Electron compatibility
   plugins: [
     vue(),
     vueDevTools(),
