@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-full max-h-[60vh]">
+  <div class="flex flex-col w-full">
     <form 
       @submit.prevent="handleSubmit"
       class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"

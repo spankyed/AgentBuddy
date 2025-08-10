@@ -29,10 +29,10 @@ module.exports = {
         }
       },
       keyframes: {
-        'slide-up': {
+        'slide-down': {
           '0%': { 
             opacity: '0',
-            transform: 'translateY(10px)'
+            transform: 'translateY(-10px)'
           },
           '100%': {
             opacity: '1',
@@ -41,7 +41,7 @@ module.exports = {
         }
       },
       animation: {
-        'slide-up': 'slide-up 0.2s ease-out'
+        'slide-down': 'slide-down 0.2s ease-out'
       }
     }
   },

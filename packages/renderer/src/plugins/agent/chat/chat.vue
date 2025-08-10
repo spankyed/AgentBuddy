@@ -14,7 +14,7 @@
       </div>
     </div>
     <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
-    <div class="flex-shrink-0 w-full overflow-visible" :class="$style.inputContainer">
+    <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
       <ChatInput
     :current-thread="currentThread"
     :threads="threads"
@@ -63,8 +63,6 @@ watch(messages, async () => {
 }
 
 .inputContainer {
-  max-height: 60vh;
-  overflow-y: auto;
   min-height: min-content;
 }
 </style> 

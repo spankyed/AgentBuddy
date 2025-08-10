@@ -1,48 +1,9 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2" ref="containerRef">
-    <div class="flex items-center content-between" @click="isOpen = !isOpen">
-      <button
-        type="button"
-        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-      >
-        Recent Threads
-
-        <History v-if="!isOpen" :size="16" class="ml-2" />
-        <ChevronUp v-else :size="16" class="ml-2" />
-      </button>
-
-      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <span
-          @click.stop="handleViewThread(currentThread?.id)"
-          class="text-center hover:text-neutral-200">
-          {{ currentThread?.topic }}
-          <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
-            {{ currentThread?.shortCode }}
-          </span>
-        </span>
-      </div>
-
-      <button
-        type="button"
-        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-        @click.stop="$emit('new-thread')"
-      >
-        <Plus :size="16" class="mr-2" />
-        New thread
-      </button>
-    </div>
-
-    <Teleport to="body">
-      <div 
-        v-if="isOpen && dropdownPosition"
-        :style="{
-          position: 'fixed',
-          bottom: dropdownPosition.bottom + 'px',
-          left: dropdownPosition.left + 'px',
-          width: dropdownPosition.width + 'px',
-        }"
-        class="threads-dropdown px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl z-[9999] animate-slide-up max-h-48 overflow-y-auto"
-      >
+    <div 
+      v-if="isOpen"
+      class="absolute bottom-full mb-2 left-0 right-0 px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-slide-down z-50"
+    >
 
 
       <div v-if="threads.length === 0" class="py-2 text-center">
@@ -75,16 +36,46 @@
         </div>
       </div>
     </div>
-    </Teleport>
+    
+    <div class="flex items-center content-between" @click="isOpen = !isOpen">
+      <button
+        type="button"
+        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+      >
+        Recent Threads
+
+        <History v-if="!isOpen" :size="16" class="ml-2" />
+        <ChevronUp v-else :size="16" class="ml-2" />
+      </button>
+
+      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
+        <span
+          @click.stop="handleViewThread(currentThread?.id)"
+          class="text-center hover:text-neutral-200">
+          {{ currentThread?.topic }}
+          <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
+            {{ currentThread?.shortCode }}
+          </span>
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+        @click.stop="$emit('new-thread')"
+      >
+        <Plus :size="16" class="mr-2" />
+        New thread
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { History, ChevronUp, Plus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
-import Button from '@/core/design/button.vue'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;
@@ -94,49 +85,18 @@ export interface ThreadsProps {
 const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
-const dropdownPosition = ref<{ bottom: number; left: number; width: number } | null>(null)
-
-const updateDropdownPosition = () => {
-  if (containerRef.value && isOpen.value) {
-    const rect = containerRef.value.getBoundingClientRect()
-    dropdownPosition.value = {
-      bottom: window.innerHeight - rect.top + 5, // 5px gap above the trigger
-      left: rect.left,
-      width: rect.width
-    }
-  }
-}
 
 const handleClickOutside = (event: MouseEvent) => {
-  if (isOpen.value && containerRef.value && !containerRef.value.contains(event.target as Node)) {
-    // Check if click is on the teleported dropdown
-    const dropdown = document.querySelector('.threads-dropdown')
-    if (dropdown && !dropdown.contains(event.target as Node)) {
-      isOpen.value = false
-    }
+  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+    isOpen.value = false
   }
 }
 
-watch(isOpen, (newVal) => {
-  if (newVal) {
-    updateDropdownPosition()
-    setTimeout(() => {
-      document.addEventListener('click', handleClickOutside)
-    }, 0)
-  } else {
-    dropdownPosition.value = null
-    document.removeEventListener('click', handleClickOutside)
-  }
-})
-
 onMounted(() => {
-  window.addEventListener('resize', updateDropdownPosition)
-  window.addEventListener('scroll', updateDropdownPosition, true)
+  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateDropdownPosition)
-  window.removeEventListener('scroll', updateDropdownPosition, true)
   document.removeEventListener('click', handleClickOutside)
 })
 
