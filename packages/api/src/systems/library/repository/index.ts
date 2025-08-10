@@ -6,58 +6,237 @@ import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 import * as searchIndexRepo from '../search-index/repository'
 
-async function getNextDisplayOrder(parentId: EARS.EntityId | null): Promise<number> {
-  // Get all items in the parent folder
-  let maxOrder = 0
+// ================ Helper Functions ================
+
+/**
+ * Find the parent collection of a given collection
+ */
+function findParentCollection(childId: EARS.EntityId): EARS.EntityId | null {
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
+  for (const col of allCollections) {
+    const children = qx(col.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .ids()
+    if (children.includes(childId)) {
+      return col.id as EARS.EntityId
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a collection has a parent
+ */
+function hasParentCollection(childId: EARS.EntityId): boolean {
+  return findParentCollection(childId) !== null
+}
+
+/**
+ * Check if a collection is at root level (no parent)
+ */
+function isRootCollection(collectionId: EARS.EntityId): boolean {
+  return !hasParentCollection(collectionId)
+}
+
+/**
+ * Find which collection contains a document
+ */
+function findDocumentCollection(docId: EARS.EntityId): EARS.EntityId | null {
+  const allCollections = qx(EARS.Entity.Collection).pickAll()
+  for (const col of allCollections) {
+    const docs = qx(col.id as EARS.EntityId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .ids()
+    if (docs.includes(docId)) {
+      return col.id as EARS.EntityId
+    }
+  }
+  return null
+}
+
+/**
+ * Check if a document is in any collection
+ */
+function isDocumentInCollection(docId: EARS.EntityId): boolean {
+  return findDocumentCollection(docId) !== null
+}
+
+/**
+ * Get all root collections (collections without parents)
+ */
+function getRootCollections(): Array<{id: EARS.EntityId, displayOrder: number}> {
+  const collections = qx(EARS.Entity.Collection).pickAll()
+  const rootCollections: Array<{id: EARS.EntityId, displayOrder: number}> = []
   
-  if (parentId === null) {
-    // Root level - check both collections and documents
+  for (const col of collections) {
+    if (isRootCollection(col.id as EARS.EntityId)) {
+      rootCollections.push({
+        id: col.id as EARS.EntityId,
+        displayOrder: getDisplayOrder(col)
+      })
+    }
+  }
+  
+  return rootCollections
+}
+
+/**
+ * Get all root documents (documents not in any collection)
+ */
+function getRootDocuments(): Array<{id: EARS.EntityId, displayOrder: number}> {
+  const documents = qx(EARS.Entity.Document).pickAll()
+  const rootDocuments: Array<{id: EARS.EntityId, displayOrder: number}> = []
+  
+  for (const doc of documents) {
+    if (!isDocumentInCollection(doc.id as EARS.EntityId)) {
+      rootDocuments.push({
+        id: doc.id as EARS.EntityId,
+        displayOrder: getDisplayOrder(doc)
+      })
+    }
+  }
+  
+  return rootDocuments
+}
+
+/**
+ * Get items (collections and documents) in a specific folder
+ */
+function getItemsInFolder(folderId: EARS.EntityId | null): { collections: any[], documents: any[] } {
+  if (folderId === null) {
+    // Root level
+    const collections = qx(EARS.Entity.Collection).pickAll()
+      .filter(col => isRootCollection(col.id as EARS.EntityId))
+    const documents = qx(EARS.Entity.Document).pickAll()
+      .filter(doc => !isDocumentInCollection(doc.id as EARS.EntityId))
+    return { collections, documents }
+  } else {
+    // Specific folder
+    const collections = qx(folderId)
+      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
+      .pickAll()
+    const documents = qx(folderId)
+      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
+      .pickAll()
+    return { collections, documents }
+  }
+}
+
+/**
+ * Get display order from an item, handling potential arrays and missing values
+ */
+function getDisplayOrder(item: any): number {
+  const displayOrder = item?.displayOrder
+  if (Array.isArray(displayOrder)) {
+    return displayOrder[0] || 0
+  }
+  return (displayOrder as number) || 0
+}
+
+/**
+ * Get items in a folder for reordering purposes
+ */
+function getItemsForReordering(folderId: EARS.EntityId | null): Array<{ id: EARS.EntityId; displayOrder: number; type: 'document' | 'folder' }> {
+  const allItems: Array<{ id: EARS.EntityId; displayOrder: number; type: 'document' | 'folder' }> = []
+  
+  if (folderId === null) {
+    // Root level items
     const collections = qx(EARS.Entity.Collection).pickAll()
     const documents = qx(EARS.Entity.Document).pickAll()
     
     // Find root collections
     for (const col of collections) {
-      const hasParent = qx(EARS.Entity.Collection).pickAll().some(parent => {
-        const children = qx(parent.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .ids()
-        return children.includes(col.id as EARS.EntityId)
-      })
-      if (!hasParent && col.displayOrder) {
-        maxOrder = Math.max(maxOrder, col.displayOrder as number)
+      if (isRootCollection(col.id as EARS.EntityId)) {
+        allItems.push({
+          id: col.id as EARS.EntityId,
+          displayOrder: getDisplayOrder(col),
+          type: 'folder'
+        })
       }
     }
     
     // Find root documents
     for (const doc of documents) {
-      const inCollection = qx(EARS.Entity.Collection).pickAll().some(col => {
-        const docs = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()
-        return docs.includes(doc.id as EARS.EntityId)
-      })
-      if (!inCollection && doc.displayOrder) {
-        maxOrder = Math.max(maxOrder, doc.displayOrder as number)
+      if (!findDocumentCollection(doc.id as EARS.EntityId)) {
+        allItems.push({
+          id: doc.id as EARS.EntityId,
+          displayOrder: getDisplayOrder(doc),
+          type: 'document'
+        })
       }
     }
   } else {
-    // In a folder - check children
-    const childCollections = qx(parentId)
+    // Items in a specific folder
+    const childCollections = qx(folderId)
       .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
       .pickAll()
-    const childDocuments = qx(parentId)
+    const childDocuments = qx(folderId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
       .pickAll()
     
     for (const col of childCollections) {
-      if (col.displayOrder) {
-        maxOrder = Math.max(maxOrder, col.displayOrder as number)
-      }
+      allItems.push({
+        id: col.id as EARS.EntityId,
+        displayOrder: getDisplayOrder(col),
+        type: 'folder'
+      })
     }
     for (const doc of childDocuments) {
-      if (doc.displayOrder) {
-        maxOrder = Math.max(maxOrder, doc.displayOrder as number)
-      }
+      allItems.push({
+        id: doc.id as EARS.EntityId,
+        displayOrder: getDisplayOrder(doc),
+        type: 'document'
+      })
+    }
+  }
+  
+  return allItems
+}
+
+/**
+ * Create tags for an entity
+ */
+function createTagsForEntity(entityId: EARS.EntityId, tagNames: string[]): void {
+  for (const tagName of tagNames) {
+    const tagId = `Tag-${uuid()}` as EARS.EntityId
+    tx(tagId).put('name', tagName)
+    tx(entityId).link(EARS.RelKind.HAS, tagId)
+  }
+}
+
+/**
+ * Remove all tags from an entity
+ */
+function removeAllTagsFromEntity(entityId: EARS.EntityId): void {
+  const existingTags = qx(entityId)
+    .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
+    .pickAll()
+  
+  for (const tag of existingTags) {
+    edgeStore.unlink({
+      sourceEntity: entityId,
+      relationType: EARS.RelKind.HAS,
+      targetEntity: tag.id as EARS.EntityId
+    })
+    tx(tag.id as EARS.EntityId).destroy()
+  }
+}
+
+async function getNextDisplayOrder(parentId: EARS.EntityId | null): Promise<number> {
+  let maxOrder = 0
+  const { collections, documents } = getItemsInFolder(parentId)
+  
+  for (const col of collections) {
+    const order = getDisplayOrder(col)
+    if (order > maxOrder) {
+      maxOrder = order
+    }
+  }
+  
+  for (const doc of documents) {
+    const order = getDisplayOrder(doc)
+    if (order > maxOrder) {
+      maxOrder = order
     }
   }
   
@@ -89,18 +268,9 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
         .pick(['name'])
 
-      // Find collections that contain this document
-      const allCollections = qx(EARS.Entity.Collection).pickAll()
-      const collections = []
-      for (const col of allCollections) {
-        const docs = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()
-        if (docs.includes(doc.id as EARS.EntityId)) {
-          collections.push(col)
-        }
-      }
-      const collection = collections[0]
+      // Find collection that contains this document
+      const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
+      const collection = collectionId ? qx(collectionId).pickAll()[0] : null
 
       const collectionPath = collection
         ? await getCollectionPath(collection.id as EARS.EntityId)
@@ -114,7 +284,7 @@ export async function getDocuments(collectionId?: string): Promise<DocumentDTO[]
         tags: tags.map((t) => t.name as string),
         collectionId: collection?.id,
         collectionPath,
-        displayOrder: (doc.displayOrder as number) || 0,
+        displayOrder: getDisplayOrder(doc),
         createdAt: new Date(doc.createdAt as number).toISOString(),
         updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
       }
@@ -160,7 +330,7 @@ export async function getDocument(id: EARS.EntityId): Promise<DocumentDTO | null
     tags: tags.map((t) => t.name as string),
     collectionId: collection?.id,
     collectionPath,
-    displayOrder: (document.displayOrder as number) || 0,
+    displayOrder: getDisplayOrder(document),
     createdAt: new Date(document.createdAt as number).toISOString(),
     updatedAt: new Date(document.updatedAt as number || document.createdAt as number).toISOString(),
   }
@@ -344,19 +514,8 @@ export async function getCollections(): Promise<CollectionDTO[]> {
   
   const rootCollections = []
   for (const col of allCollections) {
-    // Check if this collection has a parent (is a child of another collection)
-    const allParents = qx(EARS.Entity.Collection).pickAll()
-    let hasParent = false
-    for (const parent of allParents) {
-      const children = qx(parent.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(col.id as EARS.EntityId)) {
-        hasParent = true
-        break
-      }
-    }
-    if (!hasParent) {
+    // Check if this collection is a root collection
+    if (isRootCollection(col.id as EARS.EntityId)) {
       rootCollections.push(col)
     }
   }
@@ -381,7 +540,7 @@ export async function getCollections(): Promise<CollectionDTO[]> {
           path,
           documentCount,
           childCollections: await buildCollectionTree(childCollections),
-          displayOrder: (col.displayOrder as number) || 0,
+          displayOrder: getDisplayOrder(col),
           createdAt: new Date(col.createdAt as number).toISOString(),
           updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
         }
@@ -483,7 +642,7 @@ export async function updateCollection(
           path: childPath,
           documentCount: childDocCount,
           childCollections: await buildChildren(grandChildren),
-          displayOrder: (child.displayOrder as number) || 0,
+          displayOrder: getDisplayOrder(child),
           createdAt: new Date(child.createdAt as number).toISOString(),
           updatedAt: new Date(child.updatedAt as number || child.createdAt as number).toISOString(),
         }
@@ -498,7 +657,7 @@ export async function updateCollection(
     path,
     documentCount,
     childCollections: await buildChildren(childCollections),
-    displayOrder: (collection!.displayOrder as number) || 0,
+    displayOrder: getDisplayOrder(collection!),
     createdAt: new Date(collection!.createdAt as number).toISOString(),
     updatedAt: new Date(collection!.updatedAt as number || collection!.createdAt as number).toISOString(),
   }
@@ -635,18 +794,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
     // Root directory - get collections without parents
     const allCollections = qx(EARS.Entity.Collection).pickAll()
     for (const col of allCollections) {
-      const allParents = qx(EARS.Entity.Collection).pickAll()
-      let hasParent = false
-      for (const parent of allParents) {
-        const children = qx(parent.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .ids()
-        if (children.includes(col.id as EARS.EntityId)) {
-          hasParent = true
-          break
-        }
-      }
-      if (!hasParent) {
+      if (isRootCollection(col.id as EARS.EntityId)) {
         folders.push(col)
       }
     }
@@ -676,7 +824,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       childCount,
       size: childCount === 1 ? '1 item' : `${childCount} items`,
       kind: 'Folder',
-      displayOrder: (folder.displayOrder as number) || 0,
+      displayOrder: getDisplayOrder(folder),
       createdAt: new Date(folder.createdAt as number).toISOString(),
       updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
     })
@@ -745,7 +893,7 @@ export async function getFolderContents(folderId: EARS.EntityId | null): Promise
       tags: tags.map(tag => tag.name as string),
       size,
       kind: 'Document',
-      displayOrder: (doc.displayOrder as number) || 0,
+      displayOrder: getDisplayOrder(doc),
       createdAt: new Date(doc.createdAt as number).toISOString(),
       updatedAt: new Date(doc.updatedAt as number || doc.createdAt as number).toISOString(),
     })
@@ -794,35 +942,14 @@ export async function getFolderPath(folderId: EARS.EntityId | null): Promise<Bre
     }
     
     // Find parent
-    const allCollections = qx(EARS.Entity.Collection).pickAll()
-    let parentId: EARS.EntityId | null = null
-    for (const col of allCollections) {
-      const children = qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(currentId)) {
-        parentId = col.id as EARS.EntityId
-        break
-      }
-    }
-    currentId = parentId
+    currentId = findParentCollection(currentId)
   }
   
   return breadcrumbs
 }
 
 export async function getParentFolderId(folderId: EARS.EntityId): Promise<EARS.EntityId | null> {
-  // Find parent collection
-  const allCollections = qx(EARS.Entity.Collection).pickAll()
-  for (const col of allCollections) {
-    const children = qx(col.id as EARS.EntityId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .ids()
-    if (children.includes(folderId)) {
-      return col.id as EARS.EntityId
-    }
-  }
-  return null
+  return findParentCollection(folderId)
 }
 
 // ! Wtf is this?
@@ -909,7 +1036,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       tags: doc.tags,
       size: formatFileSize(getContentLength(content)),
       kind: 'Document',
-      displayOrder: (doc.displayOrder as number) || 0,
+      displayOrder: getDisplayOrder(doc),
       createdAt: doc.createdAt,
       updatedAt: new Date(now).toISOString(),
     }
@@ -919,17 +1046,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
     const childCount = 0 // Simplified for now
     
     // Find parent folder
-    const allCollections = await qx(EARS.Entity.Collection).pickAll()
-    let parentId: EARS.EntityId | null = null
-    for (const col of allCollections) {
-      const children = await qx(col.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .ids()
-      if (children.includes(entityId)) {
-        parentId = col.id as EARS.EntityId
-        break
-      }
-    }
+    const parentId = findParentCollection(entityId)
     
     return {
       type: 'folder',
@@ -939,7 +1056,7 @@ export async function renameItem(id: EARS.EntityId, name: string, type: 'documen
       childCount,
       size: `${childCount} items`,
       kind: 'Folder',
-      displayOrder: (collection.displayOrder as number) || 0,
+      displayOrder: getDisplayOrder(collection),
       createdAt: new Date(collection.createdAt as number).toISOString(),
       updatedAt: new Date(now).toISOString(),
     }
@@ -1005,70 +1122,7 @@ export async function reorderItems(
   targetFolderId: EARS.EntityId | null
 ): Promise<void> {
   // Get all items in the target folder
-  let allItems: Array<{ id: EARS.EntityId; displayOrder: number; type: 'document' | 'folder' }> = []
-  
-  if (targetFolderId === null) {
-    // Root level items
-    const collections = qx(EARS.Entity.Collection).pickAll()
-    const documents = qx(EARS.Entity.Document).pickAll()
-    
-    // Find root collections
-    for (const col of collections) {
-      const hasParent = qx(EARS.Entity.Collection).pickAll().some(parent => {
-        const children = qx(parent.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-          .ids()
-        return children.includes(col.id as EARS.EntityId)
-      })
-      if (!hasParent) {
-        allItems.push({
-          id: col.id as EARS.EntityId,
-          displayOrder: (col.displayOrder as number) || 0,
-          type: 'folder'
-        })
-      }
-    }
-    
-    // Find root documents
-    for (const doc of documents) {
-      const inCollection = qx(EARS.Entity.Collection).pickAll().some(col => {
-        const docs = qx(col.id as EARS.EntityId)
-          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-          .ids()
-        return docs.includes(doc.id as EARS.EntityId)
-      })
-      if (!inCollection) {
-        allItems.push({
-          id: doc.id as EARS.EntityId,
-          displayOrder: (doc.displayOrder as number) || 0,
-          type: 'document'
-        })
-      }
-    }
-  } else {
-    // Items in a specific folder
-    const childCollections = qx(targetFolderId)
-      .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-      .pickAll()
-    const childDocuments = qx(targetFolderId)
-      .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-      .pickAll()
-    
-    for (const col of childCollections) {
-      allItems.push({
-        id: col.id as EARS.EntityId,
-        displayOrder: (col.displayOrder as number) || 0,
-        type: 'folder'
-      })
-    }
-    for (const doc of childDocuments) {
-      allItems.push({
-        id: doc.id as EARS.EntityId,
-        displayOrder: (doc.displayOrder as number) || 0,
-        type: 'document'
-      })
-    }
-  }
+  const allItems = getItemsForReordering(targetFolderId)
   
   // Sort by display order, folders first
   allItems.sort((a, b) => {
@@ -1146,7 +1200,7 @@ export async function getCollectionByName(name: string): Promise<CollectionDTO |
     path,
     documentCount,
     childCollections: childCollections as unknown as CollectionDTO[],
-    displayOrder: (collection.displayOrder as number) || 0,
+    displayOrder: getDisplayOrder(collection),
     createdAt: new Date(collection.createdAt as number).toISOString(),
     updatedAt: new Date(collection.updatedAt as number || collection.createdAt as number).toISOString(),
   }

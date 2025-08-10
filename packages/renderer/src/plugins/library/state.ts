@@ -15,17 +15,11 @@ import type { SnapshotFrom } from 'xstate'
 export type LibraryState = SnapshotFrom<typeof librarySystem>
 
 export interface LibraryContext {
-  // Legacy fields for backward compatibility
-  documents: DocumentDTO[]
-  collections: CollectionDTO[]
-  selectedDocumentId?: string
-  selectedCollectionId?: string
+  // Core view state
   currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
-  searchQuery: string
-  selectedTags: string[]
   
-  // New file browser fields
+  // File browser fields
   items: LibraryItem[]
   currentFolderId: string | null
   currentPath: string[]
@@ -35,6 +29,11 @@ export interface LibraryContext {
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
   itemToEdit?: string | null
+  
+  // Legacy fields (used by CreateView/EditView for compatibility)
+  documents: DocumentDTO[]
+  collections: CollectionDTO[]
+  selectedCollectionId?: string
   
   // Search index fields
   searchIndices: SearchIndex[]
@@ -76,18 +75,10 @@ export type LibraryEvents =
   | { type: 'EXECUTE_TEST_SEARCH' }
   | { type: 'CANCEL_TEST_SEARCH' }
   
-  // Legacy collection events  
-  | { type: 'VIEW_COLLECTIONS' }
+  // Legacy collection events (kept for CreateView/EditView compatibility)
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
-  | { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
-  | { type: 'DELETE_COLLECTION'; id: string }
-  | { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
-  | { type: 'SEARCH_DOCUMENTS'; query: string }
-  | { type: 'FILTER_BY_TAG'; tag: string }
-  | { type: 'CLEAR_FILTERS' }
-  | { type: 'SELECT_COLLECTION'; collectionId?: string }
   
-  // New file browser events
+  // File browser events
   | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
   | { type: 'DOUBLE_CLICK_ITEM'; item: LibraryItem }
   | { type: 'SELECT_ITEMS'; itemIds: string[] }
@@ -215,85 +206,27 @@ export const librarySystem = setup({
 
     // State update actions
     setFolderContents: assign({
-      items: ({ event }) => {
-        if (event.type === 'FOLDER_CONTENTS_LOADED') {
-          return event.data.items
-        }
-        return []
-      },
-      currentFolderId: ({ event }) => {
-        if (event.type === 'FOLDER_CONTENTS_LOADED') {
-          return event.data.currentFolderId
-        }
-        return null
-      },
-      currentPath: ({ event }) => {
-        if (event.type === 'FOLDER_CONTENTS_LOADED') {
-          return event.data.currentPath
-        }
-        return []
-      },
-      breadcrumbs: ({ event }) => {
-        if (event.type === 'FOLDER_CONTENTS_LOADED') {
-          return event.data.breadcrumbs || []
-        }
-        return []
-      },
+      items: ({ event }) => (event as any).data.items || [],
+      currentFolderId: ({ event }) => (event as any).data.currentFolderId || null,
+      currentPath: ({ event }) => (event as any).data.currentPath || [],
+      breadcrumbs: ({ event }) => (event as any).data.breadcrumbs || [],
     }),
     updateNavigation: assign({
-      currentFolderId: ({ event }) => {
-        if (event.type === 'NAVIGATION_CHANGED') {
-          return event.data.folderId
-        }
-        return null
-      },
-      currentPath: ({ event }) => {
-        if (event.type === 'NAVIGATION_CHANGED') {
-          return event.data.path
-        }
-        return []
-      },
+      currentFolderId: ({ event }) => (event as any).data.folderId || null,
+      currentPath: ({ event }) => (event as any).data.path || [],
     }),
     selectItems: assign({
-      selectedItems: ({ event }) => {
-        if (event.type === 'SELECT_ITEMS') {
-          return event.itemIds
-        }
-        return []
-      },
+      selectedItems: ({ event }) => (event as any).itemIds || [],
     }),
     setSortOrder: assign({
-      sortBy: ({ event }) => {
-        if (event.type === 'SORT_BY') {
-          return event.column
-        }
-        return 'name'
-      },
+      sortBy: ({ event }) => (event as any).column || 'name',
       sortDirection: ({ context, event }) => {
-        if (event.type === 'SORT_BY') {
-          // Toggle direction if same column, otherwise default to 'asc'
-          return context.sortBy === event.column && context.sortDirection === 'asc' ? 'desc' : 'asc'
-        }
-        return 'asc'
-      },
-    }),
-    setSearchQuery: assign({
-      searchQuery: ({ event }) => {
-        if (event.type === 'SEARCH') {
-          return event.query
-        }
-        return ''
+        const column = (event as any).column
+        // Toggle direction if same column, otherwise default to 'asc'
+        return context.sortBy === column && context.sortDirection === 'asc' ? 'desc' : 'asc'
       },
     }),
 
-    // Legacy actions for backward compatibility
-    requestDocuments: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'LIST_DOCUMENTS',
-        collectionId: context.selectedCollectionId,
-      })
-    },
     requestCollections: () => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -313,6 +246,7 @@ export const librarySystem = setup({
         })
       }
     },
+    
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
@@ -497,14 +431,11 @@ export const librarySystem = setup({
   id: 'library',
   initial: 'browser',
   context: {
-    // Legacy fields
-    documents: [],
-    collections: [],
+    // Core view state
     currentView: 'browser',
-    searchQuery: '',
-    selectedTags: [],
+    editingDocument: undefined,
     
-    // New file browser fields
+    // File browser fields
     items: [],
     currentFolderId: null,
     currentPath: [],
@@ -513,6 +444,12 @@ export const librarySystem = setup({
     sortDirection: 'asc',
     breadcrumbs: [],
     editingItem: undefined,
+    itemToEdit: null,
+    
+    // Legacy fields (for CreateView/EditView compatibility)
+    documents: [],
+    collections: [],
+    selectedCollectionId: undefined,
     
     // Search index fields
     searchIndices: [],
@@ -556,9 +493,6 @@ export const librarySystem = setup({
     },
     SORT_BY: {
       actions: 'setSortOrder',
-    },
-    SEARCH: {
-      actions: 'setSearchQuery',
     },
     DELETE_SELECTED_ITEMS: {
       actions: 'deleteSelectedItems',

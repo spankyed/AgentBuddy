@@ -83,13 +83,16 @@ const currentProps = computed(() => {
 })
 
 const currentEvents = computed(() => {
-  const legacyEvents = {
+  const coreEvents = {
+    // Document management
     CREATE_DOCUMENT: () => send({ type: 'CREATE_DOCUMENT' }),
     EDIT_DOCUMENT: (payload: { documentId: string }) => send({ type: 'EDIT_DOCUMENT', ...payload }),
     DELETE_DOCUMENT: (payload: { documentId: string }) => send({ type: 'DELETE_DOCUMENT', ...payload }),
     SAVE_DOCUMENT: (payload: { name: string; content: any; tags: string[]; collectionId?: string }) =>
       send({ type: 'SAVE_DOCUMENT', ...payload }),
     CANCEL_EDIT: () => send({ type: 'CANCEL_EDIT' }),
+    
+    // Search index management  
     CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
     SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
     CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
@@ -97,22 +100,12 @@ const currentEvents = computed(() => {
     UPDATE_SEARCH_INDEX: (payload: { indexId: string; config: any }) => send({ type: 'UPDATE_SEARCH_INDEX', ...payload }),
     DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
     CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
-    VIEW_COLLECTIONS: () => send({ type: 'VIEW_COLLECTIONS' }),
+    
+    // Legacy collection support (for CreateView)
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),
-    UPDATE_COLLECTION: (payload: { id: string; name: string; description?: string }) =>
-      send({ type: 'UPDATE_COLLECTION', ...payload }),
-    DELETE_COLLECTION: (payload: { id: string }) =>
-      send({ type: 'DELETE_COLLECTION', ...payload }),
-    MOVE_DOCUMENT: (payload: { documentId: string; collectionId?: string }) =>
-      send({ type: 'MOVE_DOCUMENT', ...payload }),
-    SEARCH_DOCUMENTS: (payload: { query: string }) =>
-      send({ type: 'SEARCH_DOCUMENTS', ...payload }),
-    FILTER_BY_TAG: (payload: { tag: string }) =>
-      send({ type: 'FILTER_BY_TAG', ...payload }),
-    CLEAR_FILTERS: () => send({ type: 'CLEAR_FILTERS' }),
-    SELECT_COLLECTION: (payload: { collectionId?: string }) =>
-      send({ type: 'SELECT_COLLECTION', ...payload }),
+    
+    // Navigation
     TRAIL_CLICK: (payload: { trail: string[] }) =>
       send({ type: 'TRAIL_CLICK', ...payload }),
   }
@@ -147,7 +140,7 @@ const currentEvents = computed(() => {
   }
 
   return {
-    ...legacyEvents,
+    ...coreEvents,
     ...fileBrowserEvents,
   }
 })
