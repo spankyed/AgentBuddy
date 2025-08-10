@@ -17,7 +17,7 @@
     />
 
     <!-- Status Bar -->
-    <div class="flex items-center justify-between px-4 py-1 text-xs border-t bg-neutral-800/80 border-neutral-800">
+    <div v-if="openFiles.length > 0" class="flex items-center justify-between px-4 py-1 text-xs border-t bg-neutral-800/80 border-neutral-800">
       <div class="flex items-center gap-4">
         <span v-if="activeFile" class="flex items-center gap-2 text-neutral-400">
           <component :is="getStatusIcon(activeFile)" class="w-3 h-3" />
