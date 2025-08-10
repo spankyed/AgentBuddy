@@ -1,17 +1,5 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
-    <!-- Input Dialogs -->
-    
-    <InputDialog
-      v-model="renameDialog.show"
-      title="Rename Item"
-      description="Enter a new name"
-      placeholder="New name"
-      :initial-value="renameDialog.currentName"
-      confirm-text="Rename"
-      @confirm="handleRename"
-      @cancel="renameDialog.show = false"
-    />
     
     <ConfirmDialog
       v-model="deleteDialog.show"
@@ -24,7 +12,7 @@
     />
     
     <!-- Toolbar -->
-    <div class="flex flex-col gap-3 px-6 py-3 border-b border-neutral-800">
+    <div class="px-6 py-3 border-b border-neutral-800">
       <!-- Navigation Row -->
       <div class="flex items-center justify-between gap-4">
         <!-- Back Button and Breadcrumbs -->
@@ -66,6 +54,23 @@
         
         <!-- Actions -->
         <div class="flex items-center gap-2">
+          <!-- Selection indicator and delete -->
+          <template v-if="selectedItems.length > 0">
+            <span class="text-sm text-neutral-400 mr-2">
+              {{ selectedItems.length }} selected
+            </span>
+            <Button
+              @click="deleteSelectedItems"
+              variant="transparent"
+              size="sm"
+              class="border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+              title="Delete selected items"
+            >
+              <Trash2 class="w-4 h-4" />
+            </Button>
+            <div class="w-px h-5 bg-neutral-700" />
+          </template>
+          
           <Button 
             @click="createSearchIndex" 
             variant="transparent" 
@@ -98,30 +103,10 @@
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
-              <th class="px-6 py-2 cursor-pointer hover:text-neutral-300" @click="sort('name')">
-                <div class="flex items-center gap-2">
-                  Name
-                  <ArrowUpDown class="w-3 h-3 opacity-50" />
-                </div>
-              </th>
-              <th class="px-6 py-2 cursor-pointer hover:text-neutral-300" @click="sort('modified')">
-                <div class="flex items-center gap-2">
-                  Date Modified
-                  <ArrowUpDown class="w-3 h-3 opacity-50" />
-                </div>
-              </th>
-              <th class="px-6 py-2 cursor-pointer hover:text-neutral-300" @click="sort('size')">
-                <div class="flex items-center gap-2">
-                  Size
-                  <ArrowUpDown class="w-3 h-3 opacity-50" />
-                </div>
-              </th>
-              <th class="px-6 py-2 cursor-pointer hover:text-neutral-300" @click="sort('kind')">
-                <div class="flex items-center gap-2">
-                  Kind
-                  <ArrowUpDown class="w-3 h-3 opacity-50" />
-                </div>
-              </th>
+              <TableHeader @click="sort('name')">Name</TableHeader>
+              <TableHeader @click="sort('modified')">Date Modified</TableHeader>
+              <TableHeader @click="sort('size')">Size</TableHeader>
+              <TableHeader @click="sort('kind')">Kind</TableHeader>
               <th class="px-6 py-2 text-right">Actions</th>
             </tr>
           </thead>
@@ -130,7 +115,7 @@
               <tr
                 v-for="(item, index) in sortedItems"
                 :key="item.id"
-                class="transition-colors duration-150 cursor-pointer group"
+                class="transition-colors duration-150 cursor-pointer group select-none"
                 :class="[
                   selectedItems.includes(item.id) 
                     ? 'bg-blue-500/30' 
@@ -234,23 +219,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, nextTick, watch } from 'vue'
+import { computed, reactive, watch, onMounted, onUnmounted } from 'vue'
 import { 
-  Plus, 
   FolderPlus, 
   Folder, 
   FileText, 
   ChevronRight,
-  ChevronLeft, 
-  ArrowUpDown,
+  ChevronLeft,
   Edit2,
   Trash2,
   Search
 } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
-import InputDialog from './InputDialog.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import TableHeader from './TableHeader.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
+import { useSelection } from '../composables/useSelection'
+import { useInlineEdit } from '../composables/useInlineEdit'
+import { generateUniqueFolderName, formatDate } from '../utils/naming'
 
 const props = defineProps<{
   items: LibraryItem[]
@@ -278,10 +264,13 @@ const emit = defineEmits<{
   START_EDITING_ITEM: [{ itemId: string }]
 }>()
 
-// Edit state
-const editingItemId = ref<string | null>(null)
-const editingName = ref('')
-const lastSelectedItemId = ref<string | null>(null)
+// Composables
+const { editingItemId, editingName, startEditingItem, confirmEdit, cancelEdit } = useInlineEdit(emit)
+const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggleSelectAll, clearSelection } = useSelection(
+  () => props.items,
+  () => props.selectedItems,
+  emit
+)
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -289,16 +278,9 @@ watch(() => props.itemToEdit, (newItemId) => {
     const item = props.items.find(i => i.id === newItemId)
     if (item) {
       startEditingItem(item.id, item.name)
-      // Notify parent that editing has started
       emit('START_EDITING_ITEM', { itemId: item.id })
     }
   }
-})
-
-const renameDialog = reactive({
-  show: false,
-  currentItem: null as LibraryItem | null,
-  currentName: ''
 })
 
 const deleteDialog = reactive({
@@ -307,174 +289,74 @@ const deleteDialog = reactive({
   message: ''
 })
 
+
 const sortedItems = computed(() => {
-  const sorted = [...props.items].sort((a, b) => {
-    // Folders first
-    if (a.type !== b.type) {
-      return a.type === 'folder' ? -1 : 1
-    }
+  const compareFunctions = {
+    name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
+    modified: (a: LibraryItem, b: LibraryItem) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
+    size: (a: LibraryItem, b: LibraryItem) => {
+      if (a.type === 'folder' && b.type === 'folder') return a.childCount - b.childCount
+      if (a.type === 'document' && b.type === 'document') return a.content.length - b.content.length
+      return 0
+    },
+    kind: (a: LibraryItem, b: LibraryItem) => a.kind.localeCompare(b.kind)
+  }
+  
+  return [...props.items].sort((a, b) => {
+    // Folders always come first
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
     
-    let compareValue = 0
-    switch (props.sortBy) {
-      case 'name':
-        compareValue = a.name.localeCompare(b.name)
-        break
-      case 'modified':
-        compareValue = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-        break
-      case 'size':
-        // For folders, compare by child count, for documents by content length
-        if (a.type === 'folder' && b.type === 'folder') {
-          compareValue = a.childCount - b.childCount
-        } else if (a.type === 'document' && b.type === 'document') {
-          compareValue = a.content.length - b.content.length
-        }
-        break
-      case 'kind':
-        compareValue = a.kind.localeCompare(b.kind)
-        break
-    }
-    
+    const compareValue = compareFunctions[props.sortBy](a, b)
     return props.sortDirection === 'asc' ? compareValue : -compareValue
   })
-  
-  return sorted
 })
 
-function navigateToFolder(folderId: string | null) {
-  emit('NAVIGATE_TO_FOLDER', { folderId })
-}
-
 function navigateBack() {
-  // Navigate to parent folder based on breadcrumbs
-  if (props.breadcrumbs.length > 1) {
-    // Go to the parent folder (second to last breadcrumb)
-    const parentCrumb = props.breadcrumbs[props.breadcrumbs.length - 2]
-    emit('NAVIGATE_TO_FOLDER', { folderId: parentCrumb.id })
-  } else {
-    // We're one level deep, go to root
-    emit('NAVIGATE_TO_FOLDER', { folderId: null })
-  }
-}
-
-function navigateToBreadcrumb(crumb: BreadcrumbItem) {
-  emit('BREADCRUMB_CLICK', { folderId: crumb.id })
+  const parentId = props.breadcrumbs.length > 1
+    ? props.breadcrumbs[props.breadcrumbs.length - 2].id
+    : null
+  emit('NAVIGATE_TO_FOLDER', { folderId: parentId })
 }
 
 function selectItem(item: LibraryItem, event: MouseEvent) {
-  if (event.metaKey || event.ctrlKey) {
-    // Multi-select
-    const newSelection = props.selectedItems.includes(item.id)
-      ? props.selectedItems.filter(id => id !== item.id)
-      : [...props.selectedItems, item.id]
-    emit('SELECT_ITEMS', { itemIds: newSelection })
-    // Clear last selected if multiple items selected
-    if (newSelection.length !== 1) {
-      lastSelectedItemId.value = null
-    }
-  } else {
-    // Single select
-    emit('SELECT_ITEMS', { itemIds: [item.id] })
-    lastSelectedItemId.value = item.id
-  }
+  selectItemBase(item, sortedItems.value, event)
 }
 
 function handleNameClick(item: LibraryItem, event: MouseEvent) {
-  // If the item is already selected (and is the only selection), start editing
-  if (props.selectedItems.includes(item.id) && props.selectedItems.length === 1 && lastSelectedItemId.value === item.id) {
+  const isOnlySelection = props.selectedItems.length === 1 && props.selectedItems.includes(item.id)
+  const isLastSelected = lastSelectedItemId.value === item.id
+  
+  if (isOnlySelection && isLastSelected) {
     event.preventDefault()
     event.stopPropagation()
     startEditingItem(item.id, item.name)
   } else {
-    // Otherwise, just select the item
     selectItem(item, event)
     lastSelectedItemId.value = item.id
   }
 }
 
 function doubleClickItem(item: LibraryItem) {
-  // Double-click navigates into folders or opens documents
-  // It no longer triggers rename
   emit('DOUBLE_CLICK_ITEM', { item })
 }
 
-function sort(column: 'name' | 'modified' | 'size' | 'kind') {
-  emit('SORT_BY', { column })
-}
-
-function createDocument() {
-  emit('CREATE_DOCUMENT')
-}
+const sort = (column: 'name' | 'modified' | 'size' | 'kind') => emit('SORT_BY', { column })
+const createDocument = () => emit('CREATE_DOCUMENT')
+const createSearchIndex = () => emit('CREATE_SEARCH_INDEX')
+const navigateToFolder = (folderId: string | null) => emit('NAVIGATE_TO_FOLDER', { folderId })
+const navigateToBreadcrumb = (crumb: BreadcrumbItem) => emit('BREADCRUMB_CLICK', { folderId: crumb.id })
 
 function createFolder() {
-  // Generate a unique default name
-  let baseName = 'New Folder'
-  let counter = 1
-  let finalName = baseName
-  
-  // Check for existing folders with similar names
   const existingNames = props.items
     .filter(item => item.type === 'folder')
     .map(item => item.name)
   
-  while (existingNames.includes(finalName)) {
-    finalName = `${baseName} ${counter}`
-    counter++
-  }
-  
-  // Emit the create event with the default name
+  const finalName = generateUniqueFolderName(existingNames)
   emit('CREATE_FOLDER', { name: finalName })
-  
-  // The state machine will handle setting the new folder in edit mode
 }
 
-function startEditingItem(itemId: string, currentName: string) {
-  editingItemId.value = itemId
-  editingName.value = currentName
-  nextTick(() => {
-    const input = document.querySelector(`#edit-input-${itemId}`) as HTMLInputElement
-    if (input) {
-      input.focus()
-      input.select()
-    }
-  })
-}
 
-function confirmEdit(itemId: string) {
-  if (editingName.value && editingName.value !== '') {
-    // Find the item to determine its type
-    const item = props.items.find(i => i.id === itemId)
-    if (item) {
-      emit('RENAME_ITEM', { itemId, name: editingName.value })
-    }
-  }
-  cancelEdit()
-}
-
-function cancelEdit() {
-  editingItemId.value = null
-  editingName.value = ''
-  // Reset selection tracking after edit
-  lastSelectedItemId.value = null
-}
-
-function createSearchIndex() {
-  emit('CREATE_SEARCH_INDEX')
-}
-
-function renameItem(item: LibraryItem) {
-  // Start inline editing for both documents and folders
-  startEditingItem(item.id, item.name)
-}
-
-function handleRename(name: string) {
-  if (renameDialog.currentItem && name !== renameDialog.currentItem.name) {
-    emit('RENAME_ITEM', { itemId: renameDialog.currentItem.id, name })
-  }
-  renameDialog.show = false
-  renameDialog.currentItem = null
-  renameDialog.currentName = ''
-}
+const renameItem = (item: LibraryItem) => startEditingItem(item.id, item.name)
 
 function deleteItem(item: LibraryItem) {
   deleteDialog.currentItem = item
@@ -492,18 +374,49 @@ function handleDelete() {
   deleteDialog.message = ''
 }
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+
+function deleteSelectedItems() {
+  if (props.selectedItems.length === 0) return
   
-  if (date.toDateString() === today.toDateString()) {
-    return 'Today, ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } else if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday, ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } else {
-    return date.toLocaleDateString() + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const itemNames = props.selectedItems
+    .map(id => props.items.find(item => item.id === id)?.name)
+    .filter(Boolean)
+  
+  const count = props.selectedItems.length
+  const message = count === 1
+    ? `Are you sure you want to delete "${itemNames[0]}"?`
+    : `Are you sure you want to delete ${count} items?`
+  
+  deleteDialog.currentItem = null
+  deleteDialog.message = message
+  deleteDialog.show = true
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  if (editingItemId.value) return
+  
+  const hasSelection = props.selectedItems.length > 0
+  const isModified = event.metaKey || event.ctrlKey
+  
+  if (isModified && event.key === 'a') {
+    event.preventDefault()
+    toggleSelectAll()
+  } else if ((event.key === 'Delete' || event.key === 'Backspace') && hasSelection) {
+    event.preventDefault()
+    deleteSelectedItems()
+  } else if (event.key === 'Escape' && hasSelection) {
+    event.preventDefault()
+    clearSelection()
   }
 }
+
+// Lifecycle hooks
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
+
 </script>
