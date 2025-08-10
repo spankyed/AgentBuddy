@@ -1,6 +1,6 @@
 // Export types only
 export type { AppRouter } from '@/core/router';
-export type { EARS } from '@/core/types';
+export type { EARS, BaseEntity } from '@/core/types';
 // export type * from '@/core/types';
 
 export type { OutgoingAgentEvents } from './systems/agent/system';
