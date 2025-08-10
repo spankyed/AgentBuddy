@@ -8,7 +8,7 @@
           <span class="font-medium text-neutral-200">{{ documents.length }}</span>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-neutral-400">Collections:</span>
+          <span class="text-neutral-400">Folders:</span>
           <span class="font-medium text-neutral-200">{{ totalCollections }}</span>
         </div>
       </div>
