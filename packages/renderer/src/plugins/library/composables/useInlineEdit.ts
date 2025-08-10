@@ -5,10 +5,12 @@ export function useInlineEdit(
 ) {
   const editingItemId = ref<string | null>(null)
   const editingName = ref('')
+  const originalName = ref('')
 
   function startEditingItem(itemId: string, currentName: string) {
     editingItemId.value = itemId
     editingName.value = currentName
+    originalName.value = currentName
     nextTick(() => {
       const input = document.querySelector(`#edit-input-${itemId}`) as HTMLInputElement
       if (input) {
@@ -19,8 +21,10 @@ export function useInlineEdit(
   }
 
   function confirmEdit(itemId: string) {
-    if (editingName.value && editingName.value !== '') {
-      emit('RENAME_ITEM', { itemId, name: editingName.value })
+    const trimmedName = editingName.value.trim()
+    // Only emit rename if the name actually changed
+    if (trimmedName && trimmedName !== originalName.value) {
+      emit('RENAME_ITEM', { itemId, name: trimmedName })
     }
     cancelEdit()
   }
@@ -28,6 +32,7 @@ export function useInlineEdit(
   function cancelEdit() {
     editingItemId.value = null
     editingName.value = ''
+    originalName.value = ''
   }
 
   return {
