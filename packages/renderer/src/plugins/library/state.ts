@@ -226,6 +226,9 @@ export const librarySystem = setup({
         return context.sortBy === column && context.sortDirection === 'asc' ? 'desc' : 'asc'
       },
     }),
+    clearSelection: assign({
+      selectedItems: [],
+    }),
 
     requestCollections: () => {
       trpc.bus.send.mutate({
@@ -470,23 +473,23 @@ export const librarySystem = setup({
     
     // New file browser events
     FOLDER_CONTENTS_LOADED: {
-      actions: ['setFolderContents', 'requestSearchIndices'],
+      actions: ['setFolderContents', 'clearSelection', 'requestSearchIndices'],
     },
     NAVIGATION_CHANGED: {
       actions: 'updateNavigation',
     },
     NAVIGATE_TO_FOLDER: {
-      actions: ['navigateToFolder', assign({
+      actions: ['navigateToFolder', 'clearSelection', assign({
         currentFolderId: ({ event }) => event.folderId
       })],
     },
     BREADCRUMB_CLICK: {
-      actions: ['navigateToFolder', assign({
+      actions: ['navigateToFolder', 'clearSelection', assign({
         currentFolderId: ({ event }) => event.folderId
       })],
     },
     DOUBLE_CLICK_ITEM: {
-      actions: 'handleDoubleClick',
+      actions: ['handleDoubleClick', 'clearSelection'],
     },
     SELECT_ITEMS: {
       actions: 'selectItems',
@@ -588,7 +591,7 @@ export const librarySystem = setup({
         CREATE_DOCUMENT: 'create',
         EDIT_DOCUMENT: {
           target: 'edit',
-          actions: 'setEditingDocument',
+          actions: ['setEditingDocument', 'clearSelection'],
         },
         CREATE_SEARCH_INDEX: 'createIndex',
         EDIT_SEARCH_INDEX: {
