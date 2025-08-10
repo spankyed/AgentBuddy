@@ -35,13 +35,9 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Get Electron version from package.json
-ELECTRON_VERSION=$(grep '"electron"' package.json | grep -o '[0-9]*\.[0-9]*\.[0-9]*' | head -1)
-if [ -z "$ELECTRON_VERSION" ]; then
-    print_error "Could not determine Electron version from package.json"
-    exit 1
-fi
-print_status "Detected Electron version: $ELECTRON_VERSION"
+# Use exact Electron version (37.2.4)
+ELECTRON_VERSION="37.2.4"
+print_status "Using Electron version: $ELECTRON_VERSION"
 
 # Step 1: Clean previous builds
 echo ""
@@ -87,15 +83,14 @@ print_status "API dependencies installed"
 # Step 5: Rebuild native modules for Electron
 echo ""
 echo "Step 5: Rebuilding native modules for Electron..."
-print_status "Target: Electron $ELECTRON_VERSION (NODE_MODULE_VERSION 127)"
+print_status "Target: Electron $ELECTRON_VERSION (NODE_MODULE_VERSION 136)"
 
 # Use @electron/rebuild to compile native modules
 npx @electron/rebuild \
     --force \
     --module-dir . \
     --electron-version $ELECTRON_VERSION \
-    --arch arm64 \
-    --rebuild-all
+    --arch arm64
 
 if [ $? -ne 0 ]; then
     print_error "Failed to rebuild native modules"

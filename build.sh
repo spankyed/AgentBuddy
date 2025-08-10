@@ -62,14 +62,13 @@ find node_modules -name "*.node" -delete 2>/dev/null || true
 rm -rf node_modules/*/build 2>/dev/null || true
 rm -rf node_modules/*/*/build 2>/dev/null || true
 
-# Method 1: Use electron-rebuild with explicit settings
+# Use electron-rebuild with exact Electron version
 echo "Rebuilding with @electron/rebuild..."
 npx @electron/rebuild \
   --force \
   --module-dir . \
-  --electron-version $ELECTRON_VERSION \
-  --arch arm64 \
-  --rebuild-all
+  --electron-version 37.2.4 \
+  --arch arm64
 
 # Verify the rebuild
 echo ""
