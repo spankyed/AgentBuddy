@@ -85,9 +85,14 @@ const hasContent = computed(() => {
 const sectionTypeLabel = computed(() => {
   if (!props.section) return ''
   switch (props.section.type) {
-    case 'field': return 'Fields'
-    case 'list': return 'List'
-    case 'text': return 'Text Block'
+    case 'field': 
+      const fieldCount = props.section.fields.filter(f => f.key.trim() || f.value.trim()).length
+      return fieldCount > 0 ? `Fields (${fieldCount})` : 'Fields'
+    case 'list': 
+      const itemCount = props.section.items.filter(item => item.trim()).length
+      return itemCount > 0 ? `List (${itemCount})` : 'List'
+    case 'text': 
+      return 'Text Block'
   }
 })
 

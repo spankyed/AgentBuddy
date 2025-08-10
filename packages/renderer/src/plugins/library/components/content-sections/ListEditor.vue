@@ -49,11 +49,6 @@
 
     <!-- List Edit Mode -->
     <div v-else class="space-y-3">
-      <div class="mb-2">
-        <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-          List Items ({{ items.length }})
-        </label>
-      </div>
       <div
         v-for="(item, index) in items"
         :key="index"
