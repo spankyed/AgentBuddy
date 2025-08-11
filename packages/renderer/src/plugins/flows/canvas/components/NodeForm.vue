@@ -64,7 +64,7 @@
           :is="getFormComponent(selectedNode.nodeType)"
           :key="selectedNode.id"
           :node="selectedNode"
-          :resources="{ actions, models, prompts }"
+          :resources="{ actions, flows, models, prompts }"
           @update-node="handleUpdateNode"
         />
       </div>
@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { NodeEntity, ActionEntity, ModelConfig, PromptEntity } from '@app/api'
+import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } from '@app/api'
 import { X, Plus } from 'lucide-vue-next'
 import { getPaletteItems } from '../../config/node-config'
 import {
@@ -92,10 +92,12 @@ import FireForm from '../forms/FireForm.vue'
 import CreateForm from '../forms/CreateForm.vue'
 import LLMForm from '../forms/LLMForm.vue'
 import ActionForm from '../forms/ActionForm.vue'
+import FlowForm from '../forms/FlowForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
   actions?: ActionEntity[]
+  flows?: FlowEntity[]
   models?: ModelConfig[]
   prompts?: PromptEntity[]
 }
@@ -121,6 +123,7 @@ function getFormComponent(nodeType: string) {
     'create': CreateForm,
     'llm': LLMForm,
     'action': ActionForm,
+    'flow': FlowForm,
   }
   return formMap[nodeType] || BaseForm
 }

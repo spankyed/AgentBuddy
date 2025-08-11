@@ -50,6 +50,7 @@
     <NodeForm
       :selected-node="editingNode"
       :actions="actions"
+      :flows="flows"
       :models="models"
       :prompts="prompts"
       @close="handleCloseNodeEditor"
