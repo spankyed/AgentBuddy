@@ -73,6 +73,7 @@ export function createStepNodeSystem(
           result: event.result,
           final: context.step.final || false,
           eventTNodeId: context.eventTNodeId,
+          isFlow: false,
         })),
       },
     }).createMachine({
