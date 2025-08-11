@@ -341,10 +341,6 @@ const threadsState = setup({
             create: { ...defaultThread }
           }))
         },
-        SHOW_CREATE_FORM_AS_CHILD: {
-          target: 'create',
-          actions: 'setupParentThread'
-        },
         UPDATE_THREAD_STATUS: {
           actions: 'updateThreadStatus',
         },

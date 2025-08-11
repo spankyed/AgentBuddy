@@ -81,6 +81,7 @@
         @view-thread="(threadId: string) => emit('view-thread', threadId)"
         @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
         @new-thread="emit('new-thread')"
+        @new-thread-as-child="(parentThreadId: string) => emit('new-thread-as-child', parentThreadId)"
       />
     </div>
   </div>
@@ -111,6 +112,7 @@ const emit = defineEmits<{
   (e: 'attach-file'): void
   (e: 'voice-input'): void
   (e: 'new-thread'): void
+  (e: 'new-thread-as-child', parentThreadId: string): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
 }>()

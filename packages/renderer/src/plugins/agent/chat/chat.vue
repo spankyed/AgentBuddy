@@ -23,6 +23,7 @@
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
       @new-thread="actor.send({ type: 'CLEAR_THREAD' })"
+      @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
       @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
     />
     </div>
