@@ -58,6 +58,35 @@
             </div>
           </div>
           
+          <!-- Content Sections -->
+          <div class="pt-6 border-t border-neutral-800">
+            <div class="flex items-center justify-between mb-4">
+              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
+                Content <span class="text-red-400">*</span>
+              </label>
+              <button
+                type="button"
+                @click="addContentSection"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
+              >
+                <Plus class="w-4 h-4" />
+                Add Section
+              </button>
+            </div>
+            <div class="space-y-4">
+              <ContentSectionEditor
+                v-for="(section, index) in formData.content"
+                :key="index"
+                :ref="el => setSectionRef(el, index)"
+                :section="section"
+                :show-remove="formData.content.length > 1"
+                @update="updateContentSection(index, $event)"
+                @remove="removeContentSection(index)"
+                @type-changed="handleTypeChanged(index)"
+              />
+            </div>
+          </div>
+          
           <!-- Tags Section -->
           <div class="pt-6 border-t border-neutral-800">
             <button
@@ -95,35 +124,6 @@
                 :suggestions="availableTags"
                 placeholder="Add tag and press Enter"
                 input-class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-          
-          <!-- Content Sections -->
-          <div class="pt-6 border-t border-neutral-800">
-            <div class="flex items-center justify-between mb-4">
-              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-                Content <span class="text-red-400">*</span>
-              </label>
-              <button
-                type="button"
-                @click="addContentSection"
-                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
-              >
-                <Plus class="w-4 h-4" />
-                Add Section
-              </button>
-            </div>
-            <div class="space-y-4">
-              <ContentSectionEditor
-                v-for="(section, index) in formData.content"
-                :key="index"
-                :ref="el => setSectionRef(el, index)"
-                :section="section"
-                :show-remove="formData.content.length > 1"
-                @update="updateContentSection(index, $event)"
-                @remove="removeContentSection(index)"
-                @type-changed="handleTypeChanged(index)"
               />
             </div>
           </div>
