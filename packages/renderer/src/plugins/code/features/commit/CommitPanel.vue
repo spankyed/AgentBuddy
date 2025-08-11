@@ -162,7 +162,12 @@
               >
                 <Minus class="w-3 h-3 text-neutral-400" />
               </button>
-              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
+              <div class="flex-1 min-w-0 flex items-center gap-2">
+                <span class="text-sm font-medium text-neutral-200">{{ formatFilePath(file.path).filename }}</span>
+                <span v-if="formatFilePath(file.path).directory" class="text-xs text-neutral-500 truncate">
+                  {{ formatFilePath(file.path).directory }}
+                </span>
+              </div>
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
@@ -208,7 +213,12 @@
                   <RotateCcw class="w-3 h-3 text-red-400" />
                 </button>
               </div>
-              <span class="flex-1 min-w-0 text-sm truncate text-neutral-200">{{ file.path }}</span>
+              <div class="flex-1 min-w-0 flex items-center gap-2">
+                <span class="text-sm font-medium text-neutral-200">{{ formatFilePath(file.path).filename }}</span>
+                <span v-if="formatFilePath(file.path).directory" class="text-xs text-neutral-500 truncate">
+                  {{ formatFilePath(file.path).directory }}
+                </span>
+              </div>
               <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
@@ -391,6 +401,18 @@ const hideBranchDropdown = () => {
 }
 
 // Helper functions
+const formatFilePath = (path: string) => {
+  const lastSlashIndex = path.lastIndexOf('/')
+  if (lastSlashIndex === -1) {
+    // No directory, just filename
+    return { filename: path, directory: '' }
+  }
+  
+  const filename = path.substring(lastSlashIndex + 1)
+  const directory = path.substring(0, lastSlashIndex)
+  return { filename, directory }
+}
+
 const getStatusIcon = (status: GitStatusFile['status']) => {
   switch (status) {
     case 'modified': return 'M'
