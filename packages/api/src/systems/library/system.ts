@@ -6,7 +6,7 @@ import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, Fol
 import type { SearchIndex } from './search-index/types/search-index'
 import { emit, safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
-import * as repository from './repository'
+import { repository } from '@/repository'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 
@@ -221,7 +221,7 @@ export const librarySystem = setup({
   actions: {
     loadDocuments: async ({ system, event }) => {
       const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
-      const documents = await repository.getDocuments(ev.collectionId)
+      const documents = repository.libraryQueries.getDocuments(ev.collectionId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -233,7 +233,7 @@ export const librarySystem = setup({
     },
     createDocument: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
-      const document = await repository.createDocument(
+      const document = repository.libraryCommands.createDocument(
         ev.name,
         ev.content,
         ev.tags,
@@ -250,7 +250,7 @@ export const librarySystem = setup({
     },
     updateDocument: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
-      const document = await repository.updateDocument(
+      const document = repository.libraryCommands.updateDocument(
         ev.id as EARS.EntityId,
         ev.name,
         ev.content,
@@ -268,7 +268,7 @@ export const librarySystem = setup({
     },
     deleteDocument: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
-      await repository.deleteDocument(ev.id as EARS.EntityId)
+      repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -280,7 +280,7 @@ export const librarySystem = setup({
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
-      const document = await repository.getDocument(ev.id as EARS.EntityId)
+      const document = repository.libraryQueries.getDocument(ev.id as EARS.EntityId)
       if (document) {
         system.get(bus).send({
           type: 'OUTGOING' as const,
@@ -303,7 +303,7 @@ export const librarySystem = setup({
     },
     loadCollections: async ({ system, event }) => {
       const ev = event as { type: 'LIST_COLLECTIONS' }
-      const collections = await repository.getCollections()
+      const collections = repository.libraryQueries.getCollections()
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -315,7 +315,7 @@ export const librarySystem = setup({
     },
     createCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
-      const collection = await repository.createCollection(
+      const collection = repository.libraryCommands.createCollection(
         ev.name,
         ev.description,
         ev.parentId ? ev.parentId as EARS.EntityId : undefined
@@ -331,7 +331,7 @@ export const librarySystem = setup({
     },
     updateCollection: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
-      const collection = await repository.updateCollection(
+      const collection = repository.libraryCommands.updateCollection(
         ev.id as EARS.EntityId,
         ev.name,
         ev.description
@@ -347,7 +347,7 @@ export const librarySystem = setup({
     },
     deleteCollection: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
-      await repository.deleteCollection(ev.id as EARS.EntityId)
+      repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -359,7 +359,7 @@ export const librarySystem = setup({
     },
     moveDocument: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
-      const document = await repository.moveDocument(
+      const document = repository.libraryCommands.moveDocument(
         ev.documentId as EARS.EntityId,
         ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
@@ -374,13 +374,11 @@ export const librarySystem = setup({
     },
     sendInitialData: async ({ system }) => {
       // Run migrations
-      await repository.migrateDocumentShortCodes()
-      await repository.migrateDisplayOrders()
+      repository.libraryCommands.migrateDocumentShortCodes()
+      repository.libraryCommands.migrateDisplayOrders()
       
-      const [documents, collections] = await Promise.all([
-        repository.getDocuments(),
-        repository.getCollections(),
-      ])
+      const documents = repository.libraryQueries.getDocuments()
+      const collections = repository.libraryQueries.getCollections()
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -393,7 +391,7 @@ export const librarySystem = setup({
     // New file browser actions
     getFolderContents: async ({ system, event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
-      const folderContents = await repository.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
+      const folderContents = repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -405,8 +403,8 @@ export const librarySystem = setup({
     },
     navigateToFolder: async ({ system, event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
-      const folderContents = await repository.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      const breadcrumbs = await repository.getFolderPath(ev.folderId ? ev.folderId as EARS.EntityId : null)
+      const folderContents = repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
+      const breadcrumbs = repository.libraryQueries.getFolderPath(ev.folderId ? ev.folderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -426,7 +424,7 @@ export const librarySystem = setup({
     },
     renameItem: async ({ system, event }) => {
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
-      const item = await repository.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
+      const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -438,7 +436,7 @@ export const librarySystem = setup({
     },
     deleteItems: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
-      await repository.deleteItems(ev.ids.map(id => id as EARS.EntityId))
+      repository.libraryCommands.deleteItems(ev.ids.map(id => id as EARS.EntityId))
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -450,7 +448,7 @@ export const librarySystem = setup({
     },
     moveItems: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
-      await repository.moveItems(ev.ids.map(id => id as EARS.EntityId), ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null)
+      repository.libraryCommands.moveItems(ev.ids.map(id => id as EARS.EntityId), ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
@@ -462,7 +460,7 @@ export const librarySystem = setup({
     },
     reorderItems: async ({ system, event }) => {
       const ev = event as { type: 'REORDER_ITEMS'; itemIds: string[]; targetIndex: number; targetFolderId: string | null }
-      await repository.reorderItems(
+      repository.libraryCommands.reorderItems(
         ev.itemIds.map(id => id as EARS.EntityId),
         ev.targetIndex,
         ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null

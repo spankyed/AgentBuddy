@@ -10,6 +10,7 @@ import { actionQueries, actionCommands } from '@/systems/actions/repository';
 import { agentQueries, agentCommands } from '@/systems/agent/repository';
 import { brainQueries, brainCommands } from '@/systems/brain/repository';
 import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
+import { libraryQueries, libraryCommands } from '@/systems/library/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
 import { terminalQueries, terminalCommands, directoryQueries, directoryCommands } from '@/systems/code/repository';
 import { threadQueries, threadCommands } from '@/systems/threads/repository';
@@ -31,6 +32,10 @@ export const repository = {
   // Flows system
   flowsQueries,
   flowsCommands,
+  
+  // Library system
+  libraryQueries,
+  libraryCommands,
   
   // Prompts system
   promptQueries,
