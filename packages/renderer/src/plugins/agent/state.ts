@@ -46,6 +46,7 @@ type AgentEvent =
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'SEND_MESSAGE'; text: string }
   | { type: 'CLEAR_THREAD' }
+  | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   | { type: 'SELECT_TAB'; tabId: string }
@@ -200,6 +201,12 @@ const agentState = setup({
     sendOpenThreadView: ({ system, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId;
       system.get('threads').send({ type: 'SELECT_THREAD', id: threadId });
+      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
+    },
+    createChildThread: ({ system, event }) => {
+      const parentThreadId = typeOf('CREATE_CHILD_THREAD', event).parentThreadId;
+      // Clear current thread and navigate to threads plugin to create child
+      system.get('threads').send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId });
       system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
     },
     selectTab: assign(({ event }) => ({
@@ -370,6 +377,9 @@ const agentState = setup({
     },
     CLEAR_THREAD: {
       actions: 'clearThread'
+    },
+    CREATE_CHILD_THREAD: {
+      actions: 'createChildThread'
     },
     ADD_ASSISTANT_MESSAGE: {
       actions: 'addAssistantMessage'

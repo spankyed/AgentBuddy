@@ -146,7 +146,18 @@
             @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
             @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
             @update:modelValue="(links) => updateField('linkedThreads', links)"
-          />
+          >
+            <template #extra-buttons>
+              <button
+                @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
+                type="button"
+                class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
+              >
+                Create Child Thread
+                <Plus :size="16" class="text-neutral-300" />
+              </button>
+            </template>
+          </ThreadLinkInput>
         </div>
       </div>
     </div>
@@ -155,7 +166,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
-import { X, ChevronDown, MessageCircleMore, ArrowLeft } from 'lucide-vue-next'
+import { X, ChevronDown, MessageCircleMore, ArrowLeft, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import Label from '@/core/design/label.vue'
 import type { Ref } from 'vue'

@@ -59,23 +59,72 @@
         </span>
       </div>
 
-      <button
-        type="button"
-        class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-        @click.stop="$emit('new-thread')"
-      >
-        <Plus :size="16" class="mr-2" />
-        New thread
-      </button>
+      <ContextMenuRoot>
+        <ContextMenuTrigger as-child>
+          <button
+            type="button"
+            class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
+            @click.stop="$emit('new-thread')"
+          >
+            <Plus :size="16" class="mr-2" />
+            New thread
+          </button>
+        </ContextMenuTrigger>
+        
+        <ContextMenuPortal>
+          <ContextMenuContent
+            class="min-w-[220px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+          >
+            <ContextMenuItem
+              @select="$emit('new-thread')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Plus class="w-4 h-4" />
+              Create New Thread
+            </ContextMenuItem>
+            
+            <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
+            
+            <div class="px-3 py-1 text-xs font-medium text-neutral-500 uppercase">Create as child of</div>
+            
+            <ContextMenuItem
+              v-for="projectThread in recentProjectThreads"
+              :key="projectThread.id"
+              @select="$emit('new-thread-as-child', projectThread.id)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <span class="text-xs font-medium text-neutral-500">{{ projectThread.shortCode }}</span>
+                <span class="truncate">{{ projectThread.topic || 'Untitled' }}</span>
+              </div>
+            </ContextMenuItem>
+            
+            <div v-if="recentProjectThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
+              No project threads available
+            </div>
+          </ContextMenuContent>
+        </ContextMenuPortal>
+      </ContextMenuRoot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { History, ChevronUp, Plus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+  ContextMenuSeparator,
+} from 'reka-ui'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id as threadsId, type ThreadsState } from '@/plugins/threads/state'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;
@@ -85,6 +134,17 @@ export interface ThreadsProps {
 const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
+
+// Get threads from the threads plugin state
+const threadsActor: ThreadsState = applicationState.system.get(threadsId)
+const allThreads = useSelector(threadsActor, (state) => state.context.threads)
+
+const recentProjectThreads = computed(() => {
+  return allThreads.value
+    .filter(thread => thread.threadType === 'project')
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .slice(0, 10) // Show up to 10 most recent project threads
+})
 
 const handleClickOutside = (event: MouseEvent) => {
   if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
@@ -104,6 +164,7 @@ const emit = defineEmits<{
   (e: 'view-thread', threadId: string): void
   (e: 'open-thread-chat', threadId: string): void
   (e: 'new-thread'): void
+  (e: 'new-thread-as-child', parentThreadId: string): void
 }>()
 
 const handleViewThread = (id: string | undefined) => {

@@ -2,15 +2,17 @@
   <div class="flex flex-col w-full gap-2">
     <!-- Link Thread Button / Input -->
     <div>
-      <button
-        v-if="!isInputVisible"
-        type="button"
-        @click="toggleInput"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
-      >
-        Link Thread
-        <Plus :size="16" class="text-neutral-300" />
-      </button>
+      <div v-if="!isInputVisible" class="flex gap-2">
+        <button
+          type="button"
+          @click="toggleInput"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
+        >
+          Link Thread
+          <Plus :size="16" class="text-neutral-300" />
+        </button>
+        <slot name="extra-buttons"></slot>
+      </div>
 
       <div v-else class="w-full gap-2 mt-2">
         <div class="flex items-center gap-2">
