@@ -4,7 +4,10 @@
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div>
         <h2 class="text-base font-semibold text-neutral-100">Create Thread</h2>
-        <p class="text-xs text-neutral-400">Add a new work thread for the agent</p>
+        <p class="text-xs text-neutral-400">
+          <span v-if="parentThread">Creating as child of {{ parentThread.shortCode }} - {{ parentThread.topic || 'Untitled' }}</span>
+          <span v-else>Add a new work thread for the agent</span>
+        </p>
       </div>
       <div class="flex items-center gap-2">
         <Button
@@ -129,6 +132,9 @@ const linkedThreads = useSelector(actor, (state) => state.context.create.linkedT
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 
 const isSaving = ref(false)
+
+// Get parent thread from context if creating as child
+const parentThread = useSelector(actor, (state) => state.context.create.parentThread);
 
 // Transform tags array to string array for TagInput
 const tagNames = computed(() => {

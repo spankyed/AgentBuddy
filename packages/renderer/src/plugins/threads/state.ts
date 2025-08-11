@@ -26,6 +26,7 @@ type SystemEvent =
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
+  | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'GO_BACK' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
@@ -56,7 +57,10 @@ interface ThreadsContext {
   threads: ThreadListItem[];
   selectedThreadCode?: string;
   view: ThreadViewData;
-  create: ThreadCreateData;
+  create: ThreadCreateData & { 
+    parentThreadId?: string;
+    parentThread?: ThreadListItem;
+  };
   availableTags: ThreadTagItem[];
 }
 
@@ -75,6 +79,26 @@ const threadsState = setup({
       system.get('agent').send({ type: 'OPEN_THREAD_CHAT', threadId });
       system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
     },
+    setupParentThread: assign(({ event, context }) => {
+      const typedEvent = typeOf('SHOW_CREATE_FORM_AS_CHILD', event);
+      const parentThread = context.threads.find(t => t.id === typedEvent.parentThreadId);
+      
+      if (!parentThread) {
+        console.warn(`Parent thread with id ${typedEvent.parentThreadId} not found`);
+        return {};
+      }
+      
+      // Store parent thread info for display and to send to backend
+      // The backend should handle creating the proper parent_of relationship
+      // from the parent to this new child thread
+      return {
+        create: {
+          ...defaultThread,
+          parentThreadId: parentThread.id, // Store parent ID for backend processing
+          parentThread: parentThread // Store full parent info for display
+        }
+      };
+    }),
     setPluginData: assign(({ event }) => {
       const typedEvent = typeOf('THREAD_STARTUP', event);
 
@@ -124,10 +148,13 @@ const threadsState = setup({
     }),
     sendCreateThread: ({ context }) => {
       // console.log('create', context.create);
+      const { parentThread, ...createData } = context.create;
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_THREAD',
-        ...context.create,
+        ...createData,
+        // Include parentThreadId if present (for parent-child relationship)
+        parentThreadId: context.create.parentThreadId
       });
     },
     sendViewThread: ({ event }) => {
@@ -308,7 +335,16 @@ const threadsState = setup({
     'list': {
       meta: { ...breadcrumb('list', 'Threads', true) },
       on: {
-        SHOW_CREATE_FORM: 'create',
+        SHOW_CREATE_FORM: {
+          target: 'create',
+          actions: assign(() => ({
+            create: { ...defaultThread }
+          }))
+        },
+        SHOW_CREATE_FORM_AS_CHILD: {
+          target: 'create',
+          actions: 'setupParentThread'
+        },
         UPDATE_THREAD_STATUS: {
           actions: 'updateThreadStatus',
         },
@@ -339,6 +375,10 @@ const threadsState = setup({
       },
       on: {
         GO_BACK: { target: 'list' },
+        SHOW_CREATE_FORM_AS_CHILD: {
+          target: 'create',
+          actions: 'setupParentThread'
+        },
         UPDATE_THREAD_FIELD: {
           actions: ['updateThreadData', 'updateThreadInThreads', 'sendUpdateThreadField'],
         },

@@ -43,6 +43,7 @@ export const IncomingThreadsEvents = [
   busEvent('CREATE_THREAD', {
     ...threadSchema,
     linkedThreads: relatedThreadsSchema.optional(),
+    parentThreadId: z.string().optional(), // Add support for parent thread
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
   busEvent('UPDATE_THREAD_STATUS', {
@@ -102,6 +103,24 @@ export const threadsSystem = setup({
       }
 
       const { id: newThreadId, shortCode, timestamp } = result.data;
+
+      // If this thread is being created as a child of another thread,
+      // update the parent thread to link to this child
+      if (thread.parentThreadId) {
+        const parentUpdate = repository.threadCommands.update(
+          thread.parentThreadId as EARS.EntityId,
+          {
+            linkedThreads: [{
+              id: newThreadId,
+              relation: 'parent_of' as const
+            }]
+          }
+        );
+        
+        if (!parentUpdate.success) {
+          console.error('Failed to link parent thread:', parentUpdate.error);
+        }
+      }
 
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_CREATED',
