@@ -262,14 +262,14 @@ const agentState = setup({
     }),
     requestDashboardRefresh: async () => {
       // Request fresh data from backend
-      await trpc.bus.send.mutate({
+      trpc.bus.send.mutate({
         systemId: id,
         type: 'REFRESH_DASHBOARD'
       });
     },
     updateThreadStatus: async ({ event }) => {
       const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
-      await trpc.bus.send.mutate({
+      trpc.bus.send.mutate({
         systemId: 'threads',
         type: 'UPDATE_THREAD_STATUS',
         threadId,
@@ -295,7 +295,7 @@ const agentState = setup({
     approveTodoList: async ({ event }) => {
       const { artifactId, tasks } = typeOf('APPROVE_TODO_LIST', event);
       // Send approval to backend
-      await trpc.bus.send.mutate({
+      trpc.bus.send.mutate({
         systemId: id,
         type: 'APPROVE_TODO_LIST',
         artifactId,
@@ -305,7 +305,7 @@ const agentState = setup({
     rejectTodoList: async ({ event }) => {
       const { artifactId } = typeOf('REJECT_TODO_LIST', event);
       // Send rejection to backend
-      await trpc.bus.send.mutate({
+      trpc.bus.send.mutate({
         systemId: id,
         type: 'REJECT_TODO_LIST',
         artifactId

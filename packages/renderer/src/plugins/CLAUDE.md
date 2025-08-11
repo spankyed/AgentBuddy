@@ -160,8 +160,8 @@ Side panel for contextual information or secondary actions.
 import { trpc } from '@/core/trpc';
 
 // In Vue component or state machine action
-const sendToBackend = async (data) => {
-  await trpc.bus.send.mutate({
+const sendToBackend = (data) => {
+  trpc.bus.send.mutate({
     systemId: pluginId,
     type: 'PROCESS_DATA',
     data
