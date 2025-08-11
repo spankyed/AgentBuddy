@@ -40,10 +40,23 @@ export function useSelection(
       }
       shiftAnchorId.value = item.id
     } else {
-      // Single select - but preserve multi-selection if clicking on already selected item (for drag)
+      // Single click without modifiers
       const current = selectedItems()
-      if (!current.includes(item.id) || current.length === 1) {
-        // Only change selection if clicking on unselected item or if only one item selected
+      if (current.includes(item.id)) {
+        // Clicking on selected item - deselect it if it's the only one, or deselect all and select only this one
+        if (current.length === 1) {
+          // Deselect the only selected item
+          emit('SELECT_ITEMS', { itemIds: [] })
+          lastSelectedItemId.value = null
+          shiftAnchorId.value = null
+        } else {
+          // Multiple items selected - deselect all others and keep only this one
+          emit('SELECT_ITEMS', { itemIds: [item.id] })
+          lastSelectedItemId.value = item.id
+          shiftAnchorId.value = item.id
+        }
+      } else {
+        // Clicking on unselected item - select only this one
         emit('SELECT_ITEMS', { itemIds: [item.id] })
         lastSelectedItemId.value = item.id
         shiftAnchorId.value = item.id

@@ -73,12 +73,12 @@
                   </button>
                 </span>
               </div>
-              <input
+              <Autocomplete
                 v-model="newTag"
-                @keydown.enter.prevent="addTag"
-                type="text"
+                @enter="addTag"
+                :suggestions="availableTags"
                 placeholder="Add tag and press Enter"
-                class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+                input-class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
@@ -122,6 +122,8 @@ import { ref, computed, reactive, watch, nextTick } from 'vue'
 import { X, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
+import Autocomplete from '@/design/components/Autocomplete.vue'
+import { tagStorage } from '../services/tagStorage'
 import type { CollectionDTO, ContentSection } from '@app/api'
 
 const props = defineProps<{
@@ -152,6 +154,10 @@ const sectionRefs = ref<(InstanceType<typeof ContentSectionEditor> | null)[]>([]
 
 const isValid = computed(() => {
   return formData.name.trim() !== '' && formData.content.length > 0
+})
+
+const availableTags = computed(() => {
+  return tagStorage.getTagsSortedByUsage().filter(tag => !formData.tags.includes(tag))
 })
 
 
