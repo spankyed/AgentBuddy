@@ -6,14 +6,24 @@
         <GitPullRequest :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
       </div>
-      <button
-        @click="refreshStatus"
-        :disabled="isPrLoading"
-        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-        title="Refresh PR changes"
-      >
-        <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          v-if="prFiles.length > 0"
+          @click="collapseAll"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Collapse all folders"
+        >
+          <FoldVertical :size="16" />
+        </button>
+        <button
+          @click="refreshStatus"
+          :disabled="isPrLoading"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Refresh PR changes"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
+        </button>
+      </div>
     </div>
 
     <!-- Show only error if no directory selected -->
@@ -51,6 +61,7 @@
 
       <FileTree 
         :files="prFiles"
+        :collapse-key="collapseKey"
         @select-file="handleFileSelect"
       />
     </div>
@@ -59,17 +70,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest } from 'lucide-vue-next'
+import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest, FoldVertical } from 'lucide-vue-next'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
+
+// Collapse state management
+const collapseKey = ref(0)
 
 
 // State selectors from PR actor
@@ -86,6 +100,11 @@ const isNoDirectoryError = computed(() => {
 // Actions
 const refreshStatus = () => {
   prActor?.send({ type: 'pr.REFRESH_STATUS' })
+}
+
+const collapseAll = () => {
+  // Increment key to force re-render of FileTree with all items collapsed
+  collapseKey.value++
 }
 
 interface TreeNode {

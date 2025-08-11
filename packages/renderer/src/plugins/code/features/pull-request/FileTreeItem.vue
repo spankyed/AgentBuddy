@@ -25,6 +25,7 @@
           :key="child.path"
           :item="child"
           :level="level + 1"
+          :collapse-key="collapseKey"
           @select-file="$emit('select-file', $event)"
         />
       </div>
@@ -47,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, withDefaults } from 'vue'
+import { ref, computed, withDefaults, watch } from 'vue'
 import { ChevronRight, Folder, FileCode } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
@@ -63,6 +64,7 @@ interface TreeNode {
 const props = withDefaults(defineProps<{
   item: TreeNode
   level?: number
+  collapseKey?: number
 }>(), {
   level: 0
 })
@@ -71,7 +73,12 @@ defineEmits<{
   'select-file': [file: TreeNode]
 }>()
 
-const expanded = ref(true)
+const expanded = ref(false)
+
+// Watch for collapseKey changes to reset expanded state
+watch(() => props.collapseKey, () => {
+  expanded.value = false
+})
 
 const sortedChildren = computed(() => {
   if (!props.item.children) return []

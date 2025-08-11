@@ -3,9 +3,10 @@
     <div v-if="tree.children && tree.children.length > 0">
       <FileTreeItem
         v-for="child in sortedRootChildren"
-        :key="child.path"
+        :key="`${child.path}-${collapseKey}`"
         :item="child"
         :level="0"
+        :collapse-key="collapseKey"
         @select-file="$emit('select-file', $event)"
       />
     </div>
@@ -31,6 +32,7 @@ interface TreeNode {
 
 const props = defineProps<{
   files: GitStatusFile[]
+  collapseKey?: number
 }>()
 
 defineEmits<{
