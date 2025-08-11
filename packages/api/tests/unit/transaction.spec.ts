@@ -4,12 +4,12 @@
  * Run:  npx vitest
  */
 import { beforeAll, describe, expect, it, beforeEach } from 'vitest';
-import { tx, SafeLinkOptions } from '@/shared/ears/helpers/transaction';
-import { qx } from '@/shared/ears/helpers/query';
-import { EARS } from '@/shared/ears/types';
-import { flowRows } from '@/systems/flows/repository/mock-data';
-import { loadData } from '@/systems/_backend/load-initial-data';
-import { getAttr, getRoles, getAll } from '@/shared/ears/attribute-storage';
+import { tx, SafeLinkOptions } from '@/core/utils/ears/helpers/transaction';
+import { qx } from '@/core/utils/ears/helpers/query';
+import { EARS } from '@/core/types';
+// import { flowRows } from '@/systems/flows/repository/mock-data';
+// import { loadData } from '@/systems/_backend/load-initial-data';
+import { getAttr, getRoles, getAll } from '@/core/utils/ears/attribute-storage';
 
 /* ──────────────────────────────────────────────────────────────── *
  *  Boot the store ONCE for the whole suite. If you have a helper
@@ -18,7 +18,7 @@ import { getAttr, getRoles, getAll } from '@/shared/ears/attribute-storage';
 beforeAll(() => {
   //   import { clearStore } from '@/shared/ears/attribute-storage/testing';
   //   clearStore();
-  loadData();
+  // loadData();
 });
 
 describe('tx – fluent mutation DSL', () => {
@@ -66,10 +66,21 @@ describe('tx – fluent mutation DSL', () => {
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('priority'))).toBe('high');
     });
 
-    it('put() adds multiple values for the same attribute', () => {
+    it('put() replaces the value for the same attribute', () => {
       testNode
         .put('label', 'Original')
         .put('label', 'Updated');
+
+      // put() now replaces the value instead of appending
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'))).toBe('Updated');
+      // There should only be one value
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'), 1)).toBeNull();
+    });
+    
+    it('add() appends multiple values for the same attribute', () => {
+      testNode
+        .add('label', 'Original')
+        .add('label', 'Updated');
 
       // getAttr returns the first value by default
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'))).toBe('Original');

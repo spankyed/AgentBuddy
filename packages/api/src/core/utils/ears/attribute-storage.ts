@@ -28,12 +28,24 @@ const entType = (id: EARS.EntityId) => {
  * 1 ▸ generic mutator factory
  *─────────────────────────────────────────────────────────────*/
 function makeMutator() {
+  // add - appends a new value to the array (old putAttr behavior)
   const add = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
     const b = bucket(kind);
     (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
     logInternal("AA", false, kind, id, val);
+  };
+
+  // put - replaces the entire array with a single value (old updateAttr behavior)
+  const put = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
+    const b = bucket(kind);
+    // Replace the entire array with a single value
+    b.set(id, [val as EARS.AttributeValue]);
+    // Ensure entity is in index
+    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
+      .add(id);
+    logInternal("AU", false, kind, id, val);
   };
 
   const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
@@ -85,26 +97,23 @@ function makeMutator() {
     if (i !== -1) drop(id, kind, i);
   };
 
-  const update = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
-    const b = bucket(kind);
-    // Replace the entire array with a single value
-    b.set(id, [val as EARS.AttributeValue]);
-    // Ensure entity is in index
-    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-      .add(id);
-    logInternal("AU", false, kind, id, val);
-  };
+  // update - alias for put (for backward compatibility)
+  const update = put;
 
-  return { add, merge, drop, dropIf, update };
+  return { add, put, merge, drop, dropIf, update };
 }
-export const { add: putAttr, merge: mergeAttr, drop: dropAttr, dropIf, update: updateAttr } =
+// Export with new naming convention:
+// putAttr - replaces value (default behavior)
+// addAttr - appends value (for multiple attributes)
+// updateAttr - alias for putAttr (backward compatibility)
+export const { put: putAttr, add: addAttr, merge: mergeAttr, drop: dropAttr, dropIf, update: updateAttr } =
   makeMutator();
 
 /*─────────────────────────────────────────────────────────────
  * 2 ▸ roles & relations thin wrappers
  *─────────────────────────────────────────────────────────────*/
 export const grantRole  = (id: EARS.EntityId, role: string) =>
-  putAttr(id, EARS.AttrKind.Role, role);
+  addAttr(id, EARS.AttrKind.Role, role);
 export const revokeRole = (id: EARS.EntityId, role: string) =>
   dropIf(id, EARS.AttrKind.Role, role);
 

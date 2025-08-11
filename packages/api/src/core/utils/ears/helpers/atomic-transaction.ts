@@ -2,7 +2,7 @@
  * atomic-transaction.ts – ACID transaction support for EARS
  *─────────────────────────────────────────────────────────────*/
 import {
-  putAttr, mergeAttr, dropAttr, dropIf,
+  putAttr, addAttr, mergeAttr, dropAttr, dropIf,
   grantRole, revokeRole,
   addRelation, removeRelation, updateRelation,
   createEntity, destroyEntity,
@@ -55,20 +55,40 @@ export class AtomicTransaction {
   }
   
   // Attribute operations
-  put(id: EARS.EntityId, kind: EARS.AttrKind | string, value: unknown) {
+  put(id: EARS.EntityId, kind: EARS.AttrKind | string, value: unknown, allowMultiple = false) {
     this.ensureActive();
     const attrKind = typeof kind === "string" ? EARS.AttrKind.Custom(kind) : kind;
     const previousValues = getAttrs(id, attrKind);
     
     this.operations.push({
-      op: () => putAttr(id, attrKind, value),
+      op: () => allowMultiple ? addAttr(id, attrKind, value) : putAttr(id, attrKind, value),
       rollback: previousValues.length > 0
         ? () => {
             // Restore all previous values
-            previousValues.forEach(v => putAttr(id, attrKind, v));
+            dropAttr(id, attrKind);
+            previousValues.forEach(v => addAttr(id, attrKind, v));
           }
         : () => dropAttr(id, attrKind),
       description: `put ${id}.${kind} = ${JSON.stringify(value)}`
+    });
+    return this;
+  }
+  
+  add(id: EARS.EntityId, kind: EARS.AttrKind | string, value: unknown) {
+    this.ensureActive();
+    const attrKind = typeof kind === "string" ? EARS.AttrKind.Custom(kind) : kind;
+    const previousValues = getAttrs(id, attrKind);
+    
+    this.operations.push({
+      op: () => addAttr(id, attrKind, value),
+      rollback: () => {
+        // Remove the added value
+        const currentValues = getAttrs(id, attrKind);
+        if (currentValues.length > previousValues.length) {
+          dropAttr(id, attrKind, currentValues.length - 1);
+        }
+      },
+      description: `add ${id}.${kind} += ${JSON.stringify(value)}`
     });
     return this;
   }

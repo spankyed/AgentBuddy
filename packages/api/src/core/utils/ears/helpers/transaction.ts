@@ -3,7 +3,7 @@
  *───────────────────────────────────────────────────────────────────────────*/
 import {
   destroyEntity,
-  putAttr, mergeAttr, dropAttr, dropIf, updateAttr,
+  putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
   grantRole, revokeRole,
   addRelation, updateRelation, removeRelation,
   createEntity,
@@ -42,9 +42,18 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
   /*──────── core fluent surface ───────────*/
   const self = {
     /*─ attrs ─*/
-    put: (k: EARS.AttrKind | string, v: unknown, i?: number) => {
+    put: (k: EARS.AttrKind | string, v: unknown, allowMultiple = false) => {
       const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
-      putAttr(id, kind, v);
+      if (allowMultiple) {
+        addAttr(id, kind, v);
+      } else {
+        putAttr(id, kind, v);
+      }
+      return self;
+    },
+    add: (k: EARS.AttrKind | string, v: unknown) => {
+      const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
+      addAttr(id, kind, v);
       return self;
     },
     batchPut: (attrs: Record<string, unknown>) => {

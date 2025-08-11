@@ -2,10 +2,10 @@
  * atomic-transaction.spec.ts – unit tests for atomic transaction support
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { atomicTx, withTransaction } from '@/shared/ears/helpers/atomic-transaction';
-import { qx } from '@/shared/ears/helpers/query';
-import { EARS } from '@/shared/ears/types';
-import { getAttr, getRoles, createEntity, destroyEntity } from '@/shared/ears/attribute-storage';
+import { atomicTx, withTransaction } from '@/core/utils/ears/helpers/atomic-transaction';
+import { qx } from '@/core/utils/ears/helpers/query';
+import { EARS } from '@/core/types';
+import { getAttr, getAttrs, getRoles, createEntity, destroyEntity } from '@/core/utils/ears/attribute-storage';
 
 describe('AtomicTransaction', () => {
   let tx: ReturnType<typeof atomicTx>;
@@ -45,7 +45,7 @@ describe('AtomicTransaction', () => {
       nodeId = tx.create(EARS.Entity.Node);
     });
 
-    it('put() adds attributes on commit', () => {
+    it('put() replaces attributes on commit', () => {
       tx.put(nodeId, 'label', 'Test')
         .put(nodeId, EARS.AttrKind.Custom('type'), 'decision');
       
@@ -54,6 +54,25 @@ describe('AtomicTransaction', () => {
       // Attributes visible after commit
       expect(getAttr(nodeId, EARS.AttrKind.Custom('label'))).toBe('Test');
       expect(getAttr(nodeId, EARS.AttrKind.Custom('type'))).toBe('decision');
+      
+      // Test that put replaces the value
+      const tx2 = atomicTx();
+      tx2.put(nodeId, 'label', 'Updated');
+      tx2.commit();
+      
+      expect(getAttr(nodeId, EARS.AttrKind.Custom('label'))).toBe('Updated');
+      expect(getAttrs(nodeId, EARS.AttrKind.Custom('label'))).toHaveLength(1);
+    });
+    
+    it('add() appends multiple values', () => {
+      tx.add(nodeId, 'tags', 'frontend')
+        .add(nodeId, 'tags', 'backend')
+        .add(nodeId, 'tags', 'database');
+      
+      tx.commit();
+      
+      const tags = getAttrs(nodeId, EARS.AttrKind.Custom('tags'));
+      expect(tags).toEqual(['frontend', 'backend', 'database']);
     });
 
     it('batchPut() adds multiple attributes', () => {
@@ -95,8 +114,8 @@ describe('AtomicTransaction', () => {
     });
 
     it('dropIf() conditionally removes attributes', () => {
-      tx.put(nodeId, 'status', 'draft')
-        .put(nodeId, 'status', 'published');
+      tx.add(nodeId, 'status', 'draft')
+        .add(nodeId, 'status', 'published');
       tx.commit();
       
       const tx2 = atomicTx();
