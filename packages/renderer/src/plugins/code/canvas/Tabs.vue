@@ -302,14 +302,4 @@ const revealInExplorer = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) =
 .bg-neutral-850 {
   background-color: rgb(28, 28, 30);
 }
-
-/* Make tabs appear draggable */
-[draggable="true"] {
-  cursor: move;
-}
-
-/* During drag */
-[draggable="true"]:active {
-  cursor: grabbing;
-}
 </style>

@@ -514,11 +514,6 @@ onUnmounted(() => {
 /* Drag and drop visual feedback */
 .draggable-item {
   position: relative;
-  transition: transform 0.2s, opacity 0.2s;
-}
-
-.draggable-item.dragging {
-  opacity: 0.5;
 }
 
 .drop-indicator {
