@@ -44,8 +44,7 @@ type SystemEvent = OutgoingPromptEvents
 type UIEvent =
   | { type: 'PROMPT.SELECT'; promptId: EARS.EntityId }
   | { type: 'PROMPT.CREATE' }
-  | { type: 'PROMPT.SAVE_NEW' }
-  | { type: 'PROMPT.UPDATE' }
+  | { type: 'PROMPT.SAVE' }
   | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'PAGE.CHANGE'; page: number }
@@ -119,23 +118,26 @@ const promptsState = setup({
       selectedPrompt: undefined,
     }),
 
-    sendCreatePrompt: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'CREATE_PROMPT',
-        ...context.formData,
-      });
-    },
-
-    sendUpdatePrompt: ({ context }) => {
-      if (!context.selectedPromptId) return;
+    sendSavePrompt: ({ context }) => {
+      // Determine if creating or updating based on selectedPromptId
+      const isCreating = !context.selectedPromptId;
       
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_PROMPT',
-        promptId: context.selectedPromptId,
-        ...context.formData,
-      });
+      if (isCreating) {
+        // Create new prompt
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_PROMPT',
+          ...context.formData,
+        })
+      } else {
+        // Update existing prompt
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'UPDATE_PROMPT',
+          promptId: context.selectedPromptId!,
+          ...context.formData,
+        })
+      }
     },
 
     sendDeletePrompt: ({ event }) => {
@@ -260,8 +262,7 @@ const promptsState = setup({
     PROMPTS_STARTUP: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
     PROMPT_CREATED: { 
-      actions: 'addCreatedPrompt',
-      target: '.detail'
+      actions: 'addCreatedPrompt'
     },
     PROMPT_UPDATED: { 
       actions: 'updatePromptInList'
@@ -304,8 +305,9 @@ const promptsState = setup({
         'FORM.UPDATE_TEMPLATE': { actions: 'updateFormTemplate' },
         'FORM.UPDATE_OUTPUT_SCHEMA': { actions: 'updateFormOutputSchema' },
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
-        'PROMPT.SAVE_NEW': {
-          actions: 'sendCreatePrompt',
+        'PROMPT.SAVE': {
+          actions: 'sendSavePrompt',
+          target: 'list',
         },
         'GO.BACK': {
           target: 'list',
@@ -329,8 +331,9 @@ const promptsState = setup({
         'FORM.UPDATE_TEMPLATE': { actions: 'updateFormTemplate' },
         'FORM.UPDATE_OUTPUT_SCHEMA': { actions: 'updateFormOutputSchema' },
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
-        'PROMPT.UPDATE': {
-          actions: 'sendUpdatePrompt',
+        'PROMPT.SAVE': {
+          actions: 'sendSavePrompt',
+          target: 'list',
         },
         'GO.BACK': {
           target: 'list',

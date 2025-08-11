@@ -21,7 +21,7 @@
       @update-template="handleUpdateTemplate"
       @update-output-schema="handleUpdateOutputSchema"
       @update-category="handleUpdateCategory"
-      @save="state.hasTag('create-prompt') ? handleSaveNew : handleUpdatePrompt"
+      @save="handleSave"
       @back="handleGoBack"
     />
   </div>
@@ -85,12 +85,8 @@ function handleUpdateCategory(category: string) {
   actor.send({ type: 'FORM.UPDATE_CATEGORY', category });
 }
 
-function handleSaveNew() {
-  actor.send({ type: 'PROMPT.SAVE_NEW' });
-}
-
-function handleUpdatePrompt() {
-  actor.send({ type: 'PROMPT.UPDATE' });
+function handleSave() {
+  actor.send({ type: 'PROMPT.SAVE' });
 }
 
 function handleGoBack() {

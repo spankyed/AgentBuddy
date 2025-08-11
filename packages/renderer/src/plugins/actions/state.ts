@@ -44,8 +44,7 @@ type SystemEvent = OutgoingActionEvents
 type UIEvent =
   | { type: 'ACTION.SELECT'; actionId: EARS.EntityId }
   | { type: 'ACTION.CREATE' }
-  | { type: 'ACTION.SAVE_NEW' }
-  | { type: 'ACTION.UPDATE' }
+  | { type: 'ACTION.SAVE' }
   | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
@@ -119,23 +118,26 @@ const actionsState = setup({
       selectedAction: undefined,
     }),
 
-    sendCreateAction: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'CREATE_ACTION',
-        ...context.formData,
-      });
-    },
-
-    sendUpdateAction: ({ context }) => {
-      if (!context.selectedActionId) return;
+    sendSaveAction: ({ context }) => {
+      // Determine if creating or updating based on selectedActionId
+      const isCreating = !context.selectedActionId;
       
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_ACTION',
-        actionId: context.selectedActionId,
-        ...context.formData,
-      });
+      if (isCreating) {
+        // Create new action
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_ACTION',
+          ...context.formData,
+        })
+      } else {
+        // Update existing action
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'UPDATE_ACTION',
+          actionId: context.selectedActionId!,
+          ...context.formData,
+        })
+      }
     },
 
     sendDeleteAction: ({ event }) => {
@@ -260,8 +262,7 @@ const actionsState = setup({
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
     ACTION_CREATED: { 
-      actions: 'addCreatedAction',
-      target: '.detail'
+      actions: 'addCreatedAction'
     },
     ACTION_UPDATED: { 
       actions: 'updateActionInList'
@@ -304,8 +305,9 @@ const actionsState = setup({
         'FORM.UPDATE_ACTION': { actions: 'updateFormAction' },
         'FORM.UPDATE_OUTPUT': { actions: 'updateFormOutput' },
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
-        'ACTION.SAVE_NEW': {
-          actions: 'sendCreateAction',
+        'ACTION.SAVE': {
+          actions: 'sendSaveAction',
+          target: 'list',
         },
         'GO.BACK': {
           target: 'list',
@@ -329,8 +331,9 @@ const actionsState = setup({
         'FORM.UPDATE_ACTION': { actions: 'updateFormAction' },
         'FORM.UPDATE_OUTPUT': { actions: 'updateFormOutput' },
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
-        'ACTION.UPDATE': {
-          actions: 'sendUpdateAction',
+        'ACTION.SAVE': {
+          actions: 'sendSaveAction',
+          target: 'list',
         },
         'GO.BACK': {
           target: 'list',

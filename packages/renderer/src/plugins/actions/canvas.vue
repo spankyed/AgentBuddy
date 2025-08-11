@@ -20,7 +20,7 @@
       @update-action="handleUpdateAction"
       @update-output="handleUpdateOutput"
       @update-category="handleUpdateCategory"
-      @save="state.hasTag('create-action') ? handleSaveNew : handleUpdateActionSave"
+      @save="handleSave"
       @back="handleGoBack"
     />
   </div>
@@ -78,12 +78,8 @@ function handleUpdateCategory(category: string) {
   actor.send({ type: 'FORM.UPDATE_CATEGORY', category });
 }
 
-function handleSaveNew() {
-  actor.send({ type: 'ACTION.SAVE_NEW' });
-}
-
-function handleUpdateActionSave() {
-  actor.send({ type: 'ACTION.UPDATE' });
+function handleSave() {
+  actor.send({ type: 'ACTION.SAVE' });
 }
 
 function handleGoBack() {

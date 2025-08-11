@@ -77,9 +77,10 @@ export const actionsSystem = setup({
     },
     createAction: ({ system, event }) => {
       const ev = typeOf('CREATE_ACTION', event);
+      
       const result = repository.actionCommands.create({
         label: ev.label,
-        parameters: ev.input,
+        input: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
@@ -98,9 +99,10 @@ export const actionsSystem = setup({
     },
     updateAction: ({ system, event }) => {
       const ev = typeOf('UPDATE_ACTION', event);
+      
       const result = repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
-        parameters: ev.input,
+        input: ev.input,
         actionFn: ev.actionFn,
         output: ev.output,
         description: ev.description,
@@ -109,6 +111,7 @@ export const actionsSystem = setup({
 
       if (result.success) {
         const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
+        
         if (updatedAction) {
           system.get(bus).send(emit(actions, {
             type: 'ACTION_UPDATED',

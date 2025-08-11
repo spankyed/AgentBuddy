@@ -57,28 +57,27 @@ export const actionQueries = {
 
 // Commands
 export const actionCommands = {
-  create: (input: {
+  create: (data: {
     label: string;
     description?: string;
     category?: string;
-    parameters?: Record<string, any>;
+    input?: Record<string, any>;
     actionFn: string;
     output?: any;
   }): RepositoryResult<ActionEntity> => {
     try {
-      if (!input.label?.trim()) {
+      if (!data.label?.trim()) {
         throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
       }
-      if (!input.actionFn?.trim()) {
+      if (!data.actionFn?.trim()) {
         throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
       }
       
       const action = createEntityWithDefaults<ActionEntity>(
         EARS.Entity.Action,
         {
-          ...input,
-          input: input.parameters || {}, // Map parameters -> input
-          parameters: undefined,
+          ...data,
+          input: data.input || {},
         } as any,
         'ACT'
       );
@@ -93,7 +92,7 @@ export const actionCommands = {
     label?: string;
     description?: string;
     category?: string;
-    parameters?: Record<string, any>;
+    input?: Record<string, any>;
     actionFn?: string;
     output?: any;
   }): OperationResult => {
@@ -102,12 +101,12 @@ export const actionCommands = {
         throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
       }
       
-      const { parameters, ...rest } = updates;
+      const { input, ...rest } = updates;
       
-      // If parameters are provided, use update to replace the entire input object
-      if (parameters !== undefined) {
+      // If input is provided, use updateBatch to replace the entire input object
+      if (input !== undefined) {
         tx(id).updateBatch({
-          input: parameters,
+          input: input,
           updatedAt: Date.now()
         });
         
@@ -116,7 +115,7 @@ export const actionCommands = {
           updateEntity(id, rest);
         }
       } else {
-        // No parameters update, just update other fields
+        // No input update, just update other fields
         updateEntity(id, rest);
       }
       
