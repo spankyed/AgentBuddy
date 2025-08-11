@@ -6,7 +6,7 @@ import { EARS } from '@/core/types'
 import type { SearchIndex, SearchIndexConfig, IndexedDocument, IndexSearchResult } from './types/search-index'
 import type { DocumentDTO } from '@/systems/library/types'
 import * as searchService from './service'
-import * as repository from '@/systems/library/repository/index'
+import { libraryQueries, libraryCommands } from '@/systems/library/repository'
 
 // In-memory cache for frequently accessed indices
 const indexCache = new Map<string, Index>()
@@ -310,7 +310,7 @@ export async function indexDocument(
   const searchIndex = await getSearchIndex(indexId)
   if (!searchIndex) throw new Error(`Search index ${indexId} not found`)
   
-  const document = await repository.getDocument(documentId)
+  const document = libraryQueries.getDocument(documentId)
   if (!document) throw new Error(`Document ${documentId} not found`)
   
   if (searchIndex.excludedDocumentIds.includes(documentId)) return
@@ -430,18 +430,18 @@ async function getDocumentsToIndex(
   
   if (folderId === null) {
     // Root folder - get all documents not in any collection
-    documents = await repository.getDocuments()
+    documents = libraryQueries.getDocuments()
     documents = documents.filter(doc => !doc.collectionId)
   } else {
     // Get documents in this folder
-    documents = await repository.getDocumentsInCollection(folderId)
+    documents = libraryQueries.getDocumentsInCollection(folderId)
     
     // If not excluding subfolders, also get documents from child collections
     if (!searchIndex.excludeAllSubfolders) {
       const childCollections = await getChildCollectionsRecursive(folderId)
       for (const childId of childCollections) {
         if (!searchIndex.excludedFolderIds.includes(childId)) {
-          const childDocs = await repository.getDocumentsInCollection(childId)
+          const childDocs = libraryQueries.getDocumentsInCollection(childId)
           documents = documents.concat(childDocs)
         }
       }
@@ -496,7 +496,7 @@ async function reindexAllDocuments(indexId: EARS.EntityId): Promise<void> {
 
 // Auto-index new documents in folders with indices
 export async function autoIndexNewDocument(documentId: EARS.EntityId): Promise<void> {
-  const document = await repository.getDocument(documentId)
+  const document = libraryQueries.getDocument(documentId)
   if (!document) return
   
   // Find all indices that should include this document
