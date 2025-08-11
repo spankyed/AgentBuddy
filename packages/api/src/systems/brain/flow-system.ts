@@ -32,7 +32,7 @@ type ChildCompletedEvent =
       result?: any;
       final?: boolean;
       eventTNodeId?: EARS.EntityId;
-      isFlowCompletion?: boolean;
+      isFlow?: boolean; // Simple flag to indicate if completing child was a flow
     }
   | { type: 'CANCEL_FLOW' };
 
@@ -157,6 +157,7 @@ export function createFlowNodeSystem(
         context: {} as TNodeFlowMachineContext,
         events: {} as
           | ChildCompletedEvent
+          | { type: 'FLOW_COMPLETE' }
           | {
               type: string;
               [key: string]: any;
@@ -239,8 +240,8 @@ export function createFlowNodeSystem(
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
           
-          // Check if this child has a next node (only for step completions)
-          const hasNextNode = typedEv.eventTNodeId && typedEv.stepId
+          // Check if this child has a next node (only for non-flow completions)
+          const hasNextNode = !typedEv.isFlow && typedEv.eventTNodeId && typedEv.stepId
             ? repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
             : false;
           
@@ -248,7 +249,7 @@ export function createFlowNodeSystem(
           let eventTrackContexts = context.eventTrackContexts;
           let executionContext: ExecutionContext | undefined;
           
-          if (typedEv.eventTNodeId && typedEv.stepId) {
+          if (!typedEv.isFlow && typedEv.eventTNodeId && typedEv.stepId) {
             executionContext = context.eventTrackContexts[typedEv.eventTNodeId];
             if (executionContext) {
               const newStep = {
@@ -276,17 +277,22 @@ export function createFlowNodeSystem(
           enqueue.assign({
             activeChildrenCount: hasNextNode ? decremented + 1 : decremented,
             eventTrackContexts,
-            // Capture result if:
-            // 1. Child has final flag (step or flow), OR
-            // 2. It's a step with no next nodes
             finalResult: typedEv.result !== undefined && 
-              (typedEv.final || (typedEv.eventTNodeId && !hasNextNode))
+              (typedEv.final || (!hasNextNode && decremented === 0))
               ? typedEv.result
               : context.finalResult,
           });
           
+          // Check if flow should complete (do this AFTER state update)
+          const shouldComplete = typedEv.final || 
+            (decremented === 0 && !hasNextNode);
+          
+          if (shouldComplete) {
+            enqueue.raise({ type: 'FLOW_COMPLETE' });
+          }
+          
           // Spawn next node if there is one
-          if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
+          else if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
             const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
             
             logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
@@ -312,35 +318,14 @@ export function createFlowNodeSystem(
           eventTNodeId: context.eventTNodeId,
           result: context.finalResult,
           final: true,
-          isFlowCompletion: true,
+          isFlow: true,
         })),
         raiseEntryEvent: raise(({ context }) => ({
           type: 'flow.entry',
           ...(context.entryData !== undefined && { data: context.entryData })
         })),
       },
-      guards: {
-        flowCompleted: ({ event, context }) => {
-          const typedEv = typeOf('CHILD_COMPLETED', event as any);
-          
-          // If it's a step with final flag, the flow is complete
-          if (typedEv.final) return true;
-          
-          // Check if this is a nested flow completion (has isFlowCompletion flag)
-          if (typedEv.isFlowCompletion) {
-            // Flow completes if this was the last active child
-            return context.activeChildrenCount <= 1;
-          }
-          
-          // If it's not a step completion (no eventTNodeId), ignore
-          if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
-          
-          // Flow is complete if there are no next nodes and this is the last active child
-          const hasNextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
-          // Use <= 1 because the count hasn't been decremented yet
-          return !hasNextNode && context.activeChildrenCount <= 1;
-        },
-      },
+      guards: {},
     }).createMachine({
       id: isRootFlow ? brainBus : `tnode-${flowTNodeId}`,
       initial: 'active',
@@ -355,15 +340,12 @@ export function createFlowNodeSystem(
       }),
       on: {
         ...eventHandlers,
-        CHILD_COMPLETED: [
-          {
-            guard: 'flowCompleted',
-            target: '.completed',
-          },
-          {
-            actions: ['handleChildCompletion'],
-          },
-        ],
+        CHILD_COMPLETED: {
+          actions: ['handleChildCompletion'],
+        },
+        FLOW_COMPLETE: {
+          target: '.completed',
+        },
       },
       states: {
         active: {
