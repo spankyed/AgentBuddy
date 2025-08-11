@@ -61,7 +61,7 @@ export const brainSystem = setup({
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
     startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, self)
+      const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined, self)
       enqueue.spawnChild(machine, {
         systemId: brainBus,
         input: {}

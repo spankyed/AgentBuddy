@@ -6,6 +6,8 @@ import { EARS, ExecutionContext } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
 import { brainBus } from './system';
 import { createLogger } from '@/core/utils/debug/logger';
+import { prepareNodeAttributes } from './repository/node-attribute-mappers';
+import { qx } from '@/core/utils/ears/helpers/query';
 
 const logger = createLogger('flow-machine');
 
@@ -18,6 +20,8 @@ type TNodeFlowMachineContext = {
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Final result when a step completes with final flag
   finalResult?: any;
+  // Entry data for nested flows (resolved from field mappings)
+  entryData?: any;
 };
 
 type ChildCompletedEvent =
@@ -65,7 +69,7 @@ function createChildNode(
   
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, systemActor)
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor)
     : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-${stepOrFlowNode.id}-ev-${eventTNodeId}-tnode-${tNodeId}`;
@@ -79,12 +83,14 @@ function createChildNode(
 export function createFlowNodeSystem(
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
+  executionContext?: ExecutionContext,
   systemActor?: any,
 ) {
   // Handle TNode creation
   let actualFlowId: EARS.EntityId;
   let flowTNodeId: EARS.EntityId;
   let eventNodes: ListenNode[];
+  let entryData: any = undefined;
 
   const isRootFlow = !flowId;
 
@@ -116,6 +122,23 @@ export function createFlowNodeSystem(
     actualFlowId = flowId;
     flowTNodeId = flowTNode.id;
     eventNodes = flowEventNodes;
+    
+    // Resolve entry parameter for nested flows
+    if (executionContext && flowId) {
+      // Get the flow node to access its fieldMappings
+      const flowNode = qx(flowId).pickAll()[0] as unknown as NodeEntity | undefined;
+      
+      if (flowNode && flowNode.nodeType === 'flow') {
+        // Prepare node attributes to resolve field mappings
+        const nodeAttributes = prepareNodeAttributes(flowNode, executionContext);
+        
+        // Extract the entry parameter if it was mapped
+        if (nodeAttributes.entry !== undefined) {
+          entryData = nodeAttributes.entry;
+          // logger.debug(`Resolved entry parameter for flow ${flowId}:`, entryData);
+        }
+      }
+    }
   }
 
   const eventHandlers: Record<string, any> = {};
@@ -290,7 +313,10 @@ export function createFlowNodeSystem(
           result: context.finalResult,
           final: true,
         })),
-        raiseEntryEvent: raise({ type: 'flow.entry' }),
+        raiseEntryEvent: raise(({ context }) => ({
+          type: 'flow.entry',
+          ...(context.entryData !== undefined && { data: context.entryData })
+        })),
       },
       guards: {
         flowCompleted: ({ event, context }) => {
@@ -317,6 +343,7 @@ export function createFlowNodeSystem(
         activeChildrenCount: 0,
         eventTrackContexts: {},
         finalResult: undefined,
+        entryData: entryData,
       }),
       on: {
         ...eventHandlers,

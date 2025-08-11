@@ -286,8 +286,8 @@ export const brainCommands = {
         );
       }
 
-      // Get event nodes for this flow
-      const eventNodes = brainQueries.flowEventNodes(flowStepId);
+      // Get event nodes for the referenced flow (not the flow step)
+      const eventNodes = brainQueries.flowEventNodes(flowStepNode.flowRef as EARS.EntityId);
 
       const now = Date.now();
 
