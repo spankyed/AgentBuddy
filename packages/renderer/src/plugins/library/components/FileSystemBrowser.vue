@@ -433,7 +433,11 @@ function deleteItem(item: LibraryItem) {
 
 function handleDelete() {
   if (deleteDialog.currentItem) {
+    // Single item deletion
     emit('SELECT_ITEMS', { itemIds: [deleteDialog.currentItem.id] })
+    emit('DELETE_SELECTED_ITEMS')
+  } else if (props.selectedItems.length > 0) {
+    // Multi-item deletion - selected items are already selected
     emit('DELETE_SELECTED_ITEMS')
   }
   deleteDialog.show = false
