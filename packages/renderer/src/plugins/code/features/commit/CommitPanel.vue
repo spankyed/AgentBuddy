@@ -148,6 +148,7 @@
               v-for="file in stagedFiles"
               :key="`staged-${file.path}`"
               @click="selectFile(file)"
+              :title="file.path"
               :class="[
                 'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
@@ -190,6 +191,7 @@
               v-for="file in unstagedFiles"
               :key="`unstaged-${file.path}`"
               @click="selectFile(file)"
+              :title="file.path"
               :class="[
                 'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
