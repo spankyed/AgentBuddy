@@ -264,9 +264,9 @@ export const brainCommands = {
     systemActor?: any,
   ): RepositoryResult<{ flowTNode: TNodeEntity; eventNodes: ListenNode[] }> => {
     try {
-      // Get the flow reference from the flow node
+      // Get the flow reference from the flow node (get all fields for attributes)
       const flowStepNode = qx(flowStepId)
-        .pickOne(["id", "nodeType", "flowRef", "label"]) as Partial<FlowNode> | undefined;
+        .pickAll()[0] as Partial<FlowNode> | undefined;
       
       if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
         throw new RepositoryError(
@@ -291,11 +291,20 @@ export const brainCommands = {
 
       const now = Date.now();
 
+      // Prepare node attributes (includes flowRef, fieldMappings, etc.)
+      const nodeAttributes: Record<string, any> = {
+        flowRef: flowStepNode.flowRef,
+        flowLabel: flow.label,
+        ...(flowStepNode.fieldMappings && { fieldMappings: flowStepNode.fieldMappings }),
+      };
+
       const flowTNode: Partial<TNodeEntity> = {
         tNodeType: 'flow',
         label: flow.label!,
         status: 'active',
         startedAt: now,
+        stepNodeType: 'flow',
+        nodeAttributes,
       };
 
       const flowTnodeId = tx(EARS.Entity.TNode)

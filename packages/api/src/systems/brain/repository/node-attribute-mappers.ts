@@ -99,6 +99,7 @@ function createFieldMappingMapper(nodeTypeName: string, excludeFields: string[])
  *─────────────────────────────────────────────────────────────────*/
 const llmNodeMapper = createFieldMappingMapper('LLM', COMMON_FIELDS_TO_EXCLUDE as unknown as string[]);
 const actionNodeMapper = createFieldMappingMapper('Action', COMMON_FIELDS_TO_EXCLUDE as unknown as string[]);
+const flowNodeMapper = createFieldMappingMapper('Flow', COMMON_FIELDS_TO_EXCLUDE as unknown as string[]);
 
 /*─────────────────────────────────────────────────────────────────
  * Mapper Registry
@@ -106,6 +107,7 @@ const actionNodeMapper = createFieldMappingMapper('Action', COMMON_FIELDS_TO_EXC
 const nodeAttributeMappers: Record<NodeKind, NodeAttributeMapper> = {
   llm: llmNodeMapper,
   action: actionNodeMapper,
+  flow: flowNodeMapper,
   // All other node types use default mapper
   query: defaultMapper,
   create: defaultMapper,
@@ -114,7 +116,6 @@ const nodeAttributeMappers: Record<NodeKind, NodeAttributeMapper> = {
   fire: defaultMapper,
   listen: defaultMapper,
   transform: defaultMapper,
-  flow: defaultMapper,
   keep_alive: defaultMapper,
 };
 

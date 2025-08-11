@@ -136,6 +136,7 @@ import LLMNodeDetails from './details/LLMNodeDetails.vue';
 import ActionNodeDetails from './details/ActionNodeDetails.vue';
 import ListenNodeDetails from './details/ListenNodeDetails.vue';
 import FireNodeDetails from './details/FireNodeDetails.vue';
+import FlowNodeDetails from './details/FlowNodeDetails.vue';
 import DefaultNodeDetails from './details/DefaultNodeDetails.vue';
 
 interface Props {
@@ -261,6 +262,7 @@ const detailComponent = computed(() => {
     case 'action': return ActionNodeDetails;
     case 'listen': return ListenNodeDetails;
     case 'fire': return FireNodeDetails;
+    case 'flow': return FlowNodeDetails;
     default: return DefaultNodeDetails;
   }
 });
@@ -283,6 +285,9 @@ const keyAttribute = computed(() => {
       break;
     case 'fire':
       if (attrs.eventType) return `Fire: ${attrs.eventType}`;
+      break;
+    case 'flow':
+      if (attrs.flowRef) return `Flow: ${attrs.flowRef}`;
       break;
   }
   
