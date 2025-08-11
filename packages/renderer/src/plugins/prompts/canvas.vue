@@ -13,7 +13,7 @@
     <!-- Create/Edit View -->
     <PromptDetail
       v-else-if="state.hasTag('create-prompt') || state.hasTag('detail-prompt')"
-      :prompt="state.hasTag('detail-prompt') ? selectedPrompt : null"
+      :prompt="state.hasTag('detail-prompt') ? selectedPrompt : undefined"
       :form-data="formData"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"

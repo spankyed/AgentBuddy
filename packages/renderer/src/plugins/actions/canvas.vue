@@ -12,7 +12,7 @@
     <!-- Create/Edit View -->
     <ActionDetail
       v-else-if="state.hasTag('create-action') || state.hasTag('detail-action')"
-      :action="state.hasTag('detail-action') ? selectedAction : null"
+      :action="state.hasTag('detail-action') ? selectedAction : undefined"
       :form-data="formData"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
