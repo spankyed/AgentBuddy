@@ -56,29 +56,31 @@
         <div class="flex items-center gap-2">
           <!-- Selection indicator and actions -->
           <template v-if="selectedItems.length > 0">
-            <span class="text-sm text-neutral-400 mr-2">
+            <span class="text-sm text-neutral-400 mr-1">
               {{ selectedItems.length }} selected
             </span>
-            <Button
-              v-if="currentFolderId !== null"
-              @click="moveSelectedItemsUp"
-              variant="transparent"
-              size="sm"
-              class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
-              title="Move selected items up a level"
-            >
-              <ArrowUp class="w-4 h-4" />
-            </Button>
-            <Button
-              @click="deleteSelectedItems"
-              variant="transparent"
-              size="sm"
-              class="border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
-              title="Delete selected items"
-            >
-              <Trash2 class="w-4 h-4" />
-            </Button>
-            <div class="w-px h-5 bg-neutral-700" />
+            <div class="flex items-center gap-1">
+              <Button
+                v-if="currentFolderId !== null"
+                @click="moveSelectedItemsUp"
+                variant="transparent"
+                size="sm"
+                class="px-0.5 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+                title="Move selected items up a level"
+              >
+                <ArrowUp class="w-4 h-4" />
+              </Button>
+              <Button
+                @click="deleteSelectedItems"
+                variant="transparent"
+                size="sm"
+                class="px-0.5 border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+                title="Delete selected items"
+              >
+                <Trash2 class="w-4 h-4" />
+              </Button>
+            </div>
+            <div class="w-px h-5 bg-neutral-700 ml-1" />
           </template>
           
           <Button 
