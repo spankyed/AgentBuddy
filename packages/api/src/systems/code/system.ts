@@ -227,11 +227,24 @@ export const systemMachine = setup({
       await context.gitWatcher.startWatching()
     },
     
-    restartGitWatcher: async ({ context }) => {
-      if (!context.gitWatcher) {
+    restartGitWatcher: async ({ context, system }) => {
+      if (!context.gitWatcher || !context.gitRepository) {
         return
       }
-      // Re-setup the watcher after directory change
+      
+      // Set up the callback for git changes (same as setupGitWatcher)
+      context.gitWatcher.setChangeCallback(() => {
+        // Clear git cache when git status changes
+        context.gitRepository?.clearCache()
+        
+        // Notify commit system of changes
+        system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        
+        // Also notify the PR system
+        system.get('pr')?.send({ type: 'pr.GIT_STATUS_CHANGED' })
+      })
+      
+      // Start watching git changes
       await context.gitWatcher.startWatching()
     }
   }
