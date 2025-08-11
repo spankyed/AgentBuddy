@@ -581,6 +581,7 @@ export const librarySystem = setup({
     COLLECTION_CREATED: {
       actions: [
         'requestFolderContents',
+        'requestCollections',
         assign({
           itemToEdit: ({ event }) => {
             // Set the new folder to be edited
@@ -594,10 +595,10 @@ export const librarySystem = setup({
       actions: 'requestFolderContents',
     },
     ITEMS_DELETED: {
-      actions: 'requestFolderContents',
+      actions: ['requestFolderContents', 'requestCollections'],
     },
     ITEMS_MOVED: {
-      actions: 'requestFolderContents',
+      actions: ['requestFolderContents', 'requestCollections'],
     },
     ITEMS_REORDERED: {
       actions: 'requestFolderContents',

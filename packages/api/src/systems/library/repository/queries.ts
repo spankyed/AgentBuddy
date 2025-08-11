@@ -143,23 +143,23 @@ export const libraryQueries = {
       // Get child collections of this folder
       folders = qx(folderId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
-        .pick(['name', 'description', 'displayOrder', 'createdAt', 'updatedAt'])
+        .pickAll()
     }
     
     // Convert collections to folder items
     for (const folder of folders) {
-      const folderId = folder.id
-      const childCollections = qx(folder.id as EARS.EntityId)
+      const itemId = folder.id
+      const childCollections = qx(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection)
         .pickAll()
-      const documents = qx(folder.id as EARS.EntityId)
+      const documents = qx(itemId as EARS.EntityId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
       
       items.push({
         type: 'folder',
-        id: folder.id,
+        id: itemId,
         name: folder.name as string,
         parentId: folderId,
         childCount,
@@ -181,7 +181,7 @@ export const libraryQueries = {
       // Get documents in this collection
       documents = qx(folderId)
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
-        .pick(['name', 'content', 'shortCode', 'displayOrder', 'createdAt', 'updatedAt'])
+        .pickAll()
     }
     
     // Convert documents to document items

@@ -229,19 +229,8 @@ const selectedItems = useSelector(actor, (state) => state.context.selectedItems)
 const send = (event: LibraryEvents) => actor.send(event)
 
 const totalCollections = computed(() => {
-  let count = 0
-  
-  function countCollections(cols: LibraryContext['collections']) {
-    for (const col of cols) {
-      count++
-      if (col.childCollections.length > 0) {
-        countCollections(col.childCollections)
-      }
-    }
-  }
-  
-  countCollections(collections.value)
-  return count
+  // Count folders in the current view (items array)
+  return items.value.filter(item => item.type === 'folder').length
 })
 
 const allTags = computed(() => {
