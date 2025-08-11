@@ -312,6 +312,7 @@ export function createFlowNodeSystem(
           eventTNodeId: context.eventTNodeId,
           result: context.finalResult,
           final: true,
+          isFlowCompletion: true,
         })),
         raiseEntryEvent: raise(({ context }) => ({
           type: 'flow.entry',
@@ -325,12 +326,19 @@ export function createFlowNodeSystem(
           // If it's a step with final flag, the flow is complete
           if (typedEv.final) return true;
           
+          // Check if this is a nested flow completion (has isFlowCompletion flag)
+          if (typedEv.isFlowCompletion) {
+            // Flow completes if this was the last active child
+            return context.activeChildrenCount <= 1;
+          }
+          
           // If it's not a step completion (no eventTNodeId), ignore
           if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
           
-          // Flow is complete if there are no next nodes nor active children
+          // Flow is complete if there are no next nodes and this is the last active child
           const hasNextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
-          return !hasNextNode && context.activeChildrenCount === 0;
+          // Use <= 1 because the count hasn't been decremented yet
+          return !hasNextNode && context.activeChildrenCount <= 1;
         },
       },
     }).createMachine({
