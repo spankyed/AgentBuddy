@@ -61,7 +61,7 @@
 
       <FileTree 
         :files="prFiles"
-        :collapse-key="collapseKey"
+        :all-collapsed="allCollapsed"
         @select-file="handleFileSelect"
       />
     </div>
@@ -83,7 +83,7 @@ const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
 
 // Collapse state management
-const collapseKey = ref(0)
+const allCollapsed = ref(false)
 
 
 // State selectors from PR actor
@@ -103,8 +103,11 @@ const refreshStatus = () => {
 }
 
 const collapseAll = () => {
-  // Increment key to force re-render of FileTree with all items collapsed
-  collapseKey.value++
+  allCollapsed.value = true
+  // Reset after a tick to allow user to expand individual items again
+  setTimeout(() => {
+    allCollapsed.value = false
+  }, 0)
 }
 
 interface TreeNode {

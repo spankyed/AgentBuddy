@@ -25,7 +25,7 @@
           :key="child.path"
           :item="child"
           :level="level + 1"
-          :collapse-key="collapseKey"
+          :all-collapsed="allCollapsed"
           @select-file="$emit('select-file', $event)"
         />
       </div>
@@ -64,9 +64,10 @@ interface TreeNode {
 const props = withDefaults(defineProps<{
   item: TreeNode
   level?: number
-  collapseKey?: number
+  allCollapsed?: boolean
 }>(), {
-  level: 0
+  level: 0,
+  allCollapsed: false
 })
 
 defineEmits<{
@@ -75,9 +76,11 @@ defineEmits<{
 
 const expanded = ref(false)
 
-// Watch for collapseKey changes to reset expanded state
-watch(() => props.collapseKey, () => {
-  expanded.value = false
+// Watch for allCollapsed changes to collapse folders
+watch(() => props.allCollapsed, (newVal) => {
+  if (newVal && props.item.type === 'folder') {
+    expanded.value = false
+  }
 })
 
 const sortedChildren = computed(() => {
