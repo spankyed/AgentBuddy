@@ -33,7 +33,7 @@ export const IncomingBrainEvents = [
 
 export type BrainInternalEvents = 
   | SystemEvents
-  | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
+  // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'EVENT_TNODE_SPAWNED'; tNode: TNodeEntity }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
@@ -107,26 +107,30 @@ export const brainSystem = setup({
         eventType: eventType
       }));
 
-      brainActor.send({
-        type: eventType,
-        payload
-      });
-    },
-    handleEventReceived: ({ system, event, context }) => {
-      if (event.type === 'TRACE_EVENT_RECEIVED') {
-        // Pulse the event in UI
-        system.get(bus).send(emit(brain, {
-          type: 'EVENT_PULSE',
-          eventType: event.data.eventType
-        }));
-        
-        // Forward event to brain runner
-        system.get(brainBus).send({ 
-          type: event.data.eventType, 
-          payload: event.data.payload 
+      if (brainActor && brainActor.send) {
+        brainActor.send({
+          type: eventType,
+          payload
         });
+      } else {
+        console.error(`Brain actor is not available or has terminated. Cannot send event: ${eventType}`);
       }
     },
+    // handleEventReceived: ({ system, event, context }) => {
+    //   if (event.type === 'TRACE_EVENT_RECEIVED') {
+    //     // Pulse the event in UI
+    //     system.get(bus).send(emit(brain, {
+    //       type: 'EVENT_PULSE',
+    //       eventType: event.data.eventType
+    //     }));
+
+    //     // Forward event to brain runner
+    //     system.get(brainBus).send({
+    //       type: event.data.eventType,
+    //       payload: event.data.payload
+    //     });
+    //   }
+    // },
   },
 }).createMachine(
   {
@@ -161,9 +165,9 @@ export const brainSystem = setup({
           GO_BACK_TNODE: {
             actions: 'goBackTNode',
           },
-          TRACE_EVENT_RECEIVED: {
-            actions: 'handleEventReceived',
-          },
+          // TRACE_EVENT_RECEIVED: {
+          //   actions: 'handleEventReceived',
+          // },
           TRIGGER_BRAIN_EVENT: {
             actions: 'triggerBrainEvent',
           },
