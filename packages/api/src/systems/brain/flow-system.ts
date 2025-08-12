@@ -146,7 +146,7 @@ export function createFlowNodeSystem(
   // Add event listeners
   eventNodes.forEach((node) => {
     eventHandlers[node.eventType] = {
-      actions: ['handleTrackEvent', 'incrementChildCount'],
+      actions: ['handleTrackEvent'],
     };
   });
 
@@ -206,12 +206,13 @@ export function createFlowNodeSystem(
               }
             });
 
-            // Store the execution context for this event track
+            // Store the execution context for this event track and increment child count
             enqueue.assign({
               eventTrackContexts: ({ context }) => ({
                 ...context.eventTrackContexts,
                 [eventTNode.id]: eventTrackContext,
               }),
+              activeChildrenCount: ({ context }) => context.activeChildrenCount + 1,
             });
 
             // Spawn child based on node type
@@ -220,20 +221,9 @@ export function createFlowNodeSystem(
               systemId, 
               input: { executionContext: eventTrackContext } 
             });
+          } else {
+            logger.warn(`Event ${eventType} has no first step - event unhandled`);
           }
-        }),
-        incrementChildCount: assign({
-          activeChildrenCount: ({ context, event }) => {
-            const eventNode = context.eventNodes.find(
-              (n) => n.eventType === event.type,
-            );
-            const firstStep = eventNode
-              ? repository.brainQueries.eventFirstStep(eventNode.id!)
-              : null;
-            return firstStep
-              ? context.activeChildrenCount + 1
-              : context.activeChildrenCount;
-          },
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, self }) => {
           logger.debug(`Child completed in flow ${context.flowId}:`, { event });
@@ -331,7 +321,7 @@ export function createFlowNodeSystem(
       initial: 'active',
       context: ({ input }: any) => ({
         flowId: actualFlowId,
-        eventTNodeId: flowTNodeId,
+        eventTNodeId: eventTNodeId,
         eventNodes: eventNodes,
         activeChildrenCount: 0,
         eventTrackContexts: {},
