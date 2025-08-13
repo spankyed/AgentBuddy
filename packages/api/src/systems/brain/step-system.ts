@@ -29,11 +29,7 @@ export function createStepNodeSystem(
   eventTNodeId: EARS.EntityId,
   executionContext = {} as ExecutionContext,
 ) {
-  const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext);
-  if (!result.success) {
-    throw new Error(`Failed to create step TNode: ${result.error}`);
-  }
-  const { tNode, step } = result.data;
+  const { tNode, step } = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext);
   return {
     tNodeId: tNode.id,
     tNode: tNode,

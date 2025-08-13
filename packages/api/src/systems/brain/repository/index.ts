@@ -11,16 +11,6 @@ import type {
   ExecutionContext
 } from '../types';
 import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
-import { 
-  RepositoryResult, 
-  RepositoryError, 
-  RepositoryErrorCode, 
-  createEntityWithDefaults, 
-  successResult, 
-  errorResult,
-  operationSuccess,
-  type OperationResult
-} from '@/core/utils/repository';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 // Brain Repository - Manages execution traces and TNode trees
 
@@ -212,251 +202,223 @@ export const brainCommands = {
   createEventTNode: (
     eventNode: ListenNode, 
     flowTNodeId: EARS.EntityId
-  ): RepositoryResult<TNodeEntity> => {
-    try {
-      const now = Date.now();
-      const tNodeId = tx(EARS.Entity.TNode)
-        .batchPut({
-          tNodeType: 'event',
-          label: eventNode.label,
-          eventType: eventNode.eventType!,
-          status: 'active',
-          startedAt: now,
-        })
-        .id();
-      
-      // Create TRACKED relationship from parent flow
-      tx(flowTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
-      
-      const eventTNode: TNodeEntity = {
-        id: tNodeId,
-        entityType: EARS.Entity.TNode,
+  ): TNodeEntity => {
+    const now = Date.now();
+    const tNodeId = tx(EARS.Entity.TNode)
+      .batchPut({
         tNodeType: 'event',
         label: eventNode.label,
-        eventType: eventNode.eventType,
+        eventType: eventNode.eventType!,
         status: 'active',
         startedAt: now,
-        createdAt: now,
-      };
-      
-      return successResult(eventTNode);
-    } catch (error) {
-      return errorResult(error);
-    }
+      })
+      .id();
+    
+    // Create TRACKED relationship from parent flow
+    tx(flowTNodeId).link(EARS.RelKind.TRACKED, tNodeId);
+    
+    const eventTNode: TNodeEntity = {
+      id: tNodeId,
+      entityType: EARS.Entity.TNode,
+      tNodeType: 'event',
+      label: eventNode.label,
+      eventType: eventNode.eventType,
+      status: 'active',
+      startedAt: now,
+      createdAt: now,
+    };
+    
+    return eventTNode;
   },
   
   createFlowTNode: (
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
     executionContext?: ExecutionContext
-  ): RepositoryResult<{ flowTNode: TNodeEntity; eventNodes: ListenNode[] }> => {
-    try {
-      // Get the flow reference from the flow node (get all fields for attributes)
-      const flowStepNode = qx(flowStepId)
-        .pickAll()[0] as Partial<FlowNode> | undefined;
-      
-      if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
-        throw new RepositoryError(
-          `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'flow' type`,
-          RepositoryErrorCode.NOT_FOUND
-        );
-      }
-
-      // Get the referenced flow
-      const flow = qx(flowStepNode.flowRef as EARS.EntityId)
-        .pickOne(["id", "label"]) as Partial<FlowEntity> | undefined;
-      
-      if (!flow) {
-        throw new RepositoryError(
-          `Cannot create flow TNode: Referenced flow ${flowStepNode.flowRef} not found in database`,
-          RepositoryErrorCode.NOT_FOUND
-        );
-      }
-
-      // Get event nodes for the referenced flow (not the flow step)
-      const eventNodes = brainQueries.flowEventNodes(flowStepNode.flowRef as EARS.EntityId);
-
-      const now = Date.now();
-
-      const nodeAttributes = resolveNodeAttributes(
-        flowStepNode,
-        executionContext,
+  ): { flowTNode: TNodeEntity; eventNodes: ListenNode[] } => {
+    // Get the flow reference from the flow node (get all fields for attributes)
+    const flowStepNode = qx(flowStepId)
+      .pickAll()[0] as Partial<FlowNode> | undefined;
+    
+    if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
+      throw new Error(
+        `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'flow' type`
       );
-
-      const flowTNode: Partial<TNodeEntity> = {
-        tNodeType: 'flow',
-        label: flow.label!,
-        status: 'active',
-        startedAt: now,
-        stepNodeType: 'flow',
-        nodeAttributes,
-        // Preserve the flow node's final status
-        ...(flowStepNode.final && { final: true }),
-      };
-
-      const flowTnodeId = tx(EARS.Entity.TNode)
-        .batchPut(flowTNode)
-        .link(EARS.RelKind.INSTANCE_OF, flowStepId)
-        .id();
-      
-      // Create SPAWNED relationship from parent
-      if (eventTrackId) {
-        tx(eventTrackId).link(EARS.RelKind.SPAWNED, flowTnodeId);
-      }
-
-      Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
-      
-      return successResult({
-        flowTNode: flowTNode as TNodeEntity,
-        eventNodes,
-      });
-    } catch (error) {
-      return errorResult(error);
     }
+
+    // Get the referenced flow
+    const flow = qx(flowStepNode.flowRef as EARS.EntityId)
+      .pickOne(["id", "label"]) as Partial<FlowEntity> | undefined;
+    
+    if (!flow) {
+      throw new Error(
+        `Cannot create flow TNode: Referenced flow ${flowStepNode.flowRef} not found in database`
+      );
+    }
+
+    // Get event nodes for the referenced flow (not the flow step)
+    const eventNodes = brainQueries.flowEventNodes(flowStepNode.flowRef as EARS.EntityId);
+
+    const now = Date.now();
+
+    const nodeAttributes = resolveNodeAttributes(
+      flowStepNode,
+      executionContext,
+    );
+
+    const flowTNode: Partial<TNodeEntity> = {
+      tNodeType: 'flow',
+      label: flow.label!,
+      status: 'active',
+      startedAt: now,
+      stepNodeType: 'flow',
+      nodeAttributes,
+      // Preserve the flow node's final status
+      ...(flowStepNode.final && { final: true }),
+    };
+
+    const flowTnodeId = tx(EARS.Entity.TNode)
+      .batchPut(flowTNode)
+      .link(EARS.RelKind.INSTANCE_OF, flowStepId)
+      .id();
+    
+    // Create SPAWNED relationship from parent
+    if (eventTrackId) {
+      tx(eventTrackId).link(EARS.RelKind.SPAWNED, flowTnodeId);
+    }
+
+    Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
+    
+    return {
+      flowTNode: flowTNode as TNodeEntity,
+      eventNodes,
+    };
   },
   
   createStepTNode: (
     stepId: EARS.EntityId,
     eventTrackId: EARS.EntityId,
     executionContext?: ExecutionContext
-  ): RepositoryResult<{ tNode: TNodeEntity; step: NodeEntity }> => {
-    try {
-      if (!stepId) {
-        throw new RepositoryError(
-          'Cannot create step TNode: Step ID is required',
-          RepositoryErrorCode.VALIDATION_ERROR
-        );
-      }
-
-      const step = qx(stepId)
-        .pickAll()[0] as Partial<NodeEntity> | undefined;
-
-      if (!step || !step.id) {
-        throw new RepositoryError(
-          `Cannot create step TNode: Node ${stepId} not found in flow blueprint`,
-          RepositoryErrorCode.NOT_FOUND
-        );
-      }
-
-      const now = Date.now();
-
-      // Prepare node attributes
-      const nodeAttributes = resolveNodeAttributes(step, executionContext);
-
-      const stepTNode: Partial<TNodeEntity> = {
-        tNodeType: 'step',
-        label: step.label ?? '',
-        status: 'active',
-        startedAt: now,
-        stepNodeType: step.nodeType,
-        ...(step.final && { final: true }),
-        ...(nodeAttributes && { nodeAttributes }),
-      };
-
-      const tNodeId = tx(EARS.Entity.TNode)
-        .batchPut(stepTNode)
-        .link(EARS.RelKind.INSTANCE_OF, stepId)
-        .id();
-      
-      // Create SPAWNED relationship from parent
-      tx(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
-      
-      const tNode: TNodeEntity = {
-        id: tNodeId,
-        entityType: EARS.Entity.TNode,
-        createdAt: now,
-        ...stepTNode
-      } as TNodeEntity;
-      
-      return successResult({
-        tNode,
-        step: step as NodeEntity,
-      });
-    } catch (error) {
-      return errorResult(error);
+  ): { tNode: TNodeEntity; step: NodeEntity } => {
+    if (!stepId) {
+      throw new Error(
+        'Cannot create step TNode: Step ID is required'
+      );
     }
+
+    const step = qx(stepId)
+      .pickAll()[0] as Partial<NodeEntity> | undefined;
+
+    if (!step || !step.id) {
+      throw new Error(
+        `Cannot create step TNode: Node ${stepId} not found in flow blueprint`
+      );
+    }
+
+    const now = Date.now();
+
+    // Prepare node attributes
+    const nodeAttributes = resolveNodeAttributes(step, executionContext);
+
+    const stepTNode: Partial<TNodeEntity> = {
+      tNodeType: 'step',
+      label: step.label ?? '',
+      status: 'active',
+      startedAt: now,
+      stepNodeType: step.nodeType,
+      ...(step.final && { final: true }),
+      ...(nodeAttributes && { nodeAttributes }),
+    };
+
+    const tNodeId = tx(EARS.Entity.TNode)
+      .batchPut(stepTNode)
+      .link(EARS.RelKind.INSTANCE_OF, stepId)
+      .id();
+    
+    // Create SPAWNED relationship from parent
+    tx(eventTrackId).link(EARS.RelKind.SPAWNED, tNodeId);
+    
+    const tNode: TNodeEntity = {
+      id: tNodeId,
+      entityType: EARS.Entity.TNode,
+      createdAt: now,
+      ...stepTNode
+    } as TNodeEntity;
+    
+    return {
+      tNode,
+      step: step as NodeEntity,
+    };
   },
   
-  createRootFlowTNode: (): RepositoryResult<{
+  createRootFlowTNode: (): {
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
     eventNodes: ListenNode[];
     entryNode: ListenNode;
-  }> => {
-    try {
-      const now = Date.now();
-      const rootId = ROOT_TNODE_ID;
+  } => {
+    const now = Date.now();
+    const rootId = ROOT_TNODE_ID;
 
-      // Get root flow
-      const rootFlow = qx(EARS.Entity.Flow)
-        .withRole(ROOT_FLOW_ROLE)
-        .pickOne(["id", "label", "flowType", "status", "createdAt"]) as FlowEntity | undefined;
-        
-      if (!rootFlow) {
-        throw new RepositoryError(
-          "Cannot create root flow TNode: No flow with 'root_flow' role found. " +
-          "Ensure the database is properly initialized.",
-          RepositoryErrorCode.NOT_FOUND
-        );
-      }
-
-      // Get all event nodes
-      const eventNodes = brainQueries.flowEventNodes(rootFlow.id);
-
-      // Find the entry event node
-      const entryNode = eventNodes.find(node => node.mode === ENTRY_EVENT_MODE);
-
-      if (!entryNode) {
-        throw new RepositoryError(
-          `Cannot create root flow TNode: No entry event node found in root flow. ` +
-          `Found ${eventNodes.length} event nodes but none with mode='entry'`,
-          RepositoryErrorCode.NOT_FOUND
-        );
-      }
-
-      tx(rootId)
-        .batchPut({
-          entityType: EARS.Entity.TNode,
-          tNodeType: 'flow',
-          label: rootFlow.label!,
-          status: 'active',
-          startedAt: now,
-          createdAt: now,
-        })
-        .link(EARS.RelKind.INSTANCE_OF, rootFlow.id)
-        .grant(ROOT_TRACE_NODE_ROLE);
+    // Get root flow
+    const rootFlow = qx(EARS.Entity.Flow)
+      .withRole(ROOT_FLOW_ROLE)
+      .pickOne(["id", "label", "flowType", "status", "createdAt"]) as FlowEntity | undefined;
       
-      const rootFlowTNode: TNodeEntity = {
-        id: rootId,
+    if (!rootFlow) {
+      throw new Error(
+        "Cannot create root flow TNode: No flow with 'root_flow' role found. " +
+        "Ensure the database is properly initialized."
+      );
+    }
+
+    // Get all event nodes
+    const eventNodes = brainQueries.flowEventNodes(rootFlow.id);
+
+    // Find the entry event node
+    const entryNode = eventNodes.find(node => node.mode === ENTRY_EVENT_MODE);
+
+    if (!entryNode) {
+      throw new Error(
+        `Cannot create root flow TNode: No entry event node found in root flow. ` +
+        `Found ${eventNodes.length} event nodes but none with mode='entry'`
+      );
+    }
+
+    tx(rootId)
+      .batchPut({
         entityType: EARS.Entity.TNode,
         tNodeType: 'flow',
         label: rootFlow.label!,
         status: 'active',
         startedAt: now,
         createdAt: now,
-      };
-      
-      return successResult({
-        rootFlow,
-        rootFlowTNode,
-        eventNodes,
-        entryNode,
-      });
-    } catch (error) {
-      return errorResult(error);
-    }
+      })
+      .link(EARS.RelKind.INSTANCE_OF, rootFlow.id)
+      .grant(ROOT_TRACE_NODE_ROLE);
+    
+    const rootFlowTNode: TNodeEntity = {
+      id: rootId,
+      entityType: EARS.Entity.TNode,
+      tNodeType: 'flow',
+      label: rootFlow.label!,
+      status: 'active',
+      startedAt: now,
+      createdAt: now,
+    };
+    
+    return {
+      rootFlow,
+      rootFlowTNode,
+      eventNodes,
+      entryNode,
+    };
   },
   
   updateTNodeStatus: (
     tNodeId: EARS.EntityId, 
     status: TNodeEntity['status']
-  ): OperationResult => {
-    try {
-      tx(tNodeId).update('status', status);
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
+  ): void => {
+    tx(tNodeId).update('status', status);
   },
 } as const;

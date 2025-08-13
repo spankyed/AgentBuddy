@@ -87,30 +87,22 @@ export function createFlowNodeSystem(
 
   if (isRootFlow) {
     // Create root flow TNode
-    const result = repository.brainCommands.createRootFlowTNode();
-    if (!result.success) {
-      throw new Error(`Failed to create root flow TNode: ${result.error}`);
-    }
     const {
       rootFlow,
       rootFlowTNode,
       eventNodes: rootEventNodes,
-    } = result.data;
+    } = repository.brainCommands.createRootFlowTNode();
     actualFlowId = rootFlow.id;
     flowTNodeId = rootFlowTNode.id || 'TNode-Root'; // 'TNode-Root'
     flowTNode = rootFlowTNode;
     eventNodes = rootEventNodes;
   } else {
     // Create regular flow TNode
-    const result = repository.brainCommands.createFlowTNode(
+    const { flowTNode: createdFlowTNode, eventNodes: flowEventNodes } = repository.brainCommands.createFlowTNode(
       flowId,
       eventTNodeId,
       executionContext
     );
-    if (!result.success) {
-      throw new Error(`Failed to create flow TNode: ${result.error}`);
-    }
-    const { flowTNode: createdFlowTNode, eventNodes: flowEventNodes } = result.data;
     actualFlowId = flowId;
     flowTNodeId = createdFlowTNode.id;
     flowTNode = createdFlowTNode;
@@ -158,11 +150,7 @@ export function createFlowNodeSystem(
             return;
           }
 
-          const eventTNodeResult = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
-          if (!eventTNodeResult.success) {
-            throw new Error(`Failed to create event TNode: ${eventTNodeResult.error}`);
-          }
-          const eventTNode = eventTNodeResult.data;
+          const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
           
           // Emit TNODE_SPAWNED event for UI to display event TNode
           system.get(brain).send({
