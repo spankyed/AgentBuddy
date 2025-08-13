@@ -22,9 +22,12 @@
       <h4 class="text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-400 mb-2">
         Entry Parameter
       </h4>
-      <div class="flex items-baseline gap-2">
+      <div class="flex items-start gap-2">
         <span class="text-gray-500 flex-shrink-0">payload:</span>
-        <span class="text-gray-300 break-words">{{ formatValue(entryParameter) }}</span>
+        <span v-if="!isComplexValue(entryParameter)" class="text-gray-300 break-words">{{ formatValue(entryParameter) }}</span>
+        <div v-else class="text-gray-300">
+          <DataRenderer :data="entryParameter" :default-expanded="false" />
+        </div>
       </div>
     </section>
 
@@ -34,15 +37,7 @@
         Resolved Entry Params
       </h4>
       <div class="relative bg-black/30 border border-white/5 rounded-md p-3">
-        <pre class="text-gray-300 font-mono text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-words pr-8">{{ formatValue(resolvedParams) }}</pre>
-        <button
-          @click="copyToClipboard(formatValue(resolvedParams))"
-          class="absolute top-2 right-2 p-1 bg-white/5 border border-white/10 rounded text-gray-400 hover:bg-white/10 hover:text-gray-200 transition-colors"
-          aria-label="Copy resolved params"
-          title="Copy to clipboard"
-        >
-          <Copy class="w-3 h-3" />
-        </button>
+        <DataRenderer :data="resolvedParams" :default-expanded="false" />
       </div>
     </section>
   </div>
@@ -52,6 +47,7 @@
 import { computed } from 'vue';
 import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 // Types
 type FieldMapping =
@@ -90,6 +86,10 @@ const resolvedParams = computed<unknown | null>(() =>
 );
 
 // Helpers
+function isComplexValue(value: unknown): boolean {
+  return value !== null && typeof value === 'object';
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'object') {
@@ -101,14 +101,5 @@ function formatValue(value: unknown): string {
     }
   }
   return String(value);
-}
-
-async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Add toast notification
-  } catch (err) {
-    console.error('Failed to copy:', err);
-  }
 }
 </script>

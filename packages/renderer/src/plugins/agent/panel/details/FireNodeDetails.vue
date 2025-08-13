@@ -19,18 +19,15 @@
     <div v-if="nodeAttributes.payload" class="detail-section">
       <h4 class="detail-label">Event Payload</h4>
       <div class="detail-content">
-        <pre class="detail-pre">{{ formatPayload() }}</pre>
-        <button @click="copyToClipboard(formatPayload())" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
+        <DataRenderer :data="nodeAttributes.payload" :default-expanded="false" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -38,22 +35,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-
-const formatPayload = () => {
-  if (typeof props.nodeAttributes.payload === 'string') {
-    return props.nodeAttributes.payload;
-  }
-  return JSON.stringify(props.nodeAttributes.payload, null, 2);
-};
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
-};
 </script>
 
 <style scoped>

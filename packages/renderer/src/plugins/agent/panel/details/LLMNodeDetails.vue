@@ -56,7 +56,10 @@
       <div class="detail-grid">
         <div v-for="(value, key) in resolvedParams" :key="key" class="detail-item">
           <span class="detail-key">{{ key }}:</span>
-          <span class="detail-value">{{ formatValue(value) }}</span>
+          <span v-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
+          <div v-else class="detail-value">
+            <DataRenderer :data="value" :default-expanded="false" />
+          </div>
         </div>
       </div>
     </div>
@@ -67,6 +70,7 @@
 import { computed, ref } from 'vue';
 import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -103,6 +107,10 @@ const truncatePrompt = (prompt: string) => {
   if (!prompt) return '';
   if (!isPromptTruncated.value || showFullPrompt.value) return prompt;
   return prompt.substring(0, MAX_PROMPT_LENGTH) + '...';
+};
+
+const isComplexValue = (value: any): boolean => {
+  return value !== null && typeof value === 'object';
 };
 
 const formatValue = (value: any) => {
@@ -150,7 +158,7 @@ const copyToClipboard = async (text: string) => {
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 

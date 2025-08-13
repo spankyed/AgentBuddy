@@ -29,7 +29,10 @@
       <div class="detail-grid">
         <div v-for="(value, key) in resolvedParams" :key="key" class="detail-item">
           <span class="detail-key">{{ key }}:</span>
-          <span class="detail-value">{{ formatValue(value) }}</span>
+          <span v-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
+          <div v-else class="detail-value">
+            <DataRenderer :data="value" :default-expanded="false" />
+          </div>
         </div>
       </div>
     </div>
@@ -38,8 +41,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -87,19 +90,14 @@ const resolvedParams = computed(() => {
 
 const hasResolvedParams = computed(() => Object.keys(resolvedParams.value).length > 0);
 
+const isComplexValue = (value: any): boolean => {
+  return value !== null && typeof value === 'object';
+};
+
 const formatValue = (value: any) => {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value);
-};
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
 };
 </script>
 
@@ -132,7 +130,7 @@ const copyToClipboard = async (text: string) => {
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 

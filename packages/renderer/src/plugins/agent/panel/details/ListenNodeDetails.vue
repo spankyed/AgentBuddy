@@ -27,7 +27,7 @@
     <div v-if="hasEventData" class="detail-section">
       <h4 class="detail-label">Event Data Schema</h4>
       <div class="detail-content">
-        <pre class="detail-pre">{{ formatEventSchema() }}</pre>
+        <DataRenderer :data="getEventSchema()" :default-expanded="false" />
       </div>
     </div>
   </div>
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -49,27 +50,27 @@ const hasEventData = computed(() => {
   return props.nodeAttributes.eventSchema || props.nodeAttributes.expectedFields;
 });
 
-const formatEventSchema = () => {
-  // Format event schema information if available
+const getEventSchema = () => {
+  // Return event schema information if available
   if (props.nodeAttributes.eventSchema) {
-    return JSON.stringify(props.nodeAttributes.eventSchema, null, 2);
+    return props.nodeAttributes.eventSchema;
   }
   
   if (props.nodeAttributes.expectedFields) {
-    return JSON.stringify(props.nodeAttributes.expectedFields, null, 2);
+    return props.nodeAttributes.expectedFields;
   }
   
   // Default schema for common event types
   const eventType = props.nodeAttributes.eventType;
   if (eventType === 'user.message') {
-    return JSON.stringify({
+    return {
       message: 'string',
       userId: 'string?',
       timestamp: 'number'
-    }, null, 2);
+    };
   }
   
-  return 'No schema information available';
+  return { info: 'No schema information available' };
 };
 </script>
 

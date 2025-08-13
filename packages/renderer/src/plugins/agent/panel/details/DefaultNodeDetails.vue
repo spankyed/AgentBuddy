@@ -3,10 +3,7 @@
     <div class="detail-section">
       <h4 class="detail-label">Node Attributes</h4>
       <div v-if="hasAttributes" class="detail-content">
-        <pre class="detail-pre">{{ JSON.stringify(nodeAttributes, null, 2) }}</pre>
-        <button @click="copyToClipboard(JSON.stringify(nodeAttributes, null, 2))" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
+        <DataRenderer :data="nodeAttributes" :default-expanded="false" />
       </div>
       <div v-else class="empty-state">
         <p class="empty-text">No additional attributes available</p>
@@ -17,8 +14,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -30,15 +27,6 @@ const props = defineProps<Props>();
 const hasAttributes = computed(() => {
   return props.nodeAttributes && Object.keys(props.nodeAttributes).length > 0;
 });
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
-};
 </script>
 
 <style scoped>
