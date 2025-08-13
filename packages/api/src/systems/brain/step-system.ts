@@ -1,4 +1,4 @@
-import { setup, assign, sendParent } from 'xstate';
+import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/repository';
@@ -28,15 +28,15 @@ export function createStepNodeSystem(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext = {} as ExecutionContext,
-  systemActor?: any,
 ) {
-  const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
+  const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext);
   if (!result.success) {
     throw new Error(`Failed to create step TNode: ${result.error}`);
   }
   const { tNode, step } = result.data;
   return {
     tNodeId: tNode.id,
+    tNode: tNode,
     machine: setup({
       types: {
         context: {} as StepMachineContext,
@@ -52,16 +52,36 @@ export function createStepNodeSystem(
           // Delegate to step executor with TNode
           executeNode(context.tNode, context.step, executionContext, self);
         },
-        markCompleted: ({ context, self }) => {
+        markCompleted: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed', context.eventTNodeId, self);
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed');
+            
+            // Send TNODE_UPDATED event to parent
+            enqueue.sendParent({
+              type: 'TNODE_UPDATED',
+              data: { 
+                tNodeId: context.tNodeId, 
+                status: 'completed', 
+                eventTNodeId: context.eventTNodeId 
+              }
+            });
           }
-        },
-        markFailed: ({ context, self }) => {
+        }),
+        markFailed: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed', context.eventTNodeId, self);
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed');
+            
+            // Send TNODE_UPDATED event to parent
+            enqueue.sendParent({
+              type: 'TNODE_UPDATED',
+              data: { 
+                tNodeId: context.tNodeId, 
+                status: 'failed', 
+                eventTNodeId: context.eventTNodeId 
+              }
+            });
           }
-        },
+        }),
         notifyComplete: sendParent(({ context, event }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.step.id,

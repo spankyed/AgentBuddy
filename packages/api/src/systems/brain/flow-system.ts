@@ -4,7 +4,7 @@ import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
-import { brainBus } from './system';
+import { brain, brainBus } from './system';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('flow-machine');
@@ -36,37 +36,37 @@ type ChildCompletedEvent =
       eventTNodeId?: EARS.EntityId;
       isFlow?: boolean; // Simple flag to indicate if completing child was a flow
     }
-  | { type: 'CANCEL_FLOW' };
+  | { type: 'CANCEL_FLOW' }
+  | { type: 'TNODE_UPDATED'; data: { tNodeId: EARS.EntityId; status: string; eventTNodeId?: EARS.EntityId } };
 
 type TNodeFlowMachineInput = {};
 
 const typeOf = safeEvents<ChildCompletedEvent>();
 
 /**
- * Creates a child node (flow or step) and returns the machine and system ID
+ * Creates a child node (flow or step) and returns the machine, system ID, and tNode
  * @param stepOrFlowNode - The node entity to create
  * @param eventTNodeId - The event track node ID that spawned this node
  * @param executionContext - The execution context for the step
- * @returns Tuple of [machine, systemId]
+ * @returns Tuple of [machine, systemId, tNode]
  */
 function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
-  systemActor?: any,
 ) {
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
   }
   
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
-  const { machine, tNodeId } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
+  const { machine, tNodeId, tNode } = isFlowNode
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext)
+    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
-  return [machine, systemId] as const;
+  return [machine, systemId, tNode] as const;
 }
 
 /**
@@ -76,7 +76,6 @@ export function createFlowNodeSystem(
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
-  systemActor?: any,
 ) {
   // Handle TNode creation
   let actualFlowId: EARS.EntityId;
@@ -88,7 +87,7 @@ export function createFlowNodeSystem(
 
   if (isRootFlow) {
     // Create root flow TNode
-    const result = repository.brainCommands.createRootFlowTNode(systemActor);
+    const result = repository.brainCommands.createRootFlowTNode();
     if (!result.success) {
       throw new Error(`Failed to create root flow TNode: ${result.error}`);
     }
@@ -106,8 +105,7 @@ export function createFlowNodeSystem(
     const result = repository.brainCommands.createFlowTNode(
       flowId,
       eventTNodeId,
-      executionContext,
-      systemActor,
+      executionContext
     );
     if (!result.success) {
       throw new Error(`Failed to create flow TNode: ${result.error}`);
@@ -131,6 +129,7 @@ export function createFlowNodeSystem(
 
   return {
     tNodeId: flowTNodeId,
+    tNode: flowTNode,
     machine: setup({
       types: {
         context: {} as TNodeFlowMachineContext,
@@ -144,7 +143,7 @@ export function createFlowNodeSystem(
         input: {} as TNodeFlowMachineInput,
       },
       actions: {
-        handleTrackEvent: enqueueActions(({ context, event, enqueue, self }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const eventType = event.type;
           const eventNode = context.eventNodes.find(
             (n) => n.eventType === eventType,
@@ -159,11 +158,19 @@ export function createFlowNodeSystem(
             return;
           }
 
-          const eventTNodeResult = repository.brainCommands.createEventTNode(eventNode, flowTNodeId, self);
+          const eventTNodeResult = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
           if (!eventTNodeResult.success) {
             throw new Error(`Failed to create event TNode: ${eventTNodeResult.error}`);
           }
           const eventTNode = eventTNodeResult.data;
+          
+          // Emit TNODE_SPAWNED event for UI to display event TNode
+          system.get(brain).send({
+            type: 'TNODE_SPAWNED',
+            tNode: eventTNode,
+            parentId: flowTNodeId,
+            eventTNodeId: eventTNode.id
+          });
 
           // Create execution context with cleaner structure
           const { type, ...eventData } = event;
@@ -183,10 +190,19 @@ export function createFlowNodeSystem(
           );
 
           // Spawn child based on node type
-          const [machine, systemId] = createChildNode(firstStep, eventTNode.id, eventTrackContext, self);
+          const [machine, systemId, childTNode] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
           enqueue.spawnChild(machine, {
             systemId,
           });
+          
+          // Emit TNODE_SPAWNED event for the UI to display child node
+          system.get(brain).send({
+            type: 'TNODE_SPAWNED',
+            tNode: childTNode,
+            parentId: eventTNode.id,
+            eventTNodeId: eventTNode.id
+          });
+
 
           // Store the execution context for this event track and increment child count
           enqueue.assign({
@@ -197,7 +213,7 @@ export function createFlowNodeSystem(
             activeChildrenCount: ({ context }) => context.activeChildrenCount + 1,
           });
         }),
-        handleChildCompletion: enqueueActions(({ context, event, enqueue, self }) => {
+        handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
           logger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
@@ -265,15 +281,33 @@ export function createFlowNodeSystem(
             //   eventTNodeId: typedEv.eventTNodeId
             // });
             
-            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId, updatedContext, self);
+            const [nextMachine, nextSystemId, nextTNode] = createChildNode(nextNode, typedEv.eventTNodeId, updatedContext);
             enqueue.spawnChild(nextMachine, { 
               systemId: nextSystemId, 
             });
+            
+            // Emit TNODE_SPAWNED event for the next node
+            system.get(brain).send({
+              type: 'TNODE_SPAWNED',
+              tNode: nextTNode,
+              parentId: typedEv.eventTNodeId,
+              eventTNodeId: typedEv.eventTNodeId
+            });
           }
         }),
-        markFlowCompleted: ({ self, context }) => {
+        markFlowCompleted: ({ system, context }) => {
           logger.debug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
-          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
+          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
+          
+          // Emit TNODE_UPDATED event
+          system.get(brain).send({
+            type: 'TNODE_UPDATED',
+            data: { 
+              tNodeId: flowTNodeId, 
+              status: 'completed', 
+              eventTNodeId: eventTNodeId 
+            }
+          });
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
@@ -287,6 +321,7 @@ export function createFlowNodeSystem(
           type: 'flow.entry',
           ...(context.entryData !== undefined && { data: context.entryData })
         })),
+        forwardTNodeUpdate: sendParent(({ event }) => event),
       },
       guards: {},
     }).createMachine({
@@ -307,6 +342,9 @@ export function createFlowNodeSystem(
         ...eventHandlers,
         CHILD_COMPLETED: {
           actions: ['handleChildCompletion'],
+        },
+        TNODE_UPDATED: {
+          actions: ['forwardTNodeUpdate'],
         },
         FLOW_COMPLETE: {
           target: '.completed',

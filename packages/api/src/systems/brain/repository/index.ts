@@ -21,9 +21,6 @@ import {
   operationSuccess,
   type OperationResult
 } from '@/core/utils/repository';
-import { emit } from '@/core/utils/actor-helpers';
-import { bus } from '@/systems/backend';
-import { brain } from '@/systems/brain/system';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 // Brain Repository - Manages execution traces and TNode trees
 
@@ -74,19 +71,6 @@ function isListenNode(node: Partial<NodeEntity>): node is ListenNode {
   return node.nodeType === 'listen';
 }
 
-// Helper function to emit TNode events
-function emitTNodeEvent(
-  eventType: 'TNODE_SPAWNED' | 'TNODE_UPDATED',
-  data: any,
-  systemActor?: any
-) {
-  if (!systemActor) return;
-
-  systemActor.system.get(bus).send(emit(brain, {
-    type: eventType,
-    ...data
-  }));
-}
 
 // Queries
 export const brainQueries = {
@@ -227,8 +211,7 @@ export const brainQueries = {
 export const brainCommands = {
   createEventTNode: (
     eventNode: ListenNode, 
-    flowTNodeId: EARS.EntityId,
-    systemActor?: any
+    flowTNodeId: EARS.EntityId
   ): RepositoryResult<TNodeEntity> => {
     try {
       const now = Date.now();
@@ -256,13 +239,6 @@ export const brainCommands = {
         createdAt: now,
       };
       
-      // Emit events
-      emitTNodeEvent('TNODE_SPAWNED', { 
-        tNode: eventTNode,
-        parentId: flowTNodeId,
-        eventTNodeId: tNodeId
-      }, systemActor);
-      
       return successResult(eventTNode);
     } catch (error) {
       return errorResult(error);
@@ -272,8 +248,7 @@ export const brainCommands = {
   createFlowTNode: (
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
-    executionContext?: ExecutionContext,
-    systemActor?: any,
+    executionContext?: ExecutionContext
   ): RepositoryResult<{ flowTNode: TNodeEntity; eventNodes: ListenNode[] }> => {
     try {
       // Get the flow reference from the flow node (get all fields for attributes)
@@ -331,13 +306,6 @@ export const brainCommands = {
 
       Object.assign(flowTNode, { id: flowTnodeId, createdAt: now, entityType: EARS.Entity.TNode });
       
-      // Emit TNODE_SPAWNED event
-      emitTNodeEvent('TNODE_SPAWNED', { 
-        tNode: flowTNode as TNodeEntity,
-        parentId: eventTrackId,
-        eventTNodeId: eventTrackId
-      }, systemActor);
-      
       return successResult({
         flowTNode: flowTNode as TNodeEntity,
         eventNodes,
@@ -350,8 +318,7 @@ export const brainCommands = {
   createStepTNode: (
     stepId: EARS.EntityId,
     eventTrackId: EARS.EntityId,
-    executionContext?: ExecutionContext,
-    systemActor?: any,
+    executionContext?: ExecutionContext
   ): RepositoryResult<{ tNode: TNodeEntity; step: NodeEntity }> => {
     try {
       if (!stepId) {
@@ -401,13 +368,6 @@ export const brainCommands = {
         ...stepTNode
       } as TNodeEntity;
       
-      // Emit TNODE_SPAWNED event
-      emitTNodeEvent('TNODE_SPAWNED', { 
-        tNode,
-        parentId: eventTrackId,
-        eventTNodeId: eventTrackId
-      }, systemActor);
-      
       return successResult({
         tNode,
         step: step as NodeEntity,
@@ -417,9 +377,7 @@ export const brainCommands = {
     }
   },
   
-  createRootFlowTNode: (
-    systemActor?: any,
-  ): RepositoryResult<{
+  createRootFlowTNode: (): RepositoryResult<{
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
     eventNodes: ListenNode[];
@@ -478,11 +436,6 @@ export const brainCommands = {
         createdAt: now,
       };
       
-      // Don't emit TNODE_SPAWNED for root - we don't want it in the tree
-      // emitTNodeEvent('TNODE_SPAWNED', {
-      //   tNode: rootFlowTNode,
-      // }, systemActor);
-      
       return successResult({
         rootFlow,
         rootFlowTNode,
@@ -496,16 +449,10 @@ export const brainCommands = {
   
   updateTNodeStatus: (
     tNodeId: EARS.EntityId, 
-    status: TNodeEntity['status'],
-    eventTNodeId: EARS.EntityId | undefined,
-    systemActor?: any
+    status: TNodeEntity['status']
   ): OperationResult => {
     try {
       tx(tNodeId).update('status', status);
-
-      emitTNodeEvent('TNODE_UPDATED', { 
-        data: { tNodeId, status, eventTNodeId }
-      }, systemActor);
       
       return operationSuccess();
     } catch (error) {
