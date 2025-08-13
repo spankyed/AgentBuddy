@@ -123,8 +123,9 @@ const hasContent = computed(() => {
 const duration = computed(() => {
   if (!props.node?.startedAt) return null;
   const start = props.node.startedAt;
-  // Use current time if status is not completed
-  const end = props.node?.status === 'completed' ? Date.now() : Date.now();
+  
+  // Use completedAt for completed nodes, otherwise use current time
+  const end = props.node?.completedAt || Date.now();
   const ms = end - start;
   
   if (ms < 1000) return `${ms}ms`;

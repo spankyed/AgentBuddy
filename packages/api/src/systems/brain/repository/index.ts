@@ -41,7 +41,8 @@ const TNODE_COLUMNS = [
   "tNodeType", 
   "label", 
   "status", 
-  "startedAt", 
+  "startedAt",
+  "completedAt", 
   "createdAt", 
   "eventType", 
   "stepNodeType", 
@@ -421,6 +422,13 @@ export const brainCommands = {
     tNodeId: EARS.EntityId, 
     status: TNodeEntity['status']
   ): void => {
-    tx(tNodeId).update('status', status);
+    if (status === 'completed') {
+      // Set both status and completedAt timestamp
+      tx(tNodeId)
+        .update('status', status)
+        .update('completedAt', Date.now());
+    } else {
+      tx(tNodeId).update('status', status);
+    }
   },
 } as const;

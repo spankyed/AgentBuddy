@@ -29,6 +29,7 @@ export const IncomingBrainEvents = [
   busEvent('OPEN_TNODE', { tNodeId: z.string() }),
   busEvent('GO_BACK_TNODE', {}),
   busEvent('REQUEST_PLUGIN_DATA', {}),
+  busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
 ] as const
 
 export type BrainInternalEvents = 
@@ -45,6 +46,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
+  | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
 
 export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
@@ -99,6 +101,18 @@ export const brainSystem = setup({
         type: 'TNODE_OPENED',
         tNodeId: data.flowTNodeId,
         data
+      }));
+    },
+    getTNodeDetails: ({ system, event }) => {
+      const ev = typeOf('GET_TNODE_DETAILS', event);
+      const tNodeId = ev.tNodeId as EARS.EntityId;
+      
+      const tNode = repository.brainQueries.tNodeById(tNodeId);
+      
+      system.get(bus).send(emit(brain, {
+        type: 'TNODE_DETAILS',
+        tNodeId,
+        details: tNode
       }));
     },
     triggerBrainEvent: ({ system, event, context }) => {
@@ -170,6 +184,9 @@ export const brainSystem = setup({
           },
           GO_BACK_TNODE: {
             actions: 'goBackTNode',
+          },
+          GET_TNODE_DETAILS: {
+            actions: 'getTNodeDetails',
           },
           // TRACE_EVENT_RECEIVED: {
           //   actions: 'handleEventReceived',

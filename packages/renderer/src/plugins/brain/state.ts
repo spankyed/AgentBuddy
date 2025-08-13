@@ -248,9 +248,9 @@ const brainState = setup({
       if (event.type !== 'STEP_NODE.CLICK') return;
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'GET_TNODE_DETAILS' as any,
+        type: 'GET_TNODE_DETAILS',
         tNodeId: event.tNodeId
-      } as any);
+      });
     },
     setStepNodeDetails: assign(({ event }) => {
       if (event.type !== 'TNODE_DETAILS') return {};

@@ -14,6 +14,7 @@ export interface TNodeEntity extends BaseEntity {
   label: string;
   status: EntityStatus;
   startedAt: TimestampMs;
+  completedAt?: TimestampMs;
 
   // For event nodes pulsing
   eventType?: string;
