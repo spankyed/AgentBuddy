@@ -26,8 +26,8 @@
       <Background variant="dots" />
       <Controls />
       
-      <!-- Back button (top left) -->
-      <div class="absolute z-10 top-4 left-4">
+      <!-- Back button and View menu (top left) -->
+      <div class="absolute z-10 top-4 left-4 flex gap-2">
         <button
           v-if="canGoBack"
           class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
@@ -38,6 +38,47 @@
           </svg>
           Back
         </button>
+        
+        <!-- View Menu -->
+        <DropdownMenuRoot>
+          <DropdownMenuTrigger as-child>
+            <button 
+              class="flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
+              title="View options"
+            >
+              <Menu :size="16" class="mr-1.5" />
+              <span>View</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent 
+              class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[200px] shadow-xl" 
+              :side="'bottom'" 
+              :side-offset="8"
+            >
+              <DropdownMenuItem 
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors" 
+                @select="$emit('toggle-left-panel')"
+              >
+                <div class="flex items-center gap-2 flex-1">
+                  <Layers :size="16" class="text-primary-400" />
+                  Event Trace
+                </div>
+                <Check v-if="showLeftPanel" :size="14" class="text-emerald-400" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors" 
+                @select="$emit('toggle-right-panel')"
+              >
+                <div class="flex items-center gap-2 flex-1">
+                  <Activity :size="16" class="text-primary-400" />
+                  Watched Events
+                </div>
+                <Check v-if="showRightPanel" :size="14" class="text-emerald-400" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
       </div>
       
       <!-- Current TNode label (top center) -->
@@ -71,18 +112,31 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
+import { Menu, Layers, Activity, Check } from 'lucide-vue-next';
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+} from 'reka-ui';
 
 interface Props {
   tnodeTree?: TrackEntity[];
   flowTNodeId?: string;
   canGoBack: boolean;
+  showLeftPanel?: boolean;
+  showRightPanel?: boolean;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'tnode-click': [tNodeId: string];
+  'step-click': [tNodeId: string];
   'back-click': [];
+  'toggle-left-panel': [];
+  'toggle-right-panel': [];
 }>();
 
 // Constants
@@ -197,11 +251,15 @@ const edges = computed<Edge[]>(() => {
 });
 
 const handleNodeClick = (event: NodeMouseEvent) => {
-  // Only emit click events for flow TNodes
   const nodeData = event.node.data as { tNodeType?: string };
+  
+  // Handle different node types
   if (nodeData.tNodeType === 'flow') {
     emit('tnode-click', event.node.id);
+  } else if (nodeData.tNodeType === 'step') {
+    emit('step-click', event.node.id);
   }
+  // Event nodes don't emit any click events
 };
 
 // Animation helpers

@@ -22,14 +22,23 @@ export interface BrainContext {
   normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
   pulsingEventType?: string;
+  // UI state
+  showLeftPanel: boolean;
+  showRightPanel: boolean;
+  selectedStepNode?: TNodeEntity;
 }
 
 type SystemEvent = OutgoingBrainEvents
+  | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
 
 type UIEvent =
   | { type: 'TNODE.CLICK'; tNodeId: string }
+  | { type: 'STEP_NODE.CLICK'; tNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
+  | { type: 'TOGGLE_LEFT_PANEL' }
+  | { type: 'TOGGLE_RIGHT_PANEL' }
+  | { type: 'CLOSE_DETAILS' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -229,6 +238,29 @@ const brainState = setup({
         type: 'REQUEST_PLUGIN_DATA'
       });
     },
+    toggleLeftPanel: assign({
+      showLeftPanel: ({ context }) => !context.showLeftPanel
+    }),
+    toggleRightPanel: assign({
+      showRightPanel: ({ context }) => !context.showRightPanel
+    }),
+    requestStepNodeDetails: ({ event }) => {
+      if (event.type !== 'STEP_NODE.CLICK') return;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_TNODE_DETAILS' as any,
+        tNodeId: event.tNodeId
+      } as any);
+    },
+    setStepNodeDetails: assign(({ event }) => {
+      if (event.type !== 'TNODE_DETAILS') return {};
+      return {
+        selectedStepNode: event.details || undefined
+      };
+    }),
+    closeDetails: assign({
+      selectedStepNode: undefined
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -239,6 +271,8 @@ const brainState = setup({
   id,
   context: {
     possibleEvents: [],
+    showLeftPanel: false,
+    showRightPanel: false,
   },
   initial: 'loading',
   states: {
@@ -263,6 +297,21 @@ const brainState = setup({
           actions: 'goBack'
         },
         'EVENT.CLICK': {
+        },
+        'STEP_NODE.CLICK': {
+          actions: 'requestStepNodeDetails'
+        },
+        TOGGLE_LEFT_PANEL: {
+          actions: 'toggleLeftPanel'
+        },
+        TOGGLE_RIGHT_PANEL: {
+          actions: 'toggleRightPanel'
+        },
+        CLOSE_DETAILS: {
+          actions: 'closeDetails'
+        },
+        TNODE_DETAILS: {
+          actions: 'setStepNodeDetails'
         },
         PLUGIN_ACTIVATED: {
           actions: 'requestPluginData'

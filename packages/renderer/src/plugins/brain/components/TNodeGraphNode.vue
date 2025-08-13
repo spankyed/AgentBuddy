@@ -5,8 +5,8 @@
       nodeClasses,
       {
         'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active',
-        'cursor-pointer hover:shadow-lg': data.tNodeType === 'flow',
-        'cursor-default': data.tNodeType !== 'flow',
+        'cursor-pointer hover:shadow-lg': data.tNodeType === 'flow' || data.tNodeType === 'step',
+        'cursor-default': data.tNodeType === 'event',
       }
     ]"
   >
