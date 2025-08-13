@@ -25,8 +25,22 @@ import { emit } from '@/core/utils/actor-helpers';
 import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
 import { prepareNodeAttributes } from './node-attribute-mappers';
-
 // Brain Repository - Manages execution traces and TNode trees
+
+// Helper function to prepare node attributes with optional execution context
+function resolveNodeAttributes(
+  node: Partial<NodeEntity>,
+  executionContext?: ExecutionContext,
+): Record<string, any> | undefined {
+  if (executionContext && node.nodeType) {
+    const resolvedAttributes = prepareNodeAttributes(node as NodeEntity, executionContext);
+    return {
+      ...resolvedAttributes,
+    };
+  }
+  
+  return undefined;
+}
 
 // Constants
 const ROOT_TNODE_ID = 'TNode-Root' as EARS.EntityId;
@@ -43,7 +57,6 @@ const TNODE_COLUMNS = [
   "startedAt", 
   "createdAt", 
   "eventType", 
-  "stepNodeId", 
   "stepNodeType", 
   "nodeAttributes"
 ] as const;
@@ -261,6 +274,7 @@ export const brainCommands = {
   createFlowTNode: (
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
+    executionContext?: ExecutionContext,
     systemActor?: any,
   ): RepositoryResult<{ flowTNode: TNodeEntity; eventNodes: ListenNode[] }> => {
     try {
@@ -291,12 +305,10 @@ export const brainCommands = {
 
       const now = Date.now();
 
-      // Prepare node attributes (includes flowRef, fieldMappings, etc.)
-      const nodeAttributes: Record<string, any> = {
-        flowRef: flowStepNode.flowRef,
-        flowLabel: flow.label,
-        ...(flowStepNode.fieldMappings && { fieldMappings: flowStepNode.fieldMappings }),
-      };
+      const nodeAttributes = resolveNodeAttributes(
+        flowStepNode,
+        executionContext,
+      );
 
       const flowTNode: Partial<TNodeEntity> = {
         tNodeType: 'flow',
@@ -352,7 +364,7 @@ export const brainCommands = {
       const step = qx(stepId)
         .pickAll()[0] as Partial<NodeEntity> | undefined;
 
-      if (!step) {
+      if (!step || !step.id) {
         throw new RepositoryError(
           `Cannot create step TNode: Node ${stepId} not found in flow blueprint`,
           RepositoryErrorCode.NOT_FOUND
@@ -362,18 +374,13 @@ export const brainCommands = {
       const now = Date.now();
 
       // Prepare node attributes
-      let nodeAttributes: Record<string, any> | undefined;
-      
-      if (executionContext && step.nodeType) {
-        nodeAttributes = prepareNodeAttributes(step as NodeEntity, executionContext);
-      }
+      const nodeAttributes = resolveNodeAttributes(step, executionContext);
 
       const stepTNode: Partial<TNodeEntity> = {
         tNodeType: 'step',
         label: step.label ?? '',
         status: 'active',
         startedAt: now,
-        stepNodeId: step.id,
         stepNodeType: step.nodeType,
         ...(step.final && { final: true }),
         ...(nodeAttributes && { nodeAttributes }),
@@ -381,6 +388,7 @@ export const brainCommands = {
 
       const tNodeId = tx(EARS.Entity.TNode)
         .batchPut(stepTNode)
+        .link(EARS.RelKind.INSTANCE_OF, stepId)
         .id();
       
       // Create SPAWNED relationship from parent

@@ -24,11 +24,11 @@
       </div>
     </div>
 
-    <div v-if="hasResolvedEntry" class="detail-section">
-      <h4 class="detail-label">Resolved Entry Value</h4>
+    <div v-if="hasResolvedParams" class="detail-section">
+      <h4 class="detail-label">Resolved Entry Params</h4>
       <div class="detail-content">
-        <pre class="detail-pre">{{ formatValue(resolvedEntry) }}</pre>
-        <button @click="copyToClipboard(formatValue(resolvedEntry))" class="copy-button">
+        <pre class="detail-pre">{{ formatValue(resolvedParams) }}</pre>
+        <button @click="copyToClipboard(formatValue(resolvedParams))" class="copy-button">
           <Copy class="w-3 h-3" />
         </button>
       </div>
@@ -54,8 +54,8 @@ const entryParameter = computed(() => {
   if (!fieldMappings) return null;
   
   const entryMapping = Array.isArray(fieldMappings) 
-    ? fieldMappings.find((m: any) => m.target === 'entry')
-    : (fieldMappings.target === 'entry' ? fieldMappings : null);
+    ? fieldMappings.find((m: any) => m.target === 'params')
+    : (fieldMappings.target === 'params' ? fieldMappings : null);
     
   return entryMapping?.source || null;
 });
@@ -63,12 +63,12 @@ const entryParameter = computed(() => {
 const hasEntryParameter = computed(() => entryParameter.value !== null);
 
 // Extract resolved entry value (if execution has resolved it)
-const resolvedEntry = computed(() => {
+const resolvedParams = computed(() => {
   // Look for entry in nodeAttributes (would be set during execution)
-  return props.nodeAttributes.entry || props.nodeAttributes.resolvedEntry || null;
+  return props.nodeAttributes.params || null;
 });
 
-const hasResolvedEntry = computed(() => resolvedEntry.value !== null);
+const hasResolvedParams = computed(() => resolvedParams.value !== null);
 
 const formatValue = (value: any) => {
   if (value === null || value === undefined) return 'null';

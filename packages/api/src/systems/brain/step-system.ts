@@ -11,7 +11,6 @@ type StepMachineContext = {
   tNode: TNodeEntity;
   step: NodeEntity;
   eventTNodeId?: EARS.EntityId;
-  executionContext: ExecutionContext;
 };
 
 type StepEvent = {
@@ -20,9 +19,7 @@ type StepEvent = {
   error?: any;
 };
 
-type StepMachineInput = {
-  executionContext: ExecutionContext; // Replace with actual execution context type
-};
+type StepMachineInput = {};
 
 /**
  * Create a step execution machine
@@ -30,7 +27,7 @@ type StepMachineInput = {
 export function createStepNodeSystem(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
-  executionContext?: ExecutionContext,
+  executionContext = {} as ExecutionContext,
   systemActor?: any,
 ) {
   const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
@@ -53,7 +50,7 @@ export function createStepNodeSystem(
           );
 
           // Delegate to step executor with TNode
-          executeNode(context.tNode, context.step, context.executionContext, self);
+          executeNode(context.tNode, context.step, executionContext, self);
         },
         markCompleted: ({ context, self }) => {
           if (context.tNodeId) {
@@ -84,7 +81,6 @@ export function createStepNodeSystem(
         tNode: tNode,
         step: step,
         eventTNodeId: eventTNodeId,
-        executionContext: input.executionContext || ({} as ExecutionContext),
       }),
       states: {
         executing: {

@@ -241,7 +241,7 @@ const handleFlowChange = (flow: FlowEntity | null) => {
 
 const updateEntryPayload = (source: string) => {
   const mapping = source.trim() 
-    ? [{ target: 'entry', source, default: undefined }]
+    ? [{ target: 'params', source, default: undefined }]
     : []
   
   emit('update-node', { fieldMappings: mapping })
