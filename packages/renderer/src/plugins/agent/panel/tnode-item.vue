@@ -20,9 +20,9 @@
         
         <!-- Main content -->
         <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
-          <!-- Expand/Collapse icon for nodes with children -->
+          <!-- Expand/Collapse icon for nodes with children or step nodes -->
           <ChevronRight 
-            v-if="hasChildren" 
+            v-if="showChevron" 
             :class="[
               'w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
               { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }
@@ -95,8 +95,8 @@
         />
       </button>
       
-      <!-- Node Details Section -->
-      <div v-if="showDetails && hasDetails" class="tnode-details">
+      <!-- Node Details Section (show when step is expanded and has details) -->
+      <div v-if="isExpanded && showDetails && hasDetails" class="tnode-details">
         <component
           :is="detailComponent"
           :node="node"
@@ -155,8 +155,12 @@ const props = withDefaults(defineProps<Props>(), {
 const node = computed(() => props.normalizedTree.byId[props.nodeId]);
 const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] || []);
 const hasChildren = computed(() => childIds.value.length > 0);
-const isExpanded = ref(true);
+// Event nodes are expanded by default, all others (including steps) are collapsed
+const isExpanded = ref(node.value?.tNodeType === 'event');
 const showDetails = ref(true);
+
+// Show chevron for nodes with children OR step nodes (which can be collapsed even without children)
+const showChevron = computed(() => hasChildren.value || node.value?.tNodeType === 'step');
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
@@ -295,7 +299,8 @@ const keyAttribute = computed(() => {
 });
 
 const handleClick = () => {
-  if (hasChildren.value) {
+  // Allow toggling for nodes with children OR step nodes
+  if (showChevron.value) {
     isExpanded.value = !isExpanded.value;
   }
   // TODO: Add click handler to open TNode details
