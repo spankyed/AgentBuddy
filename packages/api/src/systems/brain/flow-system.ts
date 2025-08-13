@@ -21,6 +21,8 @@ type TNodeFlowMachineContext = {
   finalResult?: any;
   // Entry data for nested flows (resolved from field mappings)
   entryData?: any;
+  // Whether this flow node itself is marked as final
+  isFinalStep?: boolean;
 };
 
 type ChildCompletedEvent =
@@ -199,6 +201,12 @@ export function createFlowNodeSystem(
           logger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
+          
+          // Log when we receive a completion with final flag
+          if (typedEv.final) {
+            logger.debug(`Flow ${context.flowId} received child completion with final=true from ${typedEv.stepId}`);
+          }
+          
           if (!typedEv.stepId || !typedEv.eventTNodeId) {
             logger.warn(`Child completed in flow - ${context.flowLabel}: But missing step or event TNode ID`, { completion: event });
             return;
@@ -263,7 +271,8 @@ export function createFlowNodeSystem(
             });
           }
         }),
-        markFlowCompleted: ({ self }) => {
+        markFlowCompleted: ({ self, context }) => {
+          logger.debug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
@@ -271,7 +280,8 @@ export function createFlowNodeSystem(
           stepId: context.flowId,
           eventTNodeId: context.eventTNodeId,
           result: context.finalResult,
-          final: true,
+          // Only send final: true if this flow node itself was marked as final
+          final: context.isFinalStep,
         })),
         raiseEntryEvent: raise(({ context }) => ({
           type: 'flow.entry',
@@ -290,7 +300,8 @@ export function createFlowNodeSystem(
         activeChildrenCount: 0,
         eventTrackContexts: {},
         finalResult: undefined,
-        entryData: flowTNode.nodeAttributes?.params,
+        entryData: flowTNode?.nodeAttributes?.params,
+        isFinalStep: flowTNode?.final || false,
       }),
       on: {
         ...eventHandlers,

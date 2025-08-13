@@ -315,6 +315,8 @@ export const brainCommands = {
         startedAt: now,
         stepNodeType: 'flow',
         nodeAttributes,
+        // Preserve the flow node's final status
+        ...(flowStepNode.final && { final: true }),
       };
 
       const flowTnodeId = tx(EARS.Entity.TNode)
