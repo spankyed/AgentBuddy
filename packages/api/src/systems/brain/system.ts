@@ -76,6 +76,14 @@ export const brainSystem = setup({
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
+      
+      // Check if this is a flow TNode before trying to get extended data
+      const tNode = repository.brainQueries.tNodeById(tNodeId);
+      if (!tNode || tNode.tNodeType !== 'flow') {
+        // Silently ignore non-flow TNodes
+        return;
+      }
+      
       const data = repository.brainQueries.extendedTNodeData(tNodeId);
       
       system.get(bus).send(emit(brain, {

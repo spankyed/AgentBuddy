@@ -197,7 +197,11 @@ const edges = computed<Edge[]>(() => {
 });
 
 const handleNodeClick = (event: NodeMouseEvent) => {
-  emit('tnode-click', event.node.id);
+  // Only emit click events for flow TNodes
+  const nodeData = event.node.data as { tNodeType?: string };
+  if (nodeData.tNodeType === 'flow') {
+    emit('tnode-click', event.node.id);
+  }
 };
 
 // Animation helpers

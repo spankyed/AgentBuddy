@@ -5,12 +5,14 @@
       nodeClasses,
       {
         'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active',
-        'cursor-pointer': data.hasChildren,
+        'cursor-pointer hover:shadow-lg': data.tNodeType === 'flow',
+        'cursor-default': data.tNodeType !== 'flow',
       }
     ]"
   >
-    <!-- Glow effect on hover -->
+    <!-- Glow effect on hover (only for flow nodes) -->
     <div 
+      v-if="data.tNodeType === 'flow'"
       class="absolute inset-0 transition-opacity duration-300 rounded-md opacity-0 group-hover:opacity-100 blur-xl"
       :class="glowClasses"
     />
