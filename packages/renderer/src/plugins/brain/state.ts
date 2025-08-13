@@ -268,9 +268,6 @@ const brainState = setup({
         TNODE_OPENED: {
           actions: 'setTNodeData'
         },
-        EVENT_TNODE_SPAWNED: {
-          // Keep for backward compatibility but do nothing
-        },
         TNODE_SPAWNED: {
           actions: 'addTNodeToTree'
         },
@@ -281,7 +278,7 @@ const brainState = setup({
           actions: ['pulseEvent', ({ system }) => {
             // Clear pulse after animation
             setTimeout(() => {
-              system.get(id).send({ type: 'CLEAR_PULSE' as any });
+              system.get(id).send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Also request fresh data to show the new event
             setTimeout(() => {

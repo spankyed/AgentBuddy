@@ -76,7 +76,7 @@ function isListenNode(node: Partial<NodeEntity>): node is ListenNode {
 
 // Helper function to emit TNode events
 function emitTNodeEvent(
-  eventType: 'EVENT_TNODE_SPAWNED' | 'TNODE_SPAWNED' | 'TNODE_UPDATED',
+  eventType: 'TNODE_SPAWNED' | 'TNODE_UPDATED',
   data: any,
   systemActor?: any
 ) {
@@ -148,13 +148,13 @@ export const brainQueries = {
     const eventTracks = eventTNodes.map(eventTNode => {
       const descendantIds = descendants(eventTNode.id!, EARS.RelKind.SPAWNED);
       const descendantTNodes = qx(descendantIds).pick(TNODE_COLUMNS) as TNodeEntity[];
-      
+
       return {
         ...eventTNode,
         children: descendantTNodes.map(child => ({ ...child, children: [] }))
       };
     });
-    
+
     return eventTracks;
   },
   
@@ -262,8 +262,6 @@ export const brainCommands = {
         parentId: flowTNodeId,
         eventTNodeId: tNodeId
       }, systemActor);
-      
-      emitTNodeEvent('EVENT_TNODE_SPAWNED', { tNode: eventTNode }, systemActor);
       
       return successResult(eventTNode);
     } catch (error) {
