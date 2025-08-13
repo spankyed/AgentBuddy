@@ -112,7 +112,12 @@ const brainState = setup({
     addTNodeToTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_SPAWNED') return {};
       
-      const { tNode, parentId, eventTNodeId } = event;
+      const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
+      
+      // Only add nodes that belong to the currently viewed flow
+      if (flowTNodeId !== context.flowTNodeId) {
+        return {}; // Ignore events from other flows
+      }
       
       if (!context.normalizedTree) {
         // Initialize if not present

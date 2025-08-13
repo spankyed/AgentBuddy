@@ -157,7 +157,8 @@ export function createFlowNodeSystem(
             type: 'TNODE_SPAWNED',
             tNode: eventTNode,
             parentId: flowTNodeId,
-            eventTNodeId: eventTNode.id
+            eventTNodeId: eventTNode.id,
+            flowTNodeId: flowTNodeId
           });
 
           // Create execution context with cleaner structure
@@ -188,7 +189,8 @@ export function createFlowNodeSystem(
             type: 'TNODE_SPAWNED',
             tNode: childTNode,
             parentId: eventTNode.id,
-            eventTNodeId: eventTNode.id
+            eventTNodeId: eventTNode.id,
+            flowTNodeId: flowTNodeId
           });
 
 
@@ -279,7 +281,8 @@ export function createFlowNodeSystem(
               type: 'TNODE_SPAWNED',
               tNode: nextTNode,
               parentId: typedEv.eventTNodeId,
-              eventTNodeId: typedEv.eventTNodeId
+              eventTNodeId: typedEv.eventTNodeId,
+              flowTNodeId: flowTNodeId
             });
           }
         }),

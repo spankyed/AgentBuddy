@@ -35,14 +35,14 @@ export type BrainInternalEvents =
   | SystemEvents
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
+  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
   // | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
-  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId }
+  | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
 
