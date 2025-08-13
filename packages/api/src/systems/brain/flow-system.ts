@@ -77,37 +77,34 @@ export function createFlowNodeSystem(
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
 ) {
-  // Handle TNode creation
-  let actualFlowId: EARS.EntityId;
-  let flowTNodeId: EARS.EntityId;
-  let flowTNode: TNodeEntity | undefined;
-  let eventNodes: ListenNode[];
-
   const isRootFlow = !flowId;
-
-  if (isRootFlow) {
-    // Create root flow TNode
-    const {
-      rootFlow,
-      rootFlowTNode,
-      eventNodes: rootEventNodes,
-    } = repository.brainCommands.createRootFlowTNode();
-    actualFlowId = rootFlow.id;
-    flowTNodeId = rootFlowTNode.id || 'TNode-Root'; // 'TNode-Root'
-    flowTNode = rootFlowTNode;
-    eventNodes = rootEventNodes;
-  } else {
-    // Create regular flow TNode
-    const { flowTNode: createdFlowTNode, eventNodes: flowEventNodes } = repository.brainCommands.createFlowTNode(
-      flowId,
-      eventTNodeId,
-      executionContext
-    );
-    actualFlowId = flowId;
-    flowTNodeId = createdFlowTNode.id;
-    flowTNode = createdFlowTNode;
-    eventNodes = flowEventNodes;
-  }
+  
+  // Use ternary to determine which creation function to call
+  const result = isRootFlow
+    ? (() => {
+        const { rootFlow, rootFlowTNode, eventNodes } = repository.brainCommands.createRootFlowTNode();
+        return {
+          actualFlowId: rootFlow.id,
+          flowTNodeId: rootFlowTNode.id || 'TNode-Root',
+          flowTNode: rootFlowTNode,
+          eventNodes
+        };
+      })()
+    : (() => {
+        const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
+          flowId,
+          eventTNodeId,
+          executionContext
+        );
+        return {
+          actualFlowId: flowId,
+          flowTNodeId: flowTNode.id,
+          flowTNode,
+          eventNodes
+        };
+      })();
+  
+  const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
   
 
   const eventHandlers: Record<string, any> = {};
