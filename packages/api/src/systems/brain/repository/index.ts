@@ -277,9 +277,11 @@ export const brainCommands = {
       ...(flowStepNode.final && { final: true }),
     };
 
+    // Link to the referenced Flow entity (not the flow step node)
+    // This allows possibleEvents to find the event nodes defined in the flow
     const flowTnodeId = tx(EARS.Entity.TNode)
       .batchPut(flowTNode)
-      .link(EARS.RelKind.INSTANCE_OF, flowStepId)
+      .link(EARS.RelKind.INSTANCE_OF, flowStepNode.flowRef as EARS.EntityId)
       .id();
     
     // Create SPAWNED relationship from parent
