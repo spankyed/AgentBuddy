@@ -1,28 +1,31 @@
 import { BaseEntity, EARS } from '@/core/types';
 
+/** ── Shared aliases ─────────────────────────────────────────────────────── */
+export type TimestampMs = number;
+export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
+export type TNodeKind = 'flow' | 'event' | 'step';
+export type JsonPath = string;
+// export type JsonPath = `$${string}`;
+
+/** ── Core entities ──────────────────────────────────────────────────────── */
 export interface TNodeEntity extends BaseEntity {
   entityType: EARS.Entity.TNode;
-  tNodeType: 'flow' | 'event' | 'step';
+  tNodeType: TNodeKind;
   label: string;
-  status: 'active' | 'paused' | 'completed' | 'failed';
-  startedAt: number;
-  
+  status: EntityStatus;
+  startedAt: TimestampMs;
+
   // For event nodes pulsing
   eventType?: string;
-  
-  stepNodeType?: string; // Type of the node being executed
 
-  // Copied from blueprint node - triggers flow completion when this step completes
+  // Type of the node being executed
+  stepNodeType?: string;
+
+  // Triggers flow completion when this step completes
   final?: boolean;
 
-  // Node-specific attributes from the original NodeEntity with resolved values
-  // This is a complete instantiation of the blueprint node with actual runtime data
-  // For LLM nodes: model, temperature, maxTokens, systemPrompt, prompt, promptTemplateId, + resolved template params
-  // For Action nodes: actionId, + resolved action params (direct params merged with mapped params)
-  // For Listen nodes: mode, debounceMs, scope
-  // For Fire nodes: eventType, payload, scope
-  // etc.
-  nodeAttributes?: Record<string, any>;
+  // Instantiated blueprint node attributes (resolved runtime data)
+  nodeAttributes?: Record<string, unknown>;
 }
 
 export interface TrackEntity extends TNodeEntity {
@@ -51,36 +54,31 @@ export interface TNodeUpdate {
 
 export interface EventReceived {
   eventType: string;
-  payload?: any;
+  payload?: unknown;
 }
 
-// Brain Runner Types
+/** ── Brain runner types ─────────────────────────────────────────────────── */
+export interface ExecutionEvent {
+  type: string;
+  data: Record<string, unknown>;
+  timestamp?: TimestampMs;
+  source?: string;
+}
+
+export interface StepRun {
+  id: string;
+  label: string;
+  result: unknown;
+  timestamp: TimestampMs;
+}
+
 export interface ExecutionContext {
-  // Event that triggered this execution
-  event: {
-    type: string;           // The event type (e.g., 'user.message')
-    data: Record<string, any>;  // Event data (what was previously eventPayload)
-    timestamp?: number;     // When the event occurred
-    source?: string;        // Where the event came from
-  };
-  
-  // Results from previous steps in this track
-  steps: Array<{
-    id: string;             // Step ID for reliable references
-    label: string;          // Human-readable label
-    result: any;            // The step's output
-    timestamp: number;      // When it completed
-  }>;
-  
-  // Computed properties for convenience
-  lastStep?: {
-    id: string;
-    label: string;
-    result: any;
-  };
+  event: ExecutionEvent;
+  steps: StepRun[];
+  lastStep?: Omit<StepRun, 'timestamp'>;
 }
 
-// Schema Definition Types
+/** ── Schema definition types ────────────────────────────────────────────── */
 export interface FieldSchema {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
@@ -104,32 +102,34 @@ export interface StepOutputSchema {
   fields: Record<string, FieldSchema>;
 }
 
-// Type-safe path constants to replace string-based paths
+/** ── Typed context paths (constants unchanged) ──────────────────────────── */
 export const ContextPaths = {
   // Event paths
-  EVENT_TYPE: '$.event.type',
-  EVENT_DATA: '$.event.data',
-  EVENT_TIMESTAMP: '$.event.timestamp',
-  
+  EVENT_TYPE: '$.event.type' as const,
+  EVENT_DATA: '$.event.data' as const,
+  EVENT_TIMESTAMP: '$.event.timestamp' as const,
+
   // Common event data patterns
-  EVENT_MESSAGE: '$.event.data.message',
-  EVENT_PAYLOAD: '$.event.data.payload',
-  EVENT_TEXT: '$.event.data.text',
-  EVENT_USER_ID: '$.event.data.userId',
-  
+  EVENT_MESSAGE: '$.event.data.message' as const,
+  EVENT_PAYLOAD: '$.event.data.payload' as const,
+  EVENT_TEXT: '$.event.data.text' as const,
+  EVENT_USER_ID: '$.event.data.userId' as const,
+
   // Step paths
-  LAST_STEP: '$.lastStep',
-  LAST_STEP_RESULT: '$.lastStep.result',
-  STEPS: '$.steps',
-  
-  // Helper function to get step by ID
-  stepById: (stepId: string) => `$.steps[id=${stepId}].result`,
-  stepByLabel: (label: string) => `$.steps[label=${label}].result`,
+  LAST_STEP: '$.lastStep' as const,
+  LAST_STEP_RESULT: '$.lastStep.result' as const,
+  STEPS: '$.steps' as const,
+
+  // Helper functions (return the same string shapes as before)
+  stepById: (stepId: string): JsonPath => `$.steps[id=${stepId}].result`,
+  stepByLabel: (label: string): JsonPath => `$.steps[label=${label}].result`,
 } as const;
 
-// Simplified field mapping that's easier to understand
+/** ── Field mapping ─────────────────────────────────────────────────────── */
+export type SourceResolver = JsonPath | ((ctx: ExecutionContext) => unknown);
+
 export interface FieldMapping {
-  target: string;               // Target field name in template
-  source: string | ((ctx: ExecutionContext) => any);  // Path or function
-  default?: any;                // Default value if source is undefined
+  target: string;           // Target field in template
+  source: SourceResolver;   // JsonPath or resolver function
+  default?: unknown;        // Fallback if source is undefined
 }

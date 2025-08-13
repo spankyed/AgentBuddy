@@ -34,7 +34,7 @@ function generatePrompt(
   const nodeData = tNode.nodeAttributes || {};
   
   // Direct prompt takes precedence
-  if (nodeData.prompt) {
+  if (nodeData.prompt && typeof nodeData.prompt === 'string') {
     return nodeData.prompt;
   }
   
