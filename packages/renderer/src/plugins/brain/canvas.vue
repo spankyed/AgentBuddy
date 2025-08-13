@@ -66,8 +66,8 @@ const tNodeTree = useSelector(actor, (state) => state.context.tNodeTree);
 const possibleEvents = useSelector(actor, (state) => state.context.possibleEvents);
 const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
 const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
-// const canGoBack = useSelector(actor, (state) => state.context.tNodeStack.length > 1);
-const canGoBack = true;
+// Back button should only show when not on root flow
+const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'TNode-Root');
 
 // Event handlers
 const handleTNodeClick = (tNodeId: string) => {
