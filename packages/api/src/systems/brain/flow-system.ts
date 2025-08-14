@@ -327,7 +327,7 @@ export function createFlowNodeSystem(
         activeChildrenCount: 0,
         eventTrackContexts: {},
         finalResult: undefined,
-        entryData: flowTNode?.nodeAttributes?.params,
+        entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
         isFinalStep: flowTNode?.final || false,
       }),
       on: {
