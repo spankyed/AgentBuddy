@@ -51,29 +51,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Extract direct parameters
-const parameters = computed(() => {
-  const knownFields = ['actionId', 'actionName', 'fieldMappings'];
-  const params: Record<string, any> = {};
-  
-  // Check if there's a params field
-  if (props.nodeAttributes.params) {
-    return props.nodeAttributes.params;
-  }
-  
-  // Otherwise extract non-known fields as parameters
-  for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    if (!knownFields.includes(key)) {
-      params[key] = value;
-    }
-  }
-  
-  return Object.keys(params).length > 0 ? params : null;
-});
-
-// const hasParameters = computed(() => parameters.value !== null);
-
-// Extract resolved parameters from field mappings
 const resolvedParams = computed(() => {
   // Look for resolved values that came from field mappings
   const params: Record<string, any> = {};
