@@ -1,9 +1,9 @@
 <template>
   <div class="default-node-details">
     <div class="detail-section">
-      <h4 class="detail-label">Input Parameters</h4>
-      <div v-if="hasInputParams" class="detail-content">
-        <DataRenderer :data="inputParams" :default-expanded="false" />
+      <h4 class="detail-label">Node Attributes</h4>
+      <div v-if="hasNodeAttributes" class="detail-content">
+        <DataRenderer :data="nodeAttributes" :default-expanded="false" />
       </div>
       <div v-else class="empty-state">
         <p class="empty-text">No input parameters available</p>
@@ -32,7 +32,7 @@ interface Props {
 const props = defineProps<Props>();
 
 // Separate input parameters from output result
-const inputParams = computed(() => {
+const nodeAttributes = computed(() => {
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
@@ -47,7 +47,7 @@ const inputParams = computed(() => {
 
 const outputResult = computed(() => props.nodeAttributes.result);
 
-const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasNodeAttributes = computed(() => Object.keys(nodeAttributes.value).length > 0);
 const hasOutput = computed(() => outputResult.value !== undefined);
 </script>
 
