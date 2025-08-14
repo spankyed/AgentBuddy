@@ -26,10 +26,9 @@
       <Background variant="dots" />
       <Controls />
       
-      <!-- Back button and View menu (top left) -->
-      <div class="absolute z-10 top-4 left-4 flex gap-2">
+      <!-- Back button (top left) -->
+      <div v-if="canGoBack" class="absolute z-10 top-4 left-4">
         <button
-          v-if="canGoBack"
           class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
           @click="$emit('back-click')"
         >
@@ -38,7 +37,10 @@
           </svg>
           Back
         </button>
-        
+      </div>
+      
+      <!-- Menu and Fit buttons (bottom left) -->
+      <div class="absolute z-10 bottom-4 left-4 flex gap-2">
         <!-- Menu -->
         <BrainMenu
           :show-left-panel="showLeftPanel"
