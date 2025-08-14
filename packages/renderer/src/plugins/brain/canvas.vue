@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex h-full bg-neutral-900">
+  <div class="relative flex h-full overflow-hidden bg-neutral-900">
     <!-- Left Panel: TNode Tree (Optional) -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
