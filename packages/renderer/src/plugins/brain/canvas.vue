@@ -29,7 +29,7 @@
     </Transition>
 
     <!-- Center: TNode Graph (Always visible) -->
-    <div class="relative flex-1 overflow-hidden bg-neutral-900">
+    <div class="relative flex-1 overflow-hidden bg-neutral-900" @click="handleCanvasClick">
       <TNodeGraph
         :tnode-tree="tNodeTree"
         :flow-tnode-id="flowTNodeId"
@@ -145,6 +145,14 @@ const handleToggleAnimations = () => {
 
 const handleCloseDetails = () => {
   actor.send({ type: 'CLOSE_DETAILS' });
+};
+
+const handleCanvasClick = (event: MouseEvent) => {
+  // Only close if we have a selected node and the click is directly on the canvas
+  // The StepNodeDetails panel has @click.stop to prevent propagation
+  if (selectedStepNode.value) {
+    handleCloseDetails();
+  }
 };
 
 // Keyboard shortcuts

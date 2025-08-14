@@ -10,6 +10,7 @@
     <div
       v-if="node"
       class="absolute inset-y-0 right-0 z-20 flex w-96 flex-col border-l border-neutral-800/50 bg-neutral-900 shadow-2xl"
+      @click.stop
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-neutral-800/50 px-4 py-3">
