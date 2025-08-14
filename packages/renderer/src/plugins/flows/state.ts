@@ -61,7 +61,7 @@ type UIEvent =
   | { type: 'EDGE.CONNECT'; src: string; tgt: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
-  | { type: 'NODE.CREATE'; nodeType: string }
+  | { type: 'NODE.CREATE'; nodeType: string; position?: { x: number; y: number } }
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
@@ -349,10 +349,16 @@ const flowsState = setup({
         },
       });
 
+      // Use provided position if available, otherwise it will be set by layout
+      const updatedPositions = ev.position 
+        ? { ...context.graph.positions, [tempId]: ev.position }
+        : context.graph.positions;
+
       return {
         graph: {
           ...context.graph,
           nodes: [...context.graph.nodes, newNode],
+          positions: updatedPositions,
         },
         selectedNodeId: tempId as EARS.EntityId,
         editingNodeId: tempId as EARS.EntityId, // Also open editor for new nodes

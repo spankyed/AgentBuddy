@@ -94,6 +94,7 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 
 const { layout } = useLayout()
+const { project } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -172,9 +173,20 @@ function handleDrop(e: DragEvent) {
   const nodeType = e.dataTransfer?.getData('application/vueflow')
   if (!nodeType) return
   
+  // Get the bounding rect of the target element
+  const target = e.target as HTMLElement
+  const rect = target.getBoundingClientRect()
+  
+  // Calculate position relative to the flow container
+  const position = project({
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  })
+  
   actor.send({
     type: 'NODE.CREATE',
     nodeType,
+    position,
   })
 }
 
@@ -260,18 +272,28 @@ async function handleLayout(direction?: Direction) {
 }
 
 async function handleNodesInitialized() {
-  const laidOutNodes = await layout()
+  // Check if all nodes already have positions defined
+  const allNodesHavePositions = nodes.value.every(node => 
+    positions.value[node.id] && 
+    positions.value[node.id].x !== undefined && 
+    positions.value[node.id].y !== undefined
+  )
   
-  // Update node positions in frontend state
-  laidOutNodes.forEach(node => {
-    if (node.id && node.position) {
-      actor.send({
-        type: 'NODE.UPDATE_POSITION',
-        nodeId: node.id,
-        position: { x: node.position.x, y: node.position.y }
-      })
-    }
-  })
+  // Only run auto-layout if some nodes don't have positions
+  if (!allNodesHavePositions) {
+    const laidOutNodes = await layout()
+    
+    // Update node positions in frontend state
+    laidOutNodes.forEach(node => {
+      if (node.id && node.position) {
+        actor.send({
+          type: 'NODE.UPDATE_POSITION',
+          nodeId: node.id,
+          position: { x: node.position.x, y: node.position.y }
+        })
+      }
+    })
+  }
 }
 
 function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {
