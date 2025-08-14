@@ -134,7 +134,7 @@ TNodes form a trace tree:
 - Root flow TNode (id: "TNode-1")
   - Event TNode (TRACKED relationship)
     - Step/Flow TNodes (SPAWNED relationships)
-      - Nested TNodes...
+    - More Step TNodes...
 
 ## Future Enhancements
 
@@ -142,5 +142,4 @@ TNodes form a trace tree:
 - Add more node types (webhook, database, etc.)
 - Implement error recovery strategies
 - Add execution context persistence
-- Support parallel execution branches
 - Handle flow completion for nested flows
