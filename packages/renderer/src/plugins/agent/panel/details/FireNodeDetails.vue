@@ -2,17 +2,8 @@
   <div class="fire-node-details">
     <div v-if="hasInputParams" class="detail-section">
       <h4 class="detail-label">Input Parameters</h4>
-      <div class="detail-grid">
-        <div v-for="(value, key) in inputParams" :key="key" class="detail-item">
-          <span class="detail-key">{{ key }}:</span>
-          <span v-if="key === 'scope' && value" class="detail-value scope-badge" :class="`scope-${value}`">
-            {{ value }}
-          </span>
-          <span v-else-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
-          <div v-else class="detail-value">
-            <DataRenderer :data="value" :default-expanded="false" />
-          </div>
-        </div>
+      <div class="detail-content">
+        <DataRenderer :data="inputParams" :default-expanded="true" />
       </div>
     </div>
 
@@ -54,16 +45,6 @@ const outputResult = computed(() => props.nodeAttributes.result);
 
 const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
 const hasOutput = computed(() => outputResult.value !== undefined);
-
-const isComplexValue = (value: any): boolean => {
-  return value !== null && typeof value === 'object';
-};
-
-const formatValue = (value: any) => {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'object') return JSON.stringify(value, null, 2);
-  return String(value);
-};
 </script>
 
 <style scoped>
