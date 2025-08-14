@@ -222,8 +222,8 @@ const entryPayload = computed(() => {
   const mappings = (props.node as any).fieldMappings
   if (!mappings) return ''
   const entryMapping = Array.isArray(mappings) 
-    ? mappings.find((m: any) => m.target === 'entry')
-    : (mappings.target === 'entry' ? mappings : null)
+    ? mappings.find((m: any) => m.target === 'payload')
+    : (mappings.target === 'payload' ? mappings : null)
   return entryMapping?.source || ''
 })
 
@@ -256,7 +256,7 @@ const handleFlowChange = (flow: FlowEntity | null) => {
 
 const updateEntryPayload = (source: string) => {
   const mapping = source.trim() 
-    ? [{ target: 'params', source, default: undefined }]
+    ? [{ target: 'payload', source, default: undefined }]
     : []
   
   emit('update-node', { fieldMappings: mapping })
