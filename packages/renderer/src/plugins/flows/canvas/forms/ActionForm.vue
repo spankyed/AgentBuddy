@@ -3,13 +3,14 @@
     v-if="node"
     :node="node"
     @update-label="$emit('update-node', { label: $event })"
+    @close="$emit('close')"
   >
     <div class="space-y-6">
       <!-- Action Selection -->
       <div>
         <div class="flex items-center justify-between mb-3">
           <label class="text-xs font-semibold tracking-wider uppercase text-neutral-500">
-            Action
+            Template
           </label>
           <button
             v-if="selectedAction"
@@ -18,7 +19,7 @@
             title="View action details"
           >
             <ExternalLink class="w-3 h-3" />
-            View Action
+            Edit Template
           </button>
         </div>
         <ComboboxRoot
@@ -196,6 +197,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-node': [updates: Record<string, any>]
+  'close': []
 }>()
 
 // UI state only

@@ -3,6 +3,7 @@
     v-if="node"
     :node="node"
     @update-label="$emit('update-node', { label: $event })"
+    @close="$emit('close')"
   >
     <div class="space-y-6">
       <!-- Model Selection -->
@@ -262,6 +263,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-node': [updates: Record<string, any>]
+  'close': []
 }>()
 
 // Type assertion for llm node properties
