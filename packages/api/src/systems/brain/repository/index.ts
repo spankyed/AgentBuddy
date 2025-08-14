@@ -431,4 +431,22 @@ export const brainCommands = {
       tx(tNodeId).update('status', status);
     }
   },
+  
+  updateTNodeResult: (
+    tNodeId: EARS.EntityId,
+    result: any
+  ): void => {
+    // Get current nodeAttributes
+    const tNode = qx(tNodeId).pickOne(['nodeAttributes']) as Pick<TNodeEntity, 'nodeAttributes'> | null;
+    
+    if (tNode) {
+      // Merge result into existing nodeAttributes
+      const updatedAttributes = {
+        ...(tNode.nodeAttributes || {}),
+        result
+      };
+      
+      tx(tNodeId).update('nodeAttributes', updatedAttributes);
+    }
+  },
 } as const;

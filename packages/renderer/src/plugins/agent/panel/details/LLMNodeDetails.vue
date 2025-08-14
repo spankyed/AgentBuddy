@@ -28,6 +28,13 @@
         </div>
       </div>
     </div>
+
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
+      <div class="detail-content">
+        <DataRenderer :data="outputResult" :default-expanded="true" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -52,7 +59,7 @@ const inputParams = computed(() => {
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    // Exclude result (output) and prompt (shown in separate section)
+    // Exclude result (output) and prompt (shown in separate sections)
     if (key !== 'result' && key !== 'prompt') {
       params[key] = value;
     }
@@ -61,7 +68,10 @@ const inputParams = computed(() => {
   return params;
 });
 
+const outputResult = computed(() => props.nodeAttributes.result);
+
 const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 
 const isPromptTruncated = computed(() => {
   return props.nodeAttributes.prompt && props.nodeAttributes.prompt.length > MAX_PROMPT_LENGTH;

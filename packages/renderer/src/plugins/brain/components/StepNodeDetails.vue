@@ -62,13 +62,13 @@
           </div>
         </section>
 
-        <!-- Result / Output (stored in nodeAttributes if available) -->
-        <section v-if="node.nodeAttributes?.result !== undefined" class="mb-4">
+        <!-- Output Result -->
+        <section v-if="hasOutput" class="mb-4">
           <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Output Result
           </h4>
           <div class="rounded bg-black/30 border border-white/5 p-3">
-            <DataRenderer :data="node.nodeAttributes.result" :default-expanded="true" />
+            <DataRenderer :data="outputResult" :default-expanded="true" />
           </div>
         </section>
 
@@ -113,13 +113,13 @@ const statusClasses = computed(() => {
   }
 });
 
-// Filter out result from input params to avoid duplication
+// Separate input params from output result
 const inputParams = computed(() => {
   if (!props.node?.nodeAttributes) return {};
   
   const params: Record<string, any> = {};
   for (const [key, value] of Object.entries(props.node.nodeAttributes)) {
-    // Exclude result as it's shown separately
+    // Exclude result as it's shown in output section
     if (key !== 'result') {
       params[key] = value;
     }
@@ -128,12 +128,15 @@ const inputParams = computed(() => {
   return params;
 });
 
+const outputResult = computed(() => {
+  return props.node?.nodeAttributes?.result;
+});
+
 const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 
 const hasContent = computed(() => {
-  const hasParams = hasInputParams.value;
-  const hasResult = props.node?.nodeAttributes?.result !== undefined;
-  return hasParams || hasResult;
+  return hasInputParams.value || hasOutput.value;
 });
 
 const duration = computed(() => {

@@ -202,6 +202,20 @@ const brainState = setup({
         tNodeTree: denormalizedTree
       };
     }),
+    refreshNodeDetailsIfSelected: ({ context, event }) => {
+      if (event.type !== 'TNODE_UPDATED') return;
+      
+      const { tNodeId } = event.data;
+      
+      // If this is the currently selected step node, refresh its details
+      if (context.selectedStepNode?.id === tNodeId) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'GET_TNODE_DETAILS',
+          tNodeId
+        });
+      }
+    },
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
       return {
@@ -326,7 +340,7 @@ const brainState = setup({
           actions: 'addTNodeToTree'
         },
         TNODE_UPDATED: {
-          actions: 'updateTNodeInTree'
+          actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
           actions: ['pulseEvent', ({ system }) => {

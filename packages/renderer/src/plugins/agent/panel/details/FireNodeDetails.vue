@@ -15,6 +15,13 @@
         </div>
       </div>
     </div>
+
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
+      <div class="detail-content">
+        <DataRenderer :data="outputResult" :default-expanded="true" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -34,7 +41,7 @@ const inputParams = computed(() => {
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    // Only exclude result as it's output
+    // Exclude result as it's shown in output section
     if (key !== 'result') {
       params[key] = value;
     }
@@ -43,7 +50,10 @@ const inputParams = computed(() => {
   return params;
 });
 
+const outputResult = computed(() => props.nodeAttributes.result);
+
 const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 
 const isComplexValue = (value: any): boolean => {
   return value !== null && typeof value === 'object';

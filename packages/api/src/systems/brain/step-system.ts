@@ -48,8 +48,14 @@ export function createStepNodeSystem(
           // Delegate to step executor with TNode
           executeNode(context.tNode, context.step, executionContext, self);
         },
+        storeResult: ({ context, event }) => {
+          if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
+            repository.brainCommands.updateTNodeResult(context.tNodeId, event.result);
+          }
+        },
         markCompleted: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
+            // Update status
             repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed');
             
             // Send TNODE_UPDATED event to parent
@@ -104,7 +110,7 @@ export function createStepNodeSystem(
           on: {
             COMPLETE: {
               target: 'completed',
-              actions: 'notifyComplete',
+              actions: ['storeResult', 'notifyComplete'],
             },
             ERROR: {
               target: 'failed',
