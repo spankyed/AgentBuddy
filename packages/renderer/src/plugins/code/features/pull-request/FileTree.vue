@@ -7,6 +7,7 @@
         :item="child"
         :level="0"
         :all-collapsed="allCollapsed"
+        :all-expanded="allExpanded"
         @select-file="$emit('select-file', $event)"
       />
     </div>
@@ -33,11 +34,48 @@ interface TreeNode {
 const props = defineProps<{
   files: GitStatusFile[]
   allCollapsed?: boolean
+  allExpanded?: boolean
 }>()
 
 defineEmits<{
   'select-file': [file: TreeNode]
 }>()
+
+// Helper functions
+const sortNodes = (nodes: TreeNode[]) => {
+  return [...nodes].sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+}
+
+const calculateFileCounts = (node: TreeNode): number => {
+  if (node.type === 'file') return 1
+  
+  const count = node.children?.reduce((sum, child) => 
+    sum + calculateFileCounts(child), 0) ?? 0
+  node.fileCount = count
+  return count
+}
+
+const findOrCreateFolder = (parent: TreeNode, name: string, path: string): TreeNode => {
+  let folder = parent.children?.find(
+    child => child.type === 'folder' && child.name === name
+  )
+  
+  if (!folder) {
+    folder = {
+      name,
+      path,
+      type: 'folder',
+      children: [],
+      fileCount: 0
+    }
+    parent.children!.push(folder)
+  }
+  
+  return folder
+}
 
 // Build tree structure from flat file list
 const tree = computed(() => {
@@ -55,63 +93,27 @@ const tree = computed(() => {
     
     // Navigate/create folders
     for (let i = 0; i < parts.length - 1; i++) {
-      const folderName = parts[i]
-      let folder = currentNode.children?.find(
-        child => child.type === 'folder' && child.name === folderName
+      currentNode = findOrCreateFolder(
+        currentNode,
+        parts[i],
+        parts.slice(0, i + 1).join('/')
       )
-      
-      if (!folder) {
-        folder = {
-          name: folderName,
-          path: parts.slice(0, i + 1).join('/'),
-          type: 'folder',
-          children: [],
-          fileCount: 0
-        }
-        currentNode.children!.push(folder)
-      }
-      
-      currentNode = folder
     }
     
     // Add file
-    const fileName = parts[parts.length - 1]
     currentNode.children!.push({
-      name: fileName,
+      name: parts[parts.length - 1],
       path: file.path,
       type: 'file',
       status: file.status
     })
   })
   
-  // Calculate file counts
-  const calculateFileCounts = (node: TreeNode): number => {
-    if (node.type === 'file') return 1
-    
-    let count = 0
-    if (node.children) {
-      for (const child of node.children) {
-        count += calculateFileCounts(child)
-      }
-    }
-    node.fileCount = count
-    return count
-  }
-  
   calculateFileCounts(root)
-  
   return root
 })
 
-const sortedRootChildren = computed(() => {
-  if (!tree.value.children) return []
-  
-  // Sort folders first, then files, alphabetically within each group
-  return [...tree.value.children].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'folder' ? -1 : 1
-    }
-    return a.name.localeCompare(b.name)
-  })
-})
+const sortedRootChildren = computed(() => 
+  tree.value.children ? sortNodes(tree.value.children) : []
+)
 </script>

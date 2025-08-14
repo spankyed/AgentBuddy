@@ -19,13 +19,14 @@
       </button>
       
       <!-- Children -->
-      <div v-if="expanded">
+      <div v-show="expanded">
         <FileTreeItem
           v-for="child in sortedChildren"
           :key="child.path"
           :item="child"
           :level="level + 1"
           :all-collapsed="allCollapsed"
+          :all-expanded="allExpanded"
           @select-file="$emit('select-file', $event)"
         />
       </div>
@@ -65,65 +66,55 @@ const props = withDefaults(defineProps<{
   item: TreeNode
   level?: number
   allCollapsed?: boolean
+  allExpanded?: boolean
 }>(), {
   level: 0,
-  allCollapsed: false
+  allCollapsed: false,
+  allExpanded: false
 })
 
 defineEmits<{
   'select-file': [file: TreeNode]
 }>()
 
-const expanded = ref(false)
+const expanded = ref(true)
 
-// Watch for allCollapsed changes to collapse folders
-watch(() => props.allCollapsed, (newVal) => {
-  if (newVal && props.item.type === 'folder') {
+// Watch for collapse/expand all changes
+watch(() => [props.allCollapsed, props.allExpanded] as const, ([collapsed, allExpanded]) => {
+  if (props.item.type !== 'folder') return
+  
+  if (collapsed) {
     expanded.value = false
+  } else if (allExpanded) {
+    expanded.value = true
   }
 })
 
 const sortedChildren = computed(() => {
   if (!props.item.children) return []
   
-  // Sort folders first, then files, alphabetically within each group
   return [...props.item.children].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'folder' ? -1 : 1
-    }
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
     return a.name.localeCompare(b.name)
   })
 })
 
-const toggleExpanded = () => {
-  expanded.value = !expanded.value
+const toggleExpanded = () => expanded.value = !expanded.value
+
+const statusConfig: Record<GitStatusFile['status'], { icon: string; color: string }> = {
+  modified: { icon: 'M', color: 'text-yellow-500' },
+  added: { icon: 'A', color: 'text-green-500' },
+  deleted: { icon: 'D', color: 'text-red-500' },
+  renamed: { icon: 'R', color: 'text-blue-500' },
+  untracked: { icon: 'U', color: 'text-neutral-500' },
+  copied: { icon: 'C', color: 'text-purple-500' },
+  typechange: { icon: 'T', color: 'text-orange-500' },
+  unmerged: { icon: 'U', color: 'text-red-600' }
 }
 
-const getStatusIcon = (status?: GitStatusFile['status']) => {
-  switch (status) {
-    case 'modified': return 'M'
-    case 'added': return 'A'
-    case 'deleted': return 'D'
-    case 'renamed': return 'R'
-    case 'untracked': return 'U'
-    case 'copied': return 'C'
-    case 'typechange': return 'T'
-    case 'unmerged': return 'U'
-    default: return '?'
-  }
-}
+const getStatusIcon = (status?: GitStatusFile['status']) => 
+  status ? statusConfig[status]?.icon ?? '?' : '?'
 
-const getStatusColor = (status?: GitStatusFile['status']) => {
-  switch (status) {
-    case 'modified': return 'text-yellow-500'
-    case 'added': return 'text-green-500'
-    case 'deleted': return 'text-red-500'
-    case 'renamed': return 'text-blue-500'
-    case 'untracked': return 'text-neutral-500'
-    case 'copied': return 'text-purple-500'
-    case 'typechange': return 'text-orange-500'
-    case 'unmerged': return 'text-red-600'
-    default: return 'text-neutral-400'
-  }
-}
+const getStatusColor = (status?: GitStatusFile['status']) => 
+  status ? statusConfig[status]?.color ?? 'text-neutral-400' : 'text-neutral-400'
 </script>

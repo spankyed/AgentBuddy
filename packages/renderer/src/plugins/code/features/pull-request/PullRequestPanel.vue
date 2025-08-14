@@ -7,14 +7,22 @@
         <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
       </div>
       <div class="flex items-center gap-1">
-        <button
-          v-if="prFiles.length > 0"
-          @click="collapseAll"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-          title="Collapse all folders"
-        >
-          <FoldVertical :size="16" />
-        </button>
+        <template v-if="prFiles.length > 0">
+          <button
+            @click="expandAll"
+            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            title="Expand all folders"
+          >
+            <UnfoldVertical :size="16" />
+          </button>
+          <button
+            @click="collapseAll"
+            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            title="Collapse all folders"
+          >
+            <FoldVertical :size="16" />
+          </button>
+        </template>
         <button
           @click="refreshStatus"
           :disabled="isPrLoading"
@@ -52,19 +60,20 @@
       </div>
 
       <div v-else class="pr-content">
-      <div class="branch-info">
-        <GitBranch class="w-3 h-3 text-neutral-500" />
-        <span class="text-xs text-neutral-400">
-          Comparing with {{ prBaseBranch }}
-        </span>
-      </div>
+        <div class="branch-info">
+          <GitBranch class="w-3 h-3 text-neutral-500" />
+          <span class="text-xs text-neutral-400">
+            Comparing with {{ prBaseBranch }}
+          </span>
+        </div>
 
-      <FileTree 
-        :files="prFiles"
-        :all-collapsed="allCollapsed"
-        @select-file="handleFileSelect"
-      />
-    </div>
+        <FileTree 
+          :files="prFiles"
+          :all-collapsed="allCollapsed"
+          :all-expanded="allExpanded"
+          @select-file="handleFileSelect"
+        />
+      </div>
     </template>
   </div>
 </template>
@@ -74,7 +83,7 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest, FoldVertical } from 'lucide-vue-next'
+import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest, FoldVertical, UnfoldVertical } from 'lucide-vue-next'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
@@ -82,9 +91,9 @@ import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
 
-// Collapse state management
+// Collapse/Expand state management
 const allCollapsed = ref(false)
-
+const allExpanded = ref(false)
 
 // State selectors from PR actor
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
@@ -93,22 +102,27 @@ const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 
 // Computed
-const isNoDirectoryError = computed(() => {
-  return prError.value?.includes('No directory selected')
-})
+const isNoDirectoryError = computed(() => 
+  prError.value?.includes('No directory selected')
+)
 
 // Actions
 const refreshStatus = () => {
   prActor?.send({ type: 'pr.REFRESH_STATUS' })
 }
 
-const collapseAll = () => {
-  allCollapsed.value = true
-  // Reset after a tick to allow user to expand individual items again
-  setTimeout(() => {
-    allCollapsed.value = false
-  }, 0)
+const toggleAllFolders = (expand: boolean) => {
+  if (expand) {
+    allExpanded.value = true
+    setTimeout(() => allExpanded.value = false, 100)
+  } else {
+    allCollapsed.value = true
+    setTimeout(() => allCollapsed.value = false, 100)
+  }
 }
+
+const collapseAll = () => toggleAllFolders(false)
+const expandAll = () => toggleAllFolders(true)
 
 interface TreeNode {
   name: string
@@ -120,19 +134,16 @@ interface TreeNode {
 }
 
 const handleFileSelect = (file: TreeNode) => {
-  if (file.type === 'file' && file.status) {
-    // First select the file
-    const gitFile: GitStatusFile = {
-      path: file.path,
-      status: file.status,
-      staged: false
-    }
-    
-    prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
-    
-    // Then request the diff
-    prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
+  if (file.type !== 'file' || !file.status) return
+  
+  const gitFile: GitStatusFile = {
+    path: file.path,
+    status: file.status,
+    staged: false
   }
+  
+  prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
+  prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
 </script>
 
