@@ -284,7 +284,7 @@ export const brainCommands = {
 
     const flowTNode: Partial<TNodeEntity> = {
       tNodeType: 'flow',
-      label: flow.label!,
+      label: flowStepNode.label || flow.label!,
       status: 'active',
       startedAt: now,
       stepNodeType: 'flow',
