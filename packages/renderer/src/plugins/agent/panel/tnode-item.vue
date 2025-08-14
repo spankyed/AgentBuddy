@@ -75,10 +75,10 @@
           </div>
         </div>
         
-        <!-- Subtle gradient overlay -->
+        <!-- Subtle solid color overlay -->
         <div 
-          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
-          :class="gradientClasses"
+          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none group-hover:opacity-100"
+          :class="solidOverlayClasses"
         />
       </button>
       
@@ -114,7 +114,6 @@ import {
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
-  getPaletteGradientClasses,
   getNodeStatusClasses,
   getNodeConfig,
   nodeConfigs
@@ -204,7 +203,9 @@ const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.va
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
-const gradientClasses = computed(() => getPaletteGradientClasses(effectiveNodeType.value));
+
+// Use the existing glow classes for solid overlay (already returns bg-color-500/5)
+const solidOverlayClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 
 // Status styling with proper animation
 const statusClasses = computed(() => {
@@ -327,10 +328,6 @@ const handleClick = () => {
   padding: 0;
   /* Subtle transition for better UX */
   transition: all 0.15s ease;
-}
-
-.tnode-header:hover {
-  transform: translateX(1px);
 }
 
 /* Enhanced visual feedback on click */
