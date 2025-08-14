@@ -4,13 +4,16 @@
     :class="[
       nodeClasses,
       {
-        'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active',
-        'cursor-pointer': data.hasChildren,
+        'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active' || data.isSelected,
+        'ring-blue-500': data.isSelected && data.status !== 'active',
+        'cursor-pointer hover:shadow-lg': data.tNodeType === 'flow' || data.tNodeType === 'step',
+        'cursor-default': data.tNodeType === 'event',
       }
     ]"
   >
-    <!-- Glow effect on hover -->
+    <!-- Glow effect on hover (only for flow nodes) -->
     <div 
+      v-if="data.tNodeType === 'flow'"
       class="absolute inset-0 transition-opacity duration-300 rounded-md opacity-0 group-hover:opacity-100 blur-xl"
       :class="glowClasses"
     />
@@ -32,8 +35,7 @@
           class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium tracking-wide uppercase"
           :class="badgeClasses"
         >
-          {{ data.tNodeType === 'event' ? formatNodeType(data.tNodeType) : ''}}
-          <span v-if="data.stepNodeType" class="ml-1">{{ formatNodeType(data.stepNodeType) }}</span>
+          {{ data.tNodeType === 'event' ? formatNodeType(data.tNodeType) : data.tNodeType === 'step' && data.stepNodeType ? formatNodeType(data.stepNodeType) : formatNodeType(data.tNodeType) }}
         </span>
       </div>
     </div>
@@ -107,7 +109,9 @@ interface Props {
     stepNodeType?: string;
     status: 'active' | 'paused' | 'completed' | 'failed';
     hasChildren: boolean;
+    isSelected?: boolean;
   };
+  selected?: boolean; // VueFlow's internal selected prop (not used but may be passed)
 }
 
 const props = defineProps<Props>();

@@ -26,7 +26,7 @@ export class PromptService {
    * @param label - The prompt label
    * @param templateParams - Parameters to pass to the template
    */
-  async getAndExecute(
+  async usePrompt(
     label: string, 
     templateParams: Record<string, any>
   ): Promise<string | undefined> {

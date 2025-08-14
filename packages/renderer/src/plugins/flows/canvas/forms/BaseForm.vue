@@ -1,5 +1,19 @@
 <template>
   <section class="w-full min-h-full border-l border-neutral-800 bg-neutral-900">
+    <!-- Header with node type and close button -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+      <h2 class="text-sm font-semibold text-neutral-100 uppercase">
+        {{ node.nodeType }}
+      </h2>
+      <button
+        @click="$emit('close')"
+        class="p-1.5 rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+        aria-label="Close form"
+      >
+        <X :size="18" />
+      </button>
+    </div>
+    
     <!-- Content -->
     <div class="p-6 space-y-4">
       <!-- Common fields for all nodes -->
@@ -22,6 +36,8 @@
 </template>
 
 <script setup lang="ts">
+import { X } from 'lucide-vue-next'
+
 // Accept partial node data since forms now compute their own nodeData
 defineProps<{
   node: {
@@ -34,5 +50,6 @@ defineProps<{
 defineEmits<{
   'update-label': [label: string]
   'update-config': [config: Record<string, any>]
+  'close': []
 }>()
 </script>

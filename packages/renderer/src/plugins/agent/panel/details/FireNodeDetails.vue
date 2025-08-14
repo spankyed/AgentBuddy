@@ -1,36 +1,25 @@
 <template>
   <div class="fire-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Fire Event Configuration</h4>
-      <div class="detail-grid">
-        <div v-if="nodeAttributes.eventType" class="detail-item">
-          <span class="detail-key">Event Type:</span>
-          <span class="detail-value">{{ nodeAttributes.eventType }}</span>
-        </div>
-        <div v-if="nodeAttributes.scope" class="detail-item">
-          <span class="detail-key">Scope:</span>
-          <span class="detail-value scope-badge" :class="`scope-${nodeAttributes.scope}`">
-            {{ nodeAttributes.scope }}
-          </span>
-        </div>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
+      <div class="detail-content">
+        <DataRenderer :data="inputParams" :default-expanded="true" />
       </div>
     </div>
 
-    <div v-if="nodeAttributes.payload" class="detail-section">
-      <h4 class="detail-label">Event Payload</h4>
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
       <div class="detail-content">
-        <pre class="detail-pre">{{ formatPayload() }}</pre>
-        <button @click="copyToClipboard(formatPayload())" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
+        <DataRenderer :data="outputResult" :default-expanded="true" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Copy } from 'lucide-vue-next';
+import { computed } from 'vue';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -39,21 +28,23 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const formatPayload = () => {
-  if (typeof props.nodeAttributes.payload === 'string') {
-    return props.nodeAttributes.payload;
+const inputParams = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Exclude result as it's shown in output section
+    if (key !== 'result') {
+      params[key] = value;
+    }
   }
-  return JSON.stringify(props.nodeAttributes.payload, null, 2);
-};
+  
+  return params;
+});
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
-};
+const outputResult = computed(() => props.nodeAttributes.result);
+
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 </script>
 
 <style scoped>

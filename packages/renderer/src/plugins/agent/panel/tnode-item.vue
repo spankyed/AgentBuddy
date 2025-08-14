@@ -20,9 +20,9 @@
         
         <!-- Main content -->
         <div class="relative z-10 flex items-center gap-2 px-3 py-2.5">
-          <!-- Expand/Collapse icon for nodes with children -->
+          <!-- Expand/Collapse icon for nodes with children or step nodes -->
           <ChevronRight 
-            v-if="hasChildren" 
+            v-if="showChevron" 
             :class="[
               'w-3.5 h-3.5 text-neutral-500 transition-all flex-shrink-0', 
               { 'rotate-90': isExpanded, 'text-neutral-300': isExpanded }
@@ -58,19 +58,6 @@
             :class="iconComponentClasses"
           />
           
-          <!-- Details indicator -->
-          <div 
-            v-if="hasDetails"
-            class="relative flex items-center"
-            @click.stop="toggleDetails"
-          >
-            <Info 
-              :class="[
-                'w-3 h-3 transition-all duration-200',
-                showDetails ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-400'
-              ]"
-            />
-          </div>
           
           <!-- Status indicator with better sizing -->
           <div 
@@ -88,15 +75,15 @@
           </div>
         </div>
         
-        <!-- Subtle gradient overlay -->
+        <!-- Subtle solid color overlay -->
         <div 
-          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
-          :class="gradientClasses"
+          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none group-hover:opacity-100"
+          :class="solidOverlayClasses"
         />
       </button>
       
-      <!-- Node Details Section -->
-      <div v-if="showDetails && hasDetails" class="tnode-details">
+      <!-- Node Details Section (show when step is expanded and has details) -->
+      <div v-if="isExpanded && hasDetails" class="tnode-details">
         <component
           :is="detailComponent"
           :node="node"
@@ -120,14 +107,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ChevronRight, Info } from 'lucide-vue-next';
+import { ChevronRight } from 'lucide-vue-next';
 import type { TNodeEntity, NodeKind } from '@app/api';
 import { 
   getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
-  getPaletteGradientClasses,
   getNodeStatusClasses,
   getNodeConfig,
   nodeConfigs
@@ -136,6 +122,7 @@ import LLMNodeDetails from './details/LLMNodeDetails.vue';
 import ActionNodeDetails from './details/ActionNodeDetails.vue';
 import ListenNodeDetails from './details/ListenNodeDetails.vue';
 import FireNodeDetails from './details/FireNodeDetails.vue';
+import FlowNodeDetails from './details/FlowNodeDetails.vue';
 import DefaultNodeDetails from './details/DefaultNodeDetails.vue';
 
 interface Props {
@@ -154,8 +141,11 @@ const props = withDefaults(defineProps<Props>(), {
 const node = computed(() => props.normalizedTree.byId[props.nodeId]);
 const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] || []);
 const hasChildren = computed(() => childIds.value.length > 0);
-const isExpanded = ref(true);
-const showDetails = ref(true);
+// Event nodes are expanded by default, all others (including steps) are collapsed
+const isExpanded = ref(node.value?.tNodeType === 'event');
+
+// Show chevron for nodes with children OR step nodes (which can be collapsed even without children)
+const showChevron = computed(() => hasChildren.value || node.value?.tNodeType === 'step');
 
 // Map TNode type to actual node type for styling
 const effectiveNodeType = computed((): string => {
@@ -213,7 +203,9 @@ const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.va
 const glowClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 const iconDotClasses = computed(() => getPaletteIconClasses(effectiveNodeType.value));
 const iconComponentClasses = computed(() => getPaletteIconComponentClasses(effectiveNodeType.value));
-const gradientClasses = computed(() => getPaletteGradientClasses(effectiveNodeType.value));
+
+// Use the existing glow classes for solid overlay (already returns bg-color-500/5)
+const solidOverlayClasses = computed(() => getPaletteGlowClasses(effectiveNodeType.value));
 
 // Status styling with proper animation
 const statusClasses = computed(() => {
@@ -261,6 +253,7 @@ const detailComponent = computed(() => {
     case 'action': return ActionNodeDetails;
     case 'listen': return ListenNodeDetails;
     case 'fire': return FireNodeDetails;
+    case 'flow': return FlowNodeDetails;
     default: return DefaultNodeDetails;
   }
 });
@@ -276,7 +269,7 @@ const keyAttribute = computed(() => {
       if (attrs.model) return `Model: ${attrs.model}`;
       break;
     case 'action':
-      if (attrs.actionId) return `Action: ${attrs.actionId}`;
+      if (attrs.actionId) return `${attrs.actionId}`;
       break;
     case 'listen':
       if (attrs.eventType) return `Listen: ${attrs.eventType}`;
@@ -284,20 +277,20 @@ const keyAttribute = computed(() => {
     case 'fire':
       if (attrs.eventType) return `Fire: ${attrs.eventType}`;
       break;
+    case 'flow':
+      if (attrs.flowRef) return `Flow: ${attrs.flowRef}`;
+      break;
   }
   
   return null;
 });
 
 const handleClick = () => {
-  if (hasChildren.value) {
+  // Allow toggling for nodes with children OR step nodes
+  if (showChevron.value) {
     isExpanded.value = !isExpanded.value;
   }
   // TODO: Add click handler to open TNode details
-};
-
-const toggleDetails = () => {
-  showDetails.value = !showDetails.value;
 };
 </script>
 
@@ -335,10 +328,6 @@ const toggleDetails = () => {
   padding: 0;
   /* Subtle transition for better UX */
   transition: all 0.15s ease;
-}
-
-.tnode-header:hover {
-  transform: translateX(1px);
 }
 
 /* Enhanced visual feedback on click */
@@ -412,14 +401,4 @@ const toggleDetails = () => {
   animation: slideIn 0.15s ease-out;
 }
 
-/* Info icon hover effect */
-.tnode-header .info-icon {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-}
-
-.tnode-header .info-icon:hover {
-  opacity: 1;
-}
 </style>

@@ -2,15 +2,16 @@ import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
 import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
-import { EARS, ExecutionContext } from '@/types';
+import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
-import { brainBus } from './system';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('flow-machine');
+import { brain, brainBus } from './system';
+import { brainDebug, brainLogger } from './utils/brain-debug';
 
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
+  flowLabel: string;
+  flowStepNodeId?: EARS.EntityId;  // The original flow step node ID (for completion tracking)
+  flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
   eventNodes: ListenNode[];
   activeChildrenCount: number;
@@ -18,59 +19,54 @@ type TNodeFlowMachineContext = {
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Final result when a step completes with final flag
   finalResult?: any;
+  // Entry data for nested flows (resolved from field mappings)
+  entryData?: any;
+  // Whether this flow node itself is marked as final
+  isFinalStep?: boolean;
 };
 
 type ChildCompletedEvent =
   | {
-      type: 'CHILD_COMPLETED';
-      stepId?: EARS.EntityId;
-      stepLabel?: string;
-      result?: any;
-      final?: boolean;
-      eventTNodeId?: EARS.EntityId;
-      isFlowCompletion?: boolean;
-    }
-  | { type: 'CANCEL_FLOW' };
+    type: 'CHILD_COMPLETED';
+    stepId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    stepLabel?: string;
+    result?: any;
+    final?: boolean;
+    eventTNodeId?: EARS.EntityId;
+    isFlow?: boolean; // Simple flag to indicate if completing child was a flow
+  }
+  | { type: 'CANCEL_FLOW' }
+  | { type: 'TNODE_UPDATED'; data: { tNodeId: EARS.EntityId; status: string; eventTNodeId?: EARS.EntityId } };
 
-type TNodeFlowMachineInput = {
-  executionContext?: ExecutionContext; // For nested flows
-};
+type TNodeFlowMachineInput = {};
 
 const typeOf = safeEvents<ChildCompletedEvent>();
 
 /**
- * Creates a child node (flow or step) and returns the machine and system ID
+ * Creates a child node (flow or step) and returns the machine, system ID, and tNode
  * @param stepOrFlowNode - The node entity to create
  * @param eventTNodeId - The event track node ID that spawned this node
  * @param executionContext - The execution context for the step
- * @returns Tuple of [machine, systemId]
+ * @returns Tuple of [machine, systemId, tNode]
  */
 function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
-  systemActor?: any,
 ) {
-  logger.debug('createChildNode called with:', {
-    nodeId: stepOrFlowNode?.id,
-    nodeType: stepOrFlowNode?.nodeType,
-    nodeLabel: stepOrFlowNode?.label,
-    eventTNodeId,
-    hasContext: !!executionContext
-  });
-  
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
   }
-  
+
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
-  const { machine, tNodeId } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, systemActor)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, systemActor);
+  const { machine, tNodeId, tNode } = isFlowNode
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext)
+    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext);
 
-  const systemId = `${isFlowNode ? 'flow' : 'step'}-${stepOrFlowNode.id}-ev-${eventTNodeId}-tnode-${tNodeId}`;
+  const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
-  return [machine, systemId] as const;
+  return [machine, systemId, tNode] as const;
 }
 
 /**
@@ -79,69 +75,64 @@ function createChildNode(
 export function createFlowNodeSystem(
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
-  systemActor?: any,
+  executionContext?: ExecutionContext,
 ) {
-  // Handle TNode creation
-  let actualFlowId: EARS.EntityId;
-  let flowTNodeId: EARS.EntityId;
-  let eventNodes: ListenNode[];
-
   const isRootFlow = !flowId;
 
-  if (isRootFlow) {
-    // Create root flow TNode
-    const result = repository.brainCommands.createRootFlowTNode(systemActor);
-    if (!result.success) {
-      throw new Error(`Failed to create root flow TNode: ${result.error}`);
-    }
-    const {
-      rootFlow,
-      rootFlowTNode,
-      eventNodes: rootEventNodes,
-    } = result.data;
-    actualFlowId = rootFlow.id;
-    flowTNodeId = rootFlowTNode.id || 'TNode-Root'; // 'TNode-Root'
-    eventNodes = rootEventNodes;
-  } else {
-    // Create regular flow TNode
-    const result = repository.brainCommands.createFlowTNode(
-      flowId,
-      eventTNodeId,
-      systemActor,
-    );
-    if (!result.success) {
-      throw new Error(`Failed to create flow TNode: ${result.error}`);
-    }
-    const { flowTNode, eventNodes: flowEventNodes } = result.data;
-    actualFlowId = flowId;
-    flowTNodeId = flowTNode.id;
-    eventNodes = flowEventNodes;
-  }
+  // Use ternary to determine which creation function to call
+  const result = isRootFlow
+    ? (() => {
+      const { rootFlow, rootFlowTNode, eventNodes } = repository.brainCommands.createRootFlowTNode();
+      return {
+        actualFlowId: rootFlow.id,
+        flowTNodeId: rootFlowTNode.id || 'TNode-Root',
+        flowTNode: rootFlowTNode,
+        eventNodes
+      };
+    })()
+    : (() => {
+      const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
+        flowId,
+        eventTNodeId,
+        executionContext
+      );
+      return {
+        actualFlowId: flowId,
+        flowTNodeId: flowTNode.id,
+        flowTNode,
+        eventNodes
+      };
+    })();
+
+  const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
+
 
   const eventHandlers: Record<string, any> = {};
 
   // Add event listeners
   eventNodes.forEach((node) => {
     eventHandlers[node.eventType] = {
-      actions: ['handleTrackEvent', 'incrementChildCount'],
+      actions: ['handleTrackEvent'],
     };
   });
 
   return {
     tNodeId: flowTNodeId,
+    tNode: flowTNode,
     machine: setup({
       types: {
         context: {} as TNodeFlowMachineContext,
         events: {} as
           | ChildCompletedEvent
+          | { type: 'FLOW_COMPLETE' }
           | {
-              type: string;
-              [key: string]: any;
-            },
+            type: string;
+            [key: string]: any;
+          },
         input: {} as TNodeFlowMachineInput,
       },
       actions: {
-        handleTrackEvent: enqueueActions(({ context, event, enqueue, self }) => {
+        handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const eventType = event.type;
           const eventNode = context.eventNodes.find(
             (n) => n.eventType === eventType,
@@ -149,186 +140,217 @@ export function createFlowNodeSystem(
 
           if (!eventNode) return;
 
-          logger.debug(`${context.flowId} received event: ${eventType}`);
-
           const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
 
-          if (firstStep) {
-            const eventTNodeResult = repository.brainCommands.createEventTNode(eventNode, flowTNodeId, self);
-            if (!eventTNodeResult.success) {
-              throw new Error(`Failed to create event TNode: ${eventTNodeResult.error}`);
-            }
-            const eventTNode = eventTNodeResult.data;
-
-            // Create execution context with cleaner structure
-            const { type, ...eventData } = event;
-            
-            const eventTrackContext: ExecutionContext = {
-              event: {
-                type: eventType,
-                data: eventData,
-                timestamp: Date.now(),
-              },
-              steps: [],
-              lastStep: undefined,
-            };
-
-            logger.debug(`Event ${eventType} received:`, {
-              eventData,
-              contextStructure: {
-                'event.type': eventType,
-                'event.data': eventData,
-                'steps.length': 0
-              }
-            });
-
-            // Store the execution context for this event track
-            enqueue.assign({
-              eventTrackContexts: ({ context }) => ({
-                ...context.eventTrackContexts,
-                [eventTNode.id]: eventTrackContext,
-              }),
-            });
-
-            // Spawn child based on node type
-            const [machine, systemId] = createChildNode(firstStep, eventTNode.id, eventTrackContext, self);
-            enqueue.spawnChild(machine, { 
-              systemId, 
-              input: { executionContext: eventTrackContext } 
-            });
+          if (!firstStep) {
+            brainLogger.warn(`Failed to handle event ${eventType}: No first step found to execute in response`);
+            return;
           }
+
+          const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
+
+          // Emit TNODE_SPAWNED event for UI to display event TNode
+          system.get(brain).send({
+            type: 'TNODE_SPAWNED',
+            tNode: eventTNode,
+            parentId: flowTNodeId,
+            eventTNodeId: eventTNode.id,
+            flowTNodeId: flowTNodeId
+          });
+
+          // Create execution context with cleaner structure
+          // Handle flow.entry events specially - they have a 'data' property we need to unwrap
+          const { type, ...eventPayload } = event;
+          const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
+
+          const eventTrackContext: ExecutionContext = {
+            event: {
+              type: eventType,
+              data: eventData,
+              timestamp: Date.now(),
+            },
+            steps: [],
+            lastStep: undefined,
+          };
+
+          brainDebug(`${context.flowId} received event: ${eventType}. Will begin handling.`,
+            { eventData }
+          );
+
+          // Spawn child based on node type
+          const [machine, systemId, childTNode] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
+          enqueue.spawnChild(machine, {
+            systemId,
+          });
+
+          // Emit TNODE_SPAWNED event for the UI to display child node
+          system.get(brain).send({
+            type: 'TNODE_SPAWNED',
+            tNode: childTNode,
+            parentId: eventTNode.id,
+            eventTNodeId: eventTNode.id,
+            flowTNodeId: flowTNodeId
+          });
+
+
+          // Store the execution context for this event track and increment child count
+          enqueue.assign({
+            eventTrackContexts: ({ context }) => ({
+              ...context.eventTrackContexts,
+              [eventTNode.id]: eventTrackContext,
+            }),
+            activeChildrenCount: ({ context }) => context.activeChildrenCount + 1,
+          });
         }),
-        incrementChildCount: assign({
-          activeChildrenCount: ({ context, event }) => {
-            const eventNode = context.eventNodes.find(
-              (n) => n.eventType === event.type,
-            );
-            const firstStep = eventNode
-              ? repository.brainQueries.eventFirstStep(eventNode.id!)
-              : null;
-            return firstStep
-              ? context.activeChildrenCount + 1
-              : context.activeChildrenCount;
-          },
-        }),
-        handleChildCompletion: enqueueActions(({ context, event, enqueue, self }) => {
-          logger.debug(`Child completed in flow ${context.flowId}:`, { event });
+        handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
+          brainDebug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
-          
-          // Check if this child has a next node (only for step completions)
-          const hasNextNode = typedEv.eventTNodeId && typedEv.stepId
-            ? repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
-            : false;
-          
-          // Update execution context if this was a step completion
-          let eventTrackContexts = context.eventTrackContexts;
-          let executionContext: ExecutionContext | undefined;
-          
-          if (typedEv.eventTNodeId && typedEv.stepId) {
-            executionContext = context.eventTrackContexts[typedEv.eventTNodeId];
-            if (executionContext) {
-              const newStep = {
-                id: typedEv.stepId,
-                label: typedEv.stepLabel || '',
-                result: typedEv.result,
-                timestamp: Date.now(),
-              };
-              
-              const updatedContext: ExecutionContext = {
-                ...executionContext,
-                steps: [...executionContext.steps, newStep],
-                lastStep: newStep,
-              };
-              
-              eventTrackContexts = {
-                ...context.eventTrackContexts,
-                [typedEv.eventTNodeId]: updatedContext,
-              };
-              executionContext = updatedContext;
-            }
+
+          // Log when we receive a completion with final flag
+          if (typedEv.final) {
+            brainDebug(`Flow ${context.flowId} received child completion with final=true from ${typedEv.stepId}`);
           }
-          
-          // Update state
+
+          if (!typedEv.stepId || !typedEv.eventTNodeId) {
+            brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But missing step or event TNode ID`, { completion: event });
+            return;
+          }
+
+          const hasNextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
+
+          let trackExecutionContext = context.eventTrackContexts[typedEv.eventTNodeId];
+          if (!trackExecutionContext) {
+            brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But no execution context found for event TNode ID ${typedEv.eventTNodeId}`, { completion: event });
+            return;
+          }
+
+          const lastStep = {
+            id: typedEv.stepId,
+            tNodeId: typedEv.tNodeId,
+            label: typedEv.stepLabel || '',
+            result: typedEv.result,
+            timestamp: Date.now(),
+          };
+
+          const updatedContext: ExecutionContext = {
+            ...trackExecutionContext,
+            steps: [...trackExecutionContext.steps, lastStep],
+            lastStep,
+          };
+
+          const updatedEventTrackContexts = {
+            ...context.eventTrackContexts,
+            [typedEv.eventTNodeId]: updatedContext,
+          };
+
+          // Check if flow should complete (do this AFTER state update)
+          const shouldComplete = typedEv.final ||
+            (decremented === 0 && !hasNextNode);
+
+          // For flow results: if completing, use the result from the completing step
+          // If no result from this step, keep any existing finalResult
+          const flowResult = shouldComplete && typedEv.result !== undefined
+            ? typedEv.result
+            : context.finalResult;
+
           enqueue.assign({
             activeChildrenCount: hasNextNode ? decremented + 1 : decremented,
-            eventTrackContexts,
-            // Capture result if:
-            // 1. Child has final flag (step or flow), OR
-            // 2. It's a step with no next nodes
-            finalResult: typedEv.result !== undefined && 
-              (typedEv.final || (typedEv.eventTNodeId && !hasNextNode))
-              ? typedEv.result
-              : context.finalResult,
+            eventTrackContexts: updatedEventTrackContexts,
+            finalResult: flowResult,
           });
-          
-          // Spawn next node if there is one
-          if (hasNextNode && typedEv.eventTNodeId && typedEv.stepId && executionContext) {
+
+
+          if (shouldComplete) {
+            enqueue.raise({ type: 'FLOW_COMPLETE' });
+          } else if (hasNextNode) {
+            // Spawn next node if there is one
             const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
-            
-            logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
-              nextNodeId: nextNode?.id,
-              nextNodeType: nextNode?.nodeType,
-              nextNodeLabel: nextNode?.label,
-              eventTNodeId: typedEv.eventTNodeId
+
+            // brainDebug(`Spawning next node after ${typedEv.stepId}:`, {
+            //   nextNodeId: nextNode?.id,
+            //   nextNodeType: nextNode?.nodeType,
+            //   nextNodeLabel: nextNode?.label,
+            //   eventTNodeId: typedEv.eventTNodeId
+            // });
+
+            const [nextMachine, nextSystemId, nextTNode] = createChildNode(nextNode, typedEv.eventTNodeId, updatedContext);
+            enqueue.spawnChild(nextMachine, {
+              systemId: nextSystemId,
             });
-            
-            const [nextMachine, nextSystemId] = createChildNode(nextNode, typedEv.eventTNodeId, executionContext, self);
-            enqueue.spawnChild(nextMachine, { 
-              systemId: nextSystemId, 
-              input: { executionContext } 
+
+            // Emit TNODE_SPAWNED event for the next node
+            system.get(brain).send({
+              type: 'TNODE_SPAWNED',
+              tNode: nextTNode,
+              parentId: typedEv.eventTNodeId,
+              eventTNodeId: typedEv.eventTNodeId,
+              flowTNodeId: flowTNodeId
             });
           }
         }),
-        markFlowCompleted: ({ context, self }) => {
-          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed', eventTNodeId, self);
+        markFlowCompleted: ({ system, context }) => {
+          brainDebug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
+          repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
+          
+          // Save the flow's result to nodeAttributes so it appears in the details panel
+          if (context.finalResult !== undefined) {
+            repository.brainCommands.updateTNodeResult(flowTNodeId, context.finalResult);
+          }
+
+          // Emit TNODE_UPDATED event
+          system.get(brain).send({
+            type: 'TNODE_UPDATED',
+            data: {
+              tNodeId: flowTNodeId,
+              status: 'completed',
+              eventTNodeId: eventTNodeId
+            }
+          });
         },
         notifyParentOfCompletion: sendParent(({ context }) => ({
           type: 'CHILD_COMPLETED',
-          stepId: context.flowId,
+          stepId: context.flowStepNodeId || context.flowId,  // Use flow step node ID if available
+          stepLabel: context.flowStepLabel,  // Include the label for $.steps[label] references
           eventTNodeId: context.eventTNodeId,
           result: context.finalResult,
-          final: true,
+          // Only send final: true if this flow node itself was marked as final
+          final: context.isFinalStep,
         })),
-        raiseEntryEvent: raise({ type: 'flow.entry' }),
+        raiseEntryEvent: raise(({ context }) => ({
+          type: 'flow.entry',
+          ...(context.entryData !== undefined && { data: context.entryData })
+        })),
+        forwardTNodeUpdate: sendParent(({ event }) => event),
       },
-      guards: {
-        flowCompleted: ({ event, context }) => {
-          const typedEv = typeOf('CHILD_COMPLETED', event as any);
-          
-          // If it's a step with final flag, the flow is complete
-          if (typedEv.final) return true;
-          
-          // If it's not a step completion (no eventTNodeId), ignore
-          if (!typedEv.eventTNodeId || !typedEv.stepId) return false;
-          
-          // Flow is complete if there are no next nodes nor active children
-          const hasNextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
-          return !hasNextNode && context.activeChildrenCount === 0;
-        },
-      },
+      guards: {},
     }).createMachine({
       id: isRootFlow ? brainBus : `tnode-${flowTNodeId}`,
       initial: 'active',
       context: ({ input }: any) => ({
         flowId: actualFlowId,
-        eventTNodeId: flowTNodeId,
+        flowLabel: flowTNode?.label || 'Unknown Flow',
+        flowStepNodeId: flowTNode?.blueprint?.nodeId,  // Store the original flow step node ID
+        flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
+        eventTNodeId: eventTNodeId,
         eventNodes: eventNodes,
         activeChildrenCount: 0,
         eventTrackContexts: {},
         finalResult: undefined,
+        entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
+        isFinalStep: flowTNode?.final || false,
       }),
       on: {
         ...eventHandlers,
-        CHILD_COMPLETED: [
-          {
-            guard: 'flowCompleted',
-            target: '.completed',
-          },
-          {
-            actions: ['handleChildCompletion'],
-          },
-        ],
+        CHILD_COMPLETED: {
+          actions: ['handleChildCompletion'],
+        },
+        TNODE_UPDATED: {
+          actions: ['forwardTNodeUpdate'],
+        },
+        FLOW_COMPLETE: {
+          target: '.completed',
+        },
       },
       states: {
         active: {

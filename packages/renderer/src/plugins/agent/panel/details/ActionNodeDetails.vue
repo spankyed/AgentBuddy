@@ -1,36 +1,16 @@
 <template>
   <div class="action-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Action Configuration</h4>
-      <div class="detail-grid">
-        <div v-if="nodeAttributes.actionId" class="detail-item">
-          <span class="detail-key">Action ID:</span>
-          <span class="detail-value">{{ nodeAttributes.actionId }}</span>
-        </div>
-        <div v-if="nodeAttributes.actionName" class="detail-item">
-          <span class="detail-key">Action Name:</span>
-          <span class="detail-value">{{ nodeAttributes.actionName }}</span>
-        </div>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
+      <div class="detail-content">
+        <DataRenderer :data="inputParams" :default-expanded="true" />
       </div>
     </div>
-<!-- 
-    <div v-if="hasParameters" class="detail-section">
-      <h4 class="detail-label">Parameters</h4>
-      <div class="detail-content">
-        <pre class="detail-pre">{{ JSON.stringify(parameters, null, 2) }}</pre>
-        <button @click="copyToClipboard(JSON.stringify(parameters, null, 2))" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
-      </div>
-    </div> -->
 
-    <div v-if="hasResolvedParams" class="detail-section">
-      <h4 class="detail-label">Resolved Parameters</h4>
-      <div class="detail-grid">
-        <div v-for="(value, key) in resolvedParams" :key="key" class="detail-item">
-          <span class="detail-key">{{ key }}:</span>
-          <span class="detail-value">{{ formatValue(value) }}</span>
-        </div>
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
+      <div class="detail-content">
+        <DataRenderer :data="outputResult" :default-expanded="true" />
       </div>
     </div>
   </div>
@@ -38,8 +18,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -48,36 +28,12 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Extract direct parameters
-const parameters = computed(() => {
-  const knownFields = ['actionId', 'actionName', 'fieldMappings'];
-  const params: Record<string, any> = {};
-  
-  // Check if there's a params field
-  if (props.nodeAttributes.params) {
-    return props.nodeAttributes.params;
-  }
-  
-  // Otherwise extract non-known fields as parameters
-  for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    if (!knownFields.includes(key)) {
-      params[key] = value;
-    }
-  }
-  
-  return Object.keys(params).length > 0 ? params : null;
-});
-
-// const hasParameters = computed(() => parameters.value !== null);
-
-// Extract resolved parameters from field mappings
-const resolvedParams = computed(() => {
-  // Look for resolved values that came from field mappings
+const inputParams = computed(() => {
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    // Skip known config fields and look for resolved values
-    if (!['actionId', 'actionName', 'params', 'fieldMappings'].includes(key)) {
+    // Exclude result as it's shown in output section
+    if (key !== 'result') {
       params[key] = value;
     }
   }
@@ -85,22 +41,10 @@ const resolvedParams = computed(() => {
   return params;
 });
 
-const hasResolvedParams = computed(() => Object.keys(resolvedParams.value).length > 0);
+const outputResult = computed(() => props.nodeAttributes.result);
 
-const formatValue = (value: any) => {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'object') return JSON.stringify(value, null, 2);
-  return String(value);
-};
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
-};
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 </script>
 
 <style scoped>
@@ -132,7 +76,7 @@ const copyToClipboard = async (text: string) => {
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 

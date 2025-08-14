@@ -9,7 +9,7 @@
             :key="node.id"
             :tnode="node"
             :depth="0"
-            @tnode-click="$emit('tnode-click', $event)"
+            @flow-navigate="$emit('flow-navigate', $event)"
           />
         </div>
       </div>
@@ -44,6 +44,6 @@ interface Props {
 defineProps<Props>();
 
 defineEmits<{
-  'tnode-click': [tNodeId: string];
+  'flow-navigate': [flowId: string];
 }>();
 </script> 

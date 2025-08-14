@@ -2,14 +2,18 @@
   <div class="default-node-details">
     <div class="detail-section">
       <h4 class="detail-label">Node Attributes</h4>
-      <div v-if="hasAttributes" class="detail-content">
-        <pre class="detail-pre">{{ JSON.stringify(nodeAttributes, null, 2) }}</pre>
-        <button @click="copyToClipboard(JSON.stringify(nodeAttributes, null, 2))" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
+      <div v-if="hasNodeAttributes" class="detail-content">
+        <DataRenderer :data="nodeAttributes" :default-expanded="false" />
       </div>
       <div v-else class="empty-state">
-        <p class="empty-text">No additional attributes available</p>
+        <p class="empty-text">No input parameters available</p>
+      </div>
+    </div>
+
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
+      <div class="detail-content">
+        <DataRenderer :data="outputResult" :default-expanded="true" />
       </div>
     </div>
   </div>
@@ -17,8 +21,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -27,18 +31,24 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const hasAttributes = computed(() => {
-  return props.nodeAttributes && Object.keys(props.nodeAttributes).length > 0;
+// Separate input parameters from output result
+const nodeAttributes = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Exclude result as it's shown in output section
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
 });
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    // TODO: Show toast notification
-  } catch (err) {
-    console.error('Failed to copy text:', err);
-  }
-};
+const outputResult = computed(() => props.nodeAttributes.result);
+
+const hasNodeAttributes = computed(() => Object.keys(nodeAttributes.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 </script>
 
 <style scoped>

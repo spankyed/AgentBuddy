@@ -1,17 +1,14 @@
-import { setup, assign, sendParent } from 'xstate';
+import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/repository';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('step-machine');
+import { brainDebug } from './utils/brain-debug';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
   tNode: TNodeEntity;
   step: NodeEntity;
   eventTNodeId?: EARS.EntityId;
-  executionContext: ExecutionContext;
 };
 
 type StepEvent = {
@@ -20,9 +17,7 @@ type StepEvent = {
   error?: any;
 };
 
-type StepMachineInput = {
-  executionContext: ExecutionContext; // Replace with actual execution context type
-};
+type StepMachineInput = {};
 
 /**
  * Create a step execution machine
@@ -30,16 +25,12 @@ type StepMachineInput = {
 export function createStepNodeSystem(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
-  executionContext?: ExecutionContext,
-  systemActor?: any,
+  executionContext = {} as ExecutionContext,
 ) {
-  const result = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext, systemActor);
-  if (!result.success) {
-    throw new Error(`Failed to create step TNode: ${result.error}`);
-  }
-  const { tNode, step } = result.data;
+  const { tNode, step } = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext);
   return {
     tNodeId: tNode.id,
+    tNode: tNode,
     machine: setup({
       types: {
         context: {} as StepMachineContext,
@@ -48,23 +39,50 @@ export function createStepNodeSystem(
       },
       actions: {
         executeStep: ({ context, self }) => {
-          logger.debug(
+          brainDebug(
             `Executing step: ${context.step.label} (${context.step.nodeType})`,
           );
 
           // Delegate to step executor with TNode
-          executeNode(context.tNode, context.step, context.executionContext, self);
+          executeNode(context.tNode, context.step, executionContext, self);
         },
-        markCompleted: ({ context, self }) => {
-          if (context.tNodeId) {
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed', context.eventTNodeId, self);
+        storeResult: ({ context, event }) => {
+          if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
+            // Result truncation is handled in updateTNodeResult to prevent memory overflow
+            repository.brainCommands.updateTNodeResult(context.tNodeId, event.result);
           }
         },
-        markFailed: ({ context, self }) => {
+        markCompleted: enqueueActions(({ context, enqueue }) => {
           if (context.tNodeId) {
-            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed', context.eventTNodeId, self);
+            // Update status
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed');
+            
+            // Send TNODE_UPDATED event to parent
+            enqueue.sendParent({
+              type: 'TNODE_UPDATED',
+              data: { 
+                tNodeId: context.tNodeId, 
+                status: 'completed', 
+                eventTNodeId: context.eventTNodeId 
+              }
+            });
           }
-        },
+        }),
+        markFailed: enqueueActions(({ context, enqueue }) => {
+          if (context.tNodeId) {
+            repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed');
+            
+            // Send TNODE_UPDATED event to parent
+            enqueue.sendParent({
+              type: 'TNODE_UPDATED',
+              data: { 
+                tNodeId: context.tNodeId, 
+                status: 'failed', 
+                eventTNodeId: context.eventTNodeId 
+              }
+            });
+          }
+        }),
         notifyComplete: sendParent(({ context, event }) => ({
           type: 'CHILD_COMPLETED',
           stepId: context.step.id,
@@ -73,6 +91,7 @@ export function createStepNodeSystem(
           result: event.result,
           final: context.step.final || false,
           eventTNodeId: context.eventTNodeId,
+          isFlow: false,
         })),
       },
     }).createMachine({
@@ -83,7 +102,6 @@ export function createStepNodeSystem(
         tNode: tNode,
         step: step,
         eventTNodeId: eventTNodeId,
-        executionContext: input.executionContext || ({} as ExecutionContext),
       }),
       states: {
         executing: {
@@ -91,7 +109,7 @@ export function createStepNodeSystem(
           on: {
             COMPLETE: {
               target: 'completed',
-              actions: 'notifyComplete',
+              actions: ['storeResult', 'notifyComplete'],
             },
             ERROR: {
               target: 'failed',

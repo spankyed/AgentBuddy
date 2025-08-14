@@ -216,7 +216,7 @@ const codeState = setup({
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
-      // Only spawn if not already spawned
+      // Only spawn if not already
         enqueue.spawnChild('explorerState', { systemId: 'explorer' });
         enqueue.spawnChild('searchState', { systemId: 'search' });
         enqueue.spawnChild('commitState', { systemId: 'commit' });

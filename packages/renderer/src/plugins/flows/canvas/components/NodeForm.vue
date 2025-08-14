@@ -13,14 +13,6 @@
     >
       <!-- Tab hanging off the side -->
       <div class="relative">
-        <div 
-          @click="$emit('close')"
-          class="absolute flex items-center gap-2 px-3 py-2 transition-colors border border-r-0 rounded-l-lg cursor-pointer right-full top-10 bg-neutral-900 border-neutral-800 hover:bg-neutral-800"
-        >
-          <X class="w-4 h-4 text-neutral-400" />
-          <span class="text-sm font-semibold text-neutral-100">{{ selectedNode.nodeType.toUpperCase() }}</span>
-        </div>
-        
         <!-- Next step dropdown -->
         <DropdownMenuRoot
           :open="showNextStepMenu"
@@ -28,7 +20,7 @@
         >
           <DropdownMenuTrigger as-child>
             <div 
-              class="absolute flex items-center gap-2 px-3 py-2 transition-all bg-blue-600 border border-r-0 border-blue-500 rounded-l-lg cursor-pointer next-step-trigger right-full bottom-10 hover:bg-blue-700 hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/20"
+              class="absolute flex items-center gap-2 px-3 py-2 transition-all bg-blue-600 border border-r-0 border-blue-500 rounded-l-lg cursor-pointer next-step-trigger right-full top-12 hover:bg-blue-700 hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/20"
             >
               <Plus class="w-4 h-4 text-white" />
               <span class="text-sm font-semibold text-white whitespace-nowrap">Next step</span>
@@ -64,8 +56,9 @@
           :is="getFormComponent(selectedNode.nodeType)"
           :key="selectedNode.id"
           :node="selectedNode"
-          :resources="{ actions, models, prompts }"
+          :resources="{ actions, flows, models, prompts }"
           @update-node="handleUpdateNode"
+          @close="$emit('close')"
         />
       </div>
     </div>
@@ -74,8 +67,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { NodeEntity, ActionEntity, ModelConfig, PromptEntity } from '@app/api'
-import { X, Plus } from 'lucide-vue-next'
+import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } from '@app/api'
+import { Plus } from 'lucide-vue-next'
 import { getPaletteItems } from '../../config/node-config'
 import {
   DropdownMenuContent,
@@ -92,10 +85,12 @@ import FireForm from '../forms/FireForm.vue'
 import CreateForm from '../forms/CreateForm.vue'
 import LLMForm from '../forms/LLMForm.vue'
 import ActionForm from '../forms/ActionForm.vue'
+import FlowForm from '../forms/FlowForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
   actions?: ActionEntity[]
+  flows?: FlowEntity[]
   models?: ModelConfig[]
   prompts?: PromptEntity[]
 }
@@ -121,6 +116,7 @@ function getFormComponent(nodeType: string) {
     'create': CreateForm,
     'llm': LLMForm,
     'action': ActionForm,
+    'flow': FlowForm,
   }
   return formMap[nodeType] || BaseForm
 }

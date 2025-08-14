@@ -1,41 +1,13 @@
 <template>
   <div class="llm-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Model Configuration</h4>
-      <div class="detail-grid">
-        <div v-if="nodeAttributes.model" class="detail-item">
-          <span class="detail-key">Model:</span>
-          <span class="detail-value">{{ nodeAttributes.model }}</span>
-        </div>
-        <div v-if="nodeAttributes.temperature !== undefined" class="detail-item">
-          <span class="detail-key">Temperature:</span>
-          <span class="detail-value">{{ nodeAttributes.temperature }}</span>
-        </div>
-        <div v-if="nodeAttributes.maxTokens" class="detail-item">
-          <span class="detail-key">Max Tokens:</span>
-          <span class="detail-value">{{ nodeAttributes.maxTokens }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="nodeAttributes.systemPrompt" class="detail-section">
-      <h4 class="detail-label">System Prompt</h4>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
       <div class="detail-content">
-        <pre class="detail-pre">{{ nodeAttributes.systemPrompt }}</pre>
-        <button @click="copyToClipboard(nodeAttributes.systemPrompt)" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
+        <DataRenderer :data="inputParams" :default-expanded="true" />
       </div>
     </div>
 
-    <div v-if="nodeAttributes.promptTemplateId" class="detail-section">
-      <h4 class="detail-label">Prompt Template</h4>
-      <div class="detail-item">
-        <span class="detail-key">Template ID:</span>
-        <span class="detail-value">{{ nodeAttributes.promptTemplateId }}</span>
-      </div>
-    </div>
-
+    <!-- Keep prompt as separate section for better readability -->
     <div v-if="nodeAttributes.prompt" class="detail-section">
       <h4 class="detail-label">Prompt</h4>
       <div class="detail-content">
@@ -51,13 +23,10 @@
       </div>
     </div>
 
-    <div v-if="hasResolvedParams" class="detail-section">
-      <h4 class="detail-label">Resolved Parameters</h4>
-      <div class="detail-grid">
-        <div v-for="(value, key) in resolvedParams" :key="key" class="detail-item">
-          <span class="detail-key">{{ key }}:</span>
-          <span class="detail-value">{{ formatValue(value) }}</span>
-        </div>
+    <div v-if="hasOutput" class="detail-section">
+      <h4 class="detail-label">Output Result</h4>
+      <div class="detail-content">
+        <DataRenderer :data="outputResult" :default-expanded="true" />
       </div>
     </div>
   </div>
@@ -67,6 +36,7 @@
 import { computed, ref } from 'vue';
 import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
+import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
 interface Props {
   node: TNodeEntity;
@@ -74,18 +44,17 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-  console.log('srops.nodeAttributes: ', props.nodeAttributes);
 
 const showFullPrompt = ref(false);
 const MAX_PROMPT_LENGTH = 200;
 
-// Extract resolved parameters (excluding known LLM config fields)
-const resolvedParams = computed(() => {
-  const knownFields = ['model', 'temperature', 'maxTokens', 'systemPrompt', 'prompt', 'promptTemplateId', 'fieldMappings'];
+// Show all input parameters except result and prompt (prompt shown separately)
+const inputParams = computed(() => {
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    if (!knownFields.includes(key)) {
+    // Exclude result (output) and prompt (shown in separate sections)
+    if (key !== 'result' && key !== 'prompt') {
       params[key] = value;
     }
   }
@@ -93,7 +62,10 @@ const resolvedParams = computed(() => {
   return params;
 });
 
-const hasResolvedParams = computed(() => Object.keys(resolvedParams.value).length > 0);
+const outputResult = computed(() => props.nodeAttributes.result);
+
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+const hasOutput = computed(() => outputResult.value !== undefined);
 
 const isPromptTruncated = computed(() => {
   return props.nodeAttributes.prompt && props.nodeAttributes.prompt.length > MAX_PROMPT_LENGTH;
@@ -103,12 +75,6 @@ const truncatePrompt = (prompt: string) => {
   if (!prompt) return '';
   if (!isPromptTruncated.value || showFullPrompt.value) return prompt;
   return prompt.substring(0, MAX_PROMPT_LENGTH) + '...';
-};
-
-const formatValue = (value: any) => {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'object') return JSON.stringify(value, null, 2);
-  return String(value);
 };
 
 const copyToClipboard = async (text: string) => {
@@ -150,7 +116,7 @@ const copyToClipboard = async (text: string) => {
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.5rem;
 }
 

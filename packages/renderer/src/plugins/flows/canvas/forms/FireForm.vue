@@ -3,6 +3,7 @@
     v-if="node"
     :node="node"
     @update-label="$emit('update-node', { label: $event })"
+    @close="$emit('close')"
   >
     <div>
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
@@ -53,6 +54,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-node': [updates: Record<string, any>]
+  'close': []
 }>()
 
 // Computed payload string with proper JSON formatting

@@ -22,14 +22,28 @@ export interface BrainContext {
   normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
   pulsingEventType?: string;
+  // UI state
+  showLeftPanel: boolean;
+  showRightPanel: boolean;
+  selectedStepNode?: TNodeEntity;
+  debugEnabled: boolean;
+  animationsEnabled: boolean;
 }
 
 type SystemEvent = OutgoingBrainEvents
+  | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
+  | { type: 'DEBUG_TOGGLED'; enabled: boolean }
 
 type UIEvent =
-  | { type: 'TNODE.CLICK'; tNodeId: string }
+  | { type: 'NODE.CLICK'; nodeId: string }
+  | { type: 'FLOW.NAVIGATE'; flowId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
+  | { type: 'TOGGLE_LEFT_PANEL' }
+  | { type: 'TOGGLE_RIGHT_PANEL' }
+  | { type: 'CLOSE_DETAILS' }
+  | { type: 'TOGGLE_DEBUG' }
+  | { type: 'TOGGLE_ANIMATIONS' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -112,7 +126,12 @@ const brainState = setup({
     addTNodeToTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_SPAWNED') return {};
       
-      const { tNode, parentId, eventTNodeId } = event;
+      const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
+      
+      // Only add nodes that belong to the currently viewed flow
+      if (flowTNodeId !== context.flowTNodeId) {
+        return {}; // Ignore events from other flows
+      }
       
       if (!context.normalizedTree) {
         // Initialize if not present
@@ -188,6 +207,20 @@ const brainState = setup({
         tNodeTree: denormalizedTree
       };
     }),
+    refreshNodeDetailsIfSelected: ({ context, event }) => {
+      if (event.type !== 'TNODE_UPDATED') return;
+      
+      const { tNodeId } = event.data;
+      
+      // If this is the currently selected step node, refresh its details
+      if (context.selectedStepNode?.id === tNodeId) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'GET_TNODE_DETAILS',
+          tNodeId
+        });
+      }
+    },
     pulseEvent: assign(({ event }) => {
       if (event.type !== 'EVENT_PULSE') return {};
       return {
@@ -197,19 +230,13 @@ const brainState = setup({
     clearPulse: assign({
       pulsingEventType: undefined
     }),
-    openTNode: ({ event }) => {
-      let tNodeId: string;
-      
-      if (event.type === 'TNODE.CLICK') {
-        tNodeId = event.tNodeId;
-      } else {
-        return;
-      }
+    navigateToFlow: ({ event }) => {
+      if (event.type !== 'FLOW.NAVIGATE') return;
       
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_TNODE',
-        tNodeId
+        tNodeId: event.flowId
       });
     },
     goBack: () => {
@@ -224,6 +251,45 @@ const brainState = setup({
         type: 'REQUEST_PLUGIN_DATA'
       });
     },
+    toggleLeftPanel: assign({
+      showLeftPanel: ({ context }) => !context.showLeftPanel
+    }),
+    toggleRightPanel: assign({
+      showRightPanel: ({ context }) => !context.showRightPanel
+    }),
+    requestNodeDetails: ({ event }) => {
+      if (event.type !== 'NODE.CLICK') return;
+      
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_TNODE_DETAILS',
+        tNodeId: event.nodeId
+      });
+    },
+    setStepNodeDetails: assign(({ event }) => {
+      if (event.type !== 'TNODE_DETAILS') return {};
+      return {
+        selectedStepNode: event.details || undefined
+      };
+    }),
+    closeDetails: assign({
+      selectedStepNode: undefined
+    }),
+    toggleDebug: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'TOGGLE_DEBUG'
+      });
+    },
+    setDebugEnabled: assign(({ event }) => {
+      if (event.type !== 'DEBUG_TOGGLED') return {};
+      return {
+        debugEnabled: event.enabled
+      };
+    }),
+    toggleAnimations: assign({
+      animationsEnabled: ({ context }) => !context.animationsEnabled
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -234,6 +300,10 @@ const brainState = setup({
   id,
   context: {
     possibleEvents: [],
+    showLeftPanel: false,
+    showRightPanel: false,
+    debugEnabled: false,
+    animationsEnabled: true,
   },
   initial: 'loading',
   states: {
@@ -250,14 +320,38 @@ const brainState = setup({
         RECEIVE_PLUGIN_DATA: {
           actions: 'setBrainData'
         },
-        'TNODE.CLICK': {
-          actions: 'openTNode'
+        'NODE.CLICK': {
+          actions: 'requestNodeDetails'
+        },
+        'FLOW.NAVIGATE': {
+          actions: 'navigateToFlow'
         },
         'BACK.CLICK': {
           guard: 'canGoBack',
           actions: 'goBack'
         },
         'EVENT.CLICK': {
+        },
+        TOGGLE_LEFT_PANEL: {
+          actions: 'toggleLeftPanel'
+        },
+        TOGGLE_RIGHT_PANEL: {
+          actions: 'toggleRightPanel'
+        },
+        TOGGLE_DEBUG: {
+          actions: 'toggleDebug'
+        },
+        DEBUG_TOGGLED: {
+          actions: 'setDebugEnabled'
+        },
+        TOGGLE_ANIMATIONS: {
+          actions: 'toggleAnimations'
+        },
+        CLOSE_DETAILS: {
+          actions: 'closeDetails'
+        },
+        TNODE_DETAILS: {
+          actions: 'setStepNodeDetails'
         },
         PLUGIN_ACTIVATED: {
           actions: 'requestPluginData'
@@ -268,20 +362,17 @@ const brainState = setup({
         TNODE_OPENED: {
           actions: 'setTNodeData'
         },
-        EVENT_TNODE_SPAWNED: {
-          // Keep for backward compatibility but do nothing
-        },
         TNODE_SPAWNED: {
           actions: 'addTNodeToTree'
         },
         TNODE_UPDATED: {
-          actions: 'updateTNodeInTree'
+          actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
           actions: ['pulseEvent', ({ system }) => {
             // Clear pulse after animation
             setTimeout(() => {
-              system.get(id).send({ type: 'CLEAR_PULSE' as any });
+              system.get(id).send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Also request fresh data to show the new event
             setTimeout(() => {

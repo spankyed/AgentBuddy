@@ -84,13 +84,14 @@ export function getIndexMappingsPath(indexId: string): string {
  */
 export function getSnapshotsPath(): string {
   const userDataPath = getUserDataPath()
-  
-  // In development, use the src/core/data structure
-  // In production, use the user data directory
-  if (process.env.USER_DATA_PATH) {
+
+  // Always use project directory in development (NODE_ENV !== 'production')
+  // In production builds, use the user data directory
+  if (process.env.NODE_ENV === 'production' && process.env.USER_DATA_PATH) {
     return path.join(userDataPath, 'snapshots')
   } else {
-    // Development path - maintain compatibility with existing structure
-    return path.join(userDataPath, 'src', 'core', 'data', 'snapshots')
+    // Development path - always use project structure regardless of USER_DATA_PATH
+    return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'snapshots')
+    // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
   }
 }

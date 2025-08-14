@@ -80,6 +80,11 @@ export interface FlowNode extends NodeBase {
   nodeType: 'flow';
   flowRef: string;                    // id / slug of child flow
   propagateCtx?: boolean;             // default true
+  fieldMappings?: Array<{             // Map entry parameter
+    target: string;
+    source: string;
+    default?: any;
+  }>;
 }
 
 export interface KeepAliveNode extends NodeBase {

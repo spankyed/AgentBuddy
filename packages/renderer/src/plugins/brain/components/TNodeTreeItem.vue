@@ -81,7 +81,7 @@
           :key="child.id"
           :tnode="child"
           :depth="depth + 1"
-          @tnode-click="$emit('tnode-click', $event)"
+          @flow-navigate="$emit('flow-navigate', $event)"
         />
       </div>
     </div>
@@ -112,7 +112,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'tnode-click': [tNodeId: string];
+  'flow-navigate': [flowId: string];
 }>();
 
 const expanded = ref(false);
@@ -183,7 +183,10 @@ const handleClick = () => {
   if (props.tnode.children.length > 0) {
     expanded.value = !expanded.value;
   }
-  emit('tnode-click', props.tnode.id);
+  // Only emit for flow nodes - tree navigation is only for flows
+  if (props.tnode.tNodeType === 'flow') {
+    emit('flow-navigate', props.tnode.id);
+  }
 };
 </script>
 

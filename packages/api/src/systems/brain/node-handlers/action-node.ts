@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/core/utils/debug/logger';
+import { brainDebug, brainLogger } from '../utils/brain-debug';
 import { repository } from '@/repository';
 import { z } from 'zod';
 
@@ -8,8 +8,6 @@ import { z } from 'zod';
 function getServices() {
   return require('@/services').default;
 }
-
-const logger = createLogger('action-node');
 
 interface ActionNodeConfig {
   params?: Record<string, any>;               // Direct parameters
@@ -40,7 +38,7 @@ async function executeActionFunction(
     
     return result;
   } catch (error) {
-    logger.error('Action function execution failed:', error as any);
+    brainLogger.error('Action function execution failed:', error as any);
     throw error;
   }
 }
@@ -57,7 +55,7 @@ export async function actionNodeHandler(
   const actionNode = node as ActionNode;
   const nodeData = tNode.nodeAttributes || {};
   
-  logger.debug(`Executing action node: ${node.label}`, {
+  brainDebug(`Executing action node: ${node.label}`, {
     tNode,
     node,
     nodeAttributeKeys: Object.keys(nodeData),
@@ -76,7 +74,7 @@ export async function actionNodeHandler(
       throw new Error(`Action not found: ${actionId}`);
     }
     
-    logger.debug(`Found action: ${action.label}`, {
+    brainDebug(`Found action: ${action.label}`, {
       input: Object.keys(action.input || {}),
     });
     
@@ -89,7 +87,7 @@ export async function actionNodeHandler(
       params[key] = value;
     }
     
-    logger.debug(`Executing action with resolved params:`, params);
+    brainDebug(`Executing action with resolved params:`, params);
     
     // Execute the action function
     const result = await executeActionFunction(
@@ -97,7 +95,7 @@ export async function actionNodeHandler(
       params,
     );
     
-    logger.debug(`Action completed successfully:`, {
+    brainDebug(`Action completed successfully:`, {
       nodeLabel: node.label,
       actionLabel: action.label,
       // resultType: typeof result,
@@ -111,7 +109,7 @@ export async function actionNodeHandler(
     });
     
   } catch (error) {
-    logger.error(`Action node execution failed:`, {
+    brainLogger.error(`Action node execution failed:`, {
       nodeLabel: node.label,
       error
     });

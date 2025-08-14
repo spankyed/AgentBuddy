@@ -18,7 +18,6 @@
       :zoom-on-double-click="false"
       :min-zoom="0.5"
       :max-zoom="2"
-      @node-click="handleNodeClick"
     >
       <template #node-tnode="nodeProps">
         <TNodeGraphNode v-bind="nodeProps" />
@@ -27,9 +26,8 @@
       <Controls />
       
       <!-- Back button (top left) -->
-      <div class="absolute z-10 top-4 left-4">
+      <div v-if="canGoBack" class="absolute z-10 top-4 left-4">
         <button
-          v-if="canGoBack"
           class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
           @click="$emit('back-click')"
         >
@@ -37,6 +35,30 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
           Back
+        </button>
+      </div>
+      
+      <!-- Menu and Fit buttons (bottom left) -->
+      <div class="absolute z-10 bottom-4 left-4 flex gap-2">
+        <!-- Menu -->
+        <BrainMenu
+          :show-left-panel="showLeftPanel"
+          :show-right-panel="showRightPanel"
+          :debug-enabled="debugEnabled"
+          :animations-enabled="animationsEnabled"
+          @toggle-left-panel="$emit('toggle-left-panel')"
+          @toggle-right-panel="$emit('toggle-right-panel')"
+          @toggle-debug="$emit('toggle-debug')"
+          @toggle-animations="$emit('toggle-animations')"
+        />
+        
+        <!-- Fit to View Button -->
+        <button
+          class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
+          title="Fit graph to view"
+          @click="handleFitView"
+        >
+          <Maximize :size="16" />
         </button>
       </div>
       
@@ -71,18 +93,31 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
+import BrainMenu from './BrainMenu.vue';
+import { Maximize } from 'lucide-vue-next';
+import { useNodeViewport } from '../useNodeViewport';
 
 interface Props {
   tnodeTree?: TrackEntity[];
   flowTNodeId?: string;
   canGoBack: boolean;
+  showLeftPanel?: boolean;
+  showRightPanel?: boolean;
+  debugEnabled?: boolean;
+  animationsEnabled?: boolean;
+  selectedNodeId?: string;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'tnode-click': [tNodeId: string];
+  'node-click': [tNodeId: string];
+  'flow-navigate': [flowId: string];
   'back-click': [];
+  'toggle-left-panel': [];
+  'toggle-right-panel': [];
+  'toggle-debug': [];
+  'toggle-animations': [];
 }>();
 
 // Constants
@@ -100,7 +135,18 @@ const ANIMATION = {
 } as const;
 
 // Vue Flow composables
-const { setCenter, getNode } = useVueFlow();
+const { 
+  setCenter, 
+  getNode, 
+  fitView,
+  onNodeClick,
+  onNodeDoubleClick
+} = useVueFlow();
+const { centerNodeInView } = useNodeViewport();
+
+// Click handling state - need to delay single clicks for flow nodes
+let clickTimeout: NodeJS.Timeout | null = null;
+const DOUBLE_CLICK_DELAY = 250; // ms to wait for double click
 
 // State
 const nodePositionCache = new Map<string, { x: number; y: number }>();
@@ -118,6 +164,7 @@ const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number 
     stepNodeType: tnode.stepNodeType,
     status: tnode.status,
     hasChildren: tnode.children.length > 0,
+    isSelected: props.selectedNodeId === tnode.id,
   },
 });
 
@@ -196,8 +243,47 @@ const edges = computed<Edge[]>(() => {
   return result;
 });
 
-const handleNodeClick = (event: NodeMouseEvent) => {
-  emit('tnode-click', event.node.id);
+// Register node event handlers using Vue Flow composables
+onNodeClick((event: NodeMouseEvent) => {
+  const nodeData = event.node.data as { tNodeType?: string };
+  
+  if (nodeData.tNodeType === 'flow') {
+    // For flow nodes, delay single click to allow for double-click detection
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+    }
+    clickTimeout = setTimeout(() => {
+      emit('node-click', event.node.id);
+      clickTimeout = null;
+    }, DOUBLE_CLICK_DELAY);
+  } else if (nodeData.tNodeType === 'step') {
+    // Step nodes always open details immediately
+    emit('node-click', event.node.id);
+  }
+  // Event nodes don't have click behavior
+});
+
+onNodeDoubleClick((event: NodeMouseEvent) => {
+  const nodeData = event.node.data as { tNodeType?: string };
+  
+  // Only flow nodes can be navigated into on double click
+  if (nodeData.tNodeType === 'flow') {
+    // Cancel the pending single-click action
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    emit('flow-navigate', event.node.id);
+  }
+  // Step nodes and event nodes don't have double click behavior
+});
+
+const handleFitView = () => {
+  // Fit all nodes in view with some padding
+  fitView({ 
+    padding: 0.2,
+    duration: 400 
+  });
 };
 
 // Animation helpers
@@ -247,20 +333,50 @@ watch(() => nodes.value, (newNodes) => {
     return;
   }
   
-  // Cancel any existing animation
-  cancelCurrentAnimation();
-  
-  // Focus on the last new node (most recent)
-  const targetNodeId = newNodeIds[newNodeIds.length - 1];
-  const targetNode = newNodes.find(n => n.id === targetNodeId);
-  
-  if (targetNode) {
-    animationController = new AbortController();
-    animateToNode(targetNodeId, targetNode.position, animationController.signal);
+  // Only animate if animations are enabled
+  if (props.animationsEnabled) {
+    // Cancel any existing animation
+    cancelCurrentAnimation();
+    
+    // Focus on the last new node (most recent)
+    const targetNodeId = newNodeIds[newNodeIds.length - 1];
+    const targetNode = newNodes.find(n => n.id === targetNodeId);
+    
+    if (targetNode) {
+      animationController = new AbortController();
+      animateToNode(targetNodeId, targetNode.position, animationController.signal);
+    }
   }
   
   // Update tracked nodes
   previousNodeIds = new Set(newNodes.map(n => n.id));
+}, { immediate: true });
+
+// Watch for selected node changes and center the node in view
+let previousSelectedId: string | undefined = undefined;
+watch(() => props.selectedNodeId, async (newSelectedId) => {
+  if (newSelectedId && newSelectedId !== previousSelectedId) {
+    // Small delay to ensure the details panel is rendered
+    setTimeout(async () => {
+      await centerNodeInView(newSelectedId);
+    }, 100);
+  }
+  previousSelectedId = newSelectedId;
+});
+
+// Auto-fit view when flow structure changes
+watch(() => props.tnodeTree, (newTree) => {
+  if (newTree && newTree.length > 0) {
+    // Small delay to ensure nodes are rendered
+    nextTick(() => {
+      setTimeout(() => {
+        fitView({ 
+          padding: 0.2,
+          duration: 400 
+        });
+      }, 150);
+    });
+  }
 }, { immediate: true });
 
 // Cleanup on unmount
@@ -268,5 +384,8 @@ onUnmounted(() => {
   cancelCurrentAnimation();
   nodePositionCache.clear();
   previousNodeIds.clear();
+  if (clickTimeout) {
+    clearTimeout(clickTimeout);
+  }
 });
 </script> 

@@ -3,3 +3,4 @@ dist
 .env
 local_cache
 search-indices
+untracked
