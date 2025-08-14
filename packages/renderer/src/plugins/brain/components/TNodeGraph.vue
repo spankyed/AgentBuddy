@@ -332,6 +332,21 @@ watch(() => props.selectedNodeId, async (newSelectedId) => {
   previousSelectedId = newSelectedId;
 });
 
+// Auto-fit view when flow structure changes
+watch(() => props.tnodeTree, (newTree) => {
+  if (newTree && newTree.length > 0) {
+    // Small delay to ensure nodes are rendered
+    nextTick(() => {
+      setTimeout(() => {
+        fitView({ 
+          padding: 0.2,
+          duration: 400 
+        });
+      }, 150);
+    });
+  }
+}, { immediate: true });
+
 // Cleanup on unmount
 onUnmounted(() => {
   cancelCurrentAnimation();
