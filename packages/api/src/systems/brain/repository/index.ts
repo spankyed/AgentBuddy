@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes } from './node-attribute-mappers';
+import { truncateResult } from '../utils/result-truncator';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context
@@ -477,14 +478,17 @@ export const brainCommands = {
     tNodeId: EARS.EntityId,
     result: any
   ): void => {
+    // Truncate the result to prevent memory overflow
+    const truncatedResult = truncateResult(result);
+    
     // Get current nodeAttributes
     const tNode = qx(tNodeId).pickOne(['nodeAttributes']) as Pick<TNodeEntity, 'nodeAttributes'> | null;
     
     if (tNode) {
-      // Merge result into existing nodeAttributes
+      // Merge truncated result into existing nodeAttributes
       const updatedAttributes = {
         ...(tNode.nodeAttributes || {}),
-        result
+        result: truncatedResult
       };
       
       tx(tNodeId).update('nodeAttributes', updatedAttributes);
