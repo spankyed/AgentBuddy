@@ -50,6 +50,7 @@ export function createStepNodeSystem(
         },
         storeResult: ({ context, event }) => {
           if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {
+            // todo: need to truncate result if its a long string - user must optionally expand full data
             repository.brainCommands.updateTNodeResult(context.tNodeId, event.result);
           }
         },
