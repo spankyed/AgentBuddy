@@ -64,6 +64,18 @@
           </div>
         </div>
 
+        <!-- View Blueprint Button (positioned above Execution Info) -->
+        <div v-if="node.blueprint" class="flex justify-end px-2 pb-2">
+          <button
+            @click="openBlueprint"
+            class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
+            title="View action details"
+          >
+            <ExternalLink class="w-3 h-3" />
+            Edit step
+          </button>
+        </div>
+
         <!-- Execution Info (sticky at bottom) -->
         <section v-if="node.startedAt || duration" class="border-t border-neutral-800/50 bg-neutral-900/50 px-4 py-3">
           <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
@@ -87,9 +99,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { X } from 'lucide-vue-next';
+import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
+import { applicationState } from '@/main';
 
 interface Props {
   node?: TNodeEntity;
@@ -99,6 +112,34 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   close: [];
 }>();
+
+const openBlueprint = () => {
+  if (props.node?.blueprint) {
+    // First select the flow
+    const flowsActor = applicationState.system.get('flows');
+    flowsActor.send({ 
+      type: 'FLOW.SELECT', 
+      flowId: props.node.blueprint.flowId 
+    });
+    
+    // Then select and open the node editor
+    setTimeout(() => {
+      flowsActor.send({ 
+        type: 'NODE.DOUBLE_CLICK', 
+        nodeId: props.node!.blueprint!.nodeId 
+      });
+    }, 100);
+    
+    // Switch to flows plugin
+    applicationState.send({ 
+      type: 'SELECT_PLUGIN', 
+      pluginId: 'flows' 
+    });
+    
+    // Close the details panel
+    emit('close');
+  }
+};
 
 const statusClasses = computed(() => {
   switch (props.node?.status) {

@@ -46,7 +46,8 @@ const TNODE_COLUMNS = [
   "createdAt", 
   "eventType", 
   "stepNodeType", 
-  "nodeAttributes"
+  "nodeAttributes",
+  "blueprint"
 ] as const;
 
 // Type Guards
@@ -257,6 +258,20 @@ export const brainCommands = {
       );
     }
 
+    // Get the parent flow that contains this flow step node
+    const allFlows = qx(EARS.Entity.Flow).map((flow) => flow) as EARS.EntityId[];
+    let parentFlowId: EARS.EntityId | undefined;
+    
+    for (const flowId of allFlows) {
+      const nodeIds = qx(flowId)
+        .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .map(({ id }) => id);
+      if (nodeIds.includes(flowStepId)) {
+        parentFlowId = flowId;
+        break;
+      }
+    }
+
     // Get event nodes for the referenced flow (not the flow step)
     const eventNodes = brainQueries.flowEventNodes(flowStepNode.flowRef as EARS.EntityId);
 
@@ -274,6 +289,12 @@ export const brainCommands = {
       startedAt: now,
       stepNodeType: 'flow',
       nodeAttributes,
+      ...(parentFlowId && { 
+        blueprint: { 
+          nodeId: flowStepId, 
+          flowId: parentFlowId 
+        } 
+      }),
       // Preserve the flow node's final status
       ...(flowStepNode.final && { final: true }),
     };
@@ -318,6 +339,20 @@ export const brainCommands = {
       );
     }
 
+    // Get the flow that contains this step node
+    const allFlows = qx(EARS.Entity.Flow).map((flow) => flow) as EARS.EntityId[];
+    let flowId: EARS.EntityId | undefined;
+    
+    for (const fid of allFlows) {
+      const nodeIds = qx(fid)
+        .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+        .map(({ id }) => id);
+      if (nodeIds.includes(stepId)) {
+        flowId = fid;
+        break;
+      }
+    }
+
     const now = Date.now();
 
     // Prepare node attributes
@@ -329,6 +364,12 @@ export const brainCommands = {
       status: 'active',
       startedAt: now,
       stepNodeType: step.nodeType,
+      ...(flowId && { 
+        blueprint: { 
+          nodeId: stepId, 
+          flowId: flowId 
+        } 
+      }),
       ...(step.final && { final: true }),
       ...(nodeAttributes && { nodeAttributes }),
     };

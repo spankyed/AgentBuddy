@@ -27,6 +27,12 @@ export interface TNodeEntity extends BaseEntity {
 
   // Instantiated blueprint node attributes (resolved runtime data)
   nodeAttributes?: Record<string, unknown>;
+
+  // Reference to the blueprint node and its containing flow
+  blueprint?: {
+    nodeId: EARS.EntityId;
+    flowId: EARS.EntityId;
+  };
 }
 
 export interface TrackEntity extends TNodeEntity {
