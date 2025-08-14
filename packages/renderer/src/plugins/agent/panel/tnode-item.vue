@@ -269,7 +269,7 @@ const keyAttribute = computed(() => {
       if (attrs.model) return `Model: ${attrs.model}`;
       break;
     case 'action':
-      if (attrs.actionId) return `Action: ${attrs.actionId}`;
+      if (attrs.actionId) return `${attrs.actionId}`;
       break;
     case 'listen':
       if (attrs.eventType) return `Listen: ${attrs.eventType}`;
