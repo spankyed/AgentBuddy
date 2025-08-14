@@ -104,7 +104,7 @@ const createExtensions = () => [
   oneDark,
   createEditorTheme(),
   syntaxLinterTheme,
-  createSyntaxLinter('json'),
+  createSyntaxLinter('json'),  // Use native JSON.parse for better errors
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       const doc = update.state.doc.toString();

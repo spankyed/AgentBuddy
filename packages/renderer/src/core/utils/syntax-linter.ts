@@ -2,125 +2,6 @@ import { linter } from '@codemirror/lint';
 import type { Diagnostic } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
-import * as acorn from 'acorn';
-import * as acornLoose from 'acorn-loose';
-import * as yaml from 'js-yaml';
-
-/**
- * Detects the language from file path or content
- */
-function detectLanguage(filePath?: string, content?: string): string {
-  if (!filePath) return 'javascript';
-  
-  const ext = filePath.split('.').pop()?.toLowerCase() || '';
-  
-  // Map file extensions to language types
-  const languageMap: Record<string, string> = {
-    // JavaScript/TypeScript
-    js: 'javascript',
-    jsx: 'javascript',
-    ts: 'javascript',
-    tsx: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    // JSON
-    json: 'json',
-    jsonc: 'json',
-    // YAML
-    yaml: 'yaml',
-    yml: 'yaml',
-    // Python
-    py: 'python',
-    // CSS
-    css: 'css',
-    scss: 'css',
-    sass: 'css',
-    less: 'css',
-    // HTML
-    html: 'html',
-    htm: 'html',
-    xml: 'xml',
-    vue: 'html',
-    // SQL
-    sql: 'sql',
-    // Markdown
-    md: 'markdown',
-    // Other
-    sh: 'shell',
-    bash: 'shell',
-    ps1: 'powershell',
-  };
-  
-  return languageMap[ext] || 'javascript';
-}
-
-/**
- * Validates JavaScript/TypeScript using Acorn
- */
-function validateJavaScript(doc: string, view: EditorView): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-  
-  if (!doc.trim()) return diagnostics;
-  
-  try {
-    acorn.parse(doc, {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      allowReturnOutsideFunction: true,
-      allowImportExportEverywhere: true,
-      allowAwaitOutsideFunction: true,
-      allowSuperOutsideMethod: true,
-      allowHashBang: true
-    });
-  } catch (error: any) {
-    if (error instanceof SyntaxError && (error as any).loc) {
-      const loc = (error as any).loc;
-      const line = loc.line;
-      const column = loc.column;
-      
-      const lineInfo = view.state.doc.line(line);
-      const from = lineInfo.from + column;
-      
-      diagnostics.push({
-        from,
-        to: from + 1,
-        severity: 'error',
-        message: error.message.replace(/\s*\(\d+:\d+\)$/, '')
-      });
-    } else if ((error as any).pos !== undefined) {
-      const pos = (error as any).pos;
-      diagnostics.push({
-        from: pos,
-        to: pos + 1,
-        severity: 'error',
-        message: error.message || 'Syntax error'
-      });
-    } else {
-      // Try loose parsing
-      try {
-        acornLoose.parse(doc, {
-          ecmaVersion: 'latest',
-          sourceType: 'module'
-        });
-        diagnostics.push({
-          from: 0,
-          to: 1,
-          severity: 'error',
-          message: 'Syntax error in file'
-        });
-      } catch {
-        diagnostics.push({
-          from: 0,
-          to: 1,
-          severity: 'error',
-          message: error.message || 'Invalid JavaScript syntax'
-        });
-      }
-    }
-  }
-  
-  return diagnostics;
-}
 
 /**
  * Validates JSON using native parser
@@ -163,45 +44,7 @@ function validateJSON(doc: string, view: EditorView): Diagnostic[] {
 }
 
 /**
- * Validates YAML using js-yaml
- */
-function validateYAML(doc: string, view: EditorView): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-  
-  if (!doc.trim()) return diagnostics;
-  
-  try {
-    yaml.load(doc);
-  } catch (error: any) {
-    // js-yaml provides mark property with line/column
-    if (error.mark) {
-      const line = error.mark.line + 1; // js-yaml uses 0-based lines
-      const column = error.mark.column;
-      
-      const lineInfo = view.state.doc.line(Math.min(line, view.state.doc.lines));
-      const from = lineInfo.from + column;
-      
-      diagnostics.push({
-        from,
-        to: from + 1,
-        severity: 'error',
-        message: error.reason || error.message
-      });
-    } else {
-      diagnostics.push({
-        from: 0,
-        to: 1,
-        severity: 'error',
-        message: error.message || 'Invalid YAML syntax'
-      });
-    }
-  }
-  
-  return diagnostics;
-}
-
-/**
- * Validates using Lezer syntax tree (for languages with built-in parsers)
+ * Validates using Lezer syntax tree for all languages
  */
 function validateWithLezer(doc: string, view: EditorView): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
@@ -232,7 +75,11 @@ function validateWithLezer(doc: string, view: EditorView): Diagnostic[] {
           const endChar = text[0] === '{' ? '}' : text[0] === '(' ? ')' : ']';
           message = `Missing closing '${endChar}'`;
         } else if (text) {
-          message = `Unexpected token '${text.split(/\s/)[0]}'`;
+          // Try to extract a meaningful token
+          const token = text.match(/^[^\s,;:{}()\[\]]+/)?.[0] || text.split(/\s/)[0];
+          if (token) {
+            message = `Unexpected token '${token}'`;
+          }
         }
         
         diagnostics.push({
@@ -249,38 +96,20 @@ function validateWithLezer(doc: string, view: EditorView): Diagnostic[] {
 }
 
 /**
- * Creates a multi-language syntax linter
- * @param languageOrPath - Either a language identifier ('javascript', 'json', 'yaml', etc.) or a file path
+ * Creates a multi-language syntax linter using Lezer parsers
+ * @param language - Language identifier ('javascript', 'json', etc.) or 'auto' to detect from syntax tree
  */
-export function createSyntaxLinter(languageOrPath?: string) {
+export function createSyntaxLinter(language: string = 'auto') {
   return linter((view: EditorView) => {
     const doc = view.state.doc.toString();
     
-    // Check if it's a known language identifier or a file path
-    const knownLanguages = ['javascript', 'json', 'yaml', 'python', 'css', 'html', 'xml', 'sql', 'markdown'];
-    const language = knownLanguages.includes(languageOrPath || '') 
-      ? languageOrPath 
-      : detectLanguage(languageOrPath, doc);
-    
-    switch (language) {
-      case 'javascript':
-        return validateJavaScript(doc, view);
-      case 'json':
-        return validateJSON(doc, view);
-      case 'yaml':
-        return validateYAML(doc, view);
-      case 'python':
-      case 'css':
-      case 'html':
-      case 'xml':
-      case 'sql':
-      case 'markdown':
-        // Use Lezer-based validation for these languages
-        return validateWithLezer(doc, view);
-      default:
-        // For unknown languages, try JavaScript as fallback
-        return validateJavaScript(doc, view);
+    // Special handling for JSON since native parser gives better errors
+    if (language === 'json') {
+      return validateJSON(doc, view);
     }
+    
+    // Use Lezer for all other languages
+    return validateWithLezer(doc, view);
   });
 }
 

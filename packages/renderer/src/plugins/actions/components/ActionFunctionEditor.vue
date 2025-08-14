@@ -88,7 +88,7 @@ const createExtensions = () => [
   oneDark,
   createEditorTheme(),
   syntaxLinterTheme,
-  createSyntaxLinter('javascript'),
+  createSyntaxLinter(),  // Lezer will detect from syntax tree
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       emit('update', update.state.doc.toString());
