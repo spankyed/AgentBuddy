@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "timestamp": "2025-08-14T10:09:44.030Z",
+  "timestamp": "2025-08-14T10:36:22.660Z",
   "entities": {
     "Tag-1": {
       "timestamp": 1752548453461,
@@ -254,14 +254,14 @@
     "Node-me6sm7nqvzgwgz1vxlgp": {
       "label": "test flow",
       "description": "",
-      "updatedAt": 1755165723691,
+      "updatedAt": 1755167774990,
       "createdAt": 1754897425478,
       "entityType": "Node",
       "nodeType": "flow",
       "flowRef": "Flow-me6skdh83ftcnrhlji2wa",
       "fieldMappings": [
         {
-          "target": "entry",
+          "target": "payload",
           "source": "$.event.data.payload"
         }
       ]
@@ -678,7 +678,7 @@
       },
       "actionFn": "if (params.param) {\n  services.logger.info('--- gawdd ---', { grrr: params.param });\n}\n\nservices.logger.info('--- fuck test ---');\n\nreturn { success: false };"
     },
-    "Relation-meb8mgrf3v5goms2zkcfq": {
+    "Relation-meb9kfqea3jgg0lsibgz": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -686,7 +686,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3mva779z3gj55": {
+    "Relation-meb9kfqewx962ntki0n9": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -694,7 +694,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3rgdyq9l233pz": {
+    "Relation-meb9kfqe32bvh49q5b9lg": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a4s",
@@ -702,7 +702,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3shyh15ws2h4h": {
+    "Relation-meb9kfqe1g7ar2dsyevpb": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a1",
@@ -710,7 +710,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3fjvektvc4ghf": {
+    "Relation-meb9kfqe2ynzbyxvdlp05": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
@@ -718,7 +718,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3crpzwj5azzkx": {
+    "Relation-meb9kfqe341licgifcz4f": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-a3",
@@ -726,7 +726,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg32xmoyyi06ak2": {
+    "Relation-meb9kfqe1wyn5apu4nsas": {
       "relationDetails": {
         "sourceEntity": "Node-a1",
         "targetEntity": "Node-a4s",
@@ -734,7 +734,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg1hd2it3ckr0y6": {
+    "Relation-meb9kfqerfai0g4y4vdv": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -742,7 +742,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3j7ir8xa49bs2": {
+    "Relation-meb9kfqenxedhkapj1bt": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -750,7 +750,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg2tguolc14ucxi": {
+    "Relation-meb9kfqe32zhmfxnstg2l": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b3",
@@ -758,7 +758,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg1j2guccud7m1v": {
+    "Relation-meb9kfqe3blugeo6mgw36": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b4",
@@ -766,7 +766,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg1r52hs19jnsf3": {
+    "Relation-meb9kfqe1t4gvtllxlyi2": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b5",
@@ -774,7 +774,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg39kkcsfoy3c9d": {
+    "Relation-meb9kfqe2liwrkz3tnxnr": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b6",
@@ -782,7 +782,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg161o8zwrukp3e": {
+    "Relation-meb9kfqe3utg0p88ybj6l": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b8",
@@ -790,7 +790,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg2m6hr41xq9e4p": {
+    "Relation-meb9kfqe40wxa0iscx8h": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b9",
@@ -798,7 +798,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg257c1lv00h03y": {
+    "Relation-meb9kfqe2xb3zcql39guy": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b10",
@@ -806,7 +806,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg14697aydu22ly": {
+    "Relation-meb9kfqe1uxsywtx6ptnk": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b11",
@@ -814,7 +814,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg33no44513l65r": {
+    "Relation-meb9kfqe3u99749qdpal9": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b1",
@@ -822,7 +822,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg2x9dsh2ofsaup": {
+    "Relation-meb9kfqe3mrccbl1p6e42": {
       "relationDetails": {
         "sourceEntity": "Flow-b",
         "targetEntity": "Node-b2",
@@ -830,7 +830,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg1xehqbfpr4ugc": {
+    "Relation-meb9kfqepramtgkie2jb": {
       "relationDetails": {
         "sourceEntity": "Node-b1",
         "targetEntity": "Node-b3",
@@ -838,7 +838,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg27q2naj2bkkc0": {
+    "Relation-meb9kfqf1rs7kmcqqmnk6": {
       "relationDetails": {
         "sourceEntity": "Node-b2",
         "targetEntity": "Node-b8",
@@ -846,7 +846,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrglelk021uyalw": {
+    "Relation-meb9kfqf2doys2hx9lre5": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b4",
@@ -856,7 +856,7 @@
         }
       }
     },
-    "Relation-meb8mgrg3aaccyrz0yezb": {
+    "Relation-meb9kfqfd93ca9tmp33m": {
       "relationDetails": {
         "sourceEntity": "Node-b3",
         "targetEntity": "Node-b11",
@@ -866,7 +866,7 @@
         }
       }
     },
-    "Relation-meb8mgrg1ydbtovq29af4": {
+    "Relation-meb9kfqf1n2gszzgwgxf9": {
       "relationDetails": {
         "sourceEntity": "Node-b11",
         "targetEntity": "Node-b5",
@@ -874,7 +874,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg2vevkgodyhcwl": {
+    "Relation-meb9kfqf2ca13yj0qhe6q": {
       "relationDetails": {
         "sourceEntity": "Node-b4",
         "targetEntity": "Node-b5",
@@ -882,7 +882,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg2j1oxhooky2z8": {
+    "Relation-meb9kfqf1rvm3wqho1tb6": {
       "relationDetails": {
         "sourceEntity": "Node-b5",
         "targetEntity": "Node-b6",
@@ -890,7 +890,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg3cngbi3lxyklc": {
+    "Relation-meb9kfqf2g3k00oaiyi5r": {
       "relationDetails": {
         "sourceEntity": "Node-b8",
         "targetEntity": "Node-b9",
@@ -898,7 +898,7 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrgj8cwyd602u9n": {
+    "Relation-meb9kfqf3iykf6tdrscc7": {
       "relationDetails": {
         "sourceEntity": "Node-b9",
         "targetEntity": "Node-b10",
@@ -906,196 +906,196 @@
         "info": {}
       }
     },
-    "Relation-meb8mgrg24lpzhfitcsxu": {
+    "Relation-meb9kfqf235znsusv5wx6": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg3m8d4qug860e2": {
+    "Relation-meb9kfqfaa9y0eizfsfy": {
       "relationDetails": {
         "sourceEntity": "Node-a3",
         "targetEntity": "Node-md5kx4ty32qcubraskrcd",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrg1q0o92auy17no": {
+    "Relation-meb9kfqfemliuo36nv25": {
       "relationDetails": {
         "sourceEntity": "Node-md5kx4ty32qcubraskrcd",
         "targetEntity": "Action-md52nfbn25xw7tivi4r1f",
         "relationType": "instance_of"
       }
     },
-    "Relation-meb8mgrg3vclj7fps5006": {
+    "Relation-meb9kfqf27few9g1zn39c": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5q7ctp34kqwqpamznj",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg1vd1tbulet5br": {
+    "Relation-meb9kfqf2143d3ur8t83w": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg348uqawb5izqj": {
+    "Relation-meb9kfqf2qhbz1n03lbkt": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Action-md5pq4n72eykvz5aiioqi",
         "relationType": "instance_of"
       }
     },
-    "Relation-meb8mgrgcs50algq9exu": {
+    "Relation-meb9kfqf1tjh1y8kiyfk1": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-1",
         "relationType": "has"
       }
     },
-    "Relation-meb8mgrg3k64fpz4jgwmi": {
+    "Relation-meb9kfqfx7yyyhb48dzj": {
       "relationDetails": {
         "sourceEntity": "Thread-dashboard",
         "targetEntity": "Artifact-dashboard-2",
         "relationType": "has"
       }
     },
-    "Relation-meb8mgrg2bneyo3m0cj9c": {
+    "Relation-meb9kfqfn5qe8e4msnd7": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-code-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-meb8mgrg1g8at4v77kh4u": {
+    "Relation-meb9kfqf1be0w6abg9tu1": {
       "relationDetails": {
         "sourceEntity": "Artifact-thread-text-1",
         "targetEntity": "Thread-mock-1",
         "relationType": "relates_to"
       }
     },
-    "Relation-meb8mgrgds7f715dn0kr": {
+    "Relation-meb9kfqf73a70iak69r4": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrgcuvldx4ulw1m": {
+    "Relation-meb9kfqf2bt1b6yhm3kyg": {
       "relationDetails": {
         "sourceEntity": "Node-md5q7ctp34kqwqpamznj",
         "targetEntity": "Node-mdqm66uvooa1967xrh8w",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrg1xewtnxccx8kh": {
+    "Relation-meb9kfqfokr9ciplr8b2": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrgmk9a165g2n21": {
+    "Relation-meb9kfqf1r6dmeav9zjxw": {
       "relationDetails": {
         "sourceEntity": "Node-mdqm66uvooa1967xrh8w",
         "targetEntity": "Action-mdnzpcf0117lx8rgtrrp9",
         "relationType": "instance_of"
       }
     },
-    "Relation-meb8mgrg2o4jx71z42ae9": {
+    "Relation-meb9kfqfjgf77g00i2lu": {
       "relationDetails": {
         "sourceEntity": "Collection-3ee61dc7-d90d-442f-bdfa-46807ba77cdd",
         "targetEntity": "Document-ff4e3503-54a7-4bf8-bfaa-2582c4e22d90",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg2un9yez7v9z7j": {
+    "Relation-meb9kfqf3gg7tq738chyl": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-5567a3e1-31ed-4f13-8cb0-fa0cc15cc1fa",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrgwwhqg4ord55k": {
+    "Relation-meb9kfqf2djxb701fp56m": {
       "relationDetails": {
         "sourceEntity": "Collection-75a27721-6177-482a-bcd3-1eb4a92e5d6e",
         "targetEntity": "Document-02634655-36a5-4245-afaf-a41db7215820",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrgfp62h0wp2xtp": {
+    "Relation-meb9kfqf2fz1ujflincps": {
       "relationDetails": {
         "sourceEntity": "Flow-me6skdh83ftcnrhlji2wa",
         "targetEntity": "Node-me6skdh91unrk7n16yj70",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg24yql2j39bchl": {
+    "Relation-meb9kfqf14dowapopy66s": {
       "relationDetails": {
         "sourceEntity": "Flow-me6skdh83ftcnrhlji2wa",
         "targetEntity": "Node-me6skdh91unrk7n16yj70",
         "relationType": "event_trace"
       }
     },
-    "Relation-meb8mgrg1evttvu5wz9k0": {
+    "Relation-meb9kfqf2t2d0wahk9tc4": {
       "relationDetails": {
         "sourceEntity": "Flow-me6skdh83ftcnrhlji2wa",
         "targetEntity": "Node-me6skdh91unrk7n16yj70",
         "relationType": "event_trace"
       }
     },
-    "Relation-meb8mgrg10jdid4utrp5r": {
+    "Relation-meb9kfqf3syhl68hy6cei": {
       "relationDetails": {
         "sourceEntity": "Flow-me6skdh83ftcnrhlji2wa",
         "targetEntity": "Node-me6skfk92m06x9v5stnid",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg2o579wvsjpc48": {
+    "Relation-meb9kfqf27sogro34b5bo": {
       "relationDetails": {
         "sourceEntity": "Node-me6skdh91unrk7n16yj70",
         "targetEntity": "Node-me6skfk92m06x9v5stnid",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrg3so4rt2hbasen": {
+    "Relation-meb9kfqf2csnwtmepp5xp": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-me6sm7nqvzgwgz1vxlgp",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg20wren3ccoalz": {
+    "Relation-meb9kfqf3s608r076nngz": {
       "relationDetails": {
         "sourceEntity": "Node-md5qv9uvnuf6rfpwftsu",
         "targetEntity": "Node-me6sm7nqvzgwgz1vxlgp",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrg3tgwe2u95pfed": {
+    "Relation-meb9kfqf19gqcfdwvd7u": {
       "relationDetails": {
         "sourceEntity": "Flow-a",
         "targetEntity": "Node-me6tgy2e1xtxcgmo7r6a5",
         "relationType": "contains"
       }
     },
-    "Relation-meb8mgrg1svhqcw89f95a": {
+    "Relation-meb9kfqfa30mwhvezc67": {
       "relationDetails": {
         "sourceEntity": "Node-me6sm7nqvzgwgz1vxlgp",
         "targetEntity": "Node-me6tgy2e1xtxcgmo7r6a5",
         "relationType": "transitions_to"
       }
     },
-    "Relation-meb8mgrg2bx5pxeik1qu9": {
+    "Relation-meb9kfqf2ycz32qvu70on": {
       "relationDetails": {
         "sourceEntity": "Node-me6tgy2e1xtxcgmo7r6a5",
         "targetEntity": "Action-me6sjdq92s9ia45hedh3j",
         "relationType": "instance_of"
       }
     },
-    "Relation-meb8mgrg3gs6kgnbsxsdh": {
+    "Relation-meb9kfqf3bn1qx2a0hxyi": {
       "relationDetails": {
         "sourceEntity": "Node-me6skfk92m06x9v5stnid",
         "targetEntity": "Action-me6sjdq92s9ia45hedh3j",
