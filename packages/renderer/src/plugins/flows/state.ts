@@ -695,6 +695,7 @@ const flowsState = setup({
         })
       },
       on: {
+        'FLOW.SELECT': { actions: 'selectFlow'},
         'NODE.CLICK': { actions: 'selectNode' },
         'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },

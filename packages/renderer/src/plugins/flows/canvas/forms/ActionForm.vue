@@ -7,9 +7,20 @@
     <div class="space-y-6">
       <!-- Action Selection -->
       <div>
-        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
-          Action
-        </label>
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-xs font-semibold tracking-wider uppercase text-neutral-500">
+            Action
+          </label>
+          <button
+            v-if="selectedAction"
+            @click="viewAction"
+            class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
+            title="View action details"
+          >
+            <ExternalLink class="w-3 h-3" />
+            View Action
+          </button>
+        </div>
         <ComboboxRoot
           :model-value="selectedAction"
           ignore-filter
@@ -158,7 +169,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronRight, ExternalLink } from 'lucide-vue-next'
+import { applicationState } from '@/main'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -283,6 +295,16 @@ const handleActionChange = (action: ActionEntity | null) => {
       actionId: undefined,
       fieldMappings: []
     })
+  }
+}
+
+const viewAction = () => {
+  if (selectedAction.value) {
+    // Navigate to the action in actions plugin
+    const actionsActor = applicationState.system.get('actions');
+    actionsActor.send({ type: 'ACTION.SELECT', actionId: selectedAction.value.id });
+    // Switch to actions plugin
+    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' });
   }
 }
 </script>

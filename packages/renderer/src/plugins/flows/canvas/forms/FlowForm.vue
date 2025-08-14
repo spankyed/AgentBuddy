@@ -7,9 +7,20 @@
     <div class="space-y-6">
       <!-- Flow Selection -->
       <div>
-        <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
-          Flow
-        </label>
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-xs font-semibold tracking-wider uppercase text-neutral-500">
+            Flow
+          </label>
+          <button
+            v-if="selectedFlow"
+            @click="openFlow"
+            class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
+            title="Open flow in flows editor"
+          >
+            <ExternalLink class="w-3 h-3" />
+            Open Flow
+          </button>
+        </div>
         <ComboboxRoot
           :model-value="selectedFlow"
           ignore-filter
@@ -145,7 +156,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronRight, ExternalLink } from 'lucide-vue-next'
+import { applicationState } from '@/main'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -162,7 +174,8 @@ import {
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
 import type { FlowEntity, NodeEntity } from '@app/api'
-import type { FormResources } from '../../types/form-props'
+import type { FormResources } from '@/plugins/flows/types/form-props'
+import { flowsId } from '@/plugins/flows/state'
 
 const props = defineProps<{
   node: NodeEntity
@@ -245,6 +258,14 @@ const updateEntryPayload = (source: string) => {
     : []
   
   emit('update-node', { fieldMappings: mapping })
+}
+
+const openFlow = () => {
+  if (selectedFlow.value) {
+    // Navigate to the flow in flows plugin
+    const flowsActor = applicationState.system.get(flowsId);
+    flowsActor.send({ type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
+  }
 }
 </script>
 
