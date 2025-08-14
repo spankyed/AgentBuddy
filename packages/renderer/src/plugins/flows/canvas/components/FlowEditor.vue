@@ -47,24 +47,36 @@
         class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
       /> -->
 
-      <!-- Back button and Actions menu (top left) -->
-      <div class="absolute z-10 flex gap-2 top-4 left-4">
-        <!-- Back button -->
-        <Button
-          variant="secondary"
-          class="!p-2 !h-auto border border-neutral-800 hover:bg-neutral-800 text-neutral-50 bg-neutral-900/90"
+      <!-- Back button (top left) -->
+      <div class="absolute z-10 top-4 left-4">
+        <button
+          class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-md bg-neutral-900/90 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 backdrop-blur-sm"
           @click="$emit('go-back')"
           title="Back to flows list"
         >
-          <ChevronLeft :size="18" />
-        </Button>
-        
-        <!-- Actions menu -->
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      </div>
+      
+      <!-- Menu and Auto Layout buttons (bottom left) -->
+      <div class="absolute z-10 bottom-4 left-4 flex gap-2">
+        <!-- Menu -->
         <FlowActionsMenu 
           :selected-flow-id="selectedFlowId"
-          @layout="(direction) => $emit('action-layout', direction)"
           @edit-label="$emit('action-edit-label')"
         />
+        
+        <!-- Auto Layout Button -->
+        <button
+          class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
+          title="Auto layout"
+          @click="$emit('action-layout', 'LR')"
+        >
+          <Maximize :size="16" />
+        </button>
       </div>
     </VueFlow>
     
@@ -98,14 +110,13 @@ import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEv
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 // import { MiniMap } from '@vue-flow/minimap'
-import { ChevronLeft } from 'lucide-vue-next'
+import { Maximize } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
 import type { Direction } from '@/plugins/flows/canvas/useLayout'
-import Button from '@/core/design/button.vue'
 import FlowActionsMenu from './FlowActionsMenu.vue'
 
 interface Props {
