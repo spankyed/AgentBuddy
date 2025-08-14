@@ -50,7 +50,7 @@
           </div>
         </ContextMenuTrigger>
         
-        <ContextMenuPortal v-if="shouldShowContextMenu(tab)">
+        <ContextMenuPortal>
           <ContextMenuContent
             class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
@@ -64,6 +64,7 @@
             </ContextMenuItem>
             
             <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
               @select="copyRelativePath(tab)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
@@ -72,6 +73,7 @@
             </ContextMenuItem>
             
             <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
               @select="revealInExplorer(tab)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
@@ -138,7 +140,7 @@
           </div>
         </ContextMenuTrigger>
         
-        <ContextMenuPortal v-if="shouldShowContextMenu(tab)">
+        <ContextMenuPortal>
           <ContextMenuContent
             class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
@@ -152,6 +154,7 @@
             </ContextMenuItem>
             
             <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
               @select="copyRelativePath(tab)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
@@ -160,6 +163,7 @@
             </ContextMenuItem>
             
             <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
               @select="revealInExplorer(tab)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
@@ -223,9 +227,9 @@ const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file 
   return 'isTerminal' in file && file.isTerminal === true
 }
 
-// Helper to check if we should show context menu (only for regular files with real paths)
-const shouldShowContextMenu = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
-  // Don't show context menu for terminals, actions, or prompts
+// Helper to check if we should show file operations (copy path, reveal in explorer)
+const shouldShowFileOperations = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  // Don't show file operations for terminals, actions, or prompts
   if (isTerminal(file)) return false
   if ('isAction' in file && file.isAction) return false
   if ('isPrompt' in file && file.isPrompt) return false
