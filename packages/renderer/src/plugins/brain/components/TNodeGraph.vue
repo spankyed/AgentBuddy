@@ -44,9 +44,11 @@
           :show-left-panel="showLeftPanel"
           :show-right-panel="showRightPanel"
           :debug-enabled="debugEnabled"
+          :animations-enabled="animationsEnabled"
           @toggle-left-panel="$emit('toggle-left-panel')"
           @toggle-right-panel="$emit('toggle-right-panel')"
           @toggle-debug="$emit('toggle-debug')"
+          @toggle-animations="$emit('toggle-animations')"
         />
       </div>
       
@@ -90,6 +92,7 @@ interface Props {
   showLeftPanel?: boolean;
   showRightPanel?: boolean;
   debugEnabled?: boolean;
+  animationsEnabled?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -101,6 +104,7 @@ const emit = defineEmits<{
   'toggle-left-panel': [];
   'toggle-right-panel': [];
   'toggle-debug': [];
+  'toggle-animations': [];
 }>();
 
 // Constants
@@ -273,16 +277,19 @@ watch(() => nodes.value, (newNodes) => {
     return;
   }
   
-  // Cancel any existing animation
-  cancelCurrentAnimation();
-  
-  // Focus on the last new node (most recent)
-  const targetNodeId = newNodeIds[newNodeIds.length - 1];
-  const targetNode = newNodes.find(n => n.id === targetNodeId);
-  
-  if (targetNode) {
-    animationController = new AbortController();
-    animateToNode(targetNodeId, targetNode.position, animationController.signal);
+  // Only animate if animations are enabled
+  if (props.animationsEnabled) {
+    // Cancel any existing animation
+    cancelCurrentAnimation();
+    
+    // Focus on the last new node (most recent)
+    const targetNodeId = newNodeIds[newNodeIds.length - 1];
+    const targetNode = newNodes.find(n => n.id === targetNodeId);
+    
+    if (targetNode) {
+      animationController = new AbortController();
+      animateToNode(targetNodeId, targetNode.position, animationController.signal);
+    }
   }
   
   // Update tracked nodes

@@ -51,13 +51,25 @@
           </div>
           <Check v-if="debugEnabled" :size="14" class="text-emerald-400" />
         </DropdownMenuItem>
+        
+        <!-- Animation Options -->
+        <DropdownMenuItem 
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors" 
+          @select="$emit('toggle-animations')"
+        >
+          <div class="flex items-center gap-2 flex-1">
+            <Play :size="16" class="text-blue-400" />
+            Auto-focus Animations
+          </div>
+          <Check v-if="animationsEnabled" :size="14" class="text-emerald-400" />
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenuPortal>
   </DropdownMenuRoot>
 </template>
 
 <script setup lang="ts">
-import { Menu, Layers, Activity, Check, Terminal } from 'lucide-vue-next';
+import { Menu, Layers, Activity, Check, Terminal, Play } from 'lucide-vue-next';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -71,6 +83,7 @@ interface Props {
   showLeftPanel?: boolean;
   showRightPanel?: boolean;
   debugEnabled?: boolean;
+  animationsEnabled?: boolean;
 }
 
 defineProps<Props>();
@@ -79,5 +92,6 @@ defineEmits<{
   'toggle-left-panel': [];
   'toggle-right-panel': [];
   'toggle-debug': [];
+  'toggle-animations': [];
 }>();
 </script>

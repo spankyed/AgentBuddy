@@ -27,6 +27,7 @@ export interface BrainContext {
   showRightPanel: boolean;
   selectedStepNode?: TNodeEntity;
   debugEnabled: boolean;
+  animationsEnabled: boolean;
 }
 
 type SystemEvent = OutgoingBrainEvents
@@ -42,6 +43,7 @@ type UIEvent =
   | { type: 'TOGGLE_RIGHT_PANEL' }
   | { type: 'CLOSE_DETAILS' }
   | { type: 'TOGGLE_DEBUG' }
+  | { type: 'TOGGLE_ANIMATIONS' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -290,6 +292,9 @@ const brainState = setup({
         debugEnabled: event.enabled
       };
     }),
+    toggleAnimations: assign({
+      animationsEnabled: ({ context }) => !context.animationsEnabled
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -303,6 +308,7 @@ const brainState = setup({
     showLeftPanel: false,
     showRightPanel: false,
     debugEnabled: false,
+    animationsEnabled: true,
   },
   initial: 'loading',
   states: {
@@ -342,6 +348,9 @@ const brainState = setup({
         },
         DEBUG_TOGGLED: {
           actions: 'setDebugEnabled'
+        },
+        TOGGLE_ANIMATIONS: {
+          actions: 'toggleAnimations'
         },
         CLOSE_DETAILS: {
           actions: 'closeDetails'

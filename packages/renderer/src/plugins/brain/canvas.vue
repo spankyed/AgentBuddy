@@ -37,12 +37,14 @@
         :show-left-panel="showLeftPanel"
         :show-right-panel="showRightPanel"
         :debug-enabled="debugEnabled"
+        :animations-enabled="animationsEnabled"
         @tnode-click="handleTNodeClick"
         @step-click="handleStepNodeClick"
         @back-click="handleBackClick"
         @toggle-left-panel="handleToggleLeftPanel"
         @toggle-right-panel="handleToggleRightPanel"
         @toggle-debug="handleToggleDebug"
+        @toggle-animations="handleToggleAnimations"
       />
     </div>
 
@@ -106,6 +108,7 @@ const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel)
 const showRightPanel = useSelector(actor, (state) => state.context.showRightPanel);
 const selectedStepNode = useSelector(actor, (state) => state.context.selectedStepNode);
 const debugEnabled = useSelector(actor, (state) => state.context.debugEnabled);
+const animationsEnabled = useSelector(actor, (state) => state.context.animationsEnabled);
 
 // Event handlers
 const handleTNodeClick = (tNodeId: string) => {
@@ -134,6 +137,10 @@ const handleToggleRightPanel = () => {
 
 const handleToggleDebug = () => {
   actor.send({ type: 'TOGGLE_DEBUG' });
+};
+
+const handleToggleAnimations = () => {
+  actor.send({ type: 'TOGGLE_ANIMATIONS' });
 };
 
 const handleCloseDetails = () => {
