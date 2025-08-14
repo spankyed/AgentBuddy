@@ -92,5 +92,6 @@ export function getSnapshotsPath(): string {
   } else {
     // Development path - always use project structure regardless of USER_DATA_PATH
     return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'snapshots')
+    // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
   }
 }
