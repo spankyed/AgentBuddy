@@ -2,9 +2,7 @@ import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/repository';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('step-machine');
+import { brainDebug } from './utils/brain-debug';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -41,7 +39,7 @@ export function createStepNodeSystem(
       },
       actions: {
         executeStep: ({ context, self }) => {
-          logger.debug(
+          brainDebug(
             `Executing step: ${context.step.label} (${context.step.nodeType})`,
           );
 

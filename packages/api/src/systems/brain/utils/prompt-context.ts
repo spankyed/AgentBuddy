@@ -1,7 +1,5 @@
 import { repository } from '@/repository';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('prompt-context');
+import { brainDebug, brainLogger } from './brain-debug';
 
 /**
  * Context provided to prompt templates for accessing other prompts
@@ -34,7 +32,7 @@ export function createPromptContext(
     usePrompt(label: string, params: Record<string, any>): string | undefined {
       // Check recursion depth
       if (currentDepth >= MAX_EXECUTION_DEPTH) {
-        logger.error('Maximum prompt execution depth exceeded', { 
+        brainLogger.error('Maximum prompt execution depth exceeded', { 
           label, 
           currentDepth, 
           maxDepth: MAX_EXECUTION_DEPTH 
@@ -42,11 +40,11 @@ export function createPromptContext(
         throw new Error(`Maximum prompt execution depth (${MAX_EXECUTION_DEPTH}) exceeded. Possible circular reference detected.`);
       }
       
-      // logger.debug('Using referenced prompt:', { label, params, depth: currentDepth });
+      // brainDebug('Using referenced prompt:', { label, params, depth: currentDepth });
       
       const prompt = repository.promptQueries.byLabel(label);
       if (!prompt) {
-        logger.warn('Referenced prompt not found:', { label });
+        brainLogger.warn('Referenced prompt not found:', { label });
         return undefined;
       }
       
@@ -57,14 +55,14 @@ export function createPromptContext(
         // Execute the referenced template with the nested context
         const result = executeTemplateFn(prompt.templateFn, params, nestedContext);
         
-        // logger.debug('Referenced prompt executed successfully:', { 
+        // brainDebug('Referenced prompt executed successfully:', { 
         //   label, 
         //   resultLength: result.length 
         // });
         
         return result;
       } catch (error) {
-        // logger.error('Failed to execute referenced prompt:', { 
+        // brainLogger.error('Failed to execute referenced prompt:', { 
         //   label, 
         //   error, 
         //   depth: currentDepth 

@@ -5,9 +5,7 @@ import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
 import { brain, brainBus } from './system';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('flow-machine');
+import { brainDebug, brainLogger } from './utils/brain-debug';
 
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
@@ -143,7 +141,7 @@ export function createFlowNodeSystem(
           const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
 
           if (!firstStep) {
-            logger.warn(`Failed to handle event ${eventType}: No first step found to execute in response`);
+            brainLogger.warn(`Failed to handle event ${eventType}: No first step found to execute in response`);
             return;
           }
 
@@ -171,7 +169,7 @@ export function createFlowNodeSystem(
             lastStep: undefined,
           };
 
-          logger.debug(`${context.flowId} received event: ${eventType}. Will begin handling.`,
+          brainDebug(`${context.flowId} received event: ${eventType}. Will begin handling.`,
             { eventData }
           );
 
@@ -201,17 +199,17 @@ export function createFlowNodeSystem(
           });
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
-          logger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
+          brainDebug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
           
           // Log when we receive a completion with final flag
           if (typedEv.final) {
-            logger.debug(`Flow ${context.flowId} received child completion with final=true from ${typedEv.stepId}`);
+            brainDebug(`Flow ${context.flowId} received child completion with final=true from ${typedEv.stepId}`);
           }
           
           if (!typedEv.stepId || !typedEv.eventTNodeId) {
-            logger.warn(`Child completed in flow - ${context.flowLabel}: But missing step or event TNode ID`, { completion: event });
+            brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But missing step or event TNode ID`, { completion: event });
             return;
           }
 
@@ -219,7 +217,7 @@ export function createFlowNodeSystem(
 
           let trackExecutionContext = context.eventTrackContexts[typedEv.eventTNodeId];
           if (!trackExecutionContext) {
-            logger.warn(`Child completed in flow - ${context.flowLabel}: But no execution context found for event TNode ID ${typedEv.eventTNodeId}`, { completion: event });
+            brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But no execution context found for event TNode ID ${typedEv.eventTNodeId}`, { completion: event });
             return;
           }
 
@@ -261,7 +259,7 @@ export function createFlowNodeSystem(
             // Spawn next node if there is one
             const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId);
             
-            // logger.debug(`Spawning next node after ${typedEv.stepId}:`, {
+            // brainDebug(`Spawning next node after ${typedEv.stepId}:`, {
             //   nextNodeId: nextNode?.id,
             //   nextNodeType: nextNode?.nodeType,
             //   nextNodeLabel: nextNode?.label,
@@ -284,7 +282,7 @@ export function createFlowNodeSystem(
           }
         }),
         markFlowCompleted: ({ system, context }) => {
-          logger.debug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
+          brainDebug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
           
           // Emit TNODE_UPDATED event

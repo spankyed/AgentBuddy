@@ -1,8 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('fire-node');
+import { brainDebug, brainLogger } from '../utils/brain-debug';
 
 /**
  * Handle execution of a fire node
@@ -17,12 +15,12 @@ export function fireNodeHandler(
   const fireConfig = tNode.nodeAttributes || {};
   
   if (!fireConfig.eventType) {
-    logger.error(`Fire node ${node.id} missing eventType`);
+    brainLogger.error(`Fire node ${node.id} missing eventType`);
     actor.send({ type: 'ERROR', error: 'Missing eventType' });
     return;
   }
   
-  logger.debug(`Firing event: ${fireConfig.eventType}`, {
+  brainDebug(`Firing event: ${fireConfig.eventType}`, {
     scope: fireConfig.scope || 'local',
     hasPayload: !!fireConfig.payload
   });

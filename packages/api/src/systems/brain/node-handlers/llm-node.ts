@@ -1,12 +1,10 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
-import { createLogger } from '@/core/utils/debug/logger';
+import { brainDebug, brainLogger } from '../utils/brain-debug';
 import { repository } from '@/repository';
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
 import { createPromptContext } from '@/systems/brain/utils/prompt-context';
 import { EARS } from '@/core/types';
-
-const logger = createLogger('llm-node');
 
 interface LLMNodeConfig {
   // Core LLM settings
@@ -44,7 +42,7 @@ function generatePrompt(
       // Get the prompt template from EARS datastore
       const prompt = repository.promptQueries.byId(nodeData.promptTemplateId as EARS.EntityId);
       if (!prompt) {
-        logger.error(`Prompt template not found:`, { templateId: nodeData.promptTemplateId });
+        brainLogger.error(`Prompt template not found:`, { templateId: nodeData.promptTemplateId });
         return 'Error: Prompt template not found';
       }
 
@@ -61,7 +59,7 @@ function generatePrompt(
         }
       }
       
-      logger.debug(`Using resolved params for ${node.label}:`, templateParams);
+      brainDebug(`Using resolved params for ${node.label}:`, templateParams);
       
       // Create a prompt context that allows templates to reference other prompts
       const promptContext = createPromptContext(executeTemplate);
@@ -70,7 +68,7 @@ function generatePrompt(
       const result = executeTemplate(prompt.templateFn, templateParams, promptContext);
       return result;
     } catch (error) {
-      logger.error(`Failed to generate prompt from template:`, { 
+      brainLogger.error(`Failed to generate prompt from template:`, { 
         templateId: nodeData.promptTemplateId, 
         error 
       });
@@ -93,7 +91,7 @@ export function llmNodeHandler(
   const llmNode = node as LLMNode;
   const nodeData = tNode.nodeAttributes || {};
   
-  logger.debug(`Executing LLM node: ${node.label}`, {
+  brainDebug(`Executing LLM node: ${node.label}`, {
     nodeData,
     tNode,
     nodeAttributeKeys: Object.keys(nodeData),
@@ -103,7 +101,7 @@ export function llmNodeHandler(
     // Generate the prompt using pre-mapped params
     const prompt = generatePrompt(tNode, llmNode);
     
-    logger.debug(`Generated prompt:`, {
+    brainDebug(`Generated prompt:`, {
       nodeLabel: node.label,
       promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
     });
@@ -142,7 +140,7 @@ export function llmNodeHandler(
       });
     }, 1000);
   } catch (error) {
-    logger.error('Failed to handle LLM node:', { error, nodeLabel: node.label });
+    brainLogger.error('Failed to handle LLM node:', { error, nodeLabel: node.label });
     actor.send({ 
       type: 'ERROR', 
       error: error instanceof Error ? error.message : 'Unknown error'

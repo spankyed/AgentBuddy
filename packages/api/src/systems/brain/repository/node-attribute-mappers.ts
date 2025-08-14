@@ -1,8 +1,6 @@
 import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '@/systems/brain/types';
-import { createLogger } from '@/core/utils/debug/logger';
-
-const logger = createLogger('node-attribute-mappers');
+import { brainDebug, brainLogger } from '../utils/brain-debug';
 
 /*─────────────────────────────────────────────────────────────
  * Field Mapping Utilities
@@ -16,7 +14,7 @@ function extractValue(
     try {
       return source(context);
     } catch (error) {
-      logger.error('Function extractor failed:', { error });
+      brainLogger.error('Function extractor failed:', { error });
       return undefined;
     }
   }
@@ -64,7 +62,7 @@ function mapTemplateFields(
 ): Record<string, any> {
   const result: Record<string, any> = {};
 
-  logger.debug('Applying field mappings:', {
+  brainDebug('Applying field mappings:', {
     eventType: context.event.type,
     eventDataKeys: Object.keys(context.event.data),
     eventData: context.event.data,
@@ -80,12 +78,12 @@ function mapTemplateFields(
 
       result[mapping.target] = value;
 
-      logger.debug(`Mapped ${mapping.target}:`, {
+      brainDebug(`Mapped ${mapping.target}:`, {
         source: typeof mapping.source === 'function' ? '[Function]' : mapping.source,
         value
       });
     } catch (error) {
-      logger.error(`Failed to apply mapping for ${mapping.target}:`, { error, mapping });
+      brainLogger.error(`Failed to apply mapping for ${mapping.target}:`, { error, mapping });
       if (mapping.default !== undefined) result[mapping.target] = mapping.default;
     }
   }
@@ -138,7 +136,7 @@ function applyFieldMappingsIfSupported(
   const mappings = Array.isArray(fm) ? fm : [fm];
   if (mappings.length === 0) return undefined;
 
-  logger.debug(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
+  brainDebug(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
     mappingsCount: mappings.length,
     isArray: Array.isArray(fm)
   });
@@ -162,7 +160,7 @@ export function prepareNodeAttributes(
     ...(mappedParams && mappedParams)
   };
 
-  logger.debug(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
+  brainDebug(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
     baseAttributeKeys: Object.keys(baseAttributes),
     mappedParamKeys: mappedParams ? Object.keys(mappedParams) : [],
     finalAttributeKeys: Object.keys(resolvedAttributes)
