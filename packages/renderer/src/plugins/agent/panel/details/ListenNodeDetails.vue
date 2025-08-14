@@ -1,33 +1,18 @@
 <template>
   <div class="listen-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Event Listener Configuration</h4>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
       <div class="detail-grid">
-        <div v-if="nodeAttributes.eventType" class="detail-item">
-          <span class="detail-key">Event Type:</span>
-          <span class="detail-value">{{ nodeAttributes.eventType }}</span>
-        </div>
-        <div v-if="nodeAttributes.mode" class="detail-item">
-          <span class="detail-key">Mode:</span>
-          <span class="detail-value mode-badge" :class="`mode-${nodeAttributes.mode}`">
-            {{ nodeAttributes.mode }}
+        <div v-for="(value, key) in inputParams" :key="key" class="detail-item">
+          <span class="detail-key">{{ key }}:</span>
+          <span v-if="key === 'mode' && value" class="detail-value mode-badge" :class="`mode-${value}`">
+            {{ value }}
           </span>
+          <span v-else-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
+          <div v-else class="detail-value">
+            <DataRenderer :data="value" :default-expanded="false" />
+          </div>
         </div>
-        <div v-if="nodeAttributes.scope" class="detail-item">
-          <span class="detail-key">Scope:</span>
-          <span class="detail-value">{{ nodeAttributes.scope }}</span>
-        </div>
-        <div v-if="nodeAttributes.debounceMs" class="detail-item">
-          <span class="detail-key">Debounce:</span>
-          <span class="detail-value">{{ nodeAttributes.debounceMs }}ms</span>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="hasEventData" class="detail-section">
-      <h4 class="detail-label">Event Data Schema</h4>
-      <div class="detail-content">
-        <DataRenderer :data="getEventSchema()" :default-expanded="false" />
       </div>
     </div>
   </div>
@@ -45,32 +30,29 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const hasEventData = computed(() => {
-  // Check if there's any event data schema information
-  return props.nodeAttributes.eventSchema || props.nodeAttributes.expectedFields;
+const inputParams = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Only exclude result as it's output
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
 });
 
-const getEventSchema = () => {
-  // Return event schema information if available
-  if (props.nodeAttributes.eventSchema) {
-    return props.nodeAttributes.eventSchema;
-  }
-  
-  if (props.nodeAttributes.expectedFields) {
-    return props.nodeAttributes.expectedFields;
-  }
-  
-  // Default schema for common event types
-  const eventType = props.nodeAttributes.eventType;
-  if (eventType === 'user.message') {
-    return {
-      message: 'string',
-      userId: 'string?',
-      timestamp: 'number'
-    };
-  }
-  
-  return { info: 'No schema information available' };
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+
+const isComplexValue = (value: any): boolean => {
+  return value !== null && typeof value === 'object';
+};
+
+const formatValue = (value: any) => {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
 };
 </script>
 

@@ -1,31 +1,25 @@
 <template>
   <div class="fire-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Fire Event Configuration</h4>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
       <div class="detail-grid">
-        <div v-if="nodeAttributes.eventType" class="detail-item">
-          <span class="detail-key">Event Type:</span>
-          <span class="detail-value">{{ nodeAttributes.eventType }}</span>
-        </div>
-        <div v-if="nodeAttributes.scope" class="detail-item">
-          <span class="detail-key">Scope:</span>
-          <span class="detail-value scope-badge" :class="`scope-${nodeAttributes.scope}`">
-            {{ nodeAttributes.scope }}
+        <div v-for="(value, key) in inputParams" :key="key" class="detail-item">
+          <span class="detail-key">{{ key }}:</span>
+          <span v-if="key === 'scope' && value" class="detail-value scope-badge" :class="`scope-${value}`">
+            {{ value }}
           </span>
+          <span v-else-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
+          <div v-else class="detail-value">
+            <DataRenderer :data="value" :default-expanded="false" />
+          </div>
         </div>
-      </div>
-    </div>
-
-    <div v-if="nodeAttributes.payload" class="detail-section">
-      <h4 class="detail-label">Event Payload</h4>
-      <div class="detail-content">
-        <DataRenderer :data="nodeAttributes.payload" :default-expanded="false" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { TNodeEntity } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
 
@@ -35,6 +29,31 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const inputParams = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Only exclude result as it's output
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
+});
+
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+
+const isComplexValue = (value: any): boolean => {
+  return value !== null && typeof value === 'object';
+};
+
+const formatValue = (value: any) => {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+};
 </script>
 
 <style scoped>

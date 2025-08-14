@@ -1,12 +1,12 @@
 <template>
   <div class="default-node-details">
     <div class="detail-section">
-      <h4 class="detail-label">Node Attributes</h4>
-      <div v-if="hasAttributes" class="detail-content">
-        <DataRenderer :data="nodeAttributes" :default-expanded="false" />
+      <h4 class="detail-label">Input Parameters</h4>
+      <div v-if="hasInputParams" class="detail-content">
+        <DataRenderer :data="inputParams" :default-expanded="false" />
       </div>
       <div v-else class="empty-state">
-        <p class="empty-text">No additional attributes available</p>
+        <p class="empty-text">No input parameters available</p>
       </div>
     </div>
   </div>
@@ -24,9 +24,21 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const hasAttributes = computed(() => {
-  return props.nodeAttributes && Object.keys(props.nodeAttributes).length > 0;
+// Show all input parameters except result
+const inputParams = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Only exclude result as it's output
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
 });
+
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
 </script>
 
 <style scoped>

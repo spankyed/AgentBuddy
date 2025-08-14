@@ -1,33 +1,9 @@
 <template>
   <div class="action-node-details">
-    <div class="detail-section">
-      <h4 class="detail-label">Action Configuration</h4>
+    <div v-if="hasInputParams" class="detail-section">
+      <h4 class="detail-label">Input Parameters</h4>
       <div class="detail-grid">
-        <div v-if="nodeAttributes.actionId" class="detail-item">
-          <span class="detail-key">Action ID:</span>
-          <span class="detail-value">{{ nodeAttributes.actionId }}</span>
-        </div>
-        <div v-if="nodeAttributes.actionName" class="detail-item">
-          <span class="detail-key">Action Name:</span>
-          <span class="detail-value">{{ nodeAttributes.actionName }}</span>
-        </div>
-      </div>
-    </div>
-<!-- 
-    <div v-if="hasParameters" class="detail-section">
-      <h4 class="detail-label">Parameters</h4>
-      <div class="detail-content">
-        <pre class="detail-pre">{{ JSON.stringify(parameters, null, 2) }}</pre>
-        <button @click="copyToClipboard(JSON.stringify(parameters, null, 2))" class="copy-button">
-          <Copy class="w-3 h-3" />
-        </button>
-      </div>
-    </div> -->
-
-    <div v-if="hasResolvedParams" class="detail-section">
-      <h4 class="detail-label">Resolved Parameters</h4>
-      <div class="detail-grid">
-        <div v-for="(value, key) in resolvedParams" :key="key" class="detail-item">
+        <div v-for="(value, key) in inputParams" :key="key" class="detail-item">
           <span class="detail-key">{{ key }}:</span>
           <span v-if="!isComplexValue(value)" class="detail-value">{{ formatValue(value) }}</span>
           <div v-else class="detail-value">
@@ -51,13 +27,13 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const resolvedParams = computed(() => {
-  // Look for resolved values that came from field mappings
+const inputParams = computed(() => {
+  // Show all nodeAttributes except result (which is output)
   const params: Record<string, any> = {};
   
   for (const [key, value] of Object.entries(props.nodeAttributes)) {
-    // Skip known config fields and look for resolved values
-    if (!['actionId', 'actionName', 'params', 'fieldMappings'].includes(key)) {
+    // Only exclude result as it's output, not input
+    if (key !== 'result') {
       params[key] = value;
     }
   }
@@ -65,7 +41,7 @@ const resolvedParams = computed(() => {
   return params;
 });
 
-const hasResolvedParams = computed(() => Object.keys(resolvedParams.value).length > 0);
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
 
 const isComplexValue = (value: any): boolean => {
   return value !== null && typeof value === 'object';

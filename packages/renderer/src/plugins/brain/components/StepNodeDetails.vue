@@ -52,13 +52,13 @@
           </div>
         </section>
 
-        <!-- Node Attributes / Input -->
-        <section v-if="node.nodeAttributes && Object.keys(node.nodeAttributes).length > 0" class="mb-4">
+        <!-- Input Parameters -->
+        <section v-if="hasInputParams" class="mb-4">
           <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Input Parameters
           </h4>
           <div class="rounded bg-black/30 border border-white/5 p-3">
-            <DataRenderer :data="node.nodeAttributes" :default-expanded="true" />
+            <DataRenderer :data="inputParams" :default-expanded="true" />
           </div>
         </section>
 
@@ -113,11 +113,27 @@ const statusClasses = computed(() => {
   }
 });
 
+// Filter out result from input params to avoid duplication
+const inputParams = computed(() => {
+  if (!props.node?.nodeAttributes) return {};
+  
+  const params: Record<string, any> = {};
+  for (const [key, value] of Object.entries(props.node.nodeAttributes)) {
+    // Exclude result as it's shown separately
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
+});
+
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
+
 const hasContent = computed(() => {
-  const attrs = props.node?.nodeAttributes;
-  const hasAttributes = attrs && Object.keys(attrs).length > 0;
+  const hasParams = hasInputParams.value;
   const hasResult = props.node?.nodeAttributes?.result !== undefined;
-  return hasAttributes || hasResult;
+  return hasParams || hasResult;
 });
 
 const duration = computed(() => {

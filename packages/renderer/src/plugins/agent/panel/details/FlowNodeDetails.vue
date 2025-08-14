@@ -1,43 +1,18 @@
 <template>
   <div class="text-xs">
-    <!-- Flow Configuration Section -->
-    <section v-if="flowRef || flowLabel" class="mb-4">
+    <!-- Input Parameters Section -->
+    <section v-if="hasInputParams" class="mb-4">
       <h4 class="text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-400 mb-2">
-        Flow Configuration
+        Input Parameters
       </h4>
       <div class="space-y-2">
-        <div v-if="flowRef" class="flex items-baseline gap-2">
-          <span class="text-gray-500 flex-shrink-0">Flow ID:</span>
-          <span class="text-gray-300 break-words">{{ flowRef }}</span>
+        <div v-for="(value, key) in inputParams" :key="key" class="flex items-baseline gap-2">
+          <span class="text-gray-500 flex-shrink-0">{{ key }}:</span>
+          <span v-if="!isComplexValue(value)" class="text-gray-300 break-words">{{ formatValue(value) }}</span>
+          <div v-else class="text-gray-300">
+            <DataRenderer :data="value" :default-expanded="false" />
+          </div>
         </div>
-        <div v-if="flowLabel" class="flex items-baseline gap-2">
-          <span class="text-gray-500 flex-shrink-0">Flow Name:</span>
-          <span class="text-gray-300 break-words">{{ flowLabel }}</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Entry Parameter Section -->
-    <section v-if="entryParameter" class="mb-4">
-      <h4 class="text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-400 mb-2">
-        Entry Parameter
-      </h4>
-      <div class="flex items-start gap-2">
-        <span class="text-gray-500 flex-shrink-0">payload:</span>
-        <span v-if="!isComplexValue(entryParameter)" class="text-gray-300 break-words">{{ formatValue(entryParameter) }}</span>
-        <div v-else class="text-gray-300">
-          <DataRenderer :data="entryParameter" :default-expanded="false" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Resolved Entry Params Section -->
-    <section v-if="resolvedParams" class="mb-4">
-      <h4 class="text-[0.6875rem] font-semibold uppercase tracking-wider text-gray-400 mb-2">
-        Resolved Entry Params
-      </h4>
-      <div class="relative bg-black/30 border border-white/5 rounded-md p-3">
-        <DataRenderer :data="resolvedParams" :default-expanded="false" />
       </div>
     </section>
   </div>
@@ -45,14 +20,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Copy } from 'lucide-vue-next';
 import type { TNodeEntity } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
-
-// Types
-type FieldMapping =
-  | { target: string; source: unknown }
-  | (Record<string, unknown> & { target: string; source: unknown });
 
 interface Props {
   node: TNodeEntity;
@@ -61,29 +30,21 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Flow Configuration
-const flowRef = computed(() => props.nodeAttributes?.flowRef);
-const flowLabel = computed(() => props.nodeAttributes?.flowLabel);
-
-// Entry Parameter Extraction (cleaner chain of computed properties)
-const fieldMappings = computed<FieldMapping[] | null>(() => {
-  const fm = props.nodeAttributes?.fieldMappings;
-  if (!fm) return null;
-  return Array.isArray(fm) ? fm : [fm];
+// Show all input parameters except result
+const inputParams = computed(() => {
+  const params: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(props.nodeAttributes)) {
+    // Only exclude result as it's output
+    if (key !== 'result') {
+      params[key] = value;
+    }
+  }
+  
+  return params;
 });
 
-const entryMapping = computed<FieldMapping | null>(() =>
-  fieldMappings.value?.find(m => m?.target === 'params') ?? null
-);
-
-const entryParameter = computed<unknown | null>(() => 
-  entryMapping.value?.source ?? null
-);
-
-// Runtime-resolved params
-const resolvedParams = computed<unknown | null>(() => 
-  props.nodeAttributes?.params ?? null
-);
+const hasInputParams = computed(() => Object.keys(inputParams.value).length > 0);
 
 // Helpers
 function isComplexValue(value: unknown): boolean {

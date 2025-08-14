@@ -97,6 +97,7 @@ function mapTemplateFields(
  * Unified Mapper (simplifies the registry/factory)
  *─────────────────────────────────────────────────────────────*/
 const COMMON_ATTRIBUTES_TO_EXCLUDE = new Set([
+  // Internal/system fields only
   'id',
   'entityType',
   'nodeType',
@@ -106,6 +107,9 @@ const COMMON_ATTRIBUTES_TO_EXCLUDE = new Set([
   'createdAt',
   'updatedAt',
   'fieldMappings'
+  
+  // Note: Configuration fields like actionId, model, eventType etc. 
+  // are now INCLUDED in nodeAttributes so they can be displayed in UI
 ]);
 
 function extractAttributes(node: NodeEntity): Record<string, any> {
