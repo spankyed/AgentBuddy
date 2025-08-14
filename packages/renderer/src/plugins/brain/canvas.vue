@@ -22,7 +22,7 @@
         <div class="flex-1 overflow-y-auto">
           <TNodeTree 
             :tnode-tree="tNodeTree"
-            @tnode-click="handleTNodeClick"
+            @flow-navigate="handleFlowNavigate"
           />
         </div>
       </div>
@@ -39,9 +39,8 @@
         :debug-enabled="debugEnabled"
         :animations-enabled="animationsEnabled"
         :selected-node-id="selectedStepNode?.id"
-        @tnode-click="handleTNodeClick"
-        @tnode-double-click="handleTNodeDoubleClick"
-        @step-click="handleStepNodeClick"
+        @node-click="handleNodeClick"
+        @flow-navigate="handleFlowNavigate"
         @back-click="handleBackClick"
         @toggle-left-panel="handleToggleLeftPanel"
         @toggle-right-panel="handleToggleRightPanel"
@@ -113,16 +112,12 @@ const debugEnabled = useSelector(actor, (state) => state.context.debugEnabled);
 const animationsEnabled = useSelector(actor, (state) => state.context.animationsEnabled);
 
 // Event handlers
-const handleTNodeClick = (tNodeId: string) => {
-  actor.send({ type: 'TNODE.CLICK', tNodeId });
+const handleNodeClick = (nodeId: string) => {
+  actor.send({ type: 'NODE.CLICK', nodeId });
 };
 
-const handleTNodeDoubleClick = (tNodeId: string) => {
-  actor.send({ type: 'TNODE.DOUBLE_CLICK', tNodeId });
-};
-
-const handleStepNodeClick = (tNodeId: string) => {
-  actor.send({ type: 'STEP_NODE.CLICK', tNodeId });
+const handleFlowNavigate = (flowId: string) => {
+  actor.send({ type: 'FLOW.NAVIGATE', flowId });
 };
 
 const handleBackClick = () => {

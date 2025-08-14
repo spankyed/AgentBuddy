@@ -35,9 +35,8 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'DEBUG_TOGGLED'; enabled: boolean }
 
 type UIEvent =
-  | { type: 'TNODE.CLICK'; tNodeId: string }
-  | { type: 'TNODE.DOUBLE_CLICK'; tNodeId: string }
-  | { type: 'STEP_NODE.CLICK'; tNodeId: string }
+  | { type: 'NODE.CLICK'; nodeId: string }
+  | { type: 'FLOW.NAVIGATE'; flowId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
   | { type: 'TOGGLE_LEFT_PANEL' }
@@ -231,19 +230,13 @@ const brainState = setup({
     clearPulse: assign({
       pulsingEventType: undefined
     }),
-    openTNode: ({ event }) => {
-      let tNodeId: string;
-      
-      if (event.type === 'TNODE.DOUBLE_CLICK') {
-        tNodeId = event.tNodeId;
-      } else {
-        return;
-      }
+    navigateToFlow: ({ event }) => {
+      if (event.type !== 'FLOW.NAVIGATE') return;
       
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_TNODE',
-        tNodeId
+        tNodeId: event.flowId
       });
     },
     goBack: () => {
@@ -264,13 +257,13 @@ const brainState = setup({
     toggleRightPanel: assign({
       showRightPanel: ({ context }) => !context.showRightPanel
     }),
-    requestStepNodeDetails: ({ event }) => {
-      // Handle both STEP_NODE.CLICK and TNODE.CLICK (for flow nodes)
-      if (event.type !== 'STEP_NODE.CLICK' && event.type !== 'TNODE.CLICK') return;
+    requestNodeDetails: ({ event }) => {
+      if (event.type !== 'NODE.CLICK') return;
+      
       trpc.bus.send.mutate({
         systemId: id,
         type: 'GET_TNODE_DETAILS',
-        tNodeId: event.tNodeId
+        tNodeId: event.nodeId
       });
     },
     setStepNodeDetails: assign(({ event }) => {
@@ -327,20 +320,17 @@ const brainState = setup({
         RECEIVE_PLUGIN_DATA: {
           actions: 'setBrainData'
         },
-        'TNODE.CLICK': {
-          actions: 'requestStepNodeDetails'
+        'NODE.CLICK': {
+          actions: 'requestNodeDetails'
         },
-        'TNODE.DOUBLE_CLICK': {
-          actions: 'openTNode'
+        'FLOW.NAVIGATE': {
+          actions: 'navigateToFlow'
         },
         'BACK.CLICK': {
           guard: 'canGoBack',
           actions: 'goBack'
         },
         'EVENT.CLICK': {
-        },
-        'STEP_NODE.CLICK': {
-          actions: 'requestStepNodeDetails'
         },
         TOGGLE_LEFT_PANEL: {
           actions: 'toggleLeftPanel'

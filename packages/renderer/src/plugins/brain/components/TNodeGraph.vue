@@ -111,9 +111,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'tnode-click': [tNodeId: string];
-  'tnode-double-click': [tNodeId: string];
-  'step-click': [tNodeId: string];
+  'node-click': [tNodeId: string];
+  'flow-navigate': [flowId: string];
   'back-click': [];
   'toggle-left-panel': [];
   'toggle-right-panel': [];
@@ -145,9 +144,9 @@ const {
 } = useVueFlow();
 const { centerNodeInView } = useNodeViewport();
 
-// Click handling state
+// Click handling state - need to delay single clicks for flow nodes
 let clickTimeout: NodeJS.Timeout | null = null;
-const DOUBLE_CLICK_DELAY = 300; // ms to wait for double click
+const DOUBLE_CLICK_DELAY = 250; // ms to wait for double click
 
 // State
 const nodePositionCache = new Map<string, { x: number; y: number }>();
@@ -248,24 +247,20 @@ const edges = computed<Edge[]>(() => {
 onNodeClick((event: NodeMouseEvent) => {
   const nodeData = event.node.data as { tNodeType?: string };
   
-  // For flow nodes, delay single click to check for double click
   if (nodeData.tNodeType === 'flow') {
-    // Clear any existing timeout
+    // For flow nodes, delay single click to allow for double-click detection
     if (clickTimeout) {
       clearTimeout(clickTimeout);
-      clickTimeout = null;
     }
-    
-    // Set a new timeout for single click
     clickTimeout = setTimeout(() => {
-      emit('step-click', event.node.id);
+      emit('node-click', event.node.id);
       clickTimeout = null;
     }, DOUBLE_CLICK_DELAY);
   } else if (nodeData.tNodeType === 'step') {
-    // Step nodes always open details panel immediately
-    emit('step-click', event.node.id);
+    // Step nodes always open details immediately
+    emit('node-click', event.node.id);
   }
-  // Event nodes don't emit any click events
+  // Event nodes don't have click behavior
 });
 
 onNodeDoubleClick((event: NodeMouseEvent) => {
@@ -273,15 +268,14 @@ onNodeDoubleClick((event: NodeMouseEvent) => {
   
   // Only flow nodes can be navigated into on double click
   if (nodeData.tNodeType === 'flow') {
-    // Clear the single click timeout
+    // Cancel the pending single-click action
     if (clickTimeout) {
       clearTimeout(clickTimeout);
       clickTimeout = null;
     }
-    // Navigate into the flow
-    emit('tnode-double-click', event.node.id);
+    emit('flow-navigate', event.node.id);
   }
-  // Step nodes don't have double click behavior
+  // Step nodes and event nodes don't have double click behavior
 });
 
 const handleFitView = () => {
