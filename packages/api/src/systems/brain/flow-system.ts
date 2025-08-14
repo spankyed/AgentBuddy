@@ -292,6 +292,11 @@ export function createFlowNodeSystem(
         markFlowCompleted: ({ system, context }) => {
           brainDebug(`Flow ${context.flowId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
+          
+          // Save the flow's result to nodeAttributes so it appears in the details panel
+          if (context.finalResult !== undefined) {
+            repository.brainCommands.updateTNodeResult(flowTNodeId, context.finalResult);
+          }
 
           // Emit TNODE_UPDATED event
           system.get(brain).send({
