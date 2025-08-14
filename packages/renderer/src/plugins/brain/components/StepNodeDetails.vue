@@ -14,18 +14,18 @@
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-neutral-800/50 px-4 py-3">
-        <div class="flex items-center gap-3 flex-1">
-          <h3 class="text-sm font-semibold text-neutral-100">{{ node.label }}</h3>
-          <span :class="statusClasses" class="text-xs">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <h3 class="text-sm font-semibold text-neutral-100 truncate flex-shrink" :title="node.label">{{ node.label }}</h3>
+          <span :class="statusClasses" class="text-xs flex-shrink-0">
             {{ node.status }}
           </span>
-          <span v-if="node.stepNodeType" class="text-xs text-neutral-400">
+          <span v-if="node.stepNodeType" class="text-xs text-neutral-400 flex-shrink-0">
             {{ node.stepNodeType }}
           </span>
         </div>
         <button
           @click="$emit('close')"
-          class="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+          class="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors flex-shrink-0"
           aria-label="Close details"
         >
           <X :size="18" />
