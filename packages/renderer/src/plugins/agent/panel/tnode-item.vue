@@ -58,19 +58,6 @@
             :class="iconComponentClasses"
           />
           
-          <!-- Details indicator -->
-          <div 
-            v-if="hasDetails"
-            class="relative flex items-center"
-            @click.stop="toggleDetails"
-          >
-            <Info 
-              :class="[
-                'w-3 h-3 transition-all duration-200',
-                showDetails ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-400'
-              ]"
-            />
-          </div>
           
           <!-- Status indicator with better sizing -->
           <div 
@@ -96,7 +83,7 @@
       </button>
       
       <!-- Node Details Section (show when step is expanded and has details) -->
-      <div v-if="isExpanded && showDetails && hasDetails" class="tnode-details">
+      <div v-if="isExpanded && hasDetails" class="tnode-details">
         <component
           :is="detailComponent"
           :node="node"
@@ -120,7 +107,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ChevronRight, Info } from 'lucide-vue-next';
+import { ChevronRight } from 'lucide-vue-next';
 import type { TNodeEntity, NodeKind } from '@app/api';
 import { 
   getInspectionItemClasses,
@@ -157,7 +144,6 @@ const childIds = computed(() => props.normalizedTree.childrenById[props.nodeId] 
 const hasChildren = computed(() => childIds.value.length > 0);
 // Event nodes are expanded by default, all others (including steps) are collapsed
 const isExpanded = ref(node.value?.tNodeType === 'event');
-const showDetails = ref(true);
 
 // Show chevron for nodes with children OR step nodes (which can be collapsed even without children)
 const showChevron = computed(() => hasChildren.value || node.value?.tNodeType === 'step');
@@ -305,10 +291,6 @@ const handleClick = () => {
   }
   // TODO: Add click handler to open TNode details
 };
-
-const toggleDetails = () => {
-  showDetails.value = !showDetails.value;
-};
 </script>
 
 <style scoped>
@@ -422,14 +404,4 @@ const toggleDetails = () => {
   animation: slideIn 0.15s ease-out;
 }
 
-/* Info icon hover effect */
-.tnode-header .info-icon {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-}
-
-.tnode-header .info-icon:hover {
-  opacity: 1;
-}
 </style>
