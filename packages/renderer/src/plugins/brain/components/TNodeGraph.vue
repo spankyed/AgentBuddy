@@ -96,6 +96,7 @@ import type { TrackEntity } from '@app/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
 import BrainMenu from './BrainMenu.vue';
 import { Maximize } from 'lucide-vue-next';
+import { useNodeViewport } from '../useNodeViewport';
 
 interface Props {
   tnodeTree?: TrackEntity[];
@@ -105,6 +106,7 @@ interface Props {
   showRightPanel?: boolean;
   debugEnabled?: boolean;
   animationsEnabled?: boolean;
+  selectedNodeId?: string;
 }
 
 const props = defineProps<Props>();
@@ -135,6 +137,7 @@ const ANIMATION = {
 
 // Vue Flow composables
 const { setCenter, getNode, fitView } = useVueFlow();
+const { centerNodeInView } = useNodeViewport();
 
 // State
 const nodePositionCache = new Map<string, { x: number; y: number }>();
@@ -152,6 +155,7 @@ const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number 
     stepNodeType: tnode.stepNodeType,
     status: tnode.status,
     hasChildren: tnode.children.length > 0,
+    isSelected: props.selectedNodeId === tnode.id,
   },
 });
 
@@ -315,6 +319,18 @@ watch(() => nodes.value, (newNodes) => {
   // Update tracked nodes
   previousNodeIds = new Set(newNodes.map(n => n.id));
 }, { immediate: true });
+
+// Watch for selected node changes and center the node in view
+let previousSelectedId: string | undefined = undefined;
+watch(() => props.selectedNodeId, async (newSelectedId) => {
+  if (newSelectedId && newSelectedId !== previousSelectedId) {
+    // Small delay to ensure the details panel is rendered
+    setTimeout(async () => {
+      await centerNodeInView(newSelectedId);
+    }, 100);
+  }
+  previousSelectedId = newSelectedId;
+});
 
 // Cleanup on unmount
 onUnmounted(() => {

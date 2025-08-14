@@ -38,6 +38,7 @@
         :show-right-panel="showRightPanel"
         :debug-enabled="debugEnabled"
         :animations-enabled="animationsEnabled"
+        :selected-node-id="selectedStepNode?.id"
         @tnode-click="handleTNodeClick"
         @step-click="handleStepNodeClick"
         @back-click="handleBackClick"

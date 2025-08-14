@@ -4,7 +4,8 @@
     :class="[
       nodeClasses,
       {
-        'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active',
+        'ring-2 ring-offset-2 ring-offset-neutral-900': data.status === 'active' || data.isSelected,
+        'ring-blue-500': data.isSelected && data.status !== 'active',
         'cursor-pointer hover:shadow-lg': data.tNodeType === 'flow' || data.tNodeType === 'step',
         'cursor-default': data.tNodeType === 'event',
       }
@@ -108,7 +109,9 @@ interface Props {
     stepNodeType?: string;
     status: 'active' | 'paused' | 'completed' | 'failed';
     hasChildren: boolean;
+    isSelected?: boolean;
   };
+  selected?: boolean; // VueFlow's internal selected prop (not used but may be passed)
 }
 
 const props = defineProps<Props>();
