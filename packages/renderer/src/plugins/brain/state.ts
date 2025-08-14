@@ -36,6 +36,7 @@ type SystemEvent = OutgoingBrainEvents
 
 type UIEvent =
   | { type: 'TNODE.CLICK'; tNodeId: string }
+  | { type: 'TNODE.DOUBLE_CLICK'; tNodeId: string }
   | { type: 'STEP_NODE.CLICK'; tNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
@@ -233,7 +234,7 @@ const brainState = setup({
     openTNode: ({ event }) => {
       let tNodeId: string;
       
-      if (event.type === 'TNODE.CLICK') {
+      if (event.type === 'TNODE.DOUBLE_CLICK') {
         tNodeId = event.tNodeId;
       } else {
         return;
@@ -264,7 +265,8 @@ const brainState = setup({
       showRightPanel: ({ context }) => !context.showRightPanel
     }),
     requestStepNodeDetails: ({ event }) => {
-      if (event.type !== 'STEP_NODE.CLICK') return;
+      // Handle both STEP_NODE.CLICK and TNODE.CLICK (for flow nodes)
+      if (event.type !== 'STEP_NODE.CLICK' && event.type !== 'TNODE.CLICK') return;
       trpc.bus.send.mutate({
         systemId: id,
         type: 'GET_TNODE_DETAILS',
@@ -326,6 +328,9 @@ const brainState = setup({
           actions: 'setBrainData'
         },
         'TNODE.CLICK': {
+          actions: 'requestStepNodeDetails'
+        },
+        'TNODE.DOUBLE_CLICK': {
           actions: 'openTNode'
         },
         'BACK.CLICK': {

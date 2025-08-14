@@ -18,7 +18,6 @@
       :zoom-on-double-click="false"
       :min-zoom="0.5"
       :max-zoom="2"
-      @node-click="handleNodeClick"
     >
       <template #node-tnode="nodeProps">
         <TNodeGraphNode v-bind="nodeProps" />
@@ -113,6 +112,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'tnode-click': [tNodeId: string];
+  'tnode-double-click': [tNodeId: string];
   'step-click': [tNodeId: string];
   'back-click': [];
   'toggle-left-panel': [];
@@ -136,8 +136,18 @@ const ANIMATION = {
 } as const;
 
 // Vue Flow composables
-const { setCenter, getNode, fitView } = useVueFlow();
+const { 
+  setCenter, 
+  getNode, 
+  fitView,
+  onNodeClick,
+  onNodeDoubleClick
+} = useVueFlow();
 const { centerNodeInView } = useNodeViewport();
+
+// Click handling state
+let clickTimeout: NodeJS.Timeout | null = null;
+const DOUBLE_CLICK_DELAY = 300; // ms to wait for double click
 
 // State
 const nodePositionCache = new Map<string, { x: number; y: number }>();
@@ -234,17 +244,45 @@ const edges = computed<Edge[]>(() => {
   return result;
 });
 
-const handleNodeClick = (event: NodeMouseEvent) => {
+// Register node event handlers using Vue Flow composables
+onNodeClick((event: NodeMouseEvent) => {
   const nodeData = event.node.data as { tNodeType?: string };
   
-  // Handle different node types
+  // For flow nodes, delay single click to check for double click
   if (nodeData.tNodeType === 'flow') {
-    emit('tnode-click', event.node.id);
+    // Clear any existing timeout
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    
+    // Set a new timeout for single click
+    clickTimeout = setTimeout(() => {
+      emit('step-click', event.node.id);
+      clickTimeout = null;
+    }, DOUBLE_CLICK_DELAY);
   } else if (nodeData.tNodeType === 'step') {
+    // Step nodes always open details panel immediately
     emit('step-click', event.node.id);
   }
   // Event nodes don't emit any click events
-};
+});
+
+onNodeDoubleClick((event: NodeMouseEvent) => {
+  const nodeData = event.node.data as { tNodeType?: string };
+  
+  // Only flow nodes can be navigated into on double click
+  if (nodeData.tNodeType === 'flow') {
+    // Clear the single click timeout
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    // Navigate into the flow
+    emit('tnode-double-click', event.node.id);
+  }
+  // Step nodes don't have double click behavior
+});
 
 const handleFitView = () => {
   // Fit all nodes in view with some padding
@@ -352,5 +390,8 @@ onUnmounted(() => {
   cancelCurrentAnimation();
   nodePositionCache.clear();
   previousNodeIds.clear();
+  if (clickTimeout) {
+    clearTimeout(clickTimeout);
+  }
 });
 </script> 

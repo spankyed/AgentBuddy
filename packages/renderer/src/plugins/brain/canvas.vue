@@ -40,6 +40,7 @@
         :animations-enabled="animationsEnabled"
         :selected-node-id="selectedStepNode?.id"
         @tnode-click="handleTNodeClick"
+        @tnode-double-click="handleTNodeDoubleClick"
         @step-click="handleStepNodeClick"
         @back-click="handleBackClick"
         @toggle-left-panel="handleToggleLeftPanel"
@@ -114,6 +115,10 @@ const animationsEnabled = useSelector(actor, (state) => state.context.animations
 // Event handlers
 const handleTNodeClick = (tNodeId: string) => {
   actor.send({ type: 'TNODE.CLICK', tNodeId });
+};
+
+const handleTNodeDoubleClick = (tNodeId: string) => {
+  actor.send({ type: 'TNODE.DOUBLE_CLICK', tNodeId });
 };
 
 const handleStepNodeClick = (tNodeId: string) => {
