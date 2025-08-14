@@ -22,9 +22,9 @@ function resolveNodeAttributes(
 ): Record<string, any> | undefined {
   if (executionContext && node.nodeType) {
     const resolvedAttributes = prepareNodeAttributes(node as NodeEntity, executionContext);
-    return {
-      ...resolvedAttributes,
-    };
+    // Truncate the resolved attributes to prevent memory overflow
+    const truncatedAttributes = truncateResult(resolvedAttributes);
+    return truncatedAttributes;
   }
   
   return undefined;
