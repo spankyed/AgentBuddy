@@ -50,6 +50,15 @@
           @toggle-debug="$emit('toggle-debug')"
           @toggle-animations="$emit('toggle-animations')"
         />
+        
+        <!-- Fit to View Button -->
+        <button
+          class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
+          title="Fit graph to view"
+          @click="handleFitView"
+        >
+          <Maximize :size="16" />
+        </button>
       </div>
       
       <!-- Current TNode label (top center) -->
@@ -84,6 +93,7 @@ import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
 import BrainMenu from './BrainMenu.vue';
+import { Maximize } from 'lucide-vue-next';
 
 interface Props {
   tnodeTree?: TrackEntity[];
@@ -122,7 +132,7 @@ const ANIMATION = {
 } as const;
 
 // Vue Flow composables
-const { setCenter, getNode } = useVueFlow();
+const { setCenter, getNode, fitView } = useVueFlow();
 
 // State
 const nodePositionCache = new Map<string, { x: number; y: number }>();
@@ -228,6 +238,14 @@ const handleNodeClick = (event: NodeMouseEvent) => {
     emit('step-click', event.node.id);
   }
   // Event nodes don't emit any click events
+};
+
+const handleFitView = () => {
+  // Fit all nodes in view with some padding
+  fitView({ 
+    padding: 0.2,
+    duration: 400 
+  });
 };
 
 // Animation helpers
