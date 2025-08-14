@@ -11,6 +11,7 @@ import { repository } from '@/repository';
 import { createFlowNodeSystem } from './flow-system';
 import { agent } from '../agent/system';
 import { database } from '../database/system';
+import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
 
 const eventsCatalog = {
   'user.message': z.object({
@@ -30,6 +31,7 @@ export const IncomingBrainEvents = [
   busEvent('GO_BACK_TNODE', {}),
   busEvent('REQUEST_PLUGIN_DATA', {}),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
+  busEvent('TOGGLE_DEBUG', {}),
 ] as const
 
 export type BrainInternalEvents = 
@@ -47,6 +49,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
+  | { type: 'DEBUG_TOGGLED'; enabled: boolean }
 
 export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
@@ -113,6 +116,17 @@ export const brainSystem = setup({
         type: 'TNODE_DETAILS',
         tNodeId,
         details: tNode
+      }));
+    },
+    toggleDebug: ({ system }) => {
+      const currentState = isBrainDebugEnabled();
+      const newState = !currentState;
+      setBrainDebugEnabled(newState);
+      
+      // Send confirmation back to frontend
+      system.get(bus).send(emit(brain, {
+        type: 'DEBUG_TOGGLED',
+        enabled: newState
       }));
     },
     triggerBrainEvent: ({ system, event, context }) => {
@@ -187,6 +201,9 @@ export const brainSystem = setup({
           },
           GET_TNODE_DETAILS: {
             actions: 'getTNodeDetails',
+          },
+          TOGGLE_DEBUG: {
+            actions: 'toggleDebug',
           },
           // TRACE_EVENT_RECEIVED: {
           //   actions: 'handleEventReceived',

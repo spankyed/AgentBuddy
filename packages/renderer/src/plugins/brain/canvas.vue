@@ -36,11 +36,13 @@
         :can-go-back="canGoBack"
         :show-left-panel="showLeftPanel"
         :show-right-panel="showRightPanel"
+        :debug-enabled="debugEnabled"
         @tnode-click="handleTNodeClick"
         @step-click="handleStepNodeClick"
         @back-click="handleBackClick"
         @toggle-left-panel="handleToggleLeftPanel"
         @toggle-right-panel="handleToggleRightPanel"
+        @toggle-debug="handleToggleDebug"
       />
     </div>
 
@@ -103,6 +105,7 @@ const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'T
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
 const showRightPanel = useSelector(actor, (state) => state.context.showRightPanel);
 const selectedStepNode = useSelector(actor, (state) => state.context.selectedStepNode);
+const debugEnabled = useSelector(actor, (state) => state.context.debugEnabled);
 
 // Event handlers
 const handleTNodeClick = (tNodeId: string) => {
@@ -127,6 +130,10 @@ const handleToggleLeftPanel = () => {
 
 const handleToggleRightPanel = () => {
   actor.send({ type: 'TOGGLE_RIGHT_PANEL' });
+};
+
+const handleToggleDebug = () => {
+  actor.send({ type: 'TOGGLE_DEBUG' });
 };
 
 const handleCloseDetails = () => {

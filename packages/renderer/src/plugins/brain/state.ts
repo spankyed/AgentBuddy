@@ -26,10 +26,12 @@ export interface BrainContext {
   showLeftPanel: boolean;
   showRightPanel: boolean;
   selectedStepNode?: TNodeEntity;
+  debugEnabled: boolean;
 }
 
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
+  | { type: 'DEBUG_TOGGLED'; enabled: boolean }
 
 type UIEvent =
   | { type: 'TNODE.CLICK'; tNodeId: string }
@@ -39,6 +41,7 @@ type UIEvent =
   | { type: 'TOGGLE_LEFT_PANEL' }
   | { type: 'TOGGLE_RIGHT_PANEL' }
   | { type: 'CLOSE_DETAILS' }
+  | { type: 'TOGGLE_DEBUG' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -275,6 +278,18 @@ const brainState = setup({
     closeDetails: assign({
       selectedStepNode: undefined
     }),
+    toggleDebug: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'TOGGLE_DEBUG'
+      });
+    },
+    setDebugEnabled: assign(({ event }) => {
+      if (event.type !== 'DEBUG_TOGGLED') return {};
+      return {
+        debugEnabled: event.enabled
+      };
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -287,6 +302,7 @@ const brainState = setup({
     possibleEvents: [],
     showLeftPanel: false,
     showRightPanel: false,
+    debugEnabled: false,
   },
   initial: 'loading',
   states: {
@@ -320,6 +336,12 @@ const brainState = setup({
         },
         TOGGLE_RIGHT_PANEL: {
           actions: 'toggleRightPanel'
+        },
+        TOGGLE_DEBUG: {
+          actions: 'toggleDebug'
+        },
+        DEBUG_TOGGLED: {
+          actions: 'setDebugEnabled'
         },
         CLOSE_DETAILS: {
           actions: 'closeDetails'

@@ -39,46 +39,15 @@
           Back
         </button>
         
-        <!-- View Menu -->
-        <DropdownMenuRoot>
-          <DropdownMenuTrigger as-child>
-            <button 
-              class="flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
-              title="View options"
-            >
-              <Menu :size="16" class="mr-1.5" />
-              <span>View</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent 
-              class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[200px] shadow-xl" 
-              :side="'bottom'" 
-              :side-offset="8"
-            >
-              <DropdownMenuItem 
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors" 
-                @select="$emit('toggle-left-panel')"
-              >
-                <div class="flex items-center gap-2 flex-1">
-                  <Layers :size="16" class="text-primary-400" />
-                  Event Trace
-                </div>
-                <Check v-if="showLeftPanel" :size="14" class="text-emerald-400" />
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors" 
-                @select="$emit('toggle-right-panel')"
-              >
-                <div class="flex items-center gap-2 flex-1">
-                  <Activity :size="16" class="text-primary-400" />
-                  Watched Events
-                </div>
-                <Check v-if="showRightPanel" :size="14" class="text-emerald-400" />
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+        <!-- Menu -->
+        <BrainMenu
+          :show-left-panel="showLeftPanel"
+          :show-right-panel="showRightPanel"
+          :debug-enabled="debugEnabled"
+          @toggle-left-panel="$emit('toggle-left-panel')"
+          @toggle-right-panel="$emit('toggle-right-panel')"
+          @toggle-debug="$emit('toggle-debug')"
+        />
       </div>
       
       <!-- Current TNode label (top center) -->
@@ -112,14 +81,7 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
 import TNodeGraphNode from './TNodeGraphNode.vue';
-import { Menu, Layers, Activity, Check } from 'lucide-vue-next';
-import {
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-} from 'reka-ui';
+import BrainMenu from './BrainMenu.vue';
 
 interface Props {
   tnodeTree?: TrackEntity[];
@@ -127,6 +89,7 @@ interface Props {
   canGoBack: boolean;
   showLeftPanel?: boolean;
   showRightPanel?: boolean;
+  debugEnabled?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -137,6 +100,7 @@ const emit = defineEmits<{
   'back-click': [];
   'toggle-left-panel': [];
   'toggle-right-panel': [];
+  'toggle-debug': [];
 }>();
 
 // Constants
