@@ -34,29 +34,39 @@
       </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4">
-        <!-- Input Parameters -->
-        <section v-if="hasInputParams" class="mb-4">
-          <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Input Parameters
-          </h4>
-          <div class="rounded bg-black/30 border border-white/5 p-3">
-            <DataRenderer :data="inputParams" :default-expanded="true" />
-          </div>
-        </section>
+      <div class="flex flex-1 flex-col overflow-y-auto">
+        <!-- Main content area with flex-1 to take available space -->
+        <div class="flex-1 p-4">
+          <!-- Input Parameters -->
+          <section v-if="hasInputParams" class="mb-4">
+            <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              Input Parameters
+            </h4>
+            <div class="rounded bg-black/30 border border-white/5 p-3">
+              <DataRenderer :data="inputParams" :default-expanded="true" />
+            </div>
+          </section>
 
-        <!-- Output Result -->
-        <section v-if="hasOutput" class="mb-4">
-          <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Output Result
-          </h4>
-          <div class="rounded bg-black/30 border border-white/5 p-3">
-            <DataRenderer :data="outputResult" :default-expanded="true" />
-          </div>
-        </section>
+          <!-- Output Result -->
+          <section v-if="hasOutput" class="mb-4">
+            <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              Output Result
+            </h4>
+            <div class="rounded bg-black/30 border border-white/5 p-3">
+              <DataRenderer :data="outputResult" :default-expanded="true" />
+            </div>
+          </section>
 
-        <!-- Execution Info (moved to bottom, inline display) -->
-        <section v-if="node.startedAt || duration" class="mb-4">
+          <!-- Empty state for pending/active nodes -->
+          <div v-if="!hasContent && !node.startedAt" class="mt-8 text-center">
+            <div class="text-sm text-neutral-500">
+              {{ node.status === 'active' ? 'Step is currently executing...' : 'No additional details available' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Execution Info (sticky at bottom) -->
+        <section v-if="node.startedAt || duration" class="border-t border-neutral-800/50 bg-neutral-900/50 px-4 py-3">
           <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Execution Info
           </h4>
@@ -71,13 +81,6 @@
             </div>
           </div>
         </section>
-
-        <!-- Empty state for pending/active nodes -->
-        <div v-if="!hasContent && !node.startedAt" class="mt-8 text-center">
-          <div class="text-sm text-neutral-500">
-            {{ node.status === 'active' ? 'Step is currently executing...' : 'No additional details available' }}
-          </div>
-        </div>
       </div>
     </div>
   </Transition>
