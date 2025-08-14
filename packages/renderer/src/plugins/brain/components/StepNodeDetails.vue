@@ -35,23 +35,6 @@
 
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-4">
-        <!-- Timestamps -->
-        <section class="mb-4">
-          <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Execution Info
-          </h4>
-          <div class="space-y-1 text-xs">
-            <div v-if="node.startedAt" class="flex items-baseline gap-2">
-              <span class="text-neutral-500">Started:</span>
-              <span class="text-neutral-300">{{ formatTimestamp(node.startedAt) }}</span>
-            </div>
-            <div v-if="duration" class="flex items-baseline gap-2">
-              <span class="text-neutral-500">Duration:</span>
-              <span class="text-neutral-300">{{ duration }}</span>
-            </div>
-          </div>
-        </section>
-
         <!-- Input Parameters -->
         <section v-if="hasInputParams" class="mb-4">
           <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
@@ -72,8 +55,25 @@
           </div>
         </section>
 
+        <!-- Execution Info (moved to bottom, inline display) -->
+        <section v-if="node.startedAt || duration" class="mb-4">
+          <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            Execution Info
+          </h4>
+          <div class="flex items-baseline gap-4 text-xs">
+            <div v-if="node.startedAt" class="flex items-baseline gap-2">
+              <span class="text-neutral-500">Started:</span>
+              <span class="text-neutral-300">{{ formatTimestamp(node.startedAt) }}</span>
+            </div>
+            <div v-if="duration" class="flex items-baseline gap-2">
+              <span class="text-neutral-500">Duration:</span>
+              <span class="text-neutral-300">{{ duration }}</span>
+            </div>
+          </div>
+        </section>
+
         <!-- Empty state for pending/active nodes -->
-        <div v-if="!hasContent" class="mt-8 text-center">
+        <div v-if="!hasContent && !node.startedAt" class="mt-8 text-center">
           <div class="text-sm text-neutral-500">
             {{ node.status === 'active' ? 'Step is currently executing...' : 'No additional details available' }}
           </div>
