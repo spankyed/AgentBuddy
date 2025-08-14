@@ -10,6 +10,7 @@ import { defaultKeymap, historyKeymap, history, indentWithTab } from '@codemirro
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState } from '@codemirror/state';
+import { createSyntaxLinter, syntaxLinterTheme } from '@/core/utils/syntax-linter';
 
 const props = defineProps<{
   value: string;
@@ -86,6 +87,8 @@ const createExtensions = () => [
   javascript({ typescript: false }),
   oneDark,
   createEditorTheme(),
+  syntaxLinterTheme,
+  createSyntaxLinter(),
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       emit('update', update.state.doc.toString());

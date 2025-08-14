@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full monaco-editor-container">
+  <div class="w-full h-full monaco-editor-container relative">
     <VueMonacoDiffEditor
       v-if="diffMode"
       :theme="theme || 'vs-dark'"
@@ -149,5 +149,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .monaco-editor-container {
   min-height: 200px;
+}
+
+/* Ensure Monaco overlay widgets (tooltips, diagnostics) appear above other UI elements */
+.monaco-editor-container :deep(.monaco-editor-overlaymessage),
+.monaco-editor-container :deep(.monaco-hover),
+.monaco-editor-container :deep(.monaco-editor-hover),
+.monaco-editor-container :deep(.monaco-editor .zone-widget),
+.monaco-editor-container :deep(.monaco-editor .monaco-hover-content) {
+  z-index: 100 !important;
 }
 </style>

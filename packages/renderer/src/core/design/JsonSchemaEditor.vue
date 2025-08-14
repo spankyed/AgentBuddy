@@ -30,6 +30,7 @@ import { indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState } from '@codemirror/state';
+import { createSyntaxLinter, syntaxLinterTheme } from '@/core/utils/syntax-linter';
 
 const props = defineProps<{
   value: any;
@@ -102,6 +103,8 @@ const createExtensions = () => [
   javascript({ typescript: false }),
   oneDark,
   createEditorTheme(),
+  syntaxLinterTheme,
+  createSyntaxLinter(),
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       const doc = update.state.doc.toString();

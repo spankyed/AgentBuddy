@@ -83,11 +83,11 @@ export function initializeMonaco() {
   
   monacoInitialized = true
   
-  // Only disable error diagnostics, preserve syntax highlighting
+  // Enable only syntax validation, disable semantic validation
   const diagnosticsOptions = {
-    noSemanticValidation: true,
-    noSyntaxValidation: true,
-    noSuggestionDiagnostics: true
+    noSemanticValidation: true,     // Disable type checking and semantic errors
+    noSyntaxValidation: false,       // Enable syntax validation only
+    noSuggestionDiagnostics: true   // Disable code suggestions/hints
   }
   
   // Set diagnostics options for TypeScript/JavaScript
