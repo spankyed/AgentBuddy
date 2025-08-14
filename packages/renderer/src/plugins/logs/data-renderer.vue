@@ -1,58 +1,77 @@
 <template>
-  <div class="font-mono text-xs">
-    <!-- Primitive values -->
-    <div v-if="isPrimitive(data)" class="inline-flex items-center gap-1.5">
-      <span class="text-[10px] tracking-wider uppercase text-neutral-600">{{ getType(data) }}</span>
-      <span :class="getPrimitiveClass(data)">{{ formatPrimitive(data) }}</span>
-    </div>
+  <div class="relative">
+    <!-- Copy button - only show at root level, positioned outside scrollable area -->
+    <button 
+      v-if="depth === 0"
+      @click="copyToClipboard"
+      class="absolute top-0 right-0 p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all z-10"
+      title="Copy to clipboard"
+    >
+      <Copy :size="12" />
+    </button>
     
-    <!-- Arrays -->
-    <div v-else-if="Array.isArray(data)" class="inline-block">
-      <button 
-        @click="toggleExpanded" 
-        class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all"
-      >
-        <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
-        <span class="text-blue-400">Array</span>
-        <span class="text-neutral-500">[{{ data.length }}]</span>
-      </button>
-      <Transition name="expand">
-        <div v-if="expanded" class="mt-1">
-          <div v-for="(item, index) in data" :key="index" class="flex items-start gap-1.5 ml-4 my-0.5">
-            <span class="text-neutral-600 text-[10px] min-w-[16px] text-right">{{ index }}</span>
-            <DataRenderer :data="item" :depth="depth + 1" />
-          </div>
+    <!-- Scrollable container that respects parent width but allows content to expand -->
+    <div class="overflow-x-auto max-w-full">
+      <div class="font-mono text-xs w-max">
+        <!-- Primitive values -->
+        <div v-if="isPrimitive(data)" class="inline-flex items-center gap-1.5">
+          <span class="text-[10px] tracking-wider uppercase text-neutral-600 flex-shrink-0">{{ getType(data) }}</span>
+          <span :class="getPrimitiveClass(data)" class="whitespace-nowrap">{{ formatPrimitive(data) }}</span>
         </div>
-      </Transition>
-    </div>
-    
-    <!-- Objects -->
-    <div v-else-if="isObject(data)" class="inline-block">
-      <button 
-        @click="toggleExpanded" 
-        class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all"
-      >
-        <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
-        <span class="text-purple-400">Object</span>
-        <span class="text-neutral-500" v-if="Object.keys(data).length > 0">
-          ({{ Object.keys(data).length }})
-        </span>
-      </button>
-      <Transition name="expand">
-        <div v-if="expanded" class="mt-1">
-          <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-1.5 ml-4 my-0.5">
-            <span class="text-purple-400 shrink-0">{{ key }}:</span>
-            <DataRenderer :data="value" :depth="depth + 1" />
-          </div>
+        
+        <!-- Arrays -->
+        <div v-else-if="Array.isArray(data)" class="inline-block">
+          <button 
+            @click="toggleExpanded" 
+            class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all flex-shrink-0"
+          >
+            <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
+            <span class="text-blue-400">Array</span>
+            <span class="text-neutral-500">[{{ data.length }}]</span>
+          </button>
+          <Transition name="expand">
+            <div v-if="expanded" class="mt-1">
+              <div v-for="(item, index) in data" :key="index" class="flex items-start gap-1.5 ml-4 my-0.5">
+                <span class="text-neutral-600 text-[10px] min-w-[16px] text-right flex-shrink-0">{{ index }}</span>
+                <div class="min-w-0">
+                  <DataRenderer :data="item" :depth="depth + 1" />
+                </div>
+              </div>
+            </div>
+          </Transition>
         </div>
-      </Transition>
+        
+        <!-- Objects -->
+        <div v-else-if="isObject(data)" class="inline-block">
+          <button 
+            @click="toggleExpanded" 
+            class="inline-flex items-center gap-1 px-1 py-0.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all flex-shrink-0"
+          >
+            <ChevronRight :class="['transition-transform duration-200', expanded && 'rotate-90']" :size="10" />
+            <span class="text-purple-400">Object</span>
+            <span class="text-neutral-500" v-if="Object.keys(data).length > 0">
+              ({{ Object.keys(data).length }})
+            </span>
+          </button>
+          <Transition name="expand">
+            <div v-if="expanded" class="mt-1">
+              <div v-for="[key, value] in Object.entries(data)" :key="key" class="flex items-start gap-1.5 ml-4 my-0.5">
+                <span class="text-purple-400 flex-shrink-0 whitespace-nowrap">{{ key }}:</span>
+                <div class="min-w-0">
+                  <DataRenderer :data="value" :depth="depth + 1" />
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, withDefaults } from 'vue';
-import { ChevronRight } from 'lucide-vue-next';
+import { ChevronRight, Copy } from 'lucide-vue-next';
 
 const props = withDefaults(defineProps<{
   data: any;
@@ -109,6 +128,23 @@ const getPrimitiveClass = (value: any): string => {
   if (typeof value === 'number') return 'text-orange-400';
   if (typeof value === 'boolean') return 'text-cyan-400';
   return 'text-neutral-200';
+};
+
+const copyToClipboard = async () => {
+  try {
+    const jsonString = JSON.stringify(props.data, null, 2);
+    await navigator.clipboard.writeText(jsonString);
+    // Optional: Show a toast notification here
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = JSON.stringify(props.data, null, 2);
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
 };
 </script>
 
