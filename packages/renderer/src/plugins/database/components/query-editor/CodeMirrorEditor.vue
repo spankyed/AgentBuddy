@@ -70,7 +70,7 @@ const createExtensions = () => [
   oneDark,
   createEditorTheme(),
   syntaxLinterTheme,
-  createSyntaxLinter(),
+  createSyntaxLinter('javascript'),
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       emit('update:modelValue', update.state.doc.toString());

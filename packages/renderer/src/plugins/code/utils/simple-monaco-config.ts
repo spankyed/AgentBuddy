@@ -94,9 +94,47 @@ export function initializeMonaco() {
   monaco.languages.typescript?.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
   monaco.languages.typescript?.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
   
-  // Disable JSON validation
+  // Enable JSON syntax validation
   monaco.languages.json?.jsonDefaults.setDiagnosticsOptions({ 
-    validate: false,
-    schemas: [] 
+    validate: true,
+    schemas: [],
+    allowComments: false,
+    enableSchemaRequest: false
+  })
+  
+  // Configure HTML validation
+  monaco.languages.html?.htmlDefaults.setOptions({
+    format: {
+      tabSize: 2,
+      insertSpaces: true
+    },
+    suggest: {
+      html5: true
+    }
+  })
+  
+  // Configure CSS validation
+  monaco.languages.css?.cssDefaults.setOptions({
+    validate: true,
+    lint: {
+      compatibleVendorPrefixes: 'warning',
+      vendorPrefix: 'warning',
+      duplicateProperties: 'error',
+      emptyRules: 'warning',
+      importStatement: 'ignore',
+      boxModel: 'ignore',
+      universalSelector: 'ignore',
+      zeroUnits: 'warning',
+      fontFaceProperties: 'warning',
+      hexColorLength: 'warning',
+      argumentsInColorFunction: 'error',
+      unknownProperties: 'warning',
+      ieHack: 'ignore',
+      unknownVendorSpecificProperties: 'ignore',
+      propertyIgnoredDueToDisplay: 'warning',
+      important: 'ignore',
+      float: 'ignore',
+      idSelector: 'ignore'
+    }
   })
 }
