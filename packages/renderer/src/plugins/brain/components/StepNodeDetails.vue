@@ -14,16 +14,14 @@
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-neutral-800/50 px-4 py-3">
-        <div class="flex-1">
+        <div class="flex items-center gap-3 flex-1">
           <h3 class="text-sm font-semibold text-neutral-100">{{ node.label }}</h3>
-          <div class="mt-1 flex items-center gap-2">
-            <span :class="statusClasses" class="text-xs">
-              {{ node.status }}
-            </span>
-            <span v-if="node.stepNodeType" class="text-xs text-neutral-400">
-              {{ node.stepNodeType }}
-            </span>
-          </div>
+          <span :class="statusClasses" class="text-xs">
+            {{ node.status }}
+          </span>
+          <span v-if="node.stepNodeType" class="text-xs text-neutral-400">
+            {{ node.stepNodeType }}
+          </span>
         </div>
         <button
           @click="$emit('close')"
