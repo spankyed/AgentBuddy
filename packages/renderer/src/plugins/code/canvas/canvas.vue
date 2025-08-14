@@ -13,6 +13,8 @@
       @content-change="handleContentChange"
       @reorder="handleReorder"
       @reveal-in-explorer="revealInExplorer"
+      @pin-tab="pinTab"
+      @unpin-tab="unpinTab"
       class="flex-1 min-h-0"
     />
 
@@ -250,6 +252,14 @@ const revealInExplorer = (path: string) => {
     type: 'explorer.NAVIGATE_TO_DIRECTORY', 
     path: directory 
   })
+}
+
+const pinTab = (path: string) => {
+  actor.send({ type: 'PIN_TAB', path })
+}
+
+const unpinTab = (path: string) => {
+  actor.send({ type: 'UNPIN_TAB', path })
 }
 
 // Keyboard shortcuts

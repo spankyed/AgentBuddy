@@ -114,6 +114,7 @@ export interface OpenFile {
   externallyModified?: boolean
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
+  isPinned?: boolean
 }
 
 export interface TerminalTab extends OpenFile {
@@ -156,6 +157,9 @@ export type Event =
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
+  // Tab pinning events
+  | { type: 'PIN_TAB'; path: string }
+  | { type: 'UNPIN_TAB'; path: string }
   // Hotkey events
   | HotkeyEvent
   // Quick open events
@@ -474,6 +478,31 @@ const codeState = setup({
         matchingHotkey.handler({ event: hotkeyEvent, context, self, system });
       }
     },
+
+    pinTab: assign(({ event, context }) => {
+      const ev = event as { type: 'PIN_TAB'; path: string }
+      const updatedFiles = context.openFiles.map(file =>
+        file.path === ev.path ? { ...file, isPinned: true } : file
+      )
+      // Sort tabs to put pinned tabs first
+      const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
+      const unpinnedTabs = updatedFiles.filter(tab => !tab.isPinned)
+      return {
+        ...context,
+        openFiles: [...pinnedTabs, ...unpinnedTabs]
+      }
+    }),
+
+    unpinTab: assign(({ event, context }) => {
+      const ev = event as { type: 'UNPIN_TAB'; path: string }
+      const updatedFiles = context.openFiles.map(file =>
+        file.path === ev.path ? { ...file, isPinned: false } : file
+      )
+      return {
+        ...context,
+        openFiles: updatedFiles
+      }
+    }),
   }
 }).createMachine({
   id,
@@ -518,6 +547,13 @@ const codeState = setup({
         // Panel selection
         SELECT_PANEL: {
           actions: ['selectPanel']
+        },
+        // Tab pinning
+        PIN_TAB: {
+          actions: ['pinTab', 'saveTabsAction']
+        },
+        UNPIN_TAB: {
+          actions: ['unpinTab', 'saveTabsAction']
         },
         // Hotkey handling
         HOTKEY_PRESSED: {

@@ -32,6 +32,7 @@ export interface PromptTab {
   externallyModified?: boolean
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
+  isPinned?: boolean
 }
 
 export type Event = 

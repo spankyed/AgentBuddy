@@ -9,6 +9,8 @@
       @close="closeFile"
       @reorder="(fromIndex, toIndex) => $emit('reorder', fromIndex, toIndex)"
       @reveal-in-explorer="(path) => $emit('reveal-in-explorer', path)"
+      @pin-tab="(path) => $emit('pin-tab', path)"
+      @unpin-tab="(path) => $emit('unpin-tab', path)"
     />
 
     <!-- Editor -->
@@ -76,6 +78,8 @@ const emit = defineEmits<{
   contentChange: [path: string, content: string]
   reorder: [fromIndex: number, toIndex: number]
   'reveal-in-explorer': [path: string]
+  'pin-tab': [path: string]
+  'unpin-tab': [path: string]
 }>()
 
 // Helper to check if a file is a terminal

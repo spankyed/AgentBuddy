@@ -2,9 +2,12 @@
  * Shared utilities for managing tabs in the code editor
  */
 
+import { sortTabsByPinned } from './persisted-tabs'
+
 // Base tab interface - all tabs must have at least a path
 interface BaseTab {
   path: string
+  isPinned?: boolean
 }
 
 /**
@@ -25,8 +28,8 @@ export function mergeTabs<T extends BaseTab>(
   // Filter out existing tabs that will be replaced
   const filteredExisting = openFiles.filter(tab => !newTabPaths.has(tab.path))
   
-  // Combine filtered existing with new tabs
-  const mergedTabs = [...filteredExisting, ...newTabs]
+  // Combine filtered existing with new tabs and sort by pinned state
+  const mergedTabs = sortTabsByPinned([...filteredExisting, ...newTabs])
   
   // Determine active file path
   let finalActiveFilePath = activeFilePath
@@ -70,8 +73,8 @@ export function removeTabs<T extends BaseTab>(
 ): { openFiles: T[]; activeFilePath: string | null } {
   const pathsSet = new Set(Array.isArray(pathsToRemove) ? pathsToRemove : [pathsToRemove])
   
-  // Filter out tabs to remove
-  const filteredTabs = openFiles.filter(tab => !pathsSet.has(tab.path))
+  // Filter out tabs to remove, but protect pinned tabs
+  const filteredTabs = openFiles.filter(tab => !pathsSet.has(tab.path) || tab.isPinned)
   
   // Determine new active file if current was removed
   let newActiveFilePath = currentActive
@@ -178,6 +181,7 @@ export function batchUpdateTabs<T extends BaseTab>(
 
 /**
  * Reorders tabs by moving a tab from one position to another
+ * Respects pinned tab boundaries - pinned tabs stay before unpinned tabs
  * @param openFiles - Current array of open tabs
  * @param fromIndex - Index of tab to move
  * @param toIndex - Index to move tab to
@@ -197,7 +201,24 @@ export function reorderTabs<T extends BaseTab>(
   
   const result = [...openFiles]
   const [movedTab] = result.splice(fromIndex, 1)
-  result.splice(toIndex, 0, movedTab)
+  
+  // Find the boundary between pinned and unpinned tabs
+  const pinnedCount = result.filter(tab => tab.isPinned).length
+  
+  // Enforce pinned boundaries:
+  // - Pinned tabs can only be reordered within pinned section (0 to pinnedCount-1)
+  // - Unpinned tabs can only be reordered within unpinned section (pinnedCount to end)
+  let finalToIndex = toIndex
+  
+  if (movedTab.isPinned) {
+    // Moving a pinned tab - constrain to pinned section
+    finalToIndex = Math.min(toIndex, pinnedCount)
+  } else {
+    // Moving an unpinned tab - constrain to unpinned section
+    finalToIndex = Math.max(toIndex, pinnedCount)
+  }
+  
+  result.splice(finalToIndex, 0, movedTab)
   
   return result
 }

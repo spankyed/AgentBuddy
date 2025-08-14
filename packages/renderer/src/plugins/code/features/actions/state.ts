@@ -32,6 +32,7 @@ export interface ActionTab {
   externallyModified?: boolean
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
+  isPinned?: boolean
 }
 
 export type Event = 

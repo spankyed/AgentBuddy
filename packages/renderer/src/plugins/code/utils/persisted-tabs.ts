@@ -10,6 +10,7 @@ interface PersistedTab {
   actionId?: string
   promptId?: string
   order: number // Track original position
+  isPinned?: boolean // Track pinned state
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
@@ -28,7 +29,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             path: tab.path,
             type: 'terminal' as const,
             terminalId: tab.terminalInfo.id,
-            order: index
+            order: index,
+            isPinned: tab.isPinned
           }
         }
         if ('isAction' in tab && tab.isAction) {
@@ -36,7 +38,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             path: tab.path,
             type: 'action' as const,
             actionId: tab.path.replace('action:', ''),
-            order: index
+            order: index,
+            isPinned: tab.isPinned
           }
         }
         if ('isPrompt' in tab && tab.isPrompt) {
@@ -44,13 +47,15 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             path: tab.path,
             type: 'prompt' as const,
             promptId: tab.path.replace('prompt:', ''),
-            order: index
+            order: index,
+            isPinned: tab.isPinned
           }
         }
         return {
           path: tab.path,
           type: 'file' as const,
-          order: index
+          order: index,
+          isPinned: tab.isPinned
         }
       })
     
@@ -96,4 +101,11 @@ export function clearPersistedTabs(): void {
   } catch (error) {
     console.error('Failed to clear persisted tabs:', error)
   }
+}
+
+// Sort tabs to put pinned tabs first, maintaining relative order within each group
+export function sortTabsByPinned<T extends { isPinned?: boolean }>(tabs: T[]): T[] {
+  const pinnedTabs = tabs.filter(tab => tab.isPinned)
+  const unpinnedTabs = tabs.filter(tab => !tab.isPinned)
+  return [...pinnedTabs, ...unpinnedTabs]
 }
