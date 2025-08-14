@@ -157,7 +157,9 @@ export function createFlowNodeSystem(
           });
 
           // Create execution context with cleaner structure
-          const { type, ...eventData } = event;
+          // Handle flow.entry events specially - they have a 'data' property we need to unwrap
+          const { type, ...eventPayload } = event;
+          const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
           
           const eventTrackContext: ExecutionContext = {
             event: {
@@ -244,12 +246,16 @@ export function createFlowNodeSystem(
           const shouldComplete = typedEv.final ||
             (decremented === 0 && !hasNextNode);
           
+          // For flow results: if completing, use the result from the completing step
+          // If no result from this step, keep any existing finalResult
+          const flowOutput = shouldComplete && typedEv.result !== undefined
+            ? typedEv.result
+            : context.finalResult;
+          
           enqueue.assign({
             activeChildrenCount: hasNextNode ? decremented + 1 : decremented,
             eventTrackContexts: updatedEventTrackContexts,
-            finalResult: shouldComplete && typedEv.result !== undefined
-              ? typedEv.result
-              : context.finalResult,
+            finalResult: flowOutput,
           });
           
           
