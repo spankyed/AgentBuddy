@@ -6,6 +6,14 @@ import { logInternal }   from "@/core/utils/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "../../types";
 import { randomId } from "../random-id";
+import { openEnv, makeLmdbAdapter } from "@/persistence/lmdb";
+
+// Initialize LMDB persistence
+const lmdb = openEnv();
+const persistence = makeLmdbAdapter(lmdb);
+
+// Export for hydration
+export { lmdb };
 
 export const createEntity = (t: EARS.Entity) =>
   `${t}-${randomId()}` as EARS.EntityId;
@@ -34,6 +42,8 @@ function makeMutator() {
     (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
+    const idx = b.get(id)!.length - 1;
+    persistence.onPutAttr(kind, id, idx, val);
     logInternal("AA", false, kind, id, val);
   };
 
@@ -45,6 +55,7 @@ function makeMutator() {
     // Ensure entity is in index
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
+    persistence.onPutAttr(kind, id, 0, val);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -73,6 +84,7 @@ function makeMutator() {
           : (val as EARS.AttributeValue);
     }
     
+    persistence.onPutAttr(kind, id, idx, list[idx]);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -81,6 +93,7 @@ function makeMutator() {
     if (!list?.length) return;
     list.splice(idx, 1);
     if (!list.length) bucket(kind).delete(id);
+    persistence.onDropAttr(kind, id, idx);
     logInternal("AR", false, kind, id, null);
   };
 
@@ -131,6 +144,7 @@ export function addRelation(
     info,
   } as EARS.RelationDetail);
   addToIndex(kind, src, tgt, relId);
+  persistence.onAddRelation(relId, kind, src, tgt, info);
   return relId;
 }
 
@@ -152,6 +166,7 @@ export function updateRelation(
   mergeAttr(relId, EARS.AttrKind.RelationDetails, d);
   if (newS || newT)
     updateIndex(k, relId, oS, oT, d.sourceEntity, d.targetEntity);
+  persistence.onUpdateRelation(relId, { src: newS, tgt: newT, info });
 }
 
 export const removeRelation = (relId: EARS.EntityId) => {
@@ -162,6 +177,7 @@ export const removeRelation = (relId: EARS.EntityId) => {
   if (d)
     removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
   dropAttr(relId, EARS.AttrKind.RelationDetails);
+  persistence.onRemoveRelation(relId);
 };
 
 /*─────────────────────────────────────────────────────────────
@@ -279,6 +295,9 @@ export function destroyEntity(id: EARS.EntityId) {
       entityIndex.delete(entType(id));
     }
   }
+  
+  /* persist the deletion */
+  persistence.onDestroyEntity(id);
 }
 
 /*─────────────────────────────────────────────────────────────

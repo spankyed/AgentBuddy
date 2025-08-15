@@ -95,3 +95,19 @@ export function getSnapshotsPath(): string {
     // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
   }
 }
+
+/**
+ * Get the LMDB database directory path
+ */
+export function getLmdbPath(): string {
+  const userDataPath = getUserDataPath()
+  
+  // In production, use the user data directory
+  // In development, use the project directory
+  if (process.env.USER_DATA_PATH) {
+    return path.join(userDataPath, 'ears.lmdb')
+  } else {
+    // Development path - use project structure
+    return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'ears.lmdb')
+  }
+}
