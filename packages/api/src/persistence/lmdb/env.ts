@@ -11,15 +11,18 @@ export type Dbs = {
 
 export function openEnv(customPath?: string): Dbs {
   const base = customPath ?? getLmdbPath();
-  fs.mkdirSync(base, { recursive: true });
-
-  // Root env (opening sub-dbs via name)
+  
+  // Ensure parent directory exists
+  const parentDir = path.dirname(base);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+  
+  // Let LMDB handle everything else
   const root = open({
     path: base,
-    // LMDB will auto-resize as needed; you can set an initial map size if you like:
-    // mapSize: 1024 * 1024 * 1024, // 1 GiB initial
     maxDbs: 8,
-    compression: true,       // built-in dictionary compression for values
+    compression: true,
   });
 
   const entities = root.openDB({ name: 'entities', encoding: 'json' });
