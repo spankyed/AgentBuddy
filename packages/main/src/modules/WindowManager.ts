@@ -32,9 +32,9 @@ class WindowManager implements AppModule {
     
     // Wait for API server to be ready before creating window
     if (this.#apiServer) {
-      console.log('Waiting for API server to be ready before creating window...');
+      console.log('[MAIN] Waiting for API server to be ready before creating window...');
       await this.#apiServer.waitForReady();
-      console.log('API server is ready, creating window...');
+      console.log('[MAIN] API server is ready, creating window...');
     }
     
     await this.restoreOrCreateWindow(true);
