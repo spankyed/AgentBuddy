@@ -16,7 +16,6 @@ export function createWebSocketServer() {
 
   // Log server startup (both to logger and console for main process)
   const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
-  logger.info(message);
   console.log(message);
 
   // Apply tRPC handler
