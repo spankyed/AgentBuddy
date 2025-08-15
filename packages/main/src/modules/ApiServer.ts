@@ -101,7 +101,9 @@ export class ApiServer implements AppModule {
     const apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
       env: getEnvironment(port),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: false,
+      // windowsHide: false
     });
 
     this.processManager.setProcess(apiProcess);
