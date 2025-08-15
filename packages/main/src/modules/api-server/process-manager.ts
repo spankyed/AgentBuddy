@@ -1,5 +1,6 @@
 import { ChildProcess } from 'child_process';
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, app } from 'electron';
+import { API_EVENTS } from './config.js';
 
 export interface ProcessHandlers {
   onReady?: (port: number) => void;
@@ -31,6 +32,20 @@ export class ProcessManager {
     if (this.process.stdout) {
       this.process.stdout.on('data', (data) => {
         const message = data.toString();
+        const isDev = !app.isPackaged;
+        
+        // Only log and broadcast in development mode
+        if (isDev) {
+          // Log to main process console
+          console.log(`[API Server]: ${message.trim()}`);
+          
+          // Broadcast stdout to renderer
+          broadcastEvent(API_EVENTS.LOG, { 
+            type: 'stdout', 
+            message,
+            timestamp: new Date().toISOString()
+          });
+        }
         
         // Check for server ready message (only trigger once)
         if (!this.serverReady && message.includes('WebSocket Server listening')) {
@@ -54,7 +69,21 @@ export class ProcessManager {
     if (this.process.stderr) {
       this.process.stderr.on('data', (data) => {
         const message = data.toString();
-        console.error(`[API Server Error]: ${message}`);
+        const isDev = !app.isPackaged;
+        
+        // Only log and broadcast in development mode
+        if (isDev) {
+          // Log to main process console
+          console.error(`[API Server Error]: ${message.trim()}`);
+          
+          // Broadcast stderr to renderer
+          broadcastEvent(API_EVENTS.LOG, { 
+            type: 'stderr', 
+            message,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         this.handlers.onStderr?.(message);
       });
 

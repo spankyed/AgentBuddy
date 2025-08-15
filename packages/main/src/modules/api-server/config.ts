@@ -18,6 +18,7 @@ export const API_EVENTS = {
   STOPPED: 'api:stopped',
   ERROR: 'api:error',
   RESTARTING: 'api:restarting',
+  LOG: 'api:log',
 } as const;
 
 // Path Configuration
