@@ -91,7 +91,7 @@ export function getSnapshotsPath(): string {
     return path.join(userDataPath, 'snapshots')
   } else {
     // Development path - always use project structure regardless of USER_DATA_PATH
-    return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'snapshots')
+    return path.join(process.cwd(), 'src', 'core', 'data', 'snapshots')
     // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
   }
 }
@@ -108,6 +108,6 @@ export function getLmdbPath(): string {
     return path.join(userDataPath, 'ears.lmdb')
   } else {
     // Development path - use project structure
-    return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'ears.lmdb')
+    return path.join(process.cwd(), 'src', 'core', 'data', 'ears.lmdb')
   }
 }
