@@ -12,7 +12,7 @@ export async function setupBackend(): Promise<void> {
   await hydrateFromLmdb(lmdb);
   
   // Load data snapshot (can override LMDB data if needed)
-  await loadSnapshot();
+  // await loadSnapshot();
   
   // Initialize log capture
   initializeLogCapture();

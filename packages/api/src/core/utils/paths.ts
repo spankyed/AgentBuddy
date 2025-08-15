@@ -105,9 +105,10 @@ export function getLmdbPath(): string {
   // In production, use the user data directory
   // In development, use the project directory
   if (process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'ears.lmdb')
+    return path.join(userDataPath, 'ears-db')
   } else {
-    // Development path - use project structure
-    return path.join(process.cwd(), 'src', 'core', 'data', 'ears.lmdb')
+    // Development path - use project structure relative to API package
+    // When running from packages/api, process.cwd() is already in packages/api
+    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-db')
   }
 }

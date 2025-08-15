@@ -29,9 +29,8 @@ export function makeLmdbAdapter(dbs: Dbs) {
       scheduled = true;
       queueMicrotask(() => {
         scheduled = false;
+        // Use transactionSync on any DB - they share the same environment
         entities.transactionSync(() => {
-          // One write transaction covering all three DBs
-          // (transactionSync applies to the DB it's called on; sub-DBs share the same environment)
           for (const run of queue.splice(0)) run();
         });
       });
