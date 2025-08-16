@@ -3,6 +3,7 @@ import { PartitionPolicy, Partition } from './policy';
 import { LmdbDbs } from '../lmdb/envs';
 import { mergeAttr, putAttr } from '@/core/utils/ears/attribute-storage';
 import { addToIndex } from '@/core/utils/ears/relation-index';
+import type { makeShardedPersistence } from './sharded-router';
 
 function dec(e: { t: string; v: any }): unknown {
   if (!e) return null;
@@ -14,8 +15,9 @@ export async function hydrateSharded(params: {
   envs: Record<Partition, LmdbDbs>;
   policy: PartitionPolicy;
   includeVolatile?: boolean;  // default false - whether to hydrate volatile backup
+  shardedPersistence?: ReturnType<typeof makeShardedPersistence>;  // optional: seed metadata caches
 }) {
-  const { envs, policy, includeVolatile = false } = params;
+  const { envs, policy, includeVolatile = false, shardedPersistence } = params;
   
   // Determine which partitions to hydrate based on policy and override flag
   const partitionsToHydrate: Partition[] = [];
@@ -68,6 +70,11 @@ export async function hydrateSharded(params: {
       // (Relations themselves are deleted, not tombstoned)
       if (tombstoned.has(r.src) || tombstoned.has(r.tgt)) {
         continue;
+      }
+      
+      // Seed relation metadata cache if shardedPersistence is provided
+      if (shardedPersistence) {
+        shardedPersistence.seedRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
       }
       
       putAttr(

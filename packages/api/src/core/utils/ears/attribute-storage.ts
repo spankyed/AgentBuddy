@@ -34,7 +34,7 @@ const policy = makePolicy({
 const persistence = makeShardedPersistence(policy, sinks);
 
 // Export for hydration and testing
-export { envs, policy };
+export { envs, policy, persistence };
 
 // Graceful shutdown function
 export function closePersistence() {
