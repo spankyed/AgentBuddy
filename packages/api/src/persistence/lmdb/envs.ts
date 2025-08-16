@@ -55,3 +55,22 @@ export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbD
     console.error('[LMDB] Error closing sharded environments:', error);
   }
 }
+
+// Backward compatibility exports for single environment (mainly for tests)
+export function openEnv(customPath?: string): LmdbDbs {
+  const getLmdbPath = () => path.join(process.cwd(), 'data', 'ears-db');
+  const basePath = customPath ?? getLmdbPath();
+  return openEnvAt(basePath);
+}
+
+export function closeEnv(dbs: LmdbDbs): void {
+  try {
+    dbs.entities.close();
+    dbs.attrs.close();
+    dbs.relations.close();
+    dbs.root.close();
+    console.log('[LMDB] Environment closed successfully');
+  } catch (error) {
+    console.error('[LMDB] Error closing environment:', error);
+  }
+}

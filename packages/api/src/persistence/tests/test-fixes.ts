@@ -4,7 +4,7 @@
  * Usage: npx tsx src/persistence/tests/test-fixes.ts
  */
 
-import { openEnv } from '../lmdb/env';
+import { openEnv } from '../lmdb/envs';
 import { makeLmdbAdapter } from '../lmdb/adapter';
 
 async function testFixes() {

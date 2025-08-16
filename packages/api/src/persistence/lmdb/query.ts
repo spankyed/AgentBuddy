@@ -1,5 +1,5 @@
 // lmdb-query.ts
-import type { Dbs } from '@/persistence/lmdb/env';
+import type { LmdbDbs } from '@/persistence/lmdb/envs';
 import { isDeepStrictEqual } from 'node:util';
 
 const US = '\x1F';
@@ -73,7 +73,7 @@ export type FindByAttrOpts = {
 };
 
 export class LmdbQuery {
-  constructor(private dbs: Dbs) { }
+  constructor(private dbs: LmdbDbs) { }
 
   // ───────────────────────────── Attributes ─────────────────────────────
 
@@ -284,14 +284,14 @@ export class LmdbQuery {
    * Scan a raw key range from any DB.
    * Example: scan all Tag rows for a specific entity with prefix "Tag␟Doc-1␟".
    */
-  scan(dbName: keyof Dbs, opts: { start: string; end: string; limit?: number; reverse?: boolean }) {
+  scan(dbName: keyof LmdbDbs, opts: { start: string; end: string; limit?: number; reverse?: boolean }) {
     const db = this.dbs[dbName] as any;
     return db.getRange(opts);
   }
 }
 
 /* Example usage
-import { openEnv } from '@/persistence/lmdb/env';
+import { openEnv } from '@/persistence/lmdb/envs';
 import { LmdbQuery } from './lmdb-query';
 
 const dbs = openEnv('/path/to/ears.lmdb');

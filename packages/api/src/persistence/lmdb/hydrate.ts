@@ -1,4 +1,4 @@
-import type { Dbs } from './env';
+import type { LmdbDbs } from './envs';
 import { EARS } from '@/core/types';
 import { mergeAttr, putAttr } from '@/core/utils/ears/attribute-storage';
 import { addToIndex } from '@/core/utils/ears/relation-index';
@@ -9,7 +9,7 @@ function dec(e: { t: string; v: any }): unknown {
   return e.v;
 }
 
-export async function hydrateFromLmdb(dbs: Dbs) {
+export async function hydrateFromLmdb(dbs: LmdbDbs) {
   const { entities, attrs, relations } = dbs;
 
   // First, load all tombstoned entities into a Set for filtering

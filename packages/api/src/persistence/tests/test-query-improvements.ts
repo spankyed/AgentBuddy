@@ -5,7 +5,7 @@
  */
 
 import { LmdbQuery, decodeAttr } from '../lmdb/query';
-import { openEnv } from '../lmdb/env';
+import { openEnv } from '../lmdb/envs';
 import { makeLmdbAdapter } from '../lmdb/adapter';
 import * as path from 'path';
 import * as fs from 'fs';
