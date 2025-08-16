@@ -1,4 +1,4 @@
-import { assign, setup, type ActorRefFrom } from 'xstate'
+import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@/core/breadcrumb'
 import { safeEvents } from '@/core/types/safe-events'
 import type {
@@ -6,6 +6,7 @@ import type {
   DatabaseStartupData,
   OutgoingDatabaseEvents,
   EARS,
+  TNodeEntity,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
@@ -31,6 +32,19 @@ export interface DatabaseContext {
   mode: 'query' | 'transaction';
   isMagicPromptLoading: boolean;
   isRefreshing: boolean;
+  // Trace viewer fields
+  viewMode: 'database' | 'trace';
+  traceFlows: TNodeEntity[];
+  currentFlowId: string | null;
+  flowEvents: TNodeEntity[];
+  expandedNodes: Set<string>;
+  nodeDetails: Map<string, TNodeEntity>;
+  isLoadingTrace: boolean;
+  tracePagination: {
+    offset: number;
+    limit: number;
+    hasMore: boolean;
+  };
 }
 
 type SystemEvent = OutgoingDatabaseEvents | 
@@ -48,6 +62,11 @@ type UIEvent =
   | { type: 'DATABASE.REFRESH_SCHEMA' }
   | { type: 'MODE.TOGGLE' }
   | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
+  | { type: 'VIEW_MODE.TOGGLE' }
+  | { type: 'TRACE.SELECT_FLOW'; flowId: string }
+  | { type: 'TRACE.EXPAND_NODE'; nodeId: string }
+  | { type: 'TRACE.LOAD_MORE' }
+  | { type: 'TRACE.REQUEST_FLOWS' }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -232,6 +251,160 @@ const databaseState = setup({
     setRefreshComplete: assign({
       isRefreshing: false,
     }),
+
+    /* ── trace viewer actions ────────────────────────────── */
+    toggleViewMode: assign(({ context }) => {
+      const newMode = context.viewMode === 'database' ? 'trace' : 'database';
+      if (newMode === 'trace' && context.traceFlows.length === 0) {
+        // Request trace flows when switching to trace mode for the first time
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'GET_TRACE_FLOWS',
+        });
+      }
+      return {
+        viewMode: newMode,
+        isLoadingTrace: newMode === 'trace' && context.traceFlows.length === 0,
+      };
+    }),
+
+    requestTraceFlows: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_TRACE_FLOWS',
+      });
+    },
+
+    setTraceFlows: assign(({ event }) => {
+      const ev = typeOf('TRACE_FLOWS_RESULT', event);
+      
+      // Sort flows to ensure TNode-Root is always at the top
+      const sortedFlows = [...ev.flows].sort((a, b) => {
+        // Check if either flow is the root (TNode-Root or Run Agent Brain)
+        const aIsRoot = a.id === 'TNode-Root' || a.label === 'Run Agent Brain';
+        const bIsRoot = b.id === 'TNode-Root' || b.label === 'Run Agent Brain';
+        
+        // If one is root and the other isn't, root comes first
+        if (aIsRoot && !bIsRoot) return -1;
+        if (!aIsRoot && bIsRoot) return 1;
+        
+        // Otherwise maintain original order (already sorted by backend)
+        return 0;
+      });
+      
+      // Auto-select first flow if we have flows and no current selection
+      if (sortedFlows.length > 0) {
+        const firstFlow = sortedFlows[0];
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'GET_FLOW_EVENTS',
+          flowId: firstFlow.id,
+          offset: 0,
+          limit: 50,
+        });
+        
+        return {
+          traceFlows: sortedFlows,
+          currentFlowId: firstFlow.id,
+          isLoadingTrace: true, // Still loading events for the selected flow
+        };
+      }
+      
+      return {
+        traceFlows: sortedFlows,
+        isLoadingTrace: false,
+      };
+    }),
+
+    selectFlow: assign(({ event }) => {
+      const ev = typeOf('TRACE.SELECT_FLOW', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_FLOW_EVENTS',
+        flowId: ev.flowId,
+        offset: 0,
+        limit: 50,
+      });
+      return {
+        currentFlowId: ev.flowId,
+        flowEvents: [],
+        tracePagination: {
+          offset: 0,
+          limit: 50,
+          hasMore: false,
+        },
+        isLoadingTrace: true,
+      };
+    }),
+
+    setFlowEvents: assign(({ event, context }) => {
+      const ev = typeOf('FLOW_EVENTS_RESULT', event);
+      return {
+        flowEvents: context.tracePagination.offset > 0 
+          ? [...context.flowEvents, ...ev.events]
+          : ev.events,
+        tracePagination: {
+          ...context.tracePagination,
+          hasMore: ev.hasMore,
+        },
+        isLoadingTrace: false,
+      };
+    }),
+
+    loadMoreEvents: enqueueActions(({ context, enqueue }) => {
+      if (!context.currentFlowId || !context.tracePagination.hasMore) return;
+      
+      const newOffset = context.tracePagination.offset + context.tracePagination.limit;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_FLOW_EVENTS',
+        flowId: context.currentFlowId,
+        offset: newOffset,
+        limit: context.tracePagination.limit,
+      });
+      enqueue.assign({
+        tracePagination: {
+          ...context.tracePagination,
+          offset: newOffset,
+        },
+        isLoadingTrace: true,
+      });
+    }),
+
+    expandNode: enqueueActions(({ event, context, enqueue }) => {
+      const ev = typeOf('TRACE.EXPAND_NODE', event);
+      const newExpanded = new Set(context.expandedNodes);
+      
+      if (newExpanded.has(ev.nodeId)) {
+        newExpanded.delete(ev.nodeId);
+      } else {
+        newExpanded.add(ev.nodeId);
+        // Request node details if not already loaded
+        if (!context.nodeDetails.has(ev.nodeId)) {
+          trpc.bus.send.mutate({
+            systemId: id,
+            type: 'GET_NODE_DETAILS',
+            nodeId: ev.nodeId,
+          });
+        }
+      }
+      
+      enqueue.assign({
+        expandedNodes: newExpanded,
+      });
+    }),
+
+    setNodeDetails: assign(({ event, context }) => {
+      const ev = typeOf('NODE_DETAILS_RESULT', event);
+      if (ev.details) {
+        const newDetails = new Map(context.nodeDetails);
+        newDetails.set(ev.nodeId, ev.details);
+        return {
+          nodeDetails: newDetails,
+        };
+      }
+      return {};
+    }),
   },
 }).createMachine({
   id,
@@ -252,6 +425,19 @@ const databaseState = setup({
     mode: 'query',
     isMagicPromptLoading: false,
     isRefreshing: false,
+    // Trace viewer fields
+    viewMode: 'database',
+    traceFlows: [],
+    currentFlowId: null,
+    flowEvents: [],
+    expandedNodes: new Set(),
+    nodeDetails: new Map(),
+    isLoadingTrace: false,
+    tracePagination: {
+      offset: 0,
+      limit: 50,
+      hasMore: false,
+    },
   },
   on: {
     DATABASE_REFRESH: { actions: ['setDatabaseRefresh', 'setRefreshComplete'] },
@@ -262,6 +448,10 @@ const databaseState = setup({
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
     MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
+    // Trace viewer events
+    TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
+    FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
+    NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
   },
   states: {
     explorer: {
@@ -291,6 +481,21 @@ const databaseState = setup({
         },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],
+        },
+        'VIEW_MODE.TOGGLE': {
+          actions: ['toggleViewMode', 'requestTraceFlows'],
+        },
+        'TRACE.SELECT_FLOW': {
+          actions: 'selectFlow',
+        },
+        'TRACE.EXPAND_NODE': {
+          actions: 'expandNode',
+        },
+        'TRACE.LOAD_MORE': {
+          actions: 'loadMoreEvents',
+        },
+        'TRACE.REQUEST_FLOWS': {
+          actions: 'requestTraceFlows',
         },
       },
     },

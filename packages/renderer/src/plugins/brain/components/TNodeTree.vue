@@ -4,12 +4,12 @@
     <div class="flex-1 overflow-x-hidden overflow-y-auto">
       <div v-if="tnodeTree && tnodeTree.length > 0" class="p-4">
         <div class="space-y-1">
-          <TNodeTreeItem
+          <TNodeListItem
             v-for="node in tnodeTree"
             :key="node.id"
-            :tnode="node"
+            :node="node"
             :depth="0"
-            @flow-navigate="$emit('flow-navigate', $event)"
+            @open-flow="$emit('flow-navigate', $event)"
           />
         </div>
       </div>
@@ -35,7 +35,7 @@ export default {
 
 <script setup lang="ts">
 import type { TrackEntity } from '@app/api'
-import TNodeTreeItem from './TNodeTreeItem.vue';
+import TNodeListItem from '@/components/shared/TNodeListItem.vue';
 
 interface Props {
   tnodeTree?: TrackEntity[];

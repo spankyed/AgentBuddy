@@ -1,5 +1,7 @@
 <template>
-  <div class="flex w-full h-full overflow-hidden bg-neutral-800">
+  <!-- Show Trace Viewer or Database UI based on viewMode -->
+  <TraceHistoryViewer v-if="viewMode === 'trace'" />
+  <div v-else class="flex w-full h-full overflow-hidden bg-neutral-800">
     <!-- Schema Panel -->
     <div 
       ref="schemaPanel"
@@ -46,10 +48,17 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
+import { useSelector } from '@xstate/vue'
+import { applicationState } from '@/main'
+import { id as databaseId, type DatabaseState } from './state'
 
 import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
+import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
+
+const databaseActor: DatabaseState = applicationState.system.get(databaseId)
+const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
 
 // Panel sizing
 const schemaPanelWidth = ref(15)

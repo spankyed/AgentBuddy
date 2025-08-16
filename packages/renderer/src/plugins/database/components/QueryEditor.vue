@@ -12,6 +12,7 @@
       @magic-prompt="showMagicPrompt = true"
       @save-snapshot="handleSaveSnapshot"
       @toggle-mode="handleToggleMode"
+      @view-trace="handleViewTrace"
     />
     
     <div class="flex-1 overflow-hidden">
@@ -138,6 +139,12 @@ function handleSaveSnapshot() {
 function handleToggleMode() {
   actor.send({
     type: 'MODE.TOGGLE'
+  });
+}
+
+function handleViewTrace() {
+  actor.send({
+    type: 'VIEW_MODE.TOGGLE'
   });
 }
 </script> 

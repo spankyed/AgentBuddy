@@ -22,6 +22,9 @@ async function testQueryImprovements() {
 
   const dbs = openEnv(tempDir);
   const adapter = makeLmdbAdapter(dbs);
+  if (!adapter) {
+    throw new Error('Failed to create LMDB adapter');
+  }
   const query = new LmdbQuery(dbs);
 
   // Test 1: Corrupt index handling
@@ -32,8 +35,8 @@ async function testQueryImprovements() {
   dbs.attrs.put(corruptKey, { t: 'string', v: 'corrupt' });
   
   // Also add valid attributes
-  adapter.onPutAttrArray('TestKind', 'Entity-123', ['valid1', 'valid2', 'valid3']);
-  adapter.close(); // flush
+  adapter.onPutAttrArray?.('TestKind', 'Entity-123', ['valid1', 'valid2', 'valid3']);
+  adapter?.close?.(); // flush
   
   const arr = query.getAttrArray('TestKind', 'Entity-123');
   console.log('  Array with corrupt index:', arr);
@@ -44,8 +47,8 @@ async function testQueryImprovements() {
   
   const now = new Date();
   adapter.onCreateEntity('Entity-456', 'TestEntity');
-  adapter.onPutAttrArray('CreatedAt', 'Entity-456', [now]);
-  adapter.close(); // flush
+  adapter.onPutAttrArray?.('CreatedAt', 'Entity-456', [now]);
+  adapter?.close?.(); // flush
   
   // Test Date comparison
   const foundByDate = query.findEntitiesByAttr('CreatedAt', { 
@@ -67,8 +70,8 @@ async function testQueryImprovements() {
   
   const complexObj = { nested: { value: 42 }, arr: [1, 2, 3] };
   adapter.onCreateEntity('Entity-789', 'TestEntity');
-  adapter.onPutAttrArray('Config', 'Entity-789', [complexObj]);
-  adapter.close(); // flush
+  adapter.onPutAttrArray?.('Config', 'Entity-789', [complexObj]);
+  adapter?.close?.(); // flush
   
   // Test without deep equality (should not find)
   const foundShallow = query.findEntitiesByAttr('Config', {
@@ -97,7 +100,7 @@ async function testQueryImprovements() {
   
   // Delete Doc-2
   adapter.onDestroyEntity('Doc-2');
-  adapter.close(); // flush
+  adapter?.close?.(); // flush
   
   // Get neighbors without filtering (includes deleted)
   const allNeighbors = query.neighbors('Doc-1', { 
@@ -120,9 +123,9 @@ async function testQueryImprovements() {
   // Create many entities
   for (let i = 0; i < 10; i++) {
     adapter.onCreateEntity(`Page-${i}`, 'Page');
-    adapter.onPutAttrArray('Index', `Page-${i}`, [i]);
+    adapter.onPutAttrArray?.('Index', `Page-${i}`, [i]);
   }
-  adapter.close(); // flush
+  adapter?.close?.(); // flush
   
   // Test with limit
   const limited = [...query.entitiesHavingAttr('Index', 3)];
@@ -140,8 +143,8 @@ async function testQueryImprovements() {
   console.log('\n6️⃣ Testing helper utilities...');
   
   adapter.onCreateEntity('Helper-1', 'Helper');
-  adapter.onPutAttrArray('Values', 'Helper-1', [1, 2, 3, 4, 5]);
-  adapter.close(); // flush
+  adapter.onPutAttrArray?.('Values', 'Helper-1', [1, 2, 3, 4, 5]);
+  adapter?.close?.(); // flush
   
   const count = query.getAttrCount('Values', 'Helper-1');
   console.log('  Attribute count:', count);
@@ -163,9 +166,7 @@ async function testQueryImprovements() {
   console.log('─'.repeat(50));
   
   // Cleanup
-  if (dbs.env) {
-    dbs.env.close();
-  }
+  // Close the databases
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
