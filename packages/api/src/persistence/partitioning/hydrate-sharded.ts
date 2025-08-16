@@ -65,9 +65,8 @@ export async function hydrateSharded(params: {
       const relIdStr = String(relId);
       
       // Skip relations that involve tombstoned entities
-      if (tombstoned.has(relIdStr) || 
-          tombstoned.has(r.src) || 
-          tombstoned.has(r.tgt)) {
+      // (Relations themselves are deleted, not tombstoned)
+      if (tombstoned.has(r.src) || tombstoned.has(r.tgt)) {
         continue;
       }
       

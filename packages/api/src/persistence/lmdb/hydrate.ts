@@ -43,13 +43,9 @@ export async function hydrateFromLmdb(dbs: Dbs) {
   for (const { key: relId, value: r } of relations.getRange()) {
     const relIdStr = String(relId);
     
-    // Skip relations that:
-    // - Are themselves tombstoned
-    // - Have a tombstoned source entity
-    // - Have a tombstoned target entity
-    if (tombstoned.has(relIdStr) || 
-        tombstoned.has(r.src) || 
-        tombstoned.has(r.tgt)) {
+    // Skip relations that have tombstoned source or target entities
+    // (Relations themselves are deleted, not tombstoned)
+    if (tombstoned.has(r.src) || tombstoned.has(r.tgt)) {
       continue;
     }
     
