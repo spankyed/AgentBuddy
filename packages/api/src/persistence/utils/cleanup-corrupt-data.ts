@@ -2,7 +2,7 @@
  * Script to clean up corrupt relation data from LMDB
  * This removes relations with src="undefined", tgt="undefined", etc.
  * 
- * Usage: npx tsx src/persistence/partitioning/cleanup-corrupt-data.ts
+ * Usage: npx tsx src/persistence/utils/cleanup-corrupt-data.ts
  */
 
 import { envs } from '@/core/utils/ears/attribute-storage';

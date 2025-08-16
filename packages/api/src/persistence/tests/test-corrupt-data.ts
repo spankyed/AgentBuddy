@@ -1,7 +1,7 @@
 /**
  * Test script to verify handling of corrupt data during hydration
  * 
- * Usage: npx tsx src/persistence/partitioning/test-corrupt-data.ts
+ * Usage: npx tsx src/persistence/tests/test-corrupt-data.ts
  */
 
 import { EARS } from '@/core/types';

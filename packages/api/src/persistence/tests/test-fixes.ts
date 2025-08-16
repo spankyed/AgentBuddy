@@ -1,11 +1,11 @@
 /**
  * Test script to verify LMDB adapter fixes
  * 
- * Usage: npx tsx src/persistence/lmdb/test-fixes.ts
+ * Usage: npx tsx src/persistence/tests/test-fixes.ts
  */
 
-import { openEnv } from './env';
-import { makeLmdbAdapter } from './adapter';
+import { openEnv } from '../lmdb/env';
+import { makeLmdbAdapter } from '../lmdb/adapter';
 
 async function testFixes() {
   console.log('\n🧪 Testing LMDB Adapter Fixes\n');

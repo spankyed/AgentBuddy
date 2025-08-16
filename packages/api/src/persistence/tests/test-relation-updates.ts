@@ -1,13 +1,13 @@
 /**
  * Test script to verify relation update scenarios with partial patches
  * 
- * Usage: npx tsx src/persistence/partitioning/test-relation-updates.ts
+ * Usage: npx tsx src/persistence/tests/test-relation-updates.ts
  */
 
 import { EARS } from '@/core/types';
 import { createEntity, putAttr, addRelation, updateRelation } from '@/core/utils/ears/attribute-storage';
 import { envs, policy, persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
-import { hydrateSharded } from './hydrate-sharded';
+import { hydrateSharded } from '../partitioning/hydrate-sharded';
 
 async function testRelationUpdates() {
   console.log('\n🧪 Testing Relation Updates with Partial Patches\n');

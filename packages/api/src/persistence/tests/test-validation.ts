@@ -1,7 +1,7 @@
 /**
  * Test script to verify validation in sharded router
  * 
- * Usage: npx tsx src/persistence/partitioning/test-validation.ts
+ * Usage: npx tsx src/persistence/tests/test-validation.ts
  */
 
 import { EARS } from '@/core/types';

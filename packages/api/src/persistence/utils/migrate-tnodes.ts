@@ -2,7 +2,7 @@
  * Migration script to move TNode entities from primary to volatile backup
  * and clean up the primary database.
  * 
- * Usage: npx tsx src/persistence/partitioning/migrate-tnodes.ts
+ * Usage: npx tsx src/persistence/utils/migrate-tnodes.ts
  */
 
 import { open, type Database } from 'lmdb';

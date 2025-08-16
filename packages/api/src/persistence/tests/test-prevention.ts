@@ -1,7 +1,7 @@
 /**
  * Test that the LMDB adapter prevents storing invalid data
  * 
- * Usage: npx tsx src/persistence/partitioning/test-prevention.ts
+ * Usage: npx tsx src/persistence/tests/test-prevention.ts
  */
 
 import { EARS } from '@/core/types';

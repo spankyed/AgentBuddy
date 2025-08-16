@@ -1,7 +1,7 @@
 /**
  * Diagnostic test to understand how "undefined" string values get into LMDB
  * 
- * Usage: npx tsx src/persistence/partitioning/test-diagnose-undefined.ts
+ * Usage: npx tsx src/persistence/tests/test-diagnose-undefined.ts
  */
 
 import { EARS } from '@/core/types';

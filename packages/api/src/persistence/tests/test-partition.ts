@@ -1,13 +1,13 @@
 /**
  * Test script to demonstrate partitioned persistence
  * 
- * Usage: npx tsx src/persistence/partitioning/test-partition.ts
+ * Usage: npx tsx src/persistence/tests/test-partition.ts
  */
 
 import { EARS } from '@/core/types';
 import { createEntity, addAttr, addRelation, destroyEntity, getAllEntities } from '@/core/utils/ears/attribute-storage';
 import { envs, policy, closePersistence } from '@/core/utils/ears/attribute-storage';
-import { hydrateSharded } from './hydrate-sharded';
+import { hydrateSharded } from '../partitioning/hydrate-sharded';
 
 async function testPartitioning() {
   console.log('\n🧪 Testing Partitioned Persistence\n');

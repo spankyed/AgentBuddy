@@ -1,7 +1,7 @@
 /**
  * Test script to verify edge cases in sharded router
  * 
- * Usage: npx tsx src/persistence/partitioning/test-edge-cases.ts
+ * Usage: npx tsx src/persistence/tests/test-edge-cases.ts
  */
 
 import { EARS } from '@/core/types';
