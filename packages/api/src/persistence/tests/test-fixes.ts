@@ -4,14 +4,17 @@
  * Usage: npx tsx src/persistence/tests/test-fixes.ts
  */
 
-import { openEnv } from '../lmdb/envs';
+import { openEnvAt } from '../lmdb/envs';
 import { makeLmdbAdapter } from '../lmdb/adapter';
+import * as path from 'path';
 
 async function testFixes() {
   console.log('\n🧪 Testing LMDB Adapter Fixes\n');
   console.log('─'.repeat(50));
   
-  const dbs = openEnv();
+  // Use the default path for testing
+  const defaultPath = path.join(process.cwd(), 'data', 'ears-db');
+  const dbs = openEnvAt(defaultPath);
   const adapter = makeLmdbAdapter(dbs);
   
   // Test 1: Strict onPutAttr requirement

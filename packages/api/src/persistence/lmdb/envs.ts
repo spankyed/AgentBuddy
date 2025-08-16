@@ -9,7 +9,7 @@ export type LmdbDbs = {
   root: RootDatabase;
 };
 
-function openEnvAt(basePath: string): LmdbDbs {
+export function openEnvAt(basePath: string): LmdbDbs {
   // Ensure parent directory exists
   const parentDir = path.dirname(basePath);
   if (!fs.existsSync(parentDir)) {
@@ -54,13 +54,6 @@ export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbD
   } catch (error) {
     console.error('[LMDB] Error closing sharded environments:', error);
   }
-}
-
-// Backward compatibility exports for single environment (mainly for tests)
-export function openEnv(customPath?: string): LmdbDbs {
-  const getLmdbPath = () => path.join(process.cwd(), 'data', 'ears-db');
-  const basePath = customPath ?? getLmdbPath();
-  return openEnvAt(basePath);
 }
 
 export function closeEnv(dbs: LmdbDbs): void {

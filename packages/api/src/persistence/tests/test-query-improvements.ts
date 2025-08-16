@@ -5,7 +5,7 @@
  */
 
 import { LmdbQuery, decodeAttr } from '../lmdb/query';
-import { openEnv } from '../lmdb/envs';
+import { openEnvAt } from '../lmdb/envs';
 import { makeLmdbAdapter } from '../lmdb/adapter';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -20,7 +20,7 @@ async function testQueryImprovements() {
   console.log('\n🧪 Testing LMDB Query Improvements\n');
   console.log('─'.repeat(50));
 
-  const dbs = openEnv(tempDir);
+  const dbs = openEnvAt(tempDir);
   const adapter = makeLmdbAdapter(dbs);
   if (!adapter) {
     throw new Error('Failed to create LMDB adapter');

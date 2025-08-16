@@ -291,10 +291,10 @@ export class LmdbQuery {
 }
 
 /* Example usage
-import { openEnv } from '@/persistence/lmdb/envs';
+import { openEnvAt } from '@/persistence/lmdb/envs';
 import { LmdbQuery } from './lmdb-query';
 
-const dbs = openEnv('/path/to/ears.lmdb');
+const dbs = openEnvAt('/path/to/ears.lmdb');
 const q = new LmdbQuery(dbs);
 
 // 1) Single attr
