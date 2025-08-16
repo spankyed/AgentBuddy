@@ -1,4 +1,5 @@
 import type { Dbs } from './env';
+import type { PersistenceSink } from '../partitioning/base-sink';
 
 type Encoded = { t: string; v: any };
 
@@ -35,7 +36,7 @@ const entTypeOf = (id: string) => id.split('-')[0] ?? id;
 let errorCount = 0;
 let lastError: { op: string; key?: string; error: any } | null = null;
 
-export function makeLmdbAdapter(dbs: Dbs) {
+export function makeLmdbAdapter(dbs: Dbs): PersistenceSink {
   const { entities, attrs, relations } = dbs;
 
   // Keyed buffers for coalescing writes
@@ -201,6 +202,11 @@ export function makeLmdbAdapter(dbs: Dbs) {
         ensureBuf.add(entityId);
         scheduleFlush();
       }
+    },
+
+    onPutAttrArray(kind: string, entityId: string, values: unknown[]) {
+      if (closed) return;
+      bufferArrayRewrite(kind, entityId, values);
     },
 
     onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]) {

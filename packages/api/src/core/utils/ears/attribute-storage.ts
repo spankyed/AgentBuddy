@@ -6,19 +6,40 @@ import { logInternal }   from "@/core/utils/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "../../types";
 import { randomId } from "../random-id";
-import { openEnv, makeLmdbAdapter, closeEnv } from "@/persistence/lmdb";
+import { getLmdbPath, getVolatileLmdbPath } from "@/core/utils/paths";
+import { openShardedEnvs, closeShardedEnvs } from "@/persistence/lmdb/envs";
+import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
+import { makePolicy } from "@/persistence/partitioning/policy";
+import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
 
-// Initialize LMDB persistence
-const lmdb = openEnv();
-const persistence = makeLmdbAdapter(lmdb);
+// 1) Open two environments
+const envs = openShardedEnvs({
+  primary: getLmdbPath(),
+  volatileBackup: getVolatileLmdbPath(),
+});
 
-// Export for hydration and shutdown
-export { lmdb };
+// 2) Create base sinks
+const sinks = {
+  primary: makeLmdbAdapter(envs.primary),
+  volatileBackup: makeLmdbAdapter(envs.volatileBackup),
+};
+
+// 3) Policy: exclude TNode (generic & maintainable)
+const policy = makePolicy({
+  excludedEntityTypes: new Set([EARS.Entity.TNode]),
+  hydratePartitions: new Set(['primary']), // do NOT hydrate backup by default
+});
+
+// 4) Sharded router
+const persistence = makeShardedPersistence(policy, sinks);
+
+// Export for hydration and testing
+export { envs, policy };
 
 // Graceful shutdown function
 export function closePersistence() {
-  persistence.close();
-  closeEnv(lmdb);
+  persistence.close?.();
+  closeShardedEnvs(envs);
 }
 
 export const createEntity = (t: EARS.Entity) =>
@@ -48,9 +69,9 @@ function makeMutator() {
     (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
-    const idx = b.get(id)!.length - 1;
-    // Pass the entire array for consistency
-    persistence.onPutAttr(kind, id, idx, val, b.get(id));
+    const list = b.get(id)!;
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AA", false, kind, id, val);
   };
 
@@ -62,8 +83,8 @@ function makeMutator() {
     // Ensure entity is in index
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
-    // Pass the entire array for consistency
-    persistence.onPutAttr(kind, id, 0, val, [val]);
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, [val]);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -92,8 +113,8 @@ function makeMutator() {
           : (val as EARS.AttributeValue);
     }
     
-    // Pass the entire array for consistency
-    persistence.onPutAttr(kind, id, idx, list[idx], list);
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -101,9 +122,14 @@ function makeMutator() {
     const list = bucket(kind).get(id);
     if (!list?.length) return;
     list.splice(idx, 1);
-    if (!list.length) bucket(kind).delete(id);
-    // Pass the entire array after drop for consistency
-    persistence.onDropAttr(kind, id, idx, list);
+    if (!list.length) {
+      bucket(kind).delete(id);
+      // Empty array - remove from persistence
+      persistence.onDropAttr(kind, id, idx, []);
+    } else {
+      // Use array rewrite for consistency
+      persistence.onPutAttrArray?.(kind, id, list);
+    }
     logInternal("AR", false, kind, id, null);
   };
 

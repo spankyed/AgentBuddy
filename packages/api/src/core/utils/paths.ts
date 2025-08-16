@@ -112,3 +112,19 @@ export function getLmdbPath(): string {
     return path.join(process.cwd(), 'src', 'core', 'data', 'ears-db')
   }
 }
+
+/**
+ * Get the volatile LMDB database directory path for excluded entities
+ */
+export function getVolatileLmdbPath(): string {
+  const userDataPath = getUserDataPath()
+  
+  // In production, use the user data directory
+  // In development, use the project directory
+  if (process.env.USER_DATA_PATH) {
+    return path.join(userDataPath, 'ears-trace')
+  } else {
+    // Development path - use project structure relative to API package
+    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-trace')
+  }
+}
