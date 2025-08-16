@@ -1,20 +1,21 @@
 <template>
   <!-- TNode Tree Display -->
   <div class="h-full agent-panel bg-neutral-900/50 backdrop-blur-sm">
-    <div v-if="normalizedTree && normalizedTree.rootIds.length > 0" class="tnode-tree">
+    <div v-if="tNodeTree && tNodeTree.length > 0" class="tnode-tree">
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
           <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
-          <span class="text-xs text-neutral-500">{{ normalizedTree.rootIds.length }} event{{ normalizedTree.rootIds.length !== 1 ? 's' : '' }}</span>
+          <span class="text-xs text-neutral-500">{{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}</span>
         </div>
       </div>
       <div class="flex-1 p-4">
-        <div class="space-y-2">
-          <TnodeItem
-            v-for="rootId in normalizedTree.rootIds"
-            :key="rootId"
-            :node-id="rootId"
-            :normalized-tree="normalizedTree"
+        <div class="space-y-1">
+          <TNodeListItem
+            v-for="node in tNodeTree"
+            :key="node.id"
+            :node="node"
+            :depth="0"
+            @open-flow="$emit('flow-navigate', $event)"
           />
         </div>
       </div>
@@ -34,13 +35,36 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
-import TnodeItem from './tnode-item.vue'
+import TNodeListItem from '@/components/shared/TNodeListItem.vue'
+import type { TrackEntity } from '@app/api'
 
 const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
+
+// Convert normalized tree back to TrackEntity[] format for TNodeListItem
+const tNodeTree = computed((): TrackEntity[] => {
+  if (!normalizedTree.value) return [];
+  
+  function buildNode(id: string): TrackEntity {
+    const node = normalizedTree.value!.byId[id];
+    const childIds = normalizedTree.value!.childrenById[id] || [];
+    
+    return {
+      ...node,
+      children: childIds.map(childId => buildNode(childId))
+    } as TrackEntity;
+  }
+
+  return normalizedTree.value.rootIds.map(id => buildNode(id));
+});
+
+defineEmits<{
+  'flow-navigate': [flowId: string];
+}>();
 </script>
 
 <style lang="scss" scoped>
