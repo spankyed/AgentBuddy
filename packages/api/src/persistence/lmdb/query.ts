@@ -9,6 +9,16 @@ export type EntityMeta = { type: string; createdAt: number; deletedAt?: number }
 export type RelationRecord = { kind: string; src: string; tgt: string; info?: any; createdAt: number };
 
 /**
+ * Validate that a string is safe for use as a key component.
+ * Prevents adversarial prefixes with US character (\x1F) validation.
+ */
+function assertKeySafe(s: string, label: string) {
+  if (typeof s !== 'string' || s.length === 0 || s.includes(US)) {
+    throw new Error(`[Query] Invalid ${label}: must be non-empty string without \\x1F character`);
+  }
+}
+
+/**
  * Decode attribute record to its runtime value.
  * Handles Date deserialization and blob objects (stored as JSON).
  * Note: blob handling assumes JSON encoding stores objects like {b64:"..."}.
@@ -37,13 +47,21 @@ function toIndex(key: string, prefix: string): number | null {
 }
 
 /**
- * Smart equality comparison with support for Dates and optional deep equality.
+ * Smart equality comparison with support for Dates, ISO strings, and optional deep equality.
  */
 function eq(a: unknown, b: unknown, deep = false): boolean {
   // Handle Date comparisons
   if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
   if (a instanceof Date && typeof b === 'number') return a.getTime() === b;
   if (b instanceof Date && typeof a === 'number') return b.getTime() === a;
+  
+  // Handle Date vs ISO string comparisons
+  if (a instanceof Date && typeof b === 'string') {
+    return a.toISOString() === b || a.getTime() === Date.parse(b);
+  }
+  if (b instanceof Date && typeof a === 'string') {
+    return b.toISOString() === a || b.getTime() === Date.parse(a);
+  }
   
   // Optional deep equality for objects/arrays
   if (deep && a && b && typeof a === 'object' && typeof b === 'object') {
@@ -67,6 +85,7 @@ function scanPrefix<T = any>(db: any, p: string) {
   return db.getRange({ start: p, end: p + '\xFF' }) as Iterable<{ key: string | Buffer; value: T }>;
 }
 
+
 export type FindByAttrOpts = {
   /** optional: only return entities of this type (uses the entities DB) */
   entityType?: string;
@@ -87,17 +106,23 @@ export class LmdbQuery {
 
   /** Get a single attribute value by (kind, entityId, idx) */
   getAttr(kind: string, entityId: string, idx = 0): unknown {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
     const rec = this.dbs.attrs.get(attrKey(kind, entityId, idx)) as AttrRecord | undefined;
     return decodeAttr(rec ?? null);
   }
 
   /** Get the first attribute value for (kind, entityId) - fast path without range scan */
   getFirstAttr(kind: string, entityId: string): unknown {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
     return this.getAttr(kind, entityId, 0);
   }
 
   /** Count attributes without materializing the array */
   getAttrCount(kind: string, entityId: string): number {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
     const { start, end } = attrPrefix(kind, entityId);
     let count = 0;
     for (const _ of this.dbs.attrs.getRange({ start, end })) {
@@ -106,8 +131,24 @@ export class LmdbQuery {
     return count;
   }
 
+  /** Get logical array length using reverse scan (more semantically correct than row count) */
+  getAttrLength(kind: string, entityId: string): number {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
+    const { prefix, start, end } = attrPrefix(kind, entityId);
+    // One reverse scan to find the last row
+    const it = this.dbs.attrs.getRange({ start, end, reverse: true, limit: 1 }) as Iterable<{ key: string | Buffer }>;
+    const first = it[Symbol.iterator]().next();
+    if (first.done) return 0;
+    const lastKey = String(first.value.key);
+    const idx = toIndex(lastKey, prefix);
+    return idx === null ? 0 : idx + 1;
+  }
+
   /** Get the entire attribute array for (kind, entityId) */
   getAttrArray(kind: string, entityId: string): unknown[] {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
     const { prefix, start, end } = attrPrefix(kind, entityId);
     const out: unknown[] = [];
     for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
@@ -122,6 +163,8 @@ export class LmdbQuery {
 
   /** Iterate all (idx, value) pairs for (kind, entityId) without building an array */
   *iterAttr(kind: string, entityId: string): Iterable<{ idx: number; value: unknown }> {
+    assertKeySafe(kind, 'kind');
+    assertKeySafe(entityId, 'entityId');
     const { prefix, start, end } = attrPrefix(kind, entityId);
     for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
       const idx = toIndex(String(key), prefix);
@@ -132,6 +175,7 @@ export class LmdbQuery {
 
   /** List all entityIds that have *any* value for the given kind (across all entities) */
   *entitiesHavingAttr(kind: string, limit = Infinity): Iterable<string> {
+    assertKeySafe(kind, 'kind');
     const seen = new Set<string>();
     let count = 0;
     const start = `${kind}${US}`, end = start + '\xFF';
@@ -157,6 +201,7 @@ export class LmdbQuery {
    * Note: O(#rows for kind) - consider secondary indexes for hot queries.
    */
   findEntitiesByAttr(kind: string, opts: FindByAttrOpts = {}): string[] {
+    assertKeySafe(kind, 'kind');
     const { entityType, equals, deepEquals = false, predicate, limit = Infinity } = opts;
     const out: string[] = [];
     const seen = new Set<string>();
@@ -202,6 +247,49 @@ export class LmdbQuery {
       }
     }
     return out;
+  }
+
+  /**
+   * Streaming version of findEntitiesByAttr for memory efficiency and early exit.
+   */
+  *findEntitiesByAttrIter(kind: string, opts: FindByAttrOpts = {}): Iterable<string> {
+    assertKeySafe(kind, 'kind');
+    const { entityType, equals, deepEquals = false, predicate, limit = Infinity } = opts;
+    const seen = new Set<string>();
+    const typeCache = new Map<string, string | undefined>();
+    const start = `${kind}${US}`, end = start + '\xFF';
+    let count = 0;
+
+    for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
+      if (count >= limit) break;
+      const parts = String(key).split(US);
+      const entityId = parts[1];
+      if (seen.has(entityId)) continue;
+
+      const idx = Number(parts[2]);
+      if (!Number.isFinite(idx) || idx < 0) continue;
+
+      const val = decodeAttr(value as AttrRecord);
+
+      // Deleted filter even if entityType undefined
+      let t = typeCache.get(entityId);
+      if (t === undefined) {
+        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
+        if (meta?.deletedAt) { typeCache.set(entityId, null as any); continue; }
+        t = meta?.type;
+        typeCache.set(entityId, t);
+      }
+      if (entityType && t !== entityType) continue;
+
+      const pass = equals !== undefined ? eq(val, equals, deepEquals)
+                 : predicate ? !!predicate(val, idx, entityId)
+                 : true;
+      if (!pass) continue;
+
+      seen.add(entityId);
+      yield entityId;
+      count++;
+    }
   }
 
   // ───────────────────────────── Entities ─────────────────────────────
@@ -268,20 +356,41 @@ export class LmdbQuery {
     return [...set];
   }
 
+  /**
+   * Neighbors with edge metadata: returns edge information along with neighbor IDs.
+   * Useful for graph operations needing relationship details.
+   */
+  neighborsWithEdges(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both'; skipDeleted?: boolean }): Array<{ from: string; to: string; kind: string; info?: any }> {
+    const kind = opts?.kind;
+    const dir = opts?.direction ?? 'out';
+    const skipDeleted = opts?.skipDeleted ?? true;
+    const out: Array<{ from: string; to: string; kind: string; info?: any }> = [];
+
+    if (dir === 'out' || dir === 'both') {
+      for (const { rel } of this.relations({ kind, src: id, skipDeleted })) {
+        out.push({ from: rel.src, to: rel.tgt, kind: rel.kind, info: rel.info });
+      }
+    }
+    if (dir === 'in' || dir === 'both') {
+      for (const { rel } of this.relations({ kind, tgt: id, skipDeleted })) {
+        out.push({ from: rel.src, to: rel.tgt, kind: rel.kind, info: rel.info });
+      }
+    }
+    return out;
+  }
+
   /** 
    * Tiny BFS over relations.
    * Note: O(depth × R) due to neighbors() calls. Future: with secondary indexes, drops to O(edges on frontier).
    */
   bfs(startId: string, opts?: { maxDepth?: number; kind?: string; direction?: 'out' | 'in' | 'both'; skipDeleted?: boolean }) {
     const { maxDepth = 1, kind, direction = 'out', skipDeleted = true } = opts ?? {};
-    const dist = new Map<string, number>();
-    const q: string[] = [];
-
-    dist.set(startId, 0);
-    q.push(startId);
-
-    while (q.length) {
-      const cur = q.shift()!;
+    const dist = new Map<string, number>([[startId, 0]]);
+    const q: string[] = [startId];
+    
+    // Use index pointer instead of Array.shift() for O(1) queue operations
+    for (let qi = 0; qi < q.length; qi++) {
+      const cur = q[qi];
       const d = dist.get(cur)!;
       if (d >= maxDepth) continue;
       for (const n of this.neighbors(cur, { kind, direction, skipDeleted })) {
