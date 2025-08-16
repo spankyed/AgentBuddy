@@ -76,39 +76,39 @@
             <DataRenderer :data="displayNodeAttributes" :default-expanded="false" />
           </div>
           
-          <!-- All info inline at the bottom -->
-          <div class="flex items-center justify-between text-xs" 
+          <!-- All info inline at the bottom with responsive breakpoints -->
+          <div class="flex flex-wrap items-start gap-2 text-xs overflow-hidden" 
                :class="displayNodeAttributes && Object.keys(displayNodeAttributes).length > 0 ? 'pt-3 border-t border-neutral-800/30' : ''">
             <!-- Left side: Step/Event/Flow Type and Entity ID -->
-            <div class="flex items-center gap-x-3">
+            <div class="flex items-center gap-x-3 min-w-[150px] mr-auto">
               <!-- Step/Event/Flow Type -->
-              <span v-if="node.tNodeType === 'flow'" class="text-purple-400 font-medium">
+              <span v-if="node.tNodeType === 'flow'" class="text-purple-400 font-medium flex-shrink-0">
                 flow
               </span>
-              <span v-else-if="node.tNodeType === 'step' && node.stepNodeType" class="text-blue-400 font-medium">
+              <span v-else-if="node.tNodeType === 'step' && node.stepNodeType" class="text-blue-400 font-medium flex-shrink-0">
                 {{ node.stepNodeType }}
               </span>
-              <span v-else-if="node.tNodeType === 'event' && node.eventType" class="text-purple-400 font-medium">
+              <span v-else-if="node.tNodeType === 'event' && node.eventType" class="text-purple-400 font-medium flex-shrink-0">
                 {{ node.eventType }}
               </span>
               
-              <!-- Entity ID -->
-              <span class="text-neutral-400 font-mono">{{ node.id }}</span>
+              <!-- Entity ID with proper truncation -->
+              <span class="text-neutral-400 font-mono truncate">{{ node.id }}</span>
             </div>
             
-            <!-- Right side: Timing -->
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <div v-if="node.startedAt" class="flex items-center gap-1">
+            <!-- Right side: Timing (wraps when needed) -->
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 flex-shrink-0">
+              <div v-if="node.startedAt" class="flex items-center gap-1 whitespace-nowrap">
                 <span class="text-neutral-500">Started:</span>
                 <span class="text-neutral-300">{{ formatTimestamp(node.startedAt) }}</span>
               </div>
               
-              <div v-if="node.completedAt" class="flex items-center gap-1">
+              <div v-if="node.completedAt" class="flex items-center gap-1 whitespace-nowrap">
                 <span class="text-neutral-500">Completed:</span>
                 <span class="text-neutral-300">{{ formatTimestamp(node.completedAt) }}</span>
               </div>
               
-              <div v-if="node.startedAt && node.completedAt" class="flex items-center gap-1">
+              <div v-if="node.startedAt && node.completedAt" class="flex items-center gap-1 whitespace-nowrap">
                 <span class="text-neutral-500">Duration:</span>
                 <span class="text-green-400 font-medium">{{ formatDuration(node.startedAt, node.completedAt) }}</span>
               </div>
