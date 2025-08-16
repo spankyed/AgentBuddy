@@ -20,6 +20,14 @@ export function decodeAttr(rec?: AttrRecord | null) {
 }
 
 /**
+ * Return the raw attribute record {t, v} without decoding.
+ * Useful for building indexes or advanced scenarios that need the original structure.
+ */
+export function decodeAttrRaw(rec?: AttrRecord | null): AttrRecord | null {
+  return rec ?? null;
+}
+
+/**
  * Parse numeric index from key suffix, with guards against corrupt data.
  * Returns null if index is not a valid finite number >= 0.
  */
