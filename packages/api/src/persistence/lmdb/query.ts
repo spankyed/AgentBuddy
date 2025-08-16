@@ -140,6 +140,10 @@ export class LmdbQuery {
       // Note: assumes no US in entityId (validated upstream)
       const [, entityId] = String(key).split(US);
       if (!seen.has(entityId)) {
+        // Skip deleted entities
+        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
+        if (meta?.deletedAt) continue;
+        
         seen.add(entityId);
         yield entityId;
         if (++count >= limit) break;
@@ -185,6 +189,10 @@ export class LmdbQuery {
           typeCache.set(entityId, t);
         }
         if (t !== entityType) continue;
+      } else {
+        // Skip deleted entities when no entityType filter is provided
+        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
+        if (meta?.deletedAt) continue;
       }
 
       if (!seen.has(entityId)) {
