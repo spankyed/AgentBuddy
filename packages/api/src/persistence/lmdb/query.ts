@@ -1,0 +1,207 @@
+// lmdb-query.ts
+import type { Dbs } from '@/persistence/lmdb/env';
+
+const US = '\x1F';
+
+export type AttrRecord = { t: 'null' | 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'blob'; v: any };
+export type EntityMeta = { type: string; createdAt: number; deletedAt?: number };
+export type RelationRecord = { kind: string; src: string; tgt: string; info?: any; createdAt: number };
+
+function decodeAttr(rec?: AttrRecord | null) {
+  if (!rec) return null;
+  return rec.t === 'date' && typeof rec.v === 'string' ? new Date(rec.v) : rec.v;
+}
+
+function attrKey(kind: string, entityId: string, idx: number) {
+  return `${kind}${US}${entityId}${US}${idx}`;
+}
+
+function attrPrefix(kind: string, entityId: string) {
+  const p = `${kind}${US}${entityId}${US}`;
+  return { start: p, end: p + '\xFF', prefix: p };
+}
+
+function scanPrefix<T = any>(db: any, p: string) {
+  // returns an iterable over { key, value }
+  return db.getRange({ start: p, end: p + '\xFF' }) as Iterable<{ key: string | Buffer; value: T }>;
+}
+
+export type FindByAttrOpts = {
+  /** optional: only return entities of this type (uses the entities DB) */
+  entityType?: string;
+  /** return at most N unique entityIds */
+  limit?: number;
+  /** shortcut equality check instead of predicate */
+  equals?: unknown;
+  /** custom predicate (value, idx, entityId) -> boolean */
+  predicate?: (value: unknown, idx: number, entityId: string) => boolean;
+};
+
+export class LmdbQuery {
+  constructor(private dbs: Dbs) { }
+
+  // ───────────────────────────── Attributes ─────────────────────────────
+
+  /** Get a single attribute value by (kind, entityId, idx) */
+  getAttr(kind: string, entityId: string, idx = 0): unknown {
+    const rec = this.dbs.attrs.get(attrKey(kind, entityId, idx)) as AttrRecord | undefined;
+    return decodeAttr(rec ?? null);
+  }
+
+  /** Get the entire attribute array for (kind, entityId) */
+  getAttrArray(kind: string, entityId: string): unknown[] {
+    const { prefix, start, end } = attrPrefix(kind, entityId);
+    const out: unknown[] = [];
+    for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
+      const idxStr = String(key).slice(prefix.length);
+      const idx = Number(idxStr);
+      out[idx] = decodeAttr(value as AttrRecord);
+    }
+    // normalize holes to nulls for parity with your in-memory representation
+    for (let i = 0; i < out.length; i++) if (out[i] === undefined) out[i] = null;
+    return out;
+  }
+
+  /** Iterate all (idx, value) pairs for (kind, entityId) without building an array */
+  *iterAttr(kind: string, entityId: string): Iterable<{ idx: number; value: unknown }> {
+    const { prefix, start, end } = attrPrefix(kind, entityId);
+    for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
+      const idx = Number(String(key).slice(prefix.length));
+      yield { idx, value: decodeAttr(value as AttrRecord) };
+    }
+  }
+
+  /** List all entityIds that have *any* value for the given kind (across all entities) */
+  *entitiesHavingAttr(kind: string): Iterable<string> {
+    const seen = new Set<string>();
+    const start = `${kind}${US}`, end = start + '\xFF';
+    for (const { key } of this.dbs.attrs.getRange({ start, end })) {
+      // key format: kind␟entityId␟idx
+      const [, entityId] = String(key).split(US);
+      if (!seen.has(entityId)) {
+        seen.add(entityId);
+        yield entityId;
+      }
+    }
+  }
+
+  /**
+   * Find entityIds by attribute content.
+   * Scans all rows for a given kind and filters by equals/predicate and (optional) entityType.
+   */
+  findEntitiesByAttr(kind: string, opts: FindByAttrOpts = {}): string[] {
+    const { entityType, equals, predicate, limit = Infinity } = opts;
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const typeCache = new Map<string, string | undefined>();
+
+    const start = `${kind}${US}`, end = start + '\xFF';
+    for (const { key, value } of this.dbs.attrs.getRange({ start, end })) {
+      const rec = value as AttrRecord;
+      const val = decodeAttr(rec);
+      const parts = String(key).split(US); // [kind, entityId, idx]
+      const entityId = parts[1];
+      const idx = Number(parts[2]);
+
+      // optional value test
+      const pass = equals !== undefined ? val === equals : predicate ? !!predicate(val, idx, entityId) : true;
+      if (!pass) continue;
+
+      // optional entity type check
+      if (entityType) {
+        let t = typeCache.get(entityId);
+        if (t === undefined) {
+          const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
+          t = meta?.deletedAt ? null as any : meta?.type;
+          typeCache.set(entityId, t);
+        }
+        if (t !== entityType) continue;
+      }
+
+      if (!seen.has(entityId)) {
+        seen.add(entityId);
+        out.push(entityId);
+        if (out.length >= limit) break;
+      }
+    }
+    return out;
+  }
+
+  // ───────────────────────────── Entities ─────────────────────────────
+
+  /** Iterate entityIds of a given type (skips deleted) */
+  *entitiesOfType(type: string): Iterable<string> {
+    for (const { key: entityId, value: meta } of this.dbs.entities.getRange() as Iterable<{ key: string; value: EntityMeta }>) {
+      if (meta.type === type && !meta.deletedAt) yield String(entityId);
+    }
+  }
+
+  /** Get entity meta (type, timestamps) */
+  getEntityMeta(entityId: string): EntityMeta | null {
+    return (this.dbs.entities.get(entityId) as EntityMeta | undefined) ?? null;
+    // Note: if you rely on tombstones, check meta?.deletedAt before using.
+  }
+
+  // ───────────────────────────── Relations ─────────────────────────────
+
+  /** Iterate relations meeting optional filters (fallback scan; add secondary indexes if this becomes hot) */
+  *relations(filter?: { kind?: string; src?: string; tgt?: string }): Iterable<{ relId: string; rel: RelationRecord }> {
+    const { kind, src, tgt } = filter ?? {};
+    for (const { key, value } of this.dbs.relations.getRange() as Iterable<{ key: string; value: RelationRecord }>) {
+      const rel = value;
+      if (kind && rel.kind !== kind) continue;
+      if (src && rel.src !== src) continue;
+      if (tgt && rel.tgt !== tgt) continue;
+      yield { relId: String(key), rel };
+    }
+  }
+
+  /** Neighbors via relations: out / in / both */
+  neighbors(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both' }): string[] {
+    const kind = opts?.kind;
+    const dir = opts?.direction ?? 'out';
+    const set = new Set<string>();
+
+    if (dir === 'out' || dir === 'both') {
+      for (const { rel } of this.relations({ kind, src: id })) set.add(rel.tgt);
+    }
+    if (dir === 'in' || dir === 'both') {
+      for (const { rel } of this.relations({ kind, tgt: id })) set.add(rel.src);
+    }
+    return [...set];
+  }
+
+  /** Tiny BFS over relations */
+  bfs(startId: string, opts?: { maxDepth?: number; kind?: string; direction?: 'out' | 'in' | 'both' }) {
+    const { maxDepth = 1, kind, direction = 'out' } = opts ?? {};
+    const dist = new Map<string, number>();
+    const q: string[] = [];
+
+    dist.set(startId, 0);
+    q.push(startId);
+
+    while (q.length) {
+      const cur = q.shift()!;
+      const d = dist.get(cur)!;
+      if (d >= maxDepth) continue;
+      for (const n of this.neighbors(cur, { kind, direction })) {
+        if (!dist.has(n)) {
+          dist.set(n, d + 1);
+          q.push(n);
+        }
+      }
+    }
+    return dist; // includes startId at distance 0
+  }
+
+  // ───────────────────────────── Generic range util ─────────────────────────────
+
+  /**
+   * Scan a raw key range from any DB.
+   * Example: scan all Tag rows for a specific entity with prefix "Tag␟Doc-1␟".
+   */
+  scan(dbName: keyof Dbs, opts: { start: string; end: string; limit?: number; reverse?: boolean }) {
+    const db = this.dbs[dbName] as any;
+    return db.getRange(opts);
+  }
+}
