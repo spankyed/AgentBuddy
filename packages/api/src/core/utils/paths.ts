@@ -91,7 +91,40 @@ export function getSnapshotsPath(): string {
     return path.join(userDataPath, 'snapshots')
   } else {
     // Development path - always use project structure regardless of USER_DATA_PATH
-    return path.join(process.cwd(), 'packages', 'api', 'src', 'core', 'data', 'snapshots')
+    return path.join(process.cwd(), 'src', 'core', 'data', 'snapshots')
     // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
+  }
+}
+
+/**
+ * Get the LMDB database directory path
+ */
+export function getLmdbPath(): string {
+  const userDataPath = getUserDataPath()
+  
+  // In production, use the user data directory
+  // In development, use the project directory
+  if (process.env.USER_DATA_PATH) {
+    return path.join(userDataPath, 'ears-db')
+  } else {
+    // Development path - use project structure relative to API package
+    // When running from packages/api, process.cwd() is already in packages/api
+    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-db')
+  }
+}
+
+/**
+ * Get the volatile LMDB database directory path for excluded entities
+ */
+export function getVolatileLmdbPath(): string {
+  const userDataPath = getUserDataPath()
+  
+  // In production, use the user data directory
+  // In development, use the project directory
+  if (process.env.USER_DATA_PATH) {
+    return path.join(userDataPath, 'ears-trace')
+  } else {
+    // Development path - use project structure relative to API package
+    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-trace')
   }
 }

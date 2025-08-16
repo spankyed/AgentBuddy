@@ -18,6 +18,7 @@ export const API_EVENTS = {
   STOPPED: 'api:stopped',
   ERROR: 'api:error',
   RESTARTING: 'api:restarting',
+  LOG: 'api:log',
 } as const;
 
 // Path Configuration
@@ -51,7 +52,7 @@ export const getEnvironment = (port: number) => ({
   NODE_ENV: app.isPackaged ? 'production' : 'development',
   API_PORT: port.toString(),
   DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
-  USER_DATA_PATH: app.getPath('userData'),
+  USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
   ELECTRON_RUN_AS_NODE: '1',
 });
 

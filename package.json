@@ -23,6 +23,7 @@
     "compile": "npm run build && electron-builder build --config electron-builder.mjs",
     "test": "npx playwright test ./tests/e2e.spec.ts",
     "start": "npm run build:be && node packages/dev-mode.js",
+    "start:inspect": "npm run build:be && ELECTRON_INSPECT=true node packages/dev-mode.js",
     "start:no-build": "node packages/dev-mode.js",
     "build:be": "npm run build --workspace @app/api",
     "typecheck": "npm run typecheck:fe && npm run typecheck:be && echo '✅ All type checks passed!'",

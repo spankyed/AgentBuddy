@@ -6,6 +6,41 @@ import { logInternal }   from "@/core/utils/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "../../types";
 import { randomId } from "../random-id";
+import { getLmdbPath, getVolatileLmdbPath } from "@/core/utils/paths";
+import { openShardedEnvs, closeShardedEnvs } from "@/persistence/lmdb/envs";
+import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
+import { makePolicy } from "@/persistence/partitioning/policy";
+import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
+
+// 1) Open two environments
+const envs = openShardedEnvs({
+  primary: getLmdbPath(),
+  volatileBackup: getVolatileLmdbPath(),
+});
+
+// 2) Create base sinks
+const sinks = {
+  primary: makeLmdbAdapter(envs.primary),
+  volatileBackup: makeLmdbAdapter(envs.volatileBackup),
+};
+
+// 3) Policy: exclude TNode (generic & maintainable)
+const policy = makePolicy({
+  excludedEntityTypes: new Set([EARS.Entity.TNode]),
+  hydratePartitions: new Set(['primary']), // do NOT hydrate backup by default
+});
+
+// 4) Sharded router
+const persistence = makeShardedPersistence(policy, sinks);
+
+// Export for hydration and testing
+export { envs, policy, persistence };
+
+// Graceful shutdown function
+export function closePersistence() {
+  persistence.close?.();
+  closeShardedEnvs(envs);
+}
 
 export const createEntity = (t: EARS.Entity) =>
   `${t}-${randomId()}` as EARS.EntityId;
@@ -34,6 +69,9 @@ function makeMutator() {
     (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
+    const list = b.get(id)!;
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AA", false, kind, id, val);
   };
 
@@ -45,6 +83,8 @@ function makeMutator() {
     // Ensure entity is in index
     (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
       .add(id);
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, [val]);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -73,6 +113,8 @@ function makeMutator() {
           : (val as EARS.AttributeValue);
     }
     
+    // Use array rewrite for consistency
+    persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AU", false, kind, id, val);
   };
 
@@ -80,7 +122,14 @@ function makeMutator() {
     const list = bucket(kind).get(id);
     if (!list?.length) return;
     list.splice(idx, 1);
-    if (!list.length) bucket(kind).delete(id);
+    if (!list.length) {
+      bucket(kind).delete(id);
+      // Empty array - remove from persistence
+      persistence.onDropAttr(kind, id, idx, []);
+    } else {
+      // Use array rewrite for consistency
+      persistence.onPutAttrArray?.(kind, id, list);
+    }
     logInternal("AR", false, kind, id, null);
   };
 
@@ -131,6 +180,7 @@ export function addRelation(
     info,
   } as EARS.RelationDetail);
   addToIndex(kind, src, tgt, relId);
+  persistence.onAddRelation(relId, kind, src, tgt, info);
   return relId;
 }
 
@@ -152,6 +202,13 @@ export function updateRelation(
   mergeAttr(relId, EARS.AttrKind.RelationDetails, d);
   if (newS || newT)
     updateIndex(k, relId, oS, oT, d.sourceEntity, d.targetEntity);
+  
+  // Only include defined values in the patch
+  const patch: any = {};
+  if (newS) patch.src = newS;
+  if (newT) patch.tgt = newT;
+  if (info !== undefined) patch.info = info;
+  persistence.onUpdateRelation(relId, patch);
 }
 
 export const removeRelation = (relId: EARS.EntityId) => {
@@ -162,6 +219,7 @@ export const removeRelation = (relId: EARS.EntityId) => {
   if (d)
     removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
   dropAttr(relId, EARS.AttrKind.RelationDetails);
+  persistence.onRemoveRelation(relId);
 };
 
 /*─────────────────────────────────────────────────────────────
@@ -279,6 +337,9 @@ export function destroyEntity(id: EARS.EntityId) {
       entityIndex.delete(entType(id));
     }
   }
+  
+  /* persist the deletion */
+  persistence.onDestroyEntity(id);
 }
 
 /*─────────────────────────────────────────────────────────────

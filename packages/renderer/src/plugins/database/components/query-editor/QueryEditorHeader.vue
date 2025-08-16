@@ -41,6 +41,13 @@
           >
             <DropdownMenuItem 
               class="flex items-center gap-2 px-3 py-2 text-sm transition-all duration-200 rounded outline-none cursor-pointer text-neutral-50 hover:bg-neutral-700 focus:bg-neutral-700" 
+              @select="$emit('viewTrace')"
+            >
+              <History :size="16" class="flex-shrink-0 text-purple-400" />
+              View Trace History
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-all duration-200 rounded outline-none cursor-pointer text-neutral-50 hover:bg-neutral-700 focus:bg-neutral-700" 
               @select="$emit('saveSnapshot')"
             >
               <Camera :size="16" class="flex-shrink-0 text-primary-500" />
@@ -71,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileX, Wand2, Camera, MoreVertical } from 'lucide-vue-next';
+import { FileX, Wand2, Camera, MoreVertical, History } from 'lucide-vue-next';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -100,5 +107,6 @@ defineEmits<{
   'magic-prompt': [];
   saveSnapshot: [];
   toggleMode: [];
+  viewTrace: [];
 }>();
 </script> 

@@ -75,7 +75,7 @@ export class ApiServer implements AppModule {
       if (fallbackPath && fs.existsSync(fallbackPath)) {
         apiPath = fallbackPath;
       } else {
-        const error = `API path does not exist: ${apiPath}`;
+        const error = `[MAIN] API path does not exist: ${apiPath}`;
         console.error(error);
         broadcastEvent(API_EVENTS.ERROR, { error });
         return;
@@ -84,7 +84,7 @@ export class ApiServer implements AppModule {
 
     const serverPath = path.join(apiPath, 'dist', 'server.js');
     if (!fs.existsSync(serverPath)) {
-      const error = `Server file does not exist: ${serverPath}`;
+      const error = `[MAIN] Server file does not exist: ${serverPath}`;
       console.error(error);
       broadcastEvent(API_EVENTS.ERROR, { error });
       return;
@@ -92,7 +92,7 @@ export class ApiServer implements AppModule {
 
     // Get available port
     const port = await getPort({ port: API_CONFIG.DEFAULT_PORT });
-    console.log(`Selected port ${port} for API server`);
+    console.log(`[MAIN] Selected port ${port} for API server`);
 
     // Spawn process
     const nodeExecutable = getNodeExecutable();
@@ -101,7 +101,9 @@ export class ApiServer implements AppModule {
     const apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
       env: getEnvironment(port),
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: false,
+      // windowsHide: false
     });
 
     this.processManager.setProcess(apiProcess);
@@ -110,7 +112,7 @@ export class ApiServer implements AppModule {
 
   private handleServerReady(port: number): void {
     this.actualPort = port;
-    console.log(`API server is running on port ${port}`);
+    console.log(`[MAIN] API server is running on port ${port}`);
     broadcastEvent(API_EVENTS.STARTED, { port });
     
     if (this.serverReadyResolve) {
@@ -120,7 +122,7 @@ export class ApiServer implements AppModule {
   }
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
-    console.error(`API server exited with code ${code} and signal ${signal}`);
+    console.error(`[MAIN] API server exited with code ${code} and signal ${signal}`);
     broadcastEvent(API_EVENTS.STOPPED);
 
     // Reset state
@@ -130,7 +132,7 @@ export class ApiServer implements AppModule {
     // Handle restart
     if (!this.isShuttingDown && this.restartAttempts < API_CONFIG.MAX_RESTART_ATTEMPTS) {
       this.restartAttempts++;
-      console.warn(`Restarting API server (attempt ${this.restartAttempts}/${API_CONFIG.MAX_RESTART_ATTEMPTS})...`);
+      console.warn(`[MAIN] Restarting API server (attempt ${this.restartAttempts}/${API_CONFIG.MAX_RESTART_ATTEMPTS})...`);
       broadcastEvent(API_EVENTS.RESTARTING, {
         attempt: this.restartAttempts,
         maxAttempts: API_CONFIG.MAX_RESTART_ATTEMPTS
@@ -138,13 +140,13 @@ export class ApiServer implements AppModule {
       
       setTimeout(() => this.startApiServer(), API_CONFIG.RESTART_DELAY);
     } else if (this.restartAttempts >= API_CONFIG.MAX_RESTART_ATTEMPTS) {
-      console.error('Max restart attempts reached');
+      console.error('[MAIN] Max restart attempts reached');
       broadcastEvent(API_EVENTS.ERROR, { error: 'Max restart attempts reached' });
     }
   }
 
   private handleProcessError(error: Error): void {
-    console.error('Failed to start API server:', error);
+    console.error('[MAIN] Failed to start API server:', error);
     broadcastEvent(API_EVENTS.ERROR, { error: error.message });
   }
 

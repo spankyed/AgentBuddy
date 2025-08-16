@@ -494,4 +494,15 @@ export const brainCommands = {
       tx(tNodeId).update('nodeAttributes', updatedAttributes);
     }
   },
+  
+  updateTNodeAttributes: (
+    tNodeId: EARS.EntityId,
+    attributes: any
+  ): void => {
+    // Truncate the attributes to prevent memory overflow
+    const truncatedAttributes = truncateResult(attributes);
+    
+    // Directly set nodeAttributes (for event TNodes that store payload as attributes)
+    tx(tNodeId).update('nodeAttributes', truncatedAttributes);
+  },
 } as const;

@@ -149,6 +149,16 @@ export function createFlowNodeSystem(
 
           const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
 
+          // Create execution context with cleaner structure
+          // Handle flow.entry events specially - they have a 'data' property we need to unwrap
+          const { type, ...eventPayload } = event;
+          const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
+
+          // Store event payload directly as nodeAttributes for event TNodes
+          // Use the full eventData if no specific payload property exists
+          const payloadToStore = eventData.payload !== undefined ? eventData.payload : eventData;
+          repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
+
           // Emit TNODE_SPAWNED event for UI to display event TNode
           system.get(brain).send({
             type: 'TNODE_SPAWNED',
@@ -157,11 +167,6 @@ export function createFlowNodeSystem(
             eventTNodeId: eventTNode.id,
             flowTNodeId: flowTNodeId
           });
-
-          // Create execution context with cleaner structure
-          // Handle flow.entry events specially - they have a 'data' property we need to unwrap
-          const { type, ...eventPayload } = event;
-          const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
 
           const eventTrackContext: ExecutionContext = {
             event: {

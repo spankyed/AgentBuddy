@@ -12,7 +12,9 @@ import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
+import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { createLogger } from '@/core/utils/debug/logger';
+import type { TNodeEntity } from '@/systems/brain/types';
 
 const logger = createLogger('database');
 
@@ -35,6 +37,15 @@ export const IncomingDatabaseEvents = [
     prompt: z.string(),
   }),
   busEvent('REFRESH_SCHEMA', {}),
+  busEvent('GET_TRACE_FLOWS', {}),
+  busEvent('GET_FLOW_EVENTS', { 
+    flowId: z.string(), 
+    offset: z.number().optional(),
+    limit: z.number().optional()
+  }),
+  busEvent('GET_NODE_DETAILS', { 
+    nodeId: z.string() 
+  }),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -49,7 +60,10 @@ export type OutgoingDatabaseEvents =
   | { type: 'TRANSACTION_ERROR'; error: string }
   | { type: 'SNAPSHOT_CREATED'; filename: string }
   | { type: 'SNAPSHOT_ERROR'; error: string }
-  | { type: 'MAGIC_PROMPT_GENERATED'; query: string };
+  | { type: 'MAGIC_PROMPT_GENERATED'; query: string }
+  | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
+  | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }
+  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null };
 
 export interface DatabaseContext { }
 
@@ -164,6 +178,67 @@ export const databaseSystem = setup({
       
       logger.info('Sent magic prompt to brain:', { prompt: prompt.trim() });
     },
+    getTraceFlows: ({ system }) => {
+      try {
+        const flows = getTraceFlows(100);
+        logger.info('Retrieved trace flows', { count: flows.length });
+        system.get(bus).send(emit(database, { 
+          type: 'TRACE_FLOWS_RESULT',
+          flows
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Failed to get trace flows:', { error: errorMessage });
+        system.get(bus).send(emit(database, { 
+          type: 'TRACE_FLOWS_RESULT',
+          flows: []
+        }));
+      }
+    },
+    getFlowEvents: ({ system, event }) => {
+      const { flowId, offset = 0, limit = 50 } = typeOf('GET_FLOW_EVENTS', event);
+      
+      try {
+        const result = getFlowEvents(flowId, offset, limit);
+        logger.info('Retrieved events for flow', { count: result.events.length, flowId });
+        system.get(bus).send(emit(database, { 
+          type: 'FLOW_EVENTS_RESULT',
+          flowId,
+          events: result.events,
+          hasMore: result.hasMore
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Failed to get flow events:', { error: errorMessage, flowId });
+        system.get(bus).send(emit(database, { 
+          type: 'FLOW_EVENTS_RESULT',
+          flowId,
+          events: [],
+          hasMore: false
+        }));
+      }
+    },
+    getNodeDetails: ({ system, event }) => {
+      const { nodeId } = typeOf('GET_NODE_DETAILS', event);
+      
+      try {
+        const details = getNodeDetails(nodeId);
+        logger.info('Retrieved node details', { nodeId });
+        system.get(bus).send(emit(database, { 
+          type: 'NODE_DETAILS_RESULT',
+          nodeId,
+          details
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Failed to get node details:', { error: errorMessage, nodeId });
+        system.get(bus).send(emit(database, { 
+          type: 'NODE_DETAILS_RESULT',
+          nodeId,
+          details: null
+        }));
+      }
+    },
   },
 }).createMachine({
   id: database,
@@ -191,6 +266,15 @@ export const databaseSystem = setup({
         },
         REFRESH_SCHEMA: {
           actions: 'sendDatabaseRefresh',
+        },
+        GET_TRACE_FLOWS: {
+          actions: 'getTraceFlows',
+        },
+        GET_FLOW_EVENTS: {
+          actions: 'getFlowEvents',
+        },
+        GET_NODE_DETAILS: {
+          actions: 'getNodeDetails',
         },
       },
     },

@@ -79,9 +79,15 @@ function handleHotReload() {
         electronApp = null;
       }
 
-      /** Spawn a new electron process (inspection disabled) */
-      // electronApp = spawn(String(electronPath), ['--inspect', '.'], {
-      electronApp = spawn(String(electronPath), ['.'], {
+      /** Spawn a new electron process */
+      const inspectMode = process.env.ELECTRON_INSPECT === 'true';
+      const electronArgs = inspectMode ? ['--inspect', '.'] : ['.'];
+      
+      if (inspectMode) {
+        console.log('Starting Electron with Node.js inspector on port 9229');
+      }
+      
+      electronApp = spawn(String(electronPath), electronArgs, {
         stdio: 'inherit',
       });
 
