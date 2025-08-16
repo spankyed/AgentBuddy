@@ -3,6 +3,7 @@
     :model-value="modelValue"
     language="typescript"
     :execute-key="true"
+    :function-body="true"
     @update:model-value="$emit('update:modelValue', $event)"
     @execute="$emit('execute')"
     @cursor-change="$emit('cursorChange', $event)"

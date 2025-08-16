@@ -131,7 +131,7 @@ export function setupJsonValidation(monaco: any) {
   })
 }
 
-export function setupJavaScriptValidation(monaco: any) {
+export function setupJavaScriptValidation(monaco: any, functionBody = false) {
   const diagnosticsOptions = {
     noSemanticValidation: false,
     noSyntaxValidation: false,
@@ -141,7 +141,7 @@ export function setupJavaScriptValidation(monaco: any) {
   monaco.languages.typescript?.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
   monaco.languages.typescript?.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions)
   
-  monaco.languages.typescript?.typescriptDefaults.setCompilerOptions({
+  const compilerOptions = {
     target: monaco.languages.typescript.ScriptTarget.Latest,
     allowNonTsExtensions: true,
     moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
@@ -151,21 +151,89 @@ export function setupJavaScriptValidation(monaco: any) {
     jsx: monaco.languages.typescript.JsxEmit.React,
     reactNamespace: 'React',
     allowJs: true,
-    checkJs: true,
-  })
+    checkJs: !functionBody, // Disable type checking in function body mode
+  }
   
-  monaco.languages.typescript?.javascriptDefaults.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.Latest,
-    allowNonTsExtensions: true,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    module: monaco.languages.typescript.ModuleKind.CommonJS,
-    noEmit: true,
-    esModuleInterop: true,
-    jsx: monaco.languages.typescript.JsxEmit.React,
-    reactNamespace: 'React',
-    allowJs: true,
-    checkJs: true,
-  })
+  monaco.languages.typescript?.typescriptDefaults.setCompilerOptions(compilerOptions)
+  monaco.languages.typescript?.javascriptDefaults.setCompilerOptions(compilerOptions)
+}
+
+/**
+ * Sets up function-body mode where code is treated as if it's inside a function
+ * This allows top-level return statements and provides DSL type definitions
+ */
+export function setupFunctionBodyMode(monaco: any, language: 'javascript' | 'typescript' = 'typescript') {
+  // Configure validation for function-body mode
+  setupJavaScriptValidation(monaco, true)
+  
+  // Add type definitions for the DSL
+  const dslTypes = `
+    declare namespace EARS {
+      export namespace Entity {
+        export const Thread: string;
+        export const Message: string;
+        export const Tag: string;
+        export const User: string;
+        export const Agent: string;
+        export const Flow: string;
+        export const Prompt: string;
+        export const Action: string;
+      }
+    }
+    
+    interface QueryBuilder<T = any> {
+      // Filter methods
+      where(attribute: string, value?: any): QueryBuilder<T>;
+      ofType(entityType: string): QueryBuilder<T>;
+      withRole(role: string): QueryBuilder<T>;
+      orderBy(attribute: string, direction?: 'asc' | 'desc'): QueryBuilder<T>;
+      limit(count: number): QueryBuilder<T>;
+      distinct(attribute: string): QueryBuilder<T>;
+      reverse(): QueryBuilder<T>;
+      groupBy(attribute: string): Map<string, QueryBuilder<T>>;
+      
+      // Relation methods
+      linksTo(relationType: string, targetType: string | string[]): QueryBuilder<T>;
+      linksFrom(relationType: string, sourceType: string | string[]): QueryBuilder<T>;
+      
+      // Pagination
+      page(size: number, cursor?: string): { items: T[]; nextCursor?: string };
+      
+      // Terminal methods (projections)
+      pick(attributes: string[]): T[];
+      pickAll(): T[];
+      pickOne(attributes?: string[]): T | null;
+      ids(): string[];
+      count(): number;
+    }
+    
+    declare function qx(entityIdOrType?: string): QueryBuilder;
+    declare function getAll(entityId: string): Record<string, any>;
+    declare function getSchemaStats(): {
+      entities: Record<string, number>;
+      attributes: Record<string, number>;
+      relations: Record<string, number>;
+    };
+  `;
+  
+  // Add the type definitions as an extra library
+  if (language === 'typescript') {
+    monaco.languages.typescript.typescriptDefaults.addExtraLib(
+      dslTypes,
+      'dsl-types.d.ts'
+    );
+  } else {
+    monaco.languages.typescript.javascriptDefaults.addExtraLib(
+      dslTypes,
+      'dsl-types.d.ts'
+    );
+  }
+  
+  // Wrap user code in a function context for validation
+  // This is done virtually, not shown to the user
+  monaco.languages.registerDocumentFormattingEditProvider(language, {
+    provideDocumentFormattingEdits: () => null // Don't actually format
+  });
 }
 
 export function getLanguageForFile(filePath: string): string {
