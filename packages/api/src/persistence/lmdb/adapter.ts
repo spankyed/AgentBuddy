@@ -63,7 +63,7 @@ export function makeLmdbAdapter(dbs: Dbs): PersistenceSink {
     
     // Ensure entities (check doesExist to preserve createdAt)
     for (const id of ensureBuf) {
-      if (!entities.doesExist(id)) {
+      if (id && !entities.doesExist(id)) {
         entities.put(id, { type: entTypeOf(id), createdAt: ts });
       }
     }
@@ -221,6 +221,26 @@ export function makeLmdbAdapter(dbs: Dbs): PersistenceSink {
 
     onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown) {
       if (closed) return;
+      
+      // Validate src and tgt are valid entity IDs (not stringified undefined/null)
+      if (!src || src === 'undefined' || src === 'null' || typeof src !== 'string') {
+        console.warn(`[LMDB] Invalid src in onAddRelation: relId=${relId}, src="${src}"`);
+        return;
+      }
+      if (!tgt || tgt === 'undefined' || tgt === 'null' || typeof tgt !== 'string') {
+        console.warn(`[LMDB] Invalid tgt in onAddRelation: relId=${relId}, tgt="${tgt}"`);
+        return;
+      }
+      // Basic entity ID format check (should contain hyphen)
+      if (!src.includes('-')) {
+        console.warn(`[LMDB] Invalid src format in onAddRelation: relId=${relId}, src="${src}" (missing hyphen)`);
+        return;
+      }
+      if (!tgt.includes('-')) {
+        console.warn(`[LMDB] Invalid tgt format in onAddRelation: relId=${relId}, tgt="${tgt}" (missing hyphen)`);
+        return;
+      }
+      
       ensureBuf.add(src);
       ensureBuf.add(tgt);
       relDeletes.delete(relId); // Cancel any pending delete
@@ -238,10 +258,28 @@ export function makeLmdbAdapter(dbs: Dbs): PersistenceSink {
       
       const updated = { ...r };
       if (patch.src) {
+        // Validate src is a valid entity ID
+        if (patch.src === 'undefined' || patch.src === 'null' || typeof patch.src !== 'string') {
+          console.warn(`[LMDB] Invalid src in onUpdateRelation: relId=${relId}, src="${patch.src}"`);
+          return;
+        }
+        if (!patch.src.includes('-')) {
+          console.warn(`[LMDB] Invalid src format in onUpdateRelation: relId=${relId}, src="${patch.src}" (missing hyphen)`);
+          return;
+        }
         ensureBuf.add(patch.src);
         updated.src = patch.src;
       }
       if (patch.tgt) {
+        // Validate tgt is a valid entity ID
+        if (patch.tgt === 'undefined' || patch.tgt === 'null' || typeof patch.tgt !== 'string') {
+          console.warn(`[LMDB] Invalid tgt in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}"`);
+          return;
+        }
+        if (!patch.tgt.includes('-')) {
+          console.warn(`[LMDB] Invalid tgt format in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}" (missing hyphen)`);
+          return;
+        }
         ensureBuf.add(patch.tgt);
         updated.tgt = patch.tgt;
       }

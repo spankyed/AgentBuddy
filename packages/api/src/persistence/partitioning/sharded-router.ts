@@ -3,7 +3,13 @@ import { PersistenceSink } from './base-sink';
 import { PartitionPolicy, Partition } from './policy';
 import { getAttr } from '@/core/utils/ears/attribute-storage';
 
-const entTypeOf = (id: string) => (id.split('-')[0] ?? id) as EARS.Entity;
+const entTypeOf = (id: string): EARS.Entity => {
+  if (typeof id !== 'string' || id.length === 0) {
+    throw new Error('[Sharded] Invalid entity id for routing');
+  }
+  const dash = id.indexOf('-');
+  return (dash === -1 ? id : id.slice(0, dash)) as EARS.Entity;
+};
 
 // Relation metadata cache to track kind, src, tgt for proper routing
 const relMeta = new Map<string, { kind: string; src: string; tgt: string }>();
@@ -59,6 +65,29 @@ export function makeShardedPersistence(
       // Destruction is semantic; delete from whichever partition it lives in
       const p = pickEntity(entityId);
       sinks[p].onDestroyEntity(entityId);
+      
+      // Clean up relation caches for any relations involving this entity
+      const relationsToRemove: string[] = [];
+      for (const [rid, meta] of relMeta.entries()) {
+        if (meta.src === entityId || meta.tgt === entityId) {
+          relationsToRemove.push(rid);
+        }
+      }
+      
+      // Remove these relations from their partitions and clean caches
+      for (const rid of relationsToRemove) {
+        const part = relationPartitions.get(rid) ?? computePartitionFor(rid);
+        if (part) {
+          sinks[part].onRemoveRelation(rid);
+        } else {
+          // Unknown; remove from all sinks to be safe
+          for (const sink of Object.values(sinks)) {
+            sink.onRemoveRelation(rid);
+          }
+        }
+        relationPartitions.delete(rid);
+        relMeta.delete(rid);
+      }
     },
 
     onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]) {
@@ -77,6 +106,10 @@ export function makeShardedPersistence(
     },
 
     onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]) {
+      // Enforce entireArray requirement for consistency
+      if (!entireArray) {
+        throw new Error('[Sharded] onDropAttr requires entireArray parameter to avoid index drift');
+      }
       const p = pickEntity(entityId);
       sinks[p].onDropAttr(kind, entityId, idx, entireArray);
     },
@@ -97,18 +130,27 @@ export function makeShardedPersistence(
       
       if (!prev) {
         console.warn('[Sharded] onUpdateRelation called with unknown relId:', relId);
-        // Best effort: try both partitions
-        sinks.primary.onUpdateRelation(relId, patch);
-        sinks.volatileBackup.onUpdateRelation(relId, patch);
+        // Best effort: try all partitions
+        for (const sink of Object.values(sinks)) {
+          sink.onUpdateRelation(relId, patch);
+        }
         return;
       }
       
-      // Build next metadata
-      const next = {
-        ...prev,
-        ...('src' in patch && patch.src ? { src: patch.src } : {}),
-        ...('tgt' in patch && patch.tgt ? { tgt: patch.tgt } : {}),
-      };
+      // Get previous info if available (for preserving during moves)
+      const prevDetails = getAttr(relId as EARS.EntityId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
+      const prevInfo = prevDetails?.info;
+      
+      // Build next metadata - use presence checks with validation
+      const next = { ...prev };
+      if ('src' in patch) {
+        if (patch.src == null || patch.src === '') throw new Error('[Sharded] patch.src is empty');
+        next.src = patch.src as string;
+      }
+      if ('tgt' in patch) {
+        if (patch.tgt == null || patch.tgt === '') throw new Error('[Sharded] patch.tgt is empty');
+        next.tgt = patch.tgt as string;
+      }
       
       // Compute current and new partitions
       const curP = computePartitionFor(relId, prev);
@@ -120,14 +162,14 @@ export function makeShardedPersistence(
       }
       
       if (curP !== newP) {
-        // Relation needs to move partitions
+        // Relation needs to move partitions - preserve info if not in patch
         sinks[curP].onRemoveRelation(relId);
         sinks[newP].onAddRelation(
           relId, 
           next.kind, 
           next.src, 
           next.tgt, 
-          'info' in patch ? patch.info : undefined
+          'info' in patch ? patch.info : prevInfo  // Preserve info when moving
         );
         relationPartitions.set(relId, newP);
       } else {
@@ -147,30 +189,49 @@ export function makeShardedPersistence(
         relationPartitions.delete(relId);
         relMeta.delete(relId);
       } else {
-        // Unknown partition - remove from both
-        sinks.primary.onRemoveRelation(relId);
-        sinks.volatileBackup.onRemoveRelation(relId);
+        // Unknown partition - remove from all
+        for (const sink of Object.values(sinks)) {
+          sink.onRemoveRelation(relId);
+        }
         relMeta.delete(relId);
       }
     },
 
     close() {
-      sinks.primary.close?.();
-      sinks.volatileBackup.close?.();
+      // Close all sinks, not just hardcoded ones
+      for (const sink of Object.values(sinks)) {
+        sink.close?.();
+      }
     },
 
     getErrorStats() {
-      const primaryStats = sinks.primary.getErrorStats?.() ?? { errorCount: 0, lastError: null };
-      const backupStats = sinks.volatileBackup.getErrorStats?.() ?? { errorCount: 0, lastError: null };
+      let errorCount = 0;
+      let lastError: any = null;
       
-      return {
-        errorCount: primaryStats.errorCount + backupStats.errorCount,
-        lastError: primaryStats.lastError || backupStats.lastError,
-      };
+      // Aggregate stats from all sinks
+      for (const sink of Object.values(sinks)) {
+        const stats = sink.getErrorStats?.();
+        if (stats) {
+          errorCount += stats.errorCount ?? 0;
+          lastError = lastError ?? stats.lastError;
+        }
+      }
+      
+      return { errorCount, lastError };
     },
 
     // Utility function for hydration to seed the caches
     seedRelationMetadata(relId: string, kind: string, src: string, tgt: string) {
+      // Validate inputs to prevent entTypeOf from throwing
+      if (!src || typeof src !== 'string' || src.length === 0) {
+        console.warn(`[Sharded] Invalid src in seedRelationMetadata: relId=${relId}, src=${src}`);
+        return;
+      }
+      if (!tgt || typeof tgt !== 'string' || tgt.length === 0) {
+        console.warn(`[Sharded] Invalid tgt in seedRelationMetadata: relId=${relId}, tgt=${tgt}`);
+        return;
+      }
+      
       relMeta.set(relId, { kind, src, tgt });
       relationPartitions.set(
         relId,
@@ -181,9 +242,10 @@ export function makeShardedPersistence(
       );
     },
 
-    // Expose for testing/debugging
+    // Expose read-only copy for testing/debugging
     getRelMeta() {
-      return relMeta;
+      // Return a read-only copy to prevent external mutations
+      return new Map(relMeta);
     }
   };
 }

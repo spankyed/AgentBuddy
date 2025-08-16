@@ -202,7 +202,13 @@ export function updateRelation(
   mergeAttr(relId, EARS.AttrKind.RelationDetails, d);
   if (newS || newT)
     updateIndex(k, relId, oS, oT, d.sourceEntity, d.targetEntity);
-  persistence.onUpdateRelation(relId, { src: newS, tgt: newT, info });
+  
+  // Only include defined values in the patch
+  const patch: any = {};
+  if (newS) patch.src = newS;
+  if (newT) patch.tgt = newT;
+  if (info !== undefined) patch.info = info;
+  persistence.onUpdateRelation(relId, patch);
 }
 
 export const removeRelation = (relId: EARS.EntityId) => {

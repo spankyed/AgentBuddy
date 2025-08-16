@@ -72,6 +72,20 @@ export async function hydrateSharded(params: {
         continue;
       }
       
+      // Validate relation data before processing
+      if (!r.src || typeof r.src !== 'string' || r.src.length === 0) {
+        console.warn(`[Hydrate] Skipping relation with invalid src: relId=${relIdStr}, src=${r.src}`);
+        continue;
+      }
+      if (!r.tgt || typeof r.tgt !== 'string' || r.tgt.length === 0) {
+        console.warn(`[Hydrate] Skipping relation with invalid tgt: relId=${relIdStr}, tgt=${r.tgt}`);
+        continue;
+      }
+      if (!r.kind || typeof r.kind !== 'string') {
+        console.warn(`[Hydrate] Skipping relation with invalid kind: relId=${relIdStr}, kind=${r.kind}`);
+        continue;
+      }
+      
       // Seed relation metadata cache if shardedPersistence is provided
       if (shardedPersistence) {
         shardedPersistence.seedRelationMetadata(relIdStr, r.kind, r.src, r.tgt);
