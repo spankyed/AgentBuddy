@@ -205,3 +205,35 @@ export class LmdbQuery {
     return db.getRange(opts);
   }
 }
+
+/* Example usage
+import { openEnv } from '@/persistence/lmdb/env';
+import { LmdbQuery } from './lmdb-query';
+
+const dbs = openEnv('/path/to/ears.lmdb');
+const q = new LmdbQuery(dbs);
+
+// 1) Single attr
+const title = q.getAttr('Name', 'Document-9f8e2c');  // "How to reset an iPhone 13?"
+
+// 2) Whole attr array
+const tags = q.getAttrArray('Tag', 'Document-9f8e2c'); // ["ios", "reset"]
+
+// 3) Entities of a type
+const documents = [...q.entitiesOfType('Document')];
+
+// 4) Find docs with an exact tag
+const docsWithIosTag = q.findEntitiesByAttr('Tag', { equals: 'ios', entityType: 'Document' });
+
+// 5) Custom predicate: documents updated after a date
+const recentDocs = q.findEntitiesByAttr('UpdatedAt', {
+  predicate: (v) => v instanceof Date && v.getTime() >= Date.parse('2025-08-01'),
+  entityType: 'Document',
+});
+
+// 6) Outgoing neighbors by relation kind
+const containedDocs = q.neighbors('Collection-12ab34', { kind: 'CONTAINS', direction: 'out' });
+
+// 7) BFS two hops via LINKS
+const reach = q.bfs('Document-9f8e2c', { maxDepth: 2, kind: 'LINKS', direction: 'both' });
+*/
