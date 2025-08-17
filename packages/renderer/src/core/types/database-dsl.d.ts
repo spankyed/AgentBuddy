@@ -402,4 +402,3 @@ type RelKind = EARS.RelKind;
 type AttrKind = EARS.AttrKind;
 
 export as namespace DatabaseDSL;
-

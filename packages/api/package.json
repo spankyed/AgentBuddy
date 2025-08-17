@@ -61,6 +61,7 @@
     "@types/ws": "^8.18.1",
     "dts-bundle-generator": "^9.5.1",
     "nodemon": "^3.1.10",
+    "ts-morph": "^26.0.0",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.4.0",
     "tsx": "^4.19.4",

@@ -55,5 +55,5 @@ else
   exit 1
 fi
 
-# Convert to ambient declarations
-node ../../scripts/convert-dsl-to-ambient.mjs
+# Convert to ambient declarations using ts-morph
+node ../../scripts/convert-to-ambient-ts-morph.mjs
