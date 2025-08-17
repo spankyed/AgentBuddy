@@ -2,7 +2,6 @@
   <SimpleMonacoEditor
     :model-value="modelValue"
     language="typescript"
-    :actions="['executeCode']"
     :function-body="true"
     dsl-type="database"
     @update:model-value="$emit('update:modelValue', $event)"
