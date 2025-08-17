@@ -293,6 +293,40 @@ export const settingsCommands = {
   },
 
   /**
+   * Update custom hotkeys
+   */
+  updateCustomHotkeys(customHotkeys: any[]): RepositoryResult<SettingsEntity> {
+    try {
+      const settings = getOrCreateSettings();
+      
+      const updatedSettings: SettingsEntity = {
+        ...settings,
+        data: {
+          ...settings.data,
+          general: {
+            ...settings.data.general,
+            hotkeys: {
+              ...settings.data.general.hotkeys,
+              custom: customHotkeys
+            }
+          }
+        }
+      };
+      
+      tx(updatedSettings as any);
+      return successResult(updatedSettings);
+    } catch (error) {
+      return errorResult(
+        new RepositoryError(
+          'Failed to update custom hotkeys',
+          RepositoryErrorCode.OPERATION_FAILED,
+          error
+        )
+      );
+    }
+  },
+
+  /**
    * Reset settings to defaults
    */
   resetSettings(): RepositoryResult<SettingsEntity> {

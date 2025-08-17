@@ -40,11 +40,19 @@ export interface ApiKeys {
   openai?: string;
 }
 
+export interface CustomHotkey {
+  id: string;
+  eventName: string;
+  key: string;
+  modifiers: string[];
+}
+
 export interface Hotkeys {
   switchPlugin?: {
     key: string;
     modifiers: string[];
   };
+  custom?: CustomHotkey[];
 }
 
 export interface MiscSettings {

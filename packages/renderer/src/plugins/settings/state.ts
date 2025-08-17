@@ -80,6 +80,7 @@ type UIEvent =
   | { type: 'PERSONAL.UPDATE'; data: PersonalInfo }
   | { type: 'API_KEYS.UPDATE'; data: ApiKeys }
   | { type: 'HOTKEYS.UPDATE'; data: Hotkeys }
+  | { type: 'HOTKEYS.UPDATE_CUSTOM'; data: any[] }
   | { type: 'PLUGIN_SETTINGS.UPDATE'; pluginId: string; settings: any }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
@@ -176,6 +177,15 @@ const settingsState = setup({
       });
     },
 
+    updateCustomHotkeys: ({ event }) => {
+      const ev = typeOf('HOTKEYS.UPDATE_CUSTOM', event);
+      trpc.bus.send.mutate({
+        systemId: id as any,
+        type: 'UPDATE_CUSTOM_HOTKEYS' as any,
+        custom: ev.data,
+      } as any);
+    },
+
     updatePluginSettings: ({ event }) => {
       const ev = typeOf('PLUGIN_SETTINGS.UPDATE', event);
       trpc.bus.send.mutate({
@@ -237,6 +247,9 @@ const settingsState = setup({
         },
         'HOTKEYS.UPDATE': {
           actions: 'updateHotkeys',
+        },
+        'HOTKEYS.UPDATE_CUSTOM': {
+          actions: 'updateCustomHotkeys',
         },
         'PLUGIN_SETTINGS.UPDATE': {
           actions: 'updatePluginSettings',

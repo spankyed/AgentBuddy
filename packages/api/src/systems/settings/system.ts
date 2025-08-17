@@ -59,6 +59,14 @@ export const IncomingSettingsEvents = [
       modifiers: z.array(z.string())
     }).optional()
   }),
+  busEvent('UPDATE_CUSTOM_HOTKEYS', {
+    custom: z.array(z.object({
+      id: z.string(),
+      eventName: z.string(),
+      key: z.string(),
+      modifiers: z.array(z.string())
+    }))
+  }),
   busEvent('RESET_SETTINGS', {}),
 ] as const
 
@@ -204,6 +212,24 @@ export const settingsSystem = setup({
       }
     },
     
+    updateCustomHotkeys: ({ system, event }) => {
+      const ev = typeOf('UPDATE_CUSTOM_HOTKEYS', event);
+      const result = settingsCommands.updateCustomHotkeys(ev.custom);
+      
+      if (result.success) {
+        system.get(bus).send(emit(settings, {
+          type: 'SETTINGS_UPDATED',
+          data: result.data
+        }));
+      } else {
+        logger.error('Failed to update custom hotkeys:', { error: result.error });
+        system.get(bus).send(emit(settings, {
+          type: 'SETTINGS_ERROR',
+          error: result.error
+        }));
+      }
+    },
+    
     resetSettings: ({ system, event }) => {
       const result = settingsCommands.resetSettings();
       
@@ -248,6 +274,9 @@ export const settingsSystem = setup({
         },
         UPDATE_HOTKEYS: {
           actions: 'updateHotkeys',
+        },
+        UPDATE_CUSTOM_HOTKEYS: {
+          actions: 'updateCustomHotkeys',
         },
         RESET_SETTINGS: {
           actions: 'resetSettings',
