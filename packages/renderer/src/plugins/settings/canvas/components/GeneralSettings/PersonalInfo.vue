@@ -19,11 +19,11 @@
           id="name"
           v-model="formData.name"
           type="text"
-          placeholder="Enter your name as it should appear in the app"
-          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          placeholder="Enter your name"
+          class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
-          Your name as you'd like it to appear in the application
+          As you'd like it to appear in the application
         </p>
       </div>
 
@@ -40,10 +40,10 @@
           v-model="formData.phoneNumber"
           type="tel"
           placeholder="Enter your phone number"
-          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
-          Your primary contact number for notifications
+          Primary contact number for notifications
         </p>
       </div>
 
@@ -63,7 +63,7 @@
           class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
-          Your complete mailing address
+          Complete mailing address
         </p>
       </div>
     </div>
