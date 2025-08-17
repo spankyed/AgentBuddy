@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">Personal Information</h2>
       <p class="text-sm text-neutral-500">
-        Manage your personal details and contact information. This information is stored locally on your device.
+        Manage your personal details and contact information. This information gets stored locally on your device.
       </p>
     </div>
 
