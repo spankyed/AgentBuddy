@@ -19,10 +19,19 @@ export interface GeneralSettings {
   misc: MiscSettings;
 }
 
+export interface Address {
+  street: string;
+  street2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 export interface PersonalInfo {
   name?: string;
   phoneNumber?: string;
-  address?: string;
+  address?: string | Address; // Support both legacy string and new structured format
 }
 
 export interface ApiKeys {

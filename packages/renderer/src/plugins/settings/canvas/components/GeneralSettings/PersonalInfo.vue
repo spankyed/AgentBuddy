@@ -52,19 +52,7 @@
 
       <!-- Address Field -->
       <div class="group">
-        <label for="address" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-          Address
-        </label>
-        <textarea
-          id="address"
-          v-model="formData.address"
-          placeholder="Enter your address"
-          rows="4"
-          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none"
-        />
-        <p class="mt-1.5 text-xs text-neutral-600">
-          Complete mailing address
-        </p>
+        <AddressInput v-model="formData.address" />
       </div>
     </div>
 
@@ -87,15 +75,27 @@ import { ref, computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { CheckCircle } from 'lucide-vue-next'
+import AddressInput from './AddressInput.vue'
 
 const actor = applicationState.system.get('settings')
 
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
-const formData = ref({
+const formData = ref<{
+  name: string
+  phoneNumber: string
+  address: any // Can be string (legacy) or structured object
+}>({
   name: '',
   phoneNumber: '',
-  address: '',
+  address: {
+    street: '',
+    street2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'US'
+  },
 })
 
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
@@ -105,10 +105,18 @@ let statusTimeout: NodeJS.Timeout | null = null
 // Initialize form data from settings
 watch(settings, (newSettings) => {
   if (newSettings?.general?.personal) {
+    const personalData = newSettings.general.personal
     formData.value = {
-      name: newSettings.general.personal.name || '',
-      phoneNumber: newSettings.general.personal.phoneNumber || '',
-      address: newSettings.general.personal.address || '',
+      name: personalData.name || '',
+      phoneNumber: personalData.phoneNumber || '',
+      address: personalData.address || {
+        street: '',
+        street2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'US'
+      },
     }
   }
 }, { immediate: true })
