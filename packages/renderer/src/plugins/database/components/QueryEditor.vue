@@ -16,10 +16,14 @@
     />
     
     <div class="flex-1 overflow-hidden">
-      <CodeEditor
+      <SimpleMonacoEditor
         v-if="activeMode === 'query'"
         v-model="editorQuery"
+        language="typescript"
+        :function-body="true"
+        dsl-type="database"
         @execute="handleExecute"
+        class="h-full"
       />
       
       <QueryEditorExamples
@@ -43,7 +47,7 @@ import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
-import CodeEditor from './query-editor/CodeEditor.vue';
+import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 import MagicPromptDialog from './query-editor/MagicPromptDialog.vue';
 
