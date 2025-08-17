@@ -3,7 +3,7 @@ import { logErrors } from '@/core/utils/actor-helpers';
 import { logsSystem } from '@/systems/logs/system';
 import { backendSystem, bus } from '@/systems/backend';
 import { initializeLogCapture } from '@/core/utils/debug/log-capture';
-import { loadSnapshot } from '@/core/data';
+import { loadSnapshot } from '@/persistence/data';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/utils/ears/attribute-storage';
 
