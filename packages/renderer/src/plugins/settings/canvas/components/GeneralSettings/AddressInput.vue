@@ -1,60 +1,32 @@
 <template>
   <div class="space-y-4">
-    <!-- Street Address -->
-    <div>
-      <label for="street" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-        Street Address
-      </label>
-      <input
-        id="street"
-        v-model="localAddress.street"
-        type="text"
-        placeholder="123 Main Street"
-        class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-      />
-    </div>
-
-    <!-- Apartment/Suite (Optional) -->
-    <div>
-      <label for="street2" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-        Apartment, Suite, Unit <span class="text-neutral-600 normal-case">(optional)</span>
-      </label>
-      <input
-        id="street2"
-        v-model="localAddress.street2"
-        type="text"
-        placeholder="Apt 4B"
-        class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-      />
-    </div>
-
-    <!-- City and State Row -->
+    <!-- Street Address and State Row -->
     <div class="flex gap-4 max-w-md">
-      <!-- City -->
+      <!-- Street Address -->
       <div class="flex-1">
-        <label for="city" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-          City
+        <label for="street" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Street Address
         </label>
         <input
-          id="city"
-          v-model="localAddress.city"
+          id="street"
+          v-model="localAddress.street"
           type="text"
-          placeholder="New York"
+          placeholder="123 Main Street"
           class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
       </div>
 
       <!-- State -->
-      <div class="w-32">
+      <div class="w-20">
         <label for="state" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           State
         </label>
         <select
           id="state"
           v-model="localAddress.state"
-          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
+          class="w-full px-2 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
         >
-          <option value="" disabled>Select</option>
+          <option value="" disabled>--</option>
           <option v-for="state in usStates" :key="state.value" :value="state.value">
             {{ state.label }}
           </option>
@@ -62,27 +34,24 @@
       </div>
     </div>
 
-    <!-- ZIP Code and Country Row -->
+    <!-- Apartment/Suite and Country Row -->
     <div class="flex gap-4 max-w-md">
-      <!-- ZIP Code -->
+      <!-- Apartment/Suite (Optional) -->
       <div class="flex-1">
-        <label for="postalCode" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-          ZIP Code
+        <label for="street2" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Apt/Suite <span class="text-neutral-600 normal-case">(optional)</span>
         </label>
         <input
-          id="postalCode"
-          v-model="localAddress.postalCode"
+          id="street2"
+          v-model="localAddress.street2"
           type="text"
-          placeholder="10001"
-          maxlength="10"
+          placeholder="Apt 4B"
           class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-          @input="handleZipInput"
         />
-        <p class="mt-1 text-xs text-neutral-600">Format: 12345 or 12345-6789</p>
       </div>
 
       <!-- Country -->
-      <div class="flex-1">
+      <div class="w-36">
         <label for="country" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           Country
         </label>
@@ -98,6 +67,40 @@
           <option value="AU">Australia</option>
           <option value="other">Other</option>
         </select>
+      </div>
+    </div>
+
+    <!-- City and ZIP Code Row -->
+    <div class="flex gap-4 max-w-md">
+      <!-- City -->
+      <div class="flex-1">
+        <label for="city" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          City
+        </label>
+        <input
+          id="city"
+          v-model="localAddress.city"
+          type="text"
+          placeholder="New York"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+        />
+      </div>
+
+      <!-- ZIP Code -->
+      <div class="w-32">
+        <label for="postalCode" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          ZIP Code
+        </label>
+        <input
+          id="postalCode"
+          v-model="localAddress.postalCode"
+          type="text"
+          placeholder="10001"
+          maxlength="10"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          @input="handleZipInput"
+        />
+        <p class="mt-1 text-xs text-neutral-600">12345-6789</p>
       </div>
     </div>
   </div>
