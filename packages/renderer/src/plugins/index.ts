@@ -51,11 +51,11 @@ export default [
   Library,
   Actions,
   Prompts,
-  Settings,
   Flows,
   Brain,
   Database,
   Logs,
+  Settings,
   Blank,
   ...mockPlugins,
 ];
