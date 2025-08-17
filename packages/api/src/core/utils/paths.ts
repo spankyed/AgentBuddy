@@ -10,11 +10,11 @@ const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_
  * Only declare the differing parts here.
  */
 const SUBDIRS = {
-  searchIndices: { prod: 'search-indices', dev: 'src/persistence/data/search-indices' },
-  modelsCache: { prod: 'models-cache', dev: 'src/persistence/data/models' },
-  snapshots: { prod: 'snapshots', dev: 'src/persistence/data/snapshots' },
-  lmdb: { prod: 'ears-db', dev: 'src/persistence/data/ears-db' },
-  volatileLmdb: { prod: 'ears-trace', dev: 'src/persistence/data/ears-trace' },
+  searchIndices: { prod: 'search-indices', dev: 'src/persistence/data/untracked/search-indices' },
+  modelsCache: { prod: 'models-cache', dev: 'src/persistence/data/untracked/models' },
+  snapshots: { prod: 'snapshots', dev: 'src/persistence/data/untracked/snapshots' },
+  lmdb: { prod: 'ears-db', dev: 'src/persistence/data/untracked/ears-db' },
+  volatileLmdb: { prod: 'ears-trace', dev: 'src/persistence/data/untracked/ears-trace' },
 }
 
 // === Public API ===
