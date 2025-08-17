@@ -1,39 +1,87 @@
 <template>
-  <div class="max-w-md">
-    <h2 class="text-xl font-semibold text-white mb-6">Personal Information</h2>
-    <div class="space-y-4">
-      <div>
-        <label for="name" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Name</label>
+  <div class="max-w-3xl">
+    <!-- Header Section -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-white mb-2">Personal Information</h2>
+      <p class="text-sm text-neutral-500">
+        Manage your personal details and contact information. This information is stored locally on your device.
+      </p>
+    </div>
+
+    <!-- Form Fields -->
+    <div class="space-y-6">
+      <!-- Name Field -->
+      <div class="group">
+        <label for="name" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Name
+        </label>
         <input
           id="name"
           v-model="formData.name"
           type="text"
-          placeholder="Enter your name"
-          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Enter your name as it should appear in the app"
+          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Your name as you'd like it to appear in the application
+        </p>
       </div>
-      <div>
-        <label for="phone" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Phone Number</label>
+
+      <!-- Divider -->
+      <div class="border-t border-neutral-800"></div>
+
+      <!-- Phone Field -->
+      <div class="group">
+        <label for="phone" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Phone Number
+        </label>
         <input
           id="phone"
           v-model="formData.phoneNumber"
           type="tel"
           placeholder="Enter your phone number"
-          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Your primary contact number for notifications
+        </p>
       </div>
-      <div>
-        <label for="address" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Address</label>
+
+      <!-- Divider -->
+      <div class="border-t border-neutral-800"></div>
+
+      <!-- Address Field -->
+      <div class="group">
+        <label for="address" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Address
+        </label>
         <textarea
           id="address"
           v-model="formData.address"
           placeholder="Enter your address"
-          rows="3"
-          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          rows="4"
+          class="w-full max-w-md px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none"
         />
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Your complete mailing address
+        </p>
       </div>
     </div>
-    <button @click="save" class="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save Changes</button>
+
+    <!-- Footer with Save Button -->
+    <div class="mt-8 pt-6 border-t border-neutral-800">
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-neutral-600">
+          Changes are saved locally on this device
+        </p>
+        <button 
+          @click="save" 
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
