@@ -78,8 +78,7 @@
               @click="tagsExpanded = !tagsExpanded"
               class="flex items-center gap-2 mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400 hover:text-neutral-300 transition-colors"
             >
-              <ChevronDown v-if="tagsExpanded" class="w-4 h-4" />
-              <ChevronRight v-else class="w-4 h-4" />
+              <ChevronRight class="w-4 h-4 transition-transform" :class="{ 'rotate-90': tagsExpanded }" />
               Tags
               <span v-if="formData.tags.length > 0 && !tagsExpanded" class="ml-2 text-neutral-500">
                 ({{ formData.tags.length }})
@@ -119,7 +118,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, nextTick } from 'vue'
-import { X, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
+import { X, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import Autocomplete from '@/core/components/design/Autocomplete.vue'

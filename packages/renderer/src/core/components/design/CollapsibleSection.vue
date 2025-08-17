@@ -5,9 +5,9 @@
       class="flex items-center gap-2 w-full text-left focus:outline-none"
       :class="buttonClass"
     >
-      <ChevronDown
+      <ChevronRight
         class="w-4 h-4 transition-transform text-neutral-500"
-        :class="{ 'rotate-180': isOpen }"
+        :class="{ 'rotate-90': isOpen }"
       />
       <label class="text-xs font-medium tracking-wider uppercase text-neutral-400 cursor-pointer">
         <slot name="label">{{ label }}</slot>
@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronRight } from 'lucide-vue-next';
 
 const props = defineProps<{
   label?: string;

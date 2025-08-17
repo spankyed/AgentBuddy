@@ -1,20 +1,12 @@
 <template>
   <div class="space-y-6">
     <!-- Excluded Documents -->
-    <div>
-      <button
-        type="button"
-        @click="documentsExpanded = !documentsExpanded"
-        class="flex items-center gap-2 text-xs font-medium text-neutral-400 mb-4 hover:text-neutral-300 transition-colors"
-      >
-        <ChevronDown 
-          class="w-4 h-4 transition-transform" 
-          :class="{ 'rotate-0': documentsExpanded, '-rotate-90': !documentsExpanded }"
-        />
-        EXCLUDED DOCUMENTS
-      </button>
-      
-      <div v-if="documentsExpanded" class="space-y-2">
+    <CollapsibleSection 
+      label="EXCLUDED DOCUMENTS" 
+      :defaultOpen="true"
+      buttonClass="mb-4 hover:text-neutral-300 transition-colors"
+    >
+      <div class="space-y-2">
         <!-- Empty state -->
         <div v-if="excludedDocuments.length === 0" class="text-sm text-neutral-500 italic">
           No documents excluded. Use the search below to add documents.
@@ -74,35 +66,19 @@
           </div>
         </div>
       </div>
-    </div>
+    </CollapsibleSection>
 
     <!-- Folder Exclusion Section -->
     <div class="pt-6 border-t border-neutral-800">
       <div class="flex items-center justify-between mb-4">
-        <button
-          type="button"
-          @click="() => { if (!localData.excludeAllSubfolders) foldersExpanded = !foldersExpanded }"
-          class="flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-neutral-300 transition-colors"
-          :class="{ 'cursor-not-allowed opacity-50': localData.excludeAllSubfolders }"
-        >
-          <ChevronDown 
-            class="w-4 h-4 transition-transform" 
-            :class="{ 'rotate-0': foldersExpanded && !localData.excludeAllSubfolders, '-rotate-90': !foldersExpanded || localData.excludeAllSubfolders }"
-          />
-          FOLDER EXCLUSION
-        </button>
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-neutral-500">
-            Exclude all subfolders
-          </label>
-          <ToggleSwitch
-            v-model="localData.excludeAllSubfolders"
-            @update:modelValue="updateValue"
-          />
-        </div>
-      </div>
-      
-      <div v-if="foldersExpanded && !localData.excludeAllSubfolders" class="space-y-2">
+        <div class="flex-1">
+          <CollapsibleSection 
+            label="FOLDER EXCLUSION" 
+            :defaultOpen="true"
+            buttonClass="hover:text-neutral-300 transition-colors"
+            v-if="!localData.excludeAllSubfolders"
+          >
+            <div class="space-y-2">
         
         <!-- Existing excluded folders -->
         <div
@@ -156,6 +132,21 @@
               <span class="text-xs text-neutral-500">{{ folder.path }}</span>
             </div>
           </div>
+            </div>
+          </CollapsibleSection>
+          <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
+            <ChevronRight class="w-4 h-4" />
+            FOLDER EXCLUSION
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-neutral-500">
+            Exclude all subfolders
+          </label>
+          <ToggleSwitch
+            v-model="localData.excludeAllSubfolders"
+            @update:modelValue="updateValue"
+          />
         </div>
       </div>
     </div>
@@ -164,8 +155,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Folder, FileText, X, Plus, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Folder, FileText, X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
 import type { EARS } from '@app/api'
 
@@ -179,9 +171,6 @@ const emit = defineEmits<{
 
 const localData = ref<SearchIndexFormData>({ ...props.modelValue })
 
-// Collapsible state
-const foldersExpanded = ref(true)
-const documentsExpanded = ref(true)
 
 // Autocomplete state
 const folderSearchQuery = ref('')

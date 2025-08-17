@@ -3,30 +3,14 @@
     <!-- Section-based Indexing with Segment Rules -->
     <div>
       <div class="flex items-center justify-between mb-4">
-        <button
-          type="button"
-          @click="() => { if (localData.enableSectionIndexing) segmentRulesExpanded = !segmentRulesExpanded }"
-          class="flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-neutral-300 transition-colors"
-          :class="{ 'cursor-not-allowed opacity-50': !localData.enableSectionIndexing }"
-        >
-          <ChevronDown 
-            class="w-4 h-4 transition-transform" 
-            :class="{ 'rotate-0': segmentRulesExpanded && localData.enableSectionIndexing, '-rotate-90': !segmentRulesExpanded || !localData.enableSectionIndexing }"
-          />
-          SEGMENT RULES
-        </button>
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-neutral-500">
-            Enable section-based indexing
-          </label>
-          <ToggleSwitch
-            v-model="localData.enableSectionIndexing"
-            @update:modelValue="updateValue"
-          />
-        </div>
-      </div>
-      
-      <div v-if="segmentRulesExpanded && localData.enableSectionIndexing" class="space-y-3">
+        <div class="flex-1">
+          <CollapsibleSection 
+            label="SEGMENT RULES" 
+            :defaultOpen="true"
+            buttonClass="hover:text-neutral-300 transition-colors"
+            v-if="localData.enableSectionIndexing"
+          >
+            <div class="space-y-3">
         <!-- Rules List -->
         <div class="space-y-2">
           <div
@@ -103,25 +87,34 @@
           <Plus class="w-4 h-4" />
           <span>Add Rule</span>
         </button>
+            </div>
+          </CollapsibleSection>
+          <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
+            <ChevronRight class="w-4 h-4" />
+            SEGMENT RULES
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-neutral-500">
+            Enable section-based indexing
+          </label>
+          <ToggleSwitch
+            v-model="localData.enableSectionIndexing"
+            @update:modelValue="updateValue"
+          />
+        </div>
       </div>
     </div>
 
     <!-- Construct Document Section -->
     <div v-if="localData.enableSectionIndexing" class="pt-6 border-t border-neutral-800">
-      <button
-        type="button"
-        @click="documentTemplateExpanded = !documentTemplateExpanded"
-        class="flex items-center gap-2 text-xs font-medium text-neutral-400 mb-4 hover:text-neutral-300 transition-colors"
+      <CollapsibleSection 
+        label="DOCUMENT TEMPLATE" 
+        :defaultOpen="true"
+        buttonClass="mb-4 hover:text-neutral-300 transition-colors"
       >
-        <ChevronDown 
-          class="w-4 h-4 transition-transform" 
-          :class="{ 'rotate-0': documentTemplateExpanded, '-rotate-90': !documentTemplateExpanded }"
-        />
-        DOCUMENT TEMPLATE
-      </button>
-        
-      <!-- Template Input -->
-      <div v-if="documentTemplateExpanded" class="space-y-3">
+        <!-- Template Input -->
+        <div class="space-y-3">
         <div class="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
           <span>Available variables:</span>
           <button
@@ -162,7 +155,8 @@
             </p>
           </div>
         </div>
-      </div>
+        </div>
+      </CollapsibleSection>
     </div>
     
     <!-- Copy Feedback -->
@@ -172,8 +166,9 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { X, Plus, ChevronDown } from 'lucide-vue-next'
+import { X, Plus, ChevronRight } from 'lucide-vue-next'
 import ToggleSwitch from './form/ToggleSwitch.vue'
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import OccurrenceInput from './form/OccurrenceInput.vue'
 import CopyFeedback from '@/core/components/design/CopyFeedback.vue'
 import type { SearchIndexFormData, SegmentRule } from '../../types/search-index'
@@ -188,9 +183,6 @@ const emit = defineEmits<{
 
 const localData = ref<SearchIndexFormData>({ ...props.modelValue })
 
-// Collapsible state
-const segmentRulesExpanded = ref(true)
-const documentTemplateExpanded = ref(true)
 
 // Copy feedback state
 const showCopyFeedback = ref(false)

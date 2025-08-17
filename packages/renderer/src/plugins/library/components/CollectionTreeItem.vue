@@ -10,8 +10,7 @@
           @click="expanded = !expanded"
           class="w-5 h-5 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-colors"
         >
-          <ChevronDown v-if="expanded" class="w-4 h-4" />
-          <ChevronRight v-else class="w-4 h-4" />
+          <ChevronRight class="w-4 h-4 transition-transform" :class="{ 'rotate-90': expanded }" />
         </button>
         <div v-else class="w-5"></div>
         
@@ -98,7 +97,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { ChevronDown, ChevronRight, Folder, Edit2, Trash2 } from 'lucide-vue-next'
+import { ChevronRight, Folder, Edit2, Trash2 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import type { CollectionDTO } from '@app/api'
 
