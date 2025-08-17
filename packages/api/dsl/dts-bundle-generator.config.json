@@ -1,0 +1,19 @@
+{
+  "entries": [
+    {
+      "filePath": "./database.ts",
+      "outFile": "../../../packages/renderer/src/core/types/database-dsl.d.ts",
+      "noCheck": false,
+      "output": {
+        "exportReferencedTypes": true,
+        "inlineDeclareGlobals": true,
+        "inlineDeclareExternals": true,
+        "noBanner": true,
+        "umdModuleName": "DSL"
+      }
+    }
+  ],
+  "compilationOptions": {
+    "preferredConfigPath": "./tsconfig.json"
+  }
+}

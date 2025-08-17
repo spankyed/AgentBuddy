@@ -125,49 +125,12 @@ export function setupJsTsValidation(monaco: Monaco, functionBody = false): void 
   monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions)
 }
 
+// Import generated DSL types
+import databaseDslTypes from '../types/database-dsl.d.ts?raw'
+
 // DSL Type Definitions
 const DSL_SCHEMAS: Record<DslType, string> = {
-  database: `
-    declare namespace EARS {
-      export namespace Entity {
-        export const Thread: string;
-        export const Message: string;
-        export const Tag: string;
-        export const User: string;
-        export const Agent: string;
-        export const Flow: string;
-        export const Prompt: string;
-        export const Action: string;
-      }
-    }
-    
-    interface QueryBuilder<T = any> {
-      where(attribute: string, value?: any): QueryBuilder<T>;
-      ofType(entityType: string): QueryBuilder<T>;
-      withRole(role: string): QueryBuilder<T>;
-      orderBy(attribute: string, direction?: 'asc' | 'desc'): QueryBuilder<T>;
-      limit(count: number): QueryBuilder<T>;
-      distinct(attribute: string): QueryBuilder<T>;
-      reverse(): QueryBuilder<T>;
-      groupBy(attribute: string): Map<string, QueryBuilder<T>>;
-      linksTo(relationType: string, targetType: string | string[]): QueryBuilder<T>;
-      linksFrom(relationType: string, sourceType: string | string[]): QueryBuilder<T>;
-      page(size: number, cursor?: string): { items: T[]; nextCursor?: string };
-      pick(attributes: string[]): T[];
-      pickAll(): T[];
-      pickOne(attributes?: string[]): T | null;
-      ids(): string[];
-      count(): number;
-    }
-    
-    declare function qx(entityIdOrType?: string): QueryBuilder;
-    declare function getAll(entityId: string): Record<string, any>;
-    declare function getSchemaStats(): {
-      entities: Record<string, number>;
-      attributes: Record<string, number>;
-      relations: Record<string, number>;
-    };
-  `,
+  database: databaseDslTypes,
   
   action: `
     declare const params: Record<string, any>;
