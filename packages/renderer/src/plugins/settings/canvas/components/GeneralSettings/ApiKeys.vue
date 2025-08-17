@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">API Keys</h2>
       <p class="text-sm text-neutral-500">
-        Configure your API keys for various AI providers. These keys are stored locally and used to authenticate with external services.
+        Configure your API keys used to authenticate with external services.. These keys are stored locally.
       </p>
     </div>
     
