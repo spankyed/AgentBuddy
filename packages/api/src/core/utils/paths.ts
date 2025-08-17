@@ -1,130 +1,60 @@
 import * as path from 'path'
 import * as fs from 'fs'
 
-/**
- * Get the user data directory path
- * In production: Uses Electron's userData path (e.g., ~/Library/Application Support/AgentBuddy)
- * In development: Uses current working directory
- */
-export function getUserDataPath(): string {
-  return process.env.USER_DATA_PATH || process.cwd()
-}
+const userDataPath = process.env.USER_DATA_PATH || process.cwd()
+const cwd = process.cwd()
+const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH
 
 /**
- * Get the search indices directory path
+ * Map of subdirectory names (prod vs dev).
+ * Only declare the differing parts here.
  */
-export function getSearchIndicesPath(): string {
-  const userDataPath = getUserDataPath()
-  
-  // In development, use the src/core/data structure
-  // In production, use the user data directory
-  if (process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'search-indices')
-  } else {
-    // Development path - maintain compatibility with existing structure
-    return path.join(userDataPath, 'src', 'core', 'data', 'search-indices')
-  }
+const SUBDIRS = {
+  searchIndices: { prod: 'search-indices', dev: 'src/core/data/search-indices' },
+  modelsCache: { prod: 'models-cache', dev: 'data/models' },
+  snapshots: { prod: 'snapshots', dev: 'src/core/data/snapshots' },
+  lmdb: { prod: 'ears-db', dev: 'src/core/data/ears-db' },
+  volatileLmdb: { prod: 'ears-trace', dev: 'src/core/data/ears-trace' },
 }
 
-/**
- * Get the models cache directory path for embedding models
- */
-export function getModelsCachePath(): string {
-  const userDataPath = getUserDataPath()
-  
-  // In production, store models in user data directory
-  // In development, store in project directory
-  if (process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'models-cache')
-  } else {
-    // Development path
-    return path.join(userDataPath, 'data', 'models')
-  }
-}
+// === Public API ===
+
+export const getUserDataPath = (): string => userDataPath
+export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
+export const getModelsCachePath = (): string => resolvePath('modelsCache')
+export const getSnapshotsPath = (): string => resolvePath('snapshots')
+export const getLmdbPath = (): string => resolvePath('lmdb')
+export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
 
 /**
  * Ensure a directory exists, creating it if necessary
  */
-export function ensureDirectoryExists(dirPath: string): void {
+export const ensureDirectoryExists = (dirPath: string): void => {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true })
   }
 }
 
 /**
- * Get a specific index directory path
+ * Index-specific helpers
  */
-export function getIndexPath(indexId: string): string {
-  return path.join(getSearchIndicesPath(), indexId)
-}
+export const getIndexPath = (indexId: string): string =>
+  path.join(getSearchIndicesPath(), indexId)
+
+export const getIndexFilePath = (indexId: string): string =>
+  path.join(getIndexPath(indexId), 'index.usearch')
+
+export const getIndexMetadataPath = (indexId: string): string =>
+  path.join(getIndexPath(indexId), 'metadata.json')
+
+export const getIndexMappingsPath = (indexId: string): string =>
+  path.join(getIndexPath(indexId), 'mappings.json')
 
 /**
- * Get the path for an index file
+ * Resolve a directory path based on environment (prod vs dev).
+ * Hoisted to the bottom so it's always defined when used above.
  */
-export function getIndexFilePath(indexId: string): string {
-  return path.join(getIndexPath(indexId), 'index.usearch')
-}
-
-/**
- * Get the path for index metadata
- */
-export function getIndexMetadataPath(indexId: string): string {
-  return path.join(getIndexPath(indexId), 'metadata.json')
-}
-
-/**
- * Get the path for index mappings
- */
-export function getIndexMappingsPath(indexId: string): string {
-  return path.join(getIndexPath(indexId), 'mappings.json')
-}
-
-/**
- * Get the snapshots directory path
- */
-export function getSnapshotsPath(): string {
-  const userDataPath = getUserDataPath()
-
-  // Always use project directory in development (NODE_ENV !== 'production')
-  // In production builds, use the user data directory
-  if (process.env.NODE_ENV === 'production' && process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'snapshots')
-  } else {
-    // Development path - always use project structure regardless of USER_DATA_PATH
-    return path.join(process.cwd(), 'src', 'core', 'data', 'snapshots')
-    // return path.join(userDataPath, 'src', 'core', 'data', 'snapshots') // ! not working in dev
-  }
-}
-
-/**
- * Get the LMDB database directory path
- */
-export function getLmdbPath(): string {
-  const userDataPath = getUserDataPath()
-  
-  // In production, use the user data directory
-  // In development, use the project directory
-  if (process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'ears-db')
-  } else {
-    // Development path - use project structure relative to API package
-    // When running from packages/api, process.cwd() is already in packages/api
-    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-db')
-  }
-}
-
-/**
- * Get the volatile LMDB database directory path for excluded entities
- */
-export function getVolatileLmdbPath(): string {
-  const userDataPath = getUserDataPath()
-  
-  // In production, use the user data directory
-  // In development, use the project directory
-  if (process.env.USER_DATA_PATH) {
-    return path.join(userDataPath, 'ears-trace')
-  } else {
-    // Development path - use project structure relative to API package
-    return path.join(process.cwd(), 'src', 'core', 'data', 'ears-trace')
-  }
+export function resolvePath(key: keyof typeof SUBDIRS): string {
+  const { prod, dev } = SUBDIRS[key]
+  return isProd ? path.join(userDataPath, prod) : path.join(cwd, dev)
 }
