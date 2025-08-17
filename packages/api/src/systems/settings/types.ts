@@ -71,7 +71,7 @@ export const defaultSettings: SettingsData = {
     apiKeys: {},
     hotkeys: {
       switchPlugin: {
-        key: 'arrows',
+        key: 'ArrowDown+ArrowUp',
         modifiers: ['cmd', 'option']
       }
     },
