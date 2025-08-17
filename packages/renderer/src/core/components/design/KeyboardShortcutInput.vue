@@ -112,7 +112,6 @@ const displayValue = computed(() => {
 // Format key for display
 const formatKey = (key: string): string => {
   const keyMap: Record<string, string> = {
-    'arrows': '← →',
     'ArrowLeft': '←',
     'ArrowRight': '→',
     'ArrowUp': '↑',
@@ -128,6 +127,14 @@ const formatKey = (key: string): string => {
     'Home': 'Home',
     'End': 'End',
   }
+  
+  // Handle combined arrow keys (e.g., "ArrowUp+ArrowDown")
+  if (key.includes('+')) {
+    const keys = key.split('+')
+    const formattedKeys = keys.map(k => keyMap[k] || k.toUpperCase())
+    return formattedKeys.join(' ')
+  }
+  
   return keyMap[key] || key.toUpperCase()
 }
 
@@ -184,7 +191,7 @@ const recordKeyPress = (event: KeyboardEvent) => {
     recordingTimeout = setTimeout(() => {
       // Combine all arrow keys
       const arrowKeys = Array.from(pressedKeys.value).sort()
-      const combinedKey = arrowKeys.length > 1 ? 'arrows' : arrowKeys[0]
+      const combinedKey = arrowKeys.length > 1 ? arrowKeys.join('+') : arrowKeys[0]
       
       // Emit the shortcut
       const shortcut: KeyboardShortcut = {
@@ -197,6 +204,11 @@ const recordKeyPress = (event: KeyboardEvent) => {
       // Stop recording
       pressedKeys.value.clear()
       isRecording.value = false
+      
+      // Re-enable global hotkeys since we're done
+      applicationState.send({ type: 'HOTKEYS_RECORDING_END' })
+      emit('recording-end')
+      
       ;(event.target as HTMLElement).blur()
     }, props.multiArrowTimeout)
   } else {
