@@ -127,6 +127,7 @@ const currentShortcut = computed(() => {
 // Format key for display
 const formatKey = (key: string): string => {
   const keyMap: Record<string, string> = {
+    'arrows': '← →',  // Multiple arrow keys
     'ArrowLeft': '←',
     'ArrowRight': '→',
     'ArrowUp': '↑',
@@ -145,6 +146,7 @@ const formatKey = (key: string): string => {
 const startRecording = () => {
   isRecording.value = true
   recordedKeys.value.clear()
+  pressedKeys.value.clear()
 }
 
 // Stop recording when input loses focus
@@ -154,6 +156,10 @@ const stopRecording = () => {
     recordedKeys.value.clear()
   }, 100)
 }
+
+// Track pressed keys for multi-key shortcuts (like arrow keys)
+const pressedKeys = ref<Set<string>>(new Set())
+let recordingTimeout: NodeJS.Timeout | null = null
 
 // Record key press
 const recordKeyPress = (event: KeyboardEvent) => {
@@ -169,18 +175,49 @@ const recordKeyPress = (event: KeyboardEvent) => {
   const isModifierKey = ['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)
   if (isModifierKey) return
   
-  // Update shortcut data
-  shortcutData.value = {
-    modifiers,
-    key: event.key
+  // Special handling for arrow keys - allow multiple
+  const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
+  
+  if (isArrowKey) {
+    // Add to pressed keys set
+    pressedKeys.value.add(event.key)
+    
+    // Clear existing timeout
+    if (recordingTimeout) clearTimeout(recordingTimeout)
+    
+    // Wait a bit for more arrow keys
+    recordingTimeout = setTimeout(() => {
+      // Combine all arrow keys
+      const arrowKeys = Array.from(pressedKeys.value).sort()
+      const combinedKey = arrowKeys.length > 1 ? 'arrows' : arrowKeys[0]
+      
+      // Update shortcut data
+      shortcutData.value = {
+        modifiers,
+        key: combinedKey
+      }
+      
+      // Save and stop recording
+      updateHotkey()
+      pressedKeys.value.clear()
+      isRecording.value = false
+      ;(event.target as HTMLElement).blur()
+    }, 500) // Wait 500ms for additional arrow keys
+  } else {
+    // For non-arrow keys, save immediately
+    shortcutData.value = {
+      modifiers,
+      key: event.key
+    }
+    
+    // Save the shortcut
+    updateHotkey()
+    
+    // Stop recording
+    pressedKeys.value.clear()
+    isRecording.value = false
+    ;(event.target as HTMLElement).blur()
   }
-  
-  // Save the shortcut
-  updateHotkey()
-  
-  // Stop recording
-  isRecording.value = false
-  ;(event.target as HTMLElement).blur()
 }
 
 // Clear shortcut
