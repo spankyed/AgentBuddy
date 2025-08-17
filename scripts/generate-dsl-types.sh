@@ -1,71 +1,59 @@
 #!/bin/bash
 set -e
 
-# Script to generate ambient type declarations for DSL modules
-# Uses rollup for fast bundling and TypeScript API for ambientization
+# Script runs from packages/api directory
+echo "🔄 Generating DSL type definitions in parallel..."
 
-echo "🚀 Generating DSL type definitions..."
-
-# Change to API directory
-cd "$(dirname "$0")/../packages/api"
-
-# Create temp directory for intermediate files
-mkdir -p temp
-
-# Step 1: Bundle with rollup (parallel for speed)
-echo "📦 Bundling type definitions with rollup..."
-
-rollup -c rollup.database.config.js &
+# Run all three generations in parallel and capture their PIDs
+(
+  npx dts-bundle-generator dsl/database.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/database-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name DatabaseDSL \
+    --silent && echo "  ✅ Database DSL generated"
+) &
 PID1=$!
 
-rollup -c rollup.action.config.js &
+(
+  npx dts-bundle-generator dsl/action.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/action-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name ActionDSL \
+    --silent && echo "  ✅ Action DSL generated"
+) &
 PID2=$!
 
-rollup -c rollup.prompt.config.js &
+(
+  npx dts-bundle-generator dsl/prompt.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/prompt-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name PromptDSL \
+    --silent && echo "  ✅ Prompt DSL generated"
+) &
 PID3=$!
 
-# Wait for all rollup processes
+# Wait for all background processes to complete
 wait $PID1 $PID2 $PID3
 
+# Check if all processes succeeded
 if [ $? -eq 0 ]; then
-  echo "✅ All DSL types bundled successfully"
+  echo "✅ All DSL types generated successfully"
 else
-  echo "❌ Rollup bundling failed"
+  echo "❌ One or more DSL generations failed"
   exit 1
 fi
 
-# Step 2: Ambientize the bundled types (parallel)
-echo "🔄 Converting to ambient declarations..."
-
-tsx ../../scripts/ambientize-dts.mts \
-  temp/database.d.ts \
-  ../renderer/src/core/types/database-dsl.d.ts \
-  DatabaseDSL &
-PID1=$!
-
-tsx ../../scripts/ambientize-dts.mts \
-  temp/action.d.ts \
-  ../renderer/src/core/types/action-dsl.d.ts \
-  ActionDSL &
-PID2=$!
-
-tsx ../../scripts/ambientize-dts.mts \
-  temp/prompt.d.ts \
-  ../renderer/src/core/types/prompt-dsl.d.ts \
-  PromptDSL &
-PID3=$!
-
-# Wait for all ambientizer processes
-wait $PID1 $PID2 $PID3
-
-if [ $? -eq 0 ]; then
-  echo "✨ All DSL types converted to ambient declarations"
-else
-  echo "❌ Ambientization failed"
-  exit 1
-fi
-
-# Clean up temp files
-rm -rf temp
-
-echo "🎉 DSL type generation complete!"
+# Convert to ambient declarations using ts-morph
+node ../../scripts/convert-to-ambient-ts-morph.mjs
