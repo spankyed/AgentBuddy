@@ -1,7 +1,14 @@
 <template>
   <UnifiedMonacoEditor
-    v-bind="$props"
-    v-on="$attrs"
+    :modelValue="modelValue"
+    :language="language"
+    :readOnly="readOnly"
+    :theme="theme"
+    :options="options"
+    :placeholder="placeholder"
+    :functionBody="functionBody"
+    :dslType="dslType"
+    :actions="actions"
     mode="simple"
     :preset="resolvedPreset"
     @update:modelValue="handleUpdate"
@@ -16,6 +23,7 @@
 import { computed, ref } from 'vue'
 import UnifiedMonacoEditor from './UnifiedMonacoEditor.vue'
 import type { editor } from 'monaco-editor'
+import type { EditorAction } from '@/core/utils/monaco-config'
 
 export interface SimpleMonacoEditorProps {
   modelValue: string
@@ -25,10 +33,10 @@ export interface SimpleMonacoEditorProps {
   theme?: string
   height?: string
   options?: editor.IStandaloneEditorConstructionOptions
-  executeKey?: boolean
   placeholder?: string
   functionBody?: boolean
   dslType?: 'database' | 'action' | 'prompt'
+  actions?: EditorAction[]
 }
 
 const props = withDefaults(defineProps<SimpleMonacoEditorProps>(), {
@@ -36,7 +44,6 @@ const props = withDefaults(defineProps<SimpleMonacoEditorProps>(), {
   readOnly: false,
   minimal: false,
   theme: 'vs-dark',
-  executeKey: false,
   functionBody: false,
 })
 

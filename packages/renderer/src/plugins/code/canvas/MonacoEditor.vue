@@ -9,11 +9,12 @@
     :mode="diffMode ? 'diff' : 'multi-file'"
     :diffOriginal="originalContent"
     :diffModified="modifiedContent"
+    :actions="['insertConsoleLog']"
     preset="auto"
     preserveViewState
-    @update:modelValue="handleUpdate"
-    @change="handleChange"
-    @mount="handleMount"
+    @update:modelValue="$emit('update:modelValue', $event)"
+    @change="$emit('change', $event)"
+    @mount="$emit('mount', $event)"
   />
 </template>
 
@@ -21,7 +22,6 @@
 import { ref } from 'vue'
 import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
 import type { editor } from 'monaco-editor'
-import { registerInsertConsoleLogAction } from '@/plugins/code/actions/insert-console-log'
 
 const props = defineProps<{
   modelValue: string
@@ -41,23 +41,6 @@ const emit = defineEmits<{
 }>()
 
 const unifiedEditorRef = ref<InstanceType<typeof UnifiedMonacoEditor>>()
-
-const handleUpdate = (value: string) => {
-  emit('update:modelValue', value)
-}
-
-const handleChange = (value: string) => {
-  emit('change', value)
-}
-
-const handleMount = (editor: editor.IStandaloneCodeEditor) => {
-  const monaco = (window as any).monaco
-  if (monaco) {
-    // Register custom actions specific to code plugin
-    registerInsertConsoleLogAction(editor, monaco)
-  }
-  emit('mount', editor)
-}
 
 // Expose methods for external use
 defineExpose({

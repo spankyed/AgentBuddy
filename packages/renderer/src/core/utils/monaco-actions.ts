@@ -1,14 +1,26 @@
-export function registerInsertConsoleLogAction(editor: any, monaco: any) {
-  editor.addAction({
+/**
+ * Monaco Editor Custom Actions
+ * Defines custom editor actions that can be registered with Monaco editors
+ */
+
+import type { editor } from 'monaco-editor'
+
+type Monaco = typeof import('monaco-editor')
+
+/**
+ * Create insert console log action
+ */
+export function createInsertConsoleLogAction(monaco: Monaco): editor.IActionDescriptor {
+  return {
     id: 'insert-console-log',
     label: 'Insert Console Log',
     keybindings: [
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL
     ],
-    precondition: null,
+    precondition: undefined,
     contextMenuGroupId: 'navigation',
     contextMenuOrder: 1.5,
-    run: (ed: any) => {
+    run: (ed: editor.ICodeEditor) => {
       const selection = ed.getSelection()
       const model = ed.getModel()
       
@@ -48,5 +60,5 @@ export function registerInsertConsoleLogAction(editor: any, monaco: any) {
         column: cursorColumn
       })
     }
-  })
+  }
 }

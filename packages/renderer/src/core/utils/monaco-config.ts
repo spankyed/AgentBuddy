@@ -581,31 +581,61 @@ export function setupFunctionBodyMode(
 }
 
 // ============================================================================
-// KEYBINDINGS
+// EDITOR ACTIONS
 // ============================================================================
 
+import { createInsertConsoleLogAction } from './monaco-actions'
+
+export type EditorAction = 'executeCode' | 'insertConsoleLog'
+
 /**
- * Create standard editor keybindings
+ * Create editor actions based on requested action types
+ */
+export function createEditorActions(
+  monaco: Monaco,
+  actions?: EditorAction[],
+  callbacks?: {
+    onExecute?: () => void
+  }
+): editor.IActionDescriptor[] {
+  if (!actions || actions.length === 0) return []
+  
+  const actionDescriptors: editor.IActionDescriptor[] = []
+  
+  for (const action of actions) {
+    switch (action) {
+      case 'executeCode':
+        if (callbacks?.onExecute) {
+          actionDescriptors.push({
+            id: 'execute-code',
+            label: 'Execute Code',
+            keybindings: [
+              monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+              monaco.KeyCode.F5,
+            ],
+            run: callbacks.onExecute,
+          })
+        }
+        break
+        
+      case 'insertConsoleLog':
+        actionDescriptors.push(createInsertConsoleLogAction(monaco))
+        break
+    }
+  }
+  
+  return actionDescriptors
+}
+
+/**
+ * Create standard editor keybindings (deprecated - use createEditorActions)
+ * @deprecated Use createEditorActions instead
  */
 export function createEditorKeybindings(
   monaco: Monaco,
   onExecute?: () => void
 ): editor.IActionDescriptor[] {
-  const actions: editor.IActionDescriptor[] = []
-  
-  if (onExecute) {
-    actions.push({
-      id: 'execute-code',
-      label: 'Execute Code',
-      keybindings: [
-        monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-        monaco.KeyCode.F5,
-      ],
-      run: onExecute,
-    })
-  }
-  
-  return actions
+  return createEditorActions(monaco, ['executeCode'], { onExecute })
 }
 
 // ============================================================================

@@ -38,8 +38,9 @@ import {
   getEditorPresetForFile,
   initializeMonaco,
   setupMonacoForFile,
-  createEditorKeybindings,
-  type InitializeMonacoOptions
+  createEditorActions,
+  type InitializeMonacoOptions,
+  type EditorAction
 } from '@/core/utils/monaco-config'
 
 // Props interface
@@ -70,7 +71,7 @@ export interface UnifiedMonacoEditorProps {
   diffModified?: string
   
   // Features
-  executeKey?: boolean
+  actions?: EditorAction[]
   
   // Multi-file mode
   preserveViewState?: boolean
@@ -82,8 +83,7 @@ const props = withDefaults(defineProps<UnifiedMonacoEditorProps>(), {
   preset: 'auto',
   readOnly: false,
   functionBody: false,
-  preserveViewState: true,
-  executeKey: false
+  preserveViewState: true
 })
 
 const emit = defineEmits<{
@@ -228,9 +228,11 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     })
   }
   
-  // Add execute keybindings if requested
-  if (props.executeKey) {
-    const actions = createEditorKeybindings(monaco, () => emit('execute'))
+  // Add editor actions if requested
+  if (props.actions && props.actions.length > 0) {
+    const actions = createEditorActions(monaco, props.actions, {
+      onExecute: () => emit('execute')
+    })
     actions.forEach(action => editor.addAction(action))
   }
   
