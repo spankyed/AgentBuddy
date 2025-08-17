@@ -68,18 +68,15 @@
       </div>
     </div>
 
-    <!-- Footer with Save Button -->
-    <div class="mt-8 pt-6 border-t border-neutral-800">
-      <div class="flex items-center justify-between">
-        <p class="text-xs text-neutral-600">
-          Changes are saved locally on this device
-        </p>
-        <button 
-          @click="save" 
-          class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
-        >
-          Save Changes
-        </button>
+    <!-- Autosave indicator -->
+    <div class="mt-6 flex items-center gap-2">
+      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
+        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
+        Saving...
+      </div>
+      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
+        <CheckCircle class="w-3 h-3" />
+        All changes saved
       </div>
     </div>
   </div>
@@ -89,6 +86,7 @@
 import { ref, computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { CheckCircle } from 'lucide-vue-next'
 
 const actor = applicationState.system.get('settings')
 
@@ -99,6 +97,10 @@ const formData = ref({
   phoneNumber: '',
   address: '',
 })
+
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
+let saveTimeout: NodeJS.Timeout | null = null
+let statusTimeout: NodeJS.Timeout | null = null
 
 // Initialize form data from settings
 watch(settings, (newSettings) => {
@@ -111,11 +113,34 @@ watch(settings, (newSettings) => {
   }
 }, { immediate: true })
 
-const save = () => {
-  actor.send({ 
-    type: 'PERSONAL.UPDATE', 
-    data: formData.value 
-  })
-}
+// Autosave with debouncing
+watch(formData, (newData) => {
+  // Clear existing timeout
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  if (statusTimeout) {
+    clearTimeout(statusTimeout)
+  }
+  
+  // Show saving status
+  saveStatus.value = 'saving'
+  
+  // Debounce the save
+  saveTimeout = setTimeout(() => {
+    actor.send({ 
+      type: 'PERSONAL.UPDATE', 
+      data: newData 
+    })
+    
+    // Show saved status
+    saveStatus.value = 'saved'
+    
+    // Hide status after 2 seconds
+    statusTimeout = setTimeout(() => {
+      saveStatus.value = 'idle'
+    }, 2000)
+  }, 500)
+}, { deep: true })
 </script>
 

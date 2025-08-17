@@ -64,7 +64,17 @@
       </div>
     </div>
 
-    <button @click="save" class="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save API Keys</button>
+    <!-- Autosave indicator -->
+    <div class="mt-6 flex items-center gap-2">
+      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
+        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
+        Saving...
+      </div>
+      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
+        <CheckCircle class="w-3 h-3" />
+        API keys updated
+      </div>
+    </div>
   </div>
 </template>
 
@@ -72,7 +82,7 @@
 import { ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff, CheckCircle } from 'lucide-vue-next'
 
 const actor = applicationState.system.get('settings')
 
@@ -90,6 +100,10 @@ const showKeys = ref({
   openai: false,
 })
 
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
+let saveTimeout: NodeJS.Timeout | null = null
+let statusTimeout: NodeJS.Timeout | null = null
+
 // Initialize form data from settings
 watch(settings, (newSettings) => {
   if (newSettings?.general?.apiKeys) {
@@ -105,12 +119,35 @@ const toggleVisibility = (provider: 'google' | 'anthropic' | 'openai') => {
   showKeys.value[provider] = !showKeys.value[provider]
 }
 
-const save = () => {
-  actor.send({ 
-    type: 'API_KEYS.UPDATE', 
-    data: formData.value 
-  })
-}
+// Autosave with debouncing
+watch(formData, (newData) => {
+  // Clear existing timeout
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  if (statusTimeout) {
+    clearTimeout(statusTimeout)
+  }
+  
+  // Show saving status
+  saveStatus.value = 'saving'
+  
+  // Debounce the save
+  saveTimeout = setTimeout(() => {
+    actor.send({ 
+      type: 'API_KEYS.UPDATE', 
+      data: newData 
+    })
+    
+    // Show saved status
+    saveStatus.value = 'saved'
+    
+    // Hide status after 2 seconds
+    statusTimeout = setTimeout(() => {
+      saveStatus.value = 'idle'
+    }, 2000)
+  }, 500)
+}, { deep: true })
 </script>
 
 .api-keys {
@@ -197,24 +234,3 @@ input:focus {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.save-button {
-  padding: 0.625rem 1.25rem;
-  background: #007AFF;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.save-button:hover {
-  background: #0051D5;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-}
-
-.save-button:active {
-  transform: translateY(0);
-}

@@ -65,11 +65,21 @@
       </div>
     </div>
 
-    <div class="p-6 bg-neutral-800/50 border border-dashed border-neutral-700 rounded-lg text-center mb-6">
+    <div class="p-6 bg-neutral-800/50 border border-dashed border-neutral-700 rounded-lg text-center">
       <p class="text-sm text-neutral-500">More keyboard shortcuts coming soon...</p>
     </div>
 
-    <button @click="save" class="px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save Shortcuts</button>
+    <!-- Autosave indicator -->
+    <div class="mt-6 flex items-center gap-2">
+      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
+        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
+        Saving...
+      </div>
+      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
+        <CheckCircle class="w-3 h-3" />
+        Shortcuts updated
+      </div>
+    </div>
   </div>
 </template>
 
@@ -77,6 +87,7 @@
 import { ref, computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { CheckCircle } from 'lucide-vue-next'
 
 const actor = applicationState.system.get('settings')
 
@@ -90,6 +101,8 @@ const modifiers = ref({
 })
 
 const selectedKey = ref('arrows')
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
+let statusTimeout: NodeJS.Timeout | null = null
 
 // Initialize from settings
 watch(settings, (newSettings) => {
@@ -128,14 +141,20 @@ const currentShortcut = computed(() => {
 })
 
 const updateHotkey = () => {
-  // This will be called when user changes the hotkey configuration
-}
-
-const save = () => {
+  // Clear existing timeout
+  if (statusTimeout) {
+    clearTimeout(statusTimeout)
+  }
+  
+  // Show saving status
+  saveStatus.value = 'saving'
+  
+  // Get active modifiers
   const activeModifiers = Object.entries(modifiers.value)
     .filter(([_, active]) => active)
     .map(([mod]) => mod)
   
+  // Send update immediately for hotkeys (no debounce needed)
   actor.send({ 
     type: 'HOTKEYS.UPDATE', 
     data: {
@@ -145,6 +164,14 @@ const save = () => {
       }
     }
   })
+  
+  // Show saved status
+  saveStatus.value = 'saved'
+  
+  // Hide status after 2 seconds
+  statusTimeout = setTimeout(() => {
+    saveStatus.value = 'idle'
+  }, 2000)
 }
 </script>
 
@@ -292,24 +319,3 @@ select:focus {
   font-size: 13px;
 }
 
-.save-button {
-  padding: 0.625rem 1.25rem;
-  background: #007AFF;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.save-button:hover {
-  background: #0051D5;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-}
-
-.save-button:active {
-  transform: translateY(0);
-}
