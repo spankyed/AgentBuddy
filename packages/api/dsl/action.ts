@@ -16,8 +16,6 @@ export interface ActionParams {
 // Service type definitions (these will be extracted from the actual implementations)
 export type Services = typeof importedServices;
 
-// Re-export zod for Monaco Editor intellisense
-export { z };
 
 // Re-export service interfaces for better type generation
 export { ActionService } from '@/services/action';
@@ -25,16 +23,10 @@ export { PromptService } from '@/services/prompt';
 export { LibraryService } from '@/services/library';
 export type { ActionEntity } from '@/systems/actions/types';
 
-// Monaco Editor intellisense namespace (no naming conflicts)
-export namespace ActionDSL {
-  export const services: Services = undefined as any;
-  export const params: ActionParams = undefined as any;
-  export const z: typeof import('zod').z = undefined as any;
-}
+// Export runtime placeholders for Monaco Editor intellisense
+// These will be available when the module is imported
+export const services: Services = undefined as any;
+export const params: ActionParams = undefined as any;
 
-// Global declarations for the DSL context
-declare global {
-  const params: ActionParams;
-  const services: Services;
-  const z: typeof import('zod').z;
-}
+// Re-export zod directly so it's available in the module
+export { z } from 'zod';

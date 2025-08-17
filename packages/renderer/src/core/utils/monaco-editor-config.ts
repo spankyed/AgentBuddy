@@ -150,12 +150,43 @@ export function setupFunctionBodyMode(
   if (dslType) {
     const libKey = `${language}-${dslType}`
     if (!registeredLibs.has(libKey)) {
-      const libName = `dsl-${dslType}.d.ts`
       const langDefaults = language === 'typescript' 
         ? monaco.languages.typescript.typescriptDefaults
         : monaco.languages.typescript.javascriptDefaults
       
-      langDefaults.addExtraLib(DSL_SCHEMAS[dslType], libName)
+      // Add the module as a virtual file
+      // Use inmemory:// URI scheme for virtual modules
+      const moduleUri = `inmemory:///node_modules/@app/dsl/${dslType}/index.d.ts`
+      langDefaults.addExtraLib(DSL_SCHEMAS[dslType], moduleUri)
+      
+      // Also add a wrapper that imports from the module and makes things available globally
+      // This allows the function body to use the DSL without explicit imports
+      const wrapperContent = `
+        import * as _dsl from '@app/dsl/${dslType}';
+        
+        // Make DSL exports available globally for function body
+        ${dslType === 'action' ? `
+        declare global {
+          const services: typeof _dsl.services;
+          const params: typeof _dsl.params;
+          const z: typeof _dsl.z;
+        }` : ''}
+        ${dslType === 'prompt' ? `
+        declare global {
+          const usePrompt: typeof _dsl.usePrompt;
+          const params: typeof _dsl.params;
+        }` : ''}
+        ${dslType === 'database' ? `
+        declare global {
+          const EARS: typeof _dsl.EARS;
+          const qx: typeof _dsl.qx;
+          const tx: typeof _dsl.tx;
+          const bp: typeof _dsl.bp;
+          const spawn: typeof _dsl.spawn;
+        }` : ''}
+      `
+      
+      langDefaults.addExtraLib(wrapperContent, `inmemory:///dsl-wrapper-${dslType}.d.ts`)
       registeredLibs.add(libKey)
     }
   }

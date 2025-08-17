@@ -16,25 +16,16 @@ export interface PromptParams {
   [key: string]: any;
 }
 
-// Monaco Editor intellisense namespace (no naming conflicts)
-export namespace PromptDSL {
-  export function usePrompt(label: string, params: Record<string, any>): string | undefined {
-    // This is a placeholder implementation for type definitions
-    // The actual implementation is provided by the prompt context at runtime
-    throw new Error('usePrompt is only available within prompt template execution context');
+// Export runtime placeholders for Monaco Editor intellisense
+// These will be available when the module is imported
+export function usePrompt(label: string, params: Record<string, any>): string | undefined {
+  // This is a placeholder implementation for type definitions
+  // The actual implementation is provided by the prompt context at runtime
+  throw new Error('usePrompt is only available within prompt template execution context');
+}
+
+export const params: PromptParams = new Proxy({} as PromptParams, {
+  get() {
+    throw new Error('params is only available within prompt template execution context');
   }
-
-  export const params: PromptParams = new Proxy({} as PromptParams, {
-    get() {
-      throw new Error('params is only available within prompt template execution context');
-    }
-  });
-}
-
-// Global declarations for the DSL context
-// Note: In the actual prompt DSL runtime, usePrompt is synchronous (returns string | undefined)
-// This matches the PromptContext.usePrompt signature
-declare global {
-  const params: PromptParams;
-  function usePrompt(label: string, params: Record<string, any>): string | undefined;
-}
+});
