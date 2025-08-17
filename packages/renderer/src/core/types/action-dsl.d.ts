@@ -27,7 +27,8 @@ declare namespace EARS {
         Collection = "Collection",
         SearchIndex = "SearchIndex",
         Terminal = "Terminal",
-        Directory = "Directory"
+        Directory = "Directory",
+        Settings = "Settings"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {
@@ -219,52 +220,261 @@ interface StartupData {
     terminals: TerminalInfo[];
 }
 
-/**
- * Type-safe query helpers to eliminate repetitive type casting
- * These are simple wrappers around EARS query functions
- */
-declare function findById<T>(id: EARS.EntityId): T | undefined;
-declare function findAll<T>(entityType: EARS.Entity): T[];
-declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
-declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
-declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-declare function countEntities(entityType: EARS.Entity): number;
-declare function exists(id: EARS.EntityId): boolean;
-declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
+interface SafeLinkOptions {
+    /** Additional info to store with the relation */
+    info?: unknown;
+    /** If true, creates bidirectional edges automatically */
+    symmetric?: boolean;
+    /** If specified, prevents cycles within this group of relation kinds */
+    acyclicGroup?: readonly EARS.RelKind[];
+}
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
+    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
+    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
+    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
+    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
+    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
+    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
+    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
+    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
+    readonly grant: (r: string) => /*elided*/ any;
+    readonly revoke: (r: string) => /*elided*/ any;
+    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
+    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
+    readonly relPatch: (rel: EARS.EntityId, u: {
+        sourceEntity?: EARS.EntityId;
+        targetEntity?: EARS.EntityId;
+        info?: unknown;
+    }) => /*elided*/ any;
+    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
+    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
+    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
+    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
+        newTarget: EARS.EntityId;
+        newInfo?: unknown;
+    }) => /*elided*/ any;
+    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
+    readonly unlinkWhere: (c?: {
+        kind?: EARS.RelKind;
+        target?: EARS.EntityId;
+    }) => /*elided*/ any;
+    readonly define: (def: {
+        attributes?: Record<string, unknown>;
+        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
+        roles?: string | string[];
+    }) => /*elided*/ any;
+    readonly destroy: () => never;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
+};
 
-/**
- * Type-safe transaction helpers for common operations
- */
-declare function prepareEntity<T extends {
-    entityType: EARS.Entity;
-}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
-declare function createEntityWithDefaults<T extends {
-    entityType: EARS.Entity;
-    shortCode?: string;
-    label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+type Simplify<T> = {
+    [K in keyof T]: T[K];
+} & {};
+
+/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
+type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
+    [K in keyof S]: z.infer<S[K]>;
+}[number];
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
     id: EARS.EntityId;
-};
-declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
-declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-declare function grantRole(entityId: EARS.EntityId, role: string): void;
-declare function revokeRole(entityId: EARS.EntityId, role: string): void;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+}
 
 /**
- * Common repository types for consistent return values and error handling
+ * Prompt template types and definitions
  */
-type RepositoryResult<T> = {
-    success: true;
-    data: T;
-} | {
-    success: false;
-    error: string;
-    code?: string;
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+/**
+ * Defines a prompt entity stored in the system
+ */
+interface PromptEntity extends BaseEntity {
+    entityType: EARS.Entity.Prompt;
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    templateFn: string;
+    outputSchema?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+/**
+ * Data sent on prompts system startup
+ */
+interface PromptsStartupData {
+    prompts: PromptEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+}
+
+declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
+type LogLevel = z.infer<typeof LogLevel>;
+declare const LogEntry: z.ZodObject<{
+    id: z.ZodString;
+    timestamp: z.ZodNumber;
+    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
+    message: z.ZodString;
+    source: z.ZodOptional<z.ZodString>;
+    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    stack: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}>;
+type LogEntry = z.infer<typeof LogEntry>;
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
+interface MessageEntity extends BaseEntity {
+    entityType: EARS.Entity.Message;
+    text: string;
+    sender: 'user' | 'assistant' | 'system';
+    timestamp: number;
+}
+interface ThreadEntity extends BaseEntity {
+    entityType: EARS.Entity.Thread;
+    topic: string;
+    instructions: string;
+    sideTopics?: string[];
+    timestamp: number;
+    lastMessageTimestamp?: number;
+    shortCode?: string;
+    threadType: 'work-item' | 'project' | 'user';
+    status: 'backlog' | 'open' | 'in-progress' | 'in-review' | 'done';
+}
+interface ArtifactEntity extends BaseEntity {
+    entityType: EARS.Entity.Artifact;
+    title?: string;
+    content: string | any;
+    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
+}
+interface TagEntity extends BaseEntity {
+    entityType: EARS.Entity.Tag;
+    name: string;
+    color?: string;
+}
+declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
+type ThreadLinkRelation = typeof ThreadRelations[number];
+type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
+    relation: ThreadLinkRelation;
 };
-type OperationResult = RepositoryResult<void>;
+type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>;
+type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
+    status?: ThreadEntity['status'];
+} & ThreadLinkedFields>;
+type ThreadLinkedFields = {
+    tags?: ThreadTagItem[];
+    linkedThreads?: ThreadLinkItem[];
+};
+type ThreadCreateData = Simplify<ThreadEditFields>;
+type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
+type ThreadExtendedData = ThreadLinkedFields & {
+    messages?: Partial<MessageEntity>[];
+};
+type ThreadStartupData = {
+    threads: ThreadExtended[];
+    availableTags: TagEntity[];
+};
+
+type AgentThreadData = {
+    id?: ThreadEntity['id'];
+    shortCode?: ThreadEntity['shortCode'];
+    topic: ThreadEntity['topic'];
+    instructions: ThreadEntity['instructions'];
+    status: ThreadEntity['status'];
+    timestamp: ThreadEntity['timestamp'];
+    messages: ThreadExtendedData['messages'];
+    artifacts: ArtifactEntity[];
+};
+type RecentThreadRefreshData = {
+    currentThread: AgentThreadData | null;
+    threads: Partial<ThreadEntity>[];
+};
+type AgentStartupData = {
+    currentThread: AgentThreadData | null;
+    threads: Partial<ThreadEntity>[];
+    dashboardArtifacts: Partial<ArtifactEntity>[];
+    tabs: Tab[];
+};
+interface Tab {
+    id: string;
+    label: string;
+    artifacts: ArtifactItem[];
+    selectedArtifactId?: string;
+}
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack' | 'todo';
+interface ArtifactItem {
+    id: string;
+    type: ArtifactType;
+    title: string;
+    content: any;
+    metadata?: {
+        createdAt: number;
+        updatedAt?: number;
+        [key: string]: any;
+    };
+}
 
 type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
 
@@ -378,293 +588,6 @@ interface BreadcrumbItem {
     id: EARS.EntityId | null;
     name: string;
     path: string[];
-}
-
-declare class LibraryService {
-    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
-    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
-    getByName(name: string): Promise<DocumentDTO | undefined>;
-    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
-}
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-}
-
-declare class ActionService {
-    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
-    getByLabel(label: string): Promise<ActionEntity | undefined>;
-    getByCategory(category: string): Promise<ActionEntity[]>;
-    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
-    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
-}
-
-/**
- * Prompt template types and definitions
- */
-
-/**
- * Defines an input parameter that a prompt template expects
- */
-interface TemplateInput {
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    defaultValue?: any;
-    commonSources?: string[];
-    example?: any;
-}
-/**
- * Defines a prompt entity stored in the system
- */
-interface PromptEntity extends BaseEntity {
-    entityType: EARS.Entity.Prompt;
-    label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    createdAt: number;
-    updatedAt: number;
-}
-/**
- * Data sent on prompts system startup
- */
-interface PromptsStartupData {
-    prompts: PromptEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-}
-
-declare class PromptService {
-    getByLabel(label: string): Promise<PromptEntity | undefined>;
-    /**
-     * Execute a template with prompt context for accessing other prompts
-     * @param templateFn - The template function body
-     * @param templateParams - Parameters to pass to the template
-     */
-    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
-    /**
-     * Get and execute a prompt by label
-     * @param label - The prompt label
-     * @param templateParams - Parameters to pass to the template
-     */
-    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
-}
-
-type Simplify<T> = {
-    [K in keyof T]: T[K];
-} & {};
-
-/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
-type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
-    [K in keyof S]: z.infer<S[K]>;
-}[number];
-
-declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
-type LogLevel = z.infer<typeof LogLevel>;
-declare const LogEntry: z.ZodObject<{
-    id: z.ZodString;
-    timestamp: z.ZodNumber;
-    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
-    message: z.ZodString;
-    source: z.ZodOptional<z.ZodString>;
-    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-    stack: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}>;
-type LogEntry = z.infer<typeof LogEntry>;
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
-interface SafeLinkOptions {
-    /** Additional info to store with the relation */
-    info?: unknown;
-    /** If true, creates bidirectional edges automatically */
-    symmetric?: boolean;
-    /** If specified, prevents cycles within this group of relation kinds */
-    acyclicGroup?: readonly EARS.RelKind[];
-}
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
-    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
-    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
-    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
-    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
-    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly grant: (r: string) => /*elided*/ any;
-    readonly revoke: (r: string) => /*elided*/ any;
-    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
-    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly relPatch: (rel: EARS.EntityId, u: {
-        sourceEntity?: EARS.EntityId;
-        targetEntity?: EARS.EntityId;
-        info?: unknown;
-    }) => /*elided*/ any;
-    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
-    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
-    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
-        newTarget: EARS.EntityId;
-        newInfo?: unknown;
-    }) => /*elided*/ any;
-    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
-    readonly unlinkWhere: (c?: {
-        kind?: EARS.RelKind;
-        target?: EARS.EntityId;
-    }) => /*elided*/ any;
-    readonly define: (def: {
-        attributes?: Record<string, unknown>;
-        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
-        roles?: string | string[];
-    }) => /*elided*/ any;
-    readonly destroy: () => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
-};
-
-interface MessageEntity extends BaseEntity {
-    entityType: EARS.Entity.Message;
-    text: string;
-    sender: 'user' | 'assistant' | 'system';
-    timestamp: number;
-}
-interface ThreadEntity extends BaseEntity {
-    entityType: EARS.Entity.Thread;
-    topic: string;
-    instructions: string;
-    sideTopics?: string[];
-    timestamp: number;
-    lastMessageTimestamp?: number;
-    shortCode?: string;
-    threadType: 'work-item' | 'project' | 'user';
-    status: 'backlog' | 'open' | 'in-progress' | 'in-review' | 'done';
-}
-interface ArtifactEntity extends BaseEntity {
-    entityType: EARS.Entity.Artifact;
-    title?: string;
-    content: string | any;
-    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
-}
-interface TagEntity extends BaseEntity {
-    entityType: EARS.Entity.Tag;
-    name: string;
-    color?: string;
-}
-declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
-type ThreadLinkRelation = typeof ThreadRelations[number];
-type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
-    relation: ThreadLinkRelation;
-};
-type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>;
-type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
-    status?: ThreadEntity['status'];
-} & ThreadLinkedFields>;
-type ThreadLinkedFields = {
-    tags?: ThreadTagItem[];
-    linkedThreads?: ThreadLinkItem[];
-};
-type ThreadCreateData = Simplify<ThreadEditFields>;
-type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
-type ThreadExtendedData = ThreadLinkedFields & {
-    messages?: Partial<MessageEntity>[];
-};
-type ThreadStartupData = {
-    threads: ThreadExtended[];
-    availableTags: TagEntity[];
-};
-
-type AgentThreadData = {
-    id?: ThreadEntity['id'];
-    shortCode?: ThreadEntity['shortCode'];
-    topic: ThreadEntity['topic'];
-    instructions: ThreadEntity['instructions'];
-    status: ThreadEntity['status'];
-    timestamp: ThreadEntity['timestamp'];
-    messages: ThreadExtendedData['messages'];
-    artifacts: ArtifactEntity[];
-};
-type RecentThreadRefreshData = {
-    currentThread: AgentThreadData | null;
-    threads: Partial<ThreadEntity>[];
-};
-type AgentStartupData = {
-    currentThread: AgentThreadData | null;
-    threads: Partial<ThreadEntity>[];
-    dashboardArtifacts: Partial<ArtifactEntity>[];
-    tabs: Tab[];
-};
-interface Tab {
-    id: string;
-    label: string;
-    artifacts: ArtifactItem[];
-    selectedArtifactId?: string;
-}
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack' | 'todo';
-interface ArtifactItem {
-    id: string;
-    type: ArtifactType;
-    title: string;
-    content: any;
-    metadata?: {
-        createdAt: number;
-        updatedAt?: number;
-        [key: string]: any;
-    };
 }
 
 /** ── Shared aliases ─────────────────────────────────────────────────────── */
@@ -1337,6 +1260,236 @@ declare const events: {
         systemId: "prompts";
         page?: number | undefined;
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_GENERAL_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        general: zod.ZodObject<{
+            personal: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
+                name: zod.ZodOptional<zod.ZodString>;
+                phoneNumber: zod.ZodOptional<zod.ZodString>;
+                address: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            }, {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            }>>>;
+            apiKeys: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
+                google: zod.ZodOptional<zod.ZodString>;
+                anthropic: zod.ZodOptional<zod.ZodString>;
+                openai: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            }, {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            }>>>;
+            hotkeys: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
+                switchPlugin: zod.ZodOptional<zod.ZodObject<{
+                    key: zod.ZodString;
+                    modifiers: zod.ZodArray<zod.ZodString, "many">;
+                }, "strip", zod.ZodTypeAny, {
+                    key: string;
+                    modifiers: string[];
+                }, {
+                    key: string;
+                    modifiers: string[];
+                }>>;
+            }, "strip", zod.ZodTypeAny, {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            }, {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            }>>>;
+            misc: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{}, "strip", zod.ZodTypeAny, {}, {}>>>;
+        }, "strip", zod.ZodTypeAny, {
+            personal?: {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            } | undefined;
+            apiKeys?: {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            } | undefined;
+            hotkeys?: {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            } | undefined;
+            misc?: {} | undefined;
+        }, {
+            personal?: {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            } | undefined;
+            apiKeys?: {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            } | undefined;
+            hotkeys?: {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            } | undefined;
+            misc?: {} | undefined;
+        }>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        general: {
+            personal?: {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            } | undefined;
+            apiKeys?: {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            } | undefined;
+            hotkeys?: {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            } | undefined;
+            misc?: {} | undefined;
+        };
+        type: "UPDATE_GENERAL_SETTINGS";
+        systemId: "settings";
+    }, {
+        general: {
+            personal?: {
+                name?: string | undefined;
+                phoneNumber?: string | undefined;
+                address?: string | undefined;
+            } | undefined;
+            apiKeys?: {
+                anthropic?: string | undefined;
+                openai?: string | undefined;
+                google?: string | undefined;
+            } | undefined;
+            hotkeys?: {
+                switchPlugin?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+            } | undefined;
+            misc?: {} | undefined;
+        };
+        type: "UPDATE_GENERAL_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_PLUGIN_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        pluginId: zod.ZodString;
+        settings: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_PLUGIN_SETTINGS";
+        systemId: "settings";
+        pluginId: string;
+        settings?: any;
+    }, {
+        type: "UPDATE_PLUGIN_SETTINGS";
+        systemId: "settings";
+        pluginId: string;
+        settings?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_PERSONAL_INFO">;
+        systemId: zod.ZodLiteral<"settings">;
+        name: zod.ZodOptional<zod.ZodString>;
+        phoneNumber: zod.ZodOptional<zod.ZodString>;
+        address: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_PERSONAL_INFO";
+        systemId: "settings";
+        name?: string | undefined;
+        phoneNumber?: string | undefined;
+        address?: string | undefined;
+    }, {
+        type: "UPDATE_PERSONAL_INFO";
+        systemId: "settings";
+        name?: string | undefined;
+        phoneNumber?: string | undefined;
+        address?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+        google: zod.ZodOptional<zod.ZodString>;
+        anthropic: zod.ZodOptional<zod.ZodString>;
+        openai: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_API_KEYS";
+        systemId: "settings";
+        anthropic?: string | undefined;
+        openai?: string | undefined;
+        google?: string | undefined;
+    }, {
+        type: "UPDATE_API_KEYS";
+        systemId: "settings";
+        anthropic?: string | undefined;
+        openai?: string | undefined;
+        google?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_HOTKEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+        switchPlugin: zod.ZodOptional<zod.ZodObject<{
+            key: zod.ZodString;
+            modifiers: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            key: string;
+            modifiers: string[];
+        }, {
+            key: string;
+            modifiers: string[];
+        }>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_HOTKEYS";
+        systemId: "settings";
+        switchPlugin?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+    }, {
+        type: "UPDATE_HOTKEYS";
+        systemId: "settings";
+        switchPlugin?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"ACTION_SELECT">;
         systemId: zod.ZodLiteral<"actions">;
         actionId: zod.ZodString;
@@ -1461,11 +1614,11 @@ declare const events: {
             type: zod.ZodLiteral<"list">;
             items: zod.ZodArray<zod.ZodString, "many">;
         }, "strip", zod.ZodTypeAny, {
-            type: "list";
             items: string[];
+            type: "list";
         }, {
-            type: "list";
             items: string[];
+            type: "list";
         }>, zod.ZodObject<{
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
@@ -1488,8 +1641,8 @@ declare const events: {
                 key: string;
             }[];
         } | {
-            type: "list";
             items: string[];
+            type: "list";
         } | {
             text: string;
             type: "text";
@@ -1507,8 +1660,8 @@ declare const events: {
                 key: string;
             }[];
         } | {
-            type: "list";
             items: string[];
+            type: "list";
         } | {
             text: string;
             type: "text";
@@ -1549,11 +1702,11 @@ declare const events: {
             type: zod.ZodLiteral<"list">;
             items: zod.ZodArray<zod.ZodString, "many">;
         }, "strip", zod.ZodTypeAny, {
-            type: "list";
             items: string[];
+            type: "list";
         }, {
-            type: "list";
             items: string[];
+            type: "list";
         }>, zod.ZodObject<{
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
@@ -1577,8 +1730,8 @@ declare const events: {
                 key: string;
             }[];
         } | {
-            type: "list";
             items: string[];
+            type: "list";
         } | {
             text: string;
             type: "text";
@@ -1597,8 +1750,8 @@ declare const events: {
                 key: string;
             }[];
         } | {
-            type: "list";
             items: string[];
+            type: "list";
         } | {
             text: string;
             type: "text";
@@ -2802,6 +2955,22 @@ declare const events: {
         };
         pluginId: "prompts";
     } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsEntity;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsEntity;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsEntity;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_ERROR";
+        error: string;
+        pluginId: "settings";
+    } | {
         type: "ACTIONS_LISTED";
         data: ActionsStartupData;
         pluginId: "actions";
@@ -3371,6 +3540,128 @@ interface FlowExtendedData {
     edges: EdgeEntity[];
 }
 
+interface SettingsEntity extends BaseEntity {
+    entityType: EARS.Entity.Settings;
+    data: SettingsData;
+}
+interface SettingsData {
+    general: GeneralSettings;
+    plugins: PluginSettings;
+    faq: FAQSettings;
+}
+interface GeneralSettings {
+    personal: PersonalInfo;
+    apiKeys: ApiKeys;
+    hotkeys: Hotkeys;
+    misc: MiscSettings;
+}
+interface PersonalInfo {
+    name?: string;
+    phoneNumber?: string;
+    address?: string;
+}
+interface ApiKeys {
+    google?: string;
+    anthropic?: string;
+    openai?: string;
+}
+interface Hotkeys {
+    switchPlugin?: {
+        key: string;
+        modifiers: string[];
+    };
+}
+interface MiscSettings {
+}
+interface PluginSettings {
+    [pluginId: string]: any;
+}
+interface FAQSettings {
+    items: FAQItem[];
+}
+interface FAQItem {
+    question: string;
+    answer: string;
+}
+
+/**
+ * Type-safe query helpers to eliminate repetitive type casting
+ * These are simple wrappers around EARS query functions
+ */
+declare function findById<T>(id: EARS.EntityId): T | undefined;
+declare function findAll<T>(entityType: EARS.Entity): T[];
+declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
+declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
+declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
+declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
+declare function countEntities(entityType: EARS.Entity): number;
+declare function exists(id: EARS.EntityId): boolean;
+declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
+declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
+
+/**
+ * Type-safe transaction helpers for common operations
+ */
+declare function prepareEntity<T extends {
+    entityType: EARS.Entity;
+}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
+declare function createEntityWithDefaults<T extends {
+    entityType: EARS.Entity;
+    shortCode?: string;
+    label?: string;
+}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+    id: EARS.EntityId;
+};
+declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
+declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
+declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
+declare function grantRole(entityId: EARS.EntityId, role: string): void;
+declare function revokeRole(entityId: EARS.EntityId, role: string): void;
+
+/**
+ * Common repository types for consistent return values and error handling
+ */
+type RepositoryResult<T> = {
+    success: true;
+    data: T;
+} | {
+    success: false;
+    error: string;
+    code?: string;
+};
+type OperationResult = RepositoryResult<void>;
+
+declare class LibraryService {
+    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
+    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
+    getByName(name: string): Promise<DocumentDTO | undefined>;
+    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
+}
+
+declare class ActionService {
+    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
+    getByLabel(label: string): Promise<ActionEntity | undefined>;
+    getByCategory(category: string): Promise<ActionEntity[]>;
+    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
+    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
+}
+
+declare class PromptService {
+    getByLabel(label: string): Promise<PromptEntity | undefined>;
+    /**
+     * Execute a template with prompt context for accessing other prompts
+     * @param templateFn - The template function body
+     * @param templateParams - Parameters to pass to the template
+     */
+    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
+    /**
+     * Get and execute a prompt by label
+     * @param label - The prompt label
+     * @param templateParams - Parameters to pass to the template
+     */
+    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
+}
+
 declare const providers: {
     readonly anthropic: _ai_sdk_anthropic.AnthropicProvider;
     readonly openai: _ai_sdk_openai.OpenAIProvider;
@@ -3498,16 +3789,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
+        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`)[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
+    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`)[];
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | null;
+    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
+    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -3537,16 +3828,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
+            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`)[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
+        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`)[];
+        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | null;
+        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
+        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
@@ -3721,7 +4012,7 @@ declare const services: {
         };
         readonly agentQueries: {
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
-                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`;
+                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}`;
                 type: unknown;
                 title: unknown;
                 content: unknown;
@@ -3852,6 +4143,20 @@ declare const services: {
                 inputs?: Record<string, any>;
             }) => OperationResult;
             delete: (id: EARS.EntityId) => OperationResult;
+        };
+        readonly settingsQueries: {
+            getSettings(): RepositoryResult<SettingsEntity>;
+            getGeneralSettings(): RepositoryResult<SettingsData["general"]>;
+            getPluginSettings(pluginId: string): RepositoryResult<any>;
+            getFAQItems(): RepositoryResult<SettingsData["faq"]["items"]>;
+        };
+        readonly settingsCommands: {
+            updateGeneralSettings(generalSettings: Partial<SettingsData["general"]>): RepositoryResult<SettingsEntity>;
+            updatePluginSettings(pluginId: string, pluginSettings: any): RepositoryResult<SettingsEntity>;
+            updatePersonalInfo(personalInfo: Partial<SettingsData["general"]["personal"]>): RepositoryResult<SettingsEntity>;
+            updateApiKeys(apiKeys: Partial<SettingsData["general"]["apiKeys"]>): RepositoryResult<SettingsEntity>;
+            updateHotkeys(hotkeys: Partial<SettingsData["general"]["hotkeys"]>): RepositoryResult<SettingsEntity>;
+            resetSettings(): RepositoryResult<SettingsEntity>;
         };
         readonly terminalQueries: {
             byId: (id: EARS.EntityId) => TerminalEntity | undefined;

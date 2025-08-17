@@ -23,6 +23,7 @@ export namespace EARS {
     SearchIndex = 'SearchIndex',
     Terminal = 'Terminal',
     Directory = 'Directory',
+    Settings = 'Settings',
   }
   export type EntityId = `${Entity}-${string}`;
 

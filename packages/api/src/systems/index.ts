@@ -9,6 +9,7 @@ import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
 import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/database/system';
 import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
 import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
+import { settings, settingsSystem, SettingsSystemEvents } from '@/systems/settings/system';
 import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
 import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
 import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
@@ -20,6 +21,7 @@ export default {
   [flows]: flowsSystem,
   [database]: databaseSystem,
   [prompts]: promptsSystem,
+  [settings]: settingsSystem,
   [actions]: actionsSystem,
   [library]: librarySystem,
   [code]: codeSystem,
@@ -34,6 +36,7 @@ export const events = mergeSystems(
   DatabaseSystemEvents,
   LogsSystemEvents,
   PromptsSystemEvents,
+  SettingsSystemEvents,
   ActionsSystemEvents,
   LibrarySystemEvents,
   CodeSystemEvents
