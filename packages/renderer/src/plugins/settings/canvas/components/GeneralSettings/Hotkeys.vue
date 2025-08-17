@@ -12,67 +12,41 @@
     <div class="space-y-6">
       <!-- Switch Plugin Shortcut -->
       <div class="group">
-        <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+        <label for="switch-plugin-shortcut" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           Switch Plugin
         </label>
-        <div class="space-y-3">
-          <div class="flex flex-wrap gap-2 max-w-md">
-            <label class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 bg-neutral-900/50 border border-neutral-700/50 hover:border-neutral-600 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                v-model="modifiers.cmd"
-                @change="updateHotkey"
-                class="rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-1 focus:ring-blue-500/20"
-              />
-              <span>⌘ Cmd</span>
-            </label>
-            <label class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 bg-neutral-900/50 border border-neutral-700/50 hover:border-neutral-600 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                v-model="modifiers.option"
-                @change="updateHotkey"
-                class="rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-1 focus:ring-blue-500/20"
-              />
-              <span>⌥ Option</span>
-            </label>
-            <label class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 bg-neutral-900/50 border border-neutral-700/50 hover:border-neutral-600 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                v-model="modifiers.shift"
-                @change="updateHotkey"
-                class="rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-1 focus:ring-blue-500/20"
-              />
-              <span>⇧ Shift</span>
-            </label>
-            <label class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 bg-neutral-900/50 border border-neutral-700/50 hover:border-neutral-600 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                v-model="modifiers.ctrl"
-                @change="updateHotkey"
-                class="rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-1 focus:ring-blue-500/20"
-              />
-              <span>⌃ Ctrl</span>
-            </label>
+        <div class="flex items-center gap-3 max-w-md">
+          <div class="relative flex-1">
+            <input
+              id="switch-plugin-shortcut"
+              type="text"
+              :value="isRecording ? 'Press shortcut keys...' : currentShortcut"
+              @focus="startRecording"
+              @blur="stopRecording"
+              @keydown.prevent="recordKeyPress"
+              readonly
+              :class="[
+                'w-full px-3 py-2 bg-neutral-800 border rounded-lg text-sm font-mono cursor-pointer transition-all',
+                isRecording 
+                  ? 'border-blue-500/50 ring-2 ring-blue-500/20 text-blue-400 placeholder-blue-400' 
+                  : 'border-neutral-700/50 text-white hover:border-neutral-600'
+              ]"
+              :placeholder="isRecording ? 'Press shortcut keys...' : 'Click to set shortcut'"
+            />
+            <Keyboard v-if="!isRecording" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
           </div>
-          <div class="flex items-center gap-2 max-w-md">
-            <span class="text-neutral-500">+</span>
-            <select v-model="selectedKey" @change="updateHotkey" class="px-4 py-2.5 bg-neutral-900/50 border border-neutral-700/50 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all">
-              <option value="arrows">← → Arrow Keys</option>
-              <option value="tab">Tab</option>
-              <option value="space">Space</option>
-              <option value="enter">Enter</option>
-              <option value="1-9">Number Keys (1-9)</option>
-            </select>
-          </div>
-          <div class="mt-3">
-            <p class="text-xs text-neutral-600">
-              Current shortcut: <code class="px-2 py-1 bg-blue-500/10 text-blue-400 rounded font-mono text-xs">{{ currentShortcut }}</code>
-            </p>
-            <p class="mt-1.5 text-xs text-neutral-600">
-              Navigate between plugins using keyboard shortcuts
-            </p>
-          </div>
+          <button
+            v-if="currentShortcut && currentShortcut !== 'Not set'"
+            @click="clearShortcut"
+            class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+            title="Clear shortcut"
+          >
+            <X class="w-4 h-4" />
+          </button>
         </div>
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Navigate between plugins using keyboard shortcuts
+        </p>
       </div>
 
       <!-- Divider -->
@@ -105,59 +79,120 @@
 import { ref, computed, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle, Keyboard } from 'lucide-vue-next'
+import { CheckCircle, Keyboard, X } from 'lucide-vue-next'
 
 const actor = applicationState.system.get('settings')
 
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
-const modifiers = ref({
-  cmd: true,
-  option: true,
-  shift: false,
-  ctrl: false,
-})
-
-const selectedKey = ref('arrows')
+const isRecording = ref(false)
+const recordedKeys = ref<Set<string>>(new Set())
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let statusTimeout: NodeJS.Timeout | null = null
+
+// Store the current shortcut
+const shortcutData = ref({
+  modifiers: [] as string[],
+  key: ''
+})
 
 // Initialize from settings
 watch(settings, (newSettings) => {
   if (newSettings?.general?.hotkeys?.switchPlugin) {
     const hotkey = newSettings.general.hotkeys.switchPlugin
-    selectedKey.value = hotkey.key || 'arrows'
-    
-    // Parse modifiers
-    const mods = hotkey.modifiers || []
-    modifiers.value = {
-      cmd: mods.includes('cmd'),
-      option: mods.includes('option'),
-      shift: mods.includes('shift'),
-      ctrl: mods.includes('ctrl'),
+    shortcutData.value = {
+      key: hotkey.key || '',
+      modifiers: hotkey.modifiers || []
     }
   }
 }, { immediate: true })
 
+// Format shortcut for display
 const currentShortcut = computed(() => {
+  if (!shortcutData.value.key) return 'Not set'
+  
   const parts = []
-  if (modifiers.value.cmd) parts.push('⌘')
-  if (modifiers.value.option) parts.push('⌥')
-  if (modifiers.value.shift) parts.push('⇧')
-  if (modifiers.value.ctrl) parts.push('⌃')
+  if (shortcutData.value.modifiers.includes('cmd')) parts.push('⌘')
+  if (shortcutData.value.modifiers.includes('ctrl')) parts.push('⌃')
+  if (shortcutData.value.modifiers.includes('option')) parts.push('⌥')
+  if (shortcutData.value.modifiers.includes('shift')) parts.push('⇧')
   
-  const keyDisplay = {
-    'arrows': '← →',
-    'tab': 'Tab',
-    'space': 'Space',
-    'enter': 'Enter',
-    '1-9': '1-9',
-  }[selectedKey.value] || selectedKey.value
+  // Format the key
+  const keyDisplay = formatKey(shortcutData.value.key)
+  if (keyDisplay) parts.push(keyDisplay)
   
-  parts.push(keyDisplay)
-  return parts.join(' + ')
+  return parts.length > 0 ? parts.join(' ') : 'Not set'
 })
 
+// Format key for display
+const formatKey = (key: string): string => {
+  const keyMap: Record<string, string> = {
+    'ArrowLeft': '←',
+    'ArrowRight': '→',
+    'ArrowUp': '↑',
+    'ArrowDown': '↓',
+    'Enter': '⏎',
+    'Tab': '⇥',
+    ' ': 'Space',
+    'Escape': 'Esc',
+    'Backspace': '⌫',
+    'Delete': '⌦',
+  }
+  return keyMap[key] || key.toUpperCase()
+}
+
+// Start recording when input is focused
+const startRecording = () => {
+  isRecording.value = true
+  recordedKeys.value.clear()
+}
+
+// Stop recording when input loses focus
+const stopRecording = () => {
+  setTimeout(() => {
+    isRecording.value = false
+    recordedKeys.value.clear()
+  }, 100)
+}
+
+// Record key press
+const recordKeyPress = (event: KeyboardEvent) => {
+  if (!isRecording.value) return
+  
+  const modifiers: string[] = []
+  if (event.metaKey) modifiers.push('cmd')
+  if (event.ctrlKey && !event.metaKey) modifiers.push('ctrl')
+  if (event.altKey) modifiers.push('option')
+  if (event.shiftKey) modifiers.push('shift')
+  
+  // Don't record modifier keys alone
+  const isModifierKey = ['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)
+  if (isModifierKey) return
+  
+  // Update shortcut data
+  shortcutData.value = {
+    modifiers,
+    key: event.key
+  }
+  
+  // Save the shortcut
+  updateHotkey()
+  
+  // Stop recording
+  isRecording.value = false
+  ;(event.target as HTMLElement).blur()
+}
+
+// Clear shortcut
+const clearShortcut = () => {
+  shortcutData.value = {
+    modifiers: [],
+    key: ''
+  }
+  updateHotkey()
+}
+
+// Update hotkey in backend
 const updateHotkey = () => {
   // Clear existing timeout
   if (statusTimeout) {
@@ -167,18 +202,13 @@ const updateHotkey = () => {
   // Show saving status
   saveStatus.value = 'saving'
   
-  // Get active modifiers
-  const activeModifiers = Object.entries(modifiers.value)
-    .filter(([_, active]) => active)
-    .map(([mod]) => mod)
-  
-  // Send update immediately for hotkeys (no debounce needed)
+  // Send update
   actor.send({ 
     type: 'HOTKEYS.UPDATE', 
     data: {
       switchPlugin: {
-        key: selectedKey.value,
-        modifiers: activeModifiers
+        key: shortcutData.value.key,
+        modifiers: shortcutData.value.modifiers
       }
     }
   })
