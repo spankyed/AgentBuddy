@@ -20,10 +20,10 @@
           v-model="formData.name"
           type="text"
           placeholder="Enter your name"
-          class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
-          As you'd like it to appear in the application
+          As you'd like it to appear to the assistant
         </p>
       </div>
 
@@ -40,7 +40,7 @@
           v-model="formData.phoneNumber"
           type="tel"
           placeholder="Enter your phone number"
-          class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
           Primary contact number for notifications

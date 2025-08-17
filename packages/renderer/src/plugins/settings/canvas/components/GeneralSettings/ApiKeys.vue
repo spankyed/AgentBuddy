@@ -21,9 +21,9 @@
             v-model="formData.google"
             :type="showKeys.google ? 'text' : 'password'"
             placeholder="Enter your Google API key"
-            class="flex-1 px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
-          <button @click="toggleVisibility('google')" class="px-3 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
+          <button @click="toggleVisibility('google')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
             <Eye v-if="showKeys.google" class="w-4 h-4" />
             <EyeOff v-else class="w-4 h-4" />
           </button>
@@ -47,9 +47,9 @@
             v-model="formData.anthropic"
             :type="showKeys.anthropic ? 'text' : 'password'"
             placeholder="Enter your Anthropic API key"
-            class="flex-1 px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
-          <button @click="toggleVisibility('anthropic')" class="px-3 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
+          <button @click="toggleVisibility('anthropic')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
             <Eye v-if="showKeys.anthropic" class="w-4 h-4" />
             <EyeOff v-else class="w-4 h-4" />
           </button>
@@ -73,9 +73,9 @@
             v-model="formData.openai"
             :type="showKeys.openai ? 'text' : 'password'"
             placeholder="Enter your OpenAI API key"
-            class="flex-1 px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
-          <button @click="toggleVisibility('openai')" class="px-3 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
+          <button @click="toggleVisibility('openai')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
             <Eye v-if="showKeys.openai" class="w-4 h-4" />
             <EyeOff v-else class="w-4 h-4" />
           </button>

@@ -10,7 +10,7 @@
         v-model="localAddress.street"
         type="text"
         placeholder="123 Main Street"
-        class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+        class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
       />
     </div>
 
@@ -24,7 +24,7 @@
         v-model="localAddress.street2"
         type="text"
         placeholder="Apt 4B"
-        class="w-full max-w-md px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+        class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
       />
     </div>
 
@@ -40,7 +40,7 @@
           v-model="localAddress.city"
           type="text"
           placeholder="New York"
-          class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
       </div>
 
@@ -52,7 +52,7 @@
         <select
           id="state"
           v-model="localAddress.state"
-          class="w-full px-3 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
         >
           <option value="" disabled>Select</option>
           <option v-for="state in usStates" :key="state.value" :value="state.value">
@@ -75,7 +75,7 @@
           type="text"
           placeholder="10001"
           maxlength="10"
-          class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           @input="handleZipInput"
         />
         <p class="mt-1 text-xs text-neutral-600">Format: 12345 or 12345-6789</p>
@@ -89,7 +89,7 @@
         <select
           id="country"
           v-model="localAddress.country"
-          class="w-full px-3 py-2.5 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all appearance-none cursor-pointer"
         >
           <option value="US">United States</option>
           <option value="CA">Canada</option>
