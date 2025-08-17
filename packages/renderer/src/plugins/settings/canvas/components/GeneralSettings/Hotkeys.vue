@@ -59,7 +59,7 @@
               class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
               title="Remove shortcut"
             >
-              <Trash2 class="w-4 h-4" />
+              <X class="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -99,7 +99,7 @@
 import { ref, watch, reactive } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle, Keyboard, Trash2, Plus } from 'lucide-vue-next'
+import { CheckCircle, Keyboard, X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
 
 const actor = applicationState.system.get('settings')
