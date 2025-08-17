@@ -15,35 +15,12 @@
         <label for="switch-plugin-shortcut" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           Switch Plugin
         </label>
-        <div class="flex items-center gap-3 max-w-md">
-          <div class="relative flex-1">
-            <input
-              id="switch-plugin-shortcut"
-              type="text"
-              :value="isRecording ? 'Press shortcut keys...' : currentShortcut"
-              @focus="startRecording"
-              @blur="stopRecording"
-              @keydown.prevent="recordKeyPress"
-              readonly
-              :class="[
-                'w-full px-3 py-2 bg-neutral-800 border rounded-lg text-sm font-mono cursor-pointer transition-all',
-                isRecording 
-                  ? 'border-blue-500/50 ring-2 ring-blue-500/20 text-blue-400 placeholder-blue-400' 
-                  : 'border-neutral-700/50 text-white hover:border-neutral-600'
-              ]"
-              :placeholder="isRecording ? 'Press shortcut keys...' : 'Click to set shortcut'"
-            />
-            <Keyboard v-if="!isRecording" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
-          </div>
-          <button
-            v-if="currentShortcut && currentShortcut !== 'Not set'"
-            @click="clearShortcut"
-            class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
-            title="Clear shortcut"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
+        <KeyboardShortcutInput
+          v-model="shortcutData"
+          id="switch-plugin-shortcut"
+          @change="updateHotkey"
+          container-class="max-w-md"
+        />
         <p class="mt-1.5 text-xs text-neutral-600">
           Navigate between plugins using keyboard shortcuts
         </p>
@@ -76,25 +53,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle, Keyboard, X } from 'lucide-vue-next'
+import { CheckCircle, Keyboard } from 'lucide-vue-next'
+import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
 
 const actor = applicationState.system.get('settings')
 
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
-const isRecording = ref(false)
-const recordedKeys = ref<Set<string>>(new Set())
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let statusTimeout: NodeJS.Timeout | null = null
 
 // Store the current shortcut
-const shortcutData = ref({
-  modifiers: [] as string[],
-  key: ''
-})
+const shortcutData = ref<KeyboardShortcut | null>(null)
 
 // Initialize from settings
 watch(settings, (newSettings) => {
@@ -104,130 +77,10 @@ watch(settings, (newSettings) => {
       key: hotkey.key || '',
       modifiers: hotkey.modifiers || []
     }
+  } else {
+    shortcutData.value = null
   }
 }, { immediate: true })
-
-// Format shortcut for display
-const currentShortcut = computed(() => {
-  if (!shortcutData.value.key) return 'Not set'
-  
-  const parts = []
-  if (shortcutData.value.modifiers.includes('cmd')) parts.push('⌘')
-  if (shortcutData.value.modifiers.includes('ctrl')) parts.push('⌃')
-  if (shortcutData.value.modifiers.includes('option')) parts.push('⌥')
-  if (shortcutData.value.modifiers.includes('shift')) parts.push('⇧')
-  
-  // Format the key
-  const keyDisplay = formatKey(shortcutData.value.key)
-  if (keyDisplay) parts.push(keyDisplay)
-  
-  return parts.length > 0 ? parts.join(' ') : 'Not set'
-})
-
-// Format key for display
-const formatKey = (key: string): string => {
-  const keyMap: Record<string, string> = {
-    'arrows': '← →',  // Multiple arrow keys
-    'ArrowLeft': '←',
-    'ArrowRight': '→',
-    'ArrowUp': '↑',
-    'ArrowDown': '↓',
-    'Enter': '⏎',
-    'Tab': '⇥',
-    ' ': 'Space',
-    'Escape': 'Esc',
-    'Backspace': '⌫',
-    'Delete': '⌦',
-  }
-  return keyMap[key] || key.toUpperCase()
-}
-
-// Start recording when input is focused
-const startRecording = () => {
-  isRecording.value = true
-  recordedKeys.value.clear()
-  pressedKeys.value.clear()
-}
-
-// Stop recording when input loses focus
-const stopRecording = () => {
-  setTimeout(() => {
-    isRecording.value = false
-    recordedKeys.value.clear()
-  }, 100)
-}
-
-// Track pressed keys for multi-key shortcuts (like arrow keys)
-const pressedKeys = ref<Set<string>>(new Set())
-let recordingTimeout: NodeJS.Timeout | null = null
-
-// Record key press
-const recordKeyPress = (event: KeyboardEvent) => {
-  if (!isRecording.value) return
-  
-  const modifiers: string[] = []
-  if (event.metaKey) modifiers.push('cmd')
-  if (event.ctrlKey && !event.metaKey) modifiers.push('ctrl')
-  if (event.altKey) modifiers.push('option')
-  if (event.shiftKey) modifiers.push('shift')
-  
-  // Don't record modifier keys alone
-  const isModifierKey = ['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)
-  if (isModifierKey) return
-  
-  // Special handling for arrow keys - allow multiple
-  const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
-  
-  if (isArrowKey) {
-    // Add to pressed keys set
-    pressedKeys.value.add(event.key)
-    
-    // Clear existing timeout
-    if (recordingTimeout) clearTimeout(recordingTimeout)
-    
-    // Wait a bit for more arrow keys
-    recordingTimeout = setTimeout(() => {
-      // Combine all arrow keys
-      const arrowKeys = Array.from(pressedKeys.value).sort()
-      const combinedKey = arrowKeys.length > 1 ? 'arrows' : arrowKeys[0]
-      
-      // Update shortcut data
-      shortcutData.value = {
-        modifiers,
-        key: combinedKey
-      }
-      
-      // Save and stop recording
-      updateHotkey()
-      pressedKeys.value.clear()
-      isRecording.value = false
-      ;(event.target as HTMLElement).blur()
-    }, 500) // Wait 500ms for additional arrow keys
-  } else {
-    // For non-arrow keys, save immediately
-    shortcutData.value = {
-      modifiers,
-      key: event.key
-    }
-    
-    // Save the shortcut
-    updateHotkey()
-    
-    // Stop recording
-    pressedKeys.value.clear()
-    isRecording.value = false
-    ;(event.target as HTMLElement).blur()
-  }
-}
-
-// Clear shortcut
-const clearShortcut = () => {
-  shortcutData.value = {
-    modifiers: [],
-    key: ''
-  }
-  updateHotkey()
-}
 
 // Update hotkey in backend
 const updateHotkey = () => {
@@ -243,10 +96,10 @@ const updateHotkey = () => {
   actor.send({ 
     type: 'HOTKEYS.UPDATE', 
     data: {
-      switchPlugin: {
+      switchPlugin: shortcutData.value ? {
         key: shortcutData.value.key,
         modifiers: shortcutData.value.modifiers
-      }
+      } : null
     }
   })
   
