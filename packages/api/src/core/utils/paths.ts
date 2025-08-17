@@ -11,7 +11,7 @@ const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_
  */
 const SUBDIRS = {
   searchIndices: { prod: 'search-indices', dev: 'src/core/data/search-indices' },
-  modelsCache: { prod: 'models-cache', dev: 'data/models' },
+  modelsCache: { prod: 'models-cache', dev: 'src/core/data/models' },
   snapshots: { prod: 'snapshots', dev: 'src/core/data/snapshots' },
   lmdb: { prod: 'ears-db', dev: 'src/core/data/ears-db' },
   volatileLmdb: { prod: 'ears-trace', dev: 'src/core/data/ears-trace' },
