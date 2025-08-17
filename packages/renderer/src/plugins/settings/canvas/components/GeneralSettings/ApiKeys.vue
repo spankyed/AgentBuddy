@@ -1,65 +1,70 @@
 <template>
-  <div class="api-keys">
-    <h2>API Keys</h2>
-    <p class="description">
+  <div class="max-w-md">
+    <h2 class="text-xl font-semibold text-white mb-2">API Keys</h2>
+    <p class="text-sm text-neutral-400 mb-6">
       Configure your API keys for various AI providers. These keys are stored locally and used to authenticate with external services.
     </p>
     
-    <div class="form-group">
-      <label for="google-key">
-        Google API Key
-      </label>
-      <div class="input-group">
-        <input
-          id="google-key"
-          v-model="formData.google"
-          :type="showKeys.google ? 'text' : 'password'"
-          placeholder="Enter your Google API key"
-        />
-        <button @click="toggleVisibility('google')" class="toggle-visibility">
-          <Eye v-if="showKeys.google" />
-          <EyeOff v-else />
-        </button>
+    <div class="space-y-4">
+      <div>
+        <label for="google-key" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Google API Key
+        </label>
+        <div class="flex gap-2">
+          <input
+            id="google-key"
+            v-model="formData.google"
+            :type="showKeys.google ? 'text' : 'password'"
+            placeholder="Enter your Google API key"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button @click="toggleVisibility('google')" class="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 transition-colors">
+            <Eye v-if="showKeys.google" class="w-4 h-4" />
+            <EyeOff v-else class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label for="anthropic-key" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Anthropic API Key
+        </label>
+        <div class="flex gap-2">
+          <input
+            id="anthropic-key"
+            v-model="formData.anthropic"
+            :type="showKeys.anthropic ? 'text' : 'password'"
+            placeholder="Enter your Anthropic API key"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button @click="toggleVisibility('anthropic')" class="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 transition-colors">
+            <Eye v-if="showKeys.anthropic" class="w-4 h-4" />
+            <EyeOff v-else class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label for="openai-key" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          OpenAI API Key
+        </label>
+        <div class="flex gap-2">
+          <input
+            id="openai-key"
+            v-model="formData.openai"
+            :type="showKeys.openai ? 'text' : 'password'"
+            placeholder="Enter your OpenAI API key"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button @click="toggleVisibility('openai')" class="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 transition-colors">
+            <Eye v-if="showKeys.openai" class="w-4 h-4" />
+            <EyeOff v-else class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="anthropic-key">
-        Anthropic API Key
-      </label>
-      <div class="input-group">
-        <input
-          id="anthropic-key"
-          v-model="formData.anthropic"
-          :type="showKeys.anthropic ? 'text' : 'password'"
-          placeholder="Enter your Anthropic API key"
-        />
-        <button @click="toggleVisibility('anthropic')" class="toggle-visibility">
-          <Eye v-if="showKeys.anthropic" />
-          <EyeOff v-else />
-        </button>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="openai-key">
-        OpenAI API Key
-      </label>
-      <div class="input-group">
-        <input
-          id="openai-key"
-          v-model="formData.openai"
-          :type="showKeys.openai ? 'text' : 'password'"
-          placeholder="Enter your OpenAI API key"
-        />
-        <button @click="toggleVisibility('openai')" class="toggle-visibility">
-          <Eye v-if="showKeys.openai" />
-          <EyeOff v-else />
-        </button>
-      </div>
-    </div>
-
-    <button @click="save" class="save-button">Save API Keys</button>
+    <button @click="save" class="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save API Keys</button>
   </div>
 </template>
 
@@ -108,32 +113,36 @@ const save = () => {
 }
 </script>
 
-<style scoped>
 .api-keys {
-  max-width: 600px;
+  max-width: 500px;
 }
 
 h2 {
-  margin-bottom: 1rem;
-  color: var(--color-heading);
+  margin: 0 0 1rem 0;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .description {
   margin-bottom: 2rem;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .input-group {
@@ -143,48 +152,69 @@ label {
 
 input {
   flex: 1;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-background-soft);
-  color: var(--color-text);
+  padding: 0.625rem 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: white;
   font-size: 14px;
-  transition: border-color 0.2s;
+  font-family: 'SF Mono', Monaco, monospace;
+  transition: all 0.2s;
+}
+
+input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+input:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 input:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: #007AFF;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .toggle-visibility {
-  padding: 0.75rem;
-  background: var(--color-background-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  padding: 0.625rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .toggle-visibility:hover {
-  background: var(--color-background-mute);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .save-button {
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
+  padding: 0.625rem 1.25rem;
+  background: #007AFF;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .save-button:hover {
-  background: var(--color-primary-dark);
+  background: #0051D5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
-</style>
+
+.save-button:active {
+  transform: translateY(0);
+}

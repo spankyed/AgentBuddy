@@ -1,53 +1,57 @@
 <template>
-  <div class="hotkeys">
-    <h2>Keyboard Shortcuts</h2>
-    <p class="description">
+  <div class="max-w-xl">
+    <h2 class="text-xl font-semibold text-white mb-2">Keyboard Shortcuts</h2>
+    <p class="text-sm text-neutral-400 mb-6">
       Configure keyboard shortcuts for common actions in the application.
     </p>
 
-    <div class="hotkey-item">
-      <div class="hotkey-info">
-        <h3>Switch Plugin</h3>
-        <p>Navigate between plugins using keyboard shortcuts</p>
+    <div class="p-4 bg-neutral-800 border border-neutral-700 rounded-lg mb-4">
+      <div class="mb-3">
+        <h3 class="text-base font-medium text-white">Switch Plugin</h3>
+        <p class="text-sm text-neutral-400">Navigate between plugins using keyboard shortcuts</p>
       </div>
-      <div class="hotkey-config">
-        <div class="modifier-group">
-          <label>
+      <div class="space-y-3">
+        <div class="flex flex-wrap gap-2">
+          <label class="flex items-center gap-2 px-2 py-1 rounded text-sm text-neutral-300 hover:bg-neutral-700 cursor-pointer">
             <input
               type="checkbox"
               v-model="modifiers.cmd"
               @change="updateHotkey"
+              class="rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500"
             />
             <span>⌘ Cmd</span>
           </label>
-          <label>
+          <label class="flex items-center gap-2 px-2 py-1 rounded text-sm text-neutral-300 hover:bg-neutral-700 cursor-pointer">
             <input
               type="checkbox"
               v-model="modifiers.option"
               @change="updateHotkey"
+              class="rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500"
             />
             <span>⌥ Option</span>
           </label>
-          <label>
+          <label class="flex items-center gap-2 px-2 py-1 rounded text-sm text-neutral-300 hover:bg-neutral-700 cursor-pointer">
             <input
               type="checkbox"
               v-model="modifiers.shift"
               @change="updateHotkey"
+              class="rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500"
             />
             <span>⇧ Shift</span>
           </label>
-          <label>
+          <label class="flex items-center gap-2 px-2 py-1 rounded text-sm text-neutral-300 hover:bg-neutral-700 cursor-pointer">
             <input
               type="checkbox"
               v-model="modifiers.ctrl"
               @change="updateHotkey"
+              class="rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500"
             />
             <span>⌃ Ctrl</span>
           </label>
         </div>
-        <div class="key-input">
-          <span class="plus">+</span>
-          <select v-model="selectedKey" @change="updateHotkey">
+        <div class="flex items-center gap-2">
+          <span class="text-neutral-500">+</span>
+          <select v-model="selectedKey" @change="updateHotkey" class="px-3 py-1.5 bg-neutral-700 border border-neutral-600 rounded-md text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             <option value="arrows">← → Arrow Keys</option>
             <option value="tab">Tab</option>
             <option value="space">Space</option>
@@ -56,16 +60,16 @@
           </select>
         </div>
       </div>
-      <div class="current-shortcut">
-        Current: <code>{{ currentShortcut }}</code>
+      <div class="mt-3 text-sm text-neutral-400">
+        Current: <code class="px-2 py-1 bg-blue-500/20 text-blue-400 rounded font-mono">{{ currentShortcut }}</code>
       </div>
     </div>
 
-    <div class="more-shortcuts">
-      <p>More keyboard shortcuts coming soon...</p>
+    <div class="p-6 bg-neutral-800/50 border border-dashed border-neutral-700 rounded-lg text-center mb-6">
+      <p class="text-sm text-neutral-500">More keyboard shortcuts coming soon...</p>
     </div>
 
-    <button @click="save" class="save-button">Save Shortcuts</button>
+    <button @click="save" class="px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save Shortcuts</button>
   </div>
 </template>
 
@@ -144,33 +148,35 @@ const save = () => {
 }
 </script>
 
-<style scoped>
 .hotkeys {
-  max-width: 700px;
+  max-width: 600px;
 }
 
 h2 {
-  margin-bottom: 1rem;
-  color: var(--color-heading);
+  margin: 0 0 1rem 0;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 h3 {
   margin: 0;
-  font-size: 16px;
-  color: var(--color-text);
+  font-size: 15px;
+  color: white;
+  font-weight: 500;
 }
 
 .description {
   margin-bottom: 2rem;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .hotkey-item {
-  padding: 1.5rem;
-  background: var(--color-background-soft);
-  border: 1px solid var(--color-border);
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   margin-bottom: 1.5rem;
 }
@@ -181,8 +187,8 @@ h3 {
 
 .hotkey-info p {
   margin: 0.25rem 0 0 0;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
 }
 
 .hotkey-config {
@@ -194,19 +200,33 @@ h3 {
 
 .modifier-group {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .modifier-group label {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.modifier-group label:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .modifier-group input[type="checkbox"] {
   cursor: pointer;
+  opacity: 0.7;
+}
+
+.modifier-group input[type="checkbox"]:checked {
+  opacity: 1;
 }
 
 .key-input {
@@ -216,38 +236,51 @@ h3 {
 }
 
 .plus {
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.3);
   font-weight: 500;
 }
 
 select {
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-background);
-  color: var(--color-text);
-  font-size: 14px;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: white;
+  font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+select:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+select:focus {
+  outline: none;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .current-shortcut {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .current-shortcut code {
   padding: 0.25rem 0.5rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
+  background: rgba(0, 122, 255, 0.1);
+  border: 1px solid rgba(0, 122, 255, 0.2);
   border-radius: 4px;
-  color: var(--color-primary);
+  color: #007AFF;
   font-weight: 500;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 
 .more-shortcuts {
-  padding: 1rem;
-  background: var(--color-background-soft);
-  border: 1px dashed var(--color-border);
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   text-align: center;
   margin-bottom: 2rem;
@@ -255,22 +288,28 @@ select {
 
 .more-shortcuts p {
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
 }
 
 .save-button {
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
+  padding: 0.625rem 1.25rem;
+  background: #007AFF;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .save-button:hover {
-  background: var(--color-primary-dark);
+  background: #0051D5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
-</style>
+
+.save-button:active {
+  transform: translateY(0);
+}

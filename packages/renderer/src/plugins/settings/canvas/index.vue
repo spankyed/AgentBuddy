@@ -1,19 +1,24 @@
 <template>
-  <div class="settings-container">
+  <div class="flex flex-col h-full bg-neutral-900">
     <!-- Tabs -->
-    <div class="tabs-container">
+    <div class="flex border-b border-neutral-800">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         @click="selectTab(tab.id)"
-        :class="['tab-button', { active: activeTab === tab.id }]"
+        :class="[
+          'flex-1 px-4 py-3 text-sm font-medium transition-colors relative',
+          activeTab === tab.id
+            ? 'text-white border-b-2 border-blue-500'
+            : 'text-neutral-400 hover:text-neutral-200'
+        ]"
       >
         {{ tab.label }}
       </button>
     </div>
 
     <!-- Tab Content -->
-    <div class="tab-content">
+    <div class="flex-1 overflow-auto">
       <GeneralTab v-if="activeTab === 'general'" />
       <PluginsTab v-if="activeTab === 'plugins'" />
       <FAQTab v-if="activeTab === 'faq'" />
@@ -43,44 +48,3 @@ const selectTab = (tabId: string) => {
 }
 </script>
 
-<style scoped>
-.settings-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--color-background);
-}
-
-.tabs-container {
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background-soft);
-}
-
-.tab-button {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.tab-button:hover {
-  background: var(--color-background-mute);
-}
-
-.tab-button.active {
-  background: var(--color-primary);
-  color: white;
-}
-
-.tab-content {
-  flex: 1;
-  overflow: auto;
-}
-</style>

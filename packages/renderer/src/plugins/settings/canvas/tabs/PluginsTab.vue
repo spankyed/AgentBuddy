@@ -1,31 +1,36 @@
 <template>
-  <div class="plugins-tab">
+  <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="sidebar">
-      <h3>Plugins with Settings</h3>
-      <div v-if="pluginsWithSettings.length === 0" class="no-plugins">
-        <p>No plugins have settings configured yet</p>
+    <div class="w-64 p-2 bg-neutral-900 border-r border-neutral-800">
+      <h3 class="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Plugins with Settings</h3>
+      <div v-if="pluginsWithSettings.length === 0" class="px-3 py-6 text-center">
+        <p class="text-sm text-neutral-500">No plugins have settings configured yet</p>
       </div>
       <button
         v-for="plugin in pluginsWithSettings"
         :key="plugin.id"
         @click="selectPlugin(plugin.id)"
-        :class="['plugin-item', { active: selectedPluginId === plugin.id }]"
+        :class="[
+          'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
+          selectedPluginId === plugin.id
+            ? 'bg-blue-500/20 text-blue-400'
+            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+        ]"
       >
-        <component :is="plugin.icon" class="plugin-icon" />
+        <component :is="plugin.icon" class="w-4 h-4" />
         {{ plugin.label }}
       </button>
     </div>
 
     <!-- Content Area -->
-    <div class="content">
-      <div v-if="selectedPlugin" class="plugin-settings">
-        <h2>{{ selectedPlugin.label }} Settings</h2>
+    <div class="flex-1 p-8 overflow-auto">
+      <div v-if="selectedPlugin">
+        <h2 class="text-xl font-semibold text-white mb-6">{{ selectedPlugin.label }} Settings</h2>
         <component :is="selectedPlugin.settings" />
       </div>
-      <div v-else class="empty-state">
-        <Package class="empty-icon" />
-        <p>Select a plugin to configure its settings</p>
+      <div v-else class="flex flex-col items-center justify-center h-full">
+        <Package class="w-16 h-16 text-neutral-700 mb-4" />
+        <p class="text-neutral-400">Select a plugin to configure its settings</p>
       </div>
     </div>
   </div>
@@ -57,79 +62,85 @@ const selectPlugin = (pluginId: string) => {
 }
 </script>
 
-<style scoped>
 .plugins-tab {
   display: flex;
   height: 100%;
+  background: #0a0a0a;
 }
 
 .sidebar {
   width: 250px;
-  padding: 1rem;
-  background: var(--color-background-soft);
-  border-right: 1px solid var(--color-border);
+  padding: 1rem 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sidebar h3 {
   margin: 0 0 1rem 0;
-  padding: 0.5rem;
-  font-size: 14px;
+  padding: 0.5rem 0.75rem;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .no-plugins {
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   text-align: center;
 }
 
 .no-plugins p {
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
 }
 
 .plugin-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.625rem 0.75rem;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-  margin-bottom: 0.25rem;
+  border-radius: 6px;
+  transition: all 0.15s;
+  margin-bottom: 2px;
   text-align: left;
+  font-size: 13px;
 }
 
 .plugin-item:hover {
-  background: var(--color-background-mute);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .plugin-item.active {
-  background: var(--color-primary);
-  color: white;
+  background: rgba(0, 122, 255, 0.15);
+  color: #007AFF;
 }
 
 .plugin-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
 }
 
 .content {
   flex: 1;
-  padding: 2rem;
+  padding: 2.5rem 3rem;
   overflow: auto;
+  background: #0a0a0a;
 }
 
 .plugin-settings h2 {
-  margin-bottom: 1.5rem;
-  color: var(--color-heading);
+  margin: 0 0 2rem 0;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .empty-state {
@@ -145,13 +156,12 @@ const selectPlugin = (pluginId: string) => {
   width: 64px;
   height: 64px;
   margin-bottom: 1rem;
-  color: var(--color-text-secondary);
-  opacity: 0.3;
+  color: rgba(255, 255, 255, 0.15);
+  opacity: 1;
 }
 
 .empty-state p {
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
 }
-</style>

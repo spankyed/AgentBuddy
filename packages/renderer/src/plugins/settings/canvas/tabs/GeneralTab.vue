@@ -1,20 +1,25 @@
 <template>
-  <div class="general-tab">
+  <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="sidebar">
+    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800">
       <button
         v-for="item in navItems"
         :key="item.id"
         @click="selectNavItem(item.id)"
-        :class="['nav-item', { active: generalNavItem === item.id }]"
+        :class="[
+          'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
+          generalNavItem === item.id
+            ? 'bg-blue-500/20 text-blue-400'
+            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+        ]"
       >
-        <component :is="item.icon" class="nav-icon" />
+        <component :is="item.icon" class="w-4 h-4" />
         {{ item.label }}
       </button>
     </div>
 
     <!-- Content Area -->
-    <div class="content">
+    <div class="flex-1 p-8 overflow-auto">
       <PersonalInfo v-if="generalNavItem === 'personal'" />
       <ApiKeys v-if="generalNavItem === 'apiKeys'" />
       <Hotkeys v-if="generalNavItem === 'hotkeys'" />
@@ -48,52 +53,3 @@ const selectNavItem = (itemId: string) => {
 }
 </script>
 
-<style scoped>
-.general-tab {
-  display: flex;
-  height: 100%;
-}
-
-.sidebar {
-  width: 200px;
-  padding: 1rem;
-  background: var(--color-background-soft);
-  border-right: 1px solid var(--color-border);
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
-  margin-bottom: 0.25rem;
-  text-align: left;
-}
-
-.nav-item:hover {
-  background: var(--color-background-mute);
-}
-
-.nav-item.active {
-  background: var(--color-primary);
-  color: white;
-}
-
-.nav-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.content {
-  flex: 1;
-  padding: 2rem;
-  overflow: auto;
-}
-</style>

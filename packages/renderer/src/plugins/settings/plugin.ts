@@ -9,6 +9,7 @@ export const settingsPlugin: Plugin = {
   icon: Settings,
   state,
   canvas,
+  isPinned: true
 }
 
 export default settingsPlugin;

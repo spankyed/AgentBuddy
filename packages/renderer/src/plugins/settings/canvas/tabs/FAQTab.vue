@@ -1,19 +1,22 @@
 <template>
-  <div class="faq-tab">
-    <div class="faq-container">
-      <h2>Frequently Asked Questions</h2>
+  <div class="p-8 overflow-auto">
+    <div class="max-w-2xl mx-auto">
+      <h2 class="text-2xl font-semibold text-white text-center mb-8">Frequently Asked Questions</h2>
       
-      <div class="faq-list">
-        <div v-for="(item, index) in faqItems" :key="index" class="faq-item">
+      <div class="space-y-3">
+        <div v-for="(item, index) in faqItems" :key="index" 
+          class="bg-neutral-800 border border-neutral-700 rounded-lg overflow-hidden transition-colors hover:border-neutral-600">
           <button
             @click="toggleItem(index)"
-            :class="['faq-question', { expanded: expandedItems.includes(index) }]"
+            class="w-full px-5 py-4 flex justify-between items-center text-left transition-colors"
+            :class="expandedItems.includes(index) ? 'bg-neutral-700/50' : ''"
           >
-            <span>{{ item.question }}</span>
-            <ChevronDown :class="['chevron', { rotated: expandedItems.includes(index) }]" />
+            <span class="text-sm font-medium" :class="expandedItems.includes(index) ? 'text-white' : 'text-neutral-300'">{{ item.question }}</span>
+            <ChevronDown class="w-4 h-4 text-neutral-400 transition-transform duration-200" 
+              :class="expandedItems.includes(index) ? 'rotate-180' : ''" />
           </button>
-          <div v-if="expandedItems.includes(index)" class="faq-answer">
-            <p>{{ item.answer }}</p>
+          <div v-if="expandedItems.includes(index)" class="px-5 pb-4 animate-fadeIn">
+            <p class="text-sm text-neutral-400 leading-relaxed">{{ item.answer }}</p>
           </div>
         </div>
       </div>
@@ -57,90 +60,18 @@ const toggleItem = (index: number) => {
 </script>
 
 <style scoped>
-.faq-tab {
-  padding: 2rem;
-  overflow: auto;
-}
-
-.faq-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-h2 {
-  margin-bottom: 2rem;
-  color: var(--color-heading);
-  text-align: center;
-}
-
-.faq-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.faq-item {
-  background: var(--color-background-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.faq-question {
-  width: 100%;
-  padding: 1.25rem;
-  background: transparent;
-  border: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  text-align: left;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--color-text);
-  transition: background 0.2s;
-}
-
-.faq-question:hover {
-  background: var(--color-background-mute);
-}
-
-.faq-question.expanded {
-  background: var(--color-background-mute);
-}
-
-.chevron {
-  width: 20px;
-  height: 20px;
-  color: var(--color-text-secondary);
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-}
-
-.chevron.rotated {
-  transform: rotate(180deg);
-}
-
-.faq-answer {
-  padding: 0 1.25rem 1.25rem;
-  animation: slideDown 0.3s ease;
-}
-
-.faq-answer p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-}
-
-@keyframes slideDown {
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
 }
 </style>

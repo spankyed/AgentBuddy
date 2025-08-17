@@ -1,34 +1,39 @@
 <template>
-  <div class="personal-info">
-    <h2>Personal Information</h2>
-    <div class="form-group">
-      <label for="name">Name</label>
-      <input
-        id="name"
-        v-model="formData.name"
-        type="text"
-        placeholder="Enter your name"
-      />
+  <div class="max-w-md">
+    <h2 class="text-xl font-semibold text-white mb-6">Personal Information</h2>
+    <div class="space-y-4">
+      <div>
+        <label for="name" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Name</label>
+        <input
+          id="name"
+          v-model="formData.name"
+          type="text"
+          placeholder="Enter your name"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+      <div>
+        <label for="phone" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Phone Number</label>
+        <input
+          id="phone"
+          v-model="formData.phoneNumber"
+          type="tel"
+          placeholder="Enter your phone number"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+      <div>
+        <label for="address" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">Address</label>
+        <textarea
+          id="address"
+          v-model="formData.address"
+          placeholder="Enter your address"
+          rows="3"
+          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        />
+      </div>
     </div>
-    <div class="form-group">
-      <label for="phone">Phone Number</label>
-      <input
-        id="phone"
-        v-model="formData.phoneNumber"
-        type="tel"
-        placeholder="Enter your phone number"
-      />
-    </div>
-    <div class="form-group">
-      <label for="address">Address</label>
-      <textarea
-        id="address"
-        v-model="formData.address"
-        placeholder="Enter your address"
-        rows="3"
-      />
-    </div>
-    <button @click="save" class="save-button">Save Changes</button>
+    <button @click="save" class="mt-6 px-4 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors">Save Changes</button>
   </div>
 </template>
 
@@ -66,57 +71,3 @@ const save = () => {
 }
 </script>
 
-<style scoped>
-.personal-info {
-  max-width: 600px;
-}
-
-h2 {
-  margin-bottom: 1.5rem;
-  color: var(--color-heading);
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-input,
-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 14px;
-  transition: border-color 0.2s;
-}
-
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.save-button {
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.save-button:hover {
-  background: var(--color-primary-dark);
-}
-</style>
