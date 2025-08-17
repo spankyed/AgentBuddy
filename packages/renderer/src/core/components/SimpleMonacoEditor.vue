@@ -22,7 +22,7 @@ import {
   minimalEditorOptions,
   createEditorKeybindings,
   setupJsonValidation,
-  setupJavaScriptValidation,
+  setupJsTsValidation,
   setupFunctionBodyMode,
 } from '@/core/utils/monaco-editor-config'
 
@@ -37,6 +37,7 @@ export interface SimpleMonacoEditorProps {
   executeKey?: boolean
   placeholder?: string
   functionBody?: boolean
+  dslType?: 'database' | 'action' | 'prompt'
 }
 
 const props = withDefaults(defineProps<SimpleMonacoEditorProps>(), {
@@ -86,11 +87,11 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   // Set up language-specific validation
   if (props.functionBody && (props.language === 'javascript' || props.language === 'typescript')) {
     // Function-body mode for DSL code
-    setupFunctionBodyMode(monaco, props.language)
+    setupFunctionBodyMode(monaco, props.language as 'javascript' | 'typescript', props.dslType)
   } else if (props.language === 'json') {
     setupJsonValidation(monaco)
   } else if (props.language === 'javascript' || props.language === 'typescript') {
-    setupJavaScriptValidation(monaco)
+    setupJsTsValidation(monaco)
   }
   
   // Add execute keybindings if requested

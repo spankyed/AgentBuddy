@@ -1,7 +1,9 @@
 <template>
   <SimpleMonacoEditor
     :model-value="value"
-    language="javascript"
+    language="typescript"
+    :function-body="true"
+    dsl-type="action"
     :placeholder="placeholder"
     @update:model-value="$emit('update', $event)"
     class="h-full"
