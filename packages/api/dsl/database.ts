@@ -9,46 +9,12 @@ export { EARS, BaseEntity } from '@/core/types'
 
 // Query builder and core functions
 export { qx } from '@/core/utils/ears/helpers/query'
-export { 
-  createEntity,
-  destroyEntity,
-  getAll,
-  getAllEntities,
-  getEntitiesOfType,
-  queryEntitiesByAttribute,
-  queryEntitiesInRelationTo,
-  queryEntitiesByRelationTo,
-  addRelation,
-  updateRelation,
-  removeRelation,
-  putAttr,
-  addAttr,
-  mergeAttr,
-  dropAttr,
-  updateAttr,
-  grantRole,
-  revokeRole,
-  getAttr,
-  getAttrs,
-  getRoles,
-  getAllAttributeKinds,
-  getAllRelationKinds,
-  getAllEntityTypes,
-  getAttributeStats
-} from '@/core/utils/ears/attribute-storage'
 
-// Graph utilities
-export {
-  descendants,
-  ancestors,
-  rootParent,
-  wouldCreateCycle,
-  linkSymmetric,
-  topoSort,
-  shortestPath,
-  leaves,
-  lowestCommonAncestor
-} from '@/core/utils/ears/helpers/graph'
+// Export all EARS attribute storage functions
+export * from '@/core/utils/ears/attribute-storage'
+
+// Export all graph utilities
+export * from '@/core/utils/ears/helpers/graph'
 
 // Transaction helpers
 export { tx } from '@/core/utils/ears/helpers/transaction'

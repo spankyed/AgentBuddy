@@ -27,11 +27,17 @@ function convertToAmbient(filePath) {
   // Read the generated file
   let content = fs.readFileSync(filePath, 'utf-8');
   
-  // Remove top-level export keywords (but keep exports inside namespaces/interfaces and declare global blocks)
-  content = content.replace(/^export\s+(?!declare global)/gm, '');
+  // Remove all import statements to make it ambient
+  content = content.replace(/^import\s+.*?from\s+['"].*?['"];?\s*$/gm, '');
+  content = content.replace(/^import\s+['"].*?['"];?\s*$/gm, '');
+  content = content.replace(/^import\s+type\s+.*?from\s+['"].*?['"];?\s*$/gm, '');
   
-  // Remove the 'export as namespace' lines
-  content = content.replace(/^export\s+as\s+namespace\s+\w+;?\s*$/gm, '');
+  // Remove top-level export keywords (but keep 'export as namespace' and 'export declare global')
+  content = content.replace(/^export\s+(?!(declare global|as namespace))/gm, '');
+  
+  // Remove any standalone 'as namespace' that lost their 'export' prefix (fixing broken syntax)
+  // But keep 'export as namespace' intact
+  content = content.replace(/^(?<!export\s)as\s+namespace\s+\w+;?\s*$/gm, '');
   
   // Remove export blocks with named exports - multiline version
   content = content.replace(/^export\s*\{[\s\S]*?\n\};?\s*$/gm, '');
@@ -42,6 +48,16 @@ function convertToAmbient(filePath) {
   // Clean up any remaining standalone braces and semicolons
   content = content.replace(/^\{\s*[\w$]+\s+as\s+\w+,?\s*\};?\s*$/gm, '');
   content = content.replace(/^\{\s*\};?\s*$/gm, '');
+  
+  // Remove empty lines at the beginning (cleanup after removing imports)
+  content = content.replace(/^(\s*\n)+/, '');
+  
+  // Replace any remaining import() type references with any
+  // e.g., import("ai").StreamTextResult becomes any
+  content = content.replace(/import\(['"].*?['"]\)\.\w+(\<.*?\>)?/g, 'any');
+  
+  // Clean up multiple consecutive empty lines
+  content = content.replace(/\n{3,}/g, '\n\n');
   
   // Write the modified content back
   fs.writeFileSync(filePath, content, 'utf-8');

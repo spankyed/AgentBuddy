@@ -145,15 +145,25 @@ declare class PromptService {
 	 */
 	usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
 }
-declare function usePrompt$1(label: string, params: Record<string, any>): Promise<string | undefined>;
+/**
+ * Context provided to prompt templates for accessing other prompts
+ */
+interface PromptContext {
+	/**
+	 * Use another prompt template with the given parameters
+	 * @param label - The label of the prompt to use
+	 * @param params - Parameters to pass to the prompt template
+	 * @returns The executed prompt string or undefined if prompt not found
+	 */
+	usePrompt(label: string, params: Record<string, any>): string | undefined;
+}
 interface PromptParams {
 	[key: string]: any;
 }
 declare global {
 	const params: PromptParams;
-	function usePrompt(label: string, params: Record<string, any>): Promise<string | undefined>;
+	function usePrompt(label: string, params: Record<string, any>): string | undefined;
 }
 
-
-as namespace PromptDSL;
+export as namespace PromptDSL;
 

@@ -192,6 +192,64 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
 	};
 	readonly reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => T;
 };
+type LmdbDbs = {
+	entities: Database<any>;
+	attrs: Database<any>;
+	relations: Database<any>;
+	root: RootDatabase;
+};
+type Partition = "primary" | "volatileBackup";
+interface PartitionPolicy {
+	/** Which partition should an entity live in? */
+	routeEntity(entityId: string, entityType?: EARS.Entity): Partition;
+	/** Which partition should a relation live in? */
+	routeRelation(params: {
+		srcType: EARS.Entity;
+		tgtType: EARS.Entity;
+	}): Partition;
+	/** Whether we hydrate a partition on startup (default: only primary). */
+	hydrate: Set<Partition>;
+}
+/**
+ * Base interface for persistence sinks.
+ * Any storage backend (LMDB, SQLite, etc.) can implement this interface.
+ */
+interface PersistenceSink {
+	onCreateEntity(entityId: string, entityType?: string): void;
+	onDestroyEntity(entityId: string): void;
+	onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]): void;
+	onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
+	/** Rewrite the whole array for (kind, entityId) to keep indices consistent. */
+	onPutAttrArray?(kind: string, entityId: string, values: unknown[]): void;
+	onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
+	onUpdateRelation(relId: string, patch: {
+		src?: string;
+		tgt?: string;
+		info?: unknown;
+	}): void;
+	onRemoveRelation(relId: string): void;
+	/** Optional: flush pending operations and close on shutdown */
+	close?(): void;
+	/** Optional: get error statistics for monitoring */
+	getErrorStats?(): {
+		errorCount: number;
+		lastError: any;
+	};
+}
+declare const envs: {
+	primary: LmdbDbs;
+	volatileBackup: LmdbDbs;
+};
+declare const policy: PartitionPolicy;
+declare const persistence: PersistenceSink & {
+	seedRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
+	getRelMeta(): Map<string, {
+		kind: string;
+		src: string;
+		tgt: string;
+	}>;
+};
+declare function closePersistence(): void;
 declare const createEntity: (t: EARS.Entity) => EARS.EntityId;
 declare const putAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void, addAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void, mergeAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx?: number) => void, dropAttr: (id: EARS.EntityId, kind: EARS.AttrKind, idx?: number) => void, dropIf: (id: EARS.EntityId, kind: EARS.AttrKind, crit: unknown) => void, updateAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void;
 declare const grantRole: (id: EARS.EntityId, role: string) => void;
@@ -205,6 +263,7 @@ declare const getRoles: (id: EARS.EntityId) => string[];
 declare const getAll: (id: EARS.EntityId) => Record<string, unknown>;
 declare const getAllEntities: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
 declare const getEntitiesOfType: (t: EARS.Entity) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
+declare const queryEntitiesByRole: (role: string) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
 declare const queryEntitiesByAttribute: (k: EARS.AttrKind, v?: unknown) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
 /** target id participates in *any* relation with `target` (both directions) */
 declare const queryEntitiesInRelationTo: (target: EARS.EntityId) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}`)[];
@@ -342,5 +401,5 @@ type Entity = EARS.Entity;
 type RelKind = EARS.RelKind;
 type AttrKind = EARS.AttrKind;
 
-as namespace DatabaseDSL;
+export as namespace DatabaseDSL;
 

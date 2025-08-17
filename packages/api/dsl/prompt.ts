@@ -5,28 +5,21 @@
  */
 
 // Import prompt service and types
-import { promptService } from '@/services/prompt';
-import type { PromptEntity } from '@/systems/prompts/types';
+export { PromptService } from '@/services/prompt';
+export type { PromptEntity } from '@/systems/prompts/types';
 
-// Export the usePrompt function directly
-export async function usePrompt(
-  label: string, 
-  params: Record<string, any>
-): Promise<string | undefined> {
-  return promptService.usePrompt(label, params);
-}
+// Import and export prompt context for type reference
+export type { PromptContext } from '@/systems/brain/utils/prompt-context';
 
 // Type definitions for prompt context
 export interface PromptParams {
   [key: string]: any;
 }
 
-// Re-export types for better type generation
-export type { PromptEntity };
-export { PromptService } from '@/services/prompt';
-
 // Global declarations for the DSL context
+// Note: In the actual prompt DSL runtime, usePrompt is synchronous (returns string | undefined)
+// This matches the PromptContext.usePrompt signature
 declare global {
   const params: PromptParams;
-  function usePrompt(label: string, params: Record<string, any>): Promise<string | undefined>;
+  function usePrompt(label: string, params: Record<string, any>): string | undefined;
 }
