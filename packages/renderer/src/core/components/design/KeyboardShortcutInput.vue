@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Keyboard, X } from 'lucide-vue-next'
+import { applicationState } from '@/main'
 
 export interface KeyboardShortcut {
   modifiers: string[]
@@ -134,6 +135,8 @@ const formatKey = (key: string): string => {
 const startRecording = () => {
   isRecording.value = true
   pressedKeys.value.clear()
+  // Notify application state to disable global hotkeys
+  applicationState.send({ type: 'HOTKEYS_RECORDING_START' })
   emit('recording-start')
 }
 
@@ -146,6 +149,8 @@ const stopRecording = () => {
       clearTimeout(recordingTimeout)
       recordingTimeout = null
     }
+    // Re-enable global hotkeys
+    applicationState.send({ type: 'HOTKEYS_RECORDING_END' })
     emit('recording-end')
   }, 100)
 }

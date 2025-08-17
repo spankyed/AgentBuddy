@@ -29,6 +29,7 @@ export interface ApplicationContext {
     inspectionWidth: number; // pixels
     previousInspectionWidth?: number; // for restoring after collapse
   };
+  hotkeysDisabled: boolean;
 }
 
 export const application = 'application' as const;
@@ -89,6 +90,9 @@ export type ApplicationEvent =
   | { type: 'SWITCH_PLUGIN_UP' }
   | { type: 'SWITCH_PLUGIN_DOWN' }
   | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
+  | { type: 'PROCESS_GLOBAL_HOTKEY'; action: { type: string; payload?: any } }
+  | { type: 'HOTKEYS_RECORDING_START' }
+  | { type: 'HOTKEYS_RECORDING_END' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -108,7 +112,10 @@ export const createApplicationState = () => setup({
         
         if (matchingGlobalHotkey) {
           e.preventDefault();
-          system.get(application).send(matchingGlobalHotkey.action);
+          system.get(application).send({ 
+            type: 'PROCESS_GLOBAL_HOTKEY', 
+            action: matchingGlobalHotkey.action 
+          });
           return;
         }
         
@@ -174,6 +181,16 @@ export const createApplicationState = () => setup({
     }),
   },
   actions: {
+    processGlobalHotkey: ({ self, event }) => {
+      const { action } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
+      // Send the action as an ApplicationEvent - it will match one of the defined types
+      self.send(action as ApplicationEvent);
+    },
+    
+    setHotkeysDisabled: assign({
+      hotkeysDisabled: (_, value: boolean) => value
+    }),
+    
     switchPluginByDirection: ({ context, event, self }) => {
       // Use all plugins for switching
       const allPlugins = context.plugins;
@@ -305,6 +322,7 @@ export const createApplicationState = () => setup({
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
+    areHotkeysEnabled: ({ context }) => !context.hotkeysDisabled,
   },
 }).createMachine({
   id: application,
@@ -328,6 +346,7 @@ export const createApplicationState = () => setup({
       },
       targetView: '',
       panelSizes,
+      hotkeysDisabled: false,
     };
   },
   initial: 'setup',
@@ -396,6 +415,22 @@ export const createApplicationState = () => setup({
     },
     FORWARD_HOTKEY: {
       actions: 'forwardHotkeyToPlugin'
+    },
+    PROCESS_GLOBAL_HOTKEY: {
+      guard: 'areHotkeysEnabled',
+      actions: 'processGlobalHotkey'
+    },
+    HOTKEYS_RECORDING_START: {
+      actions: {
+        type: 'setHotkeysDisabled',
+        params: true
+      }
+    },
+    HOTKEYS_RECORDING_END: {
+      actions: {
+        type: 'setHotkeysDisabled',
+        params: false
+      }
     },
   }
 });
