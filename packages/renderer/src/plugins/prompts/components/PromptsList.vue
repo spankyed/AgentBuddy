@@ -49,7 +49,7 @@
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="categoryStyle(prompt.category)"
                 >
-                  {{ prompt.category || 'uncategorized' }}
+                  {{ prompt.category || 'none' }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -142,8 +142,14 @@ function categoryStyle(category?: string) {
       return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
     case 'assistant':
       return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    case 'analysis':
+      return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    case 'creative':
+      return 'bg-pink-500/10 text-pink-400 border border-pink-500/20';
+    case 'formatting':
+      return 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
     default:
-      return 'bg-neutral-800 text-neutral-400 border border-neutral-700';
+      return 'text-neutral-500';
   }
 }
 </script> 

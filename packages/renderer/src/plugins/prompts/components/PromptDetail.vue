@@ -48,10 +48,13 @@
                 @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option value="">Uncategorized</option>
+                <option value="">None</option>
                 <option value="text-processing">Text Processing</option>
                 <option value="development">Development</option>
                 <option value="assistant">Assistant</option>
+                <option value="analysis">Analysis</option>
+                <option value="creative">Creative</option>
+                <option value="formatting">Formatting</option>
               </select>
             </div>
           </div>
@@ -195,6 +198,9 @@ function categoryStyle(category?: string) {
     'text-processing': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
     'development': 'bg-green-900/30 text-green-400 border border-green-800/50',
     'assistant': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
+    'analysis': 'bg-orange-900/30 text-orange-400 border border-orange-800/50',
+    'creative': 'bg-pink-900/30 text-pink-400 border border-pink-800/50',
+    'formatting': 'bg-cyan-900/30 text-cyan-400 border border-cyan-800/50',
   }
   return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
 }

@@ -49,7 +49,7 @@
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="categoryStyle(action.category)"
                 >
-                  {{ action.category || 'Uncategorized' }}
+                  {{ action.category || 'None' }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -136,7 +136,7 @@ function categoryStyle(category?: string) {
     'utility': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
     'storage': 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50',
   }
-  return styles[category || ''] || 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+  return styles[category || ''] || 'text-neutral-500'
 }
 </script>
 

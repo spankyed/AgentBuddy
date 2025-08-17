@@ -251,7 +251,7 @@ const filteredActions = computed(() => {
 const groupedActions = computed(() => {
   const groups: Record<string, ActionEntity[]> = {}
   filteredActions.value.forEach((action: ActionEntity) => {
-    const category = action.category || 'Uncategorized'
+    const category = action.category || 'None'
     if (!groups[category]) {
       groups[category] = []
     }
