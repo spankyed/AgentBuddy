@@ -16,7 +16,7 @@
     />
     
     <div class="flex-1 overflow-hidden">
-      <CodeMirrorEditor
+      <CodeEditor
         v-if="activeMode === 'query'"
         v-model="editorQuery"
         @execute="handleExecute"
@@ -43,7 +43,7 @@ import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
-import CodeMirrorEditor from './query-editor/CodeMirrorEditor.vue';
+import CodeEditor from './query-editor/CodeEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 import MagicPromptDialog from './query-editor/MagicPromptDialog.vue';
 
