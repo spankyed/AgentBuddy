@@ -160,6 +160,8 @@ interface PromptContext {
 interface PromptParams {
 	[key: string]: any;
 }
+declare function usePrompt(label: string, params: Record<string, any>): string | undefined;
+declare const params: PromptParams;
 declare global {
 	const params: PromptParams;
 	function usePrompt(label: string, params: Record<string, any>): string | undefined;

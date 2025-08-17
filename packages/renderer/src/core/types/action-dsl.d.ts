@@ -46,8 +46,8 @@ type Simplify<T> = {
 	[K in keyof T]: T[K];
 } & {};
 /** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
-type EventsFromSchemas<S extends readonly z$1.ZodTypeAny[]> = {
-	[K in keyof S]: z$1.infer<S[K]>;
+type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
+	[K in keyof S]: z.infer<S[K]>;
 }[number];
 declare namespace EARS {
 	export enum Entity {
@@ -500,11 +500,11 @@ interface FlowsStartupData {
 	};
 	flows: Partial<FlowEntity>[];
 	rootFlow?: Partial<FlowEntity>;
-	models: ModelConfig$1[];
+	models: ModelConfig[];
 	prompts: PromptEntity[];
 	actions: ActionEntity[];
 }
-interface ModelConfig$1 {
+interface ModelConfig {
 	id: string;
 	name: string;
 	provider: string;
@@ -533,27 +533,27 @@ interface DatabaseSchemaInfo {
 interface DatabaseStartupData {
 	schema: DatabaseSchemaInfo;
 }
-declare const LogLevel: z$1.ZodEnum<[
+declare const LogLevel: z.ZodEnum<[
 	"debug",
 	"info",
 	"warn",
 	"error"
 ]>;
-type LogLevel = z$1.infer<typeof LogLevel>;
-declare const LogEntry: z$1.ZodObject<{
-	id: z$1.ZodString;
-	timestamp: z$1.ZodNumber;
-	level: z$1.ZodEnum<[
+type LogLevel = z.infer<typeof LogLevel>;
+declare const LogEntry: z.ZodObject<{
+	id: z.ZodString;
+	timestamp: z.ZodNumber;
+	level: z.ZodEnum<[
 		"debug",
 		"info",
 		"warn",
 		"error"
 	]>;
-	message: z$1.ZodString;
-	source: z$1.ZodOptional<z$1.ZodString>;
-	meta: z$1.ZodOptional<z$1.ZodRecord<z$1.ZodString, z$1.ZodAny>>;
-	stack: z$1.ZodOptional<z$1.ZodString>;
-}, "strip", z$1.ZodTypeAny, {
+	message: z.ZodString;
+	source: z.ZodOptional<z.ZodString>;
+	meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+	stack: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
 	message: string;
 	id: string;
 	timestamp: number;
@@ -570,7 +570,7 @@ declare const LogEntry: z$1.ZodObject<{
 	meta?: Record<string, any> | undefined;
 	stack?: string | undefined;
 }>;
-type LogEntry = z$1.infer<typeof LogEntry>;
+type LogEntry = z.infer<typeof LogEntry>;
 type EmbeddingModelId = "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
 type EmbeddingModel = EmbeddingModelId;
 type IndexMetric = "cosine" | "dot_product";
@@ -1807,7 +1807,7 @@ interface TerminalEntity {
 interface StartupData {
 	terminals: TerminalInfo[];
 }
-declare const services$1: {
+declare const services: {
 	logger: {
 		source?: string;
 		log(level: LogLevel, message: string, meta?: Record<string, any>): void;
@@ -2047,7 +2047,7 @@ declare const services$1: {
 		};
 	};
 };
-declare const servicesConst: {
+declare const services: {
 	logger: {
 		source?: string;
 		log(level: LogLevel, message: string, meta?: Record<string, any>): void;
@@ -2290,10 +2290,10 @@ declare const servicesConst: {
 interface ActionParams {
 	[key: string]: any;
 }
-type Services = typeof services$1;
+type Services = typeof services;
 declare global {
 	const params: ActionParams;
-	const services: Services;
+	const services: typeof services;
 	const z: any;
 }
 

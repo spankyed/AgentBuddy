@@ -4,17 +4,9 @@
  * Used to generate type definitions for Monaco Editor
  */
 
-// Import services
-import services from '@/services/index';
-
-// Import zod for validation
+// Import services and zod for type definitions
+import type importedServices from '@/services/index';
 import { z } from 'zod';
-
-// Re-export services as a const to match the DSL expectation
-export const servicesConst = services;
-
-// Re-export zod
-export { z };
 
 // Type definitions that match what's available in action context
 export interface ActionParams {
@@ -22,13 +14,23 @@ export interface ActionParams {
 }
 
 // Service type definitions (these will be extracted from the actual implementations)
-export type Services = typeof services;
+export type Services = typeof importedServices;
+
+// Re-export zod for Monaco Editor intellisense
+export { z };
 
 // Re-export service interfaces for better type generation
 export { ActionService } from '@/services/action';
 export { PromptService } from '@/services/prompt';
 export { LibraryService } from '@/services/library';
 export type { ActionEntity } from '@/systems/actions/types';
+
+// Monaco Editor intellisense namespace (no naming conflicts)
+export namespace ActionDSL {
+  export const services: Services = undefined as any;
+  export const params: ActionParams = undefined as any;
+  export const z: typeof import('zod').z = undefined as any;
+}
 
 // Global declarations for the DSL context
 declare global {
