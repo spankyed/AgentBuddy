@@ -132,7 +132,8 @@
               <span class="text-xs text-neutral-500">{{ folder.path }}</span>
             </div>
           </div>
-            </div>
+        </div>
+        </div>
           </CollapsibleSection>
           <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
             <ChevronRight class="w-4 h-4" />

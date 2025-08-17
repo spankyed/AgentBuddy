@@ -79,7 +79,6 @@
         
         <!-- Add Rule Button -->
         <button
-          v-if="segmentRulesExpanded"
           type="button"
           @click="addRule"
           class="flex items-center gap-2 px-4 py-2 text-sm text-neutral-400 bg-neutral-800/20 border border-dashed border-neutral-700/50 rounded-lg hover:border-neutral-600 hover:text-neutral-300 hover:bg-neutral-800/30 transition-colors"
