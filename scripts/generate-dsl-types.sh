@@ -2,45 +2,58 @@
 set -e
 
 # Script runs from packages/api directory
-echo "🔄 Generating DSL type definitions..."
+echo "🔄 Generating DSL type definitions in parallel..."
 
-# Generate database DSL
-echo "  📦 Generating database DSL..."
-npx dts-bundle-generator dsl/database.ts \
-  --project dsl/tsconfig.dts.json \
-  --no-check \
-  --out-file ../packages/renderer/src/core/types/database-dsl.d.ts \
-  --inline-declare-global \
-  --inline-declare-externals \
-  --export-referenced-types \
-  --umd-module-name DatabaseDSL \
-  --silent
+# Run all three generations in parallel and capture their PIDs
+(
+  npx dts-bundle-generator dsl/database.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/database-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name DatabaseDSL \
+    --silent && echo "  ✅ Database DSL generated"
+) &
+PID1=$!
 
-# Generate action DSL
-echo "  📦 Generating action DSL..."
-npx dts-bundle-generator dsl/action.ts \
-  --project dsl/tsconfig.dts.json \
-  --no-check \
-  --out-file ../packages/renderer/src/core/types/action-dsl.d.ts \
-  --inline-declare-global \
-  --inline-declare-externals \
-  --export-referenced-types \
-  --umd-module-name ActionDSL \
-  --silent
+(
+  npx dts-bundle-generator dsl/action.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/action-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name ActionDSL \
+    --silent && echo "  ✅ Action DSL generated"
+) &
+PID2=$!
 
-# Generate prompt DSL
-echo "  📦 Generating prompt DSL..."
-npx dts-bundle-generator dsl/prompt.ts \
-  --project dsl/tsconfig.dts.json \
-  --no-check \
-  --out-file ../packages/renderer/src/core/types/prompt-dsl.d.ts \
-  --inline-declare-global \
-  --inline-declare-externals \
-  --export-referenced-types \
-  --umd-module-name PromptDSL \
-  --silent
+(
+  npx dts-bundle-generator dsl/prompt.ts \
+    --project dsl/tsconfig.dts.json \
+    --no-check \
+    --out-file ../renderer/src/core/types/prompt-dsl.d.ts \
+    --inline-declare-global \
+    --inline-declare-externals \
+    --export-referenced-types \
+    --umd-module-name PromptDSL \
+    --silent && echo "  ✅ Prompt DSL generated"
+) &
+PID3=$!
 
-echo "✅ DSL types generated successfully"
+# Wait for all background processes to complete
+wait $PID1 $PID2 $PID3
+
+# Check if all processes succeeded
+if [ $? -eq 0 ]; then
+  echo "✅ All DSL types generated successfully"
+else
+  echo "❌ One or more DSL generations failed"
+  exit 1
+fi
 
 # Convert to ambient declarations
 node ../../scripts/convert-dsl-to-ambient.mjs
