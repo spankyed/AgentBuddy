@@ -29,8 +29,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import Dialog from '@/core/design/dialog.vue'
-import Button from '@/core/design/button.vue'
+import Dialog from '@/core/components/design/dialog.vue'
+import Button from '@/core/components/design/button.vue'
 
 interface Props {
   modelValue: boolean

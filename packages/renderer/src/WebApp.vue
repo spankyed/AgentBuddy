@@ -60,13 +60,13 @@
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue'
-import Toolbar from '@/core/layout/toolbar.vue'
-import CanvasArea from '@/core/layout/canvas-area.vue'
-import ChatArea from '@/core/layout/chat-area.vue'
-import InspectionPanel from '@/core/layout/inspection-panel.vue'
-import PanelResizer from '@/core/layout/panel-resizer.vue'
+import Toolbar from '@/core/components/layout/toolbar.vue'
+import CanvasArea from '@/core/components/layout/canvas-area.vue'
+import ChatArea from '@/core/components/layout/chat-area.vue'
+import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
+import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
-import Router from '@/core/layout/router.vue'
+import Router from '@/core/components/layout/router.vue'
 
 const send = applicationState.send
 

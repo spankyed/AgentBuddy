@@ -168,11 +168,11 @@
 import { ref, watch, nextTick, computed } from 'vue'
 import { X, ChevronDown, MessageCircleMore, ArrowLeft, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import Label from '@/core/design/label.vue'
+import Label from '@/core/components/design/label.vue'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import MessageList from './message-list.vue'
 import TagInput from './tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'

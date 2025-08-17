@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import type { ActionEntity, EARS } from '@app/api'
 import { Plus, Play, Trash2 } from 'lucide-vue-next'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 
 interface Props {
   actions: ActionEntity[]

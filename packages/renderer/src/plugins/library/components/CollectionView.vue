@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { Plus, Folder } from 'lucide-vue-next'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import type { CollectionDTO } from '@app/api'
 import CollectionTreeItem from './CollectionTreeItem.vue'
 

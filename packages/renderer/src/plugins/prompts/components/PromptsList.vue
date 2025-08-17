@@ -116,7 +116,7 @@
 
 <script setup lang="ts">
 import { Plus, Edit2, Trash2, Sparkle } from 'lucide-vue-next';
-import Button from '@/core/design/button.vue';
+import Button from '@/core/components/design/button.vue';
 import type { PromptEntity, EARS } from '@app/api';
 
 defineProps<{ prompts: PromptEntity[] }>();

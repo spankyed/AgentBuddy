@@ -115,10 +115,10 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { X, Plus, Square } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import Label from '@/core/design/label.vue'
+import Label from '@/core/components/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadTagItem, ThreadEditFields } from '@app/api'
-import Button from '@/core/design/button.vue';
+import Button from '@/core/components/design/button.vue';
 import TagInput from './tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
 

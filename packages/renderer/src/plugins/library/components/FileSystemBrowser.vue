@@ -259,7 +259,7 @@ import {
   Search,
   ArrowUp
 } from 'lucide-vue-next'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import TableHeader from './TableHeader.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'

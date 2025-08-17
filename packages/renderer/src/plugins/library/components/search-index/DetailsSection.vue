@@ -113,7 +113,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
 import SegmentedSlider from './form/SegmentedSlider.vue'
-import Select from '@/core/design/Select.vue'
+import Select from '@/core/components/design/Select.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
 import { EMBEDDING_MODEL_CONFIGS, getLocalModels, getApiModels, EMBEDDING_MODELS } from '../../config/embedding-models'
 

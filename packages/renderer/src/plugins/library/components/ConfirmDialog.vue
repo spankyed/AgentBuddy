@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import Dialog from '@/core/design/dialog.vue'
+import Dialog from '@/core/components/design/dialog.vue'
 
 interface Props {
   modelValue: boolean

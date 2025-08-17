@@ -93,7 +93,7 @@ import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-
 import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Component } from 'vue'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, ThreadEntity } from '@app/api'
 

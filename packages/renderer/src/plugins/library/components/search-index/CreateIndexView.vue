@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import DetailsSection from './DetailsSection.vue'
 import ScopeSection from './ScopeSection.vue'
 import SectionsConfig from './SectionsConfig.vue'

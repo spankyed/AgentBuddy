@@ -161,7 +161,7 @@
       <Pagination
         :total="threads.length"
         :items-per-page="threadsPerPage"
-        @page-changed="page => currentPage = page"
+        @page-changed="(page: number) => currentPage = page"
       />
     </div>
   </div>
@@ -172,8 +172,8 @@ import { ref, computed, type Ref } from 'vue'
 import { Search, Plus, Filter, MessageCircleMore } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import Button from '@/core/design/button.vue'
-import Pagination from '@/core/design/pagination.vue'
+import Button from '@/core/components/design/button.vue'
+import Pagination from '@/core/components/design/pagination.vue'
 import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
 import type { ThreadEntity } from '@app/api'
 

@@ -103,7 +103,7 @@ import { Brain, Workflow, Search, Plus, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 
 interface Props {
   flows: Partial<FlowEntity>[]

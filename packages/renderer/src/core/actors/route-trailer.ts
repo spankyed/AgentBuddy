@@ -1,7 +1,7 @@
 import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
 import { safeEvents } from "@/core/types/safe-events";
 import { capitalizeFirstLetter } from "../utils";
-import Label from '@/core/design/label.vue';
+import Label from '@/core/components/design/label.vue';
 
 export interface BreadcrumbItem {
   label: string;

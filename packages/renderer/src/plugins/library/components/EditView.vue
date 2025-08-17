@@ -136,9 +136,9 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import { X, Copy, Check, ChevronDown, ChevronRight, Plus } from 'lucide-vue-next'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
-import Autocomplete from '@/design/components/Autocomplete.vue'
+import Autocomplete from '@/core/components/design/Autocomplete.vue'
 import { tagStorage } from '../services/tagStorage'
 import type { DocumentDTO, CollectionDTO, ContentSection } from '@app/api'
 

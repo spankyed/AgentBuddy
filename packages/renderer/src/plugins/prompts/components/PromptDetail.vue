@@ -150,13 +150,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Edit2, ExternalLink } from 'lucide-vue-next';
-import Button from '@/core/design/button.vue';
-import CollapsibleSection from '@/core/design/CollapsibleSection.vue';
+import Button from '@/core/components/design/button.vue';
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 import type { PromptEntity, TemplateInput } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
-import JsonSchemaEditor from '@/core/design/JsonSchemaEditor.vue';
+import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
 
 const props = defineProps<{

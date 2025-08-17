@@ -167,7 +167,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Plus, FileText, Folder, Trash2 } from 'lucide-vue-next'
-import Button from '@/core/design/button.vue'
+import Button from '@/core/components/design/button.vue'
 import type { DocumentDTO, CollectionDTO } from '@app/api'
 
 const props = defineProps<{

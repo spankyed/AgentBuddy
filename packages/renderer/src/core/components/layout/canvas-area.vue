@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onUpdated } from 'vue'
-// import ToggleButton from '@/core/design/toggle-button.vue'
+// import ToggleButton from '@/core/components/design/toggle-button.vue'
 import { ChevronRight } from 'lucide-vue-next'
 
 const scrollContainer = ref<HTMLElement | null>(null)
