@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "generate:dsl-types": "npx dts-bundle-generator --config ./dsl/dts-bundle-generator.config.json && node ../../scripts/convert-dsl-to-ambient.mjs",
+    "generate:dsl-types": "../../scripts/generate-dsl-types.sh",
     "postbuild": "npm run generate:dsl-types"
   },
   "keywords": [],

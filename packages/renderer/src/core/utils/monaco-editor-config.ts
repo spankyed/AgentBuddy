@@ -127,68 +127,14 @@ export function setupJsTsValidation(monaco: Monaco, functionBody = false): void 
 
 // Import generated DSL types
 import databaseDslTypes from '../types/database-dsl.d.ts?raw'
+import actionDslTypes from '../types/action-dsl.d.ts?raw'
+import promptDslTypes from '../types/prompt-dsl.d.ts?raw'
 
 // DSL Type Definitions
 const DSL_SCHEMAS: Record<DslType, string> = {
   database: databaseDslTypes,
-  
-  action: `
-    declare const params: Record<string, any>;
-    
-    declare const services: {
-      logger: {
-        info(message: string, data?: any): Promise<void>;
-        warn(message: string, data?: any): Promise<void>;
-        error(message: string, data?: any): Promise<void>;
-        debug(message: string, data?: any): Promise<void>;
-      };
-      llm: {
-        chat(messages: any[], options?: any): Promise<string>;
-        complete(prompt: string, options?: any): Promise<string>;
-      };
-      database: {
-        query(sql: string, params?: any[]): Promise<any>;
-        execute(sql: string, params?: any[]): Promise<any>;
-      };
-      prompt: {
-        get(label: string): any;
-        execute(label: string, params: Record<string, any>): string;
-      };
-      action: {
-        execute(label: string, params: Record<string, any>): Promise<any>;
-      };
-      library: {
-        search(query: string): Promise<any[]>;
-        get(id: string): any;
-      };
-      browser: {
-        open(url: string): Promise<void>;
-        screenshot(url: string): Promise<string>;
-      };
-      repository: {
-        get(key: string): any;
-        set(key: string, value: any): void;
-      };
-    };
-    
-    declare const z: {
-      string(): any;
-      number(): any;
-      boolean(): any;
-      object(shape: any): any;
-      array(schema: any): any;
-      optional(): any;
-      nullable(): any;
-      union(schemas: any[]): any;
-      enum(values: string[]): any;
-      literal(value: any): any;
-    };
-  `,
-  
-  prompt: `
-    declare const params: Record<string, any>;
-    declare function usePrompt(label: string, params: Record<string, any>): string | undefined;
-  `,
+  action: actionDslTypes,
+  prompt: promptDslTypes,
 }
 
 // Track registered DSL libraries to prevent duplicates
