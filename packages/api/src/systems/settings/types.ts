@@ -3,7 +3,9 @@ import type { EARS } from "@/types";
 
 export interface SettingsEntity extends BaseEntity {
   entityType: EARS.Entity.Settings;
-  data: SettingsData;
+  type: 'general' | 'plugin';
+  label: string; // e.g., 'general', 'agent', 'flows' (always lowercase)
+  data: any; // Flexible data structure
 }
 
 export interface SettingsData {

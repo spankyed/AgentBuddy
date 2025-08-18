@@ -68,9 +68,9 @@ export interface SettingsContext {
 }
 
 type SystemEvent = 
-  | { type: 'SETTINGS_LOADED'; data: { data: SettingsData } }
-  | { type: 'SETTINGS_UPDATED'; data: { data: SettingsData } }
-  | { type: 'SETTINGS_RESET'; data: { data: SettingsData } }
+  | { type: 'SETTINGS_LOADED'; data: SettingsData }
+  | { type: 'SETTINGS_UPDATED'; data: SettingsData }
+  | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'SETTINGS_ERROR'; error: string }
 
 type UIEvent =
@@ -105,7 +105,7 @@ const settingsState = setup({
     setSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
       return {
-        settings: ev.data.data,
+        settings: ev.data,
         isLoading: false,
         error: null,
       }
@@ -114,7 +114,7 @@ const settingsState = setup({
     updateSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_UPDATED', event);
       return {
-        settings: ev.data.data,
+        settings: ev.data,
         error: null,
       }
     }),

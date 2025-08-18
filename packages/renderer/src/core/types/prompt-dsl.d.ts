@@ -19,7 +19,8 @@ declare namespace EARS {
         SearchIndex = "SearchIndex",
         Terminal = "Terminal",
         Directory = "Directory",
-        Settings = "Settings"
+        Settings = "Settings",
+        FAQ = "FAQ"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {

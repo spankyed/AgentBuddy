@@ -90,9 +90,9 @@ export type SettingsInternalEvents =
   | SystemEvents
 
 export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsEntity }
-  | { type: 'SETTINGS_UPDATED'; data: SettingsEntity }
-  | { type: 'SETTINGS_RESET'; data: SettingsEntity }
+  | { type: 'SETTINGS_LOADED'; data: SettingsData }
+  | { type: 'SETTINGS_UPDATED'; data: SettingsData }
+  | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'SETTINGS_ERROR'; error: string }
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -105,162 +105,102 @@ export const settingsSystem = setup({
   },
   actions: {
     sendSettingsStartupData: ({ system }) => {
-      const result = settingsQueries.getSettings();
-      
-      if (result.success) {
-        system.get(bus).send(emit(settings, { 
-          type: 'SETTINGS_LOADED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to load settings:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, { 
+        type: 'SETTINGS_LOADED',
+        data
+      }));
     },
     
     getSettings: ({ system, event }) => {
-      const result = settingsQueries.getSettings();
-      
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_LOADED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to get settings:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_LOADED',
+        data
+      }));
     },
     
     updateGeneralSettings: ({ system, event }) => {
       const ev = typeOf('UPDATE_GENERAL_SETTINGS', event);
-      const result = settingsCommands.updateGeneralSettings(ev.general);
+      settingsCommands.updateGeneralSettings(ev.general);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update general settings:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     updatePluginSettings: ({ system, event }) => {
       const ev = typeOf('UPDATE_PLUGIN_SETTINGS', event);
-      const result = settingsCommands.updatePluginSettings(ev.pluginId, ev.settings);
+      settingsCommands.updatePluginSettings(ev.pluginId, ev.settings);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update plugin settings:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     updatePersonalInfo: ({ system, event }) => {
       const ev = typeOf('UPDATE_PERSONAL_INFO', event);
-      const result = settingsCommands.updatePersonalInfo(ev);
+      settingsCommands.updatePersonalInfo(ev);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update personal info:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     updateApiKeys: ({ system, event }) => {
       const ev = typeOf('UPDATE_API_KEYS', event);
-      const result = settingsCommands.updateApiKeys(ev);
+      settingsCommands.updateApiKeys(ev);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update API keys:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     updateHotkeys: ({ system, event }) => {
       const ev = typeOf('UPDATE_HOTKEYS', event);
-      const result = settingsCommands.updateHotkeys(ev);
+      settingsCommands.updateHotkeys(ev);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update hotkeys:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     updateCustomHotkeys: ({ system, event }) => {
       const ev = typeOf('UPDATE_CUSTOM_HOTKEYS', event);
-      const result = settingsCommands.updateCustomHotkeys(ev.custom);
+      settingsCommands.updateCustomHotkeys(ev.custom);
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to update custom hotkeys:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // Get all settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     },
     
     resetSettings: ({ system, event }) => {
-      const result = settingsCommands.resetSettings();
+      settingsCommands.resetSettings();
       
-      if (result.success) {
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_RESET',
-          data: result.data
-        }));
-      } else {
-        logger.error('Failed to reset settings:', { error: result.error });
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_ERROR',
-          error: result.error
-        }));
-      }
+      // After reset, get the new settings to send to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_RESET',
+        data
+      }));
     },
   },
 }).createMachine({
