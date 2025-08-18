@@ -157,8 +157,11 @@ watch(formData, (newData) => {
   // Debounce the save
   saveTimeout = setTimeout(() => {
     actor.send({ 
-      type: 'API_KEYS.UPDATE', 
-      data: newData 
+      type: 'SETTINGS.UPDATE',
+      entityType: 'general',
+      label: 'general',
+      path: ['apiKeys'],
+      value: newData
     })
     
     // Show saved status

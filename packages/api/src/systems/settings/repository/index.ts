@@ -7,6 +7,22 @@ import { SettingsEntity, SettingsData, PluginSettings, defaultSettings } from '.
  * Settings Repository - Manages user settings and configuration
  */
 
+// Helper to deep set a value at a path in an object
+function setValueAtPath(obj: any, path: string[], value: any): any {
+  if (path.length === 0) return value;
+  
+  const [head, ...tail] = path;
+  const result = { ...obj };
+  
+  if (tail.length === 0) {
+    result[head] = value;
+  } else {
+    result[head] = setValueAtPath(obj[head] || {}, tail, value);
+  }
+  
+  return result;
+}
+
 // Helper to get settings entity by label
 function getSettingsByLabel(label: string): SettingsEntity | undefined {
   const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
@@ -116,133 +132,24 @@ export const settingsQueries = {
 // COMMANDS
 export const settingsCommands = {
   /**
-   * Update general settings
+   * Universal update method for any settings entity
+   * @param type - 'general' or 'plugin'
+   * @param label - Entity label (e.g., 'general' or plugin ID)
+   * @param path - Path to the value to update (e.g., ['personal', 'name'])
+   * @param value - The value to set
    */
-  updateGeneralSettings(generalSettings: Partial<SettingsData['general']>): SettingsEntity {
-    const settings = getOrCreateGeneralSettings();
+  updateSettings(type: 'general' | 'plugin', label: string, path: string[], value: any): SettingsEntity {
+    const settings = type === 'general' 
+      ? getOrCreateGeneralSettings()
+      : getOrCreatePluginSettings(label);
     
-    // Merge with existing general settings
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: {
-        ...settings.data,
-        ...generalSettings,
-        personal: {
-          ...settings.data.personal,
-          ...(generalSettings.personal || {})
-        },
-        apiKeys: {
-          ...settings.data.apiKeys,
-          ...(generalSettings.apiKeys || {})
-        },
-        hotkeys: {
-          ...settings.data.hotkeys,
-          ...(generalSettings.hotkeys || {})
-        },
-        misc: {
-          ...settings.data.misc,
-          ...(generalSettings.misc || {})
-        }
-      }
-    };
-    
-    tx(updatedSettings as any);
-    return updatedSettings;
-  },
-
-  /**
-   * Update plugin settings for a specific plugin
-   */
-  updatePluginSettings(pluginId: string, pluginSettings: any): SettingsEntity {
-    const settings = getOrCreatePluginSettings(pluginId);
+    const updatedData = path.length === 0 
+      ? value 
+      : setValueAtPath(settings.data, path, value);
     
     const updatedSettings: SettingsEntity = {
       ...settings,
-      data: pluginSettings
-    };
-    
-    tx(updatedSettings as any);
-    return updatedSettings;
-  },
-
-  /**
-   * Update personal information
-   */
-  updatePersonalInfo(personalInfo: Partial<SettingsData['general']['personal']>): SettingsEntity {
-    const settings = getOrCreateGeneralSettings();
-    
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: {
-        ...settings.data,
-        personal: {
-          ...settings.data.personal,
-          ...personalInfo
-        }
-      }
-    };
-    
-    tx(updatedSettings as any);
-    return updatedSettings;
-  },
-
-  /**
-   * Update API keys
-   */
-  updateApiKeys(apiKeys: Partial<SettingsData['general']['apiKeys']>): SettingsEntity {
-    const settings = getOrCreateGeneralSettings();
-    
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: {
-        ...settings.data,
-        apiKeys: {
-          ...settings.data.apiKeys,
-          ...apiKeys
-        }
-      }
-    };
-    
-    tx(updatedSettings as any);
-    return updatedSettings;
-  },
-
-  /**
-   * Update hotkeys
-   */
-  updateHotkeys(hotkeys: Partial<SettingsData['general']['hotkeys']>): SettingsEntity {
-    const settings = getOrCreateGeneralSettings();
-    
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: {
-        ...settings.data,
-        hotkeys: {
-          ...settings.data.hotkeys,
-          ...hotkeys
-        }
-      }
-    };
-    
-    tx(updatedSettings as any);
-    return updatedSettings;
-  },
-
-  /**
-   * Update custom hotkeys
-   */
-  updateCustomHotkeys(customHotkeys: any[]): SettingsEntity {
-    const settings = getOrCreateGeneralSettings();
-    
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: {
-        ...settings.data,
-        hotkeys: {
-          ...settings.data.hotkeys,
-          custom: customHotkeys
-        }
-      }
+      data: updatedData
     };
     
     tx(updatedSettings as any);

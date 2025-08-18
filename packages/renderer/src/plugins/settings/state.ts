@@ -77,11 +77,7 @@ type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'apiKeys' | 'hotkeys' | 'misc' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
-  | { type: 'PERSONAL.UPDATE'; data: PersonalInfo }
-  | { type: 'API_KEYS.UPDATE'; data: ApiKeys }
-  | { type: 'HOTKEYS.UPDATE'; data: Hotkeys }
-  | { type: 'HOTKEYS.UPDATE_CUSTOM'; data: any[] }
-  | { type: 'PLUGIN_SETTINGS.UPDATE'; pluginId: string; settings: any }
+  | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
 
@@ -150,49 +146,16 @@ const settingsState = setup({
     }),
 
     /* ── settings updates ────────────────────────────── */
-    updatePersonalInfo: ({ event }) => {
-      const ev = typeOf('PERSONAL.UPDATE', event);
+    updateSettings: ({ event }) => {
+      const ev = typeOf('SETTINGS.UPDATE', event);
       trpc.bus.send.mutate({
         systemId: id as any,
-        type: 'UPDATE_PERSONAL_INFO' as any,
-        ...ev.data,
+        type: 'UPDATE_SETTINGS' as any,
+        entityType: ev.entityType,
+        label: ev.label,
+        path: ev.path,
+        value: ev.value,
       });
-    },
-
-    updateApiKeys: ({ event }) => {
-      const ev = typeOf('API_KEYS.UPDATE', event);
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'UPDATE_API_KEYS' as any,
-        ...ev.data,
-      });
-    },
-
-    updateHotkeys: ({ event }) => {
-      const ev = typeOf('HOTKEYS.UPDATE', event);
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'UPDATE_HOTKEYS' as any,
-        ...ev.data,
-      });
-    },
-
-    updateCustomHotkeys: ({ event }) => {
-      const ev = typeOf('HOTKEYS.UPDATE_CUSTOM', event);
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'UPDATE_CUSTOM_HOTKEYS' as any,
-        custom: ev.data,
-      } as any);
-    },
-
-    updatePluginSettings: ({ event }) => {
-      const ev = typeOf('PLUGIN_SETTINGS.UPDATE', event);
-      trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'UPDATE_PLUGIN_SETTINGS' as any,
-        ...{pluginId: ev.pluginId, settings: ev.settings},
-      } as any);
     },
 
     resetSettings: () => {
@@ -239,20 +202,8 @@ const settingsState = setup({
         'PLUGIN.SELECT': {
           actions: 'selectPlugin',
         },
-        'PERSONAL.UPDATE': {
-          actions: 'updatePersonalInfo',
-        },
-        'API_KEYS.UPDATE': {
-          actions: 'updateApiKeys',
-        },
-        'HOTKEYS.UPDATE': {
-          actions: 'updateHotkeys',
-        },
-        'HOTKEYS.UPDATE_CUSTOM': {
-          actions: 'updateCustomHotkeys',
-        },
-        'PLUGIN_SETTINGS.UPDATE': {
-          actions: 'updatePluginSettings',
+        'SETTINGS.UPDATE': {
+          actions: 'updateSettings',
         },
         'SETTINGS.RESET': {
           actions: 'resetSettings',

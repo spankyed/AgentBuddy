@@ -236,8 +236,11 @@ const updateHotkeys = () => {
   setSaveStatus('saving')
   
   actor.send({ 
-    type: 'HOTKEYS.UPDATE', 
-    data: {
+    type: 'SETTINGS.UPDATE',
+    entityType: 'general',
+    label: 'general',
+    path: ['hotkeys'],
+    value: {
       switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
       switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
       toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel)
@@ -284,8 +287,11 @@ const saveCustomHotkeys = () => {
   }))
   
   actor.send({ 
-    type: 'HOTKEYS.UPDATE_CUSTOM', 
-    data: customData
+    type: 'SETTINGS.UPDATE',
+    entityType: 'general',
+    label: 'general',
+    path: ['hotkeys', 'custom'],
+    value: customData
   })
   
   setSaveStatus('saved')
