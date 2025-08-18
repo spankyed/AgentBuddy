@@ -1,26 +1,38 @@
 <template>
   <div class="flex items-center gap-3" :class="containerClass">
-    <div class="relative flex-1">
-      <input
-        :id="id"
-        type="text"
-        :value="displayValue"
-        @focus="startRecording"
-        @blur="stopRecording"
-        @keydown.prevent="recordKeyPress"
-        readonly
+    <div 
+      class="relative flex-1 flex items-center justify-between px-3 py-2 bg-neutral-800 border rounded-lg text-sm cursor-pointer transition-all"
+      :class="[
+        isRecording 
+          ? 'border-blue-500/50 ring-2 ring-blue-500/20' 
+          : 'border-neutral-700/50 hover:border-neutral-600',
+        inputClass
+      ]"
+      @click="startRecording"
+      tabindex="0"
+      @focus="startRecording"
+      @blur="stopRecording"
+      @keydown.prevent="recordKeyPress"
+    >
+      <!-- Label on the left -->
+      <span v-if="label" class="text-neutral-400 text-xs uppercase tracking-wider">
+        {{ label }}
+      </span>
+      
+      <!-- Hotkey value on the right -->
+      <span 
+        class="font-mono ml-auto"
         :class="[
-          'w-full px-3 py-2 bg-neutral-800 border rounded-lg text-sm font-mono cursor-pointer transition-all',
-          isRecording 
-            ? 'border-blue-500/50 ring-2 ring-blue-500/20 text-blue-400' 
-            : 'border-neutral-700/50 text-white hover:border-neutral-600',
-          inputClass
+          isRecording ? 'text-blue-400' : isEmpty ? 'text-neutral-500' : 'text-white'
         ]"
-        :placeholder="placeholder"
-      />
+      >
+        {{ displayValue }}
+      </span>
+      
+      <!-- Keyboard icon -->
       <Keyboard 
-        v-if="!isRecording && showIcon" 
-        class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" 
+        v-if="!isRecording && showIcon && isEmpty" 
+        class="ml-2 w-4 h-4 text-neutral-500" 
       />
     </div>
     <button
@@ -47,6 +59,7 @@ export interface KeyboardShortcut {
 interface Props {
   modelValue?: KeyboardShortcut | null
   id?: string
+  label?: string
   placeholder?: string
   recordingPlaceholder?: string
   emptyText?: string

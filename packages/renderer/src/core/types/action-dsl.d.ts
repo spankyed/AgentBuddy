@@ -652,57 +652,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_DEBUG">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_DEBUG";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_DEBUG";
-        systemId: "brain";
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"USER_MSG">;
         systemId: zod.ZodLiteral<"agent">;
         text: zod.ZodString;
@@ -725,13 +674,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"agent">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
-        threadId: string;
     }, {
+        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
         systemId: zod.ZodLiteral<"agent">;
@@ -739,14 +688,14 @@ declare const events: {
         label: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
+        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
-        threadId: string;
     }, {
         label: string;
+        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
         systemId: zod.ZodLiteral<"agent">;
@@ -792,6 +741,57 @@ declare const events: {
         type: "REJECT_TODO_LIST";
         systemId: "agent";
         artifactId: string;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_DEBUG">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_DEBUG";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_DEBUG";
+        systemId: "brain";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -859,13 +859,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -873,14 +873,14 @@ declare const events: {
         status: zod.ZodEnum<["backlog", "open", "in-progress", "in-review", "done"]>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         status: "backlog" | "open" | "in-progress" | "in-review" | "done";
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }, {
         status: "backlog" | "open" | "in-progress" | "in-review" | "done";
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -888,15 +888,15 @@ declare const events: {
         key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }>] | readonly [zod.ZodObject<{
@@ -1299,7 +1299,27 @@ declare const events: {
                 google?: string | undefined;
             }>>>;
             hotkeys: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
-                switchPlugin: zod.ZodOptional<zod.ZodObject<{
+                switchPluginUp: zod.ZodOptional<zod.ZodObject<{
+                    key: zod.ZodString;
+                    modifiers: zod.ZodArray<zod.ZodString, "many">;
+                }, "strip", zod.ZodTypeAny, {
+                    key: string;
+                    modifiers: string[];
+                }, {
+                    key: string;
+                    modifiers: string[];
+                }>>;
+                switchPluginDown: zod.ZodOptional<zod.ZodObject<{
+                    key: zod.ZodString;
+                    modifiers: zod.ZodArray<zod.ZodString, "many">;
+                }, "strip", zod.ZodTypeAny, {
+                    key: string;
+                    modifiers: string[];
+                }, {
+                    key: string;
+                    modifiers: string[];
+                }>>;
+                toggleInspectionPanel: zod.ZodOptional<zod.ZodObject<{
                     key: zod.ZodString;
                     modifiers: zod.ZodArray<zod.ZodString, "many">;
                 }, "strip", zod.ZodTypeAny, {
@@ -1310,12 +1330,28 @@ declare const events: {
                     modifiers: string[];
                 }>>;
             }, "strip", zod.ZodTypeAny, {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
             }, {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
@@ -1333,7 +1369,15 @@ declare const events: {
                 google?: string | undefined;
             } | undefined;
             hotkeys?: {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
@@ -1351,7 +1395,15 @@ declare const events: {
                 google?: string | undefined;
             } | undefined;
             hotkeys?: {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
@@ -1371,7 +1423,15 @@ declare const events: {
                 google?: string | undefined;
             } | undefined;
             hotkeys?: {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
@@ -1393,7 +1453,15 @@ declare const events: {
                 google?: string | undefined;
             } | undefined;
             hotkeys?: {
-                switchPlugin?: {
+                switchPluginUp?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                switchPluginDown?: {
+                    key: string;
+                    modifiers: string[];
+                } | undefined;
+                toggleInspectionPanel?: {
                     key: string;
                     modifiers: string[];
                 } | undefined;
@@ -1456,7 +1524,27 @@ declare const events: {
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_HOTKEYS">;
         systemId: zod.ZodLiteral<"settings">;
-        switchPlugin: zod.ZodOptional<zod.ZodObject<{
+        switchPluginUp: zod.ZodOptional<zod.ZodObject<{
+            key: zod.ZodString;
+            modifiers: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            key: string;
+            modifiers: string[];
+        }, {
+            key: string;
+            modifiers: string[];
+        }>>;
+        switchPluginDown: zod.ZodOptional<zod.ZodObject<{
+            key: zod.ZodString;
+            modifiers: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            key: string;
+            modifiers: string[];
+        }, {
+            key: string;
+            modifiers: string[];
+        }>>;
+        toggleInspectionPanel: zod.ZodOptional<zod.ZodObject<{
             key: zod.ZodString;
             modifiers: zod.ZodArray<zod.ZodString, "many">;
         }, "strip", zod.ZodTypeAny, {
@@ -1469,17 +1557,70 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "UPDATE_HOTKEYS";
         systemId: "settings";
-        switchPlugin?: {
+        switchPluginUp?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+        switchPluginDown?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+        toggleInspectionPanel?: {
             key: string;
             modifiers: string[];
         } | undefined;
     }, {
         type: "UPDATE_HOTKEYS";
         systemId: "settings";
-        switchPlugin?: {
+        switchPluginUp?: {
             key: string;
             modifiers: string[];
         } | undefined;
+        switchPluginDown?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+        toggleInspectionPanel?: {
+            key: string;
+            modifiers: string[];
+        } | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_CUSTOM_HOTKEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+        custom: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            eventName: zod.ZodString;
+            key: zod.ZodString;
+            modifiers: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            key: string;
+            modifiers: string[];
+            eventName: string;
+        }, {
+            id: string;
+            key: string;
+            modifiers: string[];
+            eventName: string;
+        }>, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_CUSTOM_HOTKEYS";
+        systemId: "settings";
+        custom: {
+            id: string;
+            key: string;
+            modifiers: string[];
+            eventName: string;
+        }[];
+    }, {
+        type: "UPDATE_CUSTOM_HOTKEYS";
+        systemId: "settings";
+        custom: {
+            id: string;
+            key: string;
+            modifiers: string[];
+            eventName: string;
+        }[];
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
@@ -1545,9 +1686,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1555,9 +1696,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -2727,6 +2868,28 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
+        type: "AGENT_STARTUP";
+        data: AgentStartupData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -2759,28 +2922,6 @@ declare const events: {
         type: "DEBUG_TOGGLED";
         enabled: boolean;
         pluginId: "brain";
-    } | {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
     } | {
         type: "THREAD_STARTUP";
         data: ThreadStartupData;
@@ -3573,11 +3714,26 @@ interface ApiKeys {
     anthropic?: string;
     openai?: string;
 }
+interface CustomHotkey {
+    id: string;
+    eventName: string;
+    key: string;
+    modifiers: string[];
+}
 interface Hotkeys {
-    switchPlugin?: {
+    switchPluginUp?: {
         key: string;
         modifiers: string[];
     };
+    switchPluginDown?: {
+        key: string;
+        modifiers: string[];
+    };
+    toggleInspectionPanel?: {
+        key: string;
+        modifiers: string[];
+    };
+    custom?: CustomHotkey[];
 }
 interface MiscSettings {
 }
@@ -4164,6 +4320,7 @@ declare const services: {
             updatePersonalInfo(personalInfo: Partial<SettingsData["general"]["personal"]>): RepositoryResult<SettingsEntity>;
             updateApiKeys(apiKeys: Partial<SettingsData["general"]["apiKeys"]>): RepositoryResult<SettingsEntity>;
             updateHotkeys(hotkeys: Partial<SettingsData["general"]["hotkeys"]>): RepositoryResult<SettingsEntity>;
+            updateCustomHotkeys(customHotkeys: any[]): RepositoryResult<SettingsEntity>;
             resetSettings(): RepositoryResult<SettingsEntity>;
         };
         readonly terminalQueries: {

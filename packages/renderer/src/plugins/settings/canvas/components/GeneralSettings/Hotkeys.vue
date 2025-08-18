@@ -10,59 +10,42 @@
 
     <!-- Form Fields -->
     <div class="space-y-6">
-      <!-- Switch Plugin Hotkeys (Inlined) -->
-      <div class="group">
-        <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-          Switch Plugin
-        </label>
-        <div class="flex gap-4 max-w-3xl">
-          <!-- Previous Plugin -->
-          <div class="flex-1">
-            <div class="text-xs text-neutral-500 mb-1">Previous</div>
-            <KeyboardShortcutInput
-              v-model="builtInHotkeys.switchPluginUp"
-              id="switch-plugin-up"
-              @change="updateHotkeys"
-              container-class="w-full"
-              :show-reset-button="false"
-            />
-          </div>
-          
-          <!-- Next Plugin -->
-          <div class="flex-1">
-            <div class="text-xs text-neutral-500 mb-1">Next</div>
-            <KeyboardShortcutInput
-              v-model="builtInHotkeys.switchPluginDown"
-              id="switch-plugin-down"
-              @change="updateHotkeys"
-              container-class="w-full"
-              :show-reset-button="false"
-            />
-          </div>
-        </div>
-        <p class="mt-1.5 text-xs text-neutral-600">
+      <!-- Switch Plugin Hotkeys -->
+      <div class="group space-y-3">
+        <KeyboardShortcutInput
+          v-model="builtInHotkeys.switchPluginUp"
+          id="switch-plugin-up"
+          label="Previous Plugin"
+          @change="updateHotkeys"
+          container-class="w-full"
+          :show-reset-button="false"
+        />
+        
+        <KeyboardShortcutInput
+          v-model="builtInHotkeys.switchPluginDown"
+          id="switch-plugin-down"
+          label="Next Plugin"
+          @change="updateHotkeys"
+          container-class="w-full"
+          :show-reset-button="false"
+        />
+        
+        <p class="text-xs text-neutral-600">
           Navigate between plugins using keyboard shortcuts
         </p>
       </div>
 
       <!-- Toggle Inspection Panel -->
       <div class="group">
-        <label for="toggle-inspection" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
-          Toggle Inspection Panel
-        </label>
-        <div class="flex gap-4 max-w-3xl">
-          <div class="flex-1">
-            <KeyboardShortcutInput
-              v-model="builtInHotkeys.toggleInspectionPanel"
-              id="toggle-inspection"
-              @change="updateHotkeys"
-              container-class="w-full"
-              :show-reset-button="false"
-            />
-          </div>
-          <div class="flex-1"></div> <!-- Empty spacer to match Switch Plugin layout -->
-        </div>
-        <p class="mt-1.5 text-xs text-neutral-600">
+        <KeyboardShortcutInput
+          v-model="builtInHotkeys.toggleInspectionPanel"
+          id="toggle-inspection"
+          label="Toggle Inspection Panel"
+          @change="updateHotkeys"
+          container-class="w-full"
+          :show-reset-button="false"
+        />
+        <p class="mt-2 text-xs text-neutral-600">
           Show or hide the inspection panel
         </p>
       </div>
