@@ -149,6 +149,53 @@ export const settingsQueries = {
   }
 };
 
+// Development setup
+export function setupDevelopmentSettings(): void {
+  // Only in development mode
+  if (process.env.NODE_ENV === 'production') return;
+  
+  // Check if settings already exist
+  const existingSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
+  if (existingSettings.length > 0) return; // Settings already exist, don't override
+  
+  // Create default general settings with test hotkeys
+  const createdAt = Date.now();
+  tx(EARS.Entity.Settings)
+    .batchPut({
+      entityType: EARS.Entity.Settings,
+      type: 'general',
+      label: 'general',
+      createdAt,
+      data: {
+        ...defaultSettings.general,
+        hotkeys: {
+          switchPluginUp: {
+            key: 'ArrowUp',
+            modifiers: ['cmd', 'option']
+          },
+          switchPluginDown: {
+            key: 'ArrowDown',
+            modifiers: ['cmd', 'option']
+          },
+          toggleInspectionPanel: {
+            key: 'b',
+            modifiers: ['cmd']
+          },
+          custom: [
+            {
+              id: 'dev-hotkey-1',
+              eventName: 'TEST_EVENT_1',
+              key: 't',
+              modifiers: ['cmd', 'shift']
+            }
+          ]
+        }
+      }
+    });
+  
+  console.log('[Settings] Development settings initialized with test hotkeys');
+}
+
 // COMMANDS
 export const settingsCommands = {
   /**

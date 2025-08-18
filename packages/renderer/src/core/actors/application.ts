@@ -30,46 +30,42 @@ export interface ApplicationContext {
     previousInspectionWidth?: number; // for restoring after collapse
   };
   hotkeysDisabled: boolean;
+  hotkeys: {
+    switchPluginUp?: {
+      key: string;
+      modifiers: string[];
+    };
+    switchPluginDown?: {
+      key: string;
+      modifiers: string[];
+    };
+    toggleInspectionPanel?: {
+      key: string;
+      modifiers: string[];
+    };
+  };
 }
 
 export const application = 'application' as const;
 
-// Global hotkey definitions
-interface GlobalHotkeyDefinition {
-  key: string
-  metaKey?: boolean
-  ctrlKey?: boolean
-  altKey?: boolean
-  shiftKey?: boolean
-  description: string
-  action: { type: string; payload?: any }
+// Helper to convert hotkey from settings format to keyboard event format
+function convertHotkeyToDefinition(hotkey: { key: string; modifiers: string[] } | undefined, action: { type: string }) {
+  if (!hotkey || !hotkey.key) return null;
+  
+  return {
+    key: hotkey.key,
+    metaKey: hotkey.modifiers.includes('cmd'),
+    ctrlKey: hotkey.modifiers.includes('ctrl'),
+    altKey: hotkey.modifiers.includes('alt') || hotkey.modifiers.includes('option'),
+    shiftKey: hotkey.modifiers.includes('shift'),
+    action
+  };
 }
 
-const globalHotkeys: GlobalHotkeyDefinition[] = [
-  {
-    key: 'b',
-    metaKey: true,
-    description: 'Toggle inspection panel',
-    action: { type: 'TOGGLE_INSPECTION_PANEL' }
-  },
-  {
-    key: 'ArrowUp',
-    metaKey: true,
-    altKey: true,
-    description: 'Switch to previous plugin',
-    action: { type: 'SWITCH_PLUGIN_UP' }
-  },
-  {
-    key: 'ArrowDown',
-    metaKey: true,
-    altKey: true,
-    description: 'Switch to next plugin',
-    action: { type: 'SWITCH_PLUGIN_DOWN' }
-  }
-];
-
 // Helper to match keyboard event with hotkey definition
-function matchesGlobalHotkey(e: KeyboardEvent, hotkey: GlobalHotkeyDefinition): boolean {
+function matchesHotkey(e: KeyboardEvent, hotkey: { key: string; metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean; shiftKey?: boolean } | null): boolean {
+  if (!hotkey) return false;
+  
   return (
     e.key === hotkey.key &&
     (hotkey.metaKey === undefined || e.metaKey === hotkey.metaKey) &&
@@ -93,6 +89,7 @@ export type ApplicationEvent =
   | { type: 'PROCESS_GLOBAL_HOTKEY'; action: { type: string; payload?: any } }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -105,16 +102,28 @@ export const createApplicationState = () => setup({
   actors: {
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Check for global hotkeys first
-        const matchingGlobalHotkey = globalHotkeys.find(hotkey => 
-          matchesGlobalHotkey(e, hotkey)
+        // Get current hotkeys from application context
+        const appActor = system.get(application);
+        const snapshot = appActor.getSnapshot();
+        const hotkeys = snapshot.context.hotkeys;
+        
+        // Build dynamic hotkey definitions from context
+        const hotkeyDefinitions = [
+          convertHotkeyToDefinition(hotkeys.toggleInspectionPanel, { type: 'TOGGLE_INSPECTION_PANEL' }),
+          convertHotkeyToDefinition(hotkeys.switchPluginUp, { type: 'SWITCH_PLUGIN_UP' }),
+          convertHotkeyToDefinition(hotkeys.switchPluginDown, { type: 'SWITCH_PLUGIN_DOWN' })
+        ].filter(Boolean);
+        
+        // Check for matching hotkey
+        const matchingHotkey = hotkeyDefinitions.find(hotkey => 
+          matchesHotkey(e, hotkey)
         );
         
-        if (matchingGlobalHotkey) {
+        if (matchingHotkey) {
           e.preventDefault();
-          system.get(application).send({ 
+          appActor.send({ 
             type: 'PROCESS_GLOBAL_HOTKEY', 
-            action: matchingGlobalHotkey.action 
+            action: matchingHotkey.action 
           });
           return;
         }
@@ -130,7 +139,7 @@ export const createApplicationState = () => setup({
           preventDefault: () => e.preventDefault()
         };
         
-        system.get(application).send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+        appActor.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
       };
 
       window.addEventListener('keydown', handleKeyDown);
@@ -168,7 +177,6 @@ export const createApplicationState = () => setup({
             console.error('Error in subscription:', error);
           },
           onData: (event: any) => {
-            // console.log('event: ', event);
             const { pluginId, ...ev } = event;
             system.get(pluginId).send(ev);
           },
@@ -181,6 +189,11 @@ export const createApplicationState = () => setup({
     }),
   },
   actions: {
+    updateHotkeys: assign(({ event }) => {
+      const { hotkeys } = typeOf('APPLICATION_HOTKEYS', event);
+      return { hotkeys };
+    }),
+    
     processGlobalHotkey: ({ self, event }) => {
       const { action } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
       // Send the action as an ApplicationEvent - it will match one of the defined types
@@ -347,6 +360,7 @@ export const createApplicationState = () => setup({
       targetView: '',
       panelSizes,
       hotkeysDisabled: false,
+      hotkeys: {}, // Start with empty hotkeys until loaded from backend
     };
   },
   initial: 'setup',
@@ -371,6 +385,9 @@ export const createApplicationState = () => setup({
     },
   },
   on: {
+    APPLICATION_HOTKEYS: {
+      actions: 'updateHotkeys'
+    },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],
     },

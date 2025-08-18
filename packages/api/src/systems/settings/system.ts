@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { SettingsData } from './types';
-import { settingsQueries, settingsCommands } from './repository';
+import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -31,6 +31,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
 type ReceivableEvents = MergeReceivable<typeof IncomingSettingsEvents, SettingsInternalEvents>;
@@ -43,9 +44,17 @@ export const settingsSystem = setup({
   actions: {
     sendSettingsStartupData: ({ system }) => {
       const data = settingsQueries.getSettings();
+      
+      // Send settings to the settings plugin
       system.get(bus).send(emit(settings, { 
         type: 'SETTINGS_LOADED',
         data
+      }));
+      
+      // Send hotkeys to the application
+      system.get(bus).send(emit('application', {
+        type: 'APPLICATION_HOTKEYS' as const,
+        hotkeys: data.general.hotkeys
       }));
     },
     
@@ -67,6 +76,14 @@ export const settingsSystem = setup({
         type: 'SETTINGS_UPDATED',
         data
       }));
+      
+      // If hotkeys were updated, send them to the application
+      if (ev.entityType === 'general' && ev.path[0] === 'hotkeys') {
+        system.get(bus).send(emit('application', {
+          type: 'APPLICATION_HOTKEYS',
+          hotkeys: data.general.hotkeys
+        }));
+      }
     },
     
     resetSettings: ({ system, event }) => {
@@ -84,6 +101,10 @@ export const settingsSystem = setup({
   id: settings,
   initial: 'idle',
   context: {},
+  entry: () => {
+    // Initialize development settings if needed
+    setupDevelopmentSettings();
+  },
   states: {
     idle: {
       on: {
