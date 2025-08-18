@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-semibold text-white text-center mb-8">Frequently Asked Questions</h2>
       
       <div class="space-y-3">
-        <div v-for="(item, index) in helpItems" :key="item.id" 
+        <div v-for="(item, index) in faqItems" :key="item.id" 
           class="bg-neutral-800 border border-neutral-700 rounded-lg overflow-hidden transition-colors hover:border-neutral-600">
           <button
             @click="toggleItem(index)"
@@ -37,7 +37,7 @@ interface FAQItem {
 }
 
 // For now, hardcode the FAQ items until FAQ entities are properly set up
-const helpItems = ref<FAQItem[]>([
+const faqItems = ref<FAQItem[]>([
   {
     id: 'faq_1',
     question: "Where can I view saved messages?",

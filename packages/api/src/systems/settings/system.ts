@@ -3,13 +3,10 @@ import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
-import { EARS } from '@/core/types';
-import { SettingsEntity, SettingsData } from './types';
+import { SettingsData } from './types';
 import { settingsQueries, settingsCommands } from './repository';
 import { z } from 'zod';
-import { createLogger } from '@/core/utils/debug/logger';
 
-const logger = createLogger('settings');
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const settings = 'settings' as const;
@@ -34,7 +31,6 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
-  | { type: 'SETTINGS_ERROR'; error: string }
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
 type ReceivableEvents = MergeReceivable<typeof IncomingSettingsEvents, SettingsInternalEvents>;

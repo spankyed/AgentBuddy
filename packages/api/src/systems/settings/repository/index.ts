@@ -24,14 +24,14 @@ function setValueAtPath(obj: any, path: string[], value: any): any {
 }
 
 // Helper to get settings entity by label
-function getSettingsByLabel(label: string): SettingsEntity | undefined {
+function findSettingsByLabel(label: string): SettingsEntity | undefined {
   const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
   return allSettings.find(s => s.label === label);
 }
 
 // Get or create general settings entity
 function getOrCreateGeneralSettings(): SettingsEntity {
-  let settings = getSettingsByLabel('general');
+  let settings = findSettingsByLabel('general');
   
   if (settings) {
     return settings;
@@ -53,7 +53,7 @@ function getOrCreateGeneralSettings(): SettingsEntity {
 
 // Get or create plugin settings entity
 function getOrCreatePluginSettings(pluginId: string): SettingsEntity {
-  let settings = getSettingsByLabel(pluginId);
+  let settings = findSettingsByLabel(pluginId);
   
   if (settings) {
     return settings;
@@ -124,7 +124,7 @@ export const settingsQueries = {
    * Get settings entity by label
    */
   getSettingsByLabel(label: string): SettingsEntity | null {
-    const settings = getSettingsByLabel(label);
+    const settings = findSettingsByLabel(label);
     return settings || null;
   }
 };

@@ -64,14 +64,12 @@ export interface SettingsContext {
   generalNavItem: 'personal' | 'apiKeys' | 'hotkeys' | 'misc';
   selectedPluginId: string | null;
   isLoading: boolean;
-  error: string | null;
 }
 
 type SystemEvent = 
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
-  | { type: 'SETTINGS_ERROR'; error: string }
 
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
@@ -103,7 +101,6 @@ const settingsState = setup({
       return {
         settings: ev.data,
         isLoading: false,
-        error: null,
       }
     }),
 
@@ -111,15 +108,6 @@ const settingsState = setup({
       const ev = typeOf('SETTINGS_UPDATED', event);
       return {
         settings: ev.data,
-        error: null,
-      }
-    }),
-
-    setError: assign(({ event }) => {
-      const ev = typeOf('SETTINGS_ERROR', event);
-      return {
-        error: ev.error,
-        isLoading: false,
       }
     }),
 
@@ -174,7 +162,6 @@ const settingsState = setup({
     generalNavItem: 'personal',
     selectedPluginId: null,
     isLoading: true,
-    error: null,
   },
   states: {
     loading: {
@@ -183,10 +170,6 @@ const settingsState = setup({
         SETTINGS_LOADED: {
           target: 'ready',
           actions: 'setSettingsData',
-        },
-        SETTINGS_ERROR: {
-          target: 'error',
-          actions: 'setError',
         },
       },
     },
@@ -216,16 +199,6 @@ const settingsState = setup({
         },
         SETTINGS_RESET: {
           actions: 'updateSettingsData',
-        },
-        SETTINGS_ERROR: {
-          actions: 'setError',
-        },
-      },
-    },
-    error: {
-      on: {
-        'SETTINGS.LOAD': {
-          target: 'loading',
         },
       },
     },
