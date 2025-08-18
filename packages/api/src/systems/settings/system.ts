@@ -31,7 +31,15 @@ export const IncomingSettingsEvents = [
         openai: z.string().optional()
       }).optional(),
       hotkeys: z.object({
-        switchPlugin: z.object({
+        switchPluginUp: z.object({
+          key: z.string(),
+          modifiers: z.array(z.string())
+        }).optional(),
+        switchPluginDown: z.object({
+          key: z.string(),
+          modifiers: z.array(z.string())
+        }).optional(),
+        toggleInspectionPanel: z.object({
           key: z.string(),
           modifiers: z.array(z.string())
         }).optional()
@@ -54,7 +62,15 @@ export const IncomingSettingsEvents = [
     openai: z.string().optional()
   }),
   busEvent('UPDATE_HOTKEYS', {
-    switchPlugin: z.object({
+    switchPluginUp: z.object({
+      key: z.string(),
+      modifiers: z.array(z.string())
+    }).optional(),
+    switchPluginDown: z.object({
+      key: z.string(),
+      modifiers: z.array(z.string())
+    }).optional(),
+    toggleInspectionPanel: z.object({
       key: z.string(),
       modifiers: z.array(z.string())
     }).optional()

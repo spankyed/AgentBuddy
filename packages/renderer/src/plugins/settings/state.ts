@@ -28,7 +28,15 @@ export interface ApiKeys {
 }
 
 export interface Hotkeys {
-  switchPlugin?: {
+  switchPluginUp?: {
+    key: string;
+    modifiers: string[];
+  };
+  switchPluginDown?: {
+    key: string;
+    modifiers: string[];
+  };
+  toggleInspectionPanel?: {
     key: string;
     modifiers: string[];
   };

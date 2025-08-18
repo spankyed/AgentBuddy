@@ -10,19 +10,55 @@
 
     <!-- Form Fields -->
     <div class="space-y-6">
-      <!-- Switch Plugin Shortcut -->
+      <!-- Switch Plugin Hotkeys (Inlined) -->
       <div class="group">
-        <label for="switch-plugin-shortcut" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+        <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           Switch Plugin
         </label>
-        <KeyboardShortcutInput
-          v-model="shortcutData"
-          id="switch-plugin-shortcut"
-          @change="updateHotkey"
-          container-class="max-w-md"
-        />
+        <div class="flex gap-4 max-w-3xl">
+          <!-- Previous Plugin -->
+          <div class="flex-1">
+            <div class="text-xs text-neutral-500 mb-1">Previous</div>
+            <KeyboardShortcutInput
+              v-model="switchPluginUpData"
+              id="switch-plugin-up"
+              @change="updateHotkeys"
+              container-class="w-full"
+              :show-clear-button="false"
+            />
+          </div>
+          
+          <!-- Next Plugin -->
+          <div class="flex-1">
+            <div class="text-xs text-neutral-500 mb-1">Next</div>
+            <KeyboardShortcutInput
+              v-model="switchPluginDownData"
+              id="switch-plugin-down"
+              @change="updateHotkeys"
+              container-class="w-full"
+              :show-clear-button="false"
+            />
+          </div>
+        </div>
         <p class="mt-1.5 text-xs text-neutral-600">
           Navigate between plugins using keyboard shortcuts
+        </p>
+      </div>
+
+      <!-- Toggle Inspection Panel -->
+      <div class="group">
+        <label for="toggle-inspection" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+          Toggle Inspection Panel
+        </label>
+        <KeyboardShortcutInput
+          v-model="toggleInspectionData"
+          id="toggle-inspection"
+          @change="updateHotkeys"
+          container-class="max-w-md"
+          :show-clear-button="false"
+        />
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Show or hide the inspection panel
         </p>
       </div>
 
@@ -42,7 +78,7 @@
               type="text"
               placeholder="EVENT_NAME"
               class="flex-1 max-w-xs px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-              @input="validateEventName(index, $event)"
+              @input="() => debouncedSave(saveCustomHotkeys)"
             />
             
             <!-- Keyboard Shortcut Input -->
@@ -109,8 +145,26 @@ const settings = useSelector(actor, (state: any) => state.context.settings)
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let statusTimeout: NodeJS.Timeout | null = null
 
-// Store the current shortcut
-const shortcutData = ref<KeyboardShortcut | null>(null)
+// Default hotkey values
+const defaultHotkeys = {
+  switchPluginUp: {
+    key: 'ArrowUp',
+    modifiers: ['cmd', 'option']
+  },
+  switchPluginDown: {
+    key: 'ArrowDown',
+    modifiers: ['cmd', 'option']
+  },
+  toggleInspectionPanel: {
+    key: 'b',
+    modifiers: ['cmd']
+  }
+}
+
+// Store the built-in hotkeys - initialize with defaults
+const switchPluginUpData = ref<KeyboardShortcut | null>(defaultHotkeys.switchPluginUp)
+const switchPluginDownData = ref<KeyboardShortcut | null>(defaultHotkeys.switchPluginDown)
+const toggleInspectionData = ref<KeyboardShortcut | null>(defaultHotkeys.toggleInspectionPanel)
 
 // Custom hotkeys state
 interface CustomHotkeyItem {
@@ -121,59 +175,80 @@ interface CustomHotkeyItem {
 
 const customHotkeys = ref<CustomHotkeyItem[]>([])
 
-// Initialize from settings
-watch(settings, (newSettings) => {
-  if (newSettings?.general?.hotkeys?.switchPlugin) {
-    const hotkey = newSettings.general.hotkeys.switchPlugin
-    shortcutData.value = {
-      key: hotkey.key || '',
-      modifiers: hotkey.modifiers || []
-    }
-  } else {
-    shortcutData.value = null
+// Helper function to convert hotkey format
+const convertToShortcut = (hotkey: any): KeyboardShortcut | null => {
+  if (!hotkey) return null
+  return {
+    key: hotkey.key || '',
+    modifiers: hotkey.modifiers || []
   }
-  
-  // Initialize custom hotkeys
-  if (newSettings?.general?.hotkeys?.custom) {
-    customHotkeys.value = newSettings.general.hotkeys.custom.map((h: any) => ({
-      id: h.id,
-      eventName: h.eventName || '',
-      shortcut: h.key ? {
-        key: h.key,
-        modifiers: h.modifiers || []
-      } : null
-    }))
-  }
-}, { immediate: true })
+}
 
-// Update hotkey in backend
-const updateHotkey = () => {
-  // Clear existing timeout
+// Helper function to convert shortcut back to backend format
+const convertToBackend = (shortcut: KeyboardShortcut | null) => {
+  if (!shortcut) return undefined
+  return {
+    key: shortcut.key,
+    modifiers: shortcut.modifiers
+  }
+}
+
+// Helper function to manage save status
+const setSaveStatus = (status: 'saving' | 'saved') => {
   if (statusTimeout) {
     clearTimeout(statusTimeout)
   }
   
-  // Show saving status
-  saveStatus.value = 'saving'
+  saveStatus.value = status
   
-  // Send update
+  if (status === 'saved') {
+    statusTimeout = setTimeout(() => {
+      saveStatus.value = 'idle'
+    }, 2000)
+  }
+}
+
+// Debounce helper
+const debouncedSave = (callback: Function, delay: number = 500) => {
+  if (statusTimeout) clearTimeout(statusTimeout)
+  statusTimeout = setTimeout(() => callback(), delay)
+}
+
+// Initialize from settings
+watch(settings, (newSettings) => {
+  if (newSettings?.general?.hotkeys) {
+    const hotkeys = newSettings.general.hotkeys
+    
+    // Initialize built-in hotkeys
+    switchPluginUpData.value = convertToShortcut(hotkeys.switchPluginUp)
+    switchPluginDownData.value = convertToShortcut(hotkeys.switchPluginDown)
+    toggleInspectionData.value = convertToShortcut(hotkeys.toggleInspectionPanel)
+    
+    // Initialize custom hotkeys
+    if (hotkeys.custom) {
+      customHotkeys.value = hotkeys.custom.map((h: any) => ({
+        id: h.id,
+        eventName: h.eventName || '',
+        shortcut: convertToShortcut(h)
+      }))
+    }
+  }
+}, { immediate: true })
+
+// Update hotkeys in backend
+const updateHotkeys = () => {
+  setSaveStatus('saving')
+  
   actor.send({ 
     type: 'HOTKEYS.UPDATE', 
     data: {
-      switchPlugin: shortcutData.value ? {
-        key: shortcutData.value.key,
-        modifiers: shortcutData.value.modifiers
-      } : null
+      switchPluginUp: convertToBackend(switchPluginUpData.value),
+      switchPluginDown: convertToBackend(switchPluginDownData.value),
+      toggleInspectionPanel: convertToBackend(toggleInspectionData.value)
     }
   })
   
-  // Show saved status
-  saveStatus.value = 'saved'
-  
-  // Hide status after 2 seconds
-  statusTimeout = setTimeout(() => {
-    saveStatus.value = 'idle'
-  }, 2000)
+  setSaveStatus('saved')
 }
 
 // Generate unique ID for new hotkeys
@@ -196,18 +271,6 @@ const removeCustomHotkey = (index: number) => {
   saveCustomHotkeys()
 }
 
-// Validate event name (uppercase, alphanumeric + underscores)
-const validateEventName = (index: number, event: Event) => {
-  const input = event.target as HTMLInputElement
-  const value = input.value.toUpperCase().replace(/[^A-Z0-9_]/g, '')
-  customHotkeys.value[index].eventName = value
-  input.value = value
-  
-  // Debounce save
-  if (statusTimeout) clearTimeout(statusTimeout)
-  statusTimeout = setTimeout(() => saveCustomHotkeys(), 500)
-}
-
 // Update custom hotkey shortcut
 const updateCustomHotkey = (index: number) => {
   saveCustomHotkeys()
@@ -215,13 +278,7 @@ const updateCustomHotkey = (index: number) => {
 
 // Save custom hotkeys to backend
 const saveCustomHotkeys = () => {
-  // Clear existing timeout
-  if (statusTimeout) {
-    clearTimeout(statusTimeout)
-  }
-  
-  // Show saving status
-  saveStatus.value = 'saving'
+  setSaveStatus('saving')
   
   // Convert to backend format
   const customData = customHotkeys.value
@@ -229,23 +286,15 @@ const saveCustomHotkeys = () => {
     .map(h => ({
       id: h.id,
       eventName: h.eventName,
-      key: h.shortcut!.key,
-      modifiers: h.shortcut!.modifiers
+      ...convertToBackend(h.shortcut)!
     }))
   
-  // Send update
   actor.send({ 
     type: 'HOTKEYS.UPDATE_CUSTOM', 
     data: customData
   })
   
-  // Show saved status
-  saveStatus.value = 'saved'
-  
-  // Hide status after 2 seconds
-  statusTimeout = setTimeout(() => {
-    saveStatus.value = 'idle'
-  }, 2000)
+  setSaveStatus('saved')
 }
 </script>
 

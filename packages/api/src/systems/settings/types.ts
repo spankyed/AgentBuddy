@@ -48,7 +48,15 @@ export interface CustomHotkey {
 }
 
 export interface Hotkeys {
-  switchPlugin?: {
+  switchPluginUp?: {
+    key: string;
+    modifiers: string[];
+  };
+  switchPluginDown?: {
+    key: string;
+    modifiers: string[];
+  };
+  toggleInspectionPanel?: {
     key: string;
     modifiers: string[];
   };
@@ -78,9 +86,17 @@ export const defaultSettings: SettingsData = {
     personal: {},
     apiKeys: {},
     hotkeys: {
-      switchPlugin: {
-        key: 'ArrowDown+ArrowUp',
+      switchPluginUp: {
+        key: 'ArrowUp',
         modifiers: ['cmd', 'option']
+      },
+      switchPluginDown: {
+        key: 'ArrowDown',
+        modifiers: ['cmd', 'option']
+      },
+      toggleInspectionPanel: {
+        key: 'b',
+        modifiers: ['cmd']
       }
     },
     misc: {}
