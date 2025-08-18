@@ -9,7 +9,6 @@ export interface SettingsEntity extends BaseEntity {
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
-  faq: FAQSettings;
 }
 
 export interface GeneralSettings {
@@ -71,15 +70,6 @@ export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
 
-export interface FAQSettings {
-  items: FAQItem[];
-}
-
-export interface FAQItem {
-  question: string;
-  answer: string;
-}
-
 // Default settings
 export const defaultSettings: SettingsData = {
   general: {
@@ -101,17 +91,5 @@ export const defaultSettings: SettingsData = {
     },
     misc: {}
   },
-  plugins: {},
-  faq: {
-    items: [
-      {
-        question: "Where can I view saved messages?",
-        answer: "In the database plugin click 3 dots then select option 'view trace history'"
-      },
-      {
-        question: "How do I enable TTS?",
-        answer: "Go to mac settings and allow accessibility permission"
-      }
-    ]
-  }
+  plugins: {}
 };

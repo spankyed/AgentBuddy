@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-semibold text-white text-center mb-8">Frequently Asked Questions</h2>
       
       <div class="space-y-3">
-        <div v-for="(item, index) in faqItems" :key="index" 
+        <div v-for="(item, index) in helpItems" :key="item.id" 
           class="bg-neutral-800 border border-neutral-700 rounded-lg overflow-hidden transition-colors hover:border-neutral-600">
           <button
             @click="toggleItem(index)"
@@ -25,27 +25,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 
-const actor = applicationState.system.get('settings')
+interface FAQItem {
+  id: string
+  question: string
+  answer: string
+  category?: string
+  order?: number
+}
 
-const settings = useSelector(actor, (state: any) => state.context.settings)
-
-const faqItems = computed(() => {
-  return settings.value?.faq?.items || [
-    {
-      question: "Where can I view saved messages?",
-      answer: "In the database plugin click 3 dots then select option 'view trace history'"
-    },
-    {
-      question: "How do I enable TTS?",
-      answer: "Go to mac settings and allow accessibility permission"
-    }
-  ]
-})
+// For now, hardcode the FAQ items until FAQ entities are properly set up
+const helpItems = ref<FAQItem[]>([
+  {
+    id: 'faq_1',
+    question: "Where can I view saved messages?",
+    answer: "In the database plugin click 3 dots then select option 'view trace history'",
+    category: 'database',
+    order: 1
+  },
+  {
+    id: 'faq_2', 
+    question: "How do I enable TTS?",
+    answer: "Go to mac settings and allow accessibility permission",
+    category: 'settings',
+    order: 2
+  }
+])
 
 const expandedItems = ref<number[]>([])
 

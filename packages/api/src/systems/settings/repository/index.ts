@@ -88,24 +88,6 @@ export const settingsQueries = {
         )
       );
     }
-  },
-
-  /**
-   * Get FAQ items
-   */
-  getFAQItems(): RepositoryResult<SettingsData['faq']['items']> {
-    try {
-      const settings = getOrCreateSettings();
-      return successResult(settings.data.faq.items);
-    } catch (error) {
-      return errorResult(
-        new RepositoryError(
-          'Failed to get FAQ items',
-          RepositoryErrorCode.OPERATION_FAILED,
-          error
-        )
-      );
-    }
   }
 };
 

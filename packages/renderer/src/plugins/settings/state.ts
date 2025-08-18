@@ -53,22 +53,14 @@ export interface PluginSettings {
   [pluginId: string]: any;
 }
 
-export interface FAQItem {
-  question: string;
-  answer: string;
-}
-
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
-  faq: {
-    items: FAQItem[];
-  };
 }
 
 export interface SettingsContext {
   settings: SettingsData | null;
-  activeTab: 'general' | 'plugins' | 'faq';
+  activeTab: 'general' | 'plugins' | 'help';
   generalNavItem: 'personal' | 'apiKeys' | 'hotkeys' | 'misc';
   selectedPluginId: string | null;
   isLoading: boolean;
@@ -82,7 +74,7 @@ type SystemEvent =
   | { type: 'SETTINGS_ERROR'; error: string }
 
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'faq' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'apiKeys' | 'hotkeys' | 'misc' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'PERSONAL.UPDATE'; data: PersonalInfo }

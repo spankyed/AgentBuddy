@@ -28,7 +28,8 @@ declare namespace EARS {
         SearchIndex = "SearchIndex",
         Terminal = "Terminal",
         Directory = "Directory",
-        Settings = "Settings"
+        Settings = "Settings",
+        FAQ = "FAQ"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {
@@ -3688,7 +3689,6 @@ interface SettingsEntity extends BaseEntity {
 interface SettingsData {
     general: GeneralSettings;
     plugins: PluginSettings;
-    faq: FAQSettings;
 }
 interface GeneralSettings {
     personal: PersonalInfo;
@@ -3740,12 +3740,16 @@ interface MiscSettings {
 interface PluginSettings {
     [pluginId: string]: any;
 }
-interface FAQSettings {
-    items: FAQItem[];
+
+interface FAQEntity extends BaseEntity {
+    entityType: EARS.Entity.FAQ;
+    data: FAQItem;
 }
 interface FAQItem {
     question: string;
     answer: string;
+    category?: string;
+    order?: number;
 }
 
 /**
@@ -4312,7 +4316,6 @@ declare const services: {
             getSettings(): RepositoryResult<SettingsEntity>;
             getGeneralSettings(): RepositoryResult<SettingsData["general"]>;
             getPluginSettings(pluginId: string): RepositoryResult<any>;
-            getFAQItems(): RepositoryResult<SettingsData["faq"]["items"]>;
         };
         readonly settingsCommands: {
             updateGeneralSettings(generalSettings: Partial<SettingsData["general"]>): RepositoryResult<SettingsEntity>;
