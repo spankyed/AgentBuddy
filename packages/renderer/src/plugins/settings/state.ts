@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, Hotkeys, PluginSettings } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, ApplicationHotkeys, PluginSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 
 /* ─────────────────────────────────────────────────────────── */

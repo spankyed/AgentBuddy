@@ -549,7 +549,7 @@ interface SettingsData {
 interface GeneralSettings {
     personal: PersonalInfo;
     apiKeys: ApiKeys;
-    hotkeys: Hotkeys;
+    hotkeys: ApplicationHotkeys;
     misc: MiscSettings;
 }
 interface Address {
@@ -579,7 +579,7 @@ interface CustomHotkey extends KeyboardShortcut {
     id: string;
     eventName: string;
 }
-interface Hotkeys {
+interface ApplicationHotkeys {
     switchPluginUp?: KeyboardShortcut;
     switchPluginDown?: KeyboardShortcut;
     toggleInspectionPanel?: KeyboardShortcut;

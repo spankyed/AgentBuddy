@@ -17,7 +17,7 @@ export interface SettingsData {
 export interface GeneralSettings {
   personal: PersonalInfo;
   apiKeys: ApiKeys;
-  hotkeys: Hotkeys;
+  hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
 }
 
@@ -54,7 +54,7 @@ export interface CustomHotkey extends KeyboardShortcut {
   eventName: string;
 }
 
-export interface Hotkeys {
+export interface ApplicationHotkeys {
   switchPluginUp?: KeyboardShortcut;
   switchPluginDown?: KeyboardShortcut;
   toggleInspectionPanel?: KeyboardShortcut;
