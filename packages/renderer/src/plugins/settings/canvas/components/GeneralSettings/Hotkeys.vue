@@ -87,6 +87,7 @@
               @change="updateCustomHotkey(index)"
               container-class="flex-1"
               placeholder="Click to set shortcut"
+              :show-reset-button="false"
             />
             
             <!-- Remove Button -->
@@ -219,10 +220,16 @@ watch(settings, (newSettings) => {
   if (newSettings?.general?.hotkeys) {
     const hotkeys = newSettings.general.hotkeys
     
-    // Initialize built-in hotkeys
-    switchPluginUpData.value = convertToShortcut(hotkeys.switchPluginUp)
-    switchPluginDownData.value = convertToShortcut(hotkeys.switchPluginDown)
-    toggleInspectionData.value = convertToShortcut(hotkeys.toggleInspectionPanel)
+    // Initialize built-in hotkeys - only update if they exist in settings
+    if (hotkeys.switchPluginUp) {
+      switchPluginUpData.value = convertToShortcut(hotkeys.switchPluginUp)
+    }
+    if (hotkeys.switchPluginDown) {
+      switchPluginDownData.value = convertToShortcut(hotkeys.switchPluginDown)
+    }
+    if (hotkeys.toggleInspectionPanel) {
+      toggleInspectionData.value = convertToShortcut(hotkeys.toggleInspectionPanel)
+    }
     
     // Initialize custom hotkeys
     if (hotkeys.custom) {
