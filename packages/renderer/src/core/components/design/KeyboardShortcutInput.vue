@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center gap-3" :class="containerClass">
     <div 
-      class="relative flex-1 flex items-center justify-between px-3 py-2 bg-neutral-800 border rounded-lg text-sm cursor-pointer transition-all"
+      class="relative flex-1 flex items-center px-3 py-2 bg-neutral-800 border rounded-lg text-sm cursor-pointer transition-all min-w-0"
       :class="[
         isRecording 
           ? 'border-blue-500/50 ring-2 ring-blue-500/20' 
@@ -15,13 +15,13 @@
       @keydown.prevent="recordKeyPress"
     >
       <!-- Label on the left -->
-      <span v-if="label" class="text-neutral-400 text-xs uppercase tracking-wider">
+      <span v-if="label" class="text-neutral-400 text-xs uppercase tracking-wider truncate mr-3 min-w-0">
         {{ label }}
       </span>
       
       <!-- Hotkey value on the right -->
       <span 
-        class="font-mono ml-auto"
+        class="font-mono ml-auto flex-shrink-0 whitespace-nowrap"
         :class="[
           isRecording ? 'text-blue-400' : isEmpty ? 'text-neutral-500' : 'text-white'
         ]"
@@ -74,7 +74,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Click to set shortcut',
-  recordingPlaceholder: 'Press shortcut keys...',
+  recordingPlaceholder: 'Press keys...',
   emptyText: 'Not set',
   showIcon: true,
   showResetButton: true,
