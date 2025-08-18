@@ -3972,15 +3972,15 @@ declare const services: {
             delete: (id: EARS.EntityId) => OperationResult;
         };
         readonly settingsQueries: {
-            getAllSettings(): SettingsEntity[];
-            getSettings(): SettingsData;
-            getGeneralSettings(): SettingsData["general"];
-            getPluginSettings(pluginId: string): any;
-            getSettingsByLabel(label: string): SettingsEntity | null;
+            getAllSettings: () => SettingsEntity[];
+            getSettings: () => SettingsData;
+            getGeneralSettings: () => SettingsData["general"];
+            getPluginSettings: (pluginId: string) => any;
+            getSettingsByLabel: (label: string) => SettingsEntity | null;
         };
         readonly settingsCommands: {
             updateSettings(type: "general" | "plugin", label: string, path: string[], value: any): SettingsEntity;
-            resetSettings(): void;
+            resetSettings: () => void;
         };
         readonly terminalQueries: {
             byId: (id: EARS.EntityId) => TerminalEntity | undefined;

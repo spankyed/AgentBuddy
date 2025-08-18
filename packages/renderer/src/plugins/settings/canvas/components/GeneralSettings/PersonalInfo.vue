@@ -137,8 +137,8 @@ watch(formData, (newData) => {
     actor.send({ 
       type: 'SETTINGS.UPDATE',
       entityType: 'general',
-      label: 'general',
-      path: ['personal'],
+      label: 'personal',
+      path: [],
       value: newData
     })
     

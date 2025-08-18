@@ -1,250 +1,99 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
-import { SettingsEntity, SettingsData, PluginSettings, defaultSettings } from '../types';
+import { SettingsEntity, SettingsData, defaultSettings } from '../types';
 
-/**
- * Settings Repository - Manages user settings and configuration
- */
+// Core helpers
+const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
+const findSettings = (label: string) => getAllSettings().find(s => s.label === label);
 
-// Helper to deep set a value at a path in an object
-function setValueAtPath(obj: any, path: string[], value: any): any {
-  if (path.length === 0) return value;
-  
-  const [head, ...tail] = path;
-  const result = { ...obj };
-  
-  if (tail.length === 0) {
-    result[head] = value;
-  } else {
-    result[head] = setValueAtPath(obj[head] || {}, tail, value);
-  }
-  
-  return result;
-}
+const setValueAtPath = (obj: any, path: string[], value: any): any => 
+  path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
 
-// Helper to get settings entity by label
-function findSettingsByLabel(label: string): SettingsEntity | undefined {
-  const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-  return allSettings.find(s => s.label === label);
-}
-
-// Get or create general settings entity
-function getOrCreateGeneralSettings(): SettingsEntity {
-  let settings = findSettingsByLabel('general');
+const getOrCreateSettings = (type: 'general' | 'plugin', label: string, defaultData: any = {}): SettingsEntity => {
+  const existing = findSettings(label);
+  if (existing) return existing;
   
-  if (settings) {
-    return settings;
-  }
-  
-  // Create default general settings
   const createdAt = Date.now();
-  const id = tx(EARS.Entity.Settings)
-    .batchPut({
-      entityType: EARS.Entity.Settings,
-      type: 'general',
-      label: 'general',
-      createdAt,
-      data: defaultSettings.general
-    })
-    .id();
+  const id = tx(EARS.Entity.Settings).batchPut({
+    entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData
+  }).id();
   
-  const newSettings: SettingsEntity = {
-    id,
-    entityType: EARS.Entity.Settings,
-    type: 'general',
-    label: 'general',
-    createdAt,
-    data: defaultSettings.general
-  };
-  
-  return newSettings;
-}
+  return { id, entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData };
+};
 
-// Get or create plugin settings entity
-function getOrCreatePluginSettings(pluginId: string): SettingsEntity {
-  let settings = findSettingsByLabel(pluginId);
-  
-  if (settings) {
-    return settings;
-  }
-  
-  // Create default plugin settings
-  const createdAt = Date.now();
-  const id = tx(EARS.Entity.Settings)
-    .batchPut({
-      entityType: EARS.Entity.Settings,
-      type: 'plugin',
-      label: pluginId,
-      createdAt,
-      data: {}
-    })
-    .id();
-  
-  const newSettings: SettingsEntity = {
-    id,
-    entityType: EARS.Entity.Settings,
-    type: 'plugin',
-    label: pluginId,
-    createdAt,
-    data: {}
-  };
-  
-  return newSettings;
-}
+// General settings config
+const generalConfig = {
+  personal: 'personal',
+  apikeys: 'apiKeys',
+  hotkeys: 'hotkeys',
+  misc: 'misc'
+} as const;
+
+const getGeneralSettings = (label: keyof typeof generalConfig) => 
+  getOrCreateSettings('general', label, defaultSettings.general[generalConfig[label]]);
 
 // QUERIES
 export const settingsQueries = {
-  /**
-   * Get all settings entities
-   */
-  getAllSettings(): SettingsEntity[] {
-    const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-    return allSettings;
-  },
+  getAllSettings,
+  
+  getSettings: (): SettingsData => ({
+    general: Object.fromEntries(
+      Object.keys(generalConfig).map(label => [
+        generalConfig[label as keyof typeof generalConfig],
+        getGeneralSettings(label as keyof typeof generalConfig).data
+      ])
+    ) as SettingsData['general'],
+    plugins: Object.fromEntries(
+      getAllSettings().filter(s => s.type === 'plugin').map(s => [s.label, s.data])
+    )
+  }),
+  
+  getGeneralSettings: () => Object.fromEntries(
+    Object.keys(generalConfig).map(label => [
+      generalConfig[label as keyof typeof generalConfig],
+      getGeneralSettings(label as keyof typeof generalConfig).data
+    ])
+  ) as SettingsData['general'],
+  
+  getPluginSettings: (pluginId: string) => getOrCreateSettings('plugin', pluginId, {}).data,
+  getSettingsByLabel: (label: string) => findSettings(label) || null
+};
 
-  /**
-   * Get all settings data in combined format
-   */
-  getSettings(): SettingsData {
-    const generalSettings = getOrCreateGeneralSettings();
-    const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-    const pluginSettings = allSettings.filter(s => s.type === 'plugin');
+// COMMANDS
+export const settingsCommands = {
+  updateSettings(type: 'general' | 'plugin', label: string, path: string[], value: any): SettingsEntity {
+    const settings = type === 'general' 
+      ? getGeneralSettings(label as keyof typeof generalConfig)
+      : getOrCreateSettings('plugin', label, {});
     
-    const plugins: PluginSettings = {};
-    pluginSettings.forEach(ps => {
-      plugins[ps.label] = ps.data;
-    });
+    const updatedData = path.length === 0 ? value : setValueAtPath(settings.data, path, value);
+    tx(settings.id).updateBatch({ data: updatedData, updatedAt: Date.now() });
     
-    const settingsData: SettingsData = {
-      general: generalSettings.data,
-      plugins
-    };
-    
-    return settingsData;
+    return { ...settings, data: updatedData };
   },
-
-  /**
-   * Get general settings
-   */
-  getGeneralSettings(): SettingsData['general'] {
-    const settings = getOrCreateGeneralSettings();
-    return settings.data;
-  },
-
-  /**
-   * Get plugin settings for a specific plugin
-   */
-  getPluginSettings(pluginId: string): any {
-    const settings = getOrCreatePluginSettings(pluginId);
-    return settings.data;
-  },
-
-  /**
-   * Get settings entity by label
-   */
-  getSettingsByLabel(label: string): SettingsEntity | null {
-    const settings = findSettingsByLabel(label);
-    return settings || null;
+  
+  resetSettings: () => {
+    getAllSettings().forEach(s => tx(s.id).destroy());
+    Object.keys(generalConfig).forEach(label => 
+      getGeneralSettings(label as keyof typeof generalConfig)
+    );
   }
 };
 
 // Development setup
-export function setupDevelopmentSettings(): void {
-  // Only in development mode
-  if (process.env.NODE_ENV === 'production') return;
+export const setupDevelopmentSettings = (): void => {
+  if (process.env.NODE_ENV === 'production' || getAllSettings().length > 0) return;
   
-  // Check if settings already exist
-  const existingSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-  if (existingSettings.length > 0) return; // Settings already exist, don't override
+  const testHotkeys = {
+    ...defaultSettings.general.hotkeys,
+    custom: [{ id: 'dev-hotkey-1', eventName: 'TEST_EVENT_1', key: 't', modifiers: ['cmd', 'shift'] }]
+  };
   
-  // Create default general settings with test hotkeys
-  const createdAt = Date.now();
-  tx(EARS.Entity.Settings)
-    .batchPut({
-      entityType: EARS.Entity.Settings,
-      type: 'general',
-      label: 'general',
-      createdAt,
-      data: {
-        ...defaultSettings.general,
-        hotkeys: {
-          switchPluginUp: {
-            key: 'ArrowUp',
-            modifiers: ['cmd', 'option']
-          },
-          switchPluginDown: {
-            key: 'ArrowDown',
-            modifiers: ['cmd', 'option']
-          },
-          toggleInspectionPanel: {
-            key: 'b',
-            modifiers: ['cmd']
-          },
-          custom: [
-            {
-              id: 'dev-hotkey-1',
-              eventName: 'TEST_EVENT_1',
-              key: 't',
-              modifiers: ['cmd', 'shift']
-            }
-          ]
-        }
-      }
-    });
+  getOrCreateSettings('general', 'hotkeys', testHotkeys);
+  ['personal', 'apikeys', 'misc'].forEach(label => 
+    getOrCreateSettings('general', label, defaultSettings.general[generalConfig[label as keyof typeof generalConfig]])
+  );
   
   console.log('[Settings] Development settings initialized with test hotkeys');
-}
-
-// COMMANDS
-export const settingsCommands = {
-  /**
-   * Universal update method for any settings entity
-   * @param type - 'general' or 'plugin'
-   * @param label - Entity label (e.g., 'general' or plugin ID)
-   * @param path - Path to the value to update (e.g., ['personal', 'name'])
-   * @param value - The value to set
-   */
-  updateSettings(type: 'general' | 'plugin', label: string, path: string[], value: any): SettingsEntity {
-    const settings = type === 'general' 
-      ? getOrCreateGeneralSettings()
-      : getOrCreatePluginSettings(label);
-    
-    const updatedData = path.length === 0 
-      ? value 
-      : setValueAtPath(settings.data, path, value);
-    
-    // Update the entity's data attribute
-    tx(settings.id).updateBatch({
-      data: updatedData,
-      updatedAt: Date.now()
-    });
-    
-    const updatedSettings: SettingsEntity = {
-      ...settings,
-      data: updatedData
-    };
-    
-    return updatedSettings;
-  },
-
-  /**
-   * Reset settings to defaults
-   */
-  resetSettings(): void {
-    // Delete all existing settings entities
-    const allSettings = qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-    allSettings.forEach(s => tx(s.id).destroy());
-    
-    // Create default general settings
-    const createdAt = Date.now();
-    tx(EARS.Entity.Settings)
-      .batchPut({
-        entityType: EARS.Entity.Settings,
-        type: 'general',
-        label: 'general',
-        createdAt,
-        data: defaultSettings.general
-      });
-  }
 };

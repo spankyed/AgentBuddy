@@ -233,15 +233,23 @@ if (settings.value?.general?.hotkeys) {
 const updateHotkeys = () => {
   setSaveStatus('saving')
   
+  // Get current custom hotkeys
+  const customData = customHotkeys.value.map(h => ({
+    id: h.id,
+    eventName: h.eventName,
+    ...(h.shortcut ? convertToBackend(h.shortcut) : {})
+  }))
+  
   actor.send({ 
     type: 'SETTINGS.UPDATE',
     entityType: 'general',
-    label: 'general',
-    path: ['hotkeys'],
+    label: 'hotkeys',
+    path: [],
     value: {
       switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
       switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
-      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel)
+      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel),
+      custom: customData
     }
   })
   
@@ -284,12 +292,18 @@ const saveCustomHotkeys = () => {
     ...(h.shortcut ? convertToBackend(h.shortcut) : {})
   }))
   
+  // Save all hotkeys together
   actor.send({ 
     type: 'SETTINGS.UPDATE',
     entityType: 'general',
-    label: 'general',
-    path: ['hotkeys', 'custom'],
-    value: customData
+    label: 'hotkeys',
+    path: [],
+    value: {
+      switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
+      switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
+      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel),
+      custom: customData
+    }
   })
   
   setSaveStatus('saved')
