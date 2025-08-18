@@ -20,7 +20,7 @@
           <div class="flex-1">
             <div class="text-xs text-neutral-500 mb-1">Previous</div>
             <KeyboardShortcutInput
-              v-model="switchPluginUpData"
+              v-model="builtInHotkeys.switchPluginUp"
               id="switch-plugin-up"
               @change="updateHotkeys"
               container-class="w-full"
@@ -32,7 +32,7 @@
           <div class="flex-1">
             <div class="text-xs text-neutral-500 mb-1">Next</div>
             <KeyboardShortcutInput
-              v-model="switchPluginDownData"
+              v-model="builtInHotkeys.switchPluginDown"
               id="switch-plugin-down"
               @change="updateHotkeys"
               container-class="w-full"
@@ -51,7 +51,7 @@
           Toggle Inspection Panel
         </label>
         <KeyboardShortcutInput
-          v-model="toggleInspectionData"
+          v-model="builtInHotkeys.toggleInspectionPanel"
           id="toggle-inspection"
           @change="updateHotkeys"
           container-class="max-w-md"
@@ -147,7 +147,7 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let statusTimeout: NodeJS.Timeout | null = null
 
 // Default hotkey values
-const defaultHotkeys = {
+const defaultHotkeys: Record<string, KeyboardShortcut> = {
   switchPluginUp: {
     key: 'ArrowUp',
     modifiers: ['cmd', 'option']
@@ -162,10 +162,12 @@ const defaultHotkeys = {
   }
 }
 
-// Store the built-in hotkeys - initialize with defaults
-const switchPluginUpData = ref<KeyboardShortcut | null>(defaultHotkeys.switchPluginUp)
-const switchPluginDownData = ref<KeyboardShortcut | null>(defaultHotkeys.switchPluginDown)
-const toggleInspectionData = ref<KeyboardShortcut | null>(defaultHotkeys.toggleInspectionPanel)
+// Store all built-in hotkeys in a reactive object
+const builtInHotkeys = reactive<Record<string, KeyboardShortcut | null>>({
+  switchPluginUp: { ...defaultHotkeys.switchPluginUp },
+  switchPluginDown: { ...defaultHotkeys.switchPluginDown },
+  toggleInspectionPanel: { ...defaultHotkeys.toggleInspectionPanel }
+})
 
 // Custom hotkeys state
 interface CustomHotkeyItem {
@@ -220,16 +222,10 @@ watch(settings, (newSettings) => {
   if (newSettings?.general?.hotkeys) {
     const hotkeys = newSettings.general.hotkeys
     
-    // Initialize built-in hotkeys - only update if they exist in settings
-    if (hotkeys.switchPluginUp) {
-      switchPluginUpData.value = convertToShortcut(hotkeys.switchPluginUp)
-    }
-    if (hotkeys.switchPluginDown) {
-      switchPluginDownData.value = convertToShortcut(hotkeys.switchPluginDown)
-    }
-    if (hotkeys.toggleInspectionPanel) {
-      toggleInspectionData.value = convertToShortcut(hotkeys.toggleInspectionPanel)
-    }
+    // Update built-in hotkeys, preserving defaults when settings don't exist
+    Object.keys(defaultHotkeys).forEach((key) => {
+      builtInHotkeys[key] = convertToShortcut(hotkeys[key]) || { ...defaultHotkeys[key] }
+    })
     
     // Initialize custom hotkeys
     if (hotkeys.custom) {
@@ -249,9 +245,9 @@ const updateHotkeys = () => {
   actor.send({ 
     type: 'HOTKEYS.UPDATE', 
     data: {
-      switchPluginUp: convertToBackend(switchPluginUpData.value),
-      switchPluginDown: convertToBackend(switchPluginDownData.value),
-      toggleInspectionPanel: convertToBackend(toggleInspectionData.value)
+      switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
+      switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
+      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel)
     }
   })
   
