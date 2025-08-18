@@ -38,16 +38,26 @@ function getOrCreateGeneralSettings(): SettingsEntity {
   }
   
   // Create default general settings
+  const createdAt = Date.now();
+  const id = tx(EARS.Entity.Settings)
+    .batchPut({
+      entityType: EARS.Entity.Settings,
+      type: 'general',
+      label: 'general',
+      createdAt,
+      data: defaultSettings.general
+    })
+    .id();
+  
   const newSettings: SettingsEntity = {
-    id: `${EARS.Entity.Settings}-general` as EARS.EntityId,
+    id,
     entityType: EARS.Entity.Settings,
     type: 'general',
     label: 'general',
-    createdAt: Date.now(),
+    createdAt,
     data: defaultSettings.general
   };
   
-  tx(newSettings as any);
   return newSettings;
 }
 
@@ -60,16 +70,26 @@ function getOrCreatePluginSettings(pluginId: string): SettingsEntity {
   }
   
   // Create default plugin settings
+  const createdAt = Date.now();
+  const id = tx(EARS.Entity.Settings)
+    .batchPut({
+      entityType: EARS.Entity.Settings,
+      type: 'plugin',
+      label: pluginId,
+      createdAt,
+      data: {}
+    })
+    .id();
+  
   const newSettings: SettingsEntity = {
-    id: `${EARS.Entity.Settings}-plugin-${pluginId}` as EARS.EntityId,
+    id,
     entityType: EARS.Entity.Settings,
     type: 'plugin',
     label: pluginId,
-    createdAt: Date.now(),
+    createdAt,
     data: {}
   };
   
-  tx(newSettings as any);
   return newSettings;
 }
 
@@ -147,12 +167,17 @@ export const settingsCommands = {
       ? value 
       : setValueAtPath(settings.data, path, value);
     
+    // Update the entity's data attribute
+    tx(settings.id).updateBatch({
+      data: updatedData,
+      updatedAt: Date.now()
+    });
+    
     const updatedSettings: SettingsEntity = {
       ...settings,
       data: updatedData
     };
     
-    tx(updatedSettings as any);
     return updatedSettings;
   },
 
@@ -165,15 +190,14 @@ export const settingsCommands = {
     allSettings.forEach(s => tx(s.id).destroy());
     
     // Create default general settings
-    const generalSettings: SettingsEntity = {
-      id: `${EARS.Entity.Settings}-general` as EARS.EntityId,
-      entityType: EARS.Entity.Settings,
-      type: 'general',
-      label: 'general',
-      createdAt: Date.now(),
-      data: defaultSettings.general
-    };
-    
-    tx(generalSettings as any);
+    const createdAt = Date.now();
+    tx(EARS.Entity.Settings)
+      .batchPut({
+        entityType: EARS.Entity.Settings,
+        type: 'general',
+        label: 'general',
+        createdAt,
+        data: defaultSettings.general
+      });
   }
 };

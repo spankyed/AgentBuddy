@@ -1270,358 +1270,26 @@ declare const events: {
         type: "GET_SETTINGS";
         systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_GENERAL_SETTINGS">;
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
-        general: zod.ZodObject<{
-            personal: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
-                name: zod.ZodOptional<zod.ZodString>;
-                phoneNumber: zod.ZodOptional<zod.ZodString>;
-                address: zod.ZodOptional<zod.ZodString>;
-            }, "strip", zod.ZodTypeAny, {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            }, {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            }>>>;
-            apiKeys: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
-                google: zod.ZodOptional<zod.ZodString>;
-                anthropic: zod.ZodOptional<zod.ZodString>;
-                openai: zod.ZodOptional<zod.ZodString>;
-            }, "strip", zod.ZodTypeAny, {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            }, {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            }>>>;
-            hotkeys: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{
-                switchPluginUp: zod.ZodOptional<zod.ZodObject<{
-                    key: zod.ZodString;
-                    modifiers: zod.ZodArray<zod.ZodString, "many">;
-                }, "strip", zod.ZodTypeAny, {
-                    key: string;
-                    modifiers: string[];
-                }, {
-                    key: string;
-                    modifiers: string[];
-                }>>;
-                switchPluginDown: zod.ZodOptional<zod.ZodObject<{
-                    key: zod.ZodString;
-                    modifiers: zod.ZodArray<zod.ZodString, "many">;
-                }, "strip", zod.ZodTypeAny, {
-                    key: string;
-                    modifiers: string[];
-                }, {
-                    key: string;
-                    modifiers: string[];
-                }>>;
-                toggleInspectionPanel: zod.ZodOptional<zod.ZodObject<{
-                    key: zod.ZodString;
-                    modifiers: zod.ZodArray<zod.ZodString, "many">;
-                }, "strip", zod.ZodTypeAny, {
-                    key: string;
-                    modifiers: string[];
-                }, {
-                    key: string;
-                    modifiers: string[];
-                }>>;
-            }, "strip", zod.ZodTypeAny, {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            }, {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            }>>>;
-            misc: zod.ZodOptional<zod.ZodOptional<zod.ZodObject<{}, "strip", zod.ZodTypeAny, {}, {}>>>;
-        }, "strip", zod.ZodTypeAny, {
-            personal?: {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            } | undefined;
-            apiKeys?: {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            } | undefined;
-            hotkeys?: {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            } | undefined;
-            misc?: {} | undefined;
-        }, {
-            personal?: {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            } | undefined;
-            apiKeys?: {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            } | undefined;
-            hotkeys?: {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            } | undefined;
-            misc?: {} | undefined;
-        }>;
+        entityType: zod.ZodEnum<["general", "plugin"]>;
+        label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        general: {
-            personal?: {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            } | undefined;
-            apiKeys?: {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            } | undefined;
-            hotkeys?: {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            } | undefined;
-            misc?: {} | undefined;
-        };
-        type: "UPDATE_GENERAL_SETTINGS";
+        entityType: "general" | "plugin";
+        label: string;
+        type: "UPDATE_SETTINGS";
         systemId: "settings";
+        path: string[];
+        value?: any;
     }, {
-        general: {
-            personal?: {
-                name?: string | undefined;
-                phoneNumber?: string | undefined;
-                address?: string | undefined;
-            } | undefined;
-            apiKeys?: {
-                anthropic?: string | undefined;
-                openai?: string | undefined;
-                google?: string | undefined;
-            } | undefined;
-            hotkeys?: {
-                switchPluginUp?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                switchPluginDown?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-                toggleInspectionPanel?: {
-                    key: string;
-                    modifiers: string[];
-                } | undefined;
-            } | undefined;
-            misc?: {} | undefined;
-        };
-        type: "UPDATE_GENERAL_SETTINGS";
+        entityType: "general" | "plugin";
+        label: string;
+        type: "UPDATE_SETTINGS";
         systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_PLUGIN_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        pluginId: zod.ZodString;
-        settings: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_PLUGIN_SETTINGS";
-        systemId: "settings";
-        pluginId: string;
-        settings?: any;
-    }, {
-        type: "UPDATE_PLUGIN_SETTINGS";
-        systemId: "settings";
-        pluginId: string;
-        settings?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_PERSONAL_INFO">;
-        systemId: zod.ZodLiteral<"settings">;
-        name: zod.ZodOptional<zod.ZodString>;
-        phoneNumber: zod.ZodOptional<zod.ZodString>;
-        address: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_PERSONAL_INFO";
-        systemId: "settings";
-        name?: string | undefined;
-        phoneNumber?: string | undefined;
-        address?: string | undefined;
-    }, {
-        type: "UPDATE_PERSONAL_INFO";
-        systemId: "settings";
-        name?: string | undefined;
-        phoneNumber?: string | undefined;
-        address?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-        google: zod.ZodOptional<zod.ZodString>;
-        anthropic: zod.ZodOptional<zod.ZodString>;
-        openai: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_API_KEYS";
-        systemId: "settings";
-        anthropic?: string | undefined;
-        openai?: string | undefined;
-        google?: string | undefined;
-    }, {
-        type: "UPDATE_API_KEYS";
-        systemId: "settings";
-        anthropic?: string | undefined;
-        openai?: string | undefined;
-        google?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_HOTKEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-        switchPluginUp: zod.ZodOptional<zod.ZodObject<{
-            key: zod.ZodString;
-            modifiers: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            key: string;
-            modifiers: string[];
-        }, {
-            key: string;
-            modifiers: string[];
-        }>>;
-        switchPluginDown: zod.ZodOptional<zod.ZodObject<{
-            key: zod.ZodString;
-            modifiers: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            key: string;
-            modifiers: string[];
-        }, {
-            key: string;
-            modifiers: string[];
-        }>>;
-        toggleInspectionPanel: zod.ZodOptional<zod.ZodObject<{
-            key: zod.ZodString;
-            modifiers: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            key: string;
-            modifiers: string[];
-        }, {
-            key: string;
-            modifiers: string[];
-        }>>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_HOTKEYS";
-        systemId: "settings";
-        switchPluginUp?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-        switchPluginDown?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-        toggleInspectionPanel?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-    }, {
-        type: "UPDATE_HOTKEYS";
-        systemId: "settings";
-        switchPluginUp?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-        switchPluginDown?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-        toggleInspectionPanel?: {
-            key: string;
-            modifiers: string[];
-        } | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_CUSTOM_HOTKEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-        custom: zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            eventName: zod.ZodString;
-            key: zod.ZodString;
-            modifiers: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            id: string;
-            key: string;
-            modifiers: string[];
-            eventName: string;
-        }, {
-            id: string;
-            key: string;
-            modifiers: string[];
-            eventName: string;
-        }>, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_CUSTOM_HOTKEYS";
-        systemId: "settings";
-        custom: {
-            id: string;
-            key: string;
-            modifiers: string[];
-            eventName: string;
-        }[];
-    }, {
-        type: "UPDATE_CUSTOM_HOTKEYS";
-        systemId: "settings";
-        custom: {
-            id: string;
-            key: string;
-            modifiers: string[];
-            eventName: string;
-        }[];
+        path: string[];
+        value?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
@@ -3098,19 +2766,15 @@ declare const events: {
         pluginId: "prompts";
     } | {
         type: "SETTINGS_LOADED";
-        data: LegacySettingsEntity;
+        data: SettingsData;
         pluginId: "settings";
     } | {
         type: "SETTINGS_UPDATED";
-        data: LegacySettingsEntity;
+        data: SettingsData;
         pluginId: "settings";
     } | {
         type: "SETTINGS_RESET";
-        data: LegacySettingsEntity;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_ERROR";
-        error: string;
+        data: SettingsData;
         pluginId: "settings";
     } | {
         type: "ACTIONS_LISTED";
@@ -3687,10 +3351,6 @@ interface SettingsEntity extends BaseEntity {
     type: 'general' | 'plugin';
     label: string;
     data: any;
-}
-interface LegacySettingsEntity extends BaseEntity {
-    entityType: EARS.Entity.Settings;
-    data: SettingsData;
 }
 interface SettingsData {
     general: GeneralSettings;
@@ -4308,21 +3968,15 @@ declare const services: {
             delete: (id: EARS.EntityId) => OperationResult;
         };
         readonly settingsQueries: {
-            migrateSettings(): void;
-            getAllSettings(): RepositoryResult<SettingsEntity[]>;
-            getSettings(): RepositoryResult<LegacySettingsEntity>;
-            getGeneralSettings(): RepositoryResult<SettingsData["general"]>;
-            getPluginSettings(pluginId: string): RepositoryResult<any>;
-            getSettingsByLabel(label: string): RepositoryResult<SettingsEntity | null>;
+            getAllSettings(): SettingsEntity[];
+            getSettings(): SettingsData;
+            getGeneralSettings(): SettingsData["general"];
+            getPluginSettings(pluginId: string): any;
+            getSettingsByLabel(label: string): SettingsEntity | null;
         };
         readonly settingsCommands: {
-            updateGeneralSettings(generalSettings: Partial<SettingsData["general"]>): RepositoryResult<SettingsEntity>;
-            updatePluginSettings(pluginId: string, pluginSettings: any): RepositoryResult<SettingsEntity>;
-            updatePersonalInfo(personalInfo: Partial<SettingsData["general"]["personal"]>): RepositoryResult<SettingsEntity>;
-            updateApiKeys(apiKeys: Partial<SettingsData["general"]["apiKeys"]>): RepositoryResult<SettingsEntity>;
-            updateHotkeys(hotkeys: Partial<SettingsData["general"]["hotkeys"]>): RepositoryResult<SettingsEntity>;
-            updateCustomHotkeys(customHotkeys: any[]): RepositoryResult<SettingsEntity>;
-            resetSettings(): RepositoryResult<void>;
+            updateSettings(type: "general" | "plugin", label: string, path: string[], value: any): SettingsEntity;
+            resetSettings(): void;
         };
         readonly terminalQueries: {
             byId: (id: EARS.EntityId) => TerminalEntity | undefined;
