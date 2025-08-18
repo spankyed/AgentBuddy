@@ -50,13 +50,18 @@
         <label for="toggle-inspection" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
           Toggle Inspection Panel
         </label>
-        <KeyboardShortcutInput
-          v-model="builtInHotkeys.toggleInspectionPanel"
-          id="toggle-inspection"
-          @change="updateHotkeys"
-          container-class="max-w-md"
-          :show-reset-button="false"
-        />
+        <div class="flex gap-4 max-w-3xl">
+          <div class="flex-1">
+            <KeyboardShortcutInput
+              v-model="builtInHotkeys.toggleInspectionPanel"
+              id="toggle-inspection"
+              @change="updateHotkeys"
+              container-class="w-full"
+              :show-reset-button="false"
+            />
+          </div>
+          <div class="flex-1"></div> <!-- Empty spacer to match Switch Plugin layout -->
+        </div>
         <p class="mt-1.5 text-xs text-neutral-600">
           Show or hide the inspection panel
         </p>
