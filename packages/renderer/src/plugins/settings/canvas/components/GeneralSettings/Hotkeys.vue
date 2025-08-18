@@ -130,7 +130,8 @@ import { ref, reactive } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { CheckCircle, Keyboard, X, Plus } from 'lucide-vue-next'
-import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import type { KeyboardShortcut } from '@app/api'
 
 const actor = applicationState.system.get('settings')
 

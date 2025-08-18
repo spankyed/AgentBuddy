@@ -33,4 +33,7 @@ export type * from './systems/library/types';
 export type { OutgoingCodeEvents } from './systems/code/system';
 export type * from './systems/code/types';
 
+// Export settings types including KeyboardShortcut
+export type { KeyboardShortcut, CustomHotkey, Hotkeys } from './systems/settings/types';
+
 // todo, we should probably export all the entities from here

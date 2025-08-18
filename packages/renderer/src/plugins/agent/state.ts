@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType } from '@app/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -14,22 +14,6 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 type AgentMode = 'plan' | 'work' | 'chat' | 'note';
-
-interface AgentModeConfig {
-  id: string;
-  name: string;
-  description: string;
-}
-
-interface AgentHotkeys {
-  textToSpeech?: { key: string; modifiers: string[]; global?: boolean };
-  switchMode?: { key: string; modifiers: string[]; global?: boolean };
-}
-
-interface AgentSettings {
-  modes?: AgentModeConfig[];
-  hotkeys?: AgentHotkeys;
-}
 
 const defaultThread: AgentThreadData = {
   id: undefined,
@@ -206,10 +190,17 @@ const agentState = setup({
         tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
       );
       
-      const settings: AgentSettings = typedEvent.data.settings || {};
+      const settings = typedEvent.data.settings || { modes: [], hotkeys: {} };
       
-      // Extract hotkeys from settings - simply copy all hotkeys
-      const hotkeys: HotkeysMap = settings.hotkeys ? { ...settings.hotkeys } : {};
+      // Extract hotkeys from settings - filter out undefined values  
+      const hotkeys: HotkeysMap = {};
+      if (settings.hotkeys) {
+        Object.entries(settings.hotkeys).forEach(([key, value]) => {
+          if (value) {
+            hotkeys[key] = value;
+          }
+        });
+      }
       
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
@@ -388,7 +379,7 @@ const agentState = setup({
     mode: 'chat' as AgentMode,
     modes: [],
     hotkeys: {}, // Will be loaded from settings
-    settings: {}, // Will be loaded from settings
+    settings: { modes: [], hotkeys: {} }, // Will be loaded from settings
   }),
   on: {
     // Hotkey handling
@@ -415,9 +406,6 @@ const agentState = setup({
     },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'
-    },
-    THREAD_STATUS_UPDATED: {
-      actions: 'requestDashboardRefresh'
     },
     UPDATE_THREAD_STATUS: {
       actions: 'updateThreadStatus'

@@ -452,27 +452,17 @@ type RecentThreadRefreshData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
 };
+interface AgentMode {
+    id: string;
+    name: string;
+    description: string;
+}
 interface AgentSettings {
-    modes: Array<{
-        id: string;
-        name: string;
-        description: string;
-    }>;
+    modes: AgentMode[];
     hotkeys: {
-        textToSpeech?: {
-            key: string;
-            modifiers: string[];
-        };
-        switchMode?: {
-            key: string;
-            modifiers: string[];
-            global?: boolean;
-        };
-        [key: string]: {
-            key: string;
-            modifiers: string[];
-            global?: boolean;
-        } | undefined;
+        textToSpeech?: KeyboardShortcut | null;
+        switchMode?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
     };
 }
 type AgentStartupData = {
@@ -3409,25 +3399,19 @@ interface ApiKeys {
     anthropic?: string;
     openai?: string;
 }
-interface CustomHotkey {
-    id: string;
-    eventName: string;
+interface KeyboardShortcut {
     key: string;
     modifiers: string[];
+    global?: boolean;
+}
+interface CustomHotkey extends KeyboardShortcut {
+    id: string;
+    eventName: string;
 }
 interface Hotkeys {
-    switchPluginUp?: {
-        key: string;
-        modifiers: string[];
-    };
-    switchPluginDown?: {
-        key: string;
-        modifiers: string[];
-    };
-    toggleInspectionPanel?: {
-        key: string;
-        modifiers: string[];
-    };
+    switchPluginUp?: KeyboardShortcut;
+    switchPluginDown?: KeyboardShortcut;
+    toggleInspectionPanel?: KeyboardShortcut;
     custom?: CustomHotkey[];
 }
 interface MiscSettings {

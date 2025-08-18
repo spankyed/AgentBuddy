@@ -59,12 +59,7 @@
 import { ref, computed } from 'vue'
 import { Keyboard, X } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-
-export interface KeyboardShortcut {
-  modifiers: string[]
-  key: string
-  global?: boolean
-}
+import type { KeyboardShortcut } from '@app/api'
 
 interface Props {
   modelValue?: KeyboardShortcut | null

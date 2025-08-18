@@ -106,30 +106,16 @@ import { ref, reactive, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { Plus, X, CheckCircle } from 'lucide-vue-next'
-import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
+import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import type { AgentSettings, AgentMode } from '@app/api'
 
 const settingsActor = applicationState.system.get('settings')
 const settings = useSelector(settingsActor, (state: any) => state.context.settings)
 
-interface ChatMode {
-  id: string
-  name: string
-  description: string
-}
-
-interface AgentHotkeys {
-  textToSpeech: KeyboardShortcut | null
-  switchMode: KeyboardShortcut | null
-}
-
-interface AgentHotkeyWithGlobal extends KeyboardShortcut {
-  global?: boolean
-}
-
 // State
-const modes = ref<ChatMode[]>([])
-const hotkeys = reactive<AgentHotkeys>({
+const modes = ref<AgentMode[]>([])
+const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: null,
   switchMode: null
 })
@@ -210,7 +196,7 @@ const debouncedSave = () => {
 
 // Mode management
 const addMode = () => {
-  const newMode: ChatMode = {
+  const newMode: AgentMode = {
     id: `mode_${Date.now()}`,
     name: '',
     description: ''

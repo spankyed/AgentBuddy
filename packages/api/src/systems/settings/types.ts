@@ -42,26 +42,22 @@ export interface ApiKeys {
   openai?: string;
 }
 
-export interface CustomHotkey {
-  id: string;
-  eventName: string;
+// Base keyboard shortcut configuration
+export interface KeyboardShortcut {
   key: string;
   modifiers: string[];
+  global?: boolean;
+}
+
+export interface CustomHotkey extends KeyboardShortcut {
+  id: string;
+  eventName: string;
 }
 
 export interface Hotkeys {
-  switchPluginUp?: {
-    key: string;
-    modifiers: string[];
-  };
-  switchPluginDown?: {
-    key: string;
-    modifiers: string[];
-  };
-  toggleInspectionPanel?: {
-    key: string;
-    modifiers: string[];
-  };
+  switchPluginUp?: KeyboardShortcut;
+  switchPluginDown?: KeyboardShortcut;
+  toggleInspectionPanel?: KeyboardShortcut;
   custom?: CustomHotkey[];
 }
 
