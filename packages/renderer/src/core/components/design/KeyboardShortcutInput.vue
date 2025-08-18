@@ -19,11 +19,20 @@
         {{ label }}
       </span>
       
+      <!-- Global badge if applicable -->
+      <span 
+        v-if="modelValue?.global && !isRecording"
+        class="ml-auto mr-2 px-2 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-md"
+      >
+        Global
+      </span>
+      
       <!-- Hotkey value on the right -->
       <span 
-        class="font-mono ml-auto flex-shrink-0 whitespace-nowrap"
+        class="font-mono flex-shrink-0 whitespace-nowrap"
         :class="[
-          isRecording ? 'text-blue-400' : isEmpty ? 'text-neutral-500' : 'text-white'
+          isRecording ? 'text-blue-400' : isEmpty ? 'text-neutral-500' : 'text-white',
+          modelValue?.global && !isRecording ? '' : 'ml-auto'
         ]"
       >
         {{ displayValue }}
@@ -54,6 +63,7 @@ import { applicationState } from '@/main'
 export interface KeyboardShortcut {
   modifiers: string[]
   key: string
+  global?: boolean
 }
 
 interface Props {
@@ -206,10 +216,11 @@ const recordKeyPress = (event: KeyboardEvent) => {
       const arrowKeys = Array.from(pressedKeys.value).sort()
       const combinedKey = arrowKeys.length > 1 ? arrowKeys.join('+') : arrowKeys[0]
       
-      // Emit the shortcut
+      // Emit the shortcut (preserve global flag if it exists)
       const shortcut: KeyboardShortcut = {
         modifiers,
-        key: combinedKey
+        key: combinedKey,
+        ...(props.modelValue?.global && { global: props.modelValue.global })
       }
       emit('update:modelValue', shortcut)
       emit('change', shortcut)
@@ -228,7 +239,8 @@ const recordKeyPress = (event: KeyboardEvent) => {
     // For non-arrow keys or when multi-arrow is disabled, save immediately
     const shortcut: KeyboardShortcut = {
       modifiers,
-      key: event.key
+      key: event.key,
+      ...(props.modelValue?.global && { global: props.modelValue.global })
     }
     emit('update:modelValue', shortcut)
     emit('change', shortcut)
