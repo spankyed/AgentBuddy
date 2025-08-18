@@ -5,6 +5,7 @@ import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
+import { type HotkeyEvent, type HotkeyDefinition, createHotkeyHandler } from '@/core/types';
 
 export const id = 'agent' as const;
 
@@ -58,6 +59,7 @@ type AgentEvent =
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
+  | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -311,6 +313,20 @@ const agentState = setup({
         artifactId
       });
     },
+    handleHotkey: createHotkeyHandler([
+      {
+        key: ' ',
+        ctrlKey: true,
+        description: 'Text to Speech',
+        handler: ({ event, context, self, system }) => {
+          event.preventDefault();
+          // Stub implementation for text-to-speech
+          console.log('[Agent] Text-to-speech triggered (stub)');
+          // Future implementation will convert last agent message to speech
+        }
+      }
+      // Future hotkeys can be added here
+    ]),
   },
   guards: {
     targetIs,
@@ -329,6 +345,10 @@ const agentState = setup({
     mode: 'chat' as AgentMode,
   }),
   on: {
+    // Hotkey handling
+    HOTKEY_PRESSED: {
+      actions: ['handleHotkey']
+    },
     VIEW_THREAD: {
       actions: 'sendOpenThreadView'
     },

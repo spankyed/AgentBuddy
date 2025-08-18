@@ -20,7 +20,19 @@ export const defaultSettings: SettingsData = {
     },
     misc: {}
   },
-  plugins: {},
+  plugins: {
+    agent: {
+      modes: [
+        { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },
+        { id: 'work', name: 'Work', description: 'Implementation and coding mode' },
+        { id: 'chat', name: 'Chat', description: 'General conversation mode' },
+        { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
+      ],
+      hotkeys: {
+        textToSpeech: { key: ' ', modifiers: ['ctrl'] }
+      }
+    }
+  },
   internal: {
     hasOnboarded: false,
     lastInteractionTimestamp: null,

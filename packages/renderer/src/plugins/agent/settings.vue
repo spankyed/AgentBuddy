@@ -1,175 +1,244 @@
 <template>
-  <div class="agent-settings">
-    <div class="setting-group">
-      <h3>Model Configuration</h3>
-      <div class="form-group">
-        <label for="model">Default Model</label>
-        <select id="model" v-model="settings.model">
-          <option value="gpt-4">GPT-4</option>
-          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-          <option value="claude-3">Claude 3</option>
-          <option value="claude-2">Claude 2</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label for="temperature">Temperature</label>
-        <input
-          id="temperature"
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          v-model.number="settings.temperature"
-        />
-        <span class="value">{{ settings.temperature }}</span>
-      </div>
-
-      <div class="form-group">
-        <label for="max-tokens">Max Tokens</label>
-        <input
-          id="max-tokens"
-          type="number"
-          min="100"
-          max="4000"
-          step="100"
-          v-model.number="settings.maxTokens"
-        />
-      </div>
+  <div class="max-w-3xl">
+    <!-- Chat Modes Section -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-white mb-2">Chat Modes</h2>
+      <p class="text-sm text-neutral-500">
+        Configure different conversation modes for the AI agent
+      </p>
     </div>
 
-    <div class="setting-group">
-      <h3>Display Options</h3>
-      <div class="form-group checkbox-group">
-        <label>
-          <input type="checkbox" v-model="settings.showTokenCount" />
-          Show token count
-        </label>
-      </div>
-      
-      <div class="form-group checkbox-group">
-        <label>
-          <input type="checkbox" v-model="settings.streamResponses" />
-          Stream responses
-        </label>
+      <div class="space-y-4">
+        <div 
+          v-for="(mode, index) in modes" 
+          :key="mode.id"
+          class="group"
+        >
+          <div class="flex items-center gap-3">
+            <input
+              v-model="mode.name"
+              type="text"
+              placeholder="Mode name"
+              class="w-32 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+              @input="debouncedSave"
+            />
+            <input
+              v-model="mode.description"
+              type="text"
+              placeholder="Description of this mode"
+              class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+              @input="debouncedSave"
+            />
+            <button
+              @click="removeMode(index)"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+              :disabled="modes.length <= 1"
+              title="Remove mode"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <button
+          @click="addMode"
+          class="w-full px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 hover:text-white hover:border-neutral-600 transition-all flex items-center justify-center gap-2"
+        >
+          <Plus class="w-4 h-4" />
+          Add Mode
+        </button>
       </div>
 
-      <div class="form-group checkbox-group">
-        <label>
-          <input type="checkbox" v-model="settings.autoSave" />
-          Auto-save conversations
-        </label>
-      </div>
+      <!-- Divider -->
+      <div class="border-t border-neutral-800 my-8"></div>
+
+    <!-- Agent Hotkeys Section -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-white mb-2">Agent Hotkeys</h2>
+      <p class="text-sm text-neutral-500">
+        Keyboard shortcuts available when the agent plugin is active
+      </p>
     </div>
 
-    <button @click="saveSettings" class="save-button">Save Agent Settings</button>
+      <div class="space-y-6">
+        <div class="group">
+          <KeyboardShortcutInput
+            v-model="hotkeys.textToSpeech"
+            id="text-to-speech"
+            label="Text to Speech"
+            @change="saveHotkeys"
+            container-class="flex-1"
+            :show-reset-button="true"
+          />
+          <p class="mt-1.5 text-xs text-neutral-600">
+            Convert agent responses to speech (currently a stub feature)
+          </p>
+        </div>
+
+        <!-- Future hotkeys can be added here -->
+      </div>
+
+    <!-- Save Status Indicator -->
+    <div class="mt-6 flex items-center gap-2">
+      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
+        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
+        Saving...
+      </div>
+      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
+        <CheckCircle class="w-3 h-3" />
+        Settings saved
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { Plus, X, CheckCircle } from 'lucide-vue-next'
+import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
 
 const settingsActor = applicationState.system.get('settings')
+const settings = useSelector(settingsActor, (state: any) => state.context.settings)
 
-const settings = ref({
-  model: 'gpt-4',
-  temperature: 0.7,
-  maxTokens: 2000,
-  showTokenCount: true,
-  streamResponses: true,
-  autoSave: true,
+interface ChatMode {
+  id: string
+  name: string
+  description: string
+}
+
+interface AgentHotkeys {
+  textToSpeech: KeyboardShortcut | null
+}
+
+// State
+const modes = ref<ChatMode[]>([])
+const hotkeys = reactive<AgentHotkeys>({
+  textToSpeech: null
+})
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
+let saveTimeout: NodeJS.Timeout | null = null
+
+// Initialize from settings
+onMounted(() => {
+  if (settings.value?.plugins?.agent) {
+    const agentSettings = settings.value.plugins.agent
+    
+    // Load modes
+    if (agentSettings.modes) {
+      modes.value = agentSettings.modes.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description
+      }))
+    }
+    
+    // Load hotkeys
+    if (agentSettings.hotkeys?.textToSpeech) {
+      const tts = agentSettings.hotkeys.textToSpeech
+      hotkeys.textToSpeech = {
+        key: tts.key,
+        modifiers: tts.modifiers || []
+      }
+    }
+  }
+  
+  // If no modes exist, use defaults
+  if (modes.value.length === 0) {
+    modes.value = [
+      { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },
+      { id: 'work', name: 'Work', description: 'Implementation and coding mode' },
+      { id: 'chat', name: 'Chat', description: 'General conversation mode' },
+      { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
+    ]
+  }
+  
+  // If no hotkey exists, use default
+  if (!hotkeys.textToSpeech) {
+    hotkeys.textToSpeech = {
+      key: ' ',
+      modifiers: ['ctrl']
+    }
+  }
 })
 
-const saveSettings = () => {
+// Helper to show save status
+const setSaveStatus = (status: 'saving' | 'saved') => {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  
+  saveStatus.value = status
+  
+  if (status === 'saved') {
+    saveTimeout = setTimeout(() => {
+      saveStatus.value = 'idle'
+    }, 2000)
+  }
+}
+
+// Save functions
+const saveModes = () => {
+  setSaveStatus('saving')
+  
   settingsActor.send({
-    type: 'PLUGIN_SETTINGS.UPDATE',
-    pluginId: 'agent',
-    settings: settings.value
+    type: 'SETTINGS.UPDATE',
+    entityType: 'plugin',
+    label: 'agent',
+    path: ['modes'],
+    value: modes.value
   })
+  
+  setSaveStatus('saved')
+}
+
+const saveHotkeys = () => {
+  setSaveStatus('saving')
+  
+  const hotkeyData = {
+    textToSpeech: hotkeys.textToSpeech ? {
+      key: hotkeys.textToSpeech.key,
+      modifiers: hotkeys.textToSpeech.modifiers
+    } : null
+  }
+  
+  settingsActor.send({
+    type: 'SETTINGS.UPDATE',
+    entityType: 'plugin',
+    label: 'agent',
+    path: ['hotkeys'],
+    value: hotkeyData
+  })
+  
+  setSaveStatus('saved')
+}
+
+// Debounced save for text inputs
+const debouncedSave = () => {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  saveTimeout = setTimeout(() => {
+    saveModes()
+  }, 500)
+}
+
+// Mode management
+const addMode = () => {
+  const newMode: ChatMode = {
+    id: `mode_${Date.now()}`,
+    name: '',
+    description: ''
+  }
+  modes.value.push(newMode)
+  saveModes()
+}
+
+const removeMode = (index: number) => {
+  if (modes.value.length > 1) {
+    modes.value.splice(index, 1)
+    saveModes()
+  }
 }
 </script>
-
-<style scoped>
-.agent-settings {
-  max-width: 600px;
-}
-
-.setting-group {
-  margin-bottom: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.setting-group:last-of-type {
-  border-bottom: none;
-}
-
-h3 {
-  margin-bottom: 1rem;
-  color: var(--color-heading);
-  font-size: 18px;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-text);
-  font-size: 14px;
-}
-
-select,
-input[type="number"] {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-background-soft);
-  color: var(--color-text);
-  font-size: 14px;
-}
-
-input[type="range"] {
-  width: calc(100% - 60px);
-  margin-right: 10px;
-}
-
-.value {
-  display: inline-block;
-  width: 40px;
-  text-align: right;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-}
-
-.checkbox-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.checkbox-group input[type="checkbox"] {
-  cursor: pointer;
-}
-
-.save-button {
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.save-button:hover {
-  background: var(--color-primary-dark);
-}
-</style>

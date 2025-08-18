@@ -15,6 +15,54 @@ export interface HotkeyEvent {
   preventDefault: () => void;
 }
 
+export interface HotkeyDefinition<TContext = any> {
+  key: string;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  description: string;
+  handler: (params: {
+    event: HotkeyEvent;
+    context: TContext;
+    self?: any;
+    system?: any;
+  }) => void;
+}
+
+export function matchesHotkey(event: HotkeyEvent, hotkey: HotkeyDefinition<any>): boolean {
+  return (
+    event.key === hotkey.key &&
+    (hotkey.metaKey === undefined || event.metaKey === hotkey.metaKey) &&
+    (hotkey.ctrlKey === undefined || event.ctrlKey === hotkey.ctrlKey) &&
+    (hotkey.altKey === undefined || event.altKey === hotkey.altKey) &&
+    (hotkey.shiftKey === undefined || event.shiftKey === hotkey.shiftKey)
+  );
+}
+
+export function handleHotkeyEvent<TContext>(
+  event: any,
+  hotkeys: HotkeyDefinition<TContext>[],
+  context: TContext,
+  self?: any,
+  system?: any
+): void {
+  const hotkeyEvent = event as HotkeyEvent;
+  
+  // Find and execute matching hotkey handler
+  const matchingHotkey = hotkeys.find(hotkey => matchesHotkey(hotkeyEvent, hotkey));
+  
+  if (matchingHotkey) {
+    matchingHotkey.handler({ event: hotkeyEvent, context, self, system });
+  }
+}
+
+export function createHotkeyHandler<TContext>(hotkeys: HotkeyDefinition<TContext>[]) {
+  return ({ event, context, self, system }: { event: any; context: TContext; self?: any; system?: any }) => {
+    handleHotkeyEvent(event, hotkeys, context, self, system);
+  };
+}
+
 export interface Plugin {
   /** Toolbar key */
   id: string;
