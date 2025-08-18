@@ -126,16 +126,14 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
 let statusTimeout: NodeJS.Timeout | null = null
 
-// Initialize form data from settings
-watch(settings, (newSettings) => {
-  if (newSettings?.general?.apiKeys) {
-    formData.value = {
-      google: newSettings.general.apiKeys.google || '',
-      anthropic: newSettings.general.apiKeys.anthropic || '',
-      openai: newSettings.general.apiKeys.openai || '',
-    }
+// Initialize form data from settings only once on mount
+if (settings.value?.general?.apiKeys) {
+  formData.value = {
+    google: settings.value.general.apiKeys.google || '',
+    anthropic: settings.value.general.apiKeys.anthropic || '',
+    openai: settings.value.general.apiKeys.openai || '',
   }
-}, { immediate: true })
+}
 
 const toggleVisibility = (provider: 'google' | 'anthropic' | 'openai') => {
   showKeys.value[provider] = !showKeys.value[provider]

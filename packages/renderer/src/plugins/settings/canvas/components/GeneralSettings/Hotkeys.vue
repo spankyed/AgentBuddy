@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { CheckCircle, Keyboard, X, Plus } from 'lucide-vue-next'
@@ -210,26 +210,24 @@ const debouncedSave = (callback: Function, delay: number = 500) => {
   statusTimeout = setTimeout(() => callback(), delay)
 }
 
-// Initialize from settings
-watch(settings, (newSettings) => {
-  if (newSettings?.general?.hotkeys) {
-    const hotkeys = newSettings.general.hotkeys
-    
-    // Update built-in hotkeys, preserving defaults when settings don't exist
-    Object.keys(defaultHotkeys).forEach((key) => {
-      builtInHotkeys[key] = convertToShortcut(hotkeys[key]) || { ...defaultHotkeys[key] }
-    })
-    
-    // Initialize custom hotkeys
-    if (hotkeys.custom) {
-      customHotkeys.value = hotkeys.custom.map((h: any) => ({
-        id: h.id,
-        eventName: h.eventName || '',
-        shortcut: convertToShortcut(h)
-      }))
-    }
+// Initialize from settings only once on mount
+if (settings.value?.general?.hotkeys) {
+  const hotkeys = settings.value.general.hotkeys
+  
+  // Update built-in hotkeys, preserving defaults when settings don't exist
+  Object.keys(defaultHotkeys).forEach((key) => {
+    builtInHotkeys[key] = convertToShortcut(hotkeys[key]) || { ...defaultHotkeys[key] }
+  })
+  
+  // Initialize custom hotkeys
+  if (hotkeys.custom) {
+    customHotkeys.value = hotkeys.custom.map((h: any) => ({
+      id: h.id,
+      eventName: h.eventName || '',
+      shortcut: convertToShortcut(h)
+    }))
   }
-}, { immediate: true })
+}
 
 // Update hotkeys in backend
 const updateHotkeys = () => {

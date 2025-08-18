@@ -102,24 +102,22 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
 let statusTimeout: NodeJS.Timeout | null = null
 
-// Initialize form data from settings
-watch(settings, (newSettings) => {
-  if (newSettings?.general?.personal) {
-    const personalData = newSettings.general.personal
-    formData.value = {
-      name: personalData.name || '',
-      phoneNumber: personalData.phoneNumber || '',
-      address: personalData.address || {
-        street: '',
-        street2: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'US'
-      },
-    }
+// Initialize form data from settings only once on mount
+if (settings.value?.general?.personal) {
+  const personalData = settings.value.general.personal
+  formData.value = {
+    name: personalData.name || '',
+    phoneNumber: personalData.phoneNumber || '',
+    address: personalData.address || {
+      street: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'US'
+    },
   }
-}, { immediate: true })
+}
 
 // Autosave with debouncing
 watch(formData, (newData) => {
