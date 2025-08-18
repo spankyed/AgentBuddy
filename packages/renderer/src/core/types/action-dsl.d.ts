@@ -221,6 +221,273 @@ interface StartupData {
     terminals: TerminalInfo[];
 }
 
+/**
+ * Type-safe query helpers to eliminate repetitive type casting
+ * These are simple wrappers around EARS query functions
+ */
+declare function findById<T>(id: EARS.EntityId): T | undefined;
+declare function findAll<T>(entityType: EARS.Entity): T[];
+declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
+declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
+declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
+declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
+declare function countEntities(entityType: EARS.Entity): number;
+declare function exists(id: EARS.EntityId): boolean;
+declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
+declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
+
+/**
+ * Type-safe transaction helpers for common operations
+ */
+declare function prepareEntity<T extends {
+    entityType: EARS.Entity;
+}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
+declare function createEntityWithDefaults<T extends {
+    entityType: EARS.Entity;
+    shortCode?: string;
+    label?: string;
+}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+    id: EARS.EntityId;
+};
+declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
+declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
+declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
+declare function grantRole(entityId: EARS.EntityId, role: string): void;
+declare function revokeRole(entityId: EARS.EntityId, role: string): void;
+
+/**
+ * Common repository types for consistent return values and error handling
+ */
+type RepositoryResult<T> = {
+    success: true;
+    data: T;
+} | {
+    success: false;
+    error: string;
+    code?: string;
+};
+type OperationResult = RepositoryResult<void>;
+
+type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
+
+type EmbeddingModel = EmbeddingModelId;
+type IndexMetric = 'cosine' | 'dot_product';
+interface SegmentRule {
+    id: string;
+    type: 'text' | 'list' | 'field';
+    occurrence: string;
+    key?: string;
+    indexMode: 'combined' | 'separate';
+}
+interface SearchIndexConfig {
+    name: string;
+    description: string;
+    embeddingModel: EmbeddingModel;
+    indexMetric: IndexMetric;
+    connectors: number;
+    excludeAllSubfolders: boolean;
+    excludedFolderIds: EARS.EntityId[];
+    excludedDocumentIds: EARS.EntityId[];
+    enableSectionIndexing: boolean;
+    segmentRules: SegmentRule[];
+    constructTemplate: string;
+}
+interface SearchIndex extends SearchIndexConfig {
+    id: EARS.EntityId;
+    folderId: EARS.EntityId | null;
+    documentCount: number;
+    vectorDimensions: number;
+    createdAt: number;
+    updatedAt: number;
+}
+
+type DocumentShortCode = `DOC-${number}`;
+interface FieldContent {
+    type: 'field';
+    fields: Array<{
+        key: string;
+        value: string;
+    }>;
+}
+interface ListContent {
+    type: 'list';
+    items: string[];
+}
+interface TextBlockContent {
+    type: 'text';
+    text: string;
+}
+type ContentSection = FieldContent | ListContent | TextBlockContent;
+interface DocumentDTO {
+    id: EARS.EntityId;
+    name: string;
+    content: ContentSection[];
+    shortCode: DocumentShortCode;
+    tags: string[];
+    collectionId?: EARS.EntityId;
+    collectionPath?: string[];
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+interface CollectionDTO {
+    id: EARS.EntityId;
+    name: string;
+    description?: string;
+    parentId?: EARS.EntityId;
+    path: string[];
+    documentCount: number;
+    childCollections: CollectionDTO[];
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+interface FolderItem {
+    type: 'folder';
+    id: EARS.EntityId;
+    name: string;
+    parentId: EARS.EntityId | null;
+    childCount: number;
+    size: string;
+    kind: 'Folder';
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+interface DocumentItem {
+    type: 'document';
+    id: EARS.EntityId;
+    name: string;
+    shortCode: DocumentShortCode;
+    parentId: EARS.EntityId | null;
+    content: ContentSection[];
+    tags: string[];
+    size: string;
+    kind: 'Document';
+    displayOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+type LibraryItem = FolderItem | DocumentItem;
+interface FolderContents {
+    items: LibraryItem[];
+    currentPath: string[];
+    currentFolderId: EARS.EntityId | null;
+    breadcrumbs: BreadcrumbItem[];
+    searchIndices?: any[];
+}
+interface BreadcrumbItem {
+    id: EARS.EntityId | null;
+    name: string;
+    path: string[];
+}
+
+declare class LibraryService {
+    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
+    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
+    getByName(name: string): Promise<DocumentDTO | undefined>;
+    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
+}
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+}
+
+declare class ActionService {
+    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
+    getByLabel(label: string): Promise<ActionEntity | undefined>;
+    getByCategory(category: string): Promise<ActionEntity[]>;
+    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
+    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
+}
+
+/**
+ * Prompt template types and definitions
+ */
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+/**
+ * Defines a prompt entity stored in the system
+ */
+interface PromptEntity extends BaseEntity {
+    entityType: EARS.Entity.Prompt;
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    templateFn: string;
+    outputSchema?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+/**
+ * Data sent on prompts system startup
+ */
+interface PromptsStartupData {
+    prompts: PromptEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+}
+
+declare class PromptService {
+    getByLabel(label: string): Promise<PromptEntity | undefined>;
+    /**
+     * Execute a template with prompt context for accessing other prompts
+     * @param templateFn - The template function body
+     * @param templateParams - Parameters to pass to the template
+     */
+    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
+    /**
+     * Get and execute a prompt by label
+     * @param label - The prompt label
+     * @param templateParams - Parameters to pass to the template
+     */
+    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
+}
+
+type Simplify<T> = {
+    [K in keyof T]: T[K];
+} & {};
+
+/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
+type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
+    [K in keyof S]: z.infer<S[K]>;
+}[number];
+
 interface SafeLinkOptions {
     /** Additional info to store with the relation */
     info?: unknown;
@@ -268,79 +535,65 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
     readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
 };
 
-type Simplify<T> = {
-    [K in keyof T]: T[K];
-} & {};
-
-/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
-type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
-    [K in keyof S]: z.infer<S[K]>;
-}[number];
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
+interface SettingsEntity extends BaseEntity {
+    entityType: EARS.Entity.Settings;
+    type: 'general' | 'plugin' | 'internal';
     label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    createdAt: number;
-    updatedAt: number;
+    data: any;
 }
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
+interface SettingsData {
+    general: GeneralSettings;
+    plugins: PluginSettings;
+    internal: InternalSettings;
 }
-
-/**
- * Prompt template types and definitions
- */
-
-/**
- * Defines an input parameter that a prompt template expects
- */
-interface TemplateInput {
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    defaultValue?: any;
-    commonSources?: string[];
-    example?: any;
+interface GeneralSettings {
+    personal: PersonalInfo;
+    apiKeys: ApiKeys;
+    hotkeys: Hotkeys;
+    misc: MiscSettings;
 }
-/**
- * Defines a prompt entity stored in the system
- */
-interface PromptEntity extends BaseEntity {
-    entityType: EARS.Entity.Prompt;
-    label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    createdAt: number;
-    updatedAt: number;
+interface Address {
+    street: string;
+    street2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
 }
-/**
- * Data sent on prompts system startup
- */
-interface PromptsStartupData {
-    prompts: PromptEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
+interface PersonalInfo {
+    name?: string;
+    phoneNumber?: string;
+    address?: string | Address;
+}
+interface ApiKeys {
+    google?: string;
+    anthropic?: string;
+    openai?: string;
+}
+interface KeyboardShortcut {
+    key: string;
+    modifiers: string[];
+    global?: boolean;
+}
+interface CustomHotkey extends KeyboardShortcut {
+    id: string;
+    eventName: string;
+}
+interface Hotkeys {
+    switchPluginUp?: KeyboardShortcut;
+    switchPluginDown?: KeyboardShortcut;
+    toggleInspectionPanel?: KeyboardShortcut;
+    custom?: CustomHotkey[];
+}
+interface MiscSettings {
+}
+interface PluginSettings {
+    [pluginId: string]: any;
+}
+interface InternalSettings {
+    hasOnboarded: boolean;
+    lastInteractionTimestamp: number | null;
+    version: string;
 }
 
 declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
@@ -489,120 +742,6 @@ interface ArtifactItem {
         updatedAt?: number;
         [key: string]: any;
     };
-}
-
-type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
-
-type EmbeddingModel = EmbeddingModelId;
-type IndexMetric = 'cosine' | 'dot_product';
-interface SegmentRule {
-    id: string;
-    type: 'text' | 'list' | 'field';
-    occurrence: string;
-    key?: string;
-    indexMode: 'combined' | 'separate';
-}
-interface SearchIndexConfig {
-    name: string;
-    description: string;
-    embeddingModel: EmbeddingModel;
-    indexMetric: IndexMetric;
-    connectors: number;
-    excludeAllSubfolders: boolean;
-    excludedFolderIds: EARS.EntityId[];
-    excludedDocumentIds: EARS.EntityId[];
-    enableSectionIndexing: boolean;
-    segmentRules: SegmentRule[];
-    constructTemplate: string;
-}
-interface SearchIndex extends SearchIndexConfig {
-    id: EARS.EntityId;
-    folderId: EARS.EntityId | null;
-    documentCount: number;
-    vectorDimensions: number;
-    createdAt: number;
-    updatedAt: number;
-}
-
-type DocumentShortCode = `DOC-${number}`;
-interface FieldContent {
-    type: 'field';
-    fields: Array<{
-        key: string;
-        value: string;
-    }>;
-}
-interface ListContent {
-    type: 'list';
-    items: string[];
-}
-interface TextBlockContent {
-    type: 'text';
-    text: string;
-}
-type ContentSection = FieldContent | ListContent | TextBlockContent;
-interface DocumentDTO {
-    id: EARS.EntityId;
-    name: string;
-    content: ContentSection[];
-    shortCode: DocumentShortCode;
-    tags: string[];
-    collectionId?: EARS.EntityId;
-    collectionPath?: string[];
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-interface CollectionDTO {
-    id: EARS.EntityId;
-    name: string;
-    description?: string;
-    parentId?: EARS.EntityId;
-    path: string[];
-    documentCount: number;
-    childCollections: CollectionDTO[];
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-interface FolderItem {
-    type: 'folder';
-    id: EARS.EntityId;
-    name: string;
-    parentId: EARS.EntityId | null;
-    childCount: number;
-    size: string;
-    kind: 'Folder';
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-interface DocumentItem {
-    type: 'document';
-    id: EARS.EntityId;
-    name: string;
-    shortCode: DocumentShortCode;
-    parentId: EARS.EntityId | null;
-    content: ContentSection[];
-    tags: string[];
-    size: string;
-    kind: 'Document';
-    displayOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-type LibraryItem = FolderItem | DocumentItem;
-interface FolderContents {
-    items: LibraryItem[];
-    currentPath: string[];
-    currentFolderId: EARS.EntityId | null;
-    breadcrumbs: BreadcrumbItem[];
-    searchIndices?: any[];
-}
-interface BreadcrumbItem {
-    id: EARS.EntityId | null;
-    name: string;
-    path: string[];
 }
 
 /** ── Shared aliases ─────────────────────────────────────────────────────── */
@@ -3362,145 +3501,6 @@ interface ModelConfig {
 interface FlowExtendedData {
     nodes: NodeEntity[];
     edges: EdgeEntity[];
-}
-
-interface SettingsEntity extends BaseEntity {
-    entityType: EARS.Entity.Settings;
-    type: 'general' | 'plugin' | 'internal';
-    label: string;
-    data: any;
-}
-interface SettingsData {
-    general: GeneralSettings;
-    plugins: PluginSettings;
-    internal: InternalSettings;
-}
-interface GeneralSettings {
-    personal: PersonalInfo;
-    apiKeys: ApiKeys;
-    hotkeys: Hotkeys;
-    misc: MiscSettings;
-}
-interface Address {
-    street: string;
-    street2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-}
-interface PersonalInfo {
-    name?: string;
-    phoneNumber?: string;
-    address?: string | Address;
-}
-interface ApiKeys {
-    google?: string;
-    anthropic?: string;
-    openai?: string;
-}
-interface KeyboardShortcut {
-    key: string;
-    modifiers: string[];
-    global?: boolean;
-}
-interface CustomHotkey extends KeyboardShortcut {
-    id: string;
-    eventName: string;
-}
-interface Hotkeys {
-    switchPluginUp?: KeyboardShortcut;
-    switchPluginDown?: KeyboardShortcut;
-    toggleInspectionPanel?: KeyboardShortcut;
-    custom?: CustomHotkey[];
-}
-interface MiscSettings {
-}
-interface PluginSettings {
-    [pluginId: string]: any;
-}
-interface InternalSettings {
-    hasOnboarded: boolean;
-    lastInteractionTimestamp: number | null;
-    version: string;
-}
-
-/**
- * Type-safe query helpers to eliminate repetitive type casting
- * These are simple wrappers around EARS query functions
- */
-declare function findById<T>(id: EARS.EntityId): T | undefined;
-declare function findAll<T>(entityType: EARS.Entity): T[];
-declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
-declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
-declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-declare function countEntities(entityType: EARS.Entity): number;
-declare function exists(id: EARS.EntityId): boolean;
-declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-
-/**
- * Type-safe transaction helpers for common operations
- */
-declare function prepareEntity<T extends {
-    entityType: EARS.Entity;
-}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
-declare function createEntityWithDefaults<T extends {
-    entityType: EARS.Entity;
-    shortCode?: string;
-    label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
-    id: EARS.EntityId;
-};
-declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
-declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-declare function grantRole(entityId: EARS.EntityId, role: string): void;
-declare function revokeRole(entityId: EARS.EntityId, role: string): void;
-
-/**
- * Common repository types for consistent return values and error handling
- */
-type RepositoryResult<T> = {
-    success: true;
-    data: T;
-} | {
-    success: false;
-    error: string;
-    code?: string;
-};
-type OperationResult = RepositoryResult<void>;
-
-declare class LibraryService {
-    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
-    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
-    getByName(name: string): Promise<DocumentDTO | undefined>;
-    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
-}
-
-declare class ActionService {
-    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
-    getByLabel(label: string): Promise<ActionEntity | undefined>;
-    getByCategory(category: string): Promise<ActionEntity[]>;
-    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
-    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
-}
-
-declare class PromptService {
-    getByLabel(label: string): Promise<PromptEntity | undefined>;
-    /**
-     * Execute a template with prompt context for accessing other prompts
-     * @param templateFn - The template function body
-     * @param templateParams - Parameters to pass to the template
-     */
-    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
-    /**
-     * Get and execute a prompt by label
-     * @param label - The prompt label
-     * @param templateParams - Parameters to pass to the template
-     */
-    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
 }
 
 declare const providers: {

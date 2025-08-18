@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
-import type { EARS } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, Hotkeys, PluginSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 
 /* ─────────────────────────────────────────────────────────── */
@@ -15,48 +15,7 @@ import { trpc } from '@/core/trpc'
 export const id = 'settings'
 export type SettingsState = ActorRefFrom<typeof settingsState>
 
-export interface PersonalInfo {
-  name?: string;
-  phoneNumber?: string;
-  address?: string;
-}
-
-export interface ApiKeys {
-  google?: string;
-  anthropic?: string;
-  openai?: string;
-}
-
-export interface Hotkeys {
-  switchPluginUp?: {
-    key: string;
-    modifiers: string[];
-  };
-  switchPluginDown?: {
-    key: string;
-    modifiers: string[];
-  };
-  toggleInspectionPanel?: {
-    key: string;
-    modifiers: string[];
-  };
-}
-
-export interface GeneralSettings {
-  personal: PersonalInfo;
-  apiKeys: ApiKeys;
-  hotkeys: Hotkeys;
-  misc: any;
-}
-
-export interface PluginSettings {
-  [pluginId: string]: any;
-}
-
-export interface SettingsData {
-  general: GeneralSettings;
-  plugins: PluginSettings;
-}
+// Use backend types directly
 
 export interface SettingsContext {
   settings: SettingsData | null;
@@ -65,12 +24,6 @@ export interface SettingsContext {
   selectedPluginId: string | null;
   isLoading: boolean;
 }
-
-type SystemEvent = 
-  | { type: 'SETTINGS_LOADED'; data: SettingsData }
-  | { type: 'SETTINGS_UPDATED'; data: SettingsData }
-  | { type: 'SETTINGS_RESET'; data: SettingsData }
-
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'apiKeys' | 'hotkeys' | 'misc' }
@@ -79,7 +32,7 @@ type UIEvent =
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
 
-export type SettingsEvents = UIEvent | SystemEvent | TrailClickEvent
+export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
 const typeOf = safeEvents<SettingsEvents>()
 
 const settingsState = setup({
@@ -91,8 +44,8 @@ const settingsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
       trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'GET_SETTINGS' as any,
+        systemId: id,
+        type: 'GET_SETTINGS',
       });
     },
 
@@ -137,8 +90,8 @@ const settingsState = setup({
     updateSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
       trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'UPDATE_SETTINGS' as any,
+        systemId: id,
+        type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
         path: ev.path,
@@ -148,8 +101,8 @@ const settingsState = setup({
 
     resetSettings: () => {
       trpc.bus.send.mutate({
-        systemId: id as any,
-        type: 'RESET_SETTINGS' as any,
+        systemId: id,
+        type: 'RESET_SETTINGS',
       });
     },
   },
