@@ -11,40 +11,45 @@
     <!-- Form Fields -->
     <div class="space-y-6">
       <!-- Switch Plugin Hotkeys -->
-      <div class="group space-y-3">
-        <KeyboardShortcutInput
-          v-model="builtInHotkeys.switchPluginUp"
-          id="switch-plugin-up"
-          label="Previous Plugin"
-          @change="updateHotkeys"
-          container-class="w-full"
-          :show-reset-button="false"
-        />
+      <div class="group">
+        <div class="flex gap-4 max-w-3xl">
+          <KeyboardShortcutInput
+            v-model="builtInHotkeys.switchPluginUp"
+            id="switch-plugin-up"
+            label="Previous Plugin"
+            @change="updateHotkeys"
+            container-class="flex-1"
+            :show-reset-button="false"
+          />
+          
+          <KeyboardShortcutInput
+            v-model="builtInHotkeys.switchPluginDown"
+            id="switch-plugin-down"
+            label="Next Plugin"
+            @change="updateHotkeys"
+            container-class="flex-1"
+            :show-reset-button="false"
+          />
+        </div>
         
-        <KeyboardShortcutInput
-          v-model="builtInHotkeys.switchPluginDown"
-          id="switch-plugin-down"
-          label="Next Plugin"
-          @change="updateHotkeys"
-          container-class="w-full"
-          :show-reset-button="false"
-        />
-        
-        <p class="text-xs text-neutral-600">
+        <p class="mt-2 text-xs text-neutral-600">
           Navigate between plugins using keyboard shortcuts
         </p>
       </div>
 
       <!-- Toggle Inspection Panel -->
       <div class="group">
-        <KeyboardShortcutInput
-          v-model="builtInHotkeys.toggleInspectionPanel"
-          id="toggle-inspection"
-          label="Toggle Inspection Panel"
-          @change="updateHotkeys"
-          container-class="w-full"
-          :show-reset-button="false"
-        />
+        <div class="flex gap-4 max-w-3xl">
+          <KeyboardShortcutInput
+            v-model="builtInHotkeys.toggleInspectionPanel"
+            id="toggle-inspection"
+            label="Toggle Inspection Panel"
+            @change="updateHotkeys"
+            container-class="flex-1"
+            :show-reset-button="false"
+          />
+          <div class="flex-1"></div> <!-- Empty spacer to maintain consistent width -->
+        </div>
         <p class="mt-2 text-xs text-neutral-600">
           Show or hide the inspection panel
         </p>
@@ -271,14 +276,12 @@ const updateCustomHotkey = (index: number) => {
 const saveCustomHotkeys = () => {
   setSaveStatus('saving')
   
-  // Convert to backend format
-  const customData = customHotkeys.value
-    .filter(h => h.eventName && h.shortcut?.key) // Only save valid entries
-    .map(h => ({
-      id: h.id,
-      eventName: h.eventName,
-      ...convertToBackend(h.shortcut)!
-    }))
+  // Convert to backend format - save all entries, even incomplete ones
+  const customData = customHotkeys.value.map(h => ({
+    id: h.id,
+    eventName: h.eventName,
+    ...(h.shortcut ? convertToBackend(h.shortcut) : {})
+  }))
   
   actor.send({ 
     type: 'HOTKEYS.UPDATE_CUSTOM', 
