@@ -24,10 +24,10 @@
       />
     </div>
     <button
-      v-if="modelValue && showClearButton && !isEmpty"
-      @click="clearShortcut"
+      v-if="modelValue && showResetButton && !isEmpty"
+      @click="resetShortcut"
       class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
-      :title="clearButtonTitle"
+      :title="resetButtonTitle"
     >
       <X class="w-4 h-4" />
     </button>
@@ -51,8 +51,8 @@ interface Props {
   recordingPlaceholder?: string
   emptyText?: string
   showIcon?: boolean
-  showClearButton?: boolean
-  clearButtonTitle?: string
+  showResetButton?: boolean
+  resetButtonTitle?: string
   containerClass?: string
   inputClass?: string
   multiArrowSupport?: boolean
@@ -64,8 +64,8 @@ const props = withDefaults(defineProps<Props>(), {
   recordingPlaceholder: 'Press shortcut keys...',
   emptyText: 'Not set',
   showIcon: true,
-  showClearButton: true,
-  clearButtonTitle: 'Clear shortcut',
+  showResetButton: true,
+  resetButtonTitle: 'Reset shortcut',
   containerClass: '',
   inputClass: '',
   multiArrowSupport: true,
@@ -227,8 +227,8 @@ const recordKeyPress = (event: KeyboardEvent) => {
   }
 }
 
-// Clear shortcut
-const clearShortcut = () => {
+// Reset shortcut
+const resetShortcut = () => {
   emit('update:modelValue', null)
   emit('change', null)
 }

@@ -24,7 +24,7 @@
               id="switch-plugin-up"
               @change="updateHotkeys"
               container-class="w-full"
-              :show-clear-button="false"
+              :show-reset-button="false"
             />
           </div>
           
@@ -36,7 +36,7 @@
               id="switch-plugin-down"
               @change="updateHotkeys"
               container-class="w-full"
-              :show-clear-button="false"
+              :show-reset-button="false"
             />
           </div>
         </div>
@@ -55,7 +55,7 @@
           id="toggle-inspection"
           @change="updateHotkeys"
           container-class="max-w-md"
-          :show-clear-button="false"
+          :show-reset-button="false"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
           Show or hide the inspection panel
