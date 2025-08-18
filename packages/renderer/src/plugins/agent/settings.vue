@@ -78,7 +78,7 @@
             :show-reset-button="true"
           />
           <p class="mt-1.5 text-xs text-neutral-600">
-            Cycle through chat modes (Plan → Work → Chat → Note)
+            Cycle through chat modes (Plan → Work → Chat → Note) - Works across all plugins
           </p>
         </div>
 
@@ -123,6 +123,10 @@ interface AgentHotkeys {
   switchMode: KeyboardShortcut | null
 }
 
+interface AgentHotkeyWithGlobal extends KeyboardShortcut {
+  global?: boolean
+}
+
 // State
 const modes = ref<ChatMode[]>([])
 const hotkeys = reactive<AgentHotkeys>({
@@ -139,51 +143,12 @@ onMounted(() => {
     
     // Load modes
     if (agentSettings.modes) {
-      modes.value = agentSettings.modes.map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description
-      }))
+      modes.value = [...agentSettings.modes]
     }
     
-    // Load hotkeys
-    if (agentSettings.hotkeys?.textToSpeech) {
-      const tts = agentSettings.hotkeys.textToSpeech
-      hotkeys.textToSpeech = {
-        key: tts.key,
-        modifiers: tts.modifiers || []
-      }
-    }
-    if (agentSettings.hotkeys?.switchMode) {
-      const sm = agentSettings.hotkeys.switchMode
-      hotkeys.switchMode = {
-        key: sm.key,
-        modifiers: sm.modifiers || []
-      }
-    }
-  }
-  
-  // If no modes exist, use defaults
-  if (modes.value.length === 0) {
-    modes.value = [
-      { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },
-      { id: 'work', name: 'Work', description: 'Implementation and coding mode' },
-      { id: 'chat', name: 'Chat', description: 'General conversation mode' },
-      { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
-    ]
-  }
-  
-  // If no hotkey exists, use default
-  if (!hotkeys.textToSpeech) {
-    hotkeys.textToSpeech = {
-      key: ' ',
-      modifiers: ['ctrl']
-    }
-  }
-  if (!hotkeys.switchMode) {
-    hotkeys.switchMode = {
-      key: 'Tab',
-      modifiers: ['shift']
+    // Load all hotkeys generically
+    if (agentSettings.hotkeys) {
+      Object.assign(hotkeys, agentSettings.hotkeys)
     }
   }
 })
@@ -221,23 +186,13 @@ const saveModes = () => {
 const saveHotkeys = () => {
   setSaveStatus('saving')
   
-  const hotkeyData = {
-    textToSpeech: hotkeys.textToSpeech ? {
-      key: hotkeys.textToSpeech.key,
-      modifiers: hotkeys.textToSpeech.modifiers
-    } : null,
-    switchMode: hotkeys.switchMode ? {
-      key: hotkeys.switchMode.key,
-      modifiers: hotkeys.switchMode.modifiers
-    } : null
-  }
-  
+  // Simply send all hotkeys as-is
   settingsActor.send({
     type: 'SETTINGS.UPDATE',
     entityType: 'plugin',
     label: 'agent',
     path: ['hotkeys'],
-    value: hotkeyData
+    value: hotkeys
   })
   
   setSaveStatus('saved')

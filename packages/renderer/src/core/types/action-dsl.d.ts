@@ -452,11 +452,35 @@ type RecentThreadRefreshData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
 };
+interface AgentSettings {
+    modes: Array<{
+        id: string;
+        name: string;
+        description: string;
+    }>;
+    hotkeys: {
+        textToSpeech?: {
+            key: string;
+            modifiers: string[];
+        };
+        switchMode?: {
+            key: string;
+            modifiers: string[];
+            global?: boolean;
+        };
+        [key: string]: {
+            key: string;
+            modifiers: string[];
+            global?: boolean;
+        } | undefined;
+    };
+}
 type AgentStartupData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
     dashboardArtifacts: Partial<ArtifactEntity>[];
     tabs: Tab[];
+    settings?: AgentSettings;
 };
 interface Tab {
     id: string;

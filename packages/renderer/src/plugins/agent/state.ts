@@ -5,7 +5,7 @@ import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
-import { type HotkeyEvent, type HotkeyDefinition, createHotkeyHandler } from '@/core/types';
+import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 
 export const id = 'agent' as const;
 
@@ -14,6 +14,22 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
 type AgentMode = 'plan' | 'work' | 'chat' | 'note';
+
+interface AgentModeConfig {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface AgentHotkeys {
+  textToSpeech?: { key: string; modifiers: string[]; global?: boolean };
+  switchMode?: { key: string; modifiers: string[]; global?: boolean };
+}
+
+interface AgentSettings {
+  modes?: AgentModeConfig[];
+  hotkeys?: AgentHotkeys;
+}
 
 const defaultThread: AgentThreadData = {
   id: undefined,
@@ -35,6 +51,9 @@ interface AgentContext {
   tabs: Tab[];
   activeTabId: string;
   mode: AgentMode;
+  modes: AgentModeConfig[];
+  hotkeys: HotkeysMap;
+  settings: AgentSettings;
 }
 
 type Brain_FE_AgentEvents =
@@ -60,6 +79,8 @@ type AgentEvent =
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
+  | { type: 'TEXT_TO_SPEECH' }
+  | { type: 'SWITCH_MODE' }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -185,11 +206,22 @@ const agentState = setup({
         tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
       );
       
+      const settings: AgentSettings = typedEvent.data.settings || {};
+      
+      // Extract hotkeys from settings - simply copy all hotkeys
+      const hotkeys: HotkeysMap = settings.hotkeys ? { ...settings.hotkeys } : {};
+      
+      // Extract modes from settings or fallback to empty array
+      const modes = settings.modes || [];
+      
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
+        hotkeys,
+        modes,
+        settings,
       };
     }),
     setRefreshThreadsData: assign(({ context, event }) => {
@@ -313,39 +345,31 @@ const agentState = setup({
         artifactId
       });
     },
-    handleHotkey: createHotkeyHandler([
-      {
-        key: ' ',
-        ctrlKey: true,
-        description: 'Text to Speech',
-        handler: ({ event, context, self, system }) => {
-          event.preventDefault();
-          // Stub implementation for text-to-speech
-          console.log('[Agent] Text-to-speech triggered (stub)');
-          // Future implementation will convert last agent message to speech
-        }
-      },
-      {
-        key: 'Tab',
-        shiftKey: true,
-        description: 'Switch Mode',
-        handler: ({ event, context, self }) => {
-          event.preventDefault();
-          
-          // Define mode cycle order
-          const modes: AgentMode[] = ['plan', 'work', 'chat', 'note'];
-          const currentIndex = modes.indexOf(context.mode);
-          const nextIndex = (currentIndex + 1) % modes.length;
-          const nextMode = modes[nextIndex];
-          
-          // Send SET_MODE event to update the mode
-          self.send({ type: 'SET_MODE', mode: nextMode });
-          
-          console.log(`[Agent] Switched mode from ${context.mode} to ${nextMode}`);
-        }
-      }
-      // Future hotkeys can be added here
-    ]),
+    handleHotkey: createHotkeyProcessor({
+      textToSpeech: 'TEXT_TO_SPEECH',
+      switchMode: 'SWITCH_MODE'
+    }),
+    
+    textToSpeech: () => {
+      // Stub implementation for text-to-speech
+      console.log('[Agent] Text-to-speech triggered (stub)');
+      // Future implementation will convert last agent message to speech
+    },
+    
+    switchMode: ({ context, self }) => {
+      // Use modes from context to determine cycle order
+      const modeIds = context.modes.map(m => m.id) as AgentMode[];
+      const currentIndex = modeIds.indexOf(context.mode);
+      const nextIndex = (currentIndex + 1) % modeIds.length;
+      const nextMode = modeIds[nextIndex];
+      
+      // Send SET_MODE event to update the mode
+      self.send({ type: 'SET_MODE', mode: nextMode });
+      
+      const nextModeName = context.modes.find(m => m.id === nextMode)?.name || nextMode;
+      const currentModeName = context.modes.find(m => m.id === context.mode)?.name || context.mode;
+      console.log(`[Agent] Switched mode from ${currentModeName} to ${nextModeName}`);
+    },
   },
   guards: {
     targetIs,
@@ -362,11 +386,20 @@ const agentState = setup({
     tabs: [],
     activeTabId: 'dashboard',
     mode: 'chat' as AgentMode,
+    modes: [],
+    hotkeys: {}, // Will be loaded from settings
+    settings: {}, // Will be loaded from settings
   }),
   on: {
     // Hotkey handling
     HOTKEY_PRESSED: {
       actions: ['handleHotkey']
+    },
+    TEXT_TO_SPEECH: {
+      actions: 'textToSpeech'
+    },
+    SWITCH_MODE: {
+      actions: 'switchMode'
     },
     VIEW_THREAD: {
       actions: 'sendOpenThreadView'

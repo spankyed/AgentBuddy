@@ -15,6 +15,16 @@ const agentPlugin: Plugin = {
   panel,
   chat,
   settings,
+  hotkeys: [
+    {
+      action: 'textToSpeech',
+      global: false
+    },
+    {
+      action: 'switchMode',
+      global: true
+    }
+  ],
   // welcomeScreen // show this component when the app is first loaded
 };
 

@@ -1,7 +1,7 @@
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
-import { type HotkeyEvent, type HotkeyDefinition, createHotkeyHandler } from '@/core/types';
+import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import type { OutgoingCodeEvents } from '@app/api';
@@ -54,6 +54,7 @@ export type Context = {
   quickOpenSelectedIndex: number
   quickOpenLoading: boolean
   recentlyOpenedFiles: string[]
+  hotkeys: HotkeysMap
 }
 
 export interface QuickOpenResult {
@@ -77,6 +78,9 @@ export type Event =
   | { type: 'UNPIN_TAB'; path: string }
   // Hotkey events
   | HotkeyEvent
+  | { type: 'OPEN_TERMINAL' }
+  | { type: 'NAVIGATE_PREV_PANEL' }
+  | { type: 'NAVIGATE_NEXT_PANEL' }
   // Quick open events
   | { type: 'TOGGLE_QUICK_OPEN' }
   | { type: 'SHOW_QUICK_OPEN' }
@@ -383,64 +387,46 @@ const codeState = setup({
       }
     }),
     
-    handleHotkey: createHotkeyHandler([
-      {
-        key: '`',
-        ctrlKey: true,
-        description: 'Open terminal at current directory',
-        handler: ({ event, context, self, system }) => {
-          event.preventDefault();
-
-          // Look for an existing terminal at the current directory
-          const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
-            return 'isTerminal' in file &&
-              file.isTerminal === true &&
-              file.terminalInfo.cwd === context.currentDirectory;
+    handleHotkey: createHotkeyProcessor({
+      openTerminal: 'OPEN_TERMINAL',
+      navigatePrevPanel: 'NAVIGATE_PREV_PANEL',
+      navigateNextPanel: 'NAVIGATE_NEXT_PANEL'
+    }),
+    
+    openTerminal: ({ context, self, system }) => {
+      // Look for an existing terminal at the current directory
+      const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
+        return 'isTerminal' in file &&
+          file.isTerminal === true &&
+          file.terminalInfo.cwd === context.currentDirectory;
+      });
+      if (existingTerminal) {
+        // Activate the existing terminal tab
+        self.send({
+          type: 'UPDATE_STATE',
+          updates: { activeFilePath: existingTerminal.path }
+        });
+      } else {
+        // Create a new terminal at the current directory
+        system.get('terminal')?.send({
+            type: 'terminal.CREATE',
+            title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
+            cwd: context.currentDirectory
           });
-
-          if (existingTerminal) {
-            // Activate the existing terminal tab
-            self.send({
-              type: 'UPDATE_STATE',
-              updates: { activeFilePath: existingTerminal.path }
-            });
-          } else {
-            // Create a new terminal at the current directory
-            system.get('terminal')?.send({
-              type: 'terminal.CREATE',
-              title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
-              cwd: context.currentDirectory
-            });
-          }
-        }
-      },
-      {
-        key: 'ArrowLeft',
-        metaKey: true,
-        altKey: true,
-        description: 'Navigate to previous panel',
-        handler: ({ event, context, self }) => {
-          event.preventDefault();
-          const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
-          const newIndex = currentIndex === 0 ? ALL_PANELS.length - 1 : currentIndex - 1;
-          self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
-        }
-      },
-      {
-        key: 'ArrowRight',
-        metaKey: true,
-        altKey: true,
-        description: 'Navigate to next panel',
-        handler: ({ event, context, self }) => {
-          event.preventDefault();
-          const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
-          const newIndex = currentIndex === ALL_PANELS.length - 1 ? 0 : currentIndex + 1;
-          self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
-        }
-      },
-      // Future hotkeys can be easily added here
-      // { key: 'p', metaKey: true, description: 'Quick open', handler: ... }
-    ]),
+      }
+    },
+    
+    navigatePrevPanel: ({ context, self }) => {
+      const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
+      const newIndex = currentIndex === 0 ? ALL_PANELS.length - 1 : currentIndex - 1;
+      self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
+    },
+    
+    navigateNextPanel: ({ context, self }) => {
+      const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
+      const newIndex = currentIndex === ALL_PANELS.length - 1 ? 0 : currentIndex + 1;
+      self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
+    },
 
     pinTab: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_TAB'; path: string }
@@ -486,6 +472,12 @@ const codeState = setup({
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
     recentlyOpenedFiles: loadRecentFiles(),
+    // Hardcoded hotkeys for code plugin (not configurable)
+    hotkeys: {
+      openTerminal: { key: '`', modifiers: ['ctrl'] },
+      navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
+      navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
+    },
   },
   states: {
     canvas: {
@@ -521,6 +513,15 @@ const codeState = setup({
         // Hotkey handling
         HOTKEY_PRESSED: {
           actions: ['handleHotkey']
+        },
+        OPEN_TERMINAL: {
+          actions: 'openTerminal'
+        },
+        NAVIGATE_PREV_PANEL: {
+          actions: 'navigatePrevPanel'
+        },
+        NAVIGATE_NEXT_PANEL: {
+          actions: 'navigateNextPanel'
         },
         // Quick open events
         TOGGLE_QUICK_OPEN: {

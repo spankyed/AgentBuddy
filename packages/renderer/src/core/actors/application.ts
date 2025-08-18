@@ -1,5 +1,7 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
-import type { Plugin, HotkeyEvent } from '@/core/types';
+import type { Plugin } from '@/core/types';
+import type { HotkeyEvent, HotkeyConfig } from '@/core/utils/hotkeys';
+import { processHotkeys } from '@/core/utils/hotkeys';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
@@ -31,49 +33,13 @@ export interface ApplicationContext {
   };
   hotkeysDisabled: boolean;
   hotkeys: {
-    switchPluginUp?: {
-      key: string;
-      modifiers: string[];
-    };
-    switchPluginDown?: {
-      key: string;
-      modifiers: string[];
-    };
-    toggleInspectionPanel?: {
-      key: string;
-      modifiers: string[];
-    };
+    switchPluginUp?: HotkeyConfig;
+    switchPluginDown?: HotkeyConfig;
+    toggleInspectionPanel?: HotkeyConfig;
   };
 }
 
 export const application = 'application' as const;
-
-// Helper to convert hotkey from settings format to keyboard event format
-function convertHotkeyToDefinition(hotkey: { key: string; modifiers: string[] } | undefined, action: { type: string }) {
-  if (!hotkey || !hotkey.key) return null;
-  
-  return {
-    key: hotkey.key,
-    metaKey: hotkey.modifiers.includes('cmd'),
-    ctrlKey: hotkey.modifiers.includes('ctrl'),
-    altKey: hotkey.modifiers.includes('alt') || hotkey.modifiers.includes('option'),
-    shiftKey: hotkey.modifiers.includes('shift'),
-    action
-  };
-}
-
-// Helper to match keyboard event with hotkey definition
-function matchesHotkey(e: KeyboardEvent, hotkey: { key: string; metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean; shiftKey?: boolean } | null): boolean {
-  if (!hotkey) return false;
-  
-  return (
-    e.key === hotkey.key &&
-    (hotkey.metaKey === undefined || e.metaKey === hotkey.metaKey) &&
-    (hotkey.ctrlKey === undefined || e.ctrlKey === hotkey.ctrlKey) &&
-    (hotkey.altKey === undefined || e.altKey === hotkey.altKey) &&
-    (hotkey.shiftKey === undefined || e.shiftKey === hotkey.shiftKey)
-  );
-}
 
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
@@ -86,7 +52,7 @@ export type ApplicationEvent =
   | { type: 'SWITCH_PLUGIN_UP' }
   | { type: 'SWITCH_PLUGIN_DOWN' }
   | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
-  | { type: 'PROCESS_GLOBAL_HOTKEY'; action: { type: string; payload?: any } }
+  | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: KeyboardEvent }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
@@ -102,33 +68,9 @@ export const createApplicationState = () => setup({
   actors: {
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Get current hotkeys from application context
         const appActor = system.get(application);
-        const snapshot = appActor.getSnapshot();
-        const hotkeys = snapshot.context.hotkeys;
         
-        // Build dynamic hotkey definitions from context
-        const hotkeyDefinitions = [
-          convertHotkeyToDefinition(hotkeys.toggleInspectionPanel, { type: 'TOGGLE_INSPECTION_PANEL' }),
-          convertHotkeyToDefinition(hotkeys.switchPluginUp, { type: 'SWITCH_PLUGIN_UP' }),
-          convertHotkeyToDefinition(hotkeys.switchPluginDown, { type: 'SWITCH_PLUGIN_DOWN' })
-        ].filter(Boolean);
-        
-        // Check for matching hotkey
-        const matchingHotkey = hotkeyDefinitions.find(hotkey => 
-          matchesHotkey(e, hotkey)
-        );
-        
-        if (matchingHotkey) {
-          e.preventDefault();
-          appActor.send({ 
-            type: 'PROCESS_GLOBAL_HOTKEY', 
-            action: matchingHotkey.action 
-          });
-          return;
-        }
-        
-        // Forward all other hotkeys to the active plugin
+        // Create hotkey event and send to be processed
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
           key: e.key,
@@ -139,7 +81,11 @@ export const createApplicationState = () => setup({
           preventDefault: () => e.preventDefault()
         };
         
-        appActor.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+        appActor.send({ 
+          type: 'PROCESS_GLOBAL_HOTKEY', 
+          hotkeyEvent,
+          originalEvent: e
+        });
       };
 
       window.addEventListener('keydown', handleKeyDown);
@@ -194,10 +140,28 @@ export const createApplicationState = () => setup({
       return { hotkeys };
     }),
     
-    processGlobalHotkey: ({ self, event }) => {
-      const { action } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
-      // Send the action as an ApplicationEvent - it will match one of the defined types
-      self.send(action as ApplicationEvent);
+    processGlobalHotkey: ({ self, context, system, event }) => {
+      const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
+      
+      const actionType = processHotkeys(
+        hotkeyEvent,
+        context.hotkeys,
+        {
+          toggleInspectionPanel: 'TOGGLE_INSPECTION_PANEL',
+          switchPluginUp: 'SWITCH_PLUGIN_UP',
+          switchPluginDown: 'SWITCH_PLUGIN_DOWN'
+        }
+      );
+      
+      if (actionType) {
+        if (originalEvent) {
+          originalEvent.preventDefault();
+        }
+        self.send({ type: actionType });
+      } else {
+        // Not an application hotkey, forward to plugins
+        self.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+      }
     },
     
     setHotkeysDisabled: assign({
@@ -229,15 +193,21 @@ export const createApplicationState = () => setup({
     },
     
     forwardHotkeyToPlugin: ({ context, event, system }) => {
-      try {
-        const activePluginActor = system.get(context.activePlugin.id);
-        if (activePluginActor) {
-          activePluginActor.send(typeOf('FORWARD_HOTKEY', event).event);
-        }
-      } catch (error) {
-        // Silently ignore if plugin can't receive hotkey events
-        console.debug(`Plugin ${context.activePlugin.id} cannot receive hotkey events`, error);
+      const hotkeyEvent = typeOf('FORWARD_HOTKEY', event).event;
+      
+      // First, send to all plugins that have global hotkeys
+      const globalPlugins = context.plugins.filter(plugin => 
+        plugin.hotkeys?.some(h => h.global)
+      );
+      
+      for (const plugin of globalPlugins) {
+        const pluginActor = system.get(plugin.id);
+        pluginActor.send(hotkeyEvent);
       }
+      
+      // Then send to active plugin for non-global hotkeys
+      const activePluginActor = system.get(context.activePlugin.id);
+      activePluginActor.send(hotkeyEvent);
     },
     
     setTargetView: assign(({ event, system }, params?: string) => ({
