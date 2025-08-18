@@ -1,7 +1,8 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
-import { SettingsEntity, SettingsData, defaultSettings } from '../types';
+import { SettingsEntity, SettingsData } from '../types';
+import { defaultSettings } from '../defaults';
 
 // Core helpers
 const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
