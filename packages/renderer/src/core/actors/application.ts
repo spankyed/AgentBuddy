@@ -1,7 +1,8 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
 import type { Plugin } from '@/core/types';
-import type { HotkeyEvent, HotkeyConfig } from '@/core/utils/hotkeys';
+import type { HotkeyEvent } from '@/core/utils/hotkeys';
 import { processHotkeys } from '@/core/utils/hotkeys';
+import type { Hotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
@@ -32,11 +33,7 @@ export interface ApplicationContext {
     previousInspectionWidth?: number; // for restoring after collapse
   };
   hotkeysDisabled: boolean;
-  hotkeys: {
-    switchPluginUp?: HotkeyConfig;
-    switchPluginDown?: HotkeyConfig;
-    toggleInspectionPanel?: HotkeyConfig;
-  };
+  hotkeys: Hotkeys;
 }
 
 export const application = 'application' as const;

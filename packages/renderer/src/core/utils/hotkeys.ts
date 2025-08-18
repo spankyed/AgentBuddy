@@ -1,4 +1,5 @@
 // Hotkey utilities and types
+import type { KeyboardShortcut } from '@app/api';
 
 export interface HotkeyEvent {
   type: 'HOTKEY_PRESSED';
@@ -10,14 +11,8 @@ export interface HotkeyEvent {
   preventDefault: () => void;
 }
 
-export interface HotkeyConfig {
-  key: string;
-  modifiers: string[];
-  global?: boolean;
-}
-
 export type HotkeysMap = {
-  [action: string]: HotkeyConfig;
+  [action: string]: KeyboardShortcut | null | undefined;
 }
 
 export interface PluginHotkeyDefinition {
@@ -25,8 +20,8 @@ export interface PluginHotkeyDefinition {
   global?: boolean; // If true, hotkey works regardless of active plugin
 }
 
-// Check if a HotkeyEvent matches a HotkeyConfig
-export function matchesHotkey(event: HotkeyEvent, config: HotkeyConfig): boolean {
+// Check if a HotkeyEvent matches a KeyboardShortcut
+export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boolean {
   if (!config?.key) return false;
   
   const modifierMatch = 
@@ -39,16 +34,17 @@ export function matchesHotkey(event: HotkeyEvent, config: HotkeyConfig): boolean
 }
 
 // Process hotkeys with action map - returns matched action value or undefined
-export function processHotkeys<const T extends Record<string, string>>(
+// Accepts any object where the keys we care about have KeyboardShortcut values
+export function processHotkeys<const T extends Record<string, string>, H = any>(
   event: HotkeyEvent,
-  hotkeys: HotkeysMap | undefined,
+  hotkeys: H | undefined,
   actionMap: T
 ): T[keyof T] | undefined {
   if (!hotkeys) return undefined;
   
   for (const actionName of Object.keys(actionMap) as (keyof T)[]) {
-    const hotkeyConfig = hotkeys[actionName as string];
-    if (hotkeyConfig && matchesHotkey(event, hotkeyConfig)) {
+    const hotkeyConfig = (hotkeys as any)[actionName as string];
+    if (hotkeyConfig && matchesHotkey(event, hotkeyConfig as KeyboardShortcut)) {
       event.preventDefault();
       return actionMap[actionName];
     }

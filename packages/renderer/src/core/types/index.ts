@@ -9,7 +9,6 @@ export type RouteComponents = Record<RouteName, Component>;
 // Re-export hotkey utilities for backward compatibility
 export { 
   type HotkeyEvent,
-  type HotkeyConfig,
   type HotkeysMap,
   type PluginHotkeyDefinition,
   matchesHotkey,
