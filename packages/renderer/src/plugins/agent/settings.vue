@@ -1,13 +1,10 @@
 <template>
   <div class="max-w-3xl">
     <!-- Chat Modes Section -->
-    <div class="mb-8">
-      <h2 class="text-xl font-semibold text-white mb-2">Chat Modes</h2>
-      <p class="text-sm text-neutral-500">
+    <CollapsibleSection label="Chat Modes" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
         Configure different conversation modes for the AI agent
       </p>
-    </div>
-
       <div class="space-y-4">
         <div 
           v-for="(mode, index) in modes" 
@@ -48,18 +45,14 @@
           Add Mode
         </button>
       </div>
-
-      <!-- Divider -->
-      <div class="border-t border-neutral-800 my-8"></div>
+    </CollapsibleSection>
 
     <!-- Agent Hotkeys Section -->
-    <div class="mb-8">
-      <h2 class="text-xl font-semibold text-white mb-2">Agent Hotkeys</h2>
-      <p class="text-sm text-neutral-500">
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Agent Hotkeys" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
         Keyboard shortcuts available when the agent plugin is active
       </p>
-    </div>
-
       <div class="space-y-6">
         <div class="group">
           <KeyboardShortcutInput
@@ -75,8 +68,24 @@
           </p>
         </div>
 
+        <div class="group">
+          <KeyboardShortcutInput
+            v-model="hotkeys.switchMode"
+            id="switch-mode"
+            label="Switch Mode"
+            @change="saveHotkeys"
+            container-class="flex-1"
+            :show-reset-button="true"
+          />
+          <p class="mt-1.5 text-xs text-neutral-600">
+            Cycle through chat modes (Plan → Work → Chat → Note)
+          </p>
+        </div>
+
         <!-- Future hotkeys can be added here -->
       </div>
+    </CollapsibleSection>
+    </div>
 
     <!-- Save Status Indicator -->
     <div class="mt-6 flex items-center gap-2">
@@ -98,6 +107,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { Plus, X, CheckCircle } from 'lucide-vue-next'
 import KeyboardShortcutInput, { type KeyboardShortcut } from '@/core/components/design/KeyboardShortcutInput.vue'
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 
 const settingsActor = applicationState.system.get('settings')
 const settings = useSelector(settingsActor, (state: any) => state.context.settings)
@@ -110,12 +120,14 @@ interface ChatMode {
 
 interface AgentHotkeys {
   textToSpeech: KeyboardShortcut | null
+  switchMode: KeyboardShortcut | null
 }
 
 // State
 const modes = ref<ChatMode[]>([])
 const hotkeys = reactive<AgentHotkeys>({
-  textToSpeech: null
+  textToSpeech: null,
+  switchMode: null
 })
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
@@ -142,6 +154,13 @@ onMounted(() => {
         modifiers: tts.modifiers || []
       }
     }
+    if (agentSettings.hotkeys?.switchMode) {
+      const sm = agentSettings.hotkeys.switchMode
+      hotkeys.switchMode = {
+        key: sm.key,
+        modifiers: sm.modifiers || []
+      }
+    }
   }
   
   // If no modes exist, use defaults
@@ -159,6 +178,12 @@ onMounted(() => {
     hotkeys.textToSpeech = {
       key: ' ',
       modifiers: ['ctrl']
+    }
+  }
+  if (!hotkeys.switchMode) {
+    hotkeys.switchMode = {
+      key: 'Tab',
+      modifiers: ['shift']
     }
   }
 })
@@ -200,6 +225,10 @@ const saveHotkeys = () => {
     textToSpeech: hotkeys.textToSpeech ? {
       key: hotkeys.textToSpeech.key,
       modifiers: hotkeys.textToSpeech.modifiers
+    } : null,
+    switchMode: hotkeys.switchMode ? {
+      key: hotkeys.switchMode.key,
+      modifiers: hotkeys.switchMode.modifiers
     } : null
   }
   

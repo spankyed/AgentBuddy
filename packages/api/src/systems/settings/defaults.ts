@@ -29,7 +29,8 @@ export const defaultSettings: SettingsData = {
         { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
       ],
       hotkeys: {
-        textToSpeech: { key: ' ', modifiers: ['ctrl'] }
+        textToSpeech: { key: ' ', modifiers: ['ctrl'] },
+        switchMode: { key: 'Tab', modifiers: ['shift'] }
       }
     }
   },

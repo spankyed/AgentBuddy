@@ -324,6 +324,25 @@ const agentState = setup({
           console.log('[Agent] Text-to-speech triggered (stub)');
           // Future implementation will convert last agent message to speech
         }
+      },
+      {
+        key: 'Tab',
+        shiftKey: true,
+        description: 'Switch Mode',
+        handler: ({ event, context, self }) => {
+          event.preventDefault();
+          
+          // Define mode cycle order
+          const modes: AgentMode[] = ['plan', 'work', 'chat', 'note'];
+          const currentIndex = modes.indexOf(context.mode);
+          const nextIndex = (currentIndex + 1) % modes.length;
+          const nextMode = modes[nextIndex];
+          
+          // Send SET_MODE event to update the mode
+          self.send({ type: 'SET_MODE', mode: nextMode });
+          
+          console.log(`[Agent] Switched mode from ${context.mode} to ${nextMode}`);
+        }
       }
       // Future hotkeys can be added here
     ]),
