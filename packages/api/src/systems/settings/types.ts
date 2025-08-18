@@ -3,7 +3,7 @@ import type { EARS } from "@/types";
 
 export interface SettingsEntity extends BaseEntity {
   entityType: EARS.Entity.Settings;
-  type: 'general' | 'plugin';
+  type: 'general' | 'plugin' | 'internal';
   label: string; // e.g., 'general', 'agent', 'flows' (always lowercase)
   data: any; // Flexible data structure
 }
@@ -11,6 +11,7 @@ export interface SettingsEntity extends BaseEntity {
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
+  internal: InternalSettings;
 }
 
 export interface GeneralSettings {
@@ -70,4 +71,10 @@ export interface MiscSettings {
 
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
+}
+
+export interface InternalSettings {
+  hasOnboarded: boolean;
+  lastInteractionTimestamp: number | null;
+  version: string;
 }

@@ -20,5 +20,10 @@ export const defaultSettings: SettingsData = {
     },
     misc: {}
   },
-  plugins: {}
+  plugins: {},
+  internal: {
+    hasOnboarded: false,
+    lastInteractionTimestamp: null,
+    version: '1.0.0'
+  }
 };

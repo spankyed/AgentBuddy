@@ -11,7 +11,7 @@ const findSettings = (label: string) => getAllSettings().find(s => s.label === l
 const setValueAtPath = (obj: any, path: string[], value: any): any => 
   path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
 
-const getOrCreateSettings = (type: 'general' | 'plugin', label: string, defaultData: any = {}): SettingsEntity => {
+const getOrCreateSettings = (type: 'general' | 'plugin' | 'internal', label: string, defaultData: any = {}): SettingsEntity => {
   const existing = findSettings(label);
   if (existing) return existing;
   
@@ -34,6 +34,9 @@ const generalConfig = {
 const getGeneralSettings = (label: keyof typeof generalConfig) => 
   getOrCreateSettings('general', label, defaultSettings.general[generalConfig[label]]);
 
+const getInternalSettings = () => 
+  getOrCreateSettings('internal', 'internal', defaultSettings.internal);
+
 // QUERIES
 export const settingsQueries = {
   getAllSettings,
@@ -47,7 +50,8 @@ export const settingsQueries = {
     ) as SettingsData['general'],
     plugins: Object.fromEntries(
       getAllSettings().filter(s => s.type === 'plugin').map(s => [s.label, s.data])
-    )
+    ),
+    internal: getInternalSettings().data
   }),
   
   getGeneralSettings: () => Object.fromEntries(
@@ -58,14 +62,17 @@ export const settingsQueries = {
   ) as SettingsData['general'],
   
   getPluginSettings: (pluginId: string) => getOrCreateSettings('plugin', pluginId, {}).data,
+  getInternalSettings: () => getInternalSettings().data,
   getSettingsByLabel: (label: string) => findSettings(label) || null
 };
 
 // COMMANDS
 export const settingsCommands = {
-  updateSettings(type: 'general' | 'plugin', label: string, path: string[], value: any): SettingsEntity {
+  updateSettings(type: 'general' | 'plugin' | 'internal', label: string, path: string[], value: any): SettingsEntity {
     const settings = type === 'general' 
       ? getGeneralSettings(label as keyof typeof generalConfig)
+      : type === 'internal'
+      ? getInternalSettings()
       : getOrCreateSettings('plugin', label, {});
     
     const updatedData = path.length === 0 ? value : setValueAtPath(settings.data, path, value);
@@ -79,6 +86,7 @@ export const settingsCommands = {
     Object.keys(generalConfig).forEach(label => 
       getGeneralSettings(label as keyof typeof generalConfig)
     );
+    getInternalSettings();
   }
 };
 
