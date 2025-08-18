@@ -64,11 +64,16 @@
             :value="currentMode"
             @change="handleModeChange"
             class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            :title="modes.find(m => m.id === currentMode)?.description"
           >
-            <option value="plan">Plan mode</option>
-            <option value="work">Work mode</option>
-            <option value="chat">Chat mode</option>
-            <option value="note">Take notes</option>
+            <option 
+              v-for="mode in modes" 
+              :key="mode.id" 
+              :value="mode.id"
+              :title="mode.description"
+            >
+              {{ mode.name }}
+            </option>
           </select>
         </div>
       </div>
@@ -97,10 +102,17 @@ import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, ThreadEntity } from '@app/api'
 
+interface ModeConfig {
+  id: string
+  name: string
+  description: string
+}
+
 defineProps<{
   currentThread: AgentThreadData
   threads: ThreadEntity[]
   currentMode: 'plan' | 'work' | 'chat' | 'note'
+  modes: ModeConfig[]
 }>()
 
 // Define emits including new button actions
