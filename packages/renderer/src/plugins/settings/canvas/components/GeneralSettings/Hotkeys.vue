@@ -137,22 +137,6 @@ const emit = defineEmits<{
   }]
 }>()
 
-// Default hotkey values
-const defaultHotkeys: Record<string, KeyboardShortcut> = {
-  switchPluginUp: {
-    key: 'ArrowUp',
-    modifiers: ['cmd', 'option']
-  },
-  switchPluginDown: {
-    key: 'ArrowDown',
-    modifiers: ['cmd', 'option']
-  },
-  toggleInspectionPanel: {
-    key: 'b',
-    modifiers: ['cmd']
-  }
-}
-
 // Helper function to convert hotkey format
 const convertToShortcut = (hotkey: any): KeyboardShortcut | null => {
   if (!hotkey) return null
@@ -173,9 +157,9 @@ const convertToBackend = (shortcut: KeyboardShortcut | null) => {
 
 // Store all built-in hotkeys in a reactive object
 const builtInHotkeys = reactive<Record<string, KeyboardShortcut | null>>({
-  switchPluginUp: convertToShortcut(props.settings?.switchPluginUp) || { ...defaultHotkeys.switchPluginUp },
-  switchPluginDown: convertToShortcut(props.settings?.switchPluginDown) || { ...defaultHotkeys.switchPluginDown },
-  toggleInspectionPanel: convertToShortcut(props.settings?.toggleInspectionPanel) || { ...defaultHotkeys.toggleInspectionPanel }
+  switchPluginUp: convertToShortcut(props.settings?.switchPluginUp) || null,
+  switchPluginDown: convertToShortcut(props.settings?.switchPluginDown) || null,
+  toggleInspectionPanel: convertToShortcut(props.settings?.toggleInspectionPanel) || null
 })
 
 // Custom hotkeys state
