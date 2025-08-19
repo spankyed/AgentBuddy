@@ -1,60 +1,58 @@
 <template>
-  <div class="flex items-center gap-3" :class="containerClass">
-    <div class="flex-1">
-      <div 
-        class="flex items-center px-3 py-2 bg-neutral-800 border rounded-lg text-sm transition-all"
-        :class="[
-          value 
-            ? 'border-neutral-700/50 hover:border-neutral-600' 
-            : 'border-neutral-700/50'
-        ]"
-      >
-        <!-- Label on the left -->
-        <span v-if="label" class="text-neutral-400 text-xs uppercase tracking-wider truncate mr-3">
-          {{ label }}
-        </span>
-        
-        <!-- Directory path or placeholder -->
-        <span 
-          class="flex-1 truncate"
-          :class="value ? 'text-white font-mono text-xs' : 'text-neutral-500'"
-          :title="value || ''"
-        >
-          {{ displayPath }}
-        </span>
-        
-        <!-- Folder icon when empty -->
-        <Folder 
-          v-if="!value && showIcon" 
-          class="ml-2 w-4 h-4 text-neutral-500 flex-shrink-0" 
-        />
-      </div>
+  <div :class="containerClass">
+    <div 
+      class="flex items-center px-3 py-2 bg-neutral-800 border rounded-lg text-sm transition-all"
+      :class="[
+        value 
+          ? 'border-neutral-700/50 hover:border-neutral-600' 
+          : 'border-neutral-700/50'
+      ]"
+    >
+      <!-- Label on the left -->
+      <span v-if="label" class="text-neutral-400 text-xs uppercase tracking-wider truncate mr-3">
+        {{ label }}
+      </span>
       
-      <!-- Description text -->
-      <p v-if="description" class="mt-1.5 text-xs text-neutral-600">
-        {{ description }}
-      </p>
+      <!-- Directory path or placeholder -->
+      <span 
+        class="flex-1 truncate"
+        :class="value ? 'text-white font-mono text-xs' : 'text-neutral-500'"
+        :title="value || ''"
+      >
+        {{ displayPath }}
+      </span>
+      
+      <!-- Folder icon when empty -->
+      <Folder 
+        v-if="!value && showIcon" 
+        class="ml-2 w-4 h-4 text-neutral-500 flex-shrink-0" 
+      />
+      
+      <!-- Action buttons - now inside the input field -->
+      <div class="flex items-center gap-1 ml-3">
+        <button
+          @click="selectDirectory"
+          class="px-2.5 py-1 bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300 hover:text-white transition-all text-xs font-medium"
+          :title="selectButtonTitle"
+        >
+          {{ value ? 'Change' : 'Select' }}
+        </button>
+        
+        <button
+          v-if="value && showResetButton"
+          @click="resetDirectory"
+          class="p-1 hover:bg-neutral-700 rounded text-neutral-400 hover:text-red-400 transition-all"
+          :title="resetButtonTitle"
+        >
+          <X class="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
     
-    <!-- Action buttons -->
-    <div class="flex items-center gap-2">
-      <button
-        @click="selectDirectory"
-        class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 hover:text-white hover:border-neutral-600 transition-all text-sm"
-        :title="selectButtonTitle"
-      >
-        {{ value ? 'Change' : 'Select' }}
-      </button>
-      
-      <button
-        v-if="value && showResetButton"
-        @click="resetDirectory"
-        class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
-        :title="resetButtonTitle"
-      >
-        <X class="w-4 h-4" />
-      </button>
-    </div>
+    <!-- Description text -->
+    <p v-if="description" class="mt-1.5 text-xs text-neutral-600">
+      {{ description }}
+    </p>
   </div>
 </template>
 
