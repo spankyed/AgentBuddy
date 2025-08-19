@@ -47,9 +47,10 @@
               <td class="px-6 py-4">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
-                  :class="categoryStyle(prompt.category)"
+                  :class="prompt.category ? 'border' : 'text-neutral-500'"
+                  :style="categoryStyle(prompt.category)"
                 >
-                  {{ prompt.category || 'none' }}
+                  {{ getCategoryName(prompt.category) }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -71,7 +72,7 @@
                       +{{ Object.keys(prompt.inputs || {}).length - 2 }} more
                     </span>
                   </template>
-                  <span v-else class="text-xs text-neutral-500">None</span>
+                  <span v-else class="text-xs text-neutral-500">none</span>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -117,9 +118,12 @@
 <script setup lang="ts">
 import { Plus, Edit2, Trash2, Sparkle } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
-import type { PromptEntity, EARS } from '@app/api';
+import type { PromptEntity, EARS, Category } from '@app/api';
 
-defineProps<{ prompts: PromptEntity[] }>();
+const props = defineProps<{ 
+  prompts: PromptEntity[];
+  categories: Category[];
+}>();
 const emit = defineEmits<{
   select: [promptId: EARS.EntityId];
   create: [];
@@ -133,23 +137,31 @@ function confirmDelete(prompt: PromptEntity) {
   }
 }
 
-// Professional category styling
-function categoryStyle(category?: string) {
-  switch (category) {
-    case 'text-processing':
-      return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
-    case 'development':
-      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-    case 'assistant':
-      return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
-    case 'analysis':
-      return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
-    case 'creative':
-      return 'bg-pink-500/10 text-pink-400 border border-pink-500/20';
-    case 'formatting':
-      return 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
-    default:
-      return 'text-neutral-500';
+// Get category name and style
+function getCategoryName(categoryId?: string) {
+  if (!categoryId) return 'none';
+  const category = props.categories.find(c => c.id === categoryId);
+  return category?.name || categoryId;
+}
+
+function categoryStyle(categoryId?: string) {
+  if (!categoryId) return {}; // Return empty object for inline styles when no category
+  
+  const category = props.categories.find(c => c.id === categoryId);
+  if (!category) {
+    // Default style for unrecognized categories - neutral like input fields
+    return {
+      backgroundColor: 'rgb(38 38 38)', // bg-neutral-800
+      color: 'rgb(245 245 245)', // text-neutral-100
+      borderColor: 'rgb(64 64 64)' // border-neutral-700
+    };
   }
+  
+  // Create inline styles using the category color
+  return {
+    backgroundColor: `${category.color}1A`, // 10% opacity
+    color: category.color,
+    borderColor: `${category.color}33` // 20% opacity
+  };
 }
 </script> 

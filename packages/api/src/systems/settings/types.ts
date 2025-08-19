@@ -72,6 +72,23 @@ export interface DatabaseSettings {
   };
 }
 
+// Category definition for prompts and actions
+export interface Category {
+  id: string;
+  name: string;
+  color: string; // Hex color value
+}
+
+// Prompts plugin settings
+export interface PromptsSettings {
+  categories: Category[];
+}
+
+// Actions plugin settings
+export interface ActionsSettings {
+  categories: Category[];
+}
+
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
