@@ -78,7 +78,8 @@ export const settingsSystem = setup({
       }));
       
       // If hotkeys were updated, send them to the application
-      if (ev.entityType === 'general' && ev.path[0] === 'hotkeys') {
+      // Check if updating entire hotkeys object (label === 'hotkeys') or a specific property
+      if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
         system.get(bus).send(emit('application', {
           type: 'APPLICATION_HOTKEYS',
           hotkeys: data.general.hotkeys
