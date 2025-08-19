@@ -65,30 +65,28 @@
         </div>
 
         <div class="group">
-          <KeyboardShortcutInput
-            v-model="hotkeys.navigatePrevPanel"
-            id="navigate-prev-panel"
-            label="Previous Panel"
-            @change="saveHotkeys"
-            container-class="flex-1"
-            :show-reset-button="true"
-          />
-          <p class="mt-1.5 text-xs text-neutral-600">
-            Navigate to the previous panel in the code view
-          </p>
-        </div>
-
-        <div class="group">
-          <KeyboardShortcutInput
-            v-model="hotkeys.navigateNextPanel"
-            id="navigate-next-panel"
-            label="Next Panel"
-            @change="saveHotkeys"
-            container-class="flex-1"
-            :show-reset-button="true"
-          />
-          <p class="mt-1.5 text-xs text-neutral-600">
-            Navigate to the next panel in the code view
+          <div class="flex gap-4">
+            <KeyboardShortcutInput
+              v-model="hotkeys.navigatePrevPanel"
+              id="navigate-prev-panel"
+              label="Previous Panel"
+              @change="saveHotkeys"
+              container-class="flex-1"
+              :show-reset-button="false"
+            />
+            
+            <KeyboardShortcutInput
+              v-model="hotkeys.navigateNextPanel"
+              id="navigate-next-panel"
+              label="Next Panel"
+              @change="saveHotkeys"
+              container-class="flex-1"
+              :show-reset-button="false"
+            />
+          </div>
+          
+          <p class="mt-2 text-xs text-neutral-600">
+            Navigate between panels in the code view
           </p>
         </div>
       </div>
