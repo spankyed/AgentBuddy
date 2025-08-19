@@ -72,7 +72,7 @@
               label="Previous Panel"
               @change="saveHotkeys"
               container-class="flex-1"
-              :show-reset-button="false"
+              :show-reset-button="true"
             />
             
             <KeyboardShortcutInput
@@ -81,7 +81,7 @@
               label="Next Panel"
               @change="saveHotkeys"
               container-class="flex-1"
-              :show-reset-button="false"
+              :show-reset-button="true"
             />
           </div>
           
