@@ -48,17 +48,17 @@
     <button
       v-if="modelValue && showResetButton && !isEmpty"
       @click="resetShortcut"
-      class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+      class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-300 hover:border-neutral-500 transition-all"
       :title="resetButtonTitle"
     >
-      <X class="w-4 h-4" />
+      <Eraser class="w-4 h-4" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Keyboard, X } from 'lucide-vue-next'
+import { Keyboard, Eraser } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import type { KeyboardShortcut } from '@app/api'
 
@@ -84,7 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
   emptyText: 'Not set',
   showIcon: true,
   showResetButton: true,
-  resetButtonTitle: 'Reset shortcut',
+  resetButtonTitle: 'Clear shortcut',
   containerClass: '',
   inputClass: '',
   multiArrowSupport: true,
