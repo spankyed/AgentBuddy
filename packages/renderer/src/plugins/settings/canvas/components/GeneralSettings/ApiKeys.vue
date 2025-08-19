@@ -95,10 +95,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
+
+interface Props {
+  settings?: any
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: null
+})
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -107,13 +113,10 @@ const emit = defineEmits<{
   }]
 }>()
 
-const actor = applicationState.system.get('settings')
-const settings = useSelector(actor, (state: any) => state.context.settings)
-
 const formData = ref({
-  google: '',
-  anthropic: '',
-  openai: '',
+  google: props.settings?.google || '',
+  anthropic: props.settings?.anthropic || '',
+  openai: props.settings?.openai || '',
 })
 
 const showKeys = ref({
@@ -121,15 +124,6 @@ const showKeys = ref({
   anthropic: false,
   openai: false,
 })
-
-// Initialize form data from settings only once on mount
-if (settings.value?.general?.apiKeys) {
-  formData.value = {
-    google: settings.value.general.apiKeys.google || '',
-    anthropic: settings.value.general.apiKeys.anthropic || '',
-    openai: settings.value.general.apiKeys.openai || '',
-  }
-}
 
 const toggleVisibility = (provider: 'google' | 'anthropic' | 'openai') => {
   showKeys.value[provider] = !showKeys.value[provider]

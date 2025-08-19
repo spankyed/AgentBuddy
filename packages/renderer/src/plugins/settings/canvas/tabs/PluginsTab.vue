@@ -27,7 +27,8 @@
       <div v-if="selectedPlugin">
         <h2 class="text-xl font-semibold text-white mb-6">{{ selectedPlugin.label }} Settings</h2>
         <component 
-          :is="selectedPlugin.settings" 
+          :is="selectedPlugin.settings"
+          :settings="currentPluginSettings"
           @update-setting="handleUpdateSetting"
         />
         
@@ -62,9 +63,16 @@ import plugins from '@/plugins'
 const actor = applicationState.system.get('settings')
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
+const settings = useSelector(actor, (state: any) => state.context.settings)
 
 // Use the settings save status composable
 const { saveStatus, updateSettings } = useSettingsSaveStatus()
+
+// Compute current plugin settings
+const currentPluginSettings = computed(() => {
+  if (!selectedPluginId.value || !settings.value?.plugins) return null
+  return settings.value.plugins[selectedPluginId.value]
+})
 
 // Get plugins that have settings defined
 const pluginsWithSettings = computed(() => {

@@ -267,6 +267,21 @@ declare const LogEntry: z.ZodObject<{
 }>;
 type LogEntry = z.infer<typeof LogEntry>;
 
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
@@ -317,21 +332,6 @@ type ThreadStartupData = {
     threads: ThreadExtended[];
     availableTags: TagEntity[];
 };
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
 
 type AgentThreadData = {
     id?: ThreadEntity['id'];
@@ -794,6 +794,113 @@ declare const events: {
         type: "TOGGLE_DEBUG";
         systemId: "brain";
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+        }, {
+            id: string;
+            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+        }>, "many">>;
+        parentThreadId: zod.ZodOptional<zod.ZodString>;
+        topic: zod.ZodString;
+        threadType: zod.ZodString;
+        tags: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            name: zod.ZodString;
+            color: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            name: string;
+            id: string;
+            color?: string | undefined;
+        }, {
+            name: string;
+            id: string;
+            color?: string | undefined;
+        }>, "many">>;
+        instructions: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        topic: string;
+        threadType: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: {
+            name: string;
+            id: string;
+            color?: string | undefined;
+        }[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
+    }, {
+        topic: string;
+        threadType: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: {
+            name: string;
+            id: string;
+            color?: string | undefined;
+        }[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"VIEW_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "VIEW_THREAD";
+        systemId: "threads";
+    }, {
+        threadId: string;
+        type: "VIEW_THREAD";
+        systemId: "threads";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        status: zod.ZodEnum<["backlog", "open", "in-progress", "in-review", "done"]>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        status: "backlog" | "open" | "in-progress" | "in-review" | "done";
+        threadId: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+    }, {
+        status: "backlog" | "open" | "in-progress" | "in-review" | "done";
+        threadId: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        key: zod.ZodString;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        key: string;
+        value?: any;
+    }, {
+        threadId: string;
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        key: string;
+        value?: any;
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
         flowId: zod.ZodString;
@@ -1039,113 +1146,6 @@ declare const events: {
         type: "GET_NODE_DETAILS";
         systemId: "database";
         nodeId: string;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
-        }, "strip", zod.ZodTypeAny, {
-            id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
-        }, {
-            id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
-        }>, "many">>;
-        parentThreadId: zod.ZodOptional<zod.ZodString>;
-        topic: zod.ZodString;
-        threadType: zod.ZodString;
-        tags: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            name: zod.ZodString;
-            color: zod.ZodOptional<zod.ZodString>;
-        }, "strip", zod.ZodTypeAny, {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }, {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }>, "many">>;
-        instructions: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        topic: string;
-        threadType: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }, {
-        topic: string;
-        threadType: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"VIEW_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "VIEW_THREAD";
-        systemId: "threads";
-    }, {
-        threadId: string;
-        type: "VIEW_THREAD";
-        systemId: "threads";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        status: zod.ZodEnum<["backlog", "open", "in-progress", "in-review", "done"]>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        status: "backlog" | "open" | "in-progress" | "in-review" | "done";
-        threadId: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-    }, {
-        status: "backlog" | "open" | "in-progress" | "in-review" | "done";
-        threadId: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        key: zod.ZodString;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        key: string;
-        value?: any;
-    }, {
-        threadId: string;
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        key: string;
-        value?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EMPTY">;
         systemId: zod.ZodLiteral<"logs">;
@@ -2019,14 +2019,14 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "SEARCH_IN_INDEX";
         systemId: "library";
-        query: string;
         indexId: string;
+        query: string;
         limit?: number | undefined;
     }, {
         type: "SEARCH_IN_INDEX";
         systemId: "library";
-        query: string;
         indexId: string;
+        query: string;
         limit?: number | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.LIST_FILES">;
@@ -2596,6 +2596,31 @@ declare const events: {
         enabled: boolean;
         pluginId: "brain";
     } | {
+        type: "THREAD_STARTUP";
+        data: ThreadStartupData;
+        pluginId: "threads";
+    } | {
+        type: "SET_VIEW_DATA";
+        id: EARS.EntityId;
+        data: ThreadExtendedData;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_CREATED";
+        id: EARS.EntityId;
+        shortCode: string;
+        entityType: EARS.Entity;
+        timestamp: number;
+        topic?: string | undefined;
+        threadType?: ThreadEntity["threadType"] | undefined;
+        instructions?: string | undefined;
+        status?: ThreadEntity["status"] | undefined;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_STATUS_UPDATED";
+        threadId: string;
+        status: ThreadEntity["status"];
+        pluginId: "threads";
+    } | {
         type: "FLOWS_STARTUP";
         data: FlowsStartupData;
         pluginId: "flows";
@@ -2697,31 +2722,6 @@ declare const events: {
         nodeId: string;
         details: TNodeEntity | null;
         pluginId: "database";
-    } | {
-        type: "THREAD_STARTUP";
-        data: ThreadStartupData;
-        pluginId: "threads";
-    } | {
-        type: "SET_VIEW_DATA";
-        id: EARS.EntityId;
-        data: ThreadExtendedData;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_CREATED";
-        id: EARS.EntityId;
-        shortCode: string;
-        entityType: EARS.Entity;
-        timestamp: number;
-        topic?: string | undefined;
-        threadType?: ThreadEntity["threadType"] | undefined;
-        instructions?: string | undefined;
-        status?: ThreadEntity["status"] | undefined;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_STATUS_UPDATED";
-        threadId: string;
-        status: ThreadEntity["status"];
-        pluginId: "threads";
     } | {
         type: "LOGS_STARTUP";
         logs: LogEntry[];

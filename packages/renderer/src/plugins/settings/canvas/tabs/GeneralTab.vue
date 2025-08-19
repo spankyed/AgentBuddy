@@ -21,7 +21,8 @@
     <!-- Content Area -->
     <div class="flex-1 p-8 overflow-auto">
       <component 
-        :is="componentMap[generalNavItem]" 
+        :is="componentMap[generalNavItem]"
+        :settings="currentSettings"
         @update-setting="handleUpdateSetting" 
       />
       
@@ -41,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { User, Key, Keyboard, Settings, CheckCircle } from 'lucide-vue-next'
@@ -53,9 +55,24 @@ import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 const actor = applicationState.system.get('settings')
 
 const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
+const settings = useSelector(actor, (state: any) => state.context.settings)
 
 // Use the settings save status composable
 const { saveStatus, updateSettings } = useSettingsSaveStatus()
+
+// Compute current settings based on selected nav item
+const currentSettings = computed(() => {
+  if (!settings.value?.general) return null
+  
+  const settingsMap = {
+    personal: settings.value.general.personal,
+    apiKeys: settings.value.general.apiKeys,
+    hotkeys: settings.value.general.hotkeys,
+    misc: settings.value.general.misc
+  }
+  
+  return settingsMap[generalNavItem.value as keyof typeof settingsMap]
+})
 
 // Component mapping
 const componentMap: Record<string, any> = {

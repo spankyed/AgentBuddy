@@ -81,12 +81,18 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted, ref } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { reactive, ref } from 'vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { CodeSettings } from '@app/api'
+
+interface Props {
+  settings?: CodeSettings
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: undefined
+})
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -95,33 +101,14 @@ const emit = defineEmits<{
   }]
 }>()
 
-const settingsActor = applicationState.system.get('settings')
-const settings = useSelector(settingsActor, (state: any) => state.context.settings)
-
-// State
+// State - initialize directly from props with defaults
 const hotkeys = reactive<CodeSettings['hotkeys']>({
-  openTerminal: null,
-  navigatePrevPanel: null,
-  navigateNextPanel: null
+  openTerminal: props.settings?.hotkeys?.openTerminal || null,
+  navigatePrevPanel: props.settings?.hotkeys?.navigatePrevPanel || null,
+  navigateNextPanel: props.settings?.hotkeys?.navigateNextPanel || null
 })
-const restoreTerminals = ref(true)
 
-// Initialize from settings
-onMounted(() => {
-  if (settings.value?.plugins?.code) {
-    const codeSettings = settings.value.plugins.code
-    
-    // Load all hotkeys generically
-    if (codeSettings.hotkeys) {
-      Object.assign(hotkeys, codeSettings.hotkeys)
-    }
-    
-    // Load terminal settings
-    if (codeSettings.restoreTerminals !== undefined) {
-      restoreTerminals.value = codeSettings.restoreTerminals
-    }
-  }
-})
+const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 
 // Save functions
 const saveHotkeys = () => {

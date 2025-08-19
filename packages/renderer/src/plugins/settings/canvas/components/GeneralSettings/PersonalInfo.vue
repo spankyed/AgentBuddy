@@ -64,10 +64,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { useDebounce } from '@/core/composables/useDebounce'
 import AddressInput from './AddressInput.vue'
+
+interface Props {
+  settings?: any
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: null
+})
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -76,17 +82,14 @@ const emit = defineEmits<{
   }]
 }>()
 
-const actor = applicationState.system.get('settings')
-const settings = useSelector(actor, (state: any) => state.context.settings)
-
 const formData = ref<{
   name: string
   phoneNumber: string
   address: any // Can be string (legacy) or structured object
 }>({
-  name: '',
-  phoneNumber: '',
-  address: {
+  name: props.settings?.name || '',
+  phoneNumber: props.settings?.phoneNumber || '',
+  address: props.settings?.address || {
     street: '',
     street2: '',
     city: '',
@@ -95,23 +98,6 @@ const formData = ref<{
     country: 'US'
   },
 })
-
-// Initialize form data from settings only once on mount
-if (settings.value?.general?.personal) {
-  const personalData = settings.value.general.personal
-  formData.value = {
-    name: personalData.name || '',
-    phoneNumber: personalData.phoneNumber || '',
-    address: personalData.address || {
-      street: '',
-      street2: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'US'
-    },
-  }
-}
 
 // Use the debounce composable
 const { debounced: debouncedSave } = useDebounce(() => {

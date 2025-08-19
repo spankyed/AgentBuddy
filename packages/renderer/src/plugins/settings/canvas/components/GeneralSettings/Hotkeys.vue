@@ -117,12 +117,18 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
 import { Keyboard, X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import { useDebounceFn } from '@/core/composables/useDebounce'
 import type { KeyboardShortcut } from '@app/api'
+
+interface Props {
+  settings?: any
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: null
+})
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -130,9 +136,6 @@ const emit = defineEmits<{
     value: any
   }]
 }>()
-
-const actor = applicationState.system.get('settings')
-const settings = useSelector(actor, (state: any) => state.context.settings)
 
 // Default hotkey values
 const defaultHotkeys: Record<string, KeyboardShortcut> = {
@@ -149,22 +152,6 @@ const defaultHotkeys: Record<string, KeyboardShortcut> = {
     modifiers: ['cmd']
   }
 }
-
-// Store all built-in hotkeys in a reactive object
-const builtInHotkeys = reactive<Record<string, KeyboardShortcut | null>>({
-  switchPluginUp: { ...defaultHotkeys.switchPluginUp },
-  switchPluginDown: { ...defaultHotkeys.switchPluginDown },
-  toggleInspectionPanel: { ...defaultHotkeys.toggleInspectionPanel }
-})
-
-// Custom hotkeys state
-interface CustomHotkeyItem {
-  id: string
-  eventName: string
-  shortcut: KeyboardShortcut | null
-}
-
-const customHotkeys = ref<CustomHotkeyItem[]>([])
 
 // Helper function to convert hotkey format
 const convertToShortcut = (hotkey: any): KeyboardShortcut | null => {
@@ -184,27 +171,30 @@ const convertToBackend = (shortcut: KeyboardShortcut | null) => {
   }
 }
 
+// Store all built-in hotkeys in a reactive object
+const builtInHotkeys = reactive<Record<string, KeyboardShortcut | null>>({
+  switchPluginUp: convertToShortcut(props.settings?.switchPluginUp) || { ...defaultHotkeys.switchPluginUp },
+  switchPluginDown: convertToShortcut(props.settings?.switchPluginDown) || { ...defaultHotkeys.switchPluginDown },
+  toggleInspectionPanel: convertToShortcut(props.settings?.toggleInspectionPanel) || { ...defaultHotkeys.toggleInspectionPanel }
+})
+
+// Custom hotkeys state
+interface CustomHotkeyItem {
+  id: string
+  eventName: string
+  shortcut: KeyboardShortcut | null
+}
+
+const customHotkeys = ref<CustomHotkeyItem[]>(
+  props.settings?.custom?.map((h: any) => ({
+    id: h.id,
+    eventName: h.eventName || '',
+    shortcut: convertToShortcut(h)
+  })) || []
+)
+
 // Use the debounce composable with callback parameter
 const debouncedSave = useDebounceFn(500)
-
-// Initialize from settings only once on mount
-if (settings.value?.general?.hotkeys) {
-  const hotkeys = settings.value.general.hotkeys
-  
-  // Update built-in hotkeys, preserving defaults when settings don't exist
-  Object.keys(defaultHotkeys).forEach((key) => {
-    builtInHotkeys[key] = convertToShortcut(hotkeys[key]) || { ...defaultHotkeys[key] }
-  })
-  
-  // Initialize custom hotkeys
-  if (hotkeys.custom) {
-    customHotkeys.value = hotkeys.custom.map((h: any) => ({
-      id: h.id,
-      eventName: h.eventName || '',
-      shortcut: convertToShortcut(h)
-    }))
-  }
-}
 
 // Update hotkeys via event emission
 const updateHotkeys = () => {

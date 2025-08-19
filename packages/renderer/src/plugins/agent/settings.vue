@@ -92,14 +92,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { applicationState } from '@/main'
+import { ref, reactive } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import type { AgentSettings, AgentMode } from '@app/api'
+
+interface Props {
+  settings?: AgentSettings
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: undefined
+})
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -108,31 +114,12 @@ const emit = defineEmits<{
   }]
 }>()
 
-const settingsActor = applicationState.system.get('settings')
-const settings = useSelector(settingsActor, (state: any) => state.context.settings)
+// State - initialize directly from props with defaults
+const modes = ref<AgentMode[]>(props.settings?.modes ? [...props.settings.modes] : [])
 
-// State
-const modes = ref<AgentMode[]>([])
 const hotkeys = reactive<AgentSettings['hotkeys']>({
-  textToSpeech: null,
-  switchMode: null
-})
-
-// Initialize from settings
-onMounted(() => {
-  if (settings.value?.plugins?.agent) {
-    const agentSettings = settings.value.plugins.agent
-    
-    // Load modes
-    if (agentSettings.modes) {
-      modes.value = [...agentSettings.modes]
-    }
-    
-    // Load all hotkeys generically
-    if (agentSettings.hotkeys) {
-      Object.assign(hotkeys, agentSettings.hotkeys)
-    }
-  }
+  textToSpeech: props.settings?.hotkeys?.textToSpeech || null,
+  switchMode: props.settings?.hotkeys?.switchMode || null
 })
 
 // Save functions
