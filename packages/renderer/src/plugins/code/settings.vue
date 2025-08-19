@@ -76,17 +76,7 @@
       </div>
     </CollapsibleSection>
 
-    <!-- Save Status Indicator -->
-    <div class="mt-6 flex items-center gap-2">
-      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
-        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
-        Saving...
-      </div>
-      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
-        <CheckCircle class="w-3 h-3" />
-        Settings saved
-      </div>
-    </div>
+    <!-- Save status will be managed by parent -->
   </div>
 </template>
 
@@ -94,10 +84,16 @@
 import { reactive, onMounted, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { CodeSettings } from '@app/api'
+
+const emit = defineEmits<{
+  'update-setting': [{
+    path: string[]
+    value: any
+  }]
+}>()
 
 const settingsActor = applicationState.system.get('settings')
 const settings = useSelector(settingsActor, (state: any) => state.context.settings)
@@ -109,8 +105,6 @@ const hotkeys = reactive<CodeSettings['hotkeys']>({
   navigateNextPanel: null
 })
 const restoreTerminals = ref(true)
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
-let saveTimeout: NodeJS.Timeout | null = null
 
 // Initialize from settings
 onMounted(() => {
@@ -129,48 +123,19 @@ onMounted(() => {
   }
 })
 
-// Helper to show save status
-const setSaveStatus = (status: 'saving' | 'saved') => {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout)
-  }
-  
-  saveStatus.value = status
-  
-  if (status === 'saved') {
-    saveTimeout = setTimeout(() => {
-      saveStatus.value = 'idle'
-    }, 2000)
-  }
-}
-
 // Save functions
 const saveHotkeys = () => {
-  setSaveStatus('saving')
-  
   // Simply send all hotkeys as-is
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'code',
+  emit('update-setting', {
     path: ['hotkeys'],
     value: hotkeys
   })
-  
-  setSaveStatus('saved')
 }
 
 const saveTerminalSettings = () => {
-  setSaveStatus('saving')
-  
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'code',
+  emit('update-setting', {
     path: ['restoreTerminals'],
     value: restoreTerminals.value
   })
-  
-  setSaveStatus('saved')
 }
 </script>

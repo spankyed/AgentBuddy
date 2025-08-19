@@ -20,6 +20,7 @@
           v-model="formData.name"
           type="text"
           placeholder="Enter your name"
+          @input="debouncedSave"
           class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
@@ -40,6 +41,7 @@
           v-model="formData.phoneNumber"
           type="tel"
           placeholder="Enter your phone number"
+          @input="debouncedSave"
           class="w-full max-w-md px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
         />
         <p class="mt-1.5 text-xs text-neutral-600">
@@ -52,33 +54,28 @@
 
       <!-- Address Field -->
       <div class="group">
-        <AddressInput v-model="formData.address" />
+        <AddressInput v-model="formData.address" @update:modelValue="debouncedSave" />
       </div>
     </div>
 
-    <!-- Autosave indicator -->
-    <div class="mt-6 flex items-center gap-2">
-      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
-        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
-        Saving...
-      </div>
-      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
-        <CheckCircle class="w-3 h-3" />
-        All changes saved
-      </div>
-    </div>
+    <!-- Save status will be managed by parent -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
 
-const actor = applicationState.system.get('settings')
+const emit = defineEmits<{
+  'update-setting': [{
+    path: string[]
+    value: any
+  }]
+}>()
 
+const actor = applicationState.system.get('settings')
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const formData = ref<{
@@ -98,9 +95,7 @@ const formData = ref<{
   },
 })
 
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
-let statusTimeout: NodeJS.Timeout | null = null
 
 // Initialize form data from settings only once on mount
 if (settings.value?.general?.personal) {
@@ -119,37 +114,20 @@ if (settings.value?.general?.personal) {
   }
 }
 
-// Autosave with debouncing
-watch(formData, (newData) => {
+// Debounced save function
+const debouncedSave = () => {
   // Clear existing timeout
   if (saveTimeout) {
     clearTimeout(saveTimeout)
   }
-  if (statusTimeout) {
-    clearTimeout(statusTimeout)
-  }
-  
-  // Show saving status
-  saveStatus.value = 'saving'
   
   // Debounce the save
   saveTimeout = setTimeout(() => {
-    actor.send({ 
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'personal',
+    emit('update-setting', {
       path: [],
-      value: newData
+      value: formData.value
     })
-    
-    // Show saved status
-    saveStatus.value = 'saved'
-    
-    // Hide status after 2 seconds
-    statusTimeout = setTimeout(() => {
-      saveStatus.value = 'idle'
-    }, 2000)
   }, 500)
-}, { deep: true })
+}
 </script>
 

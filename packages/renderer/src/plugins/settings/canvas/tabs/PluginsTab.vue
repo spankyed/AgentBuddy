@@ -26,7 +26,22 @@
     <div class="flex-1 p-8 overflow-auto">
       <div v-if="selectedPlugin">
         <h2 class="text-xl font-semibold text-white mb-6">{{ selectedPlugin.label }} Settings</h2>
-        <component :is="selectedPlugin.settings" />
+        <component 
+          :is="selectedPlugin.settings" 
+          @update-setting="handleUpdateSetting"
+        />
+        
+        <!-- Save Status Indicator -->
+        <div class="mt-6 flex items-center gap-2">
+          <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
+            <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
+            Saving...
+          </div>
+          <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
+            <CheckCircle class="w-3 h-3" />
+            Settings saved
+          </div>
+        </div>
       </div>
       <div v-else class="flex flex-col items-center justify-center h-full">
         <Package class="w-16 h-16 text-neutral-700 mb-4" />
@@ -40,12 +55,16 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { Package } from 'lucide-vue-next'
+import { Package, CheckCircle } from 'lucide-vue-next'
+import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 import plugins from '@/plugins'
 
 const actor = applicationState.system.get('settings')
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
+
+// Use the settings save status composable
+const { saveStatus, updateSettings } = useSettingsSaveStatus()
 
 // Get plugins that have settings defined
 const pluginsWithSettings = computed(() => {
@@ -59,6 +78,18 @@ const selectedPlugin = computed(() => {
 
 const selectPlugin = (pluginId: string) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
+}
+
+// Handle update events from child components
+const handleUpdateSetting = (event: { path: string[], value: any }) => {
+  if (!selectedPluginId.value) return
+  
+  updateSettings({
+    entityType: 'plugin',
+    label: selectedPluginId.value,
+    path: event.path,
+    value: event.value
+  })
 }
 </script>
 

@@ -111,17 +111,7 @@
       </div>
     </div>
 
-    <!-- Autosave indicator -->
-    <div class="mt-6 flex items-center gap-2">
-      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
-        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
-        Saving...
-      </div>
-      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
-        <CheckCircle class="w-3 h-3" />
-        Shortcuts updated
-      </div>
-    </div>
+    <!-- Save status will be managed by parent -->
   </div>
 </template>
 
@@ -129,16 +119,19 @@
 import { ref, reactive } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { CheckCircle, Keyboard, X, Plus } from 'lucide-vue-next'
+import { Keyboard, X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import type { KeyboardShortcut } from '@app/api'
 
+const emit = defineEmits<{
+  'update-setting': [{
+    path: string[]
+    value: any
+  }]
+}>()
+
 const actor = applicationState.system.get('settings')
-
 const settings = useSelector(actor, (state: any) => state.context.settings)
-
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
-let statusTimeout: NodeJS.Timeout | null = null
 
 // Default hotkey values
 const defaultHotkeys: Record<string, KeyboardShortcut> = {
@@ -190,25 +183,11 @@ const convertToBackend = (shortcut: KeyboardShortcut | null) => {
   }
 }
 
-// Helper function to manage save status
-const setSaveStatus = (status: 'saving' | 'saved') => {
-  if (statusTimeout) {
-    clearTimeout(statusTimeout)
-  }
-  
-  saveStatus.value = status
-  
-  if (status === 'saved') {
-    statusTimeout = setTimeout(() => {
-      saveStatus.value = 'idle'
-    }, 2000)
-  }
-}
-
 // Debounce helper
+let saveTimeout: NodeJS.Timeout | null = null
 const debouncedSave = (callback: Function, delay: number = 500) => {
-  if (statusTimeout) clearTimeout(statusTimeout)
-  statusTimeout = setTimeout(() => callback(), delay)
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => callback(), delay)
 }
 
 // Initialize from settings only once on mount
@@ -230,10 +209,8 @@ if (settings.value?.general?.hotkeys) {
   }
 }
 
-// Update hotkeys in backend
+// Update hotkeys via event emission
 const updateHotkeys = () => {
-  setSaveStatus('saving')
-  
   // Get current custom hotkeys
   const customData = customHotkeys.value.map(h => ({
     id: h.id,
@@ -241,10 +218,7 @@ const updateHotkeys = () => {
     ...(h.shortcut ? convertToBackend(h.shortcut) : {})
   }))
   
-  actor.send({ 
-    type: 'SETTINGS.UPDATE',
-    entityType: 'general',
-    label: 'hotkeys',
+  emit('update-setting', {
     path: [],
     value: {
       switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
@@ -253,8 +227,6 @@ const updateHotkeys = () => {
       custom: customData
     }
   })
-  
-  setSaveStatus('saved')
 }
 
 // Generate unique ID for new hotkeys
@@ -282,10 +254,8 @@ const updateCustomHotkey = (index: number) => {
   saveCustomHotkeys()
 }
 
-// Save custom hotkeys to backend
+// Save custom hotkeys via event emission
 const saveCustomHotkeys = () => {
-  setSaveStatus('saving')
-  
   // Convert to backend format - save all entries, even incomplete ones
   const customData = customHotkeys.value.map(h => ({
     id: h.id,
@@ -294,10 +264,7 @@ const saveCustomHotkeys = () => {
   }))
   
   // Save all hotkeys together
-  actor.send({ 
-    type: 'SETTINGS.UPDATE',
-    entityType: 'general',
-    label: 'hotkeys',
+  emit('update-setting', {
     path: [],
     value: {
       switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
@@ -306,8 +273,6 @@ const saveCustomHotkeys = () => {
       custom: customData
     }
   })
-  
-  setSaveStatus('saved')
 }
 </script>
 

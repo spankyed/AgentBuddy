@@ -21,6 +21,7 @@
             v-model="formData.google"
             :type="showKeys.google ? 'text' : 'password'"
             placeholder="Enter your Google API key"
+            @input="debouncedSave"
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
           <button @click="toggleVisibility('google')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
@@ -47,6 +48,7 @@
             v-model="formData.anthropic"
             :type="showKeys.anthropic ? 'text' : 'password'"
             placeholder="Enter your Anthropic API key"
+            @input="debouncedSave"
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
           <button @click="toggleVisibility('anthropic')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
@@ -73,6 +75,7 @@
             v-model="formData.openai"
             :type="showKeys.openai ? 'text' : 'password'"
             placeholder="Enter your OpenAI API key"
+            @input="debouncedSave"
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           />
           <button @click="toggleVisibility('openai')" class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-all">
@@ -86,28 +89,24 @@
       </div>
     </div>
 
-    <!-- Autosave indicator -->
-    <div class="mt-6 flex items-center gap-2">
-      <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
-        <div class="w-1 h-1 bg-neutral-500 rounded-full animate-pulse"></div>
-        Saving...
-      </div>
-      <div v-else-if="saveStatus === 'saved'" class="flex items-center gap-2 text-xs text-green-600">
-        <CheckCircle class="w-3 h-3" />
-        API keys updated
-      </div>
-    </div>
+    <!-- Save status will be managed by parent -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { Eye, EyeOff, CheckCircle } from 'lucide-vue-next'
+import { Eye, EyeOff } from 'lucide-vue-next'
+
+const emit = defineEmits<{
+  'update-setting': [{
+    path: string[]
+    value: any
+  }]
+}>()
 
 const actor = applicationState.system.get('settings')
-
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const formData = ref({
@@ -122,9 +121,7 @@ const showKeys = ref({
   openai: false,
 })
 
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
-let statusTimeout: NodeJS.Timeout | null = null
 
 // Initialize form data from settings only once on mount
 if (settings.value?.general?.apiKeys) {
@@ -139,38 +136,21 @@ const toggleVisibility = (provider: 'google' | 'anthropic' | 'openai') => {
   showKeys.value[provider] = !showKeys.value[provider]
 }
 
-// Autosave with debouncing
-watch(formData, (newData) => {
+// Debounced save function
+const debouncedSave = () => {
   // Clear existing timeout
   if (saveTimeout) {
     clearTimeout(saveTimeout)
   }
-  if (statusTimeout) {
-    clearTimeout(statusTimeout)
-  }
-  
-  // Show saving status
-  saveStatus.value = 'saving'
   
   // Debounce the save
   saveTimeout = setTimeout(() => {
-    actor.send({ 
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'apikeys',
+    emit('update-setting', {
       path: [],
-      value: newData
+      value: formData.value
     })
-    
-    // Show saved status
-    saveStatus.value = 'saved'
-    
-    // Hide status after 2 seconds
-    statusTimeout = setTimeout(() => {
-      saveStatus.value = 'idle'
-    }, 2000)
   }, 500)
-}, { deep: true })
+}
 </script>
 
 
