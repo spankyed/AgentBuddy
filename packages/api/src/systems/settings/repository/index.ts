@@ -96,6 +96,28 @@ export const settingsCommands = {
   }
 };
 
+// Initialize all default settings at startup
+export const createDefaultSettings = (): void => {
+  if (getAllSettings().length) return;
+
+  const put = (type: 'general' | 'plugin' | 'internal', label: string, data: unknown) =>
+    !findSettings(type, label) &&
+    tx(EARS.Entity.Settings).batchPut({
+      entityType: EARS.Entity.Settings,
+      type, label, data
+    });
+
+  Object.values(generalConfig).forEach(label =>
+    put('general', label, defaultSettings.general[label] ?? {})
+  );
+
+  Object.entries(defaultSettings.plugins).forEach(([label, data]) =>
+    put('plugin', label, data ?? {})
+  );
+
+  put('internal', 'internal', defaultSettings.internal);
+};
+
 // Development setup
 // ! not used currently
 export const setupDevelopmentSettings = (): void => {

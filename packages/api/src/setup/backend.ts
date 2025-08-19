@@ -6,11 +6,15 @@ import { initializeLogCapture } from '@/core/utils/debug/log-capture';
 import { loadSnapshot } from '@/persistence/data';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/utils/ears/attribute-storage';
+import { createDefaultSettings } from '@/systems/settings/repository';
 
 export async function setupBackend(): Promise<void> {
   // Hydrate from LMDB using sharded approach (primary partition only by default)
   // Pass shardedPersistence to seed metadata caches
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+  
+  // Initialize default settings if they don't exist
+  createDefaultSettings();
   
   // Load data snapshot (can override LMDB data if needed)
   // await loadSnapshot();

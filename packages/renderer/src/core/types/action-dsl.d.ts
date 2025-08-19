@@ -4073,7 +4073,7 @@ declare const services: {
             getGeneralSettings: () => SettingsData["general"];
             getPluginSettings: (pluginId: string) => any;
             getInternalSettings: () => any;
-            getSettingsByLabel: (label: string) => SettingsEntity | null;
+            getSettingsByLabel: (type: "general" | "plugin" | "internal", label: string) => SettingsEntity | null;
         };
         readonly settingsCommands: {
             updateSettings(type: "general" | "plugin" | "internal", label: string, path: string[], value: any): SettingsEntity;
