@@ -118,7 +118,7 @@ export const settingsSystem = setup({
   context: {},
   entry: () => {
     // Initialize development settings if needed
-    setupDevelopmentSettings();
+    // setupDevelopmentSettings();
   },
   states: {
     idle: {

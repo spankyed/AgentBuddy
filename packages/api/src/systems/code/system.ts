@@ -268,10 +268,19 @@ export const systemMachine = setup({
 }).createMachine({
   id,
   initial: 'idle',
-  context: (() => {
-    // Get last opened directory from EARS
-    const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
-    const rootDir = lastOpenedDir?.path || null
+  context: () => {
+    // Get code settings to check for default root directory
+    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
+    
+    // Priority: defaultRootDirectory > lastOpenedDir > null
+    let rootDir: string | null = null;
+    if (codeSettings?.defaultRootDirectory) {
+      rootDir = codeSettings.defaultRootDirectory;
+    } else {
+      // Fall back to last opened directory
+      const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
+      rootDir = lastOpenedDir?.path || null;
+    }
     
     return {
       currentDirectory: rootDir,
@@ -279,7 +288,7 @@ export const systemMachine = setup({
       gitRepository: rootDir ? new GitRepository(rootDir) : null,
       gitWatcher: rootDir ? new GitWatcherService(rootDir) : null
     }
-  })(),
+  },
   entry: ['spawnFeatureActors', 'setupGitWatcher'],
   states: {
     idle: {

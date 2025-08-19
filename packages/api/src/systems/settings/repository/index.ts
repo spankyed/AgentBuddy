@@ -6,13 +6,14 @@ import { defaultSettings, getDefaultsByLabel } from '../defaults';
 
 // Core helpers
 const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-const findSettings = (label: string) => getAllSettings().find(s => s.label === label);
+const findSettings = (type: 'general' | 'plugin' | 'internal', label: string) => 
+  getAllSettings().find(s => s.type === type && s.label === label);
 
 const setValueAtPath = (obj: any, path: string[], value: any): any => 
   path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
 
 const getOrCreateSettings = (type: 'general' | 'plugin' | 'internal', label: string, customDefaults?: any): SettingsEntity => {
-  const existing = findSettings(label);
+  const existing = findSettings(type, label);
   if (existing) return existing;
   
   // Use custom defaults if provided, otherwise fetch from default settings
@@ -68,7 +69,7 @@ export const settingsQueries = {
     return getOrCreateSettings('plugin', pluginId).data;
   },
   getInternalSettings: () => getInternalSettings().data,
-  getSettingsByLabel: (label: string) => findSettings(label) || null
+  getSettingsByLabel: (type: 'general' | 'plugin' | 'internal', label: string) => findSettings(type, label) || null
 };
 
 // COMMANDS

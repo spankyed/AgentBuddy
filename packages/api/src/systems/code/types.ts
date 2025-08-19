@@ -167,6 +167,7 @@ export interface CodeSettings {
     [key: string]: KeyboardShortcut | null | undefined;
   };
   restoreTerminals?: boolean;
+  defaultRootDirectory?: string | null;
 }
 
 export type CodeStartupData = {

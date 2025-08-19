@@ -46,7 +46,8 @@ export const defaultSettings: SettingsData = {
         navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
       },
-      restoreTerminals: true
+      restoreTerminals: true,
+      defaultRootDirectory: null,
     }
   },
   internal: {

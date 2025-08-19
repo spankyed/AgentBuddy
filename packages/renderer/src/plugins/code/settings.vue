@@ -1,5 +1,23 @@
 <template>
   <div class="max-w-3xl">
+    <!-- Directory Settings Section -->
+    <CollapsibleSection label="Directory Settings" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Configure default directory preferences
+      </p>
+      <div class="space-y-4">
+        <DirectorySelector
+          v-model="defaultRootDirectory"
+          label="Default Root Directory"
+          placeholder="Use last opened directory"
+          description="If set, the code editor will always open to this directory on startup instead of the last opened directory"
+          @change="saveDirectorySettings"
+          :show-reset-button="true"
+          :truncate-start="true"
+        />
+      </div>
+    </CollapsibleSection>
+
     <!-- Terminal Settings Section -->
     <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
@@ -84,6 +102,7 @@
 import { reactive, ref } from 'vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import DirectorySelector from '@/core/components/design/DirectorySelector.vue'
 import type { CodeSettings } from '@app/api'
 
 interface Props {
@@ -109,6 +128,7 @@ const hotkeys = reactive<CodeSettings['hotkeys']>({
 })
 
 const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
+const defaultRootDirectory = ref(props.settings?.defaultRootDirectory || null)
 
 // Save functions
 const saveHotkeys = () => {
@@ -123,6 +143,13 @@ const saveTerminalSettings = () => {
   emit('update-setting', {
     path: ['restoreTerminals'],
     value: restoreTerminals.value
+  })
+}
+
+const saveDirectorySettings = () => {
+  emit('update-setting', {
+    path: ['defaultRootDirectory'],
+    value: defaultRootDirectory.value
   })
 }
 </script>

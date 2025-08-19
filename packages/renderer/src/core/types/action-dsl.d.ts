@@ -470,6 +470,7 @@ interface CodeSettings {
         [key: string]: KeyboardShortcut | null | undefined;
     };
     restoreTerminals?: boolean;
+    defaultRootDirectory?: string | null;
 }
 type CodeStartupData = {
     rootDirectory: string | null;
@@ -1355,9 +1356,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1365,9 +1366,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
