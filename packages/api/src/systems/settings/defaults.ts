@@ -1,5 +1,12 @@
 import type { SettingsData } from './types';
 
+export const getDefaultsByLabel = (type: 'general' | 'plugin' | 'internal', label: string) =>
+({
+  internal: defaultSettings.internal,
+  general: defaultSettings.general[label as keyof typeof defaultSettings.general] ?? {},
+  plugin: defaultSettings.plugins[label as keyof typeof defaultSettings.plugins] ?? {},
+}[type]);
+
 export const defaultSettings: SettingsData = {
   general: {
     personal: {},
@@ -38,7 +45,8 @@ export const defaultSettings: SettingsData = {
         openTerminal: { key: '`', modifiers: ['ctrl'] },
         navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
-      }
+      },
+      restoreTerminals: true
     }
   },
   internal: {

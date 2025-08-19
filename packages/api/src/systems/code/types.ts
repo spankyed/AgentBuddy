@@ -166,6 +166,7 @@ export interface CodeSettings {
     navigateNextPanel?: KeyboardShortcut | null;
     [key: string]: KeyboardShortcut | null | undefined;
   };
+  restoreTerminals?: boolean;
 }
 
 export type CodeStartupData = {

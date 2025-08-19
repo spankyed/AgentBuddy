@@ -1,5 +1,31 @@
 <template>
   <div class="max-w-3xl">
+    <!-- Terminal Settings Section -->
+    <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Configure terminal behavior and preferences
+      </p>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="restore-terminals" class="text-sm font-medium text-neutral-200">
+              Restore terminals on startup
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Automatically restore previously opened terminals when the application starts
+            </p>
+          </div>
+          <input
+            id="restore-terminals"
+            v-model="restoreTerminals"
+            type="checkbox"
+            @change="saveTerminalSettings"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+      </div>
+    </CollapsibleSection>
+
     <!-- Code Hotkeys Section -->
     <CollapsibleSection label="Code Hotkeys" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
@@ -82,6 +108,7 @@ const hotkeys = reactive<CodeSettings['hotkeys']>({
   navigatePrevPanel: null,
   navigateNextPanel: null
 })
+const restoreTerminals = ref(true)
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 let saveTimeout: NodeJS.Timeout | null = null
 
@@ -93,6 +120,11 @@ onMounted(() => {
     // Load all hotkeys generically
     if (codeSettings.hotkeys) {
       Object.assign(hotkeys, codeSettings.hotkeys)
+    }
+    
+    // Load terminal settings
+    if (codeSettings.restoreTerminals !== undefined) {
+      restoreTerminals.value = codeSettings.restoreTerminals
     }
   }
 })
@@ -112,7 +144,7 @@ const setSaveStatus = (status: 'saving' | 'saved') => {
   }
 }
 
-// Save function
+// Save functions
 const saveHotkeys = () => {
   setSaveStatus('saving')
   
@@ -123,6 +155,20 @@ const saveHotkeys = () => {
     label: 'code',
     path: ['hotkeys'],
     value: hotkeys
+  })
+  
+  setSaveStatus('saved')
+}
+
+const saveTerminalSettings = () => {
+  setSaveStatus('saving')
+  
+  settingsActor.send({
+    type: 'SETTINGS.UPDATE',
+    entityType: 'plugin',
+    label: 'code',
+    path: ['restoreTerminals'],
+    value: restoreTerminals.value
   })
   
   setSaveStatus('saved')

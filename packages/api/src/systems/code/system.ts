@@ -14,7 +14,6 @@ import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/repository'
-import { settingsQueries } from '@/systems/settings/repository'
 
 // child systems
 import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
@@ -59,7 +58,7 @@ import { TerminalInfo, CodeStartupData, CodeSettings } from './types'
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
-type CodeInternalEvents = SystemEvents
+type CodeInternalEvents = SystemEvents | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
@@ -188,6 +187,17 @@ export const systemMachine = setup({
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
+    updateSettings: ({ event }) => {
+      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      
+      // Forward settings to frontend
+      const wrapped = emit(id, {
+        type: 'CODE_SETTINGS_UPDATED',
+        settings: ev.settings
+      })
+      rootEvents.emitOutgoing(wrapped.event)
+    },
+    
     broadcastStartup: ({ system, context }) => {
       // Send CODE_STARTUP to all children that need it
       system.get('explorer')?.send({ type: 'CODE_STARTUP' });
@@ -195,9 +205,8 @@ export const systemMachine = setup({
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
       system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
       
-      // Get code settings
-      const allSettings = settingsQueries.getSettings();
-      const codeSettings = allSettings?.plugins?.code;
+      // Get code settings - this will create default settings if they don't exist
+      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
       
       // Send initial directory state to frontend
       const startupData: CodeStartupData = {
@@ -277,6 +286,10 @@ export const systemMachine = setup({
       on: {
         CLIENT_CONNECTED: {
           actions: 'broadcastStartup',
+        },
+        // Handle settings updates
+        CODE_SETTINGS_UPDATED: {
+          actions: 'updateSettings'
         },
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {

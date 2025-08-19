@@ -3417,6 +3417,7 @@ interface CodeSettings {
         navigateNextPanel?: KeyboardShortcut | null;
         [key: string]: KeyboardShortcut | null | undefined;
     };
+    restoreTerminals?: boolean;
 }
 type CodeStartupData = {
     rootDirectory: string | null;
