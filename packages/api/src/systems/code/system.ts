@@ -14,6 +14,7 @@ import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/repository'
+import { settingsQueries } from '@/systems/settings/repository'
 
 // child systems
 import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
@@ -50,10 +51,11 @@ export type OutgoingCodeEvents =
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
   // Broadcast events (sent to all child systems)
-  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[]; rootDirectory: string | null; currentDirectory: string | null } }
+  | { type: 'CODE_STARTUP'; data: CodeStartupData }
+  | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 // Import only the type needed for broadcast event
-import { TerminalInfo } from './types'
+import { TerminalInfo, CodeStartupData, CodeSettings } from './types'
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -193,14 +195,20 @@ export const systemMachine = setup({
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
       system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
       
+      // Get code settings
+      const allSettings = settingsQueries.getSettings();
+      const codeSettings = allSettings?.plugins?.code;
+      
       // Send initial directory state to frontend
+      const startupData: CodeStartupData = {
+        rootDirectory: context.rootDirectory,
+        currentDirectory: context.currentDirectory,
+        settings: codeSettings
+      };
+      
       const wrapped = emit(id, {
         type: 'CODE_STARTUP',
-        data: {
-          terminals: [], // Will be populated by terminal system
-          rootDirectory: context.rootDirectory,
-          currentDirectory: context.currentDirectory
-        }
+        data: startupData
       })
       rootEvents.emitOutgoing(wrapped.event)
     },

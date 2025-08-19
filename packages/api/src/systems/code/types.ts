@@ -1,4 +1,5 @@
 import { EARS } from '@/core/types'
+import type { KeyboardShortcut } from '../settings/types'
 
 export interface FileInfo {
   name: string
@@ -156,3 +157,19 @@ export interface QuickOpenResult {
   extension?: string
   score?: number
 }
+
+// Settings types
+export interface CodeSettings {
+  hotkeys: {
+    openTerminal?: KeyboardShortcut | null;
+    navigatePrevPanel?: KeyboardShortcut | null;
+    navigateNextPanel?: KeyboardShortcut | null;
+    [key: string]: KeyboardShortcut | null | undefined;
+  };
+}
+
+export type CodeStartupData = {
+  rootDirectory: string | null;
+  currentDirectory: string | null;
+  settings?: CodeSettings;
+};

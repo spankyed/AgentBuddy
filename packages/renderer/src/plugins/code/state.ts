@@ -4,7 +4,7 @@ import { trpc } from '@/core/trpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
-import type { OutgoingCodeEvents } from '@app/api';
+import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
@@ -55,6 +55,7 @@ export type Context = {
   quickOpenLoading: boolean
   recentlyOpenedFiles: string[]
   hotkeys: HotkeysMap
+  settings?: CodeSettings
 }
 
 export interface QuickOpenResult {
@@ -377,13 +378,45 @@ const codeState = setup({
     },
     
     handleCodeStartup: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_STARTUP'; data: { rootDirectory: string | null; currentDirectory: string | null } }
+      const ev = event as { type: 'CODE_STARTUP'; data: { rootDirectory: string | null; currentDirectory: string | null; settings?: CodeSettings } }
+      
+      // Extract hotkeys from settings - filter out undefined values
+      const hotkeys: HotkeysMap = {};
+      if (ev.data.settings?.hotkeys) {
+        Object.entries(ev.data.settings.hotkeys).forEach(([key, value]) => {
+          if (value) {
+            hotkeys[key] = value as KeyboardShortcut;
+          }
+        });
+      }
       
       // Update directory state from backend
       return {
         ...context,
         rootDirectory: ev.data.rootDirectory || '',
-        currentDirectory: ev.data.currentDirectory || ''
+        currentDirectory: ev.data.currentDirectory || '',
+        settings: ev.data.settings,
+        hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys // Use settings hotkeys if available, otherwise keep defaults
+      }
+    }),
+    
+    handleSettingsUpdate: assign(({ event, context }) => {
+      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      
+      // Extract hotkeys from settings - filter out undefined values
+      const hotkeys: HotkeysMap = {};
+      if (ev.settings?.hotkeys) {
+        Object.entries(ev.settings.hotkeys).forEach(([key, value]) => {
+          if (value) {
+            hotkeys[key] = value as KeyboardShortcut;
+          }
+        });
+      }
+      
+      return {
+        ...context,
+        settings: ev.settings,
+        hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
     }),
     
@@ -472,12 +505,8 @@ const codeState = setup({
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
     recentlyOpenedFiles: loadRecentFiles(),
-    // Hardcoded hotkeys for code plugin (not configurable)
-    hotkeys: {
-      openTerminal: { key: '`', modifiers: ['ctrl'] },
-      navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
-      navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
-    },
+    // Default hotkeys for code plugin (will be overridden by settings)
+    hotkeys: {},
   },
   states: {
     canvas: {
@@ -486,6 +515,10 @@ const codeState = setup({
         // Broadcast CODE_STARTUP to all features
         CODE_STARTUP: {
           actions: ['handleCodeStartup', 'broadcastToAllFeatures']
+        },
+        // Handle settings updates
+        CODE_SETTINGS_UPDATED: {
+          actions: ['handleSettingsUpdate']
         },
         // Route events to child machines
         '*': {

@@ -32,6 +32,13 @@ export const defaultSettings: SettingsData = {
         textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
         switchMode: { key: 'Tab', modifiers: ['shift'], global: true }
       }
+    },
+    code: {
+      hotkeys: {
+        openTerminal: { key: '`', modifiers: ['ctrl'] },
+        navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
+        navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
+      }
     }
   },
   internal: {

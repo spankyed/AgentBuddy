@@ -67,12 +67,8 @@ export const terminalSystem = setup({
       const terminals = terminalService.list()
       
       const wrapped = emit(pluginId, {
-        type: 'CODE_STARTUP',
-        data: { 
-          terminals,
-          rootDirectory: context.rootDirectory,
-          currentDirectory: context.rootDirectory
-        }
+        type: 'terminal.TERMINALS_LISTED',
+        data: terminals
       })
       rootEvents.emitOutgoing(wrapped.event)
     },

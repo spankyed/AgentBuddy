@@ -215,6 +215,30 @@ const agentState = setup({
         settings,
       };
     }),
+    
+    handleSettingsUpdate: assign(({ event }) => {
+      const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
+      const settings = typedEvent.settings;
+      
+      // Extract hotkeys from settings - filter out undefined values  
+      const hotkeys: HotkeysMap = {};
+      if (settings.hotkeys) {
+        Object.entries(settings.hotkeys).forEach(([key, value]) => {
+          if (value) {
+            hotkeys[key] = value;
+          }
+        });
+      }
+      
+      // Extract modes from settings or fallback to empty array
+      const modes = settings.modes || [];
+      
+      return {
+        hotkeys,
+        modes,
+        settings,
+      };
+    }),
     setRefreshThreadsData: assign(({ context, event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
       
@@ -403,6 +427,9 @@ const agentState = setup({
     },
     AGENT_STARTUP: {
       actions: 'setStartupData'
+    },
+    AGENT_SETTINGS_UPDATED: {
+      actions: 'handleSettingsUpdate'
     },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'

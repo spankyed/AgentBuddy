@@ -84,6 +84,20 @@ export const settingsSystem = setup({
           hotkeys: data.general.hotkeys
         }));
       }
+      
+      // If plugin settings were updated, forward to the plugin
+      if (ev.entityType === 'plugin' && data.plugins) {
+        const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
+        if (pluginSettings) {
+          // Send settings update event to the specific plugin
+          // Use type casting to work around the type system
+          const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
+          system.get(bus).send(emit(ev.label as any, {
+            type: eventType,
+            settings: pluginSettings
+          } as any));
+        }
+      }
     },
     
     resetSettings: ({ system, event }) => {

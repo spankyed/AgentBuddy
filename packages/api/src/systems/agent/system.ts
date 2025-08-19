@@ -7,7 +7,7 @@ import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
-import { RecentThreadRefreshData, AgentThreadData, AgentStartupData } from './types';
+import { RecentThreadRefreshData, AgentThreadData, AgentStartupData, AgentSettings } from './types';
 import type { EARS } from '@/core/types';
 import { initializeMockData } from './repository/mock-artifacts';
 
@@ -35,6 +35,7 @@ export type OutgoingAgentEvents =
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
+  | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
 
 export interface AgentContext {}
 
