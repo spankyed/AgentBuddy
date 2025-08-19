@@ -19,7 +19,8 @@
     </CollapsibleSection>
 
     <!-- Terminal Settings Section -->
-    <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
         Configure terminal behavior and preferences
       </p>
@@ -43,9 +44,11 @@
         </div>
       </div>
     </CollapsibleSection>
+    </div>
 
     <!-- Code Hotkeys Section -->
-    <CollapsibleSection label="Code Hotkeys" :default-open="true" class="mb-8">
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Code Hotkeys" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
         Keyboard shortcuts available when the code plugin is active
       </p>
@@ -91,6 +94,7 @@
         </div>
       </div>
     </CollapsibleSection>
+    </div>
 
     <!-- Save status will be managed by parent -->
   </div>
