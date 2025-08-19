@@ -72,6 +72,7 @@ export interface UnifiedMonacoEditorProps {
   
   // Features
   actions?: EditorAction[]
+  executeKeybinding?: { key: string; modifiers: string[] }
   
   // Multi-file mode
   preserveViewState?: boolean
@@ -230,8 +231,12 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   
   // Add editor actions if requested
   if (props.actions && props.actions.length > 0) {
+    console.log('props.executeKeybinding: ', props.executeKeybinding);
+
     const actions = createEditorActions(monaco, props.actions, {
       onExecute: () => emit('execute')
+    }, {
+      executeKeybinding: props.executeKeybinding
     })
     actions.forEach(action => editor.addAction(action))
   }

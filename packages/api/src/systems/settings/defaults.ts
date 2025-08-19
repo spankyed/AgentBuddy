@@ -48,6 +48,11 @@ export const defaultSettings: SettingsData = {
       },
       restoreTerminals: true,
       defaultRootDirectory: null,
+    },
+    database: {
+      hotkeys: {
+        executeQuery: { key: 'Enter', modifiers: ['cmd'] }
+      }
     }
   },
   internal: {

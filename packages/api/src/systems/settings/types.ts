@@ -65,6 +65,13 @@ export interface MiscSettings {
   // Empty for now, to be extended later
 }
 
+// Database plugin settings
+export interface DatabaseSettings {
+  hotkeys: {
+    executeQuery?: KeyboardShortcut;
+  };
+}
+
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
