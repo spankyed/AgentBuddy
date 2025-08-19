@@ -8,6 +8,7 @@ import {
 } from '@/core/actors/route-trailer'
 import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, ApplicationHotkeys, PluginSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
+import plugins from '@/plugins'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -109,12 +110,19 @@ const settingsState = setup({
 }).createMachine({
   id,
   initial: 'loading',
-  context: {
-    settings: null,
-    activeTab: 'general',
-    generalNavItem: 'personal',
-    selectedPluginId: null,
-    isLoading: true,
+  context: () => {
+    // Get plugins with settings
+    const pluginsWithSettings = plugins.filter(plugin => plugin.settings)
+    // Set first plugin as default if available
+    const defaultPluginId = pluginsWithSettings.length > 0 ? pluginsWithSettings[0].id : null
+    
+    return {
+      settings: null,
+      activeTab: 'general',
+      generalNavItem: 'personal',
+      selectedPluginId: defaultPluginId,
+      isLoading: true,
+    }
   },
   states: {
     loading: {
