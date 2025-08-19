@@ -116,16 +116,6 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
-interface DirectoryEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Directory;
-    path: string;
-    label?: string;
-    lastAccessedAt: number;
-    createdAt: number;
-    role?: 'lastOpened' | 'recent';
-}
-
 interface SafeLinkOptions {
     /** Additional info to store with the relation */
     info?: unknown;
@@ -248,6 +238,21 @@ interface PromptsStartupData {
     totalCount: number;
 }
 
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
 declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
 type LogLevel = z.infer<typeof LogLevel>;
 declare const LogEntry: z.ZodObject<{
@@ -276,21 +281,6 @@ declare const LogEntry: z.ZodObject<{
     stack?: string | undefined;
 }>;
 type LogEntry = z.infer<typeof LogEntry>;
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
 
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
@@ -395,6 +385,97 @@ interface ArtifactItem {
         [key: string]: any;
     };
 }
+
+interface FileInfo {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+    modifiedAt?: Date;
+    extension?: string;
+}
+interface DirectoryContent {
+    path: string;
+    files: FileInfo[];
+}
+interface FileContent {
+    path: string;
+    content: string;
+    encoding: string;
+}
+interface CodeSystemError {
+    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
+    message: string;
+    path?: string;
+}
+interface SearchMatch {
+    line: number;
+    column: number;
+    lineText: string;
+    matchStart: number;
+    matchEnd: number;
+}
+interface SearchResult {
+    path: string;
+    matches: SearchMatch[];
+    fileSize?: number;
+}
+interface SearchProgress {
+    filesSearched: number;
+    totalFiles: number;
+    currentFile?: string;
+}
+interface GitStatusFile {
+    path: string;
+    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
+    staged: boolean;
+    originalPath?: string;
+    score?: number;
+}
+interface GitDiff {
+    path: string;
+    diff: string;
+    staged: boolean;
+    originalContent?: string;
+    modifiedContent?: string;
+}
+interface FileChangeInfo {
+    path: string;
+    modifiedAt: Date;
+    changeType: 'add' | 'change' | 'unlink';
+}
+interface TerminalInfo {
+    id: EARS.EntityId;
+    title: string;
+    pid: number;
+    shell?: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+}
+interface QuickOpenResult {
+    path: string;
+    relativePath: string;
+    name: string;
+    type: 'file' | 'directory';
+    extension?: string;
+    score?: number;
+}
+interface CodeSettings {
+    hotkeys: {
+        openTerminal?: KeyboardShortcut | null;
+        navigatePrevPanel?: KeyboardShortcut | null;
+        navigateNextPanel?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
+    };
+    restoreTerminals?: boolean;
+}
+type CodeStartupData = {
+    rootDirectory: string | null;
+    currentDirectory: string | null;
+    settings?: CodeSettings;
+};
 
 type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
 
@@ -2456,32 +2537,6 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
-    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -2515,6 +2570,32 @@ declare const events: {
         enabled: boolean;
         pluginId: "brain";
     } | {
+        type: "AGENT_STARTUP";
+        data: AgentStartupData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
+    } | {
         type: "THREAD_STARTUP";
         data: ThreadStartupData;
         pluginId: "threads";
@@ -2539,6 +2620,70 @@ declare const events: {
         threadId: string;
         status: ThreadEntity["status"];
         pluginId: "threads";
+    } | {
+        type: "LOGS_STARTUP";
+        logs: LogEntry[];
+        pluginId: "logs";
+    } | {
+        type: "LOGS_UPDATE";
+        logs: LogEntry[];
+        pluginId: "logs";
+    } | {
+        type: "LOG_ADDED";
+        log: LogEntry;
+        pluginId: "logs";
+    } | {
+        type: "LOGS_CLEARED";
+        pluginId: "logs";
+    } | {
+        type: "DATABASE_REFRESH";
+        data: DatabaseStartupData;
+        pluginId: "database";
+    } | {
+        type: "QUERY_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "QUERY_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "SNAPSHOT_CREATED";
+        filename: string;
+        pluginId: "database";
+    } | {
+        type: "SNAPSHOT_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "MAGIC_PROMPT_GENERATED";
+        query: string;
+        pluginId: "database";
+    } | {
+        type: "TRACE_FLOWS_RESULT";
+        flows: TNodeEntity[];
+        pluginId: "database";
+    } | {
+        type: "FLOW_EVENTS_RESULT";
+        flowId: string;
+        events: TNodeEntity[];
+        hasMore: boolean;
+        pluginId: "database";
+    } | {
+        type: "NODE_DETAILS_RESULT";
+        nodeId: string;
+        details: TNodeEntity | null;
+        pluginId: "database";
     } | {
         type: "FLOWS_STARTUP";
         data: FlowsStartupData;
@@ -2592,70 +2737,6 @@ declare const events: {
         newSource: EARS.EntityId;
         newTarget: EARS.EntityId;
         pluginId: "flows";
-    } | {
-        type: "DATABASE_REFRESH";
-        data: DatabaseStartupData;
-        pluginId: "database";
-    } | {
-        type: "QUERY_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "QUERY_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_CREATED";
-        filename: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "MAGIC_PROMPT_GENERATED";
-        query: string;
-        pluginId: "database";
-    } | {
-        type: "TRACE_FLOWS_RESULT";
-        flows: TNodeEntity[];
-        pluginId: "database";
-    } | {
-        type: "FLOW_EVENTS_RESULT";
-        flowId: string;
-        events: TNodeEntity[];
-        hasMore: boolean;
-        pluginId: "database";
-    } | {
-        type: "NODE_DETAILS_RESULT";
-        nodeId: string;
-        details: TNodeEntity | null;
-        pluginId: "database";
-    } | {
-        type: "LOGS_STARTUP";
-        logs: LogEntry[];
-        pluginId: "logs";
-    } | {
-        type: "LOGS_UPDATE";
-        logs: LogEntry[];
-        pluginId: "logs";
-    } | {
-        type: "LOG_ADDED";
-        log: LogEntry;
-        pluginId: "logs";
-    } | {
-        type: "LOGS_CLEARED";
-        pluginId: "logs";
     } | {
         type: "PROMPTS_STARTUP";
         data: PromptsStartupData;
@@ -3334,96 +3415,78 @@ interface InternalSettings {
     version: string;
 }
 
-interface FileInfo {
-    name: string;
-    path: string;
-    type: 'file' | 'directory';
-    size?: number;
-    modifiedAt?: Date;
-    extension?: string;
+/**
+ * Settings Service
+ *
+ * Provides convenient access to application settings with type-safe methods
+ * for common operations on general, plugin, and internal settings.
+ */
+
+declare class SettingsService {
+    /**
+     * Get all settings including general, plugins, and internal
+     */
+    getAll(): SettingsData;
+    /**
+     * Get settings for a specific plugin
+     * @param pluginId - The plugin identifier
+     */
+    getPluginSettings<T = any>(pluginId: string): T;
+    /**
+     * Get all general settings
+     */
+    getGeneralSettings(): SettingsData['general'];
+    /**
+     * Get internal system settings
+     */
+    getInternalSettings(): SettingsData['internal'];
+    /**
+     * Update a plugin setting
+     * @param pluginId - The plugin identifier
+     * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
+     * @param value - The new value
+     */
+    updatePluginSetting(pluginId: string, path: string[], value: any): void;
+    /**
+     * Update a general setting
+     * @param category - The general settings category (e.g., 'hotkeys', 'apiKeys')
+     * @param path - Path to the setting property
+     * @param value - The new value
+     */
+    updateGeneralSetting(category: string, path: string[], value: any): void;
+    /**
+     * Update an internal setting
+     * @param path - Path to the setting property
+     * @param value - The new value
+     */
+    updateInternalSetting(path: string[], value: any): void;
+    /**
+     * Reset all settings to their defaults
+     */
+    resetToDefaults(): void;
+    /**
+     * Check if a specific plugin has settings
+     * @param pluginId - The plugin identifier
+     */
+    hasPluginSettings(pluginId: string): boolean;
+    /**
+     * Get a specific setting value by path
+     * @param type - The setting type ('general', 'plugin', 'internal')
+     * @param label - The setting label/category
+     * @param path - Path to the specific value
+     */
+    getSettingValue(type: 'general' | 'plugin' | 'internal', label: string, path: string[]): any;
 }
-interface DirectoryContent {
-    path: string;
-    files: FileInfo[];
-}
-interface FileContent {
-    path: string;
-    content: string;
-    encoding: string;
-}
-interface CodeSystemError {
-    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
-    message: string;
-    path?: string;
-}
-interface SearchMatch {
-    line: number;
-    column: number;
-    lineText: string;
-    matchStart: number;
-    matchEnd: number;
-}
-interface SearchResult {
-    path: string;
-    matches: SearchMatch[];
-    fileSize?: number;
-}
-interface SearchProgress {
-    filesSearched: number;
-    totalFiles: number;
-    currentFile?: string;
-}
-interface GitStatusFile {
-    path: string;
-    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
-    staged: boolean;
-    originalPath?: string;
-    score?: number;
-}
-interface GitDiff {
-    path: string;
-    diff: string;
-    staged: boolean;
-    originalContent?: string;
-    modifiedContent?: string;
-}
-interface FileChangeInfo {
-    path: string;
-    modifiedAt: Date;
-    changeType: 'add' | 'change' | 'unlink';
-}
-interface TerminalInfo {
+
+interface DirectoryEntity {
     id: EARS.EntityId;
-    title: string;
-    pid: number;
-    shell?: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-}
-interface QuickOpenResult {
+    entityType: EARS.Entity.Directory;
     path: string;
-    relativePath: string;
-    name: string;
-    type: 'file' | 'directory';
-    extension?: string;
-    score?: number;
+    label?: string;
+    lastAccessedAt: number;
+    createdAt: number;
+    role?: 'lastOpened' | 'recent';
 }
-interface CodeSettings {
-    hotkeys: {
-        openTerminal?: KeyboardShortcut | null;
-        navigatePrevPanel?: KeyboardShortcut | null;
-        navigateNextPanel?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    restoreTerminals?: boolean;
-}
-type CodeStartupData = {
-    rootDirectory: string | null;
-    currentDirectory: string | null;
-    settings?: CodeSettings;
-};
 
 interface TerminalEntity {
     id: EARS.EntityId;
@@ -4066,6 +4129,7 @@ declare const services: {
             readonly createTag: (name: string) => RepositoryResult<EARS.EntityId>;
         };
     };
+    settings: SettingsService;
 };
 
 /**
