@@ -8,6 +8,7 @@
           : 'border-neutral-700/50 hover:border-neutral-600',
         inputClass
       ]"
+      :title="tooltipValue"
       @click="startRecording"
       tabindex="0"
       @focus="startRecording"
@@ -126,6 +127,55 @@ const displayValue = computed(() => {
   
   return parts.length > 0 ? parts.join(' ') : props.emptyText
 })
+
+// Format shortcut for tooltip (plain text)
+const tooltipValue = computed(() => {
+  if (isEmpty.value) return ''
+  
+  const shortcut = props.modelValue!
+  const parts = []
+  
+  // Add modifiers in consistent order with plain text names
+  if (shortcut.modifiers.includes('cmd')) parts.push('Command')
+  if (shortcut.modifiers.includes('ctrl')) parts.push('Control')
+  if (shortcut.modifiers.includes('option') || shortcut.modifiers.includes('alt')) parts.push('Option/Alt')
+  if (shortcut.modifiers.includes('shift')) parts.push('Shift')
+  
+  // Format the key in plain text
+  const keyDisplay = formatKeyPlainText(shortcut.key)
+  if (keyDisplay) parts.push(keyDisplay)
+  
+  return parts.length > 0 ? parts.join(' + ') : ''
+})
+
+// Format key for plain text tooltip
+const formatKeyPlainText = (key: string): string => {
+  const keyMap: Record<string, string> = {
+    'ArrowLeft': 'Left Arrow',
+    'ArrowRight': 'Right Arrow',
+    'ArrowUp': 'Up Arrow',
+    'ArrowDown': 'Down Arrow',
+    'Enter': 'Enter',
+    'Tab': 'Tab',
+    ' ': 'Space',
+    'Escape': 'Escape',
+    'Backspace': 'Backspace',
+    'Delete': 'Delete',
+    'PageUp': 'Page Up',
+    'PageDown': 'Page Down',
+    'Home': 'Home',
+    'End': 'End',
+  }
+  
+  // Handle combined arrow keys
+  if (key.includes('+')) {
+    const keys = key.split('+')
+    const formattedKeys = keys.map(k => keyMap[k] || k.toUpperCase())
+    return formattedKeys.join(' + ')
+  }
+  
+  return keyMap[key] || key.toUpperCase()
+}
 
 // Format key for display
 const formatKey = (key: string): string => {
