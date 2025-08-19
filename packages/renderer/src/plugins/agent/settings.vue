@@ -98,6 +98,7 @@ import { applicationState } from '@/main'
 import { Plus, X } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import { useDebounce } from '@/core/composables/useDebounce'
 import type { AgentSettings, AgentMode } from '@app/api'
 
 const emit = defineEmits<{
@@ -116,7 +117,6 @@ const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: null,
   switchMode: null
 })
-let saveTimeout: NodeJS.Timeout | null = null
 
 // Initialize from settings
 onMounted(() => {
@@ -151,15 +151,10 @@ const saveHotkeys = () => {
   })
 }
 
-// Debounced save for text inputs
-const debouncedSave = () => {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout)
-  }
-  saveTimeout = setTimeout(() => {
-    saveModes()
-  }, 500)
-}
+// Use the debounce composable for saving modes
+const { debounced: debouncedSave } = useDebounce(() => {
+  saveModes()
+}, 500)
 
 // Mode management
 const addMode = () => {

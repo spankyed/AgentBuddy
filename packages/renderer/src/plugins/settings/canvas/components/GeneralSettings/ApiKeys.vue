@@ -98,6 +98,7 @@ import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import { useDebounce } from '@/core/composables/useDebounce'
 
 const emit = defineEmits<{
   'update-setting': [{
@@ -121,8 +122,6 @@ const showKeys = ref({
   openai: false,
 })
 
-let saveTimeout: NodeJS.Timeout | null = null
-
 // Initialize form data from settings only once on mount
 if (settings.value?.general?.apiKeys) {
   formData.value = {
@@ -136,21 +135,13 @@ const toggleVisibility = (provider: 'google' | 'anthropic' | 'openai') => {
   showKeys.value[provider] = !showKeys.value[provider]
 }
 
-// Debounced save function
-const debouncedSave = () => {
-  // Clear existing timeout
-  if (saveTimeout) {
-    clearTimeout(saveTimeout)
-  }
-  
-  // Debounce the save
-  saveTimeout = setTimeout(() => {
-    emit('update-setting', {
-      path: [],
-      value: formData.value
-    })
-  }, 500)
-}
+// Use the debounce composable
+const { debounced: debouncedSave } = useDebounce(() => {
+  emit('update-setting', {
+    path: [],
+    value: formData.value
+  })
+}, 500)
 </script>
 
 

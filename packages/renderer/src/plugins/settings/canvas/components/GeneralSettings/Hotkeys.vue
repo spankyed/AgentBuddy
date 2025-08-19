@@ -121,6 +121,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { Keyboard, X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import { useDebounceFn } from '@/core/composables/useDebounce'
 import type { KeyboardShortcut } from '@app/api'
 
 const emit = defineEmits<{
@@ -183,12 +184,8 @@ const convertToBackend = (shortcut: KeyboardShortcut | null) => {
   }
 }
 
-// Debounce helper
-let saveTimeout: NodeJS.Timeout | null = null
-const debouncedSave = (callback: Function, delay: number = 500) => {
-  if (saveTimeout) clearTimeout(saveTimeout)
-  saveTimeout = setTimeout(() => callback(), delay)
-}
+// Use the debounce composable with callback parameter
+const debouncedSave = useDebounceFn(500)
 
 // Initialize from settings only once on mount
 if (settings.value?.general?.hotkeys) {

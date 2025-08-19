@@ -66,6 +66,7 @@
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import { useDebounce } from '@/core/composables/useDebounce'
 import AddressInput from './AddressInput.vue'
 
 const emit = defineEmits<{
@@ -95,8 +96,6 @@ const formData = ref<{
   },
 })
 
-let saveTimeout: NodeJS.Timeout | null = null
-
 // Initialize form data from settings only once on mount
 if (settings.value?.general?.personal) {
   const personalData = settings.value.general.personal
@@ -114,20 +113,12 @@ if (settings.value?.general?.personal) {
   }
 }
 
-// Debounced save function
-const debouncedSave = () => {
-  // Clear existing timeout
-  if (saveTimeout) {
-    clearTimeout(saveTimeout)
-  }
-  
-  // Debounce the save
-  saveTimeout = setTimeout(() => {
-    emit('update-setting', {
-      path: [],
-      value: formData.value
-    })
-  }, 500)
-}
+// Use the debounce composable
+const { debounced: debouncedSave } = useDebounce(() => {
+  emit('update-setting', {
+    path: [],
+    value: formData.value
+  })
+}, 500)
 </script>
 
