@@ -458,5 +458,10 @@ export const libraryCommands = {
         order += 1000
       }
     })
+  },
+
+  updateDocumentTags(documentId: EARS.EntityId, tags: string[]): void {
+    tx(documentId).update('tags', tags)
+    // tx(documentId).update('updatedAt', Date.now())
   }
 } as const

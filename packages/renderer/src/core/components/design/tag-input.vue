@@ -2,13 +2,17 @@
 import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
-import type { ThreadTagOption } from '@app/api';
 
 const isOpen = ref(false)
 
+interface TagOption {
+  name: string;
+  color?: string;
+}
+
 const props = defineProps<{
   modelValue: string[];  // Tag names
-  availableTags: ThreadTagOption[];
+  availableTags: TagOption[];
 }>()
 const emit = defineEmits<(e: 'update:modelValue', value: string[]) => void>()
 
@@ -31,7 +35,6 @@ const values = computed({
 })
 
 watch(values, () => {
-  console.log('values', values.value)
   query.value = ''
 }, { deep: true })
 
@@ -54,7 +57,6 @@ const filteredOptions = computed(() =>
   >
     <ComboboxAnchor class="w-full">
       <ComboboxTrigger as-child>
-        <!-- <div class="shadow-[0_2px_10px] shadow-black/10"></div> -->
         <div class="inline-flex items-center justify-between rounded-md data-[open=true]:rounded-b-none px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 data-[placeholder]:text-neutral-600 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isOpen">
           <TagsInputRoot
             delimiter=""
@@ -77,7 +79,7 @@ const filteredOptions = computed(() =>
               <TagsInputItemDelete
                 @click.stop="values = values.filter((v) => v.name !== item.name)"
               >
-                <X :size="14" class="hover:text-purple-300" />
+                <X :size="14" class="hover:opacity-70" />
               </TagsInputItemDelete>
             </TagsInputItem>
 
@@ -123,7 +125,7 @@ const filteredOptions = computed(() =>
             >
               <div class="w-1.5 h-1.5 rounded-full bg-purple-400" />
             </ComboboxItemIndicator>
-            <span>
+            <span class="ml-5">
               {{ option.name }}
             </span>
           </ComboboxItem>

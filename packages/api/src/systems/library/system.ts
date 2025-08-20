@@ -9,6 +9,7 @@ import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes'
 
 export const library = 'library' as const
 
@@ -181,7 +182,7 @@ const IncomingLibraryEvents = [
 ] as const
 
 export type OutgoingLibraryEvents =
-  | { type: 'LIBRARY_STARTUP'; data: { documents: DocumentDTO[]; collections: CollectionDTO[] } }
+  | { type: 'LIBRARY_STARTUP'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
   | { type: 'DOCUMENTS_LOADED'; data: { documents: DocumentDTO[] } }
   | { type: 'DOCUMENT_CREATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_UPDATED'; data: { document: DocumentDTO } }
@@ -210,8 +211,11 @@ export type OutgoingLibraryEvents =
 // Removed OutgoingSystemEvents helper - using direct event structure instead
 
 export const LibrarySystemEvents = fromSystem(IncomingLibraryEvents)<OutgoingLibraryEvents, typeof library>()
-type LibraryInternalEvents = { type: 'CLIENT_CONNECTED' }
+type LibraryInternalEvents = 
+  | { type: 'CLIENT_CONNECTED' }
+  | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
+const typeOf = safeEvents<ReceivableEvents>()
 
 export const librarySystem = setup({
   types: {
@@ -379,12 +383,18 @@ export const librarySystem = setup({
       
       const documents = repository.libraryQueries.getDocuments()
       const collections = repository.libraryQueries.getCollections()
+      const librarySettings = repository.settingsQueries.getPluginSettings('library')
+      
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
           type: 'LIBRARY_STARTUP' as const,
           pluginId: 'library',
-          data: { documents, collections },
+          data: { 
+            documents, 
+            collections,
+            settings: librarySettings || null
+          },
         },
       })
     },
@@ -552,6 +562,41 @@ export const librarySystem = setup({
         },
       })
     },
+    handleSettingsUpdate: ({ system, event }) => {
+      const { changes } = typeOf('LIBRARY_SETTINGS_UPDATED', event)
+      // Handle nested changes format from detectAllArrayChanges
+      const tagChanges = changes?.tags || changes
+      
+      if (!tagChanges) return
+      
+      const renames = toMap(tagChanges.renames)
+      // Tags use 'name' property as identifier
+      const removed = toIdentifierSet(tagChanges.removed, (item: any) => item.name)
+      
+      if (!renames.size && !removed.size) return
+      
+      const busSvc = system.get(bus)
+      
+      // Update all documents that have renamed or removed tags
+      for (const doc of repository.libraryQueries.getAllDocuments()) {
+        const { next: nextTags, changed } = mapArray(doc.tags, renames, removed)
+        
+        if (changed) {
+          repository.libraryCommands.updateDocumentTags(doc.id, nextTags)
+          const updated = repository.libraryQueries.getDocument(doc.id)
+          if (updated) {
+            busSvc.send({
+              type: 'OUTGOING' as const,
+              event: {
+                type: 'DOCUMENT_UPDATED' as const,
+                pluginId: 'library',
+                data: { document: updated },
+              },
+            })
+          }
+        }
+      }
+    },
   },
 }).createMachine({
   id: library,
@@ -566,6 +611,9 @@ export const librarySystem = setup({
   on: {
     CLIENT_CONNECTED: {
       actions: ['sendInitialData'],
+    },
+    LIBRARY_SETTINGS_UPDATED: {
+      actions: ['handleSettingsUpdate'],
     },
   },
   states: {

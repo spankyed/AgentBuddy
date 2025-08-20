@@ -176,7 +176,7 @@ import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import MessageList from './message-list.vue'
-import TagInput from './tag-input.vue'
+import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
 import type { ThreadEditFields } from '@app/api';
 

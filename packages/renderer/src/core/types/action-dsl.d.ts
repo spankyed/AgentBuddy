@@ -1336,9 +1336,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1346,9 +1346,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -2793,6 +2793,7 @@ declare const events: {
         data: {
             documents: DocumentDTO[];
             collections: CollectionDTO[];
+            settings: any;
         };
         pluginId: "library";
     } | {
@@ -4022,6 +4023,7 @@ declare const services: {
             readonly getParentFolderId: (folderId: EARS.EntityId) => EARS.EntityId | null;
             readonly getCollectionByName: (name: string) => CollectionDTO | null;
             readonly getDocumentsInCollection: (collectionId: EARS.EntityId) => DocumentDTO[];
+            readonly getAllDocuments: () => DocumentDTO[];
         };
         readonly libraryCommands: {
             readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId) => DocumentDTO;
@@ -4037,6 +4039,7 @@ declare const services: {
             readonly reorderItems: (itemIds: EARS.EntityId[], targetIndex: number, targetFolderId: EARS.EntityId | null) => void;
             readonly migrateDocumentShortCodes: () => void;
             readonly migrateDisplayOrders: () => void;
+            readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
         };
         readonly promptQueries: {
             byId: (id: EARS.EntityId) => PromptEntity | undefined;

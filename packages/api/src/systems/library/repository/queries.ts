@@ -310,5 +310,37 @@ export const libraryQueries = {
     const documents = documentIds.map((id) => this.getDocument(id))
     
     return documents.filter((doc): doc is DocumentDTO => doc !== null)
+  },
+
+  getAllDocuments(): DocumentDTO[] {
+    const documents = qx(EARS.Entity.Document)
+      .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
+
+    const documentsWithDetails = documents.map((doc) => {
+      // Tags are now stored as string array on documents
+      const tags = doc.tags || []
+
+      // Find collection that contains this document
+      const collectionLinks = qx(doc.id as EARS.EntityId)
+        .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
+      const collection = collectionLinks.length > 0 ? qx(collectionLinks[0].id).pickAll()[0] : null
+
+      const collectionPath = collection ? getCollectionPath(collection.id as EARS.EntityId) : []
+
+      return {
+        id: doc.id,
+        name: doc.name as string,
+        content: doc.content as ContentSection[],
+        shortCode: doc.shortCode as DocumentShortCode,
+        tags: tags as string[],
+        collectionId: collection?.id,
+        collectionPath,
+        displayOrder: doc.displayOrder as number || 0,
+        createdAt: doc.createdAt as string,
+        updatedAt: doc.updatedAt as string,
+      }
+    })
+
+    return documentsWithDetails
   }
 } as const

@@ -127,7 +127,7 @@ import Label from '@/core/components/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';
-import TagInput from './tag-input.vue';
+import TagInput from '@/core/components/design/tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
