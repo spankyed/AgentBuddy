@@ -62,6 +62,14 @@ export const defaultSettings: SettingsData = {
         { label: 'In Review', color: '#A855F7' },
         { label: 'Done', color: '#10B981' }
       ],
+      tags: [
+        { name: 'High Priority', color: '#F59E0B' },
+        { name: 'Low Priority', color: '#6B7280' },
+        { name: 'Bug', color: '#EF4444' },
+        { name: 'Feature', color: '#10B981' },
+        { name: 'Enhancement', color: '#3B82F6' },
+        { name: 'Documentation', color: '#6366F1' },
+      ],
       showOnlyRootThreads: false
     },
     prompts: {

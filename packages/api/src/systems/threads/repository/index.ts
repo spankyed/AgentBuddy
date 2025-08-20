@@ -16,14 +16,16 @@ import {
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
 import type {
-  ThreadEntity, MessageEntity, TagEntity,
+  ThreadEntity, MessageEntity,
   ThreadCreateData, 
   ThreadExtendedData, 
   ThreadTypeCodes, 
   ThreadTypeShortCode,
   ThreadStartupData,
-  ThreadTagItem
+  ThreadTagOption
 } from '../types';
+import type { ThreadsSettings } from '@/systems/settings/types';
+import { settingsQueries } from '@/systems/settings/repository';
 
 /**
  * Threads Repository
@@ -52,12 +54,6 @@ export const threadQueries = {
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
       .pick(["text", "sender", "timestamp"] as const) as Partial<MessageEntity>[],
   
-  // Get thread tags
-  tags: (threadId: EARS.EntityId) =>
-    qx(threadId)
-      .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-      .pick(["name", "color"] as const) as ThreadTagItem[],
-  
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
     qx(threadId)
@@ -75,9 +71,9 @@ export const threadQueries = {
     const want = (k: keyof ThreadExtendedData) =>
       !include ? true : Array.isArray(include) ? include.includes(k) : include === k;
 
+    const thread = threadQueries.byId(threadId);
     return {
       messages: want("messages") ? threadQueries.messages(threadId) : [],
-      tags: want("tags") ? threadQueries.tags(threadId) : [],
       linkedThreads: want("linkedThreads") ? threadQueries.linkedThreads(threadId) : [],
     };
   },
@@ -90,9 +86,13 @@ export const threadQueries = {
       ...threadQueries.extendedData(thread.id),
     }));
     
+    // Get tags from settings
+    const threadsSettings = settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
+    const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
+    
     return {
       threads: extendedThreads,
-      availableTags: findAll<TagEntity>(EARS.Entity.Tag),
+      availableTags,
     };
   },
 } as const;
@@ -125,13 +125,11 @@ export const threadCommands = {
         updatedAt: ts,
         topic: input.topic,
         instructions: input.instructions,
-        threadType: input.threadType
+        threadType: input.threadType,
+        tags: input.tags || []  // Store tags as array of names
       });
 
-      // Create relationships
-      for (const tag of input.tags ?? []) {
-        tx(id).link(EARS.RelKind.HAS, tag.id);
-      }
+      // Create relationships for linked threads only
       for (const rel of input.linkedThreads ?? []) {
         tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
       }
@@ -146,7 +144,7 @@ export const threadCommands = {
     topic?: string;
     instructions?: string;
     status?: string; // Dynamic status from settings
-    tags?: ThreadTagItem[];
+    tags?: string[];  // Tag names from settings
     linkedThreads?: any[];
   }): OperationResult => {
     try {
@@ -154,19 +152,11 @@ export const threadCommands = {
         throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
       }
       
-      const { tags, linkedThreads, ...fieldUpdates } = updates;
+      const { linkedThreads, ...fieldUpdates } = updates;
       
-      // Update fields
+      // Update fields (including tags as a direct field)
       if (Object.keys(fieldUpdates).length > 0) {
         updateEntity(id, fieldUpdates);
-      }
-      
-      // Update tags
-      if (tags !== undefined) {
-        tx(id).unlinkIf(EARS.RelKind.HAS);
-        for (const tag of tags) {
-          tx(id).link(EARS.RelKind.HAS, tag.id);
-        }
       }
       
       // Update linked threads
@@ -184,27 +174,6 @@ export const threadCommands = {
       }
       
       return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
-  },
-  
-  createTag: (name: string): RepositoryResult<EARS.EntityId> => {
-    try {
-      if (!name?.trim()) {
-        throw new RepositoryError('Tag name is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      
-      const id = tx(EARS.Entity.Tag).id();
-      
-      const now = Date.now();
-      tx(id).updateBatch({
-        name: name,
-        createdAt: now,
-        updatedAt: now
-      });
-      
-      return successResult(id);
     } catch (error) {
       return errorResult(error);
     }

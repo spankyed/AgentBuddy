@@ -93,7 +93,7 @@
             <div>
               <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
               <TagInput 
-                v-model="tagNames"
+                :modelValue="tags || []"
                 :available-tags="availableTags"
                 @update:modelValue="updateTags"
                 class="w-full"
@@ -125,7 +125,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Label from '@/core/components/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
-import type { ThreadTagItem, ThreadEditFields } from '@app/api'
+import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';
 import TagInput from './tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
@@ -145,14 +145,8 @@ const isSaving = ref(false)
 // Get parent thread from context if creating as child
 const parentThread = useSelector(actor, (state) => state.context.create.parentThread);
 
-// Transform tags array to string array for TagInput
-const tagNames = computed(() => {
-  const tagList = tags.value || [];
-  return tagList;
-});
-
 // Update tags in state when TagInput changes
-const updateTags = (newTags: ThreadTagItem[]) => {
+const updateTags = (newTags: string[]) => {
   console.log('newTags: ', newTags);
   actor.send({ 
     type: 'UPDATE_THREAD_FIELD',

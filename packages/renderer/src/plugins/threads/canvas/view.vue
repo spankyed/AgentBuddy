@@ -107,7 +107,7 @@
           <div>
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
             <TagInput 
-              v-model="tagNames"
+              :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
               class="w-full"
@@ -203,10 +203,6 @@ const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
 const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
-const tagNames = computed(() => {
-  const tagList = tags.value || [];
-  return tagList;
-});
 
 const startEditingTopic = () => {
   isEditingTopic.value = true;

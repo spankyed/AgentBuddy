@@ -10,7 +10,6 @@ export namespace EARS {
     Brain    = 'Brain',
     Message  = 'Message',
     Thread   = 'Thread',
-    Tag      = 'Tag',
     Relation = 'Relation',
     Artifact = 'Artifact',
     Flow = 'Flow',

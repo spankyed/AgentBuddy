@@ -89,9 +89,16 @@ export interface ThreadStatusOption {
   color: string; // Hex color value
 }
 
+// Thread tag definition
+export interface ThreadTagOption {
+  name: string;
+  color?: string; // Optional hex color value
+}
+
 // Threads plugin settings
 export interface ThreadsSettings {
   statuses: ThreadStatusOption[];
+  tags: ThreadTagOption[];
   showOnlyRootThreads: boolean;
 }
 

@@ -11,8 +11,8 @@ import {
   findDocumentCollection,
   getDisplayOrder,
   getNextDisplayOrder,
-  createTagsForEntity,
-  removeAllTagsFromEntity,
+  // createTagsForEntity, // Removed - tags are now stored as arrays
+  // removeAllTagsFromEntity, // Removed - tags are now in settings
   getCollectionPath,
   formatFileSize,
   getContentLength,
@@ -41,11 +41,10 @@ export const libraryCommands = {
       content,
       shortCode,
       displayOrder,
+      tags, // Store tags directly as string array
       createdAt: now,
       updatedAt: now,
     })
-
-    createTagsForEntity(documentId, tags)
 
     if (collectionId) {
       tx(collectionId).link(EARS.RelKind.CONTAINS, documentId)
@@ -75,8 +74,8 @@ export const libraryCommands = {
       updatedAt: now,
     })
       
-    removeAllTagsFromEntity(documentId)
-    createTagsForEntity(documentId, tags)
+    // Tags are now stored as string array on documents
+    tx(documentId).updateBatch({ tags })
 
     // Find collections that contain this document
     const allCollections = qx(EARS.Entity.Collection).pickAll()
@@ -118,7 +117,7 @@ export const libraryCommands = {
   deleteDocument(id: EARS.EntityId): void {
     const documentId = id
 
-    removeAllTagsFromEntity(documentId)
+    // Tags are now stored as string array on documents - no need to remove entity tags
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
       qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)

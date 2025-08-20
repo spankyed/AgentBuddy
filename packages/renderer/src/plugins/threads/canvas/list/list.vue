@@ -112,11 +112,11 @@
               <td class="px-6 py-4">
                 <div class="flex gap-2 overflow-hidden">
                   <span
-                    v-for="tag in thread.tags"
-                    :key="tag.id"
+                    v-for="(tag, index) in thread.tags"
+                    :key="index"
                     class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 truncate"
                   >
-                    {{ tag.name }}
+                    {{ tag }}
                   </span>
                 </div>
               </td>

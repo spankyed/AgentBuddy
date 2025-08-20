@@ -15,7 +15,6 @@ declare namespace EARS {
         Brain = "Brain",
         Message = "Message",
         Thread = "Thread",
-        Tag = "Tag",
         Relation = "Relation",
         Artifact = "Artifact",
         Flow = "Flow",
@@ -160,7 +159,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
         roles?: string | string[];
     }) => /*elided*/ any;
     readonly destroy: () => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
 };
 
 type Simplify<T> = {
@@ -300,6 +299,7 @@ interface ThreadEntity extends BaseEntity {
     shortCode?: string;
     threadType: 'work-item' | 'project' | 'user';
     status: string;
+    tags?: string[];
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -307,33 +307,29 @@ interface ArtifactEntity extends BaseEntity {
     content: string | any;
     artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
 }
-interface TagEntity extends BaseEntity {
-    entityType: EARS.Entity.Tag;
-    name: string;
-    color?: string;
-}
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 type ThreadLinkRelation = typeof ThreadRelations[number];
 type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
     relation: ThreadLinkRelation;
 };
-type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>;
 type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
     status?: ThreadEntity['status'];
+} & {
+    tags?: string[];
 } & ThreadLinkedFields>;
 type ThreadLinkedFields = {
-    tags?: ThreadTagItem[];
     linkedThreads?: ThreadLinkItem[];
 };
 type ThreadCreateData = Simplify<ThreadEditFields>;
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 type ThreadExtendedData = ThreadLinkedFields & {
     messages?: Partial<MessageEntity>[];
+    tags?: string[];
 };
 
 type ThreadStartupData = {
     threads: ThreadExtended[];
-    availableTags: TagEntity[];
+    availableTags: ThreadTagOption[];
     settings?: ThreadsSettings | null;
 };
 
@@ -814,19 +810,7 @@ declare const events: {
         parentThreadId: zod.ZodOptional<zod.ZodString>;
         topic: zod.ZodString;
         threadType: zod.ZodString;
-        tags: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            name: zod.ZodString;
-            color: zod.ZodOptional<zod.ZodString>;
-        }, "strip", zod.ZodTypeAny, {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }, {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }>, "many">>;
+        tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
         instructions: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         topic: string;
@@ -834,15 +818,11 @@ declare const events: {
         instructions: string;
         type: "CREATE_THREAD";
         systemId: "threads";
-        tags?: {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }[] | undefined;
         linkedThreads?: {
             id: string;
             relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
         }[] | undefined;
+        tags?: string[] | undefined;
         parentThreadId?: string | undefined;
     }, {
         topic: string;
@@ -850,15 +830,11 @@ declare const events: {
         instructions: string;
         type: "CREATE_THREAD";
         systemId: "threads";
-        tags?: {
-            name: string;
-            id: string;
-            color?: string | undefined;
-        }[] | undefined;
         linkedThreads?: {
             id: string;
             relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
         }[] | undefined;
+        tags?: string[] | undefined;
         parentThreadId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"VIEW_THREAD">;
@@ -1282,15 +1258,15 @@ declare const events: {
         path: zod.ZodArray<zod.ZodString, "many">;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        entityType: "general" | "plugin";
         label: string;
+        entityType: "general" | "plugin";
         type: "UPDATE_SETTINGS";
         systemId: "settings";
         path: string[];
         value?: any;
     }, {
-        entityType: "general" | "plugin";
         label: string;
+        entityType: "general" | "plugin";
         type: "UPDATE_SETTINGS";
         systemId: "settings";
         path: string[];
@@ -1448,7 +1424,6 @@ declare const events: {
         collectionId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         tags: string[];
-        name: string;
         content: ({
             type: "field";
             fields: {
@@ -1464,10 +1439,10 @@ declare const events: {
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
+        name: string;
         collectionId?: string | undefined;
     }, {
         tags: string[];
-        name: string;
         content: ({
             type: "field";
             fields: {
@@ -1483,6 +1458,7 @@ declare const events: {
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
+        name: string;
         collectionId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_DOCUMENT">;
@@ -1536,7 +1512,6 @@ declare const events: {
         collectionId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         tags: string[];
-        name: string;
         id: string;
         content: ({
             type: "field";
@@ -1553,10 +1528,10 @@ declare const events: {
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
+        name: string;
         collectionId?: string | undefined;
     }, {
         tags: string[];
-        name: string;
         id: string;
         content: ({
             type: "field";
@@ -1573,6 +1548,7 @@ declare const events: {
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
+        name: string;
         collectionId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_DOCUMENT">;
@@ -1614,15 +1590,15 @@ declare const events: {
         description: zod.ZodOptional<zod.ZodString>;
         parentId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        name: string;
         type: "CREATE_COLLECTION";
         systemId: "library";
+        name: string;
         description?: string | undefined;
         parentId?: string | undefined;
     }, {
-        name: string;
         type: "CREATE_COLLECTION";
         systemId: "library";
+        name: string;
         description?: string | undefined;
         parentId?: string | undefined;
     }>, zod.ZodObject<{
@@ -1632,16 +1608,16 @@ declare const events: {
         name: zod.ZodString;
         description: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        name: string;
         id: string;
         type: "UPDATE_COLLECTION";
         systemId: "library";
+        name: string;
         description?: string | undefined;
     }, {
-        name: string;
         id: string;
         type: "UPDATE_COLLECTION";
         systemId: "library";
+        name: string;
         description?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_COLLECTION">;
@@ -1701,16 +1677,16 @@ declare const events: {
         name: zod.ZodString;
         itemType: zod.ZodEnum<["document", "folder"]>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        name: string;
         id: string;
         type: "RENAME_ITEM";
         systemId: "library";
+        name: string;
         itemType: "document" | "folder";
     }, {
-        name: string;
         id: string;
         type: "RENAME_ITEM";
         systemId: "library";
+        name: string;
         itemType: "document" | "folder";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ITEMS">;
@@ -1803,8 +1779,8 @@ declare const events: {
             }>, "many">;
             constructTemplate: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1821,8 +1797,8 @@ declare const events: {
             }[];
             constructTemplate: string;
         }, {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1845,8 +1821,8 @@ declare const events: {
         systemId: "library";
         folderId: string | null;
         config: {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1868,8 +1844,8 @@ declare const events: {
         systemId: "library";
         folderId: string | null;
         config: {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1921,8 +1897,8 @@ declare const events: {
             }>, "many">;
             constructTemplate: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1939,8 +1915,8 @@ declare const events: {
             }[];
             constructTemplate: string;
         }, {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1962,8 +1938,8 @@ declare const events: {
         type: "UPDATE_SEARCH_INDEX";
         systemId: "library";
         config: {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -1985,8 +1961,8 @@ declare const events: {
         type: "UPDATE_SEARCH_INDEX";
         systemId: "library";
         config: {
-            name: string;
             description: string;
+            name: string;
             embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
             indexMetric: "cosine" | "dot_product";
             connectors: number;
@@ -2621,9 +2597,9 @@ declare const events: {
         status?: string | undefined;
         pluginId: "threads";
     } | {
-        type: "THREAD_STATUS_UPDATED";
+        type: "THREAD_UPDATED";
         threadId: string;
-        status: string;
+        updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
         pluginId: "threads";
     } | {
         type: "FLOWS_STARTUP";
@@ -3419,8 +3395,13 @@ interface ThreadStatusOption {
     label: string;
     color: string;
 }
+interface ThreadTagOption {
+    name: string;
+    color?: string;
+}
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
+    tags: ThreadTagOption[];
     showOnlyRootThreads: boolean;
 }
 interface PluginSettings {
@@ -3728,16 +3709,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
+        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | null;
+    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -3767,16 +3748,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
+            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
+        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | null;
+        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
@@ -3951,7 +3932,7 @@ declare const services: {
         };
         readonly agentQueries: {
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
-                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Tag-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
+                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
                 type: unknown;
                 title: unknown;
                 content: unknown;
@@ -4127,7 +4108,6 @@ declare const services: {
             readonly all: () => ThreadEntity[];
             readonly allByRecency: () => ThreadEntity[];
             readonly messages: (threadId: EARS.EntityId) => Partial<MessageEntity>[];
-            readonly tags: (threadId: EARS.EntityId) => ThreadTagItem[];
             readonly linkedThreads: (threadId: EARS.EntityId) => any[];
             readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
             readonly startupData: () => ThreadStartupData;
@@ -4142,10 +4122,9 @@ declare const services: {
                 topic?: string;
                 instructions?: string;
                 status?: string;
-                tags?: ThreadTagItem[];
+                tags?: string[];
                 linkedThreads?: any[];
             }) => OperationResult;
-            readonly createTag: (name: string) => RepositoryResult<EARS.EntityId>;
         };
     };
     settings: SettingsService;
