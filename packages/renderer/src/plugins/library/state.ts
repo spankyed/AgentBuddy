@@ -481,6 +481,7 @@ export const librarySystem = setup({
       testResults: [],
       isSearching: false,
     }),
+    // ? think we're sending duplicate documents data on startup
     setStartupData: assign({
       documents: ({ event }) => {
         if (event.type === 'LIBRARY_STARTUP') {
