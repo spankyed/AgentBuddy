@@ -172,6 +172,74 @@ type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
     [K in keyof S]: z.infer<S[K]>;
 }[number];
 
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
+/**
+ * Prompt template types and definitions
+ */
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+/**
+ * Defines a prompt entity stored in the system
+ */
+interface PromptEntity extends BaseEntity {
+    entityType: EARS.Entity.Prompt;
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    templateFn: string;
+    outputSchema?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+/**
+ * Data sent on prompts system startup
+ */
+interface PromptsStartupData {
+    prompts: PromptEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
 declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
 type LogLevel = z.infer<typeof LogLevel>;
 declare const LogEntry: z.ZodObject<{
@@ -200,6 +268,21 @@ declare const LogEntry: z.ZodObject<{
     stack?: string | undefined;
 }>;
 type LogEntry = z.infer<typeof LogEntry>;
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
 
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
@@ -305,89 +388,6 @@ interface ArtifactItem {
         updatedAt?: number;
         [key: string]: any;
     };
-}
-
-/**
- * Prompt template types and definitions
- */
-
-/**
- * Defines an input parameter that a prompt template expects
- */
-interface TemplateInput {
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    defaultValue?: any;
-    commonSources?: string[];
-    example?: any;
-}
-/**
- * Defines a prompt entity stored in the system
- */
-interface PromptEntity extends BaseEntity {
-    entityType: EARS.Entity.Prompt;
-    label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    createdAt: number;
-    updatedAt: number;
-}
-/**
- * Data sent on prompts system startup
- */
-interface PromptsStartupData {
-    prompts: PromptEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
 }
 
 interface FileInfo {
@@ -658,6 +658,147 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tNodeId: string;
+        type: "OPEN_TNODE";
+        systemId: "brain";
+    }, {
+        tNodeId: string;
+        type: "OPEN_TNODE";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tNodeId: string;
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+    }, {
+        tNodeId: string;
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_DEBUG">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_DEBUG";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_DEBUG";
+        systemId: "brain";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_MSG">;
+        systemId: zod.ZodLiteral<"agent">;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodEnum<["plan", "work", "chat", "note"]>>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "agent";
+        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        threadId?: string | undefined;
+    }, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "agent";
+        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        threadId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+        threadId: string;
+    }, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+        label: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        threadId: string;
+    }, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
+        systemId: zod.ZodLiteral<"agent">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REFRESH_DASHBOARD";
+        systemId: "agent";
+    }, {
+        type: "REFRESH_DASHBOARD";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CANCEL">;
+        systemId: zod.ZodLiteral<"agent">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CANCEL";
+        systemId: "agent";
+    }, {
+        type: "CANCEL";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+        tasks: zod.ZodArray<zod.ZodAny, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+    }, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
         linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
@@ -912,80 +1053,29 @@ declare const events: {
         newSource: string;
         newTarget: string;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_TNODE";
-        systemId: "brain";
-        tNodeId: string;
-    }, {
-        type: "OPEN_TNODE";
-        systemId: "brain";
-        tNodeId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-        tNodeId: string;
-    }, {
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-        tNodeId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_DEBUG">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_DEBUG";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_DEBUG";
-        systemId: "brain";
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
         code: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        code: string;
         type: "EXECUTE_QUERY";
         systemId: "database";
+        code: string;
     }, {
-        code: string;
         type: "EXECUTE_QUERY";
         systemId: "database";
+        code: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_TRANSACTION">;
         systemId: zod.ZodLiteral<"database">;
         code: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        code: string;
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
+        code: string;
     }, {
-        code: string;
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
+        code: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_SNAPSHOT">;
         systemId: zod.ZodLiteral<"database">;
@@ -1062,86 +1152,26 @@ declare const events: {
         systemId: "database";
         nodeId: string;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"ACTION_SELECT">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
+        type: zod.ZodLiteral<"EMPTY">;
+        systemId: zod.ZodLiteral<"logs">;
+        empty: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "ACTION_SELECT";
-        systemId: "actions";
-        actionId: string;
+        type: "EMPTY";
+        systemId: "logs";
+        empty: string;
     }, {
-        type: "ACTION_SELECT";
-        systemId: "actions";
-        actionId: string;
+        type: "EMPTY";
+        systemId: "logs";
+        empty: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        label: zod.ZodString;
-        input: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
-        actionFn: zod.ZodString;
-        output: zod.ZodOptional<zod.ZodAny>;
-        description: zod.ZodOptional<zod.ZodString>;
-        category: zod.ZodOptional<zod.ZodString>;
+        type: zod.ZodLiteral<"CLEAR_LOGS">;
+        systemId: zod.ZodLiteral<"logs">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        type: "CREATE_ACTION";
-        systemId: "actions";
-        input: Record<string, any>;
-        actionFn: string;
-        category?: string | undefined;
-        description?: string | undefined;
-        output?: any;
+        type: "CLEAR_LOGS";
+        systemId: "logs";
     }, {
-        label: string;
-        type: "CREATE_ACTION";
-        systemId: "actions";
-        input: Record<string, any>;
-        actionFn: string;
-        category?: string | undefined;
-        description?: string | undefined;
-        output?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
-        label: zod.ZodOptional<zod.ZodString>;
-        input: zod.ZodOptional<zod.ZodRecord<zod.ZodString, zod.ZodAny>>;
-        actionFn: zod.ZodOptional<zod.ZodString>;
-        output: zod.ZodOptional<zod.ZodAny>;
-        description: zod.ZodOptional<zod.ZodString>;
-        category: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_ACTION";
-        systemId: "actions";
-        actionId: string;
-        category?: string | undefined;
-        label?: string | undefined;
-        description?: string | undefined;
-        output?: any;
-        input?: Record<string, any> | undefined;
-        actionFn?: string | undefined;
-    }, {
-        type: "UPDATE_ACTION";
-        systemId: "actions";
-        actionId: string;
-        category?: string | undefined;
-        label?: string | undefined;
-        description?: string | undefined;
-        output?: any;
-        input?: Record<string, any> | undefined;
-        actionFn?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "DELETE_ACTION";
-        systemId: "actions";
-        actionId: string;
-    }, {
-        type: "DELETE_ACTION";
-        systemId: "actions";
-        actionId: string;
+        type: "CLEAR_LOGS";
+        systemId: "logs";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"PROMPT_SELECT">;
         systemId: zod.ZodLiteral<"prompts">;
@@ -1236,117 +1266,6 @@ declare const events: {
         systemId: "prompts";
         page?: number | undefined;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"USER_MSG">;
-        systemId: zod.ZodLiteral<"agent">;
-        text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodEnum<["plan", "work", "chat", "note"]>>;
-        threadId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        threadId?: string | undefined;
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
-    }, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        threadId?: string | undefined;
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-        threadId: string;
-    }, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-        label: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-        threadId: string;
-    }, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
-        systemId: zod.ZodLiteral<"agent">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REFRESH_DASHBOARD";
-        systemId: "agent";
-    }, {
-        type: "REFRESH_DASHBOARD";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CANCEL">;
-        systemId: zod.ZodLiteral<"agent">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CANCEL";
-        systemId: "agent";
-    }, {
-        type: "CANCEL";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-        tasks: zod.ZodArray<zod.ZodAny, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"EMPTY">;
-        systemId: zod.ZodLiteral<"logs">;
-        empty: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EMPTY";
-        systemId: "logs";
-        empty: string;
-    }, {
-        type: "EMPTY";
-        systemId: "logs";
-        empty: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CLEAR_LOGS">;
-        systemId: zod.ZodLiteral<"logs">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CLEAR_LOGS";
-        systemId: "logs";
-    }, {
-        type: "CLEAR_LOGS";
-        systemId: "logs";
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1365,16 +1284,16 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         entityType: "general" | "plugin";
         label: string;
-        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
+        path: string[];
         value?: any;
     }, {
         entityType: "general" | "plugin";
         label: string;
-        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
+        path: string[];
         value?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_SETTINGS">;
@@ -1385,6 +1304,87 @@ declare const events: {
     }, {
         type: "RESET_SETTINGS";
         systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"ACTION_SELECT">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "ACTION_SELECT";
+        systemId: "actions";
+        actionId: string;
+    }, {
+        type: "ACTION_SELECT";
+        systemId: "actions";
+        actionId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        label: zod.ZodString;
+        input: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
+        actionFn: zod.ZodString;
+        output: zod.ZodOptional<zod.ZodAny>;
+        description: zod.ZodOptional<zod.ZodString>;
+        category: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        type: "CREATE_ACTION";
+        systemId: "actions";
+        input: Record<string, any>;
+        actionFn: string;
+        category?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+    }, {
+        label: string;
+        type: "CREATE_ACTION";
+        systemId: "actions";
+        input: Record<string, any>;
+        actionFn: string;
+        category?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+        label: zod.ZodOptional<zod.ZodString>;
+        input: zod.ZodOptional<zod.ZodRecord<zod.ZodString, zod.ZodAny>>;
+        actionFn: zod.ZodOptional<zod.ZodString>;
+        output: zod.ZodOptional<zod.ZodAny>;
+        description: zod.ZodOptional<zod.ZodString>;
+        category: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_ACTION";
+        systemId: "actions";
+        actionId: string;
+        category?: string | undefined;
+        label?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+        input?: Record<string, any> | undefined;
+        actionFn?: string | undefined;
+    }, {
+        type: "UPDATE_ACTION";
+        systemId: "actions";
+        actionId: string;
+        category?: string | undefined;
+        label?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+        input?: Record<string, any> | undefined;
+        actionFn?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_ACTION";
+        systemId: "actions";
+        actionId: string;
+    }, {
+        type: "DELETE_ACTION";
+        systemId: "actions";
+        actionId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"LIST_DOCUMENTS">;
         systemId: zod.ZodLiteral<"library">;
@@ -2024,39 +2024,39 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "SEARCH_IN_INDEX";
         systemId: "library";
-        query: string;
         indexId: string;
+        query: string;
         limit?: number | undefined;
     }, {
         type: "SEARCH_IN_INDEX";
         systemId: "library";
-        query: string;
         indexId: string;
+        query: string;
         limit?: number | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.LIST_FILES">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.READ_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.WRITE_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -2064,41 +2064,41 @@ declare const events: {
         content: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         content: string;
-        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
+        path: string;
     }, {
         content: string;
-        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
         content: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
+        path: string;
         content?: string | undefined;
     }, {
-        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
+        path: string;
         content?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.DELETE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.RENAME_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -2119,37 +2119,37 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.GET_FILE_INFO">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CLOSE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -2174,9 +2174,9 @@ declare const events: {
         useRegex: zod.ZodOptional<zod.ZodBoolean>;
         maxResults: zod.ZodOptional<zod.ZodNumber>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
+        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -2185,9 +2185,9 @@ declare const events: {
         useRegex?: boolean | undefined;
         maxResults?: number | undefined;
     }, {
-        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
+        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -2257,13 +2257,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         message: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        message: string;
         type: "commit.COMMIT";
         systemId: "code";
+        message: string;
     }, {
-        message: string;
         type: "commit.COMMIT";
         systemId: "code";
+        message: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.GET_CURRENT_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -2278,13 +2278,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.GET_ALL_BRANCHES">;
         systemId: zod.ZodLiteral<"code">;
@@ -2351,14 +2351,14 @@ declare const events: {
         path: zod.ZodString;
         baseBranch: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
+        path: string;
         baseBranch: string;
     }, {
-        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
+        path: string;
         baseBranch: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
@@ -2533,15 +2533,74 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "SET_ROOT_DIRECTORY";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "SET_ROOT_DIRECTORY";
         systemId: "code";
+        path: string;
     }>];
     readonly outgoing: {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "DEBUG_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "AGENT_STARTUP";
+        data: AgentStartupData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
+    } | {
         type: "THREAD_STARTUP";
         data: ThreadStartupData;
         pluginId: "threads";
@@ -2620,39 +2679,6 @@ declare const events: {
         newTarget: EARS.EntityId;
         pluginId: "flows";
     } | {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "DEBUG_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
         type: "DATABASE_REFRESH";
         data: DatabaseStartupData;
         pluginId: "database";
@@ -2702,28 +2728,20 @@ declare const events: {
         details: TNodeEntity | null;
         pluginId: "database";
     } | {
-        type: "ACTIONS_LISTED";
-        data: ActionsStartupData;
-        pluginId: "actions";
+        type: "LOGS_STARTUP";
+        logs: LogEntry[];
+        pluginId: "logs";
     } | {
-        type: "ACTION_SELECTED";
-        actionId: EARS.EntityId;
-        data: ActionEntity;
-        pluginId: "actions";
+        type: "LOGS_UPDATE";
+        logs: LogEntry[];
+        pluginId: "logs";
     } | {
-        type: "ACTION_CREATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "actions";
+        type: "LOG_ADDED";
+        log: LogEntry;
+        pluginId: "logs";
     } | {
-        type: "ACTION_UPDATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "actions";
-    } | {
-        type: "ACTION_DELETED";
-        actionId: EARS.EntityId;
-        pluginId: "actions";
+        type: "LOGS_CLEARED";
+        pluginId: "logs";
     } | {
         type: "PROMPTS_STARTUP";
         data: PromptsStartupData;
@@ -2756,47 +2774,6 @@ declare const events: {
         };
         pluginId: "prompts";
     } | {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
-    } | {
-        type: "LOGS_STARTUP";
-        logs: LogEntry[];
-        pluginId: "logs";
-    } | {
-        type: "LOGS_UPDATE";
-        logs: LogEntry[];
-        pluginId: "logs";
-    } | {
-        type: "LOG_ADDED";
-        log: LogEntry;
-        pluginId: "logs";
-    } | {
-        type: "LOGS_CLEARED";
-        pluginId: "logs";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -2812,6 +2789,29 @@ declare const events: {
         type: "APPLICATION_HOTKEYS";
         hotkeys: SettingsData["general"]["hotkeys"];
         pluginId: "settings";
+    } | {
+        type: "ACTIONS_LISTED";
+        data: ActionsStartupData;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_SELECTED";
+        actionId: EARS.EntityId;
+        data: ActionEntity;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_CREATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_UPDATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_DELETED";
+        actionId: EARS.EntityId;
+        pluginId: "actions";
     } | {
         type: "LIBRARY_STARTUP";
         data: {

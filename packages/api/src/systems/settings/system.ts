@@ -3,59 +3,14 @@ import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
-import { Category, SettingsData, ThreadStatusOption } from './types';
+import { SettingsData } from './types';
 import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
+import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const settings = 'settings' as const;
-
-// Simple, generic API
-type DiffResult<T> =
-  | null
-  | {
-      renames: Array<{ from: string; to: string }>;
-      added: T[];
-      removed: T[];
-    };
-
-export const detectChanges = <T>(
-  prev: T[] | undefined,
-  next: T[] | undefined,
-  id: (x: T) => string,     // identity (label/name)
-  key: (x: T) => string     // match key (e.g., color)
-): DiffResult<T> => {
-  if (!prev || !next) return null;
-
-  const pid = (x: T) => id(x);
-  const pkey = (x: T) => key(x);
-
-  const prevById = new Map(prev.map(x => [pid(x), x]));
-  const nextById = new Map(next.map(x => [pid(x), x]));
-  const nextIdByKey = new Map(next.map(x => [pkey(x), pid(x)]));
-
-  // renames: missing by id but present by key, to a *new* id
-  const renames = prev
-    .filter(p => !nextById.has(pid(p)))
-    .map(p => ({ from: pid(p), to: nextIdByKey.get(pkey(p)) }))
-    .filter((r): r is { from: string; to: string } => !!r.to && !prevById.has(r.to));
-
-  const fromSet = new Set(renames.map(r => r.from));
-  const toSet   = new Set(renames.map(r => r.to));
-
-  const added   = next.filter(x => !prevById.has(pid(x)) && !toSet.has(pid(x)));
-  const removed = prev.filter(x => !nextById.has(pid(x)) && !fromSet.has(pid(x)));
-
-  return renames.length || added.length || removed.length ? { renames, added, removed } : null;
-};
-
-// Thin, DRY wrappers
-export const detectStatusChanges = (prev?: ThreadStatusOption[], next?: ThreadStatusOption[]) =>
-  detectChanges(prev, next, s => s.label, s => s.color);
-
-export const detectCategoryChanges = (prev?: Category[], next?: Category[]) =>
-  detectChanges(prev, next, c => c.name,  c => c.color);
 
 const busEvent = systemBus(settings);
 
@@ -142,11 +97,8 @@ export const settingsSystem = setup({
       if (ev.entityType === 'plugin' && data.plugins) {
         const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
         if (pluginSettings) {
-          // Detect changes using the appropriate detector
-          const changes = 
-            ev.label === 'threads' ? detectStatusChanges(previousSettings?.statuses, pluginSettings?.statuses) :
-            previousSettings?.categories ? detectCategoryChanges(previousSettings.categories, pluginSettings.categories) :
-            null;
+          // Detect changes for all arrays in the settings generically
+          const changes = detectAllArrayChanges(previousSettings, pluginSettings);
           
           // Send to backend system (if it exists)
           const backendActor = system.get(ev.label as any);

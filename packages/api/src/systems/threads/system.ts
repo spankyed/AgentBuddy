@@ -196,9 +196,11 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('THREADS_SETTINGS_UPDATED', event);
-      if (!changes?.renames?.length) return;
+      // Handle nested changes format from detectAllArrayChanges
+      const statusChanges = changes?.statuses || changes;
+      if (!statusChanges?.renames?.length) return;
       
-      const renames = new Map<string, string>(changes.renames.map(
+      const renames = new Map<string, string>(statusChanges.renames.map(
         ({ from, to }: { from: string; to: string }) => [from, to] as [string, string]
       ));
       

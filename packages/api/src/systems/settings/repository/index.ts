@@ -135,3 +135,7 @@ export const setupDevelopmentSettings = (): void => {
   
   console.log('[Settings] Development settings initialized with test hotkeys');
 };
+
+// Re-export change detection utilities
+export { detectAllArrayChanges, detectChanges, detectStatusChanges, detectCategoryChanges } from '../change-detection';
+export type { DiffResult } from '../change-detection';

@@ -8,7 +8,7 @@
       <div class="space-y-3">
         <div 
           v-for="(status, index) in statuses" 
-          :key="status.label"
+          :key="`status-${index}`"
           class="group flex items-center gap-3"
         >
           <!-- Color Picker -->

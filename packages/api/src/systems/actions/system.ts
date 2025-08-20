@@ -145,8 +145,10 @@ export const actionsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
-      if (!changes?.renames?.length) return;
-      const renames = new Map<string, string>(changes.renames.map(
+      // Handle nested changes format from detectAllArrayChanges
+      const categoryChanges = changes?.categories || changes;
+      if (!categoryChanges?.renames?.length) return;
+      const renames = new Map<string, string>(categoryChanges.renames.map(
         ({ from, to }: { from: string; to: string }) => [from, to] as [string, string]
       ));
 

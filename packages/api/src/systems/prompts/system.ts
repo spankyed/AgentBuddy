@@ -158,10 +158,12 @@ export const promptsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
-      if (!changes?.renames?.length) return;
+      // Handle nested changes format from detectAllArrayChanges
+      const categoryChanges = changes?.categories || changes;
+      if (!categoryChanges?.renames?.length) return;
 
       const renames = new Map<string, string>(
-        changes.renames.map(
+        categoryChanges.renames.map(
           ({ from, to }: { from: string; to: string }) => [from, to]
         )
       );
