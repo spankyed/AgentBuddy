@@ -145,6 +145,7 @@
             v-model="linkedThreads"
             :available-threads="threadsList"
             :available-tags="availableTags"
+            :settings="settings"
             @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
             @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
             @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"

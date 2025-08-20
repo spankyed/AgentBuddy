@@ -109,6 +109,7 @@
               v-model="linkedThreads"
               :available-threads="threadsList"
               :available-tags="availableTags"
+              :settings="settings"
               @update:modelValue="(links) => updateField('linkedThreads', links)"
             />
           </div>
@@ -120,11 +121,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
-import { X, Plus, Square } from 'lucide-vue-next'
+import { ref } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import Label from '@/core/components/design/label.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';

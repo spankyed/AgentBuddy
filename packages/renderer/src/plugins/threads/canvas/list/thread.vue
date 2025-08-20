@@ -29,18 +29,6 @@
       </div>
       <!-- Status selector and tags -->
       <div v-if="!lite && thread.status" class="flex items-center gap-4">
-        <select
-          @click.stop
-          :value="thread.status"
-          @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
-          class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-700 border border-neutral-600 text-neutral-300 hover:bg-neutral-600 focus:outline-none focus:border-neutral-500 transition-all duration-200 appearance-none"
-        >
-          <option value="backlog" class="bg-neutral-700 text-neutral-300">Backlog</option>
-          <option value="open" class="bg-neutral-700 text-neutral-300">Open</option>
-          <option value="in-progress" class="bg-neutral-700 text-neutral-300">In Progress</option>
-          <option value="in-review" class="bg-neutral-700 text-neutral-300">In Review</option>
-          <option value="done" class="bg-neutral-700 text-neutral-300">Done</option>
-        </select>
         <div class="flex gap-2 overflow-hidden max-w-[12rem]">
           <span
             @click.stop
@@ -52,6 +40,21 @@
             {{ tag }}
           </span>
         </div>
+        <select
+          @click.stop
+          :value="thread.status"
+          @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
+          class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-700 border border-neutral-600 text-neutral-300 hover:bg-neutral-600 focus:outline-none focus:border-neutral-500 transition-all duration-200 appearance-none"
+        >
+          <option 
+            v-for="statusOption in (settings?.statuses || [])" 
+            :key="statusOption.label" 
+            :value="statusOption.label"
+            class="bg-neutral-700 text-neutral-300"
+          >
+            {{ statusOption.label }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -69,12 +72,13 @@
 <script setup lang="ts">
 import { MessageCircleMore } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/plugins/threads/state';
-import type { ThreadEntity, ThreadTagOption } from '@app/api';
+import type { ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api';
 
 const props = defineProps<{
   lite?: boolean;
   thread: ThreadListItem;
   availableTags?: ThreadTagOption[];
+  settings?: ThreadsSettings | null;
 }>();
 
 defineEmits<{
