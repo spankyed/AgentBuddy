@@ -83,6 +83,18 @@ export interface PromptsSettings {
   categories: Category[];
 }
 
+// Thread status definition
+export interface ThreadStatusOption {
+  label: string;
+  color: string; // Hex color value
+}
+
+// Threads plugin settings
+export interface ThreadsSettings {
+  statuses: ThreadStatusOption[];
+  showOnlyRootThreads: boolean;
+}
+
 // Actions plugin settings
 export interface ActionsSettings {
   categories: Category[];

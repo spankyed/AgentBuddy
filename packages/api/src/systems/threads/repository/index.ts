@@ -117,7 +117,7 @@ export const threadCommands = {
       const id = tx(EARS.Entity.Thread).id();
       
       tx(id).updateBatch({
-        status: "backlog",
+        status: "Backlog", // Default status - should match settings default
         shortCode: shortCode,
         timestamp: ts,
         lastMessageTimestamp: ts,
@@ -145,7 +145,7 @@ export const threadCommands = {
   update: (id: EARS.EntityId, updates: {
     topic?: string;
     instructions?: string;
-    status?: ThreadEntity['status'];
+    status?: string; // Dynamic status from settings
     tags?: ThreadTagItem[];
     linkedThreads?: any[];
   }): OperationResult => {

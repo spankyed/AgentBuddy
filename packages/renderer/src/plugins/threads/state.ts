@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@app/api';
+import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields, ThreadsSettings } from '@app/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -23,6 +23,7 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 type SystemEvent =
   | OutgoingThreadsEvents
   | { type: 'THREAD_STATUS_UPDATED'; threadId: string; status: ThreadEntity['status'] }
+  | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
@@ -62,6 +63,7 @@ interface ThreadsContext {
     parentThread?: ThreadListItem;
   };
   availableTags: ThreadTagItem[];
+  settings: ThreadsSettings | null;
 }
 
 const threadsState = setup({
@@ -105,6 +107,7 @@ const threadsState = setup({
       return {
         threads: typedEvent.data.threads,
         availableTags: typedEvent.data.availableTags,
+        settings: typedEvent.data.settings,
       };
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
@@ -121,7 +124,7 @@ const threadsState = setup({
         topic: typedEvent.topic!,
         threadType: typedEvent.threadType!,
         instructions: typedEvent.instructions!,
-        status: typedEvent.status || 'backlog',
+        status: typedEvent.status || '',
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
@@ -136,7 +139,7 @@ const threadsState = setup({
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
-        status: 'backlog',
+        status: '',
         tags: context.create.tags,
         isNew: true,
       };
@@ -273,6 +276,12 @@ const threadsState = setup({
         value,
       });
     },
+    setThreadsSettings: assign(({ event }) => {
+      const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
+      return {
+        settings: ev.settings
+      };
+    }),
   },
   guards: {
     targetIs
@@ -286,12 +295,13 @@ const threadsState = setup({
     view: {
       id: '' as ThreadEntity['id'],
       shortCode: '',
-      status: 'backlog',
+      status: '',
       timestamp: 0,
       ...defaultThread,
     } as ThreadViewData,
     create: { ...defaultThread },
     availableTags: [],
+    settings: null,
   }),
   on: {
     OPEN_THREAD_CHAT: {
@@ -319,6 +329,9 @@ const threadsState = setup({
     },
     THREAD_STATUS_UPDATED: {
       actions: 'updateThreadStatusFromBackend',
+    },
+    THREADS_SETTINGS_UPDATED: {
+      actions: 'setThreadsSettings',
     },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([

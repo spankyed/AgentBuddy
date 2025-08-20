@@ -96,14 +96,17 @@
                 <select
                   @click.stop
                   :value="thread.status"
-                  @change="(e) => actor.send({ type: 'UPDATE_THREAD_STATUS', id: thread.id, status: (e.target as HTMLSelectElement).value as ThreadEntity['status'] })"
+                  @change="(e) => actor.send({ type: 'UPDATE_THREAD_STATUS', id: thread.id, status: (e.target as HTMLSelectElement).value })"
                   class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200 appearance-none"
                 >
-                  <option value="backlog" class="bg-neutral-800 text-neutral-300">Backlog</option>
-                  <option value="open" class="bg-neutral-800 text-neutral-300">Open</option>
-                  <option value="in-progress" class="bg-neutral-800 text-neutral-300">In Progress</option>
-                  <option value="in-review" class="bg-neutral-800 text-neutral-300">In Review</option>
-                  <option value="done" class="bg-neutral-800 text-neutral-300">Done</option>
+                  <option 
+                    v-for="status in (settings?.statuses || [])" 
+                    :key="status.label"
+                    :value="status.label"
+                    class="bg-neutral-800 text-neutral-300"
+                  >
+                    {{ status.label }}
+                  </option>
                 </select>
               </td>
               <td class="px-6 py-4">
@@ -168,17 +171,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type Ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Search, Plus, Filter, MessageCircleMore } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import Pagination from '@/core/components/design/pagination.vue'
-import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
-import type { ThreadEntity } from '@app/api'
+import { id, type ThreadsState } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
+const settings = useSelector(actor, s => s.context.settings)
 const threadsPerPage = 6
 const currentPage = ref(1)
 

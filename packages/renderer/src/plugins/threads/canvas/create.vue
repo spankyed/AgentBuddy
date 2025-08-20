@@ -73,10 +73,18 @@
                 <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
                 <select
                   disabled
-                  value="backlog"
+                  :value="settings?.statuses?.[0]?.label || 'Backlog'"
                   class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md opacity-50 cursor-not-allowed bg-neutral-800 border-neutral-700 text-neutral-300"
                 >
-                  <option value="backlog">Backlog</option>
+                  <option 
+                    v-for="status in (settings?.statuses || [])" 
+                    :key="status.label" 
+                    :value="status.label"
+                  >
+                    {{ status.label }}
+                  </option>
+                  <!-- Fallback if no settings loaded yet -->
+                  <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
                 </select>
               </div>
             </div>
@@ -130,6 +138,7 @@ const tags = useSelector(actor, (state) => state.context.create.tags);
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
 const linkedThreads = useSelector(actor, (state) => state.context.create.linkedThreads || []);
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
+const settings = useSelector(actor, (state) => state.context.settings);
 
 const isSaving = ref(false)
 

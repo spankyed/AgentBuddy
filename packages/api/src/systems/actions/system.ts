@@ -145,9 +145,9 @@ export const actionsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
-      if (!changes?.categoryRenames) return;
-      const renames = new Map<string, string>(changes.categoryRenames.map(
-        ({ oldName, newName }: { oldName: string; newName: string }) => [oldName, newName] as [string, string]
+      if (!changes?.renames?.length) return;
+      const renames = new Map<string, string>(changes.renames.map(
+        ({ from, to }: { from: string; to: string }) => [from, to] as [string, string]
       ));
 
       const busSvc = system.get(bus);

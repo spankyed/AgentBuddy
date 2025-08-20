@@ -54,6 +54,16 @@ export const defaultSettings: SettingsData = {
         executeQuery: { key: 'Enter', modifiers: ['cmd'] }
       }
     },
+    threads: {
+      statuses: [
+        { label: 'Backlog', color: '#6B7280' },
+        { label: 'Open', color: '#3B82F6' },
+        { label: 'In Progress', color: '#F59E0B' },
+        { label: 'In Review', color: '#A855F7' },
+        { label: 'Done', color: '#10B981' }
+      ],
+      showOnlyRootThreads: false
+    },
     prompts: {
       categories: [
         { name: 'General', color: '#6B7280' },

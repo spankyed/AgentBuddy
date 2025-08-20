@@ -48,7 +48,7 @@ export const IncomingThreadsEvents = [
   busEvent('VIEW_THREAD', { threadId: z.string() }),
   busEvent('UPDATE_THREAD_STATUS', {
     threadId: z.string(),
-    status: z.enum(['backlog', 'open', 'in-progress', 'in-review', 'done']),
+    status: z.string(), // Dynamic statuses from settings
   }),
   busEvent('UPDATE_THREAD_FIELD', {
     threadId: z.string(),
@@ -60,13 +60,14 @@ export const IncomingThreadsEvents = [
 export type ThreadsInternalEvents = 
   | { type: 'CLIENT_CONNECTED' }
   | SystemEvents
+  | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   
 
 export type OutgoingThreadsEvents = 
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
-  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: ThreadEntity['status'] }
-  | { type: 'THREAD_STATUS_UPDATED', threadId: string, status: ThreadEntity['status'] }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: string }
+  | { type: 'THREAD_STATUS_UPDATED', threadId: string, status: string }
 
 export interface ThreadsContext {}
 
@@ -81,9 +82,15 @@ export const threadsSystem = setup({
   },
   actions: {
     sendThreadsStartupData: ({ system }) => {
+      const startupData = threadStartupData();
+      const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+      
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_STARTUP',
-        data: threadStartupData()
+        data: {
+          ...startupData,
+          settings: threadsSettings || null
+        }
       }));
     },
     createThread: ({ system, event }) => {
@@ -155,7 +162,7 @@ export const threadsSystem = setup({
         system.get(bus).send(emit(threads, { 
           type: 'THREAD_STATUS_UPDATED',
           threadId,
-          status: value as ThreadEntity['status'],
+          status: value as string,
         }));
         
         // Trigger dashboard refresh in agent system
@@ -187,6 +194,36 @@ export const threadsSystem = setup({
       const agentActor = system.get(agent);
       agentActor.send({ type: 'REFRESH_DASHBOARD' });
     },
+    handleSettingsUpdate: ({ system, event }) => {
+      const { changes } = typeOf('THREADS_SETTINGS_UPDATED', event);
+      if (!changes?.renames?.length) return;
+      
+      const renames = new Map<string, string>(changes.renames.map(
+        ({ from, to }: { from: string; to: string }) => [from, to] as [string, string]
+      ));
+      
+      const busSvc = system.get(bus);
+      // Get all threads and update their statuses if they match old labels
+      for (const thread of repository.threadQueries.all()) {
+        const currentStatus = thread.status;
+        const newStatus = renames.get(currentStatus);
+        if (!newStatus) continue;
+        
+        // Update the thread's status
+        repository.threadCommands.update(thread.id, { status: newStatus });
+        
+        // Send status update event to frontend
+        busSvc.send(emit(threads, {
+          type: 'THREAD_STATUS_UPDATED',
+          threadId: thread.id,
+          status: newStatus,
+        }));
+      }
+      
+      // Trigger dashboard refresh in agent system
+      const agentActor = system.get(agent);
+      agentActor.send({ type: 'REFRESH_DASHBOARD' });
+    },
   },
 }).createMachine(
   {
@@ -196,6 +233,9 @@ export const threadsSystem = setup({
     on: {
       CLIENT_CONNECTED: {
         actions: 'sendThreadsStartupData',
+      },
+      THREADS_SETTINGS_UPDATED: {
+        actions: 'handleSettingsUpdate',
       },
     },
     states: {

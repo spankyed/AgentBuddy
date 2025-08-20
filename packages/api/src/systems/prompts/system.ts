@@ -158,11 +158,11 @@ export const promptsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
-      if (!changes?.categoryRenames?.length) return;
+      if (!changes?.renames?.length) return;
 
       const renames = new Map<string, string>(
-        changes.categoryRenames.map(
-          ({ oldName, newName }: { oldName: string; newName: string }) => [oldName, newName]
+        changes.renames.map(
+          ({ from, to }: { from: string; to: string }) => [from, to]
         )
       );
 
