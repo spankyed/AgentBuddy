@@ -114,7 +114,8 @@
                   <span
                     v-for="(tag, index) in thread.tags"
                     :key="index"
-                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 truncate"
+                    :style="getTagStyles(tag)"
+                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
                   >
                     {{ tag }}
                   </span>
@@ -178,10 +179,12 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import Pagination from '@/core/components/design/pagination.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
+import type { ThreadTagOption } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
 const settings = useSelector(actor, s => s.context.settings)
+const availableTags = useSelector(actor, s => s.context.availableTags)
 const threadsPerPage = 6
 const currentPage = ref(1)
 
@@ -191,6 +194,15 @@ const paginatedThreads = computed(() => {
 })
 
 const searchKeyword = ref('');
+
+const getTagStyles = (tagName: string) => {
+  const color = availableTags.value?.find(t => t.name === tagName)?.color || '#A855F7';
+  return {
+    backgroundColor: `${color}1A`, // 10% opacity
+    color,
+    border: `1px solid ${color}33` // 20% opacity for border
+  };
+};
 </script>
 
 <style lang="scss">

@@ -108,6 +108,7 @@
               :lite="true"
               v-model="linkedThreads"
               :available-threads="threadsList"
+              :available-tags="availableTags"
               @update:modelValue="(links) => updateField('linkedThreads', links)"
             />
           </div>

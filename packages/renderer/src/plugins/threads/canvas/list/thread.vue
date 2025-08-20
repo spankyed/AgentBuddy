@@ -28,7 +28,7 @@
         </div>
       </div>
       <!-- Status selector and tags -->
-      <div v-if="!lite" class="flex items-center gap-4">
+      <div v-if="!lite && thread.status" class="flex items-center gap-4">
         <select
           @click.stop
           :value="thread.status"
@@ -46,7 +46,8 @@
             @click.stop
             v-for="(tag, index) in thread.tags"
             :key="index"
-            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 transition-colors duration-200 truncate"
+            :style="getTagStyles(tag)"
+            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors duration-200 truncate"
           >
             {{ tag }}
           </span>
@@ -60,26 +61,20 @@
       type="button"
       class="flex items-center justify-center h-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700 transition-all duration-200 border-l border-neutral-700"
     >
-      Chat
       <MessageCircleMore class="w-4 h-4 ml-1.5"/>
     </button>
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'Thread'
-}
-</script>
-
 <script setup lang="ts">
 import { MessageCircleMore } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/plugins/threads/state';
-import type { ThreadEntity } from '@app/api';
+import type { ThreadEntity, ThreadTagOption } from '@app/api';
 
-defineProps<{
+const props = defineProps<{
   lite?: boolean;
-  thread: ThreadListItem
+  thread: ThreadListItem;
+  availableTags?: ThreadTagOption[];
 }>();
 
 defineEmits<{
@@ -87,6 +82,16 @@ defineEmits<{
   'status-change': [id: string, status: ThreadEntity['status']]
   'chat-click': [id: string]
 }>();
+
+const getTagStyles = (tagName: string) => {
+  const color = props.availableTags?.find(t => t.name === tagName)?.color || '#A855F7';
+  return {
+    backgroundColor: `${color}1A`, // 10% opacity
+    color,
+    border: `1px solid ${color}33` // 20% opacity for border
+  };
+};
+
 </script>
 
 <style lang="scss">
