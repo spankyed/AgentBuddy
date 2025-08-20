@@ -52,8 +52,8 @@
                   <option value="">None</option>
                   <option 
                     v-for="category in categories" 
-                    :key="category.id"
-                    :value="category.id"
+                    :key="category.name"
+                    :value="category.name"
                   >
                     {{ category.name }}
                   </option>

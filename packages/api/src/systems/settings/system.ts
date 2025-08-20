@@ -3,13 +3,41 @@ import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
-import { SettingsData } from './types';
+import { Category, SettingsData } from './types';
 import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const settings = 'settings' as const;
+
+// Helper function to detect category changes
+export const detectCategoryChanges = (prev?: Category[], next?: Category[]) => {
+  if (!prev || !next) return null;
+
+  const prevByName = new Map(prev.map(c => [c.name, c]));
+  const nextByName = new Map(next.map(c => [c.name, c]));
+  const usedPrev = new Set<string>(), usedNext = new Set<string>();
+
+  const renames = prev.flatMap(p => {
+    if (nextByName.has(p.name)) return [];
+    const n = next.find(n => n.color === p.color && !prevByName.has(n.name) && !usedNext.has(n.name));
+    if (!n) return [];
+    usedPrev.add(p.name); usedNext.add(n.name);
+    return [{ oldName: p.name, newName: n.name }];
+  });
+
+  const added = next.filter(c => !prevByName.has(c.name) && !usedNext.has(c.name));
+  const removed = prev.filter(c => !nextByName.has(c.name) && !usedPrev.has(c.name));
+
+  return renames.length || added.length || removed.length
+    ? {
+      ...(renames.length && { categoryRenames: renames }),
+      ...(added.length && { categoriesAdded: added }),
+      ...(removed.length && { categoriesRemoved: removed })
+    }
+    : null;
+};
 
 const busEvent = systemBus(settings);
 
@@ -68,6 +96,12 @@ export const settingsSystem = setup({
     
     updateSettings: ({ system, event }) => {
       const ev = typeOf('UPDATE_SETTINGS', event);
+      
+      // Get previous settings for comparison
+      const previousSettings = ev.entityType === 'plugin' 
+        ? settingsQueries.getPluginSettings(ev.label) 
+        : null;
+      
       settingsCommands.updateSettings(ev.entityType, ev.label, ev.path, ev.value);
       
       // Get all settings to send to frontend
@@ -86,12 +120,27 @@ export const settingsSystem = setup({
         }));
       }
       
-      // If plugin settings were updated, forward to the plugin
+      // If plugin settings were updated, forward to both backend and frontend
       if (ev.entityType === 'plugin' && data.plugins) {
         const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
         if (pluginSettings) {
-          // Send settings update event to the specific plugin
-          // Use type casting to work around the type system
+          // Detect changes if categories exist
+          const changes = previousSettings?.categories && pluginSettings?.categories
+            ? detectCategoryChanges(previousSettings.categories, pluginSettings.categories)
+            : null;
+          
+          // Send to backend system (if it exists)
+          const backendActor = system.get(ev.label as any);
+          if (backendActor) {
+            const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
+            backendActor.send({
+              type: eventType,
+              settings: pluginSettings,
+              changes
+            });
+          }
+          
+          // Send settings update event to the frontend plugin
           const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
           system.get(bus).send(emit(ev.label as any, {
             type: eventType,

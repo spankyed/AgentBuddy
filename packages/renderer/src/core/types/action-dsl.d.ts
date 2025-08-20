@@ -196,6 +196,7 @@ interface ActionsStartupData {
     page: number;
     totalPages: number;
     totalCount: number;
+    categories?: Category[];
 }
 
 /**
@@ -236,6 +237,7 @@ interface PromptsStartupData {
     page: number;
     totalPages: number;
     totalCount: number;
+    categories?: Category[];
 }
 
 declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
@@ -3407,6 +3409,10 @@ interface ApplicationHotkeys {
 }
 interface MiscSettings {
 }
+interface Category {
+    name: string;
+    color: string;
+}
 interface PluginSettings {
     [pluginId: string]: any;
 }
@@ -4058,12 +4064,14 @@ declare const services: {
                 description?: string;
                 templateFn: string;
                 inputs?: Record<string, any>;
+                category?: string;
             }) => RepositoryResult<PromptEntity>;
             update: (id: EARS.EntityId, updates: {
                 label?: string;
                 description?: string;
                 templateFn?: string;
                 inputs?: Record<string, any>;
+                category?: string;
             }) => OperationResult;
             delete: (id: EARS.EntityId) => OperationResult;
         };

@@ -57,7 +57,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_TEMPLATE'; templateFn: string }
   | { type: 'FORM.UPDATE_OUTPUT_SCHEMA'; outputSchema: any }
   | { type: 'GO.BACK' }
-  | { type: 'SETTINGS.CATEGORIES_UPDATED'; categories: Category[] }
+  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
 
 export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<PromptsEvents>()
@@ -76,6 +76,7 @@ const promptsState = setup({
         page: ev.data.page,
         totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
+        categories: ev.data.categories || [],
       }
     }),
 
@@ -242,10 +243,10 @@ const promptsState = setup({
       };
     }),
     
-    updateCategories: assign(({ event }) => {
-      const ev = typeOf('SETTINGS.CATEGORIES_UPDATED', event);
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_SETTINGS_UPDATED', event);
       return {
-        categories: ev.categories,
+        categories: ev.settings?.categories || [],
       };
     }),
   },
@@ -273,7 +274,7 @@ const promptsState = setup({
   on: {
     PROMPTS_STARTUP: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
-    'SETTINGS.CATEGORIES_UPDATED': { actions: 'updateCategories' },
+    PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: { 
       actions: 'addCreatedPrompt'
     },

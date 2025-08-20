@@ -53,6 +53,24 @@ export const defaultSettings: SettingsData = {
       hotkeys: {
         executeQuery: { key: 'Enter', modifiers: ['cmd'] }
       }
+    },
+    prompts: {
+      categories: [
+        { name: 'General', color: '#6B7280' },
+        { name: 'Creative', color: '#A855F7' },
+        { name: 'Technical', color: '#3B82F6' },
+        { name: 'Analysis', color: '#10B981' },
+        { name: 'Communication', color: '#F59E0B' },
+      ]
+    },
+    actions: {
+      categories: [
+        { name: 'Utility', color: '#6B7280' },
+        { name: 'Data Processing', color: '#3B82F6' },
+        { name: 'Integration', color: '#10B981' },
+        { name: 'Automation', color: '#F59E0B' },
+        { name: 'Validation', color: '#EF4444' },
+      ]
     }
   },
   internal: {

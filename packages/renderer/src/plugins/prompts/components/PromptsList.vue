@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { Plus, Edit2, Trash2, Sparkle } from 'lucide-vue-next';
+import { Plus, Trash2, Sparkle } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
 import type { PromptEntity, EARS, Category } from '@app/api';
 
@@ -138,16 +138,16 @@ function confirmDelete(prompt: PromptEntity) {
 }
 
 // Get category name and style
-function getCategoryName(categoryId?: string) {
-  if (!categoryId) return 'none';
-  const category = props.categories.find(c => c.id === categoryId);
-  return category?.name || categoryId;
+function getCategoryName(categoryName?: string) {
+  if (!categoryName) return 'none';
+  const category = props.categories.find(c => c.name === categoryName);
+  return category?.name || categoryName;
 }
 
-function categoryStyle(categoryId?: string) {
-  if (!categoryId) return {}; // Return empty object for inline styles when no category
+function categoryStyle(categoryName?: string) {
+  if (!categoryName) return {}; // Return empty object for inline styles when no category
   
-  const category = props.categories.find(c => c.id === categoryId);
+  const category = props.categories.find(c => c.name === categoryName);
   if (!category) {
     // Default style for unrecognized categories - neutral like input fields
     return {

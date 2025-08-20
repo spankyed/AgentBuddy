@@ -30,12 +30,11 @@
 
 <script setup lang="ts">
 import { useSelector } from '@xstate/vue';
-import { onMounted, watchEffect } from 'vue';
 import { id, type ActionsState } from './state';
 import { applicationState } from '@/main';
 import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
-import type { EARS, ActionParameter, ActionsSettings } from '@app/api';
+import type { EARS, ActionParameter } from '@app/api';
 
 const actor: ActionsState = applicationState.system.get(id);
 const state = useSelector(actor, (state) => state);
@@ -43,30 +42,6 @@ const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);
 const formData = useSelector(actor, (state) => state.context.formData);
 const categories = useSelector(actor, (state) => state.context.categories);
-
-// Get settings actor to watch for category updates
-const settingsActor = applicationState.system.get('settings');
-const settings = useSelector(settingsActor, (state: any) => state.context.settings);
-
-// Watch for settings changes and update categories
-watchEffect(() => {
-  if (settings.value?.plugins?.actions?.categories) {
-    actor.send({ 
-      type: 'SETTINGS.CATEGORIES_UPDATED', 
-      categories: settings.value.plugins.actions.categories 
-    });
-  }
-});
-
-// Initialize categories on mount
-onMounted(() => {
-  if (settings.value?.plugins?.actions?.categories) {
-    actor.send({ 
-      type: 'SETTINGS.CATEGORIES_UPDATED', 
-      categories: settings.value.plugins.actions.categories 
-    });
-  }
-});
 
 // List handlers
 function handleSelectAction(actionId: EARS.EntityId) {

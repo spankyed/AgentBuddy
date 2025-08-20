@@ -40,6 +40,7 @@ export const IncomingActionEvents = [
 
 export type ActionsInternalEvents = 
   | SystemEvents
+  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingActionEvents =
   | { type: 'ACTIONS_LISTED'; data: ActionsStartupData }
@@ -58,9 +59,15 @@ export const actionsSystem = setup({
   },
   actions: {
     sendActionsStartupData: ({ system }) => {
+      const startupData = repository.actionQueries.startupData();
+      const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
+      
       system.get(bus).send(emit(actions, { 
         type: 'ACTIONS_LISTED',
-        data: repository.actionQueries.startupData()
+        data: {
+          ...startupData,
+          categories: actionsSettings?.categories || []
+        }
       }));
     },
     sendActionData: ({ system, event }) => {
@@ -136,6 +143,26 @@ export const actionsSystem = setup({
         logger.error('Failed to delete action:', { error: result.error });
       }
     },
+    handleSettingsUpdate: ({ system, event }) => {
+      const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      if (!changes?.categoryRenames) return;
+      const renames = new Map<string, string>(changes.categoryRenames.map(
+        ({ oldName, newName }: { oldName: string; newName: string }) => [oldName, newName] as [string, string]
+      ));
+
+      const busSvc = system.get(bus);
+      for (const a of repository.actionQueries.all()) {
+        const prev = a.category;
+        if (!prev) continue;                 // prev is now string
+        const next = renames.get(prev);
+        if (!next) continue;                 // next is string | undefined -> guarded
+        repository.actionCommands.update(a.id, { category: next });
+        const updated = repository.actionQueries.byId(a.id);
+        if (updated) system.get(bus).send(emit(actions, {
+          type: 'ACTION_UPDATED', action: updated, actionId: updated.id
+        }));
+      }
+    },
   },
 }).createMachine(
   {
@@ -154,6 +181,9 @@ export const actionsSystem = setup({
       },
       DELETE_ACTION: {
         actions: 'deleteAction',
+      },
+      ACTIONS_SETTINGS_UPDATED: {
+        actions: 'handleSettingsUpdate',
       },
     },
     states: {

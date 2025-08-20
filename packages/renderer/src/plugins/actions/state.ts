@@ -57,7 +57,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_OUTPUT'; output: any }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'GO.BACK' }
-  | { type: 'SETTINGS.CATEGORIES_UPDATED'; categories: Category[] }
+  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
 
 export type ActionsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<ActionsEvents>()
@@ -76,6 +76,7 @@ const actionsState = setup({
         page: ev.data.page,
         totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
+        categories: ev.data.categories || [],
       }
     }),
 
@@ -242,10 +243,10 @@ const actionsState = setup({
       };
     }),
     
-    updateCategories: assign(({ event }) => {
-      const ev = typeOf('SETTINGS.CATEGORIES_UPDATED', event);
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_SETTINGS_UPDATED', event);
       return {
-        categories: ev.categories,
+        categories: ev.settings?.categories || [],
       };
     }),
   },
@@ -273,7 +274,7 @@ const actionsState = setup({
   on: {
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
-    'SETTINGS.CATEGORIES_UPDATED': { actions: 'updateCategories' },
+    ACTIONS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: { 
       actions: 'addCreatedAction'
     },

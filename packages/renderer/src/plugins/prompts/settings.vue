@@ -8,7 +8,7 @@
       <div class="space-y-4">
         <div 
           v-for="(category, index) in categories" 
-          :key="category.id"
+          :key="index"
           class="group"
         >
           <div class="flex items-center gap-3">
@@ -50,23 +50,6 @@
       </div>
     </CollapsibleSection>
 
-    <!-- Default Categories Info -->
-    <div class="border-t border-neutral-800 pt-8">
-      <CollapsibleSection label="Default Categories" :default-open="false" class="mb-8">
-        <p class="text-sm text-neutral-500 mb-4">
-          These default categories will be created if you reset your settings:
-        </p>
-        <div class="space-y-2">
-          <div v-for="category in defaultCategories" :key="category.id" class="flex items-center gap-3">
-            <div 
-              class="w-6 h-6 rounded"
-              :style="{ backgroundColor: category.color }"
-            />
-            <span class="text-sm text-neutral-300">{{ category.name }}</span>
-          </div>
-        </div>
-      </CollapsibleSection>
-    </div>
   </div>
 </template>
 
@@ -93,20 +76,11 @@ const emit = defineEmits<{
   }]
 }>()
 
-// Default categories for reference
-const defaultCategories: Category[] = [
-  { id: 'general', name: 'General', color: '#6B7280' },
-  { id: 'creative', name: 'Creative', color: '#A855F7' },
-  { id: 'technical', name: 'Technical', color: '#3B82F6' },
-  { id: 'analysis', name: 'Analysis', color: '#10B981' },
-  { id: 'communication', name: 'Communication', color: '#F59E0B' },
-]
-
-// State - initialize from props or use defaults
+// State - use settings or empty array (defaults come from backend)
 const categories = ref<Category[]>(
   props.settings?.categories && props.settings.categories.length > 0
     ? [...props.settings.categories]
-    : [...defaultCategories]
+    : []
 )
 
 // Save function
@@ -125,7 +99,6 @@ const { debounced: debouncedSave } = useDebounce(() => {
 // Category management
 const addCategory = () => {
   const newCategory: Category = {
-    id: `category_${Date.now()}`,
     name: '',
     color: '#6B7280' // Default gray color
   }

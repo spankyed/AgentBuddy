@@ -74,7 +74,6 @@ export interface DatabaseSettings {
 
 // Category definition for prompts and actions
 export interface Category {
-  id: string;
   name: string;
   color: string; // Hex color value
 }
