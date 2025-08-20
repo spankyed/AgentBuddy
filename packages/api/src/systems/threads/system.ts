@@ -11,7 +11,7 @@ import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData 
 import { ThreadRelations, type ThreadExtendedData } from './types';
 import type { MappedZodLiterals } from '@/core/utils/type-helpers';
 import { agent } from '@/systems/agent/system';
-import { type ChangeBlock, toMap, toNameSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
 
 export const threads = 'threads' as const;
 
@@ -200,7 +200,8 @@ export const threadsSystem = setup({
       // ----- Status changes -----
       const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
       const sRenames = toMap(sBlock?.renames);
-      const sRemoved = toNameSet(sBlock?.removed);
+      // Statuses use 'label' property as identifier
+      const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
       const statusNeedsWork = sRenames.size || sRemoved.size;
 
       // Fallback for removed statuses: prefer first available status, else keep old.
@@ -209,7 +210,8 @@ export const threadsSystem = setup({
       // ----- Tag changes -----
       const tBlock = changes.tags as ChangeBlock | undefined;
       const tRenames = toMap(tBlock?.renames);
-      const tRemoved = toNameSet(tBlock?.removed);
+      // Tags use 'name' property as identifier
+      const tRemoved = toIdentifierSet(tBlock?.removed, (item: any) => item.name);
       const tagNeedsWork = tRenames.size || tRemoved.size;
 
       if (!statusNeedsWork && !tagNeedsWork) return;

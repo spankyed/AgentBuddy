@@ -9,6 +9,7 @@ import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import { settings as settingsSystemId } from '@/systems/settings/system';
+import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 
 const logger = createLogger('prompts');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -160,25 +161,34 @@ export const promptsSystem = setup({
       const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
-      if (!categoryChanges?.renames?.length) return;
-
-      const renames = new Map<string, string>(
-        categoryChanges.renames.map(
-          ({ from, to }: { from: string; to: string }) => [from, to]
-        )
-      );
-
+      
+      if (!categoryChanges) return;
+      
+      const renames = toMap(categoryChanges.renames);
+      // Categories use 'name' property as identifier
+      const removed = toIdentifierSet(categoryChanges.removed, (item: any) => item.name);
+      
+      if (!renames.size && !removed.size) return;
+      
+      // Fallback to first available category or 'General'
+      const emptyCategoryName = (): string | undefined => '';
+      
+      const busSvc = system.get(bus);
+      
       for (const p of repository.promptQueries.all()) {
-        const prev = p.category;
-        if (!prev) continue;
-        const next = renames.get(prev);
-        if (!next) continue;
-
-        repository.promptCommands.update(p.id, { category: next });
-        const updated = repository.promptQueries.byId(p.id);
-        if (updated) system.get(bus).send(emit(prompts, {
-          type: 'PROMPT_UPDATED', prompt: updated, promptId: updated.id
-        }));
+        const nextCategory = mapScalar(p.category, renames, removed, emptyCategoryName);
+        
+        if (nextCategory !== p.category) {
+          repository.promptCommands.update(p.id, { category: nextCategory });
+          const updated = repository.promptQueries.byId(p.id);
+          if (updated) {
+            busSvc.send(emit(prompts, {
+              type: 'PROMPT_UPDATED', 
+              prompt: updated, 
+              promptId: updated.id
+            }));
+          }
+        }
       }
     },
   },

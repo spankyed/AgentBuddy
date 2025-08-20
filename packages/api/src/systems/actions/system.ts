@@ -8,6 +8,7 @@ import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
+import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -147,22 +148,35 @@ export const actionsSystem = setup({
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
-      if (!categoryChanges?.renames?.length) return;
-      const renames = new Map<string, string>(categoryChanges.renames.map(
-        ({ from, to }: { from: string; to: string }) => [from, to] as [string, string]
-      ));
-
+      
+      if (!categoryChanges) return;
+      
+      const renames = toMap(categoryChanges.renames);
+      // Categories use 'name' property as identifier
+      const removed = toIdentifierSet(categoryChanges.removed, (item: any) => item.name);
+      
+      if (!renames.size && !removed.size) return;
+      
+      // Fallback to first available category or 'Utility'
+      const firstCategoryName = (): string | undefined =>
+        repository.settingsQueries.getPluginSettings('actions')?.categories?.[0]?.name || 'Utility';
+      
       const busSvc = system.get(bus);
+      
       for (const a of repository.actionQueries.all()) {
-        const prev = a.category;
-        if (!prev) continue;                 // prev is now string
-        const next = renames.get(prev);
-        if (!next) continue;                 // next is string | undefined -> guarded
-        repository.actionCommands.update(a.id, { category: next });
-        const updated = repository.actionQueries.byId(a.id);
-        if (updated) system.get(bus).send(emit(actions, {
-          type: 'ACTION_UPDATED', action: updated, actionId: updated.id
-        }));
+        const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);
+        
+        if (nextCategory !== a.category) {
+          repository.actionCommands.update(a.id, { category: nextCategory });
+          const updated = repository.actionQueries.byId(a.id);
+          if (updated) {
+            busSvc.send(emit(actions, {
+              type: 'ACTION_UPDATED', 
+              action: updated, 
+              actionId: updated.id
+            }));
+          }
+        }
       }
     },
   },
