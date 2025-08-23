@@ -41,13 +41,14 @@ export interface FlowsContext {
     positions: Record<string, { x: number; y: number }>;
   };
   flows: FlowEntity[];
-  rootFlow?: FlowEntity; // Special flow with root_flow role
   // Resources available for node configuration
   prompts: PromptEntity[];
   models: ModelConfig[];
   actions: ActionEntity[];
   // Track temporary IDs during async creation
   tempIdMap: Record<string, string>; // tempId -> permanentId
+  // Settings
+  settings?: any; // FlowsSettings
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -69,6 +70,7 @@ type UIEvent =
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
+  | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -84,7 +86,6 @@ const flowsState = setup({
       const ev = typeOf('FLOWS_STARTUP', event);
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
-        rootFlow: ev.data.rootFlow as FlowEntity | undefined,
         prompts: ev.data.prompts || [],
         models: ev.data.models || [],
         actions: ev.data.actions || [],
@@ -93,7 +94,15 @@ const flowsState = setup({
           ...ev.data.graph,
           positions: {}, // Start with empty positions, will be set by layout
         },
+        settings: ev.data.settings || {},
       }
+    }),
+    
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('FLOWS_SETTINGS_UPDATED', event);
+      return {
+        settings: ev.settings || {},
+      };
     }),
 
 
@@ -144,14 +153,7 @@ const flowsState = setup({
     updateFlowLabel: assign(({ context, event }) => {
       const ev = typeOf('FLOW.UPDATE_LABEL', event);
       
-      // Update root flow if it's the one being edited
-      if (context.rootFlow?.id === ev.flowId) {
-        return {
-          rootFlow: { ...context.rootFlow, label: ev.label }
-        };
-      }
-      
-      // Otherwise update in flows list
+      // Update flow in flows list
       return {
         flows: context.flows.map(flow => 
           flow.id === ev.flowId ? { ...flow, label: ev.label } : flow
@@ -627,7 +629,6 @@ const flowsState = setup({
       positions: {},
     },
     flows: [],
-    rootFlow: undefined,
     prompts: [],
     models: [],
     actions: [],
@@ -637,6 +638,9 @@ const flowsState = setup({
     FLOWS_STARTUP: { 
       actions: 'setPluginData',
       target: '.view' // Go directly to view since we have the selected flow's data
+    },
+    FLOWS_SETTINGS_UPDATED: {
+      actions: 'handleSettingsUpdate'
     },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     FLOW_CREATED: { 
@@ -689,13 +693,14 @@ const flowsState = setup({
           getLabel: (ctx) => {
             if (!ctx.selectedFlowId) return '';
             
-            // Check if it's the root flow
-            if (ctx.rootFlow?.id === ctx.selectedFlowId) {
-              return ctx.rootFlow.label || 'Root Flow';
-            }
-            
             // Find in flows array
             const flow = ctx.flows.find(f => f.id === ctx.selectedFlowId);
+            
+            // Check if it's the root flow (based on settings)
+            if (flow && ctx.settings?.rootFlowId === flow.id) {
+              return `${flow.label || 'Flow'} (Root)`;
+            }
+            
             return flow?.label || ctx.selectedFlowId;
           }
         })

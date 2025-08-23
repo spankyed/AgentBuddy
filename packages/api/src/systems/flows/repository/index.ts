@@ -13,6 +13,7 @@ import { tx } from '@/core/utils/ears/helpers/transaction';
 import { removeRelation } from '@/core/utils/ears/attribute-storage';
 import { edgeStore } from '@/core/utils/ears/helpers/edge-store';
 import { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from '@/core/utils/ears/helpers/entity-utils';
+import { createLogger } from '@/core/utils/debug/logger';
 import type { 
   FlowEntity, 
   NodeEntity, 
@@ -24,6 +25,8 @@ import type {
 } from '../config/types';
 import { availableModels } from '../config/available-models';
 import { repository } from '@/repository';
+
+const logger = createLogger('flows-repository');
 
 /**
  * Flow Repository - Manages flow, node, and edge operations
@@ -579,6 +582,30 @@ export const flowsCommands = {
       }
       
       return successResult({ newRelId: relIds[0] });
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
+  
+  grantRootFlowRole: (flowId: EARS.EntityId): OperationResult => {
+    try {
+      // Grant the root_flow role to the specified flow
+      tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
+      
+      logger.info('Granted root_flow role to flow', { flowId });
+      return operationSuccess();
+    } catch (error) {
+      return errorResult(error);
+    }
+  },
+  
+  revokeRootFlowRole: (flowId: EARS.EntityId): OperationResult => {
+    try {
+      // Revoke the root_flow role from the specified flow
+      tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
+      
+      logger.info('Revoked root_flow role from flow', { flowId });
+      return operationSuccess();
     } catch (error) {
       return errorResult(error);
     }

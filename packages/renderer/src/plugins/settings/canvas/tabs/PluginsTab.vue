@@ -29,6 +29,7 @@
         <component 
           :is="selectedPlugin.settings"
           :settings="currentPluginSettings"
+          :flows="selectedPluginId === 'flows' ? flowsList : undefined"
           @update-setting="handleUpdateSetting"
         />
         
@@ -64,6 +65,10 @@ const actor = applicationState.system.get('settings')
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
 const settings = useSelector(actor, (state: any) => state.context.settings)
+
+// Get flows list from flows plugin state for flows settings
+const flowsActor = applicationState.system.get('flows')
+const flowsList = useSelector(flowsActor, (state: any) => state.context.flows || [])
 
 // Use the settings save status composable
 const { saveStatus, updateSettings } = useSettingsSaveStatus()

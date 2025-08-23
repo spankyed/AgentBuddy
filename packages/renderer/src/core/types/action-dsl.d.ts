@@ -1336,9 +1336,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1346,9 +1346,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -2518,32 +2518,6 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
-    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -2576,6 +2550,32 @@ declare const events: {
         type: "DEBUG_TOGGLED";
         enabled: boolean;
         pluginId: "brain";
+    } | {
+        type: "AGENT_STARTUP";
+        data: AgentStartupData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
     } | {
         type: "THREAD_STARTUP";
         data: ThreadStartupData;
@@ -3319,6 +3319,7 @@ interface FlowsStartupData {
     models: ModelConfig[];
     prompts: PromptEntity[];
     actions: ActionEntity[];
+    settings?: any;
 }
 interface ModelConfig {
     id: string;
@@ -4012,6 +4013,8 @@ declare const services: {
             readonly updateEdge: (edgeId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => RepositoryResult<{
                 newRelId: EARS.EntityId;
             }>;
+            readonly grantRootFlowRole: (flowId: EARS.EntityId) => OperationResult;
+            readonly revokeRootFlowRole: (flowId: EARS.EntityId) => OperationResult;
         };
         readonly libraryQueries: {
             readonly getDocuments: (collectionId?: string) => DocumentDTO[];

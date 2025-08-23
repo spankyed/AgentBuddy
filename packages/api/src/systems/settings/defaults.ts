@@ -99,6 +99,9 @@ export const defaultSettings: SettingsData = {
         { name: 'Archive', color: '#6B7280' },
         { name: 'Important', color: '#EF4444' },
       ]
+    },
+    flows: {
+      rootFlowId: undefined // Will be set to first available flow or selected by user
     }
   },
   internal: {

@@ -107,6 +107,11 @@ export interface ActionsSettings {
   categories: Category[];
 }
 
+// Flows plugin settings
+export interface FlowsSettings {
+  rootFlowId?: string; // ID of the flow with the root_flow role
+}
+
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
