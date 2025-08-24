@@ -105,6 +105,10 @@ export const defaultSettings: SettingsData = {
     },
     brain: {
       runningRootFlowId: undefined // No flow running initially
+    },
+    logs: {
+      maxLogs: 1000, // Default to 1000 logs
+      excludedSources: [] // No sources excluded by default
     }
   },
   internal: {

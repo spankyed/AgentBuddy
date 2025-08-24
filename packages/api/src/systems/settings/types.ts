@@ -117,6 +117,12 @@ export interface BrainSettings {
   runningRootFlowId?: string; // The ID of the root flow currently running in the brain
 }
 
+// Logs plugin settings
+export interface LogsSettings {
+  maxLogs: number; // Maximum number of logs to keep in memory
+  excludedSources: string[]; // Array of source patterns to exclude from display
+}
+
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }

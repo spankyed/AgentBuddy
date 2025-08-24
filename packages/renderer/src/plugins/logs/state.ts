@@ -20,16 +20,22 @@ export interface LogsContext {
     level: 'all' | 'debug' | 'info' | 'warn' | 'error';
     search: string;
   };
+  settings: {
+    maxLogs: number;
+    excludedSources: string[];
+  };
 }
 
 type LogsEvents =
-  | { type: 'LOGS_STARTUP'; logs: LogEntry[] }
+  | { type: 'LOGS_STARTUP'; logs: LogEntry[]; settings?: { maxLogs: number; excludedSources: string[] } }
   | { type: 'LOGS_REFRESH'; logs: LogEntry[] }
+  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
   | { type: 'LOGS_CLEARED' }
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
-  | { type: 'CLEAR_LOGS' };
+  | { type: 'CLEAR_LOGS' }
+  | { type: 'LOGS_SETTINGS_UPDATED'; settings: { maxLogs: number; excludedSources: string[] } };
 
 const typeOf = safeEvents<LogsEvents>();
 
@@ -41,11 +47,20 @@ const logsState = setup({
     events: {} as LogsEvents,
   },
   actions: {
-    setStartupLogs: assign({
-      logs: ({ event }) => typeOf('LOGS_STARTUP', event).logs,
+    setStartupLogs: assign(({ event }) => {
+      const ev = typeOf('LOGS_STARTUP', event);
+      return {
+        logs: ev.logs,
+        settings: ev.settings ? ev.settings : undefined
+      };
     }),
     updateLogs: assign({
-      logs: ({ event }) => typeOf('LOGS_REFRESH', event).logs,
+      logs: ({ event }) => {
+        if (event.type === 'LOGS_UPDATE') {
+          return typeOf('LOGS_UPDATE', event).logs;
+        }
+        return typeOf('LOGS_REFRESH', event).logs;
+      },
     }),
     addLog: assign({
       logs: ({ context, event }) => {
@@ -76,6 +91,9 @@ const logsState = setup({
         search: typeOf('SET_SEARCH', event).search,
       }),
     }),
+    updateSettings: assign({
+      settings: ({ event }) => typeOf('LOGS_SETTINGS_UPDATED', event).settings,
+    }),
   },
 }).createMachine({
   id,
@@ -86,6 +104,10 @@ const logsState = setup({
       level: 'all',
       search: '',
     },
+    settings: {
+      maxLogs: 1000,
+      excludedSources: [],
+    },
   },
   states: {
     active: {
@@ -94,6 +116,9 @@ const logsState = setup({
           actions: 'setStartupLogs',
         },
         'LOGS_REFRESH': {
+          actions: 'updateLogs',
+        },
+        'LOGS_UPDATE': {
           actions: 'updateLogs',
         },
         'LOG_ADDED': {
@@ -110,6 +135,9 @@ const logsState = setup({
         },
         CLEAR_LOGS: {
           actions: ['clearLogs', 'sendClearLogsToBackend'],
+        },
+        LOGS_SETTINGS_UPDATED: {
+          actions: 'updateSettings',
         },
       },
     },
