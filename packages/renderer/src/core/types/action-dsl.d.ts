@@ -1214,6 +1214,15 @@ declare const events: {
     }, {
         type: "CLEAR_LOGS";
         systemId: "logs";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_LOGS_UPDATE">;
+        systemId: zod.ZodLiteral<"logs">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_LOGS_UPDATE";
+        systemId: "logs";
+    }, {
+        type: "REQUEST_LOGS_UPDATE";
+        systemId: "logs";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"PROMPT_SELECT">;
         systemId: zod.ZodLiteral<"prompts">;

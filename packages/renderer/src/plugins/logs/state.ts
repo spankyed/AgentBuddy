@@ -1,6 +1,7 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import { trpc } from '@/core/trpc';
+import type { OutgoingLogsEvents } from '@app/api';
 
 export const id = 'logs' as const;
 
@@ -27,15 +28,10 @@ export interface LogsContext {
 }
 
 type LogsEvents =
-  | { type: 'LOGS_STARTUP'; logs: LogEntry[]; settings?: { maxLogs: number; excludedSources: string[] } }
-  | { type: 'LOGS_REFRESH'; logs: LogEntry[] }
-  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
-  | { type: 'LOG_ADDED'; log: LogEntry }
-  | { type: 'LOGS_CLEARED' }
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: { maxLogs: number; excludedSources: string[] } };
+  | OutgoingLogsEvents;
 
 const typeOf = safeEvents<LogsEvents>();
 
@@ -55,12 +51,7 @@ const logsState = setup({
       };
     }),
     updateLogs: assign({
-      logs: ({ event }) => {
-        if (event.type === 'LOGS_UPDATE') {
-          return typeOf('LOGS_UPDATE', event).logs;
-        }
-        return typeOf('LOGS_REFRESH', event).logs;
-      },
+      logs: ({ event }) => typeOf('LOGS_UPDATE', event).logs,
     }),
     addLog: assign({
       logs: ({ context, event }) => {
@@ -92,7 +83,14 @@ const logsState = setup({
       }),
     }),
     updateSettings: assign({
-      settings: ({ event }) => typeOf('LOGS_SETTINGS_UPDATED', event).settings,
+      settings: ({ event }) => {
+        trpc.bus.send.mutate({
+          type: 'REQUEST_LOGS_UPDATE',
+          systemId: id,
+        });
+
+        return typeOf('LOGS_SETTINGS_UPDATED', event).settings
+      },
     }),
   },
 }).createMachine({
@@ -114,9 +112,6 @@ const logsState = setup({
       on: {
         'LOGS_STARTUP': {
           actions: 'setStartupLogs',
-        },
-        'LOGS_REFRESH': {
-          actions: 'updateLogs',
         },
         'LOGS_UPDATE': {
           actions: 'updateLogs',

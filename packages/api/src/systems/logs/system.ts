@@ -18,6 +18,7 @@ const busEvent = systemBus(logs);
 export const IncomingLogEvents = [
   busEvent('EMPTY', { empty: z.string() }),
   busEvent('CLEAR_LOGS', {}),
+  busEvent('REQUEST_LOGS_UPDATE', {}),
 ] as const
 
 export type LogsInternalEvents = 
@@ -158,14 +159,6 @@ export const logsSystem = setup({
       });
       rootEvents.emitOutgoing(wrapped.event)
     },
-    broadcastSettingsUpdate: ({ event }) => {
-      const ev = event as Extract<ReceivableEvents, { type: 'LOGS_SETTINGS_UPDATED' }>;
-      const wrapped = emit(logs, {
-        type: 'LOGS_SETTINGS_UPDATED',
-        settings: ev.settings
-      });
-      rootEvents.emitOutgoing(wrapped.event);
-    },
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
@@ -190,9 +183,10 @@ export const logsSystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendLogsStartup'],
     },
-    LOGS_SETTINGS_UPDATED: {
-      actions: ['truncateLogsIfNeeded', 'broadcastSettingsUpdate', 'broadcastLogsUpdate'],
-    },
+    // ! logs system is unreachable by other systems as a failsafe
+    // LOGS_SETTINGS_UPDATED: {
+    //   actions: ['truncateLogsIfNeeded', 'broadcastSettingsUpdate', 'broadcastLogsUpdate'],
+    // },
   },
   states: {
     active: {
@@ -202,6 +196,9 @@ export const logsSystem = setup({
         },
         CLEAR_LOGS: {
           actions: ['clearLogs', 'broadcastLogsCleared'],
+        },
+        REQUEST_LOGS_UPDATE: {
+          actions: ['truncateLogsIfNeeded', 'broadcastLogsUpdate'],
         },
       },
     },
