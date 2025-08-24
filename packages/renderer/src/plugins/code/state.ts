@@ -428,25 +428,25 @@ const codeState = setup({
     
     openTerminal: ({ context, self, system }) => {
       // Look for an existing terminal at the current directory
-      const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
-        return 'isTerminal' in file &&
-          file.isTerminal === true &&
-          file.terminalInfo.cwd === context.currentDirectory;
-      });
-      if (existingTerminal) {
-        // Activate the existing terminal tab
-        self.send({
-          type: 'UPDATE_STATE',
-          updates: { activeFilePath: existingTerminal.path }
-        });
-      } else {
+      // const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
+      //   return 'isTerminal' in file &&
+      //     file.isTerminal === true &&
+      //     file.terminalInfo.cwd === context.currentDirectory;
+      // });
+      // if (existingTerminal) {
+      //   // Activate the existing terminal tab
+      //   self.send({
+      //     type: 'UPDATE_STATE',
+      //     updates: { activeFilePath: existingTerminal.path }
+      //   });
+      // } else {
         // Create a new terminal at the current directory
         system.get('terminal')?.send({
             type: 'terminal.CREATE',
             title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
             cwd: context.currentDirectory
           });
-      }
+      // }
     },
     
     navigatePrevPanel: ({ context, self }) => {
