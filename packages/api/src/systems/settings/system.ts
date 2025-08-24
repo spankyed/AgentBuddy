@@ -63,6 +63,14 @@ export const settingsSystem = setup({
   actors: {
     secretsActor
   },
+  guards: {
+    isSecretsOperation: ({ event }) => {
+      const ev = event as any;
+      return ev.entityType === 'general' && 
+             ev.label === 'secrets' && 
+             ev.path?.[0] === 'secrets_operation';
+    }
+  },
   actions: {
     sendSettingsStartupData: ({ system }) => {
       const data = settingsQueries.getSettings();
@@ -88,37 +96,34 @@ export const settingsSystem = setup({
       }));
     },
     
+    handleSecretsOperation: ({ system, event }) => {
+      const ev = typeOf('UPDATE_SETTINGS', event);
+      const operation = ev.value;
+      
+      // Forward secrets operations to the secrets system
+      if (operation.type === 'CREATE_API_KEY') {
+        system.get('secrets')?.send({
+          type: 'SECRETS.CMD.CREATE_API_KEY',
+          provider: operation.provider,
+          value: operation.value,
+          customName: operation.customName
+        });
+      } else if (operation.type === 'UPDATE_API_KEY') {
+        system.get('secrets')?.send({
+          type: 'SECRETS.CMD.UPDATE_API_KEY',
+          id: operation.editingSecretId,
+          value: operation.value
+        });
+      } else if (operation.type === 'DELETE_API_KEY') {
+        system.get('secrets')?.send({
+          type: 'SECRETS.CMD.DELETE_API_KEY',
+          id: operation.id
+        });
+      }
+    },
+    
     updateSettings: ({ system, event }) => {
       const ev = typeOf('UPDATE_SETTINGS', event);
-      
-      // Handle special secrets operations
-      if (ev.entityType === 'general' && ev.label === 'secrets' && ev.path[0] === 'secrets_operation') {
-        const operation = ev.value;
-        
-        // Forward secrets operations to the secrets system
-        if (operation.type === 'CREATE_API_KEY') {
-          system.get('secrets')?.send({
-            type: 'SECRETS.CMD.CREATE_API_KEY',
-            provider: operation.provider,
-            value: operation.value,
-            customName: operation.customName
-          });
-        } else if (operation.type === 'UPDATE_API_KEY') {
-          system.get('secrets')?.send({
-            type: 'SECRETS.CMD.UPDATE_API_KEY',
-            id: operation.editingSecretId,
-            value: operation.value
-          });
-        } else if (operation.type === 'DELETE_API_KEY') {
-          system.get('secrets')?.send({
-            type: 'SECRETS.CMD.DELETE_API_KEY',
-            id: operation.id
-          });
-        }
-        
-        // Don't process this as a normal settings update
-        return;
-      }
       
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
@@ -252,9 +257,15 @@ export const settingsSystem = setup({
         GET_SETTINGS: {
           actions: 'getSettings',
         },
-        UPDATE_SETTINGS: {
-          actions: 'updateSettings',
-        },
+        UPDATE_SETTINGS: [
+          {
+            guard: 'isSecretsOperation',
+            actions: 'handleSecretsOperation',
+          },
+          {
+            actions: 'updateSettings',
+          }
+        ],
         RESET_SETTINGS: {
           actions: 'resetSettings',
         },
