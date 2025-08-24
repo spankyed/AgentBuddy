@@ -10,7 +10,15 @@ export const getDefaultsByLabel = (type: 'general' | 'plugin' | 'internal', labe
 export const defaultSettings: SettingsData = {
   general: {
     personal: {},
-    apiKeys: {},
+    secrets: {
+      google: null,
+      anthropic: null,
+      openai: null,
+      groq: null,
+      mistral: null,
+      cohere: null,
+      custom: {}
+    },
     hotkeys: {
       switchPluginUp: {
         key: 'ArrowUp',

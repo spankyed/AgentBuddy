@@ -30,30 +30,17 @@ export function openEnvAt(basePath: string): LmdbDbs {
   };
 }
 
-export function openShardedEnvs(paths: { primary: string; volatileBackup: string }) {
+export function openShardedEnvs(paths: { primary: string; volatileBackup: string; secrets: string }) {
   const primary = openEnvAt(paths.primary);
   const volatileBackup = openEnvAt(paths.volatileBackup);
-  return { primary, volatileBackup };
+  const secrets = openEnvAt(paths.secrets);
+  return { primary, volatileBackup, secrets };
 }
 
-export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs }) {
-  try {
-    // Close primary environment
-    envs.primary.entities.close();
-    envs.primary.attrs.close();
-    envs.primary.relations.close();
-    envs.primary.root.close();
-    
-    // Close volatile backup environment
-    envs.volatileBackup.entities.close();
-    envs.volatileBackup.attrs.close();
-    envs.volatileBackup.relations.close();
-    envs.volatileBackup.root.close();
-    
-    console.log('[LMDB] Sharded environments closed successfully');
-  } catch (error) {
-    console.error('[LMDB] Error closing sharded environments:', error);
-  }
+export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs; secrets: LmdbDbs }) {
+  closeEnv(envs.primary);
+  closeEnv(envs.volatileBackup);
+  closeEnv(envs.secrets);
 }
 
 export function closeEnv(dbs: LmdbDbs): void {

@@ -47,7 +47,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { User, Key, Keyboard, Settings, CheckCircle } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
-import ApiKeys from '../components/GeneralSettings/ApiKeys.vue'
+import Secrets from '../components/GeneralSettings/Secrets.vue'
 import Hotkeys from '../components/GeneralSettings/Hotkeys.vue'
 import Misc from '../components/GeneralSettings/Misc.vue'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
@@ -66,7 +66,7 @@ const currentSettings = computed(() => {
   
   const settingsMap = {
     personal: settings.value.general.personal,
-    apiKeys: settings.value.general.apiKeys,
+    secrets: settings.value.general.secrets,
     hotkeys: settings.value.general.hotkeys,
     misc: settings.value.general.misc
   }
@@ -77,20 +77,20 @@ const currentSettings = computed(() => {
 // Component mapping
 const componentMap: Record<string, any> = {
   personal: PersonalInfo,
-  apiKeys: ApiKeys,
+  secrets: Secrets,
   hotkeys: Hotkeys,
   misc: Misc
 }
 
 const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'apiKeys', label: 'API Keys', icon: Key },
+  { id: 'secrets', label: 'Secrets', icon: Key },
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
   { id: 'misc', label: 'Misc', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'apiKeys' | 'hotkeys' | 'misc' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'misc' })
 }
 
 // Handle update events from child components
@@ -98,14 +98,26 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   // Map the current nav item to the appropriate label
   const labelMap = {
     personal: 'personal',
-    apiKeys: 'apikeys',
+    secrets: 'secrets',
     hotkeys: 'hotkeys',
     misc: 'misc'
+  } as const
+  
+  const currentNavItem = generalNavItem.value as keyof typeof labelMap
+  const backendLabel = labelMap[currentNavItem]
+  
+  // Defensive check to prevent undefined labels
+  if (!backendLabel) {
+    console.log('event.path: ', event.path);
+    console.log('backendLabel: ', backendLabel);
+    console.error(`[GeneralTab] Invalid generalNavItem value: "${generalNavItem.value}". Expected one of: ${Object.keys(labelMap).join(', ')}`)
+    console.error('[GeneralTab] Skipping settings update to prevent data corruption')
+    return
   }
   
   updateSettings({
     entityType: 'general',
-    label: labelMap[generalNavItem.value as keyof typeof labelMap],
+    label: backendLabel,
     path: event.path,
     value: event.value
   })

@@ -6,7 +6,7 @@ import { logInternal }   from "@/core/utils/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
 import { EARS } from "../../types";
 import { randomId } from "../random-id";
-import { getLmdbPath, getVolatileLmdbPath } from "@/core/utils/paths";
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/utils/paths";
 import { openShardedEnvs, closeShardedEnvs } from "@/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
 import { makePolicy } from "@/persistence/partitioning/policy";
@@ -16,18 +16,21 @@ import { makeShardedPersistence } from "@/persistence/partitioning/sharded-route
 const envs = openShardedEnvs({
   primary: getLmdbPath(),
   volatileBackup: getVolatileLmdbPath(),
-});
+  secrets: getSecretsLmdbPath(),
+});;
 
 // 2) Create base sinks
 const sinks = {
   primary: makeLmdbAdapter(envs.primary),
   volatileBackup: makeLmdbAdapter(envs.volatileBackup),
+  secrets: makeLmdbAdapter(envs.secrets),
 };
 
-// 3) Policy: exclude TNode (generic & maintainable)
+// 3) Policy: exclude TNode, handle secrets
 const policy = makePolicy({
   excludedEntityTypes: new Set([EARS.Entity.TNode]),
-  hydratePartitions: new Set(['primary']), // do NOT hydrate backup by default
+  secretEntityTypes: new Set([EARS.Entity.Secret]),
+  hydratePartitions: new Set(['primary', 'secrets']), // hydrate primary and secrets on startup
 });
 
 // 4) Sharded router

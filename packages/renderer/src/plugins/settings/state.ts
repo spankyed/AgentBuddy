@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, ApplicationHotkeys, PluginSettings } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 import plugins from '@/plugins'
 import { applicationState } from '@/main'
@@ -21,20 +21,26 @@ export type SettingsState = ActorRefFrom<typeof settingsState>
 
 export interface SettingsContext {
   settings: SettingsData | null;
+  secretsData: any[];
   activeTab: 'general' | 'plugins' | 'help';
-  generalNavItem: 'personal' | 'apiKeys' | 'hotkeys' | 'misc';
+  generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'misc';
   selectedPluginId: string | null;
   isLoading: boolean;
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
-  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'apiKeys' | 'hotkeys' | 'misc' }
+  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'hotkeys' | 'misc' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
+  | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
+  | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
+  | { type: 'SECRETS.EVENT.UPDATED'; id: string }
+  | { type: 'SECRETS.EVENT.DELETED'; id: string }
+  | { type: 'SECRETS.EVENT.ERROR'; message: string }
 const typeOf = safeEvents<SettingsEvents>()
 
 const settingsState = setup({
@@ -66,6 +72,13 @@ const settingsState = setup({
         settings: ev.data,
         isLoading: false,
       }
+    }),
+
+    setSecretsData: assign(({ event }) => {
+      const ev = event as { type: 'SECRETS.EVENT.LOADED'; data: any[] };
+      return {
+        secretsData: ev.data
+      };
     }),
 
     updateSettingsData: assign(({ event }) => {
@@ -137,6 +150,7 @@ const settingsState = setup({
     
     return {
       settings: null,
+      secretsData: [],
       activeTab: 'general',
       generalNavItem: 'personal',
       selectedPluginId: defaultPluginId,
@@ -180,6 +194,13 @@ const settingsState = setup({
         SETTINGS_RESET: {
           actions: 'updateSettingsData',
         },
+        'SECRETS.EVENT.LOADED': {
+          actions: 'setSecretsData',
+        },
+        'SECRETS.EVENT.CREATED': {},
+        'SECRETS.EVENT.UPDATED': {},
+        'SECRETS.EVENT.DELETED': {},
+        'SECRETS.EVENT.ERROR': {},
       },
     },
   },

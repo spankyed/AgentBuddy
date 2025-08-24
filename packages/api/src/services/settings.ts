@@ -50,7 +50,7 @@ export class SettingsService {
 
   /**
    * Update a general setting
-   * @param category - The general settings category (e.g., 'hotkeys', 'apiKeys')
+   * @param category - The general settings category (e.g., 'hotkeys', 'secrets')
    * @param path - Path to the setting property
    * @param value - The new value
    */

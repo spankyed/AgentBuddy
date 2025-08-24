@@ -30,7 +30,7 @@ const getOrCreateSettings = (type: 'general' | 'plugin' | 'internal', label: str
 // General settings config
 const generalConfig = {
   personal: 'personal',
-  apikeys: 'apiKeys',
+  secrets: 'secrets',
   hotkeys: 'hotkeys',
   misc: 'misc',
   pluginVisibility: 'pluginVisibility'
@@ -130,7 +130,7 @@ export const setupDevelopmentSettings = (): void => {
   };
   
   getOrCreateSettings('general', 'hotkeys', testHotkeys);
-  ['personal', 'apikeys', 'misc'].forEach(label => 
+  ['personal', 'secrets', 'misc'].forEach(label => 
     getOrCreateSettings('general', generalConfig[label as keyof typeof generalConfig])
   );
   

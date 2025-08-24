@@ -1,10 +1,12 @@
-import { createMachine, setup } from 'xstate';
+import { createMachine, setup, sendTo, enqueueActions } from 'xstate';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { SettingsData } from './types';
 import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
+import { secretsActor } from '../secrets/system';
+import type { SecretsOutputEvents } from '../secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 
@@ -23,16 +25,32 @@ export const IncomingSettingsEvents = [
     value: z.any()
   }),
   busEvent('RESET_SETTINGS', {}),
+  // Secret management events
+  busEvent('SECRETS.CMD.CREATE_API_KEY', {
+    provider: z.string(),
+    value: z.string(),
+    customName: z.string().optional()
+  }),
+  busEvent('SECRETS.CMD.UPDATE_API_KEY', {
+    id: z.string(),
+    value: z.string()
+  }),
+  busEvent('SECRETS.CMD.DELETE_API_KEY', {
+    id: z.string()
+  }),
+  busEvent('SECRETS.CMD.GET_API_KEYS', {}),
 ] as const
 
 export type SettingsInternalEvents = 
   | SystemEvents
+  | SecretsOutputEvents // Events from child secrets actor
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
+  | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
 type ReceivableEvents = MergeReceivable<typeof IncomingSettingsEvents, SettingsInternalEvents>;
@@ -41,6 +59,9 @@ export const settingsSystem = setup({
   types: {
     context: {} as {},
     events: {} as ReceivableEvents,
+  },
+  actors: {
+    secretsActor
   },
   actions: {
     sendSettingsStartupData: ({ system }) => {
@@ -69,6 +90,35 @@ export const settingsSystem = setup({
     
     updateSettings: ({ system, event }) => {
       const ev = typeOf('UPDATE_SETTINGS', event);
+      
+      // Handle special secrets operations
+      if (ev.entityType === 'general' && ev.label === 'secrets' && ev.path[0] === 'secrets_operation') {
+        const operation = ev.value;
+        
+        // Forward secrets operations to the secrets system
+        if (operation.type === 'CREATE_API_KEY') {
+          system.get('secrets')?.send({
+            type: 'SECRETS.CMD.CREATE_API_KEY',
+            provider: operation.provider,
+            value: operation.value,
+            customName: operation.customName
+          });
+        } else if (operation.type === 'UPDATE_API_KEY') {
+          system.get('secrets')?.send({
+            type: 'SECRETS.CMD.UPDATE_API_KEY',
+            id: operation.editingSecretId,
+            value: operation.value
+          });
+        } else if (operation.type === 'DELETE_API_KEY') {
+          system.get('secrets')?.send({
+            type: 'SECRETS.CMD.DELETE_API_KEY',
+            id: operation.id
+          });
+        }
+        
+        // Don't process this as a normal settings update
+        return;
+      }
       
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
@@ -131,15 +181,68 @@ export const settingsSystem = setup({
         data
       }));
     },
+    
+    // Forward API key events to secrets actor
+    forwardToSecrets: ({ event, system }) => {
+      system.get('secrets')?.send(event);
+    },
+    
+    // Handle events from secrets actor - sync to settings and forward to frontend
+    handleSecretsEvent: ({ system, event }) => {
+      // Sync secrets to secrets settings when we get loaded data
+      if (event.type === 'SECRETS.EVENT.LOADED') {
+        const secretsData = (event as any).data || [];
+        const newSecrets: any = {
+          google: null,
+          anthropic: null,
+          openai: null,
+          groq: null,
+          mistral: null,
+          cohere: null,
+          custom: {}
+        };
+        
+        // Map secrets to secrets references
+        for (const secret of secretsData) {
+          if (secret.provider === 'custom' && secret.customName) {
+            newSecrets.custom[secret.customName] = secret.id;
+          } else if (secret.provider !== 'custom') {
+            newSecrets[secret.provider] = secret.id;
+          }
+        }
+        
+        // Update settings
+        settingsCommands.updateSettings('general', 'secrets', [], newSecrets);
+        
+        // Send updated settings to frontend
+        const updatedSettings = settingsQueries.getSettings();
+        system.get(bus).send(emit(settings, {
+          type: 'SETTINGS_UPDATED',
+          data: updatedSettings
+        }));
+      }
+      
+      // Forward to frontend
+      system.get(bus).send(emit(settings, event as SecretsOutputEvents));
+    },
+
+    spawnSecretsActor: enqueueActions(({ enqueue }) => {
+      // Spawn the secrets child actor
+      enqueue.spawnChild('secretsActor', {
+        systemId: 'secrets',
+        input: { parentRef: settings }
+      });
+    })
   },
 }).createMachine({
   id: settings,
   initial: 'idle',
   context: {},
-  entry: () => {
-    // Initialize development settings if needed
-    // setupDevelopmentSettings();
-  },
+  // entry: () => {
+  //   // Initialize development settings if needed
+  //   // setupDevelopmentSettings();
+  // },
+  entry: ['spawnSecretsActor'],
   states: {
     idle: {
       on: {
@@ -154,6 +257,14 @@ export const settingsSystem = setup({
         },
         RESET_SETTINGS: {
           actions: 'resetSettings',
+        },
+        // Forward incoming SECRETS.CMD.* events to secrets actor
+        'SECRETS.CMD.*': {
+          actions: 'forwardToSecrets',
+        },
+        // Handle outgoing SECRETS.EVENT.* events from secrets actor
+        'SECRETS.EVENT.*': {
+          actions: 'handleSecretsEvent',
         },
       },
     },

@@ -16,7 +16,7 @@ export interface SettingsData {
 
 export interface GeneralSettings {
   personal: PersonalInfo;
-  apiKeys: ApiKeys;
+  secrets: Secrets;
   hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
   pluginVisibility: PluginVisibilitySettings;
@@ -37,10 +37,14 @@ export interface PersonalInfo {
   address?: string | Address; // Support both legacy string and new structured format
 }
 
-export interface ApiKeys {
-  google?: string;
-  anthropic?: string;
-  openai?: string;
+export interface Secrets {
+  google?: string | null; // Secret ID reference
+  anthropic?: string | null; // Secret ID reference
+  openai?: string | null; // Secret ID reference
+  groq?: string | null; // Secret ID reference
+  mistral?: string | null; // Secret ID reference
+  cohere?: string | null; // Secret ID reference
+  custom?: Record<string, string>; // Custom provider name -> Secret ID
 }
 
 // Base keyboard shortcut configuration
