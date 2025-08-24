@@ -40,7 +40,6 @@ export type OutgoingLogsEvents =
 
 export interface LogsContext {
   logs: LogEntry[];
-  maxLogs: number;
 }
 
 export const LogsSystemEvents = fromSystem(IncomingLogEvents)<OutgoingLogsEvents, typeof logs>();
@@ -97,8 +96,10 @@ export const logsSystem = setup({
         const updatedLogs = [...context.logs, newLog];
         
         // Keep only the last maxLogs entries
-        if (updatedLogs.length > context.maxLogs) {
-          return updatedLogs.slice(updatedLogs.length - context.maxLogs);
+        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+
+        if (updatedLogs.length > (settings?.maxLogs || 1000)) {
+          return updatedLogs.slice(updatedLogs.length - (settings?.maxLogs || 1000));
         }
         
         return updatedLogs;
@@ -111,11 +112,11 @@ export const logsSystem = setup({
       
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
-      
+
       const wrapped = emit(logs, {
         type: 'LOGS_STARTUP',
         logs: filteredLogs,
-        settings: settings || { maxLogs: context.maxLogs, excludedSources: [] }
+        settings: settings ?? { maxLogs: 1000, excludedSources: [] }
       });
       rootEvents.emitOutgoing(wrapped.event);
     },
@@ -157,12 +158,6 @@ export const logsSystem = setup({
       });
       rootEvents.emitOutgoing(wrapped.event)
     },
-    updateSettingsFromBackend: assign({
-      maxLogs: ({ event }) => {
-        const ev = event as Extract<ReceivableEvents, { type: 'LOGS_SETTINGS_UPDATED' }>;
-        return ev.settings.maxLogs;
-      }
-    }),
     broadcastSettingsUpdate: ({ event }) => {
       const ev = event as Extract<ReceivableEvents, { type: 'LOGS_SETTINGS_UPDATED' }>;
       const wrapped = emit(logs, {
@@ -174,8 +169,9 @@ export const logsSystem = setup({
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
-        if (context.logs.length > context.maxLogs) {
-          return context.logs.slice(context.logs.length - context.maxLogs);
+        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+        if (context.logs.length > (settings?.maxLogs || 1000)) {
+          return context.logs.slice(context.logs.length - (settings?.maxLogs || 1000));
         }
         return context.logs;
       }
@@ -185,11 +181,8 @@ export const logsSystem = setup({
   id: logs,
   initial: 'active',
   context: () => {
-    // Initialize with settings from repository
-    const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
     return {
       logs: [],
-      maxLogs: settings?.maxLogs || 1000
     };
   },
   entry: ['setupEventListeners'],
@@ -198,7 +191,7 @@ export const logsSystem = setup({
       actions: ['sendLogsStartup'],
     },
     LOGS_SETTINGS_UPDATED: {
-      actions: ['updateSettingsFromBackend', 'truncateLogsIfNeeded', 'broadcastSettingsUpdate', 'broadcastLogsUpdate'],
+      actions: ['truncateLogsIfNeeded', 'broadcastSettingsUpdate', 'broadcastLogsUpdate'],
     },
   },
   states: {
@@ -209,9 +202,6 @@ export const logsSystem = setup({
         },
         CLEAR_LOGS: {
           actions: ['clearLogs', 'broadcastLogsCleared'],
-        },
-        REQUEST_LOGS_UPDATE: {
-          actions: 'broadcastLogsUpdate',
         },
       },
     },
