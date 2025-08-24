@@ -113,7 +113,7 @@ const selectPlugin = (pluginId: string) => {
 
 // Check if a plugin is visible
 const isPluginVisible = (pluginId: string) => {
-  return settings.value?.general?.pluginVisibility?.[pluginId] !== false
+  return settings.value?.plugins?._meta?.visibility?.[pluginId] !== false
 }
 
 // Toggle plugin visibility
@@ -123,9 +123,9 @@ const togglePluginVisibility = (pluginId: string) => {
   const currentVisibility = isPluginVisible(pluginId)
   
   updateSettings({
-    entityType: 'general',
-    label: 'pluginVisibility',
-    path: [pluginId],
+    entityType: 'plugin',
+    label: '_meta',
+    path: ['visibility', pluginId],
     value: !currentVisibility
   })
 }

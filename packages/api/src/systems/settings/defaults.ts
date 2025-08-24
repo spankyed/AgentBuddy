@@ -33,24 +33,26 @@ export const defaultSettings: SettingsData = {
         modifiers: ['cmd']
       }
     },
-    misc: {},
-    pluginVisibility: {
-      // All plugins visible by default
-      threads: true,
-      agent: true,
-      code: true,
-      library: true,
-      actions: true,
-      prompts: true,
-      flows: true,
-      brain: true,
-      database: true,
-      logs: true,
-      settings: true, // Settings should always be visible
-      blank: true,
-    }
+    misc: {}
   },
   plugins: {
+    _meta: {
+      visibility: {
+        // All plugins visible by default
+        threads: true,
+        agent: true,
+        code: true,
+        library: true,
+        actions: true,
+        prompts: true,
+        flows: true,
+        brain: true,
+        database: true,
+        logs: true,
+        settings: true, // Settings should always be visible
+        blank: true,
+      }
+    },
     agent: {
       modes: [
         { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },

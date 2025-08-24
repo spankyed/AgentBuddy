@@ -61,10 +61,10 @@ const settingsState = setup({
       const ev = typeOf('SETTINGS_LOADED', event);
       
       // Send plugin visibility to application state on initial load
-      if (ev.data?.general?.pluginVisibility) {
+      if (ev.data?.plugins?._meta?.visibility) {
         applicationState.send({
           type: 'PLUGIN_VISIBILITY_UPDATED',
-          pluginVisibility: ev.data.general.pluginVisibility
+          pluginVisibility: ev.data.plugins._meta.visibility
         });
       }
       
@@ -85,10 +85,10 @@ const settingsState = setup({
       const ev = typeOf('SETTINGS_UPDATED', event);
       
       // Send plugin visibility updates to application state
-      if (ev.data?.general?.pluginVisibility) {
+      if (ev.data?.plugins?._meta?.visibility) {
         applicationState.send({
           type: 'PLUGIN_VISIBILITY_UPDATED',
-          pluginVisibility: ev.data.general.pluginVisibility
+          pluginVisibility: ev.data.plugins._meta.visibility
         });
       }
       

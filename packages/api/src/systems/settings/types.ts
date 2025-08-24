@@ -19,7 +19,6 @@ export interface GeneralSettings {
   secrets: Secrets;
   hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
-  pluginVisibility: PluginVisibilitySettings;
 }
 
 export interface Address {
@@ -134,6 +133,9 @@ export interface LogsSettings {
 }
 
 export interface PluginSettings {
+  _meta?: {
+    visibility?: PluginVisibilitySettings;
+  };
   [pluginId: string]: any; // Plugin-specific settings
 }
 

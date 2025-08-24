@@ -32,8 +32,7 @@ const generalConfig = {
   personal: 'personal',
   secrets: 'secrets',
   hotkeys: 'hotkeys',
-  misc: 'misc',
-  pluginVisibility: 'pluginVisibility'
+  misc: 'misc'
 } as const;
 
 const getGeneralSettings = (label: keyof typeof generalConfig) => 
