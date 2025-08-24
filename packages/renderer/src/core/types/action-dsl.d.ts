@@ -834,6 +834,15 @@ declare const events: {
         type: "TOGGLE_DEBUG";
         systemId: "brain";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"START_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"KILL_BRAIN">;
         systemId: zod.ZodLiteral<"brain">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -2536,22 +2545,6 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
         type: "AGENT_STARTUP";
         data: AgentStartupData;
         pluginId: "agent";
@@ -2642,6 +2635,71 @@ declare const events: {
         updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
         pluginId: "threads";
     } | {
+        type: "DATABASE_REFRESH";
+        data: DatabaseStartupData;
+        pluginId: "database";
+    } | {
+        type: "QUERY_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "QUERY_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "SNAPSHOT_CREATED";
+        filename: string;
+        pluginId: "database";
+    } | {
+        type: "SNAPSHOT_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "MAGIC_PROMPT_GENERATED";
+        query: string;
+        pluginId: "database";
+    } | {
+        type: "TRACE_FLOWS_RESULT";
+        flows: TNodeEntity[];
+        pluginId: "database";
+    } | {
+        type: "FLOW_EVENTS_RESULT";
+        flowId: string;
+        events: TNodeEntity[];
+        hasMore: boolean;
+        pluginId: "database";
+    } | {
+        type: "NODE_DETAILS_RESULT";
+        nodeId: string;
+        details: TNodeEntity | null;
+        pluginId: "database";
+    } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
         type: "FLOWS_STARTUP";
         data: FlowsStartupData;
         pluginId: "flows";
@@ -2694,55 +2752,6 @@ declare const events: {
         newSource: EARS.EntityId;
         newTarget: EARS.EntityId;
         pluginId: "flows";
-    } | {
-        type: "DATABASE_REFRESH";
-        data: DatabaseStartupData;
-        pluginId: "database";
-    } | {
-        type: "QUERY_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "QUERY_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_CREATED";
-        filename: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "MAGIC_PROMPT_GENERATED";
-        query: string;
-        pluginId: "database";
-    } | {
-        type: "TRACE_FLOWS_RESULT";
-        flows: TNodeEntity[];
-        pluginId: "database";
-    } | {
-        type: "FLOW_EVENTS_RESULT";
-        flowId: string;
-        events: TNodeEntity[];
-        hasMore: boolean;
-        pluginId: "database";
-    } | {
-        type: "NODE_DETAILS_RESULT";
-        nodeId: string;
-        details: TNodeEntity | null;
-        pluginId: "database";
     } | {
         type: "LOGS_STARTUP";
         logs: LogEntry[];

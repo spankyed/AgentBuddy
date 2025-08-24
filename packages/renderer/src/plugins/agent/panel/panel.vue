@@ -87,7 +87,7 @@ const tNodeTree = computed((): TrackEntity[] => {
 const startBrain = () => {
   trpc.bus.send.mutate({
     systemId: 'brain',
-    type: 'RESTART_BRAIN'
+    type: 'START_BRAIN'
   });
 };
 

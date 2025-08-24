@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@app/api'
@@ -175,11 +175,18 @@ const debugEnabled = ref<boolean>(false)
 
 // Methods
 const handleRestart = () => {
-  // Send restart event to backend brain system
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'RESTART_BRAIN'
-  })
+  // If brain is dead, send START_BRAIN, otherwise RESTART_BRAIN
+  if (brainIsDead.value) {
+    trpc.bus.send.mutate({
+      systemId: 'brain',
+      type: 'START_BRAIN'
+    })
+  } else {
+    trpc.bus.send.mutate({
+      systemId: 'brain',
+      type: 'RESTART_BRAIN'
+    })
+  }
 }
 
 const handleKill = () => {
@@ -198,9 +205,4 @@ const toggleDebug = () => {
     type: 'TOGGLE_DEBUG'
   })
 }
-
-// Check debug status on mount
-onMounted(async () => {
-  // You could query the backend for current debug status here if needed
-})
 </script>

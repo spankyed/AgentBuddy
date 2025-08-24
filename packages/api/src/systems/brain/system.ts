@@ -12,12 +12,6 @@ import { createFlowNodeSystem } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
 
-const eventsCatalog = {
-  'user.message': z.object({
-    text: z.string(),
-  }),
-}
-
 const typeOf = safeEvents<ReceivableEvents>();
 const logger = createLogger('brain');
 
@@ -32,6 +26,7 @@ export const IncomingBrainEvents = [
   busEvent('REQUEST_PLUGIN_DATA', {}),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
   busEvent('TOGGLE_DEBUG', {}),
+  busEvent('START_BRAIN', {}),
   busEvent('KILL_BRAIN', {}),
   busEvent('RESTART_BRAIN', {}),
 ] as const
@@ -67,7 +62,7 @@ export const brainSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    handleAppStartup: ({ system }) => {
+    handleAppStartup: ({ system, self }) => {
       // Get initial data to check available flows
       const flowsData = repository.flowsQueries.startupData();
       const allFlows = flowsData.flows;
@@ -97,7 +92,7 @@ export const brainSystem = setup({
         logger.info('Updated settings to reflect actual root flow', { flowId: currentRootFlowId });
       }
       
-      logger.info('Brain system initialized', { 
+      logger.info('Brain system starting', { 
         rootFlow: flowsSettings.rootFlowId,
         totalFlows: allFlows.length
       });
@@ -255,10 +250,14 @@ export const brainSystem = setup({
         data
       }));
       
-      // Also send BRAIN_STARTED if brain is running
+      // Send current brain state
       if (context.brainActor) {
         system.get(bus).send(emit(brain, { 
           type: 'BRAIN_STARTED'
+        }));
+      } else {
+        system.get(bus).send(emit(brain, { 
+          type: 'BRAIN_KILLED'
         }));
       }
     },
@@ -353,25 +352,36 @@ export const brainSystem = setup({
 }).createMachine(
   {
     id: brain,
-    initial: 'idle',
+    initial: 'running',
     context: ({ input }) => ({
       brainActor: undefined
     }),
     entry: ['handleAppStartup'],
-    on: {},
+    on: {
+      CLIENT_CONNECTED: {
+        actions: 'sendPluginData',
+      },
+      REQUEST_PLUGIN_DATA: {
+        actions: 'sendPluginData',
+      },
+      ERROR: {
+        actions: 'logError',
+      },
+    },
     states: {
-      idle: {
+      stopped: {
+        on: {
+          START_BRAIN: {
+            target: 'running',
+          },
+          RESTART_BRAIN: {
+            target: 'running',
+          },
+        }
+      },
+      running: {
         entry: ['startBrain'],
         on: {
-          CLIENT_CONNECTED: {
-            actions: 'sendPluginData',
-          },
-          REQUEST_PLUGIN_DATA: {
-            actions: 'sendPluginData',
-          },
-          ERROR: {
-            actions: 'logError',
-          },
           OPEN_TNODE: {
             actions: 'openTNode',
           },
@@ -386,11 +396,10 @@ export const brainSystem = setup({
           },
           KILL_BRAIN: {
             actions: 'killBrain',
-            target: 'idle',
+            target: 'stopped',
           },
           RESTART_BRAIN: {
             actions: 'restartBrain',
-            // Stay in running state - restartBrain handles the restart
           },
           // TRACE_EVENT_RECEIVED: {
           //   actions: 'handleEventReceived',
