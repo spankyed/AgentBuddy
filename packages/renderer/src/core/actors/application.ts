@@ -25,6 +25,8 @@ export interface ApplicationContext {
   activePlugin: Plugin;
   defaultPlugin: Plugin;
   plugins: Plugin[];
+  visiblePlugins: Plugin[]; // Filtered list of visible plugins
+  pluginVisibility: Record<string, boolean>; // Plugin visibility settings
   breadcrumbs: BreadcrumbItem[];
   targetView: string;
   panelSizes: {
@@ -53,6 +55,7 @@ export type ApplicationEvent =
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
+  | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -137,6 +140,20 @@ export const createApplicationState = () => setup({
       return { hotkeys };
     }),
     
+    updatePluginVisibility: assign(({ event, context }) => {
+      const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
+      
+      // Filter plugins based on visibility
+      const visiblePlugins = context.plugins.filter(plugin => 
+        pluginVisibility[plugin.id] !== false
+      );
+      
+      return { 
+        pluginVisibility,
+        visiblePlugins
+      };
+    }),
+    
     processGlobalHotkey: ({ self, context, system, event }) => {
       const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
       
@@ -166,22 +183,22 @@ export const createApplicationState = () => setup({
     }),
     
     switchPluginByDirection: ({ context, event, self }) => {
-      // Use all plugins for switching
-      const allPlugins = context.plugins;
+      // Use only visible plugins for switching
+      const visiblePlugins = context.visiblePlugins;
       
-      if (allPlugins.length === 0) return;
+      if (visiblePlugins.length === 0) return;
       
-      const currentIndex = allPlugins.findIndex(p => p.id === context.activePlugin.id);
+      const currentIndex = visiblePlugins.findIndex(p => p.id === context.activePlugin.id);
       if (currentIndex === -1) return;
       
       let newIndex: number;
       if (event.type === 'SWITCH_PLUGIN_UP') {
-        newIndex = currentIndex === 0 ? allPlugins.length - 1 : currentIndex - 1;
+        newIndex = currentIndex === 0 ? visiblePlugins.length - 1 : currentIndex - 1;
       } else {
-        newIndex = currentIndex === allPlugins.length - 1 ? 0 : currentIndex + 1;
+        newIndex = currentIndex === visiblePlugins.length - 1 ? 0 : currentIndex + 1;
       }
       
-      const newPluginId = allPlugins[newIndex].id;
+      const newPluginId = visiblePlugins[newIndex].id;
       
       self.send({
         type: 'SELECT_PLUGIN',
@@ -315,8 +332,16 @@ export const createApplicationState = () => setup({
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
     
+    // Initialize with all plugins visible by default
+    const pluginVisibility: Record<string, boolean> = {};
+    input.plugins.forEach(plugin => {
+      pluginVisibility[plugin.id] = true;
+    });
+    
     return {
       plugins: input.plugins,
+      visiblePlugins: input.plugins, // Initially all plugins are visible
+      pluginVisibility,
       activePlugin: input.plugins[0],
       defaultPlugin: input.defaultPlugin,
       breadcrumbs: [],
@@ -354,6 +379,9 @@ export const createApplicationState = () => setup({
   on: {
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
+    },
+    PLUGIN_VISIBILITY_UPDATED: {
+      actions: 'updatePluginVisibility'
     },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],

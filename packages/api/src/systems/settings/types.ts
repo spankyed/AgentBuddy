@@ -19,6 +19,7 @@ export interface GeneralSettings {
   apiKeys: ApiKeys;
   hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
+  pluginVisibility: PluginVisibilitySettings;
 }
 
 export interface Address {
@@ -63,6 +64,11 @@ export interface ApplicationHotkeys {
 
 export interface MiscSettings {
   // Empty for now, to be extended later
+}
+
+// Plugin visibility settings
+export interface PluginVisibilitySettings {
+  [pluginId: string]: boolean; // true = visible in toolbar, false = hidden
 }
 
 // Database plugin settings

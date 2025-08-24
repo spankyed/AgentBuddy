@@ -6,20 +6,42 @@
       <div v-if="pluginsWithSettings.length === 0" class="px-3 py-6 text-center">
         <p class="text-sm text-neutral-500">No plugins have settings configured yet</p>
       </div>
-      <button
+      <div
         v-for="plugin in pluginsWithSettings"
         :key="plugin.id"
-        @click="selectPlugin(plugin.id)"
-        :class="[
-          'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
-          selectedPluginId === plugin.id
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-        ]"
+        class="flex items-center gap-1 mb-0.5"
       >
-        <component :is="plugin.icon" class="w-4 h-4" />
-        {{ plugin.label }}
-      </button>
+        <button
+          @click="selectPlugin(plugin.id)"
+          :class="[
+            'flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+            selectedPluginId === plugin.id
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+        >
+          <component :is="plugin.icon" class="w-4 h-4" />
+          {{ plugin.label }}
+        </button>
+        <button
+          @click="togglePluginVisibility(plugin.id)"
+          :disabled="plugin.id === 'settings'"
+          :title="plugin.id === 'settings' ? 'Settings must remain visible' : (isPluginVisible(plugin.id) ? 'Hide from toolbar' : 'Show in toolbar')"
+          :class="[
+            'p-2 rounded-md transition-colors',
+            plugin.id === 'settings' 
+              ? 'text-neutral-600 cursor-not-allowed' 
+              : isPluginVisible(plugin.id)
+                ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                : 'text-neutral-600 hover:text-neutral-400 hover:bg-neutral-800'
+          ]"
+        >
+          <component 
+            :is="isPluginVisible(plugin.id) ? Eye : EyeOff" 
+            class="w-4 h-4" 
+          />
+        </button>
+      </div>
     </div>
 
     <!-- Content Area -->
@@ -57,7 +79,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { Package, CheckCircle } from 'lucide-vue-next'
+import { Package, CheckCircle, Eye, EyeOff } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 import plugins from '@/plugins'
 
@@ -87,6 +109,25 @@ const selectedPlugin = computed(() => {
 
 const selectPlugin = (pluginId: string) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
+}
+
+// Check if a plugin is visible
+const isPluginVisible = (pluginId: string) => {
+  return settings.value?.general?.pluginVisibility?.[pluginId] !== false
+}
+
+// Toggle plugin visibility
+const togglePluginVisibility = (pluginId: string) => {
+  if (pluginId === 'settings') return // Prevent hiding settings
+  
+  const currentVisibility = isPluginVisible(pluginId)
+  
+  updateSettings({
+    entityType: 'general',
+    label: 'pluginVisibility',
+    path: [pluginId],
+    value: !currentVisibility
+  })
 }
 
 // Handle update events from child components

@@ -3400,6 +3400,7 @@ interface GeneralSettings {
     apiKeys: ApiKeys;
     hotkeys: ApplicationHotkeys;
     misc: MiscSettings;
+    pluginVisibility: PluginVisibilitySettings;
 }
 interface Address {
     street: string;
@@ -3435,6 +3436,9 @@ interface ApplicationHotkeys {
     custom?: CustomHotkey[];
 }
 interface MiscSettings {
+}
+interface PluginVisibilitySettings {
+    [pluginId: string]: boolean;
 }
 interface Category {
     name: string;

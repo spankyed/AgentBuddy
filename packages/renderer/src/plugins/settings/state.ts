@@ -9,6 +9,7 @@ import {
 import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, ApiKeys, ApplicationHotkeys, PluginSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 import plugins from '@/plugins'
+import { applicationState } from '@/main'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -52,6 +53,15 @@ const settingsState = setup({
 
     setSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
+      
+      // Send plugin visibility to application state on initial load
+      if (ev.data?.general?.pluginVisibility) {
+        applicationState.send({
+          type: 'PLUGIN_VISIBILITY_UPDATED',
+          pluginVisibility: ev.data.general.pluginVisibility
+        });
+      }
+      
       return {
         settings: ev.data,
         isLoading: false,
@@ -60,6 +70,15 @@ const settingsState = setup({
 
     updateSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_UPDATED', event);
+      
+      // Send plugin visibility updates to application state
+      if (ev.data?.general?.pluginVisibility) {
+        applicationState.send({
+          type: 'PLUGIN_VISIBILITY_UPDATED',
+          pluginVisibility: ev.data.general.pluginVisibility
+        });
+      }
+      
       return {
         settings: ev.data,
       }

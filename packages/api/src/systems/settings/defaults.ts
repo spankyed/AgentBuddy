@@ -25,7 +25,22 @@ export const defaultSettings: SettingsData = {
         modifiers: ['cmd']
       }
     },
-    misc: {}
+    misc: {},
+    pluginVisibility: {
+      // All plugins visible by default
+      threads: true,
+      agent: true,
+      code: true,
+      library: true,
+      actions: true,
+      prompts: true,
+      flows: true,
+      brain: true,
+      database: true,
+      logs: true,
+      settings: true, // Settings should always be visible
+      blank: true,
+    }
   },
   plugins: {
     agent: {
