@@ -9,6 +9,7 @@ import { LogEvent } from '../../core/utils/debug/logger';
 import { IncomingSystemEvents } from '@/core/router/events';
 import { repository } from '@/repository';
 import type { LogsSettings } from '../settings/types';
+import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 
 export const logs = 'logs' as const;
 
@@ -109,20 +110,7 @@ export const logsSystem = setup({
       const excludedSources = settings?.excludedSources || [];
       
       // Filter logs by excluded sources before sending
-      let filteredLogs = context.logs;
-      if (excludedSources.length > 0) {
-        filteredLogs = context.logs.filter(log => {
-          if (!log.source) return true; // Keep logs without sources
-          
-          const isExcluded = excludedSources.some(pattern => {
-            // Support wildcards: convert * to regex
-            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-            return regex.test(log.source!);
-          });
-          
-          return !isExcluded; // Keep only non-excluded logs
-        });
-      }
+      const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
       
       const wrapped = emit(logs, {
         type: 'LOGS_STARTUP',
@@ -139,15 +127,8 @@ export const logsSystem = setup({
       const excludedSources = settings?.excludedSources || [];
       
       // Check if new log should be excluded
-      if (newLog.source && excludedSources.length > 0) {
-        const isExcluded = excludedSources.some(pattern => {
-          const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-          return regex.test(newLog.source!);
-        });
-        
-        if (isExcluded) {
-          return; // Don't broadcast excluded logs
-        }
+      if (isSourceExcluded(newLog.source, excludedSources)) {
+        return; // Don't broadcast excluded logs
       }
       
       const wrapped = emit(logs, {
@@ -162,19 +143,7 @@ export const logsSystem = setup({
       const excludedSources = settings?.excludedSources || [];
       
       // Filter logs by excluded sources before sending
-      let filteredLogs = context.logs;
-      if (excludedSources.length > 0) {
-        filteredLogs = context.logs.filter(log => {
-          if (!log.source) return true; // Keep logs without sources
-          
-          const isExcluded = excludedSources.some(pattern => {
-            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-            return regex.test(log.source!);
-          });
-          
-          return !isExcluded; // Keep only non-excluded logs
-        });
-      }
+      const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
       
       const wrapped = emit(logs, {
         type: 'LOGS_UPDATE',
