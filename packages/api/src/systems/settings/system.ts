@@ -5,8 +5,8 @@ import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { SettingsData } from './types';
 import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
-import { secretsActor } from '../secrets/system';
-import type { SecretsOutputEvents } from '../secrets/system';
+import { secretsActor } from './secrets/system';
+import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 
