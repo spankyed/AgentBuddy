@@ -15,6 +15,7 @@ const SUBDIRS = {
   snapshots: { prod: 'snapshots', dev: 'src/persistence/data/untracked/snapshots' },
   lmdb: { prod: 'ears-db', dev: 'src/persistence/data/untracked/ears-db' },
   volatileLmdb: { prod: 'ears-trace', dev: 'src/persistence/data/untracked/ears-trace' },
+  secretsLmdb: { prod: 'ears-secrets', dev: 'src/persistence/data/untracked/ears-secrets' },
 }
 
 // === Public API ===
@@ -25,6 +26,7 @@ export const getModelsCachePath = (): string => resolvePath('modelsCache')
 export const getSnapshotsPath = (): string => resolvePath('snapshots')
 export const getLmdbPath = (): string => resolvePath('lmdb')
 export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
+export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
 
 /**
  * Ensure a directory exists, creating it if necessary

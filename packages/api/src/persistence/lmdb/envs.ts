@@ -30,13 +30,14 @@ export function openEnvAt(basePath: string): LmdbDbs {
   };
 }
 
-export function openShardedEnvs(paths: { primary: string; volatileBackup: string }) {
+export function openShardedEnvs(paths: { primary: string; volatileBackup: string; secrets: string }) {
   const primary = openEnvAt(paths.primary);
   const volatileBackup = openEnvAt(paths.volatileBackup);
-  return { primary, volatileBackup };
+  const secrets = openEnvAt(paths.secrets);
+  return { primary, volatileBackup, secrets };
 }
 
-export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs }) {
+export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs; secrets: LmdbDbs }) {
   try {
     // Close primary environment
     envs.primary.entities.close();
@@ -49,6 +50,12 @@ export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbD
     envs.volatileBackup.attrs.close();
     envs.volatileBackup.relations.close();
     envs.volatileBackup.root.close();
+    
+    // Close secrets environment
+    envs.secrets.entities.close();
+    envs.secrets.attrs.close();
+    envs.secrets.relations.close();
+    envs.secrets.root.close();
     
     console.log('[LMDB] Sharded environments closed successfully');
   } catch (error) {

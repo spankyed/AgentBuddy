@@ -6,6 +6,8 @@ import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { SettingsData } from './types';
 import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
 import { detectAllArrayChanges } from './change-detection';
+import { SecretOperations } from './operations/secret-operations';
+import { migrateApiKeysToSecrets } from './migration/secrets-migration';
 import { z } from 'zod';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -23,6 +25,19 @@ export const IncomingSettingsEvents = [
     value: z.any()
   }),
   busEvent('RESET_SETTINGS', {}),
+  busEvent('UPDATE_API_KEY', {
+    provider: z.string(),
+    value: z.string()
+  }),
+  busEvent('CREATE_CUSTOM_API_KEY', {
+    name: z.string(),
+    eventName: z.string(),
+    value: z.string(),
+    description: z.string().optional()
+  }),
+  busEvent('DELETE_CUSTOM_API_KEY', {
+    id: z.string()
+  }),
 ] as const
 
 export type SettingsInternalEvents = 
@@ -47,7 +62,7 @@ export const settingsSystem = setup({
       const data = settingsQueries.getSettings();
       
       // Send settings to the settings plugin
-      system.get(bus).send(emit(settings, { 
+      system.get(bus).send(emit('settings', { 
         type: 'SETTINGS_LOADED',
         data
       }));
@@ -61,7 +76,7 @@ export const settingsSystem = setup({
     
     getSettings: ({ system, event }) => {
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_LOADED',
         data
       }));
@@ -79,7 +94,7 @@ export const settingsSystem = setup({
       
       // Get all settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_UPDATED',
         data
       }));
@@ -121,12 +136,59 @@ export const settingsSystem = setup({
       }
     },
     
+    updateApiKey: ({ system, event }) => {
+      const ev = typeOf('UPDATE_API_KEY', event);
+      const secretOps = new SecretOperations();
+      
+      secretOps.updateApiKey(ev.provider, ev.value);
+      
+      // Send updated settings to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit('settings', {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
+    },
+    
+    createCustomApiKey: ({ system, event }) => {
+      const ev = typeOf('CREATE_CUSTOM_API_KEY', event);
+      const secretOps = new SecretOperations();
+      
+      secretOps.createCustomApiKey({
+        name: ev.name,
+        eventName: ev.eventName,
+        value: ev.value,
+        description: ev.description
+      });
+      
+      // Send updated settings to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit('settings', {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
+    },
+    
+    deleteCustomApiKey: ({ system, event }) => {
+      const ev = typeOf('DELETE_CUSTOM_API_KEY', event);
+      const secretOps = new SecretOperations();
+      
+      secretOps.deleteCustomApiKey(ev.id);
+      
+      // Send updated settings to frontend
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit('settings', {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
+    },
+    
     resetSettings: ({ system, event }) => {
       settingsCommands.resetSettings();
       
       // After reset, get the new settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_RESET',
         data
       }));
@@ -137,6 +199,9 @@ export const settingsSystem = setup({
   initial: 'idle',
   context: {},
   entry: () => {
+    // Migrate existing API keys to secrets
+    migrateApiKeysToSecrets();
+    
     // Initialize development settings if needed
     // setupDevelopmentSettings();
   },
@@ -154,6 +219,15 @@ export const settingsSystem = setup({
         },
         RESET_SETTINGS: {
           actions: 'resetSettings',
+        },
+        UPDATE_API_KEY: {
+          actions: 'updateApiKey',
+        },
+        CREATE_CUSTOM_API_KEY: {
+          actions: 'createCustomApiKey',
+        },
+        DELETE_CUSTOM_API_KEY: {
+          actions: 'deleteCustomApiKey',
         },
       },
     },

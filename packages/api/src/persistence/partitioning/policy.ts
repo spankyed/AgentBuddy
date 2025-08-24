@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 
-export type Partition = 'primary' | 'volatileBackup';
+export type Partition = 'primary' | 'volatileBackup' | 'secrets';
 
 export interface PartitionPolicy {
   /** Which partition should an entity live in? */
@@ -17,18 +17,26 @@ const entTypeOf = (id: string) => (id.split('-')[0] ?? id) as EARS.Entity;
 
 export function makePolicy(config: {
   excludedEntityTypes: Set<EARS.Entity>;          // e.g. new Set([EARS.Entity.TNode])
+  secretsEntityTypes?: Set<EARS.Entity>;          // e.g. new Set([EARS.Entity.Secret])
   hydratePartitions?: Set<Partition>;             // default: new Set(['primary'])
 }): PartitionPolicy {
   const excluded = config.excludedEntityTypes;
+  const secrets = config.secretsEntityTypes ?? new Set([EARS.Entity.Secret]);
   const hydrate = config.hydratePartitions ?? new Set<Partition>(['primary']);
 
   return {
     routeEntity(entityId, entityType) {
       const t = entityType ?? entTypeOf(entityId);
-      return excluded.has(t) ? 'volatileBackup' : 'primary';
+      if (secrets.has(t)) return 'secrets';
+      if (excluded.has(t)) return 'volatileBackup';
+      return 'primary';
     },
     
     routeRelation({ srcType, tgtType }) {
+      // If either side is a secret, put the relation with secrets
+      if (secrets.has(srcType) || secrets.has(tgtType)) {
+        return 'secrets';
+      }
       // If either side is excluded, put the relation with the excluded set.
       return (excluded.has(srcType) || excluded.has(tgtType))
         ? 'volatileBackup'

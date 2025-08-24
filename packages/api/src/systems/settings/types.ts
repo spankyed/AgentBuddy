@@ -38,9 +38,18 @@ export interface PersonalInfo {
 }
 
 export interface ApiKeys {
-  google?: string;
-  anthropic?: string;
-  openai?: string;
+  google?: string;     // Secret ID reference
+  anthropic?: string;  // Secret ID reference
+  openai?: string;     // Secret ID reference
+  custom?: CustomApiKey[];
+}
+
+export interface CustomApiKey {
+  id: string;          // Unique ID for the custom key
+  name: string;        // Display name
+  secretId: string;    // Reference to Secret entity
+  eventName: string;   // Event name for accessing (e.g., "WEATHER_API_KEY")
+  description?: string;
 }
 
 // Base keyboard shortcut configuration
