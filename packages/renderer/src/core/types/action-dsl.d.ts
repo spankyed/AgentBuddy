@@ -794,6 +794,24 @@ declare const events: {
     }, {
         type: "TOGGLE_DEBUG";
         systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"KILL_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTART_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -2518,6 +2536,32 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
+        type: "AGENT_STARTUP";
+        data: AgentStartupData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -2550,32 +2594,6 @@ declare const events: {
         type: "DEBUG_TOGGLED";
         enabled: boolean;
         pluginId: "brain";
-    } | {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
     } | {
         type: "THREAD_STARTUP";
         data: ThreadStartupData;

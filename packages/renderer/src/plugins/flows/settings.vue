@@ -26,14 +26,26 @@
             </option>
           </select>
         </div>
-        
-        <div v-if="currentRootFlow" class="mt-4 p-3 bg-neutral-800/50 rounded-lg border border-neutral-700/50">
-          <div class="flex items-center gap-2 text-sm">
-            <span class="text-neutral-400">Current root flow:</span>
-            <span class="text-white font-medium">{{ currentRootFlow.label || currentRootFlow.id }}</span>
-          </div>
-          <div v-if="currentRootFlow.description" class="mt-2 text-xs text-neutral-500">
-            {{ currentRootFlow.description }}
+
+        <!-- Brain Restart Notice -->
+        <div v-if="needsRestart && currentRootFlow" class="mt-6 p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <AlertTriangle class="w-5 h-5 text-amber-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-amber-400 mb-1">
+                Root flow changed - Brain restart required
+              </h4>
+              <p class="text-sm text-neutral-400 mb-3">
+                The root flow has been updated. Please restart the application from Brain settings to apply the changes.
+              </p>
+              <button 
+                @click="goToBrainSettings"
+                class="px-3 py-1.5 bg-amber-600/20 text-amber-400 border border-amber-600/30 rounded-lg hover:bg-amber-600/30 hover:border-amber-600/50 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Brain class="w-4 h-4" />
+                Go to Brain Settings
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -44,16 +56,20 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
-import type { FlowEntity, FlowsSettings } from '@app/api'
+import { AlertTriangle, Brain } from 'lucide-vue-next'
+import type { FlowsSettings } from '@app/api'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id, type FlowsState } from './state'
 
 interface Props {
   settings?: FlowsSettings
-  flows?: Partial<FlowEntity>[]
+  allSettings?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
   settings: undefined,
-  flows: () => []
+  allSettings: undefined
 })
 
 const emit = defineEmits<{
@@ -66,10 +82,25 @@ const emit = defineEmits<{
 // State
 const selectedRootFlowId = ref<string>(props.settings?.rootFlowId || '')
 
-// Computed
+// Get flows list from flows plugin state for flows settings
+const flowsActor: FlowsState = applicationState.system.get(id)
+const flows = useSelector(flowsActor, (state) => state.context.flows || [])
+
+// Get settings actor for navigation only
+const settingsActor = applicationState.system.get('settings')
+
+// Check if restart is needed by comparing root flow IDs
+const needsRestart = computed(() => {
+  const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
+  const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
+  
+  // Need restart if flows has a root ID and it's different from what's running
+  return flowsRootId && flowsRootId !== brainRunningId
+})
+
 const currentRootFlow = computed(() => {
   if (!selectedRootFlowId.value) return null
-  return props.flows.find(f => f.id === selectedRootFlowId.value)
+  return flows.value.find(f => f.id === selectedRootFlowId.value)
 })
 
 // Watch for settings changes from backend
@@ -85,5 +116,10 @@ const handleRootFlowChange = () => {
     path: ['rootFlowId'],
     value: selectedRootFlowId.value || undefined
   })
+}
+
+const goToBrainSettings = () => {
+  // Navigate to brain settings
+  settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'brain' })
 }
 </script>

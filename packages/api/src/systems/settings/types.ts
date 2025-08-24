@@ -112,6 +112,11 @@ export interface FlowsSettings {
   rootFlowId?: string; // ID of the flow with the root_flow role
 }
 
+// Brain plugin settings
+export interface BrainSettings {
+  runningRootFlowId?: string; // The ID of the root flow currently running in the brain
+}
+
 export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }

@@ -102,6 +102,9 @@ export const defaultSettings: SettingsData = {
     },
     flows: {
       rootFlowId: undefined // Will be set to first available flow or selected by user
+    },
+    brain: {
+      runningRootFlowId: undefined // No flow running initially
     }
   },
   internal: {

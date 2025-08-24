@@ -64,61 +64,17 @@ export const flowsSystem = setup({
   },
   actors: {},
   actions: {
-    sendFlowsStartup: ({ system }) => {
+    handleClientConnection: ({ system }) => {
       const pluginId = flows;
-      
-      // Get initial data to check available flows
-      let data = repository.flowsQueries.startupData();
-      
-      // Check if any flow has the root_flow role
-      const currentRootFlowId = repository.flowsQueries.rootFlow();
-      let flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
-      
-      // Initialize root flow if none exists
-      if (!currentRootFlowId && data.flows.length > 0) {
-        // Use the flow from settings if it exists, otherwise use the first flow
-        const targetFlowId = (flowsSettings.rootFlowId && 
-          data.flows.some(f => f.id === flowsSettings.rootFlowId)) 
-          ? flowsSettings.rootFlowId 
-          : data.flows[0].id;
-        
-        if (targetFlowId) {
-          // Grant root_flow role to the target flow
-          repository.flowsCommands.grantRootFlowRole(targetFlowId as EARS.EntityId);
-          
-          // Update settings to reflect the actual root flow
-          repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], targetFlowId);
-          
-          // Reload settings to get the updated value
-          flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
-          
-          // Refresh data after role change
-          data = repository.flowsQueries.startupData();
-          
-          logger.info('Initialized root flow', { flowId: targetFlowId });
-        }
-      } else if (currentRootFlowId && flowsSettings.rootFlowId !== currentRootFlowId) {
-        // Settings don't match reality, update settings to reflect actual root flow
-        repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], currentRootFlowId);
-        flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
-        
-        logger.info('Updated settings to reflect actual root flow', { flowId: currentRootFlowId });
-      }
-      
-      logger.info('Sending flows startup data to client', { 
-        flows: data.flows.length,
-        rootFlow: flowsSettings.rootFlowId 
-      });
-      
+      const data = repository.flowsQueries.startupData();
+      logger.info('Sending flows startup data to client', { flows: data.flows.length });
+
       system.get(bus).send(emit(pluginId, {
         type: 'FLOWS_STARTUP',
-        data: {
-          ...data,
-          settings: flowsSettings
-        },
+        data,
       }));
     },
-    
+
     selectFlow: ({ system, event }) => {
       const { flowId } = typeOf('FLOW_SELECT', event);
       const pluginId = flows;
@@ -348,7 +304,7 @@ export const flowsSystem = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: {
-          actions: 'sendFlowsStartup',
+          actions: 'handleClientConnection',
         },
         FLOW_SELECT: {
           actions: 'selectFlow',

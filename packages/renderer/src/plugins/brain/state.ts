@@ -28,11 +28,14 @@ export interface BrainContext {
   selectedStepNode?: TNodeEntity;
   debugEnabled: boolean;
   animationsEnabled: boolean;
+  // Settings
+  settings?: any; // BrainSettings
 }
 
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'DEBUG_TOGGLED'; enabled: boolean }
+  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -290,6 +293,12 @@ const brainState = setup({
     toggleAnimations: assign({
       animationsEnabled: ({ context }) => !context.animationsEnabled
     }),
+    updateSettings: assign(({ event }) => {
+      const typedEv = typeOf('BRAIN_SETTINGS_UPDATED', event);
+      return {
+        settings: typedEv.settings
+      };
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -385,6 +394,9 @@ const brainState = setup({
         },
         CLEAR_PULSE: {
           actions: 'clearPulse'
+        },
+        BRAIN_SETTINGS_UPDATED: {
+          actions: 'updateSettings'
         }
       }
     }

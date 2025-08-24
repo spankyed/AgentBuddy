@@ -8,6 +8,7 @@ import { EARS } from '@/core/types';
 import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
 import { repository } from '@/repository';
+import { createLogger } from '@/core/utils/debug/logger';
 import { createFlowNodeSystem } from './flow-system';
 import { agent } from '../agent/system';
 import { database } from '../database/system';
@@ -20,6 +21,7 @@ const eventsCatalog = {
 }
 
 const typeOf = safeEvents<ReceivableEvents>();
+const logger = createLogger('brain');
 
 export const brain = 'brain' as const;
 export const brainBus = 'brain-bus' as const;
@@ -32,6 +34,8 @@ export const IncomingBrainEvents = [
   busEvent('REQUEST_PLUGIN_DATA', {}),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
   busEvent('TOGGLE_DEBUG', {}),
+  busEvent('KILL_BRAIN', {}),
+  busEvent('RESTART_BRAIN', {}),
 ] as const
 
 export type BrainInternalEvents = 
@@ -40,6 +44,7 @@ export type BrainInternalEvents =
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
+  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
@@ -56,18 +61,119 @@ type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInterna
 
 export const brainSystem = setup({
   types: {
-    context: {} as {},
+    context: {} as {
+      brainActor?: any; // Reference to the spawned brain flow actor
+    },
     events: {} as ReceivableEvents,
   },
   actions: {
+    handleAppStartup: ({ system }) => {
+      // Get initial data to check available flows
+      const flowsData = repository.flowsQueries.startupData();
+      const allFlows = flowsData.flows;
+      
+      // Check if any flow has the root_flow role
+      const currentRootFlowId = repository.flowsQueries.rootFlow();
+      let flowsSettings = repository.settingsQueries.getPluginSettings('flows') || {};
+      
+      // Initialize root flow if none exists
+      if (!currentRootFlowId && allFlows.length > 0) {
+        // No root flow exists, set the first available flow as root
+        const firstFlow = allFlows[0];
+        if (firstFlow.id) {
+          repository.flowsCommands.grantRootFlowRole(firstFlow.id as EARS.EntityId);
+          
+          // Update flows settings to reflect this
+          repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], firstFlow.id);
+          flowsSettings = { ...flowsSettings, rootFlowId: firstFlow.id };
+          
+          logger.info('Initialized first flow as root flow', { flowId: firstFlow.id });
+        }
+      } else if (currentRootFlowId && flowsSettings.rootFlowId !== currentRootFlowId) {
+        // Root flow exists but settings don't match, update settings
+        repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], currentRootFlowId);
+        flowsSettings = { ...flowsSettings, rootFlowId: currentRootFlowId };
+        
+        logger.info('Updated settings to reflect actual root flow', { flowId: currentRootFlowId });
+      }
+      
+      logger.info('Brain system initialized', { 
+        rootFlow: flowsSettings.rootFlowId,
+        totalFlows: allFlows.length
+      });
+    },
+    
     logError: ({ event }) => {
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
-    startBrain: enqueueActions(({ system, context, enqueue, self }) => {
-      const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
-      enqueue.spawnChild(machine, {
-        systemId: brainBus, // aka root flow
-        input: {}
+    startBrain: enqueueActions(({ context, enqueue }) => {
+      // Stop existing brain if any using enqueue.stopChild
+      if (context.brainActor) {
+        enqueue.stopChild(context.brainActor);
+      }
+      
+      // Get the current root flow ID
+      const currentRootFlowId = repository.flowsQueries.rootFlow();
+      
+      // Update brain settings to track which flow is running
+      if (currentRootFlowId) {
+        repository.settingsCommands.updateSettings('plugin', 'brain', ['runningRootFlowId'], currentRootFlowId);
+      }
+      
+      // Start new brain and assign to context
+      enqueue.assign(({ spawn }) => {
+        const { machine, tNodeId } = createFlowNodeSystem()
+        const actor = spawn(machine, {
+          systemId: brainBus, // aka root flow
+          input: {}
+        });
+        
+        logger.info('Started brain root flow', { flowId: currentRootFlowId });
+        
+        // Return the updated context with the actor reference
+        return {
+          brainActor: actor
+        };
+      });
+    }),
+    
+    killBrain: enqueueActions(({ context, enqueue }) => {
+      if (context.brainActor) {
+        enqueue.stopChild(context.brainActor);
+        enqueue.assign({ brainActor: undefined });
+        logger.info('Brain flow machine killed');
+      }
+    }),
+    
+    restartBrain: enqueueActions(({ context, enqueue }) => {
+      logger.info('Restarting brain flow machine');
+      
+      // Kill existing brain using enqueue.stopChild
+      if (context.brainActor) {
+        enqueue.stopChild(context.brainActor);
+      }
+      
+      // Get the current root flow ID
+      const currentRootFlowId = repository.flowsQueries.rootFlow();
+      
+      // Update brain settings to track which flow is running
+      if (currentRootFlowId) {
+        repository.settingsCommands.updateSettings('plugin', 'brain', ['runningRootFlowId'], currentRootFlowId);
+      }
+      
+      // Start new brain and assign to context
+      enqueue.assign(({ spawn }) => {
+        const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
+        const actor = spawn(machine, {
+          systemId: brainBus,
+          input: {}
+        });
+        
+        logger.info('Restarted brain with root flow', { flowId: currentRootFlowId });
+        
+        return {
+          brainActor: actor
+        };
       });
     }),
     sendPluginData: ({ system, context, self }) => {
@@ -170,7 +276,10 @@ export const brainSystem = setup({
   {
     id: brain,
     initial: 'idle',
-    context: ({ input }) => ({}),
+    context: ({ input }) => ({
+      brainActor: undefined
+    }),
+    entry: 'handleAppStartup',
     on: {},
     states: {
       idle: {
@@ -204,6 +313,14 @@ export const brainSystem = setup({
           },
           TOGGLE_DEBUG: {
             actions: 'toggleDebug',
+          },
+          KILL_BRAIN: {
+            actions: 'killBrain',
+            target: 'idle',
+          },
+          RESTART_BRAIN: {
+            actions: 'restartBrain',
+            // Stay in running state - restartBrain handles the restart
           },
           // TRACE_EVENT_RECEIVED: {
           //   actions: 'handleEventReceived',
