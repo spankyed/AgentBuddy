@@ -1,7 +1,26 @@
 <template>
   <!-- TNode Tree Display -->
   <div class="h-full agent-panel bg-neutral-900/50 backdrop-blur-sm">
-    <div v-if="tNodeTree && tNodeTree.length > 0" class="tnode-tree">
+    <!-- Brain Dead State -->
+    <div v-if="brainIsDead" class="flex items-center justify-center h-full">
+      <div class="px-6 py-8 text-center">
+        <div class="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-full bg-neutral-800/50">
+          <svg class="w-6 h-6 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-12.728 12.728m0-12.728l12.728 12.728" />
+          </svg>
+        </div>
+        <p class="text-sm font-medium text-neutral-400">Brain Stopped</p>
+        <p class="mt-1 text-xs text-neutral-500 mb-4">The brain is currently inactive</p>
+        <button 
+          @click="startBrain"
+          class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+        >
+          Start Brain
+        </button>
+      </div>
+    </div>
+    <!-- Normal TNode Tree Display -->
+    <div v-else-if="tNodeTree && tNodeTree.length > 0" class="tnode-tree">
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
           <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
@@ -41,9 +60,11 @@ import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
 import TNodeListItem from '@/components/shared/TNodeListItem.vue'
 import type { TrackEntity } from '@app/api'
+import { trpc } from '@/core/trpc'
 
 const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
+const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
 
 // Convert normalized tree back to TrackEntity[] format for TNodeListItem
 const tNodeTree = computed((): TrackEntity[] => {
@@ -61,6 +82,14 @@ const tNodeTree = computed((): TrackEntity[] => {
 
   return normalizedTree.value.rootIds.map(id => buildNode(id));
 });
+
+// Start brain method
+const startBrain = () => {
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'RESTART_BRAIN'
+  });
+};
 
 defineEmits<{
   'flow-navigate': [flowId: string];

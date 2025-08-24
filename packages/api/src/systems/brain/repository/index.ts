@@ -505,4 +505,16 @@ export const brainCommands = {
     // Directly set nodeAttributes (for event TNodes that store payload as attributes)
     tx(tNodeId).update('nodeAttributes', truncatedAttributes);
   },
+  
+  clearVolatileData: (): void => {
+    // Get all TNode entities (volatile execution data)
+    const allTNodes = qx(EARS.Entity.TNode).ids();
+    
+    // Destroy each TNode entity without persisting (volatile data)
+    allTNodes.forEach(tNodeId => {
+      tx(tNodeId).destroy(true); // skip persistence for volatile data
+    });
+    
+    console.log(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
+  },
 } as const;

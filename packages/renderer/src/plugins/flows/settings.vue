@@ -94,8 +94,11 @@ const needsRestart = computed(() => {
   const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
   const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
   
-  // Need restart if flows has a root ID and it's different from what's running
-  return flowsRootId && flowsRootId !== brainRunningId
+  // Need restart if:
+  // 1. Brain is running (not dead/undefined) AND
+  // 2. Flows has a root ID AND
+  // 3. It's different from what's running
+  return brainRunningId !== undefined && flowsRootId && flowsRootId !== brainRunningId
 })
 
 const currentRootFlow = computed(() => {

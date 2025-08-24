@@ -280,7 +280,7 @@ declare const queryEntitiesByAttribute: (k: EARS.AttrKind, v?: unknown) => (`Age
 declare const queryEntitiesInRelationTo: (target: EARS.EntityId) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
 /** one specific relation type (+ direction) */
 declare const queryEntitiesByRelationTo: (relKind: string, id: EARS.EntityId, asSource?: boolean) => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`)[];
-declare function destroyEntity(id: EARS.EntityId): void;
+declare function destroyEntity(id: EARS.EntityId, skipPersistence?: boolean): void;
 declare const getAllAttributeKinds: () => EARS.AttrKind[];
 declare const getAllRelationKinds: () => string[];
 declare const getAllEntityTypes: () => EARS.Entity[];
@@ -342,7 +342,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
         links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
         roles?: string | string[];
     }) => /*elided*/ any;
-    readonly destroy: () => never;
+    readonly destroy: (skipPersistence?: boolean) => never;
     readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}`;
 };
 

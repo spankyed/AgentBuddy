@@ -1,17 +1,15 @@
-import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent, type ActorRefFrom, enqueueActions } from 'xstate';
+import { assign, setup, enqueueActions } from 'xstate';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
-// import { addMessageToLatestThread, getLatestMessage } from './accessors';
+import { emit, getActor, safeEvents,  } from '@/core/utils/actor-helpers';
 import { EARS } from '@/core/types';
 import { z } from 'zod';
-import type { FlowTNodeData, TNodeEntity, TNodeUpdate, EventReceived } from './types';
+import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { createFlowNodeSystem } from './flow-system';
-import { agent } from '../agent/system';
-import { database } from '../database/system';
+import { settings } from '../settings/system';
 import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
 
 const eventsCatalog = {
@@ -55,6 +53,8 @@ export type OutgoingBrainEvents =
   | { type: 'EVENT_PULSE'; eventType: string }
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
   | { type: 'DEBUG_TOGGLED'; enabled: boolean }
+  | { type: 'BRAIN_KILLED' }
+  | { type: 'BRAIN_STARTED' }
 
 export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
 type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
@@ -106,7 +106,7 @@ export const brainSystem = setup({
     logError: ({ event }) => {
       // console.error('Brain system error:', typeOf('ERROR', event).error);
     },
-    startBrain: enqueueActions(({ context, enqueue }) => {
+    startBrain: enqueueActions(({ context, enqueue, system }) => {
       // Stop existing brain if any using enqueue.stopChild
       if (context.brainActor) {
         enqueue.stopChild(context.brainActor);
@@ -115,18 +115,29 @@ export const brainSystem = setup({
       // Get the current root flow ID
       const currentRootFlowId = repository.flowsQueries.rootFlow();
       
-      // Update brain settings to track which flow is running
+      // Update brain settings to track which flow is running via settings system
       if (currentRootFlowId) {
-        repository.settingsCommands.updateSettings('plugin', 'brain', ['runningRootFlowId'], currentRootFlowId);
+        getActor(system, 'settings').send({
+          type: 'UPDATE_SETTINGS',
+          entityType: 'plugin',
+          label: 'brain',
+          path: ['runningRootFlowId'],
+          value: currentRootFlowId
+        });
       }
       
       // Start new brain and assign to context
-      enqueue.assign(({ spawn }) => {
+      enqueue.assign(({ spawn, system }) => {
         const { machine, tNodeId } = createFlowNodeSystem()
         const actor = spawn(machine, {
           systemId: brainBus, // aka root flow
           input: {}
         });
+        
+        // Send BRAIN_STARTED event
+        system.get(bus).send(emit(brain, { 
+          type: 'BRAIN_STARTED'
+        }));
         
         logger.info('Started brain root flow', { flowId: currentRootFlowId });
         
@@ -137,15 +148,44 @@ export const brainSystem = setup({
       });
     }),
     
-    killBrain: enqueueActions(({ context, enqueue }) => {
+    killBrain: enqueueActions(({ context, enqueue, system }) => {
       if (context.brainActor) {
         enqueue.stopChild(context.brainActor);
         enqueue.assign({ brainActor: undefined });
-        logger.info('Brain flow machine killed');
+        
+        // Clear all volatile TNode data
+        repository.brainCommands.clearVolatileData();
+        
+        // Clear the runningRootFlowId setting via settings system
+        getActor(system, 'settings').send({
+          type: 'UPDATE_SETTINGS',
+          entityType: 'plugin',
+          label: 'brain',
+          path: ['runningRootFlowId'],
+          value: undefined
+        });
+        
+        // Send empty data to clear the UI
+
+        system.get(bus).send(emit(brain, { 
+          type: 'RECEIVE_PLUGIN_DATA',
+          data: {
+            flowTNodeId: '' as EARS.EntityId,
+            tNodeTree: [],
+            possibleEvents: [],
+          }
+        }));
+        
+        // Send BRAIN_KILLED event
+        system.get(bus).send(emit(brain, {
+            type: 'BRAIN_KILLED'
+        }));
+        
+        logger.info('Brain flow machine killed and volatile data cleared');
       }
     }),
     
-    restartBrain: enqueueActions(({ context, enqueue }) => {
+    restartBrain: enqueueActions(({ context, enqueue, system }) => {
       logger.info('Restarting brain flow machine');
       
       // Kill existing brain using enqueue.stopChild
@@ -153,21 +193,52 @@ export const brainSystem = setup({
         enqueue.stopChild(context.brainActor);
       }
       
+      // Clear all volatile TNode data
+      repository.brainCommands.clearVolatileData();
+      
+      // Send empty data to clear the UI temporarily
+      system.get(bus).send(emit(brain, {
+        type: 'RECEIVE_PLUGIN_DATA',
+        data: {
+          flowTNodeId: '' as EARS.EntityId,
+          tNodeTree: [],
+          possibleEvents: [],
+        }
+      }));
+      
       // Get the current root flow ID
       const currentRootFlowId = repository.flowsQueries.rootFlow();
       
-      // Update brain settings to track which flow is running
+      // Update brain settings to track which flow is running via settings system
       if (currentRootFlowId) {
-        repository.settingsCommands.updateSettings('plugin', 'brain', ['runningRootFlowId'], currentRootFlowId);
+        getActor(system, 'settings').send({
+          type: 'UPDATE_SETTINGS',
+          entityType: 'plugin',
+          label: 'brain',
+          path: ['runningRootFlowId'],
+          value: currentRootFlowId
+        });
       }
       
       // Start new brain and assign to context
-      enqueue.assign(({ spawn }) => {
+      enqueue.assign(({ spawn, system }) => {
         const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
         const actor = spawn(machine, {
           systemId: brainBus,
           input: {}
         });
+        
+        // Send fresh data after starting new brain
+        const data = repository.brainQueries.rootData();
+        system.get(bus).send(emit(brain, { 
+          type: 'RECEIVE_PLUGIN_DATA',
+          data
+        }));
+        
+        // Send BRAIN_STARTED event
+        system.get(bus).send(emit(brain, { 
+          type: 'BRAIN_STARTED'
+        }));
         
         logger.info('Restarted brain with root flow', { flowId: currentRootFlowId });
         
@@ -176,13 +247,20 @@ export const brainSystem = setup({
         };
       });
     }),
-    sendPluginData: ({ system, context, self }) => {
+    sendPluginData: ({ system, context }) => {
       const data = repository.brainQueries.rootData();
       
       system.get(bus).send(emit(brain, { 
         type: 'RECEIVE_PLUGIN_DATA',
         data
       }));
+      
+      // Also send BRAIN_STARTED if brain is running
+      if (context.brainActor) {
+        system.get(bus).send(emit(brain, { 
+          type: 'BRAIN_STARTED'
+        }));
+      }
     },
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
@@ -279,18 +357,10 @@ export const brainSystem = setup({
     context: ({ input }) => ({
       brainActor: undefined
     }),
-    entry: 'handleAppStartup',
+    entry: ['handleAppStartup'],
     on: {},
     states: {
       idle: {
-        on: {
-          CLIENT_CONNECTED: {
-            actions: ['sendPluginData'],
-            target: 'running',
-          },
-        },
-      },
-      running: {
         entry: ['startBrain'],
         on: {
           CLIENT_CONNECTED: {

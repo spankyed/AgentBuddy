@@ -15,13 +15,13 @@ import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/s
 import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
 
 export default {
+  [settings]: settingsSystem,
   [agent]: agentSystem,
   [brain]: brainSystem,
   [threads]: threadsSystem,
   [flows]: flowsSystem,
   [database]: databaseSystem,
   [prompts]: promptsSystem,
-  [settings]: settingsSystem,
   [actions]: actionsSystem,
   [library]: librarySystem,
   [code]: codeSystem,
@@ -29,6 +29,7 @@ export default {
 } as const;
 
 export const events = mergeSystems(
+  SettingsSystemEvents,
   AgentSystemEvents,
   BrainSystemEvents,
   ThreadsSystemEvents,
@@ -36,7 +37,6 @@ export const events = mergeSystems(
   DatabaseSystemEvents,
   LogsSystemEvents,
   PromptsSystemEvents,
-  SettingsSystemEvents,
   ActionsSystemEvents,
   LibrarySystemEvents,
   CodeSystemEvents

@@ -3,8 +3,33 @@
     <!-- Brain Status Section -->
     <CollapsibleSection label="Brain Status" :default-open="true" class="mb-8">
       <div class="space-y-4">
+        <!-- Brain is Dead/Killed Status -->
+        <div v-if="brainIsDead" class="p-4 bg-neutral-800/50 border border-neutral-600/30 rounded-lg">
+          <div class="flex items-start gap-3 mb-4">
+            <Power class="w-5 h-5 text-neutral-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-neutral-400 mb-1">
+                Brain Stopped
+              </h4>
+              <p class="text-sm text-neutral-500">
+                The brain system is currently inactive. Start it to begin dialog execution.
+              </p>
+            </div>
+          </div>
+          
+          <div class="mt-4 pt-4 border-t border-neutral-700/30">
+            <button 
+              @click="handleRestart"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <PlayCircle class="w-4 h-4" />
+              Start Brain
+            </button>
+          </div>
+        </div>
+
         <!-- Combined Status and Restart Section -->
-        <div v-if="needsRestart" class="p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+        <div v-else-if="needsRestart" class="p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
           <div class="flex items-start gap-3 mb-4">
             <AlertTriangle class="w-5 h-5 text-amber-500 mt-0.5" />
             <div class="flex-1">
@@ -37,25 +62,47 @@
           </div>
         </div>
 
-        <div v-else class="p-4 bg-neutral-900/50 rounded-lg border border-neutral-700/50">
-          <p class="text-sm text-neutral-400 mb-3 pb-3 border-b border-neutral-700/30">
-            Restart ends everything and starts fresh. Kill just stops what's currently running.
-          </p>
-          <div class="flex gap-2">
-            <button 
-              @click="handleRestart"
-              class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <RefreshCw class="w-4 h-4" />
-              Restart Brain
-            </button>
-            <button 
-              @click="handleKill"
-              class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <Power class="w-4 h-4" />
-              Kill Brain
-            </button>
+        <div v-else-if="!brainIsDead" class="p-4 bg-neutral-900/50 rounded-lg border border-neutral-700/50">
+          <div class="flex items-start gap-3 mb-3">
+            <CheckCircle class="w-5 h-5 text-green-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-green-400 mb-1">
+                Brain Running
+              </h4>
+              <p class="text-sm text-neutral-400">
+                The brain system is active and executing the current root flow.
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-neutral-700/30">
+            <p class="text-sm text-neutral-500 mb-3">
+              Restart ends everything and starts fresh. Kill just stops what's currently running.
+            </p>
+            <div class="flex gap-2">
+              <button 
+                @click="handleRestart"
+                class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <RefreshCw class="w-4 h-4" />
+                Restart Brain
+              </button>
+              <button 
+                v-if="!brainIsDead"
+                @click="handleKill"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Power class="w-4 h-4" />
+                Kill Brain
+              </button>
+              <button 
+                v-else
+                @click="handleRestart"
+                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <PlayCircle class="w-4 h-4" />
+                Start Brain
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -90,9 +137,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
-import { RefreshCw, AlertTriangle, Power } from 'lucide-vue-next'
+import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id as brainId, type BrainState } from '@/plugins/brain/state'
 
 interface Props {
   settings?: BrainSettings
@@ -104,13 +154,20 @@ const props = withDefaults(defineProps<Props>(), {
   allSettings: undefined
 })
 
+// Get brain state from brain state machine
+const brainActor: BrainState = applicationState.system.get(brainId);
+const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
+
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
   const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
   const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
   
-  // Need restart if flows has a root ID and it's different from what's running
-  return flowsRootId && flowsRootId !== brainRunningId
+  // Need restart if:
+  // 1. Brain is running (not dead) AND
+  // 2. Flows has a root ID AND
+  // 3. It's different from what's running
+  return brainRunningId !== undefined && flowsRootId && flowsRootId !== brainRunningId
 })
 
 // State

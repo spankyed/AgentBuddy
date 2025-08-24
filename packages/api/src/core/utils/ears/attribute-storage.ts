@@ -315,7 +315,7 @@ export const queryEntitiesByRelationTo = (
 /*─────────────────────────────────────────────────────────────
  * 5 ▸ entity teardown (needed by tx.destroy)
  *─────────────────────────────────────────────────────────────*/
-export function destroyEntity(id: EARS.EntityId) {
+export function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
   /* remove from relation index */
   for (const k of Object.keys(relationIndex)) {
     const { bySource, byTarget } = relationIndex[k];
@@ -338,8 +338,10 @@ export function destroyEntity(id: EARS.EntityId) {
     }
   }
   
-  /* persist the deletion */
-  persistence.onDestroyEntity(id);
+  /* persist the deletion unless skipped (for volatile data) */
+  if (!skipPersistence) {
+    persistence.onDestroyEntity(id);
+  }
 }
 
 /*─────────────────────────────────────────────────────────────
