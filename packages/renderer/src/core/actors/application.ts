@@ -27,6 +27,8 @@ export interface ApplicationContext {
   plugins: Plugin[];
   visiblePlugins: Plugin[]; // Filtered list of visible plugins
   pluginVisibility: Record<string, boolean>; // Plugin visibility settings
+  pluginHistory: string[]; // History of plugin IDs for back/forward navigation
+  historyIndex: number; // Current position in history
   breadcrumbs: BreadcrumbItem[];
   targetView: string;
   panelSizes: {
@@ -41,7 +43,7 @@ export interface ApplicationContext {
 export const application = 'application' as const;
 
 export type ApplicationEvent =
-  | { type: 'SELECT_PLUGIN'; pluginId: string }
+  | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
   | { type: 'TRAIL_CLICK'; target: string }
@@ -50,6 +52,8 @@ export type ApplicationEvent =
   | HotkeyEvent
   | { type: 'SWITCH_PLUGIN_UP' }
   | { type: 'SWITCH_PLUGIN_DOWN' }
+  | { type: 'NAVIGATE_BACK' }
+  | { type: 'NAVIGATE_FORWARD' }
   | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
   | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: KeyboardEvent }
   | { type: 'HOTKEYS_RECORDING_START' }
@@ -93,6 +97,27 @@ export const createApplicationState = () => setup({
       
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
+      };
+    }),
+    
+    mouseListener: fromCallback(({ system }) => {
+      const handleMouseDown = (e: MouseEvent) => {
+        const appActor = system.get(application);
+        
+        // Mouse button 3 = back, mouse button 4 = forward
+        if (e.button === 3) {
+          e.preventDefault();
+          appActor.send({ type: 'NAVIGATE_BACK' });
+        } else if (e.button === 4) {
+          e.preventDefault();
+          appActor.send({ type: 'NAVIGATE_FORWARD' });
+        }
+      };
+
+      window.addEventListener('mousedown', handleMouseDown);
+      
+      return () => {
+        window.removeEventListener('mousedown', handleMouseDown);
       };
     }),
     
@@ -196,6 +221,17 @@ export const createApplicationState = () => setup({
       hotkeysDisabled: (_, value: boolean) => value
     }),
     
+    navigate: ({ context, self }, direction: -1 | 1) => {
+      const newIndex = context.historyIndex + direction;
+      if (newIndex < 0 || newIndex >= context.pluginHistory.length) return;
+      
+      self.send({ 
+        type: 'SELECT_PLUGIN', 
+        pluginId: context.pluginHistory[newIndex],
+        historyIndex: newIndex
+      });
+    },
+    
     switchPluginByDirection: ({ context, event, self }) => {
       // Use only visible plugins for switching
       const visiblePlugins = context.visiblePlugins;
@@ -246,27 +282,44 @@ export const createApplicationState = () => setup({
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
-      const previousPlugin = context.activePlugin;
-      const newPlugin = context.plugins.find(p => p.id === typeOf('SELECT_PLUGIN', event).pluginId) || context.activePlugin;
+      const { pluginId, historyIndex } = typeOf('SELECT_PLUGIN', event);
+      const newPlugin = context.plugins.find(p => p.id === pluginId) || context.activePlugin;
       
-      // Send deactivation event to previous plugin
-      if (previousPlugin && previousPlugin.id !== newPlugin.id) {
-        system.get(previousPlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
+      // Send plugin activation events
+      if (context.activePlugin.id !== newPlugin.id) {
+        system.get(context.activePlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
+        system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
       }
       
-      // Send activation event to new plugin
-      system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
-      
-      // Update context
-      enqueue.assign({
-        defaultToggles: { ...context.defaultToggles, canvas: false },
-        activePlugin: newPlugin
+      // Update context and history in one assignment
+      enqueue.assign(({ context }) => {
+        const updates: any = {
+          activePlugin: newPlugin,
+          defaultToggles: { ...context.defaultToggles, canvas: false }
+        };
+        
+        // Skip history update if same plugin
+        if (context.activePlugin.id === newPlugin.id) return updates;
+        
+        if (historyIndex !== undefined) {
+          // Navigation: just update index
+          updates.historyIndex = historyIndex;
+        } else {
+          // Manual selection: truncate and add
+          const history = context.pluginHistory.slice(0, context.historyIndex + 1);
+          if (history[history.length - 1] !== pluginId) {
+            updates.pluginHistory = [...history, pluginId];
+            updates.historyIndex = history.length;
+          }
+        }
+        
+        return updates;
       });
       
       // Persist the new active plugin if it changed
-      if (previousPlugin && previousPlugin.id !== newPlugin.id) {
+      if (context.activePlugin.id !== newPlugin.id) {
         enqueue(({ context }) => {
-          const pluginId = context.activePlugin.id;
+          const pluginId = newPlugin.id;
           
           // Save to localStorage for immediate access on next load
           localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
@@ -396,6 +449,8 @@ export const createApplicationState = () => setup({
       pluginVisibility,
       activePlugin: initialActivePlugin,
       defaultPlugin: input.defaultPlugin,
+      pluginHistory: [initialActivePlugin.id], // Start with initial plugin in history
+      historyIndex: 0, // Start at first position
       breadcrumbs: [],
       defaultToggles: {
         canvas: false,
@@ -416,6 +471,7 @@ export const createApplicationState = () => setup({
     },
     'trailActivePlugin',
     spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
+    spawnChild('mouseListener', { id: 'mouseListener' }),
   ],
   states: {
     'setup': {
@@ -483,6 +539,14 @@ export const createApplicationState = () => setup({
     },
     SWITCH_PLUGIN_DOWN: {
       actions: 'switchPluginByDirection'
+    },
+    NAVIGATE_BACK: {
+      guard: ({ context }) => context.historyIndex > 0,
+      actions: { type: 'navigate', params: -1 }
+    },
+    NAVIGATE_FORWARD: {
+      guard: ({ context }) => context.historyIndex < context.pluginHistory.length - 1,
+      actions: { type: 'navigate', params: 1 }
     },
     FORWARD_HOTKEY: {
       actions: 'forwardHotkeyToPlugin'
