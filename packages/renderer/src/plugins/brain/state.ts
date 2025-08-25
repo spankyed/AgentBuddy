@@ -322,7 +322,7 @@ const brainState = setup({
     showRightPanel: false,
     debugEnabled: false,
     animationsEnabled: true,
-    brainIsDead: true, // Start as dead until we receive BRAIN_STARTED
+    brainIsDead: false, // Start as running to prevent flash of dead UI
   },
   initial: 'loading',
   states: {
