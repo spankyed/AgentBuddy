@@ -1,16 +1,26 @@
 <template>
   <div class="space-y-6">
     <!-- Section-based Indexing with Segment Rules -->
-    <div>
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex-1">
-          <CollapsibleSection 
-            label="SEGMENT RULES" 
-            :defaultOpen="true"
-            buttonClass="hover:text-neutral-300 transition-colors"
-            v-if="localData.enableSectionIndexing"
-          >
-            <div class="space-y-3">
+    <div class="relative">
+      <!-- Toggle absolutely positioned at the top right -->
+      <div class="absolute top-0 right-0 flex items-center gap-3">
+        <label class="text-xs text-neutral-500">
+          Enable section-based indexing
+        </label>
+        <ToggleSwitch
+          v-model="localData.enableSectionIndexing"
+          @update:modelValue="updateValue"
+        />
+      </div>
+      
+      <!-- Collapsible section -->
+      <CollapsibleSection 
+        label="SEGMENT RULES" 
+        :defaultOpen="true"
+        buttonClass="hover:text-neutral-300 transition-colors"
+        v-if="localData.enableSectionIndexing"
+      >
+        <div class="space-y-3">
         <!-- Rules List -->
         <div class="space-y-2">
           <div
@@ -86,22 +96,11 @@
           <Plus class="w-4 h-4" />
           <span>Add Rule</span>
         </button>
-            </div>
-          </CollapsibleSection>
-          <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
-            <ChevronRight class="w-4 h-4" />
-            SEGMENT RULES
-          </div>
         </div>
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-neutral-500">
-            Enable section-based indexing
-          </label>
-          <ToggleSwitch
-            v-model="localData.enableSectionIndexing"
-            @update:modelValue="updateValue"
-          />
-        </div>
+      </CollapsibleSection>
+      <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
+        <ChevronRight class="w-4 h-4" />
+        SEGMENT RULES
       </div>
     </div>
 

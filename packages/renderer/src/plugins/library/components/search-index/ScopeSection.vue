@@ -69,86 +69,84 @@
     </CollapsibleSection>
 
     <!-- Folder Exclusion Section -->
-    <div class="pt-6 border-t border-neutral-800">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex-1">
-          <CollapsibleSection 
-            label="FOLDER EXCLUSION" 
-            :defaultOpen="true"
-            buttonClass="hover:text-neutral-300 transition-colors"
-            v-if="!localData.excludeAllSubfolders"
+    <div class="pt-6 border-t border-neutral-800 relative">
+      <!-- Toggle absolutely positioned at the top right -->
+      <div class="absolute top-6 right-0 flex items-center gap-3">
+        <label class="text-xs text-neutral-500">
+          Exclude all subfolders
+        </label>
+        <ToggleSwitch
+          v-model="localData.excludeAllSubfolders"
+          @update:modelValue="updateValue"
+        />
+      </div>
+      
+      <!-- Collapsible section -->
+      <CollapsibleSection 
+        label="FOLDER EXCLUSION" 
+        :defaultOpen="true"
+        buttonClass="hover:text-neutral-300 transition-colors"
+        v-if="!localData.excludeAllSubfolders"
+      >
+        <div class="space-y-2">
+          <!-- Existing excluded folders -->
+          <div
+            v-for="folder in excludedFolders"
+            :key="folder.id"
+            class="flex items-center justify-between px-3 py-2 bg-neutral-800/30 border border-neutral-700/50 rounded-md group hover:bg-neutral-800/50"
           >
-            <div class="space-y-2">
-        
-        <!-- Existing excluded folders -->
-        <div
-          v-for="folder in excludedFolders"
-          :key="folder.id"
-          class="flex items-center justify-between px-3 py-2 bg-neutral-800/30 border border-neutral-700/50 rounded-md group hover:bg-neutral-800/50"
-        >
-          <div class="flex items-center gap-2">
-            <Folder class="w-4 h-4 text-neutral-500" />
-            <span class="text-sm text-neutral-200">{{ folder.name }}</span>
-            <span class="text-xs text-neutral-500">{{ folder.path }}</span>
-          </div>
-          <button
-            type="button"
-            @click="removeFolder(folder.id)"
-            class="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-red-400"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-        
-        <!-- Add folder input with autocomplete -->
-        <div class="relative">
-          <div class="relative">
-            <Folder class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
-            <input
-              v-model="folderSearchQuery"
-              @input="searchFolders"
-              @focus="showFolderSuggestions = true"
-              @blur="hideFolderSuggestions"
-              type="text"
-              placeholder="Search for specific folders to exclude..."
-              class="w-full pl-10 pr-3 py-2 bg-neutral-800/50 border border-dashed border-neutral-600 rounded-md text-neutral-100 text-sm focus:outline-none focus:border-solid focus:border-neutral-500 placeholder-neutral-400 hover:border-solid hover:border-neutral-500"
-            />
-            <Plus v-if="!folderSearchQuery" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
+            <div class="flex items-center gap-2">
+              <Folder class="w-4 h-4 text-neutral-500" />
+              <span class="text-sm text-neutral-200">{{ folder.name }}</span>
+              <span class="text-xs text-neutral-500">{{ folder.path }}</span>
+            </div>
+            <button
+              type="button"
+              @click="removeFolder(folder.id)"
+              class="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-red-400"
+            >
+              <X class="w-4 h-4" />
+            </button>
           </div>
           
-          <!-- Autocomplete dropdown -->
-          <div
-            v-if="showFolderSuggestions && filteredFolderSuggestions.length > 0"
-            class="absolute top-full left-0 right-0 mt-1 bg-neutral-850 border border-neutral-700 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
-          >
+          <!-- Add folder input with autocomplete -->
+          <div class="relative">
+            <div class="relative">
+              <Folder class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
+              <input
+                v-model="folderSearchQuery"
+                @input="searchFolders"
+                @focus="showFolderSuggestions = true"
+                @blur="hideFolderSuggestions"
+                type="text"
+                placeholder="Search for specific folders to exclude..."
+                class="w-full pl-10 pr-3 py-2 bg-neutral-800/50 border border-dashed border-neutral-600 rounded-md text-neutral-100 text-sm focus:outline-none focus:border-solid focus:border-neutral-500 placeholder-neutral-400 hover:border-solid hover:border-neutral-500"
+              />
+              <Plus v-if="!folderSearchQuery" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
+            </div>
+            
+            <!-- Autocomplete dropdown -->
             <div
-              v-for="folder in filteredFolderSuggestions"
-              :key="folder.id"
-              @mousedown="selectFolder(folder)"
-              class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2 text-sm"
+              v-if="showFolderSuggestions && filteredFolderSuggestions.length > 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-neutral-850 border border-neutral-700 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
             >
-              <Folder class="w-4 h-4 text-neutral-500" />
-              <span class="text-neutral-200">{{ folder.name }}</span>
-              <span class="text-xs text-neutral-500">{{ folder.path }}</span>
+              <div
+                v-for="folder in filteredFolderSuggestions"
+                :key="folder.id"
+                @mousedown="selectFolder(folder)"
+                class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2 text-sm"
+              >
+                <Folder class="w-4 h-4 text-neutral-500" />
+                <span class="text-neutral-200">{{ folder.name }}</span>
+                <span class="text-xs text-neutral-500">{{ folder.path }}</span>
+              </div>
             </div>
           </div>
         </div>
-        </div>
-          </CollapsibleSection>
-          <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
-            <ChevronRight class="w-4 h-4" />
-            FOLDER EXCLUSION
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-neutral-500">
-            Exclude all subfolders
-          </label>
-          <ToggleSwitch
-            v-model="localData.excludeAllSubfolders"
-            @update:modelValue="updateValue"
-          />
-        </div>
+      </CollapsibleSection>
+      <div v-else class="flex items-center gap-2 text-xs font-medium text-neutral-400 opacity-50 cursor-not-allowed">
+        <ChevronRight class="w-4 h-4" />
+        FOLDER EXCLUSION
       </div>
     </div>
   </div>
