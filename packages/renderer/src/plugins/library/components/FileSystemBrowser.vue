@@ -12,7 +12,7 @@
     />
     
     <!-- Toolbar -->
-    <div class="px-6 py-3 border-b border-neutral-800">
+    <div class="px-6 py-3 border-b border-neutral-800" @click.stop>
       <!-- Navigation Row -->
       <div class="flex items-center justify-between gap-4">
         <!-- Back Button and Breadcrumbs -->
@@ -110,8 +110,8 @@
     </div>
 
     <!-- File Table -->
-    <div class="flex-1 overflow-hidden">
-      <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+    <div class="flex-1 overflow-hidden" @click="handleTableContainerClick">
+      <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" @click="handleScrollAreaClick">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
@@ -230,6 +230,7 @@
               :key="`empty-${n}`"
               class="empty-drop-zone"
               :class="(sortedItems.length + n - 1) % 2 === 1 ? 'bg-neutral-800/20' : ''"
+              @click="handleEmptyRowClick"
               @dragover.prevent="handleDragOver($event, null)"
               @drop="handleDropOnEmpty($event)"
             >
@@ -481,6 +482,42 @@ function deleteSelectedItems() {
 function handleDropOnEmpty(event: DragEvent) {
   // When dropping on empty space, move items to current folder
   handleDrop(event, null, sortedItems.value.length, props.currentFolderId)
+}
+
+function handleTableContainerClick(event: MouseEvent) {
+  // Check if the click is directly on the container (not on child elements like table rows)
+  const target = event.target as HTMLElement
+  
+  // Only clear selection if clicking on the container itself or empty areas
+  // Not when clicking on table rows, headers, or other interactive elements
+  if (target.closest('tr') || target.closest('th') || target.closest('button')) {
+    return
+  }
+  
+  // Only deselect if not editing an item name and there are selected items
+  if (editingItemId.value || props.selectedItems.length === 0) return
+  
+  // Clear selection when clicking on empty space
+  clearSelection()
+}
+
+function handleEmptyRowClick(event: MouseEvent) {
+  // Clicking on empty rows should clear selection
+  if (editingItemId.value || props.selectedItems.length === 0) return
+  
+  event.stopPropagation()
+  clearSelection()
+}
+
+function handleScrollAreaClick(event: MouseEvent) {
+  // Check if click is directly on the scroll area (below the table)
+  const target = event.target as HTMLElement
+  
+  // If clicking on the scrollable div itself (not table or its children)
+  if (target.classList.contains('custom-scrollbar')) {
+    if (editingItemId.value || props.selectedItems.length === 0) return
+    clearSelection()
+  }
 }
 
 function handleKeyDown(event: KeyboardEvent) {
