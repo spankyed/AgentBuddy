@@ -104,7 +104,7 @@
 
         <!-- Messages Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection :default-open="true">
+          <CollapsibleSection :default-open="false">
             <template #label>
               Messages ({{ messages.length }})
             </template>
@@ -119,7 +119,7 @@
 
         <!-- Linked Threads Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Linked Threads" :default-open="true">
+          <CollapsibleSection label="Linked Threads" :default-open="false">
             <ThreadLinkInput
               v-model="linkedThreads"
               :available-threads="threadsList"
