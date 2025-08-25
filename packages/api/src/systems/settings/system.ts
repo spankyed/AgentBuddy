@@ -86,6 +86,18 @@ export const settingsSystem = setup({
         type: 'APPLICATION_HOTKEYS' as const,
         hotkeys: data.general.hotkeys
       }));
+      
+      // Send last active plugin to application for restoration
+      if (data.plugins?._meta?.lastActivePlugin) {
+        system.get(bus).send({
+          type: 'OUTGOING',
+          event: {
+            type: 'APPLICATION_RESTORE_LAST_PLUGIN',
+            pluginId: 'application',
+            lastActivePluginId: data.plugins._meta.lastActivePlugin
+          }
+        });
+      }
     },
     
     getSettings: ({ system, event }) => {

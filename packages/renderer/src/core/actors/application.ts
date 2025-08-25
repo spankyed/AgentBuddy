@@ -56,6 +56,7 @@ export type ApplicationEvent =
   | { type: 'HOTKEYS_RECORDING_END' }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+  | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -154,6 +155,19 @@ export const createApplicationState = () => setup({
       };
     }),
     
+    syncLastActivePlugin: ({ event, self, context }) => {
+      const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
+      
+      // Sync localStorage with backend
+      localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
+      
+      // Only switch if plugin exists and differs from current
+      const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
+      if (targetPlugin && targetPlugin.id !== context.activePlugin.id) {
+        self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
+      }
+    },
+    
     processGlobalHotkey: ({ self, context, system, event }) => {
       const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
       
@@ -248,6 +262,26 @@ export const createApplicationState = () => setup({
         defaultToggles: { ...context.defaultToggles, canvas: false },
         activePlugin: newPlugin
       });
+      
+      // Persist the new active plugin if it changed
+      if (previousPlugin && previousPlugin.id !== newPlugin.id) {
+        enqueue(({ context }) => {
+          const pluginId = context.activePlugin.id;
+          
+          // Save to localStorage for immediate access on next load
+          localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
+          
+          // Send to backend to persist across sessions/devices
+          trpc.bus.send.mutate({
+            systemId: 'settings',
+            type: 'UPDATE_SETTINGS',
+            entityType: 'plugin',
+            label: '_meta',
+            path: ['lastActivePlugin'],
+            value: pluginId
+          });
+        });
+      }
     }),
     handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
       defaultToggles: {
@@ -269,9 +303,15 @@ export const createApplicationState = () => setup({
         id: pluginId
       });
       // enqueue({ type: 'setTargetView', params: pluginId });
-      enqueue.assign(({ system }) => ({
-        targetView: computeCrumbs(system.get(pluginId).getSnapshot()).target
-      }))
+      enqueue.assign(({ system }) => {
+        const pluginActor = system.get(pluginId);
+        if (pluginActor) {
+          return {
+            targetView: computeCrumbs(pluginActor.getSnapshot()).target
+          };
+        }
+        return {};
+      })
     }),
     spawnPluginActors: enqueueActions(({ enqueue, context }) => {
       // enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
@@ -328,9 +368,12 @@ export const createApplicationState = () => setup({
     const savedSizes = localStorage.getItem('agentbuddy-panel-sizes');
     const defaultSizes = {
       canvasHeight: 50, // 50% of main area
-      inspectionWidth: 448, // 28rem = 448px (16px base)
+      inspectionWidth: 448, // 28rem = 448px (16px base),
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
+    
+    // Load last active plugin from localStorage
+    const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
     
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
@@ -338,11 +381,20 @@ export const createApplicationState = () => setup({
       pluginVisibility[plugin.id] = true;
     });
     
+    // Determine initial active plugin - use saved one if it exists and is valid
+    let initialActivePlugin = input.plugins[0];
+    if (savedLastActivePlugin) {
+      const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
+      if (savedPlugin) {
+        initialActivePlugin = savedPlugin;
+      }
+    }
+    
     return {
       plugins: input.plugins,
       visiblePlugins: input.plugins, // Initially all plugins are visible
       pluginVisibility,
-      activePlugin: input.plugins[0],
+      activePlugin: initialActivePlugin,
       defaultPlugin: input.defaultPlugin,
       breadcrumbs: [],
       defaultToggles: {
@@ -382,6 +434,9 @@ export const createApplicationState = () => setup({
     },
     PLUGIN_VISIBILITY_UPDATED: {
       actions: 'updatePluginVisibility'
+    },
+    APPLICATION_RESTORE_LAST_PLUGIN: {
+      actions: 'syncLastActivePlugin'
     },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],

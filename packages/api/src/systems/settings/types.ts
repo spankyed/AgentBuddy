@@ -135,6 +135,7 @@ export interface LogsSettings {
 export interface PluginSettings {
   _meta?: {
     visibility?: PluginVisibilitySettings;
+    lastActivePlugin?: string;
   };
   [pluginId: string]: any; // Plugin-specific settings
 }
