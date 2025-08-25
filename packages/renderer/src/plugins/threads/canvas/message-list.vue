@@ -6,11 +6,27 @@
             :key="index" 
             @click="toggleMessage(index)"
             :class="[
-              'px-3 py-2 text-sm rounded-sm cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:brightness-110',
-              { 'truncate': expandedMessageIndex !== index },
+              'group relative px-3 py-2 text-sm rounded-sm cursor-pointer',
               isUserMsg(message) ? 'bg-neutral-700/20 text-white border border-gray-700/30' : 'bg-neutral-900/40 text-white',
             ]">
-          {{ message.text }}
+          <span :class="{ 'block truncate pr-16': expandedMessageIndex !== index, 'whitespace-pre-wrap': expandedMessageIndex === index }">
+            {{ message.text }}
+          </span>
+          <!-- Show more indicator -->
+          <span 
+            v-if="expandedMessageIndex !== index && isLongMessage(message.text)"
+            class="absolute right-3 top-2 text-xs text-neutral-400"
+          >
+            <span class="group-hover:hidden">see more</span>
+            <ChevronDown class="hidden w-4 h-4 group-hover:block" />
+          </span>
+          <!-- Show less indicator for expanded messages -->
+          <span 
+            v-if="expandedMessageIndex === index && isLongMessage(message.text)"
+            class="absolute right-3 top-2 text-xs text-neutral-400"
+          >
+            <ChevronUp class="w-4 h-4" />
+          </span>
         </li>
       </ul>
     </div>
@@ -19,6 +35,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 
 interface Message {
   sender?: 'user' | 'assistant' | 'system'
@@ -35,5 +52,10 @@ const expandedMessageIndex = ref<number | null>(null)
 
 const toggleMessage = (index: number) => {
   expandedMessageIndex.value = expandedMessageIndex.value === index ? null : index
+}
+
+const isLongMessage = (text?: string) => {
+  // Check if message is long enough to be truncated (approximately > 100 chars)
+  return text ? text.length > 100 : false
 }
 </script>
