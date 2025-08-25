@@ -2,26 +2,28 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-900">
-      <div class="flex items-center gap-4">
+      <div>
+        <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
+        <p class="text-xs text-neutral-400">
+          <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
+          {{ topic || 'Untitled thread' }}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
         <Button
           @click="actor.send({ type: 'GO_BACK' })"
           variant="transparent"
-          class="!p-2"
         >
-          <ArrowLeft class="w-4 h-4" />
+          Back
         </Button>
-        <div>
-          <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
-          <p class="text-xs text-neutral-400">{{ topic || 'Untitled thread' }}</p>
-        </div>
+        <Button 
+          @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+          variant="primary"
+        >
+          <MessageCircleMore class="w-4 h-4" />
+          <span>Open Chat</span>
+        </Button>
       </div>
-      <Button 
-        @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
-        variant="primary"
-      >
-        <MessageCircleMore class="w-4 h-4" />
-        <span>Open Chat</span>
-      </Button>
     </div>
 
     <!-- Content -->
@@ -150,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { MessageCircleMore, ArrowLeft, Plus } from 'lucide-vue-next'
+import { MessageCircleMore, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import Label from '@/core/components/design/label.vue'
 import type { Ref } from 'vue'
@@ -170,6 +172,7 @@ const availableTags = useSelector(actor, (state) => state.context.availableTags)
 const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThreads || []);
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
+const shortCode = useSelector(actor, (state) => state.context.view.shortCode || '');
 const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);

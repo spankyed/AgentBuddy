@@ -377,8 +377,7 @@ const threadsState = setup({
       meta: {
         ...breadcrumbWithParams<ThreadsContext>({
           target: 'view',
-          prefix: 'Thread',
-          paramName: 'selectedThreadCode'
+          getLabel: (ctx) => ctx.view.topic || 'Untitled Thread'
         })
       },
       on: {
