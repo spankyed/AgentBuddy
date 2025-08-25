@@ -129,17 +129,29 @@ export const brainSystem = setup({
           input: {}
         });
         
-        // Send BRAIN_STARTED event
-        system.get(bus).send(emit(brain, { 
-          type: 'BRAIN_STARTED'
-        }));
-        
         logger.info('Started brain root flow', { flowId: currentRootFlowId });
         
         // Return the updated context with the actor reference
         return {
           brainActor: actor
         };
+      });
+      
+      // Send plugin data after brain is started
+      enqueue(({ system, context }) => {
+        const data = repository.brainQueries.rootData();
+        
+        system.get(bus).send(emit(brain, { 
+          type: 'RECEIVE_PLUGIN_DATA',
+          data
+        }));
+        
+        // Send current brain state
+        if (context.brainActor) {
+          system.get(bus).send(emit(brain, { 
+            type: 'BRAIN_STARTED'
+          }));
+        }
       });
     }),
     
