@@ -16,6 +16,7 @@ declare namespace EARS {
         Document = "Document",
         Collection = "Collection",
         SearchIndex = "SearchIndex",
+        IndexedDoc = "IndexedDoc",
         Terminal = "Terminal",
         Directory = "Directory",
         Settings = "Settings",

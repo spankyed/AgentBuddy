@@ -83,3 +83,45 @@ export interface EmbeddingResult {
   embedding: Float32Array
   model: EmbeddingModel
 }
+
+export interface IndexedDocEntity {
+  id: EARS.EntityId
+  shortCode: string
+  indexId: string
+  chunkKey: string
+  documentId: EARS.EntityId
+  vectorId: number
+  text: string
+  metadata: {
+    shortCode: string
+    name: string
+    indexedAt: number
+  }
+  chunkInfo?: ChunkInfo
+}
+
+export interface IndexedDocCreateData {
+  indexId: string
+  chunkKey: string
+  documentId: EARS.EntityId
+  vectorId: number
+  text: string
+  metadata: {
+    shortCode: string
+    name: string
+    indexedAt: number
+  }
+  chunkInfo?: ChunkInfo
+}
+
+export interface IndexedDocUpdateData {
+  documentId?: EARS.EntityId
+  vectorId?: number
+  text?: string
+  metadata?: {
+    shortCode: string
+    name: string
+    indexedAt: number
+  }
+  chunkInfo?: ChunkInfo
+}

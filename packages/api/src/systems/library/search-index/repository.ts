@@ -3,13 +3,95 @@ import { Index } from 'usearch'
 import { qx } from '@/core/utils/ears/helpers/query'
 import { tx } from '@/core/utils/ears/helpers/transaction'
 import { EARS } from '@/core/types'
-import type { SearchIndex, SearchIndexConfig, IndexedDocument, IndexSearchResult } from './types/search-index'
+import { randomId } from '@/core/utils/random-id'
+import type {
+  SearchIndex,
+  SearchIndexConfig,
+  IndexedDocument,
+  IndexSearchResult,
+  ChunkInfo,
+  IndexedDocEntity,
+  IndexedDocCreateData,
+  IndexedDocUpdateData
+} from './types/search-index'
 import type { DocumentDTO } from '@/systems/library/types'
 import * as searchService from './service'
 import { libraryQueries, libraryCommands } from '@/systems/library/repository'
 
 // In-memory cache for frequently accessed indices
 const indexCache = new Map<string, Index>()
+
+// Helper functions for IndexedDoc management
+function generateIndexedDocShortCode(): string {
+  // Use collision-resistant ID generation
+  return `IDOC-${randomId({ length: 8, counterSafe: true })}`
+}
+
+function findIndexedDoc(indexId: string, chunkKey: string): IndexedDocEntity | null {
+  const results = qx(EARS.Entity.IndexedDoc)
+    .where('indexId', indexId)
+    .where('chunkKey', chunkKey)
+    .pickAll()
+  
+  if (results.length === 0) return null
+  
+  // Convert to typed entity
+  return results[0] as unknown as IndexedDocEntity
+}
+
+function createIndexedDoc(data: IndexedDocCreateData): EARS.EntityId {
+  const id = tx(EARS.Entity.IndexedDoc)
+    .put('shortCode', generateIndexedDocShortCode())
+    .put('indexId', data.indexId)
+    .put('chunkKey', data.chunkKey)
+    .put('documentId', data.documentId)
+    .put('vectorId', data.vectorId)
+    .put('text', data.text)
+    .put('metadata', data.metadata)
+    .put('chunkInfo', data.chunkInfo || null)
+    .id()
+  return id
+}
+
+function updateIndexedDoc(entityId: EARS.EntityId, data: IndexedDocUpdateData): void {
+  tx(entityId).updateBatch(data as Record<string, unknown>)
+}
+
+function deleteIndexedDocsForIndex(indexId: string): void {
+  const docs = qx(EARS.Entity.IndexedDoc)
+    .where('indexId', indexId)
+    .ids()
+  
+  docs.forEach(id => tx(id).destroy())
+}
+
+// Helper to build chunk metadata
+function buildChunkMetadata(doc: DocumentDTO, indexedAt: number) {
+  return {
+    shortCode: doc.shortCode,
+    name: doc.name,
+    indexedAt
+  }
+}
+
+// Helper to build chunk info
+function buildChunkInfo(
+  docId: EARS.EntityId,
+  chunkKey: string,
+  segmentIndex?: number,
+  itemIndex?: number
+): ChunkInfo | undefined {
+  if (segmentIndex === undefined) return undefined
+  
+  return {
+    sourceDocId: docId,
+    segmentIndex,
+    itemIndex,
+    totalChunks: 0, // This should be calculated elsewhere if needed
+    chunkType: itemIndex !== undefined ? 'segment-item' : 'full',
+    chunkKey
+  }
+}
 
 /**
  * Index documents in batch for optimal performance
@@ -87,26 +169,39 @@ async function indexDocumentsBatch(
     vectors.set(embeddings[i].embedding, i * dim)
     mappings.set(chunk.key, id)
     
-    // Store metadata
-    tx(`IndexedDoc-${indexId}-${chunk.key}` as EARS.EntityId).updateBatch({
-      documentId: chunk.doc.id as EARS.EntityId,
-      vectorId: id,
-      text: chunk.text,
-      metadata: {
-        shortCode: chunk.doc.shortCode,
-        name: chunk.doc.name,
-        indexedAt
-      },
-      ...(chunk.segmentIndex !== undefined && {
-        chunkInfo: {
-          sourceDocId: chunk.doc.id as EARS.EntityId,
-          segmentIndex: chunk.segmentIndex,
-          itemIndex: chunk.itemIndex,
-          chunkType: chunk.itemIndex !== undefined ? 'segment-item' : 'full',
-          chunkKey: chunk.key
-        }
+    // Store metadata - check if IndexedDoc already exists
+    const existing = findIndexedDoc(indexId, chunk.key)
+    if (existing) {
+      // Update existing IndexedDoc
+      updateIndexedDoc(existing.id, {
+        documentId: chunk.doc.id as EARS.EntityId,
+        vectorId: id,
+        text: chunk.text,
+        metadata: buildChunkMetadata(chunk.doc, indexedAt),
+        chunkInfo: buildChunkInfo(
+          chunk.doc.id as EARS.EntityId,
+          chunk.key,
+          chunk.segmentIndex,
+          chunk.itemIndex
+        )
       })
-    })
+    } else {
+      // Create new IndexedDoc entity
+      createIndexedDoc({
+        indexId,
+        chunkKey: chunk.key,
+        documentId: chunk.doc.id as EARS.EntityId,
+        vectorId: id,
+        text: chunk.text,
+        metadata: buildChunkMetadata(chunk.doc, indexedAt),
+        chunkInfo: buildChunkInfo(
+          chunk.doc.id as EARS.EntityId,
+          chunk.key,
+          chunk.segmentIndex,
+          chunk.itemIndex
+        )
+      })
+    }
   })
   
   // Batch insert to index
@@ -130,7 +225,11 @@ function removeDocumentChunks(
   keysToRemove.forEach(key => {
     index.remove(BigInt(mappings.get(key)!))
     mappings.delete(key)
-    tx(`IndexedDoc-${indexId}-${key}` as EARS.EntityId).destroy()
+    // Find and destroy the IndexedDoc entity
+    const indexedDoc = findIndexedDoc(indexId, key)
+    if (indexedDoc) {
+      tx(indexedDoc.id).destroy()
+    }
   })
   
   return keysToRemove.length > 0
@@ -224,6 +323,9 @@ export async function updateSearchIndex(
       existingIndex.indexMetric !== config.indexMetric ||
       existingIndex.connectors !== config.connectors) {
     
+    // Clean up all old IndexedDoc entities before changing model
+    deleteIndexedDocsForIndex(indexId)
+    
     // Delete old index files
     searchService.deleteIndexFiles(indexId)
     
@@ -255,8 +357,16 @@ export async function updateSearchIndex(
 }
 
 export async function deleteSearchIndex(indexId: EARS.EntityId): Promise<void> {
+  // Clean up all IndexedDoc entities for this index
+  deleteIndexedDocsForIndex(indexId)
+  
+  // Remove from cache
   indexCache.delete(indexId)
+  
+  // Delete index files from disk
   searchService.deleteIndexFiles(indexId)
+  
+  // Destroy the SearchIndex entity
   tx(indexId).destroy()
 }
 
@@ -400,9 +510,7 @@ export async function searchInIndex(
       if (!chunkKey) continue
       
       // Load indexed document metadata
-      const indexedDocId = `IndexedDoc-${indexId}-${chunkKey}` as EARS.EntityId
-      const indexedDocs = qx(indexedDocId).pickAll()
-      const indexedDoc = indexedDocs[0] as unknown as IndexedDocument
+      const indexedDoc = findIndexedDoc(indexId, chunkKey) as unknown as IndexedDocument
       
       if (indexedDoc) {
         searchResults.push({
@@ -477,6 +585,9 @@ async function reindexAllDocuments(indexId: EARS.EntityId): Promise<void> {
   const searchIndex = await getSearchIndex(indexId)
   if (!searchIndex) return
   
+  // Clean up all old IndexedDoc entities before reindexing
+  deleteIndexedDocsForIndex(indexId)
+  
   // Clear existing index
   searchService.deleteIndexFiles(indexId)
   indexCache.delete(indexId)
@@ -533,5 +644,14 @@ export async function removeDocumentFromAllIndices(documentId: EARS.EntityId): P
   for (const indexData of allIndices) {
     const searchIndex = indexData as unknown as SearchIndex
     await removeDocumentFromIndex(documentId, searchIndex.id)
+  }
+}
+
+// Delete all search indices for a folder when the folder is deleted
+export async function deleteSearchIndicesForFolder(folderId: EARS.EntityId): Promise<void> {
+  const indices = await getSearchIndicesForFolder(folderId)
+  
+  for (const index of indices) {
+    await deleteSearchIndex(index.id)
   }
 }

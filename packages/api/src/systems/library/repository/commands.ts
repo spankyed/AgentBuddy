@@ -276,6 +276,9 @@ export const libraryCommands = {
       }
     }
 
+    // Delete all search indices associated with this folder (fire and forget)
+    searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
+
     tx(collectionId).destroy()
   },
 
