@@ -1,7 +1,7 @@
 <template>
   <div class="collapsible-section">
     <button
-      @click="isOpen = !isOpen"
+      @click="toggle"
       class="flex items-center gap-2 w-full text-left focus:outline-none"
       :class="buttonClass"
     >
@@ -29,7 +29,16 @@ const props = defineProps<{
   defaultOpen?: boolean;
 }>();
 
+const emit = defineEmits<{
+  toggle: [isOpen: boolean];
+}>();
+
 const isOpen = ref(true);
+
+const toggle = () => {
+  isOpen.value = !isOpen.value;
+  emit('toggle', isOpen.value);
+};
 
 onMounted(() => {
   isOpen.value = props.defaultOpen ?? true;

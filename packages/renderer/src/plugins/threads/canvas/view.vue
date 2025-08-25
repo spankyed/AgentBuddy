@@ -105,8 +105,8 @@
         </div>
 
         <!-- Messages Section -->
-        <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection :default-open="false">
+        <div ref="messagesSection" class="pt-6 border-t border-neutral-800">
+          <CollapsibleSection :default-open="false" @toggle="onMessagesToggle">
             <template #label>
               Messages ({{ messages.length }})
             </template>
@@ -187,6 +187,7 @@ const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
 const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
+const messagesSection: Ref<HTMLDivElement | null> = ref(null);
 
 const startEditingTopic = () => {
   isEditingTopic.value = true;
@@ -202,5 +203,12 @@ const startEditingInstructions = () => {
   });
 };
 
-// Scroll functionality removed as CollapsibleSection handles the open state
+// Scroll messages section into view when opened
+const onMessagesToggle = (isOpen: boolean) => {
+  if (isOpen && messagesSection.value) {
+    nextTick(() => {
+      messagesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+};
 </script>
