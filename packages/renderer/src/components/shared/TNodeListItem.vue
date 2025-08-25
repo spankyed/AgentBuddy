@@ -73,7 +73,7 @@
           <!-- Node Attributes (lazy loaded or from node itself) -->
           <div v-if="displayNodeAttributes && Object.keys(displayNodeAttributes).length > 0" class="mb-3">
             <div class="text-xs font-medium text-neutral-400 mb-2">Node Attributes</div>
-            <DataRenderer :data="displayNodeAttributes" :default-expanded="false" />
+            <DataRenderer :data="displayNodeAttributes" :default-expanded="false" :compact="true" />
           </div>
           
           <!-- All info inline at the bottom with responsive breakpoints -->

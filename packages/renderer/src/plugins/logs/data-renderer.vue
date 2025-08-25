@@ -1,13 +1,19 @@
 <template>
   <div class="relative">
-    <!-- Copy button - only show at root level, positioned outside scrollable area -->
+    <!-- Copy button with better styling from logs canvas -->
     <button 
       v-if="depth === 0"
-      @click="copyToClipboard"
-      class="absolute top-0 right-0 p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-all z-10"
-      title="Copy to clipboard"
+      @click.stop="copyToClipboard"
+      class="absolute top-0 right-0 flex items-center gap-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 z-10"
+      :class="compact ? 'p-1' : 'px-2 py-1'"
+      :title="copied ? 'Copied!' : 'Copy to clipboard'"
     >
-      <Copy :size="12" />
+      <component 
+        :is="copied ? Check : Copy" 
+        :size="12" 
+        :class="copied ? 'text-green-400' : ''"
+      />
+      <span v-if="!compact">{{ copied ? 'Copied' : 'Copy' }}</span>
     </button>
     
     <!-- Scrollable container that respects parent width but allows content to expand -->
@@ -71,14 +77,16 @@
 
 <script setup lang="ts">
 import { ref, withDefaults } from 'vue';
-import { ChevronRight, Copy } from 'lucide-vue-next';
+import { ChevronRight, Copy, Check } from 'lucide-vue-next';
 
 const props = withDefaults(defineProps<{
   data: any;
   defaultExpanded?: boolean;
   depth?: number;
+  compact?: boolean;
 }>(), {
-  depth: 0
+  depth: 0,
+  compact: false
 });
 
 // Initialize expanded state
@@ -90,6 +98,9 @@ const props = withDefaults(defineProps<{
 //     : props.depth === 0
 // );
 const expanded = ref(true);
+
+// Track copied state
+const copied = ref(false);
 
 const toggleExpanded = () => {
   expanded.value = !expanded.value;
@@ -134,7 +145,14 @@ const copyToClipboard = async () => {
   try {
     const jsonString = JSON.stringify(props.data, null, 2);
     await navigator.clipboard.writeText(jsonString);
-    // Optional: Show a toast notification here
+    
+    // Set copied state
+    copied.value = true;
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
   } catch (error) {
     console.error('Failed to copy to clipboard:', error);
     // Fallback for older browsers
@@ -144,6 +162,12 @@ const copyToClipboard = async () => {
     textArea.select();
     document.execCommand('copy');
     document.body.removeChild(textArea);
+    
+    // Still show copied state
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
   }
 };
 </script>

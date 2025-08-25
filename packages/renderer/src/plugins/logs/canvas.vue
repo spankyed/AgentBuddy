@@ -102,21 +102,7 @@
                 <div class="ml-4 space-y-2">
                   <!-- Meta Data -->
                   <div v-if="expandedContent.get(log.id) === 'meta' && log.meta" class="p-3 rounded-lg bg-neutral-800/50">
-                    <div class="flex items-center justify-between mb-1">
-                      <div class="text-sm font-medium text-neutral-400">Metadata</div>
-                      <button
-                        @click.stop="copyMetadata(log.meta, log.id)"
-                        class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
-                        :title="copiedStates.get(log.id) ? 'Copied!' : 'Copy metadata to clipboard'"
-                      >
-                        <component 
-                          :is="copiedStates.get(log.id) ? Check : Copy" 
-                          :size="12" 
-                          :class="copiedStates.get(log.id) ? 'text-green-400' : ''"
-                        />
-                        <span>{{ copiedStates.get(log.id) ? 'Copied' : 'Copy' }}</span>
-                      </button>
-                    </div>
+                    <div class="text-sm font-medium text-neutral-400 mb-2">Metadata</div>
                     <DataRenderer :data="log.meta" />
                   </div>
                   
@@ -306,9 +292,7 @@ import {
   FileWarning,
   Terminal,
   X,
-  Trash2,
-  Copy,
-  Check
+  Trash2
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -337,9 +321,6 @@ onMounted(async () => {
 // 3. Add button and content display
 type ContentType = 'meta' | 'stack';
 const expandedContent = reactive(new Map<string, ContentType | null>());
-
-// Track copied states for each log
-const copiedStates = reactive(new Map<string, boolean>());
 
 const actor: LogsState = applicationState.system.get(id)
 const logs = useSelector(actor, (s) => (s as any).context.logs);
@@ -512,24 +493,6 @@ const getAvailableContent = (log: LogEntry): ContentType[] => {
   if (log.stack) available.push('stack');
   if (log.meta && Object.keys(log.meta).length > 0) available.push('meta');
   return available;
-};
-
-// Copy metadata to clipboard
-const copyMetadata = async (meta: any, logId: string) => {
-  try {
-    const formattedMeta = JSON.stringify(meta, null, 2);
-    await navigator.clipboard.writeText(formattedMeta);
-    
-    // Set copied state
-    copiedStates.set(logId, true);
-    
-    // Reset after 2 seconds
-    setTimeout(() => {
-      copiedStates.delete(logId);
-    }, 2000);
-  } catch (err) {
-    console.error('Failed to copy to clipboard:', err);
-  }
 };
 </script>
 
