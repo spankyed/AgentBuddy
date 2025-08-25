@@ -1,5 +1,5 @@
 import { LmdbQuery } from '@/persistence/lmdb/query';
-import { envs } from '@/core/utils/ears/attribute-storage';
+import { envs } from '@/core/ears/attribute-storage';
 import { EARS } from '@/core/types';
 import type { TNodeEntity, TrackEntity } from '@/systems/brain/types';
 import { createLogger } from '@/core/utils/debug/logger';
@@ -8,7 +8,7 @@ const logger = createLogger('database:trace');
 
 /**
  * Helper to get all descendant TNodes via a specific relation type
- * Similar to core/utils/ears/helpers/graph.ts descendants but for LMDB
+ * Similar to core/ears/helpers/graph.ts descendants but for LMDB
  */
 function getDescendants(
   query: LmdbQuery,

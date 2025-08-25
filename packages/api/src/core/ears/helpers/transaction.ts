@@ -8,12 +8,12 @@ import {
   addRelation, updateRelation, removeRelation,
   createEntity,
   getRoles,               // for no‑op guards
-} from "@/core/utils/ears/attribute-storage";
+} from "@/core/ears/attribute-storage";
 
-import { edgeStore } from "@/core/utils/ears/helpers/edge-store";
-import { qx } from "@/core/utils/ears/helpers/query";
+import { edgeStore } from "@/core/ears/helpers/edge-store";
+import { qx } from "@/core/ears/helpers/query";
 import { EARS } from "@/core/types";
-import { wouldCreateCycle, linkSymmetric } from "@/core/utils/ears/helpers/graph";
+import { wouldCreateCycle, linkSymmetric } from "@/core/ears/helpers/graph";
 
 export interface SafeLinkOptions {
   /** Additional info to store with the relation */

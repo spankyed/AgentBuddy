@@ -9,7 +9,7 @@ import {
   RepositoryErrorCode
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { tx } from '@/core/ears/helpers/transaction';
 
 /**
  * Action Repository - Dead simple CRUD operations

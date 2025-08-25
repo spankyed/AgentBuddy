@@ -12,7 +12,7 @@ import {
   mergeAttr,
   addRelation,
   destroyEntity
-} from '@/core/utils/ears/attribute-storage';
+} from '@/core/ears/attribute-storage';
 
 // Configuration flag to determine which snapshot directory to use
 // Set to true to use git-tracked snapshots (default), false for runtime snapshots

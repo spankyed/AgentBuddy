@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity, addAttr, addRelation, destroyEntity, getAllEntities } from '@/core/utils/ears/attribute-storage';
-import { envs, policy, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity, addAttr, addRelation, destroyEntity, getAllEntities } from '@/core/ears/attribute-storage';
+import { envs, policy, closePersistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '../partitioning/hydrate-sharded';
 
 async function testPartitioning() {

@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types';
-import { qx } from '@/core/utils/ears/helpers/query';
+import { qx } from '@/core/ears/helpers/query';
 import type { Tab, ArtifactItem } from '../types';
 import { slackArtifactData } from './mock-artifacts';
 

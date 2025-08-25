@@ -1,6 +1,6 @@
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
-import { getTimestamp, generateShortCode, generateLabelWithCount } from '@/core/utils/ears/helpers/entity-utils';
+import { getTimestamp, generateShortCode, generateLabelWithCount } from '@/core/ears/helpers/entity-utils';
 
 /**
  * Type-safe transaction helpers for common operations

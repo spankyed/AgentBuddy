@@ -19,9 +19,9 @@
  *   npm run db:export -- --raw Settings > settings.json
  */
 
-import { qx } from '@/core/utils/ears/helpers/query';
+import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
-import { getAllEntities, getEntitiesOfType, envs, policy, persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { getAllEntities, getEntitiesOfType, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/utils/paths';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
 import { createDefaultSettings } from '@/systems/settings/repository';

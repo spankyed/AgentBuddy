@@ -1,4 +1,4 @@
-import { BaseEntity } from "@/core/utils/ears";
+import { BaseEntity } from "@/core/ears";
 import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS } from "@/types";
 

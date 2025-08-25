@@ -2,10 +2,10 @@
  * atomic-transaction.spec.ts – unit tests for atomic transaction support
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { atomicTx, withTransaction } from '@/core/utils/ears/helpers/atomic-transaction';
-import { qx } from '@/core/utils/ears/helpers/query';
+import { atomicTx, withTransaction } from '@/core/ears/helpers/atomic-transaction';
+import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
-import { getAttr, getAttrs, getRoles, createEntity, destroyEntity } from '@/core/utils/ears/attribute-storage';
+import { getAttr, getAttrs, getRoles, createEntity, destroyEntity } from '@/core/ears/attribute-storage';
 
 describe('AtomicTransaction', () => {
   let tx: ReturnType<typeof atomicTx>;

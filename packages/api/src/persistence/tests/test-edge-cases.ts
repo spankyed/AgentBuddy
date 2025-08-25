@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity, putAttr, addRelation, updateRelation, destroyEntity, dropAttr } from '@/core/utils/ears/attribute-storage';
-import { envs, policy, persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity, putAttr, addRelation, updateRelation, destroyEntity, dropAttr } from '@/core/ears/attribute-storage';
+import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 
 async function testEdgeCases() {
   console.log('\n🧪 Testing Sharded Router Edge Cases\n');

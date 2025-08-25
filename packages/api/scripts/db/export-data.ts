@@ -9,9 +9,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { qx } from '@/core/utils/ears/helpers/query';
+import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
-import { getAllEntities, getEntitiesOfType } from '@/core/utils/ears/attribute-storage';
+import { getAllEntities, getEntitiesOfType } from '@/core/ears/attribute-storage';
 
 interface ExportOptions {
   outputDir: string;

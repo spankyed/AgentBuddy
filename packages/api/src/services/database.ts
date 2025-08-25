@@ -17,11 +17,11 @@ export {
 } from '@/core/utils/repository/transaction-helpers';
 
 // Export EARS transaction builder
-export { tx } from '@/core/utils/ears/helpers/transaction';
-export type { SafeLinkOptions } from '@/core/utils/ears/helpers/transaction';
+export { tx } from '@/core/ears/helpers/transaction';
+export type { SafeLinkOptions } from '@/core/ears/helpers/transaction';
 
 // Export EARS query builder
-export { qx } from '@/core/utils/ears/helpers/query';
+export { qx } from '@/core/ears/helpers/query';
 
 // Export type-safe query helpers
 export {

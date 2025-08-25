@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
-import { qx } from '@/core/utils/ears/helpers/query';
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { qx } from '@/core/ears/helpers/query';
+import { tx } from '@/core/ears/helpers/transaction';
 import { 
   getAllEntities, 
   getAll, 
@@ -12,8 +12,8 @@ import {
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
   destroyEntity
-} from '@/core/utils/ears/attribute-storage';
-import { relationIndex } from '@/core/utils/ears/relation-index';
+} from '@/core/ears/attribute-storage';
+import { relationIndex } from '@/core/ears/relation-index';
 import {
   prepareEntity,
   createEntityWithDefaults,

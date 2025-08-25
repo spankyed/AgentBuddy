@@ -1,13 +1,13 @@
 /*─────────────────────────────────────────────────────────────
  * edge-store.ts – one-stop helpers for relation edges
  *─────────────────────────────────────────────────────────────*/
-import { relationIndex } from "@/core/utils/ears/relation-index";
+import { relationIndex } from "@/core/ears/relation-index";
 import {
   getAttr,
   addRelation,
   updateRelation,
   removeRelation,
-} from "@/core/utils/ears/attribute-storage";
+} from "@/core/ears/attribute-storage";
 import { EARS } from "@/core/types";
 
 /** collect relation‑IDs that satisfy all supplied fields */

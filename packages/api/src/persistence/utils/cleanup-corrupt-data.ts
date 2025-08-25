@@ -5,7 +5,7 @@
  * Usage: npx tsx src/persistence/utils/cleanup-corrupt-data.ts
  */
 
-import { envs } from '@/core/utils/ears/attribute-storage';
+import { envs } from '@/core/ears/attribute-storage';
 
 async function cleanupCorruptData() {
   console.log('\n🧹 Cleaning Up Corrupt Data from LMDB\n');

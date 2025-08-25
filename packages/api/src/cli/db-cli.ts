@@ -3,8 +3,8 @@ import repl from 'node:repl';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { inspect } from 'node:util';
-import { qx } from '@/core/utils/ears/helpers/query';
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { qx } from '@/core/ears/helpers/query';
+import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
 import { 
   getAllEntities, 
@@ -13,7 +13,7 @@ import {
   getAttrs,
   getRoles,
   getAll
-} from '@/core/utils/ears/attribute-storage';
+} from '@/core/ears/attribute-storage';
 import { formatResult, exportToJSON, exportToCSV, confirmAction } from './utils';
 
 export interface CliOptions {

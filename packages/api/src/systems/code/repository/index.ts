@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types'
-import { tx } from '@/core/utils/ears/helpers/transaction'
-import { qx } from '@/core/utils/ears/helpers/query'
+import { tx } from '@/core/ears/helpers/transaction'
+import { qx } from '@/core/ears/helpers/query'
 import { createEntityWithDefaults, updateEntity, findById, findAll, exists } from '@/core/utils/repository'
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'

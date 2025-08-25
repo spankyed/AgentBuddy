@@ -1,5 +1,5 @@
 
-import { tx } from "@/core/utils/ears/helpers/transaction";
+import { tx } from "@/core/ears/helpers/transaction";
 import { EARS } from "@/core/types";
 import { createLogger } from '@/core/utils/debug/logger';
 import { loadSnapshot as loadSnapshotFile, listSnapshots, restoreSnapshot, listGitSnapshots, loadGitSnapshot } from '@/systems/database/snapshot';

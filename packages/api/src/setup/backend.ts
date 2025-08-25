@@ -5,7 +5,7 @@ import { backendSystem, bus } from '@/systems/backend';
 import { initializeLogCapture } from '@/core/utils/debug/log-capture';
 import { loadSnapshot } from '@/persistence/data';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence } from '@/core/utils/ears/attribute-storage';
+import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 
 export async function setupBackend(): Promise<void> {

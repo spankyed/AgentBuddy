@@ -1,8 +1,8 @@
 import { EARS } from '@/core/types';
 import { PartitionPolicy, Partition } from './policy';
 import { LmdbDbs } from '../lmdb/envs';
-import { mergeAttr, putAttr } from '@/core/utils/ears/attribute-storage';
-import { addToIndex } from '@/core/utils/ears/relation-index';
+import { mergeAttr, putAttr } from '@/core/ears/attribute-storage';
+import { addToIndex } from '@/core/ears/relation-index';
 import type { makeShardedPersistence } from './sharded-router';
 
 function dec(e: { t: string; v: any }): unknown {

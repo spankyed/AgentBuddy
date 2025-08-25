@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity, addRelation, updateRelation, removeRelation } from '@/core/utils/ears/attribute-storage';
-import { envs, persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity, addRelation, updateRelation, removeRelation } from '@/core/ears/attribute-storage';
+import { envs, persistence, closePersistence } from '@/core/ears/attribute-storage';
 
 async function testCorruptDataHandling() {
   console.log('\n🧪 Testing Corrupt Data Handling\n');

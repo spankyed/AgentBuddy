@@ -6,7 +6,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-h
 import { EARS } from '@/core/types';
 import { z } from 'zod';
 import { repository } from '@/repository';
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData } from './types';
 import type { MappedZodLiterals } from '@/core/utils/type-helpers';

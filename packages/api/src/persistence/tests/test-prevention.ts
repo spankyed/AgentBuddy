@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity } from '@/core/utils/ears/attribute-storage';
-import { persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity } from '@/core/ears/attribute-storage';
+import { persistence, closePersistence } from '@/core/ears/attribute-storage';
 
 async function testPrevention() {
   console.log('\n🛡️ Testing Prevention of Invalid Data Storage\n');

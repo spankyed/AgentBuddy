@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types';
-import { qx } from '@/core/utils/ears/helpers/query';
+import { qx } from '@/core/ears/helpers/query';
 import { 
   getAllEntities, 
   getAll, 
@@ -10,8 +10,8 @@ import {
   getEntitiesOfType,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo
-} from '@/core/utils/ears/attribute-storage';
-import { relationIndex } from '@/core/utils/ears/relation-index';
+} from '@/core/ears/attribute-storage';
+import { relationIndex } from '@/core/ears/relation-index';
 import { getSchemaStats } from '../repository/schema';
 
 /**

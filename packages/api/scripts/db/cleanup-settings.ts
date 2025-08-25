@@ -6,8 +6,8 @@
  *   npm run db:script scripts/db/cleanup-settings.ts
  */
 
-import { qx } from '@/core/utils/ears/helpers/query';
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { qx } from '@/core/ears/helpers/query';
+import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
 
 async function cleanupSettings() {

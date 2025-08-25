@@ -7,9 +7,9 @@
  *   npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123
  */
 
-import { qx } from '@/core/utils/ears/helpers/query';
+import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
-import { getRelations, getIncomingRelations } from '@/core/utils/ears/attribute-storage';
+import { getRelations, getIncomingRelations } from '@/core/ears/attribute-storage';
 
 interface InspectOptions {
   entityId?: string;

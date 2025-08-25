@@ -1,4 +1,4 @@
-import { BaseEntity } from "@/core/utils/ears";
+import { BaseEntity } from "@/core/ears";
 import type { EARS } from "@/types";
 
 export interface SettingsEntity extends BaseEntity {

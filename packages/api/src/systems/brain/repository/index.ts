@@ -1,7 +1,7 @@
 import { EARS } from '@/core/types';
-import { qx } from '@/core/utils/ears/helpers/query';
-import { tx } from '@/core/utils/ears/helpers/transaction';
-import { descendants } from '@/core/utils/ears/helpers/graph';
+import { qx } from '@/core/ears/helpers/query';
+import { tx } from '@/core/ears/helpers/transaction';
+import { descendants } from '@/core/ears/helpers/graph';
 import type { 
   FlowTNodeData, 
   TNodeEntity, 

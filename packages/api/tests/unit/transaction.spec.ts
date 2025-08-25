@@ -4,12 +4,12 @@
  * Run:  npx vitest
  */
 import { beforeAll, describe, expect, it, beforeEach } from 'vitest';
-import { tx, SafeLinkOptions } from '@/core/utils/ears/helpers/transaction';
-import { qx } from '@/core/utils/ears/helpers/query';
+import { tx, SafeLinkOptions } from '@/core/ears/helpers/transaction';
+import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
 // import { flowRows } from '@/systems/flows/repository/mock-data';
 // import { loadData } from '@/systems/_backend/load-initial-data';
-import { getAttr, getRoles, getAll } from '@/core/utils/ears/attribute-storage';
+import { getAttr, getRoles, getAll } from '@/core/ears/attribute-storage';
 
 /* ──────────────────────────────────────────────────────────────── *
  *  Boot the store ONCE for the whole suite. If you have a helper

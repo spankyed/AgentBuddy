@@ -1,4 +1,4 @@
-import { qx } from '@/core/utils/ears/helpers/query'
+import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
 import { 

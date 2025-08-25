@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid'
 import { Index } from 'usearch'
-import { qx } from '@/core/utils/ears/helpers/query'
-import { tx } from '@/core/utils/ears/helpers/transaction'
+import { qx } from '@/core/ears/helpers/query'
+import { tx } from '@/core/ears/helpers/transaction'
 import { EARS } from '@/core/types'
 import { randomId } from '@/core/utils/random-id'
 import type {

@@ -8,9 +8,9 @@ import {
   queryEntitiesInRelationTo,
   queryEntitiesByRelationTo,
   getAll,
-} from "@/core/utils/ears/attribute-storage";
+} from "@/core/ears/attribute-storage";
 
-import { relationIndex } from "@/core/utils/ears/relation-index";
+import { relationIndex } from "@/core/ears/relation-index";
 import { EARS } from "@/core/types";
 import { asArr, MaybeArr } from "@/core/utils";
 

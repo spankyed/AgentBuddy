@@ -8,20 +8,20 @@
 export { EARS, BaseEntity } from '@/core/types'
 
 // Query builder and core functions
-export { qx } from '@/core/utils/ears/helpers/query'
+export { qx } from '@/core/ears/helpers/query'
 
 // Export all EARS attribute storage functions
-export * from '@/core/utils/ears/attribute-storage'
+export * from '@/core/ears/attribute-storage'
 
 // Export all graph utilities
-export * from '@/core/utils/ears/helpers/graph'
+export * from '@/core/ears/helpers/graph'
 
 // Transaction helpers
-export { tx } from '@/core/utils/ears/helpers/transaction'
-export { AtomicTransaction } from '@/core/utils/ears/helpers/atomic-transaction'
+export { tx } from '@/core/ears/helpers/transaction'
+export { AtomicTransaction } from '@/core/ears/helpers/atomic-transaction'
 
 // Blueprint helpers for entity creation
-export { bp, spawn } from '@/core/utils/ears/helpers/blueprint'
+export { bp, spawn } from '@/core/ears/helpers/blueprint'
 
 // Import necessary functions for getSchemaStats
 import { 
@@ -30,10 +30,10 @@ import {
   getAllAttributeKinds as _getAllAttributeKinds,
   getAttributeStats as _getAttributeStats,
   getAllRelationKinds as _getAllRelationKinds
-} from '@/core/utils/ears/attribute-storage'
+} from '@/core/ears/attribute-storage'
 
 import { EARS as _EARS } from '@/core/types'
-import { qx as _qx } from '@/core/utils/ears/helpers/query'
+import { qx as _qx } from '@/core/ears/helpers/query'
 
 // Schema statistics
 export function getSchemaStats() {

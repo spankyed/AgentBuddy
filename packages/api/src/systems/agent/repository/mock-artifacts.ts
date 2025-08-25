@@ -1,4 +1,4 @@
-import { tx } from '@/core/utils/ears/helpers/transaction';
+import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
 
 // Slack artifact data that can be reused

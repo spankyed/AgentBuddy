@@ -4,7 +4,7 @@ import systems from '@/systems';
 import { safeEvents, type SystemId } from '@/core/utils/actor-helpers';
 import { entries } from '@/core/utils';
 import { EARS } from '@/core/types';
-import { createEntity } from '@/core/utils/ears';
+import { createEntity } from '@/core/ears';
 import { createLogger } from '@/core/utils/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 

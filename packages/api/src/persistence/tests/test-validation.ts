@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity, addRelation } from '@/core/utils/ears/attribute-storage';
-import { persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity, addRelation } from '@/core/ears/attribute-storage';
+import { persistence, closePersistence } from '@/core/ears/attribute-storage';
 
 async function testValidation() {
   console.log('\n🧪 Testing Sharded Router Validation\n');

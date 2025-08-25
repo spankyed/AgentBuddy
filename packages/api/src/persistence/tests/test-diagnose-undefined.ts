@@ -5,8 +5,8 @@
  */
 
 import { EARS } from '@/core/types';
-import { createEntity, addRelation, updateRelation, getAttr } from '@/core/utils/ears/attribute-storage';
-import { envs, persistence, closePersistence } from '@/core/utils/ears/attribute-storage';
+import { createEntity, addRelation, updateRelation, getAttr } from '@/core/ears/attribute-storage';
+import { envs, persistence, closePersistence } from '@/core/ears/attribute-storage';
 
 async function diagnoseUndefinedIssue() {
   console.log('\n🔍 Diagnosing "undefined" String in LMDB\n');
