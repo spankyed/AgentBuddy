@@ -24,7 +24,15 @@
                 :key="header"
                 class="px-4 py-2 text-sm text-neutral-100"
               >
-                <div class="max-w-xs truncate" :title="formatCellValue(row[header])">
+                <JsonHoverPopup 
+                  v-if="isJsonLike(row[header])"
+                  :value="row[header]"
+                />
+                <div 
+                  v-else
+                  class="max-w-xs truncate" 
+                  :title="formatCellValue(row[header])"
+                >
                   {{ formatCellValue(row[header]) }}
                 </div>
               </td>
@@ -92,6 +100,8 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
 } from 'reka-ui';
+import JsonHoverPopup from './JsonHoverPopup.vue';
+import { isJsonLike } from '../utils/json-detection';
 
 interface Props {
   headers: string[];
