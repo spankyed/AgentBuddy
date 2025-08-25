@@ -410,6 +410,10 @@ export const createApplicationState = () => setup({
   initial: 'setup',
   entry: [
     'spawnPluginActors',
+    ({ context, system }) => {
+      // Send initial activation to the active plugin
+      system.get(context.activePlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
+    },
     'trailActivePlugin',
     spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
   ],
