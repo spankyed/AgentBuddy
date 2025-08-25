@@ -1,5 +1,5 @@
-import { BaseEntity, EARS } from "@/core/types";
-import type { ThreadExtendedData } from "@/types";
+import { BaseEntity } from "@/core/utils/ears";
+import type { EARS, ThreadExtendedData } from "@/types";
 import { ThreadEntity, ArtifactEntity } from "../threads/types";
 import type { KeyboardShortcut } from "../settings/types";
 

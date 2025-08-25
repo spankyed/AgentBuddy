@@ -18,7 +18,7 @@
       "@/*": ["src/*"],
     },
     "moduleResolution": "node",
-    "module": "ES2022",
+    "module": "commonjs",
     "allowImportingTsExtensions": false
   },
   "include": ["src"]

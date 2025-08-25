@@ -1,5 +1,6 @@
-import { BaseEntity, EARS } from "@/core/types";
+import { BaseEntity } from "@/core/utils/ears";
 import type { Simplify } from "@/core/utils/type-helpers";
+import type { EARS } from "@/types";
 
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
