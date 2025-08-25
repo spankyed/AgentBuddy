@@ -22,6 +22,7 @@
           v-else-if="resultType === 'array' && !isArrayOfPrimitives && resultCount > 0"
           :headers="tableHeaders"
           :rows="tableData"
+          @delete="handleDeleteEntity"
         />
 
         <!-- Single Object -->
@@ -86,6 +87,12 @@ const currentState = computed(() => {
   if (resultType.value === 'array' && resultCount.value === 0) return 'empty-array';
   return 'data';
 });
+
+// Event Handlers
+function handleDeleteEntity(entityId: string) {
+  // Send delete event to the database state machine
+  actor.send({ type: 'ENTITY.DELETE', entityId });
+}
 </script>
 
 <style scoped>

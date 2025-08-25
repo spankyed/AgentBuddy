@@ -70,6 +70,7 @@ type UIEvent =
   | { type: 'TRACE.EXPAND_NODE'; nodeId: string }
   | { type: 'TRACE.LOAD_MORE' }
   | { type: 'TRACE.REQUEST_FLOWS' }
+  | { type: 'ENTITY.DELETE'; entityId: string }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -126,6 +127,28 @@ const databaseState = setup({
       });
     },
 
+    deleteEntity: ({ event, context }) => {
+      const ev = typeOf('ENTITY.DELETE', event);
+      // Use tx() to delete the entity
+      const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXECUTE_TRANSACTION',
+        code: deleteCode,
+      });
+    },
+    
+    refreshAfterDelete: ({ context }) => {
+      // Re-run the current query after successful deletion
+      if (context.currentQuery) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'EXECUTE_QUERY',
+          code: context.currentQuery,
+        });
+      }
+    },
+
     updateQuery: assign(({ event }) => {
       const ev = typeOf('QUERY.UPDATE', event);
       return { currentQuery: ev.code };
@@ -149,14 +172,28 @@ const databaseState = setup({
       };
     }),
 
-    setTransactionResult: assign(({ event }) => {
+    setTransactionResult: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('TRANSACTION_RESULT', event);
-      return {
-        queryResult: ev.result,
-        executionTime: ev.executionTime,
-        isLoading: false,
-        error: null,
-      };
+      
+      // Check if this was a delete operation
+      if (ev.result && ev.result.deleted) {
+        // After successful deletion, refresh the current query
+        enqueue.assign({
+          queryResult: ev.result,
+          executionTime: ev.executionTime,
+          isLoading: false,
+          error: null,
+        });
+        enqueue('refreshAfterDelete');
+      } else {
+        // Regular transaction result
+        enqueue.assign({
+          queryResult: ev.result,
+          executionTime: ev.executionTime,
+          isLoading: false,
+          error: null,
+        });
+      }
     }),
 
     setTransactionError: assign(({ event }) => {
@@ -476,6 +513,9 @@ const databaseState = setup({
         },
         'TRANSACTION.EXECUTE': {
           actions: ['setLoading', 'executeTransaction'],
+        },
+        'ENTITY.DELETE': {
+          actions: ['setLoading', 'deleteEntity'],
         },
         'QUERY.UPDATE': {
           actions: 'updateQuery',
