@@ -77,15 +77,14 @@
             </div>
 
             <!-- Tags -->
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
+            <CollapsibleSection label="Tags" :default-open="false" class="pt-2">
               <TagInput 
                 :modelValue="tags || []"
                 :available-tags="availableTags"
                 @update:modelValue="updateTags"
                 class="w-full"
               />
-            </div>
+            </CollapsibleSection>
           </div>
 
           <!-- Linked Threads Section -->
@@ -116,6 +115,7 @@ import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';
 import TagInput from '@/core/components/design/tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 
 const actor: ThreadsState = applicationState.system.get(id);
 const topic = useSelector(actor, (state) => state.context.create.topic);

@@ -93,15 +93,14 @@
           </div>
 
           <!-- Tags -->
-          <div>
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
+          <CollapsibleSection label="Tags" :default-open="false" class="pt-2">
             <TagInput 
               :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
               class="w-full"
             />
-          </div>
+          </CollapsibleSection>
         </div>
 
         <!-- Messages Section -->
