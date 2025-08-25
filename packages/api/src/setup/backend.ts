@@ -9,6 +9,13 @@ import { envs, policy, persistence } from '@/core/utils/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 
 export async function setupBackend(): Promise<void> {
+  // Initialize log capture first to catch all logs
+  initializeLogCapture();
+  
+  // Start logs actor before any other work
+  const logsActor = createActor(logsSystem).start();
+  logsActor.subscribe(logErrors('Logs'));
+  
   // Hydrate from LMDB using sharded approach (primary partition only by default)
   // Pass shardedPersistence to seed metadata caches
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
@@ -18,13 +25,6 @@ export async function setupBackend(): Promise<void> {
   
   // Load data snapshot (can override LMDB data if needed)
   // await loadSnapshot();
-  
-  // Initialize log capture
-  initializeLogCapture();
-  
-  // Start logs actor
-  const logsActor = createActor(logsSystem).start();
-  logsActor.subscribe(logErrors('Logs'));
   
   // Start backend actor
   const backendActor = createActor(backendSystem, {
