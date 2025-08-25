@@ -183,10 +183,9 @@ export const logsSystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendLogsConnected'],
     },
-    // ! logs system is unreachable by other systems as a failsafe
-    // LOGS_SETTINGS_UPDATED: {
-    //   actions: ['truncateLogsIfNeeded', 'broadcastSettingsUpdate', 'broadcastLogsUpdate'],
-    // },
+    LOGS_SETTINGS_UPDATED: {
+      actions: ['truncateLogsIfNeeded', 'broadcastLogsUpdate'],
+    },
   },
   states: {
     active: {

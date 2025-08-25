@@ -24,9 +24,9 @@ export interface SafeLinkOptions {
   acyclicGroup?: readonly EARS.RelKind[];
 }
 
-export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
-  const isNew = Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
-  const id: EARS.EntityId = isNew
+export function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate = false) {
+  const isNew = forceCreate || Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
+  const id: EARS.EntityId = isNew && !forceCreate
     ? createEntity(typeOrId as EARS.Entity)
     : (typeOrId as EARS.EntityId);
 

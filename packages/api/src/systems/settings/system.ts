@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { SettingsData } from './types';
-import { settingsQueries, settingsCommands, setupDevelopmentSettings } from './repository';
+import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
@@ -255,10 +255,6 @@ export const settingsSystem = setup({
   id: settings,
   initial: 'idle',
   context: {},
-  // entry: () => {
-  //   // Initialize development settings if needed
-  //   // setupDevelopmentSettings();
-  // },
   entry: ['spawnSecretsActor'],
   states: {
     idle: {

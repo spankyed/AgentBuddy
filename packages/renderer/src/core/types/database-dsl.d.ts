@@ -309,7 +309,7 @@ interface SafeLinkOptions {
     /** If specified, prevents cycles within this group of relation kinds */
     acyclicGroup?: readonly EARS.RelKind[];
 }
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate?: boolean): {
     readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
     readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
     readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;

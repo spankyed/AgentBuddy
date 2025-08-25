@@ -124,7 +124,7 @@ interface SafeLinkOptions {
     /** If specified, prevents cycles within this group of relation kinds */
     acyclicGroup?: readonly EARS.RelKind[];
 }
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate?: boolean): {
     readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
     readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
     readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
@@ -664,96 +664,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"USER_MSG">;
-        systemId: zod.ZodLiteral<"agent">;
-        text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodEnum<["plan", "work", "chat", "note"]>>;
-        threadId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
-        threadId?: string | undefined;
-    }, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
-        threadId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-    }, {
-        threadId: string;
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-        label: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        threadId: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-    }, {
-        label: string;
-        threadId: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
-        systemId: zod.ZodLiteral<"agent">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REFRESH_DASHBOARD";
-        systemId: "agent";
-    }, {
-        type: "REFRESH_DASHBOARD";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CANCEL">;
-        systemId: zod.ZodLiteral<"agent">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CANCEL";
-        systemId: "agent";
-    }, {
-        type: "CANCEL";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-        tasks: zod.ZodArray<zod.ZodAny, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -846,6 +756,96 @@ declare const events: {
     }, {
         type: "SECRETS.CMD.GET_API_KEYS";
         systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_MSG">;
+        systemId: zod.ZodLiteral<"agent">;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodEnum<["plan", "work", "chat", "note"]>>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "USER_MSG";
+        text: string;
+        systemId: "agent";
+        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        threadId?: string | undefined;
+    }, {
+        type: "USER_MSG";
+        text: string;
+        systemId: "agent";
+        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        threadId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+        threadId: string;
+    }, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+        label: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        threadId: string;
+    }, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
+        systemId: zod.ZodLiteral<"agent">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REFRESH_DASHBOARD";
+        systemId: "agent";
+    }, {
+        type: "REFRESH_DASHBOARD";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CANCEL">;
+        systemId: zod.ZodLiteral<"agent">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CANCEL";
+        systemId: "agent";
+    }, {
+        type: "CANCEL";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+        tasks: zod.ZodArray<zod.ZodAny, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+    }, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -971,13 +971,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
+        threadId: string;
     }, {
-        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -985,14 +985,14 @@ declare const events: {
         status: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         status: string;
-        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
+        threadId: string;
     }, {
         status: string;
-        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1000,15 +1000,15 @@ declare const events: {
         key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
+        threadId: string;
         key: string;
         value?: any;
     }, {
-        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
+        threadId: string;
         key: string;
         value?: any;
     }>] | readonly [zod.ZodObject<{
@@ -1202,12 +1202,12 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         prompt: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        prompt: string;
         type: "GENERATE_MAGIC_PROMPT";
+        prompt: string;
         systemId: "database";
     }, {
-        prompt: string;
         type: "GENERATE_MAGIC_PROMPT";
+        prompt: string;
         systemId: "database";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_SCHEMA">;
@@ -1436,9 +1436,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1446,9 +1446,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -1514,11 +1514,11 @@ declare const events: {
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            text: string;
             type: "text";
+            text: string;
         }, {
-            text: string;
             type: "text";
+            text: string;
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1534,8 +1534,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            text: string;
             type: "text";
+            text: string;
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1553,8 +1553,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            text: string;
             type: "text";
+            text: string;
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1602,11 +1602,11 @@ declare const events: {
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            text: string;
             type: "text";
+            text: string;
         }, {
-            text: string;
             type: "text";
+            text: string;
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1623,8 +1623,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            text: string;
             type: "text";
+            text: string;
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -1643,8 +1643,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            text: string;
             type: "text";
+            text: string;
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -2478,13 +2478,13 @@ declare const events: {
         terminalId: zod.ZodString;
         data: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        data: string;
         type: "terminal.TERMINAL_INPUT";
+        data: string;
         systemId: "code";
         terminalId: string;
     }, {
-        data: string;
         type: "terminal.TERMINAL_INPUT";
+        data: string;
         systemId: "code";
         terminalId: string;
     }>, zod.ZodObject<{
@@ -2618,32 +2618,6 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "AGENT_CONNECTED";
-        data: AgentConnectedData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -2686,6 +2660,32 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
+    } | {
+        type: "AGENT_CONNECTED";
+        data: AgentConnectedData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;

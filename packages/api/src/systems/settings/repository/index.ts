@@ -4,10 +4,26 @@ import { tx } from '@/core/utils/ears/helpers/transaction';
 import { SettingsEntity, SettingsData } from '../types';
 import { defaultSettings, getDefaultsByLabel } from '../defaults';
 
+// Deterministic ID generation for Settings entities
+const getSettingsId = (type: 'general' | 'plugin' | 'internal', label: string): EARS.EntityId => {
+  // Generate a deterministic ID based on type and label
+  // This ensures only one Settings entity can exist per type/label combination
+  return `Settings-${type}-${label}` as EARS.EntityId;
+};
+
 // Core helpers
 const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-const findSettings = (type: 'general' | 'plugin' | 'internal', label: string) => 
-  getAllSettings().find(s => s.type === type && s.label === label);
+const findSettings = (type: 'general' | 'plugin' | 'internal', label: string) => {
+  // First try to get by deterministic ID (fast path)
+  const deterministicId = getSettingsId(type, label);
+  const directResult = qx(deterministicId).pickAll()[0] as unknown as SettingsEntity | undefined;
+  if (directResult && directResult.type === type && directResult.label === label) {
+    return directResult;
+  }
+  
+  // Fallback to searching all settings (for migrating old data)
+  return getAllSettings().find(s => s.type === type && s.label === label);
+};
 
 const setValueAtPath = (obj: any, path: string[], value: any): any => 
   path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
@@ -16,13 +32,24 @@ const getOrCreateSettings = (type: 'general' | 'plugin' | 'internal', label: str
   const existing = findSettings(type, label);
   if (existing) return existing;
   
+  // Use deterministic ID
+  const id = getSettingsId(type, label);
+  
+  // Check if entity exists with this ID (shouldn't happen, but be safe)
+  const existingById = qx(id).pickAll()[0];
+  if (existingById) {
+    return existingById as unknown as SettingsEntity;
+  }
+  
   // Use custom defaults if provided, otherwise fetch from default settings
   const defaultData = customDefaults !== undefined ? customDefaults : getDefaultsByLabel(type, label);
   
   const createdAt = Date.now();
-  const id = tx(EARS.Entity.Settings).batchPut({
+  
+  // Use tx with the deterministic ID and forceCreate=true to create with specific ID
+  tx(id, true).batchPut({
     entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData
-  }).id();
+  });
   
   return { id, entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData };
 };
@@ -100,12 +127,16 @@ export const settingsCommands = {
 export const createDefaultSettings = (): void => {
   if (getAllSettings().length) return;
 
-  const put = (type: 'general' | 'plugin' | 'internal', label: string, data: unknown) =>
-    !findSettings(type, label) &&
-    tx(EARS.Entity.Settings).batchPut({
-      entityType: EARS.Entity.Settings,
-      type, label, data
-    });
+  const put = (type: 'general' | 'plugin' | 'internal', label: string, data: unknown) => {
+    if (!findSettings(type, label)) {
+      const id = getSettingsId(type, label);
+      // Use forceCreate=true to create with deterministic ID
+      tx(id, true).batchPut({
+        entityType: EARS.Entity.Settings,
+        type, label, data
+      });
+    }
+  };
 
   Object.values(generalConfig).forEach(label =>
     put('general', label, defaultSettings.general[label] ?? {})
@@ -116,24 +147,6 @@ export const createDefaultSettings = (): void => {
   );
 
   put('internal', 'internal', defaultSettings.internal);
-};
-
-// Development setup
-// ! not used currently
-export const setupDevelopmentSettings = (): void => {
-  if (process.env.NODE_ENV === 'production' || getAllSettings().length > 0) return;
-  
-  const testHotkeys = {
-    ...defaultSettings.general.hotkeys,
-    custom: [{ id: 'dev-hotkey-1', eventName: 'TEST_EVENT_1', key: 't', modifiers: ['cmd', 'shift'] }]
-  };
-  
-  getOrCreateSettings('general', 'hotkeys', testHotkeys);
-  ['personal', 'secrets', 'misc'].forEach(label => 
-    getOrCreateSettings('general', generalConfig[label as keyof typeof generalConfig])
-  );
-  
-  console.log('[Settings] Development settings initialized with test hotkeys');
 };
 
 // Re-export change detection utilities

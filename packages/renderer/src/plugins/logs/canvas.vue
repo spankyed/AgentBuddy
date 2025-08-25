@@ -74,7 +74,9 @@
                 <!-- Source Badge (if exists) -->
                 <span 
                   v-if="log.source" 
-                  class="px-2 py-0.5 text-[11px] font-mono bg-neutral-800 text-neutral-400 rounded"
+                  @contextmenu.prevent="(e) => openContextMenu(e, log.source)"
+                  class="px-2 py-0.5 text-[11px] font-mono bg-neutral-800 text-neutral-400 rounded cursor-pointer hover:bg-neutral-700 transition-colors"
+                  :title="`Right-click to exclude '${log.source}' from logs`"
                 >
                   {{ log.source }}
                 </span>
@@ -274,11 +276,41 @@
         </div>
       </div>
     </div>
+    
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div 
+        v-if="contextMenu.visible"
+        @click="closeContextMenu"
+        class="fixed inset-0 z-50"
+      >
+        <div 
+          class="absolute bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[220px] shadow-xl"
+          :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
+          @click.stop
+        >
+          <button
+            @click="() => excludeSource(contextMenu.source)"
+            class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded text-neutral-50 hover:bg-neutral-700 transition-colors text-left"
+            :disabled="settings.excludedSources.includes(contextMenu.source)"
+          >
+            <X :size="14" class="text-red-400" />
+            <span class="flex-1">Exclude '{{ contextMenu.source }}'</span>
+          </button>
+          <div v-if="!settings.excludedSources.includes(contextMenu.source)" class="px-3 py-1 text-xs text-neutral-500">
+            Hide all logs from this source
+          </div>
+          <div v-else class="px-3 py-1 text-xs text-amber-500">
+            Already excluded
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, nextTick } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted, nextTick } from 'vue';
 import { 
   Search, 
   ChevronRight,
@@ -312,6 +344,22 @@ onMounted(async () => {
       behavior: 'instant'
     });
   }
+  
+});
+
+// Add escape key handler for context menu
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && contextMenu.visible) {
+    closeContextMenu();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('keydown', handleEscape);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscape);
 });
 
 // Simple content type tracking
@@ -321,6 +369,14 @@ onMounted(async () => {
 // 3. Add button and content display
 type ContentType = 'meta' | 'stack';
 const expandedContent = reactive(new Map<string, ContentType | null>());
+
+// Context menu state
+const contextMenu = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  source: ''
+});
 
 const actor: LogsState = applicationState.system.get(id)
 const logs = useSelector(actor, (s) => (s as any).context.logs);
@@ -344,6 +400,7 @@ const filteredLogs = computed(() => {
   
   return filtered;
 });
+
 
 const errorCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'error').length);
 const warnCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'warn').length);
@@ -493,6 +550,66 @@ const getAvailableContent = (log: LogEntry): ContentType[] => {
   if (log.stack) available.push('stack');
   if (log.meta && Object.keys(log.meta).length > 0) available.push('meta');
   return available;
+};
+
+// Context menu methods
+const openContextMenu = (event: MouseEvent, source: string) => {
+  // Calculate position to ensure menu stays within viewport
+  const menuWidth = 250; // Approximate width
+  const menuHeight = 100; // Approximate height
+  
+  let x = event.clientX;
+  let y = event.clientY;
+  
+  // Adjust if menu would go off right edge
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 10;
+  }
+  
+  // Adjust if menu would go off bottom edge
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 10;
+  }
+  
+  contextMenu.visible = true;
+  contextMenu.x = x;
+  contextMenu.y = y;
+  contextMenu.source = source;
+};
+
+const closeContextMenu = () => {
+  contextMenu.visible = false;
+};
+
+const excludeSource = (source: string) => {
+  if (!settings.value.excludedSources.includes(source)) {
+    // Get current excluded sources
+    const currentExcludedSources = settings.value.excludedSources || [];
+    
+    // Add the new source
+    const updatedSources = [...currentExcludedSources, source];
+    
+    // Optimistically update the local logs state
+    actor.send({
+      type: 'LOGS_SETTINGS_UPDATED',
+      settings: {
+        ...settings.value,
+        excludedSources: updatedSources
+      }
+    });
+    
+    // Send update to settings (this will persist it and eventually send it back)
+    const settingsActor = applicationState.system.get('settings');
+    settingsActor.send({
+      type: 'SETTINGS.UPDATE',
+      entityType: 'plugin',
+      label: 'logs',
+      path: ['excludedSources'],
+      value: updatedSources
+    });
+  }
+  
+  closeContextMenu();
 };
 </script>
 
