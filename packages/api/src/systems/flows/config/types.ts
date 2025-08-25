@@ -165,7 +165,7 @@ export type EdgeEntity = {
   target: EARS.EntityId;
   info?: { [key: string]: any; } 
 };
-export interface FlowsStartupData {
+export interface FlowsConnectedData {
   selectedFlowId: EARS.EntityId;
   graph: {
     nodes: NodeEntity[];

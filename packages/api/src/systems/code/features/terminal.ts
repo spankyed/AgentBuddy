@@ -54,7 +54,7 @@ export type Event =
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
   | { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
-  | { type: 'CODE_STARTUP' };
+  | { type: 'CODE_CONNECTED' };
 
 export const terminalSystem = setup({
   types: {
@@ -63,7 +63,7 @@ export const terminalSystem = setup({
     input: {} as { rootDirectory: string | null }
   },
   actions: {
-    sendStartupData: ({ context }) => {
+    sendConnectedData: ({ context }) => {
       // Send terminal list and trigger tab restoration
       const terminals = terminalService.list()
       
@@ -296,8 +296,8 @@ export const terminalSystem = setup({
   states: {
     idle: {
       on: {
-        'CODE_STARTUP': {
-          actions: 'sendStartupData'
+        'CODE_CONNECTED': {
+          actions: 'sendConnectedData'
         },
         'terminal.CREATE_TERMINAL': {
           actions: 'createTerminal'

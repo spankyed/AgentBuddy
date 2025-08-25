@@ -21,7 +21,7 @@ import type {
   FlowExtendedData, 
   NodeCreateInput, 
   NodeKind,
-  FlowsStartupData 
+  FlowsConnectedData 
 } from '../config/types';
 import { availableModels } from '../config/available-models';
 import { repository } from '@/repository';
@@ -230,7 +230,7 @@ export const flowsQueries = {
     };
   },
   
-  startupData: (): FlowsStartupData => {
+  connectedData: (): FlowsConnectedData => {
     const flows = qx(EARS.Entity.Flow)
       .orderBy('createdAt', 'desc')
       .pick(FLOW_QUERY_FIELDS.LIST) as Partial<FlowEntity>[];

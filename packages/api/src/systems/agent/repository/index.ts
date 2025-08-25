@@ -10,7 +10,7 @@ import {
 } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
-import { AgentThreadData, RecentThreadRefreshData, AgentStartupData, Tab, ArtifactType, ArtifactItem } from '../types';
+import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
 import { getDashboardTab } from './dashboard';
 import { settingsQueries } from '@/systems/settings/repository';
 
@@ -190,7 +190,7 @@ export const agentQueries = {
   },
   
   // Get startup data with recent threads and tabs
-  startupData: (): AgentStartupData => {
+  connectedData: (): AgentConnectedData => {
     // Get recent threads and current thread data
     const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
     

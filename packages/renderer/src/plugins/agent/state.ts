@@ -183,7 +183,7 @@ const agentState = setup({
       };
     }),
     setStartupData: assign(({ context, event }) => {
-      const typedEvent = typeOf('AGENT_STARTUP', event);
+      const typedEvent = typeOf('AGENT_CONNECTED', event);
       
       // Prioritize current thread tab if it exists and has artifacts
       const currentThreadTab = typedEvent.data.tabs?.find(tab => 
@@ -425,7 +425,7 @@ const agentState = setup({
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
-    AGENT_STARTUP: {
+    AGENT_CONNECTED: {
       actions: 'setStartupData'
     },
     AGENT_SETTINGS_UPDATED: {

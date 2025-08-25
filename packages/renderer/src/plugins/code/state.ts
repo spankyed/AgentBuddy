@@ -377,8 +377,8 @@ const codeState = setup({
       });
     },
     
-    handleCodeStartup: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_STARTUP'; data: { rootDirectory: string | null; currentDirectory: string | null; settings?: CodeSettings } }
+    handleCodeConnected: assign(({ event, context }) => {
+      const ev = event as { type: 'CODE_CONNECTED'; data: { rootDirectory: string | null; currentDirectory: string | null; settings?: CodeSettings } }
       
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
@@ -512,9 +512,9 @@ const codeState = setup({
     canvas: {
       meta: breadcrumb('canvas', 'Editor', true),
       on: {
-        // Broadcast CODE_STARTUP to all features
-        CODE_STARTUP: {
-          actions: ['handleCodeStartup', 'broadcastToAllFeatures']
+        // Broadcast CODE_CONNECTED to all features
+        CODE_CONNECTED: {
+          actions: ['handleCodeConnected', 'broadcastToAllFeatures']
         },
         // Handle settings updates
         CODE_SETTINGS_UPDATED: {

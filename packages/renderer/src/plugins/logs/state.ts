@@ -43,8 +43,8 @@ const logsState = setup({
     events: {} as LogsEvents,
   },
   actions: {
-    setStartupLogs: assign(({ event }) => {
-      const ev = typeOf('LOGS_STARTUP', event);
+    setConnectedLogs: assign(({ event }) => {
+      const ev = typeOf('LOGS_CONNECTED', event);
       return {
         logs: ev.logs,
         settings: ev.settings ? ev.settings : undefined
@@ -110,8 +110,8 @@ const logsState = setup({
   states: {
     active: {
       on: {
-        'LOGS_STARTUP': {
-          actions: 'setStartupLogs',
+        'LOGS_CONNECTED': {
+          actions: 'setConnectedLogs',
         },
         'LOGS_UPDATE': {
           actions: 'updateLogs',

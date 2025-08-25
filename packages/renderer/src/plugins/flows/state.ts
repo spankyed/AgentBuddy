@@ -83,7 +83,7 @@ const flowsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
-      const ev = typeOf('FLOWS_STARTUP', event);
+      const ev = typeOf('FLOWS_CONNECTED', event);
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
         prompts: ev.data.prompts || [],
@@ -635,7 +635,7 @@ const flowsState = setup({
     tempIdMap: {},
   },
   on: {
-    FLOWS_STARTUP: { 
+    FLOWS_CONNECTED: { 
       actions: 'setPluginData',
       target: '.view' // Go directly to view since we have the selected flow's data
     },

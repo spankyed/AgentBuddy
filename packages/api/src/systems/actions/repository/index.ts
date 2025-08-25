@@ -44,7 +44,7 @@ export const actionQueries = {
     };
   },
   
-  startupData: (page = 1) => {
+  connectedData: (page = 1) => {
     const result = actionQueries.paginated(page, 20);
     return {
       actions: result.items,

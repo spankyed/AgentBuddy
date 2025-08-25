@@ -35,7 +35,7 @@ export type Event =
   | { type: 'codePrompts.LIST'; page?: number }
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
-  | { type: 'CODE_STARTUP' };
+  | { type: 'CODE_CONNECTED' };
 
 
 export const promptsSystem = setup({
@@ -46,7 +46,7 @@ export const promptsSystem = setup({
   actions: {
     listPrompts: ({ event }) => {
       const ev = event as { type: 'codePrompts.LIST'; page?: number }
-      const data = repository.promptQueries.startupData(ev.page || 1)
+      const data = repository.promptQueries.connectedData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
         type: 'codePrompts.PROMPTS_LISTED',
@@ -112,9 +112,9 @@ export const promptsSystem = setup({
       }
     },
 
-    sendStartupData: () => {
-      // Send initial prompts list on startup
-      const data = repository.promptQueries.startupData(1)
+    sendConnectedData: () => {
+      // Send initial prompts list on connection
+      const data = repository.promptQueries.connectedData(1)
       
       const wrapped = emit(pluginId, {
         type: 'codePrompts.PROMPTS_LISTED',
@@ -139,8 +139,8 @@ export const promptsSystem = setup({
         'codePrompts.SAVE_PROMPT': {
           actions: 'savePrompt'
         },
-        'CODE_STARTUP': {
-          actions: 'sendStartupData'
+        'CODE_CONNECTED': {
+          actions: 'sendConnectedData'
         }
       }
     }

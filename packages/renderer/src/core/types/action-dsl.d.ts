@@ -116,284 +116,170 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
-interface SafeLinkOptions {
-    /** Additional info to store with the relation */
-    info?: unknown;
-    /** If true, creates bidirectional edges automatically */
-    symmetric?: boolean;
-    /** If specified, prevents cycles within this group of relation kinds */
-    acyclicGroup?: readonly EARS.RelKind[];
-}
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
-    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
-    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
-    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
-    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
-    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
-    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
-    readonly grant: (r: string) => /*elided*/ any;
-    readonly revoke: (r: string) => /*elided*/ any;
-    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
-    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly relPatch: (rel: EARS.EntityId, u: {
-        sourceEntity?: EARS.EntityId;
-        targetEntity?: EARS.EntityId;
-        info?: unknown;
-    }) => /*elided*/ any;
-    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
-    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
-    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
-    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
-        newTarget: EARS.EntityId;
-        newInfo?: unknown;
-    }) => /*elided*/ any;
-    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
-    readonly unlinkWhere: (c?: {
-        kind?: EARS.RelKind;
-        target?: EARS.EntityId;
-    }) => /*elided*/ any;
-    readonly define: (def: {
-        attributes?: Record<string, unknown>;
-        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
-        roles?: string | string[];
-    }) => /*elided*/ any;
-    readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
-};
-
-type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
-interface SecretData {
-    id: EARS.EntityId;
-    provider: SecretProvider;
-    customName?: string;
-    createdAt: number;
-    updatedAt?: number;
-}
-
-type Simplify<T> = {
-    [K in keyof T]: T[K];
-} & {};
-
-/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
-type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
-    [K in keyof S]: z.infer<S[K]>;
-}[number];
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
+interface SettingsEntity extends BaseEntity {
+    entityType: EARS.Entity.Settings;
+    type: 'general' | 'plugin' | 'internal';
     label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    createdAt: number;
-    updatedAt: number;
+    data: any;
 }
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
+interface SettingsData {
+    general: GeneralSettings;
+    plugins: PluginSettings;
+    internal: InternalSettings;
 }
-
-/**
- * Prompt template types and definitions
- */
-
-/**
- * Defines an input parameter that a prompt template expects
- */
-interface TemplateInput {
+interface GeneralSettings {
+    personal: PersonalInfo;
+    secrets: Secrets;
+    hotkeys: ApplicationHotkeys;
+    misc: MiscSettings;
+}
+interface Address {
+    street: string;
+    street2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+}
+interface PersonalInfo {
+    name?: string;
+    phoneNumber?: string;
+    address?: string | Address;
+}
+interface Secrets {
+    google?: string | null;
+    anthropic?: string | null;
+    openai?: string | null;
+    groq?: string | null;
+    mistral?: string | null;
+    cohere?: string | null;
+    custom?: Record<string, string>;
+}
+interface KeyboardShortcut {
+    key: string;
+    modifiers: string[];
+    global?: boolean;
+}
+interface CustomHotkey extends KeyboardShortcut {
+    id: string;
+    eventName: string;
+}
+interface ApplicationHotkeys {
+    switchPluginUp?: KeyboardShortcut;
+    switchPluginDown?: KeyboardShortcut;
+    toggleInspectionPanel?: KeyboardShortcut;
+    custom?: CustomHotkey[];
+}
+interface MiscSettings {
+}
+interface PluginVisibilitySettings {
+    [pluginId: string]: boolean;
+}
+interface Category {
     name: string;
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    defaultValue?: any;
-    commonSources?: string[];
-    example?: any;
+    color: string;
 }
-/**
- * Defines a prompt entity stored in the system
- */
-interface PromptEntity extends BaseEntity {
-    entityType: EARS.Entity.Prompt;
+interface ThreadStatusOption {
     label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    createdAt: number;
-    updatedAt: number;
+    color: string;
 }
-/**
- * Data sent on prompts system startup
- */
-interface PromptsStartupData {
-    prompts: PromptEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
-
-declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
-type LogLevel = z.infer<typeof LogLevel>;
-declare const LogEntry: z.ZodObject<{
-    id: z.ZodString;
-    timestamp: z.ZodNumber;
-    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
-    message: z.ZodString;
-    source: z.ZodOptional<z.ZodString>;
-    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-    stack: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}>;
-type LogEntry = z.infer<typeof LogEntry>;
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
-interface MessageEntity extends BaseEntity {
-    entityType: EARS.Entity.Message;
-    text: string;
-    sender: 'user' | 'assistant' | 'system';
-    timestamp: number;
-}
-interface ThreadEntity extends BaseEntity {
-    entityType: EARS.Entity.Thread;
-    topic: string;
-    instructions: string;
-    sideTopics?: string[];
-    timestamp: number;
-    lastMessageTimestamp?: number;
-    shortCode?: string;
-    threadType: 'work-item' | 'project' | 'user';
-    status: string;
-    tags?: string[];
-}
-interface ArtifactEntity extends BaseEntity {
-    entityType: EARS.Entity.Artifact;
-    title?: string;
-    content: string | any;
-    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
-}
-declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
-type ThreadLinkRelation = typeof ThreadRelations[number];
-type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
-    relation: ThreadLinkRelation;
-};
-type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
-    status?: ThreadEntity['status'];
-} & {
-    tags?: string[];
-} & ThreadLinkedFields>;
-type ThreadLinkedFields = {
-    linkedThreads?: ThreadLinkItem[];
-};
-type ThreadCreateData = Simplify<ThreadEditFields>;
-type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
-type ThreadExtendedData = ThreadLinkedFields & {
-    messages?: Partial<MessageEntity>[];
-    tags?: string[];
-};
-
-type ThreadStartupData = {
-    threads: ThreadExtended[];
-    availableTags: ThreadTagOption[];
-    settings?: ThreadsSettings | null;
-};
-
-type AgentThreadData = {
-    id?: ThreadEntity['id'];
-    shortCode?: ThreadEntity['shortCode'];
-    topic: ThreadEntity['topic'];
-    instructions: ThreadEntity['instructions'];
-    status: ThreadEntity['status'];
-    timestamp: ThreadEntity['timestamp'];
-    messages: ThreadExtendedData['messages'];
-    artifacts: ArtifactEntity[];
-};
-type RecentThreadRefreshData = {
-    currentThread: AgentThreadData | null;
-    threads: Partial<ThreadEntity>[];
-};
-interface AgentMode {
-    id: string;
+interface ThreadTagOption {
     name: string;
-    description: string;
+    color?: string;
 }
-interface AgentSettings {
-    modes: AgentMode[];
-    hotkeys: {
-        textToSpeech?: KeyboardShortcut | null;
-        switchMode?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
+interface ThreadsSettings {
+    statuses: ThreadStatusOption[];
+    tags: ThreadTagOption[];
+    showOnlyRootThreads: boolean;
+}
+interface LogsSettings {
+    maxLogs: number;
+    excludedSources: string[];
+}
+interface PluginSettings {
+    _meta?: {
+        visibility?: PluginVisibilitySettings;
+        lastActivePlugin?: string;
     };
+    [pluginId: string]: any;
 }
-type AgentStartupData = {
-    currentThread: AgentThreadData | null;
-    threads: Partial<ThreadEntity>[];
-    dashboardArtifacts: Partial<ArtifactEntity>[];
-    tabs: Tab[];
-    settings?: AgentSettings;
-};
-interface Tab {
-    id: string;
-    label: string;
-    artifacts: ArtifactItem[];
-    selectedArtifactId?: string;
+interface InternalSettings {
+    hasOnboarded: boolean;
+    lastInteractionTimestamp: number | null;
+    version: string;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack' | 'todo';
-interface ArtifactItem {
-    id: string;
-    type: ArtifactType;
-    title: string;
-    content: any;
-    metadata?: {
-        createdAt: number;
-        updatedAt?: number;
-        [key: string]: any;
-    };
+
+/**
+ * Settings Service
+ *
+ * Provides convenient access to application settings with type-safe methods
+ * for common operations on general, plugin, and internal settings.
+ */
+
+declare class SettingsService {
+    /**
+     * Get all settings including general, plugins, and internal
+     */
+    getAll(): SettingsData;
+    /**
+     * Get settings for a specific plugin
+     * @param pluginId - The plugin identifier
+     */
+    getPluginSettings<T = any>(pluginId: string): T;
+    /**
+     * Get all general settings
+     */
+    getGeneralSettings(): SettingsData['general'];
+    /**
+     * Get internal system settings
+     */
+    getInternalSettings(): SettingsData['internal'];
+    /**
+     * Update a plugin setting
+     * @param pluginId - The plugin identifier
+     * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
+     * @param value - The new value
+     */
+    updatePluginSetting(pluginId: string, path: string[], value: any): void;
+    /**
+     * Update a general setting
+     * @param category - The general settings category (e.g., 'hotkeys', 'secrets')
+     * @param path - Path to the setting property
+     * @param value - The new value
+     */
+    updateGeneralSetting(category: string, path: string[], value: any): void;
+    /**
+     * Update an internal setting
+     * @param path - Path to the setting property
+     * @param value - The new value
+     */
+    updateInternalSetting(path: string[], value: any): void;
+    /**
+     * Reset all settings to their defaults
+     */
+    resetToDefaults(): void;
+    /**
+     * Check if a specific plugin has settings
+     * @param pluginId - The plugin identifier
+     */
+    hasPluginSettings(pluginId: string): boolean;
+    /**
+     * Get a specific setting value by path
+     * @param type - The setting type ('general', 'plugin', 'internal')
+     * @param label - The setting label/category
+     * @param path - Path to the specific value
+     */
+    getSettingValue(type: 'general' | 'plugin' | 'internal', label: string, path: string[]): any;
+}
+
+interface DirectoryEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Directory;
+    path: string;
+    label?: string;
+    lastAccessedAt: number;
+    createdAt: number;
+    role?: 'lastOpened' | 'recent';
 }
 
 interface FileInfo {
@@ -482,11 +368,76 @@ interface CodeSettings {
     restoreTerminals?: boolean;
     defaultRootDirectory?: string | null;
 }
-type CodeStartupData = {
+type CodeConnectedData = {
     rootDirectory: string | null;
     currentDirectory: string | null;
     settings?: CodeSettings;
 };
+
+interface TerminalEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Terminal;
+    title: string;
+    pid: number;
+    shell: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+    createdAt: number;
+    updatedAt: number;
+    closedAt?: number;
+}
+interface StartupData {
+    terminals: TerminalInfo[];
+}
+
+/**
+ * Type-safe query helpers to eliminate repetitive type casting
+ * These are simple wrappers around EARS query functions
+ */
+declare function findById<T>(id: EARS.EntityId): T | undefined;
+declare function findAll<T>(entityType: EARS.Entity): T[];
+declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
+declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
+declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
+declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
+declare function countEntities(entityType: EARS.Entity): number;
+declare function exists(id: EARS.EntityId): boolean;
+declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
+declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
+
+/**
+ * Type-safe transaction helpers for common operations
+ */
+declare function prepareEntity<T extends {
+    entityType: EARS.Entity;
+}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
+declare function createEntityWithDefaults<T extends {
+    entityType: EARS.Entity;
+    shortCode?: string;
+    label?: string;
+}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+    id: EARS.EntityId;
+};
+declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
+declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
+declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
+declare function grantRole(entityId: EARS.EntityId, role: string): void;
+declare function revokeRole(entityId: EARS.EntityId, role: string): void;
+
+/**
+ * Common repository types for consistent return values and error handling
+ */
+type RepositoryResult<T> = {
+    success: true;
+    data: T;
+} | {
+    success: false;
+    error: string;
+    code?: string;
+};
+type OperationResult = RepositoryResult<void>;
 
 type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
 
@@ -600,6 +551,270 @@ interface BreadcrumbItem {
     id: EARS.EntityId | null;
     name: string;
     path: string[];
+}
+
+declare class LibraryService {
+    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
+    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
+    getByName(name: string): Promise<DocumentDTO | undefined>;
+    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
+}
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
+declare class ActionService {
+    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
+    getByLabel(label: string): Promise<ActionEntity | undefined>;
+    getByCategory(category: string): Promise<ActionEntity[]>;
+    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
+    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
+}
+
+/**
+ * Prompt template types and definitions
+ */
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+/**
+ * Defines a prompt entity stored in the system
+ */
+interface PromptEntity extends BaseEntity {
+    entityType: EARS.Entity.Prompt;
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    templateFn: string;
+    outputSchema?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+/**
+ * Data sent on prompts system connection
+ */
+interface PromptsConnectedData {
+    prompts: PromptEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
+declare class PromptService {
+    getByLabel(label: string): Promise<PromptEntity | undefined>;
+    /**
+     * Execute a template with prompt context for accessing other prompts
+     * @param templateFn - The template function body
+     * @param templateParams - Parameters to pass to the template
+     */
+    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
+    /**
+     * Get and execute a prompt by label
+     * @param label - The prompt label
+     * @param templateParams - Parameters to pass to the template
+     */
+    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
+}
+
+type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
+interface SecretData {
+    id: EARS.EntityId;
+    provider: SecretProvider;
+    customName?: string;
+    createdAt: number;
+    updatedAt?: number;
+}
+
+type Simplify<T> = {
+    [K in keyof T]: T[K];
+} & {};
+
+/** Extract a union of inferred objects from a readonly tuple of Zod schemas. */
+type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
+    [K in keyof S]: z.infer<S[K]>;
+}[number];
+
+declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
+type LogLevel = z.infer<typeof LogLevel>;
+declare const LogEntry: z.ZodObject<{
+    id: z.ZodString;
+    timestamp: z.ZodNumber;
+    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
+    message: z.ZodString;
+    source: z.ZodOptional<z.ZodString>;
+    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    stack: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}>;
+type LogEntry = z.infer<typeof LogEntry>;
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
+interface MessageEntity extends BaseEntity {
+    entityType: EARS.Entity.Message;
+    text: string;
+    sender: 'user' | 'assistant' | 'system';
+    timestamp: number;
+}
+interface ThreadEntity extends BaseEntity {
+    entityType: EARS.Entity.Thread;
+    topic: string;
+    instructions: string;
+    sideTopics?: string[];
+    timestamp: number;
+    lastMessageTimestamp?: number;
+    shortCode?: string;
+    threadType: 'work-item' | 'project' | 'user';
+    status: string;
+    tags?: string[];
+}
+interface ArtifactEntity extends BaseEntity {
+    entityType: EARS.Entity.Artifact;
+    title?: string;
+    content: string | any;
+    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
+}
+declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
+type ThreadLinkRelation = typeof ThreadRelations[number];
+type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
+    relation: ThreadLinkRelation;
+};
+type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'> & {
+    status?: ThreadEntity['status'];
+} & {
+    tags?: string[];
+} & ThreadLinkedFields>;
+type ThreadLinkedFields = {
+    linkedThreads?: ThreadLinkItem[];
+};
+type ThreadCreateData = Simplify<ThreadEditFields>;
+type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
+type ThreadExtendedData = ThreadLinkedFields & {
+    messages?: Partial<MessageEntity>[];
+    tags?: string[];
+};
+
+type ThreadConnectedData = {
+    threads: ThreadExtended[];
+    availableTags: ThreadTagOption[];
+    settings?: ThreadsSettings | null;
+};
+
+type AgentThreadData = {
+    id?: ThreadEntity['id'];
+    shortCode?: ThreadEntity['shortCode'];
+    topic: ThreadEntity['topic'];
+    instructions: ThreadEntity['instructions'];
+    status: ThreadEntity['status'];
+    timestamp: ThreadEntity['timestamp'];
+    messages: ThreadExtendedData['messages'];
+    artifacts: ArtifactEntity[];
+};
+type RecentThreadRefreshData = {
+    currentThread: AgentThreadData | null;
+    threads: Partial<ThreadEntity>[];
+};
+interface AgentMode {
+    id: string;
+    name: string;
+    description: string;
+}
+interface AgentSettings {
+    modes: AgentMode[];
+    hotkeys: {
+        textToSpeech?: KeyboardShortcut | null;
+        switchMode?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
+    };
+}
+type AgentConnectedData = {
+    currentThread: AgentThreadData | null;
+    threads: Partial<ThreadEntity>[];
+    dashboardArtifacts: Partial<ArtifactEntity>[];
+    tabs: Tab[];
+    settings?: AgentSettings;
+};
+interface Tab {
+    id: string;
+    label: string;
+    artifacts: ArtifactItem[];
+    selectedArtifactId?: string;
+}
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'kanban' | 'slack' | 'todo';
+interface ArtifactItem {
+    id: string;
+    type: ArtifactType;
+    title: string;
+    content: any;
+    metadata?: {
+        createdAt: number;
+        updatedAt?: number;
+        [key: string]: any;
+    };
 }
 
 /** ── Shared aliases ─────────────────────────────────────────────────────── */
@@ -2618,51 +2833,8 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
-        type: "AGENT_STARTUP";
-        data: AgentStartupData;
+        type: "AGENT_CONNECTED";
+        data: AgentConnectedData;
         pluginId: "agent";
     } | {
         type: "REFRESH_RECENT_THREADS";
@@ -2726,8 +2898,51 @@ declare const events: {
         type: "BRAIN_STARTED";
         pluginId: "brain";
     } | {
-        type: "THREAD_STARTUP";
-        data: ThreadStartupData;
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
+        type: "THREAD_CONNECTED";
+        data: ThreadConnectedData;
         pluginId: "threads";
     } | {
         type: "SET_VIEW_DATA";
@@ -2751,8 +2966,8 @@ declare const events: {
         updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
         pluginId: "threads";
     } | {
-        type: "FLOWS_STARTUP";
-        data: FlowsStartupData;
+        type: "FLOWS_CONNECTED";
+        data: FlowsConnectedData;
         pluginId: "flows";
     } | {
         type: "FLOW_SELECTED";
@@ -2853,7 +3068,7 @@ declare const events: {
         details: TNodeEntity | null;
         pluginId: "database";
     } | {
-        type: "LOGS_STARTUP";
+        type: "LOGS_CONNECTED";
         logs: LogEntry[];
         settings?: LogsSettings | undefined;
         pluginId: "logs";
@@ -2873,8 +3088,8 @@ declare const events: {
         settings: LogsSettings;
         pluginId: "logs";
     } | {
-        type: "PROMPTS_STARTUP";
-        data: PromptsStartupData;
+        type: "PROMPTS_CONNECTED";
+        data: PromptsConnectedData;
         pluginId: "prompts";
     } | {
         type: "PROMPT_SELECTED";
@@ -2927,7 +3142,7 @@ declare const events: {
         actionId: EARS.EntityId;
         pluginId: "actions";
     } | {
-        type: "LIBRARY_STARTUP";
+        type: "LIBRARY_CONNECTED";
         data: {
             documents: DocumentDTO[];
             collections: CollectionDTO[];
@@ -3320,8 +3535,8 @@ declare const events: {
         };
         pluginId: "code";
     } | {
-        type: "CODE_STARTUP";
-        data: CodeStartupData;
+        type: "CODE_CONNECTED";
+        data: CodeConnectedData;
         pluginId: "code";
     } | {
         type: "CODE_SETTINGS_UPDATED";
@@ -3446,7 +3661,7 @@ type EdgeEntity = {
         [key: string]: any;
     };
 };
-interface FlowsStartupData {
+interface FlowsConnectedData {
     selectedFlowId: EARS.EntityId;
     graph: {
         nodes: NodeEntity[];
@@ -3473,268 +3688,6 @@ interface ModelConfig {
 interface FlowExtendedData {
     nodes: NodeEntity[];
     edges: EdgeEntity[];
-}
-
-interface SettingsEntity extends BaseEntity {
-    entityType: EARS.Entity.Settings;
-    type: 'general' | 'plugin' | 'internal';
-    label: string;
-    data: any;
-}
-interface SettingsData {
-    general: GeneralSettings;
-    plugins: PluginSettings;
-    internal: InternalSettings;
-}
-interface GeneralSettings {
-    personal: PersonalInfo;
-    secrets: Secrets;
-    hotkeys: ApplicationHotkeys;
-    misc: MiscSettings;
-}
-interface Address {
-    street: string;
-    street2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-}
-interface PersonalInfo {
-    name?: string;
-    phoneNumber?: string;
-    address?: string | Address;
-}
-interface Secrets {
-    google?: string | null;
-    anthropic?: string | null;
-    openai?: string | null;
-    groq?: string | null;
-    mistral?: string | null;
-    cohere?: string | null;
-    custom?: Record<string, string>;
-}
-interface KeyboardShortcut {
-    key: string;
-    modifiers: string[];
-    global?: boolean;
-}
-interface CustomHotkey extends KeyboardShortcut {
-    id: string;
-    eventName: string;
-}
-interface ApplicationHotkeys {
-    switchPluginUp?: KeyboardShortcut;
-    switchPluginDown?: KeyboardShortcut;
-    toggleInspectionPanel?: KeyboardShortcut;
-    custom?: CustomHotkey[];
-}
-interface MiscSettings {
-}
-interface PluginVisibilitySettings {
-    [pluginId: string]: boolean;
-}
-interface Category {
-    name: string;
-    color: string;
-}
-interface ThreadStatusOption {
-    label: string;
-    color: string;
-}
-interface ThreadTagOption {
-    name: string;
-    color?: string;
-}
-interface ThreadsSettings {
-    statuses: ThreadStatusOption[];
-    tags: ThreadTagOption[];
-    showOnlyRootThreads: boolean;
-}
-interface LogsSettings {
-    maxLogs: number;
-    excludedSources: string[];
-}
-interface PluginSettings {
-    _meta?: {
-        visibility?: PluginVisibilitySettings;
-        lastActivePlugin?: string;
-    };
-    [pluginId: string]: any;
-}
-interface InternalSettings {
-    hasOnboarded: boolean;
-    lastInteractionTimestamp: number | null;
-    version: string;
-}
-
-/**
- * Settings Service
- *
- * Provides convenient access to application settings with type-safe methods
- * for common operations on general, plugin, and internal settings.
- */
-
-declare class SettingsService {
-    /**
-     * Get all settings including general, plugins, and internal
-     */
-    getAll(): SettingsData;
-    /**
-     * Get settings for a specific plugin
-     * @param pluginId - The plugin identifier
-     */
-    getPluginSettings<T = any>(pluginId: string): T;
-    /**
-     * Get all general settings
-     */
-    getGeneralSettings(): SettingsData['general'];
-    /**
-     * Get internal system settings
-     */
-    getInternalSettings(): SettingsData['internal'];
-    /**
-     * Update a plugin setting
-     * @param pluginId - The plugin identifier
-     * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
-     * @param value - The new value
-     */
-    updatePluginSetting(pluginId: string, path: string[], value: any): void;
-    /**
-     * Update a general setting
-     * @param category - The general settings category (e.g., 'hotkeys', 'secrets')
-     * @param path - Path to the setting property
-     * @param value - The new value
-     */
-    updateGeneralSetting(category: string, path: string[], value: any): void;
-    /**
-     * Update an internal setting
-     * @param path - Path to the setting property
-     * @param value - The new value
-     */
-    updateInternalSetting(path: string[], value: any): void;
-    /**
-     * Reset all settings to their defaults
-     */
-    resetToDefaults(): void;
-    /**
-     * Check if a specific plugin has settings
-     * @param pluginId - The plugin identifier
-     */
-    hasPluginSettings(pluginId: string): boolean;
-    /**
-     * Get a specific setting value by path
-     * @param type - The setting type ('general', 'plugin', 'internal')
-     * @param label - The setting label/category
-     * @param path - Path to the specific value
-     */
-    getSettingValue(type: 'general' | 'plugin' | 'internal', label: string, path: string[]): any;
-}
-
-interface DirectoryEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Directory;
-    path: string;
-    label?: string;
-    lastAccessedAt: number;
-    createdAt: number;
-    role?: 'lastOpened' | 'recent';
-}
-
-interface TerminalEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Terminal;
-    title: string;
-    pid: number;
-    shell: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-    createdAt: number;
-    updatedAt: number;
-    closedAt?: number;
-}
-interface StartupData {
-    terminals: TerminalInfo[];
-}
-
-/**
- * Type-safe query helpers to eliminate repetitive type casting
- * These are simple wrappers around EARS query functions
- */
-declare function findById<T>(id: EARS.EntityId): T | undefined;
-declare function findAll<T>(entityType: EARS.Entity): T[];
-declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
-declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
-declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-declare function countEntities(entityType: EARS.Entity): number;
-declare function exists(id: EARS.EntityId): boolean;
-declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-
-/**
- * Type-safe transaction helpers for common operations
- */
-declare function prepareEntity<T extends {
-    entityType: EARS.Entity;
-}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
-declare function createEntityWithDefaults<T extends {
-    entityType: EARS.Entity;
-    shortCode?: string;
-    label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
-    id: EARS.EntityId;
-};
-declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
-declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-declare function grantRole(entityId: EARS.EntityId, role: string): void;
-declare function revokeRole(entityId: EARS.EntityId, role: string): void;
-
-/**
- * Common repository types for consistent return values and error handling
- */
-type RepositoryResult<T> = {
-    success: true;
-    data: T;
-} | {
-    success: false;
-    error: string;
-    code?: string;
-};
-type OperationResult = RepositoryResult<void>;
-
-declare class LibraryService {
-    getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
-    getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
-    getByName(name: string): Promise<DocumentDTO | undefined>;
-    getWithinFolder(folderName: string): Promise<DocumentDTO[]>;
-}
-
-declare class ActionService {
-    getById(id: EARS.EntityId): Promise<ActionEntity | undefined>;
-    getByLabel(label: string): Promise<ActionEntity | undefined>;
-    getByCategory(category: string): Promise<ActionEntity[]>;
-    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
-    getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
-}
-
-declare class PromptService {
-    getByLabel(label: string): Promise<PromptEntity | undefined>;
-    /**
-     * Execute a template with prompt context for accessing other prompts
-     * @param templateFn - The template function body
-     * @param templateParams - Parameters to pass to the template
-     */
-    executeTemplate(templateFn: string, templateParams: Record<string, any>): string;
-    /**
-     * Get and execute a prompt by label
-     * @param label - The prompt label
-     * @param templateParams - Parameters to pass to the template
-     */
-    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
 }
 
 declare const providers: {
@@ -3834,6 +3787,53 @@ const emitter = /*#__PURE__*/Object.freeze({
   sendToPlugin: sendToPlugin,
   sendToSystem: sendToSystem
 });
+
+interface SafeLinkOptions {
+    /** Additional info to store with the relation */
+    info?: unknown;
+    /** If true, creates bidirectional edges automatically */
+    symmetric?: boolean;
+    /** If specified, prevents cycles within this group of relation kinds */
+    acyclicGroup?: readonly EARS.RelKind[];
+}
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId): {
+    readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
+    readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
+    readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
+    readonly merge: (k: EARS.AttrKind, v: unknown, i?: number) => /*elided*/ any;
+    readonly drop: (k: EARS.AttrKind, i?: number) => /*elided*/ any;
+    readonly dropIf: (k: EARS.AttrKind, c: unknown) => /*elided*/ any;
+    readonly update: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
+    readonly updateBatch: (attrs: Record<string, unknown>) => /*elided*/ any;
+    readonly grant: (r: string) => /*elided*/ any;
+    readonly revoke: (r: string) => /*elided*/ any;
+    readonly ensure: (r: string, scope?: readonly EARS.EntityId[]) => /*elided*/ any;
+    readonly link: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
+    readonly relPatch: (rel: EARS.EntityId, u: {
+        sourceEntity?: EARS.EntityId;
+        targetEntity?: EARS.EntityId;
+        info?: unknown;
+    }) => /*elided*/ any;
+    readonly unlink: (rel: EARS.EntityId) => /*elided*/ any;
+    readonly linkOne: (k: EARS.RelKind, t: EARS.EntityId, info?: unknown) => /*elided*/ any;
+    readonly safeLink: (k: EARS.RelKind, t: EARS.EntityId, options?: SafeLinkOptions) => /*elided*/ any;
+    readonly patchLink: (k: EARS.RelKind, t: EARS.EntityId, u: {
+        newTarget: EARS.EntityId;
+        newInfo?: unknown;
+    }) => /*elided*/ any;
+    readonly unlinkIf: (k: EARS.RelKind, t?: EARS.EntityId) => /*elided*/ any;
+    readonly unlinkWhere: (c?: {
+        kind?: EARS.RelKind;
+        target?: EARS.EntityId;
+    }) => /*elided*/ any;
+    readonly define: (def: {
+        attributes?: Record<string, unknown>;
+        links?: [EARS.RelKind, EARS.EntityId] | Array<[EARS.RelKind, EARS.EntityId]>;
+        roles?: string | string[];
+    }) => /*elided*/ any;
+    readonly destroy: (skipPersistence?: boolean) => never;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+};
 
 type MaybeArr<T> = T | readonly T[];
 
@@ -4059,7 +4059,7 @@ declare const services: {
                 totalCount: number;
                 totalPages: number;
             };
-            readonly startupData: (page?: number) => {
+            readonly connectedData: (page?: number) => {
                 actions: ActionEntity[];
                 page: number;
                 totalPages: number;
@@ -4094,7 +4094,7 @@ declare const services: {
             }[];
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
-            readonly startupData: () => AgentStartupData;
+            readonly connectedData: () => AgentConnectedData;
         };
         readonly agentCommands: {
             readonly addMessage: (params: {
@@ -4148,7 +4148,7 @@ declare const services: {
             readonly flowNodes: (flowId: EARS.EntityId) => NodeEntity[];
             readonly flowEdges: (flowId: EARS.EntityId) => EdgeEntity[];
             readonly extendedData: (flowId: EARS.EntityId, include?: keyof FlowExtendedData | (keyof FlowExtendedData)[]) => FlowExtendedData;
-            readonly startupData: () => FlowsStartupData;
+            readonly connectedData: () => FlowsConnectedData;
         };
         readonly flowsCommands: {
             readonly createFlow: (flow?: Partial<FlowEntity>) => RepositoryResult<FlowEntity>;
@@ -4202,7 +4202,7 @@ declare const services: {
             byId: (id: EARS.EntityId) => PromptEntity | undefined;
             all: () => PromptEntity[];
             byLabel: (label: string) => PromptEntity | undefined;
-            startupData: (page?: number, pageSize?: number) => {
+            connectedData: (page?: number, pageSize?: number) => {
                 prompts: PromptEntity[];
                 page: number;
                 totalPages: number;
@@ -4270,7 +4270,7 @@ declare const services: {
             readonly messages: (threadId: EARS.EntityId) => Partial<MessageEntity>[];
             readonly linkedThreads: (threadId: EARS.EntityId) => any[];
             readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
-            readonly startupData: () => ThreadStartupData;
+            readonly connectedData: () => ThreadConnectedData;
         };
         readonly threadCommands: {
             readonly create: (input: ThreadCreateData) => RepositoryResult<{

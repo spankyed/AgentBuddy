@@ -75,7 +75,7 @@ export type Event =
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
-  | { type: 'CODE_STARTUP' };
+  | { type: 'CODE_CONNECTED' };
 
 export const explorerSystem = setup({
   types: {
@@ -419,7 +419,7 @@ export const explorerSystem = setup({
   states: {
     idle: {
       on: {
-        'CODE_STARTUP': {
+        'CODE_CONNECTED': {
           actions: 'sendCurrentDirectory'
         },
         'explorer.LIST_FILES': {

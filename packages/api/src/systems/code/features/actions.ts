@@ -35,7 +35,7 @@ export type Event =
   | { type: 'codeActions.LIST'; page?: number }
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
-  | { type: 'CODE_STARTUP' };
+  | { type: 'CODE_CONNECTED' };
 
 export const actionsSystem = setup({
   types: {
@@ -45,7 +45,7 @@ export const actionsSystem = setup({
   actions: {
     listActions: ({ event }) => {
       const ev = event as { type: 'codeActions.LIST'; page?: number }
-      const data = repository.actionQueries.startupData(ev.page || 1)
+      const data = repository.actionQueries.connectedData(ev.page || 1)
       
       const wrapped = emit(pluginId, {
         type: 'codeActions.ACTIONS_LISTED',
@@ -111,9 +111,9 @@ export const actionsSystem = setup({
       }
     },
 
-    sendStartupData: () => {
+    sendConnectedData: () => {
       // Send initial actions list on startup
-      const data = repository.actionQueries.startupData(1)
+      const data = repository.actionQueries.connectedData(1)
       
       const wrapped = emit(pluginId, {
         type: 'codeActions.ACTIONS_LISTED',
@@ -138,8 +138,8 @@ export const actionsSystem = setup({
         'codeActions.SAVE_ACTION': {
           actions: 'saveAction'
         },
-        'CODE_STARTUP': {
-          actions: 'sendStartupData'
+        'CODE_CONNECTED': {
+          actions: 'sendConnectedData'
         }
       }
     }

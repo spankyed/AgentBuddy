@@ -21,7 +21,7 @@ import type {
   ThreadExtendedData, 
   ThreadTypeCodes, 
   ThreadTypeShortCode,
-  ThreadStartupData,
+  ThreadConnectedData,
   ThreadTagOption
 } from '../types';
 import type { ThreadsSettings } from '@/systems/settings/types';
@@ -78,8 +78,8 @@ export const threadQueries = {
     };
   },
   
-  // Get startup data
-  startupData: (): ThreadStartupData => {
+  // Get connected data
+  connectedData: (): ThreadConnectedData => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
     const extendedThreads = threads.map(thread => ({
       ...thread,

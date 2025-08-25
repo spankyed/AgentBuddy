@@ -37,9 +37,9 @@ export interface PromptEntity extends BaseEntity {
 }
 
 /**
- * Data sent on prompts system startup
+ * Data sent on prompts system connection
  */
-export interface PromptsStartupData {
+export interface PromptsConnectedData {
   prompts: PromptEntity[];
   page: number;
   totalPages: number;

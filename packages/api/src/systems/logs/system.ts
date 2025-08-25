@@ -33,7 +33,7 @@ export type LogsInternalEvents =
 type ReceivableEvents = MergeReceivable<typeof IncomingLogEvents, LogsInternalEvents>;
 
 export type OutgoingLogsEvents =
-  | { type: 'LOGS_STARTUP'; logs: LogEntry[]; settings?: LogsSettings }
+  | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
   | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
   | { type: 'LOGS_CLEARED' }
@@ -106,7 +106,7 @@ export const logsSystem = setup({
         return updatedLogs;
       }
     }),
-    sendLogsStartup: ({ context }) => {
+    sendLogsConnected: ({ context }) => {
       // Get current settings
       const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
       const excludedSources = settings?.excludedSources || [];
@@ -115,7 +115,7 @@ export const logsSystem = setup({
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
       const wrapped = emit(logs, {
-        type: 'LOGS_STARTUP',
+        type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [] }
       });
@@ -181,7 +181,7 @@ export const logsSystem = setup({
   entry: ['setupEventListeners'],
   on: {
     CLIENT_CONNECTED: {
-      actions: ['sendLogsStartup'],
+      actions: ['sendLogsConnected'],
     },
     // ! logs system is unreachable by other systems as a failsafe
     // LOGS_SETTINGS_UPDATED: {

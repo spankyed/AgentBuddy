@@ -170,7 +170,7 @@ export interface CodeSettings {
   defaultRootDirectory?: string | null;
 }
 
-export type CodeStartupData = {
+export type CodeConnectedData = {
   rootDirectory: string | null;
   currentDirectory: string | null;
   settings?: CodeSettings;

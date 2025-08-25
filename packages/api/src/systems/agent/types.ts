@@ -1,5 +1,5 @@
-import { BaseEntity } from "@/core/utils/ears";
-import type { EARS, ThreadExtendedData } from "@/types";
+import { BaseEntity, EARS } from "@/core/types";
+import type { ThreadExtendedData } from "@/types";
 import { ThreadEntity, ArtifactEntity } from "../threads/types";
 import type { KeyboardShortcut } from "../settings/types";
 
@@ -34,7 +34,7 @@ export interface AgentSettings {
   };
 }
 
-export type AgentStartupData = {
+export type AgentConnectedData = {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
   dashboardArtifacts: Partial<ArtifactEntity>[];

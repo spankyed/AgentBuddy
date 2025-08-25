@@ -35,7 +35,7 @@ export const promptQueries = {
     )[0];
   },
     
-  startupData: (page = 1, pageSize = 20) => {
+  connectedData: (page = 1, pageSize = 20) => {
     const all = findAll<PromptEntity>(EARS.Entity.Prompt);
     const start = (page - 1) * pageSize;
     const items = all.slice(start, start + pageSize);

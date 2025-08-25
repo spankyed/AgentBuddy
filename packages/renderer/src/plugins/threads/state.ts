@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings } from '@app/api';
+import type { ThreadConnectedData, ThreadEntity, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings } from '@app/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -102,7 +102,7 @@ const threadsState = setup({
       };
     }),
     setPluginData: assign(({ event }) => {
-      const typedEvent = typeOf('THREAD_STARTUP', event);
+      const typedEvent = typeOf('THREAD_CONNECTED', event);
 
       return {
         threads: typedEvent.data.threads,
@@ -322,7 +322,7 @@ const threadsState = setup({
         })
       ]
     },
-    THREAD_STARTUP: {
+    THREAD_CONNECTED: {
       actions: 'setPluginData'
     },
     SET_VIEW_DATA: {

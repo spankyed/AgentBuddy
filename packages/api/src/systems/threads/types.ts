@@ -1,6 +1,5 @@
-import { BaseEntity } from "@/core/utils/ears";
+import { BaseEntity, EARS } from "@/core/types";
 import type { Simplify } from "@/core/utils/type-helpers";
-import type { EARS } from "@/types";
 
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
@@ -71,7 +70,7 @@ export type ThreadExtendedData = ThreadLinkedFields & {
 import type { ThreadsSettings, ThreadTagOption } from '@/systems/settings/types';
 export type { ThreadTagOption } from '@/systems/settings/types';
 
-export type ThreadStartupData = {
+export type ThreadConnectedData = {
   threads: ThreadExtended[];
   availableTags: ThreadTagOption[];  // Tags from settings
   settings?: ThreadsSettings | null; // Full thread settings

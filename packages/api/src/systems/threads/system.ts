@@ -7,7 +7,7 @@ import { EARS } from '@/core/types';
 import { z } from 'zod';
 import { repository } from '@/repository';
 import { tx } from '@/core/utils/ears/helpers/transaction';
-import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
+import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData } from './types';
 import type { MappedZodLiterals } from '@/core/utils/type-helpers';
 import { agent } from '@/systems/agent/system';
@@ -58,7 +58,7 @@ export type ThreadsInternalEvents =
   
 
 export type OutgoingThreadsEvents = 
-  | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
+  | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: string }
   | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
@@ -75,14 +75,14 @@ export const threadsSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendThreadsStartupData: ({ system }) => {
-      const startupData = repository.threadQueries.startupData();
+    sendThreadsConnectedData: ({ system }) => {
+      const connectedData = repository.threadQueries.connectedData();
       const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
       
       system.get(bus).send(emit(threads, { 
-        type: 'THREAD_STARTUP',
+        type: 'THREAD_CONNECTED',
         data: {
-          ...startupData,
+          ...connectedData,
           settings: threadsSettings || null
         }
       }));
@@ -245,9 +245,9 @@ export const threadsSystem = setup({
       if (touched) {
         busSvc.send(
           emit(threads, {
-            type: 'THREAD_STARTUP',
+            type: 'THREAD_CONNECTED',
             data: {
-              ...repository.threadQueries.startupData(),
+              ...repository.threadQueries.connectedData(),
               settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
             },
           })
@@ -264,7 +264,7 @@ export const threadsSystem = setup({
     context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
-        actions: 'sendThreadsStartupData',
+        actions: 'sendThreadsConnectedData',
       },
       THREADS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',

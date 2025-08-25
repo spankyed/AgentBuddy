@@ -60,13 +60,13 @@ export const actionsSystem = setup({
   },
   actions: {
     sendActionsStartupData: ({ system }) => {
-      const startupData = repository.actionQueries.startupData();
+      const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
       
       system.get(bus).send(emit(actions, { 
         type: 'ACTIONS_LISTED',
         data: {
-          ...startupData,
+          ...connectedData,
           categories: actionsSettings?.categories || []
         }
       }));

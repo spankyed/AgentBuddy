@@ -482,9 +482,9 @@ export const librarySystem = setup({
       isSearching: false,
     }),
     // ? think we're sending duplicate documents data on startup
-    setStartupData: assign({
+    setConnectedData: assign({
       documents: ({ event }) => {
-        if (event.type === 'LIBRARY_STARTUP') {
+        if (event.type === 'LIBRARY_CONNECTED') {
           const documents = event.data.documents
           // Sync tags to localStorage for backward compatibility
           tagStorage.updateTagsFromDocuments(documents)
@@ -493,13 +493,13 @@ export const librarySystem = setup({
         return []
       },
       collections: ({ event }) => {
-        if (event.type === 'LIBRARY_STARTUP') {
+        if (event.type === 'LIBRARY_CONNECTED') {
           return event.data.collections
         }
         return []
       },
       settings: ({ event }) => {
-        if (event.type === 'LIBRARY_STARTUP') {
+        if (event.type === 'LIBRARY_CONNECTED') {
           return event.data.settings
         }
         return undefined
@@ -553,8 +553,8 @@ export const librarySystem = setup({
     PLUGIN_ACTIVATED: {
       actions: ['requestFolderContents', 'requestCollections'],
     },
-    LIBRARY_STARTUP: {
-      actions: ['setStartupData'],
+    LIBRARY_CONNECTED: {
+      actions: ['setConnectedData'],
     },
     
     // New file browser events

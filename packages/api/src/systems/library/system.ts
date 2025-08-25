@@ -182,7 +182,7 @@ const IncomingLibraryEvents = [
 ] as const
 
 export type OutgoingLibraryEvents =
-  | { type: 'LIBRARY_STARTUP'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
+  | { type: 'LIBRARY_CONNECTED'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
   | { type: 'DOCUMENTS_LOADED'; data: { documents: DocumentDTO[] } }
   | { type: 'DOCUMENT_CREATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_UPDATED'; data: { document: DocumentDTO } }
@@ -388,7 +388,7 @@ export const librarySystem = setup({
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
-          type: 'LIBRARY_STARTUP' as const,
+          type: 'LIBRARY_CONNECTED' as const,
           pluginId: 'library',
           data: { 
             documents, 

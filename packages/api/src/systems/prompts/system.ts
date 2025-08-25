@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/utils/actor-helpers';
 import { EARS } from '@/core/types';
-import { PromptsStartupData, PromptEntity } from './types';
+import { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
@@ -46,7 +46,7 @@ export type PromptsInternalEvents =
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingPromptEvents =
-  | { type: 'PROMPTS_STARTUP'; data: PromptsStartupData }
+  | { type: 'PROMPTS_CONNECTED'; data: PromptsConnectedData }
   | { type: 'PROMPT_SELECTED'; promptId: EARS.EntityId; data: PromptEntity }
   | { type: 'PROMPT_CREATED'; prompt: PromptEntity; promptId: EARS.EntityId }
   | { type: 'PROMPT_UPDATED'; prompt: PromptEntity; promptId: EARS.EntityId }
@@ -62,14 +62,14 @@ export const promptsSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    sendPromptsStartupData: ({ system }) => {
-      const startupData = repository.promptQueries.startupData();
+    sendPromptsConnectedData: ({ system }) => {
+      const connectedData = repository.promptQueries.connectedData();
       const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
       
       system.get(bus).send(emit(prompts, { 
-        type: 'PROMPTS_STARTUP',
+        type: 'PROMPTS_CONNECTED',
         data: {
-          ...startupData,
+          ...connectedData,
           categories: promptsSettings?.categories || []
         }
       }));
@@ -146,7 +146,7 @@ export const promptsSystem = setup({
     },
     fetchPromptsPage: ({ system, event }) => {
       const ev = typeOf('FETCH_PROMPTS_PAGE', event);
-      const data = repository.promptQueries.startupData(ev.page || 1);
+      const data = repository.promptQueries.connectedData(ev.page || 1);
       
       system.get(bus).send(emit(prompts, {
         type: 'PROMPTS_PAGE_LOADED',
@@ -221,7 +221,7 @@ export const promptsSystem = setup({
       idle: {
         on: {
           CLIENT_CONNECTED: {
-            actions: 'sendPromptsStartupData',
+            actions: 'sendPromptsConnectedData',
           },
         },
       },

@@ -6,7 +6,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-h
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import { FlowsStartupData, FlowEntity, NodeEntity } from './config/types';
+import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
@@ -42,7 +42,7 @@ export type FlowsInternalEvents =
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingFlowsEvents =
-  | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
+  | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
@@ -66,11 +66,11 @@ export const flowsSystem = setup({
   actions: {
     handleClientConnection: ({ system }) => {
       const pluginId = flows;
-      const data = repository.flowsQueries.startupData();
-      logger.info('Sending flows startup data to client', { flows: data.flows.length });
+      const data = repository.flowsQueries.connectedData();
+      logger.info('Sending flows connected data to client', { flows: data.flows.length });
 
       system.get(bus).send(emit(pluginId, {
-        type: 'FLOWS_STARTUP',
+        type: 'FLOWS_CONNECTED',
         data,
       }));
     },
@@ -280,12 +280,12 @@ export const flowsSystem = setup({
           repository.flowsCommands.grantRootFlowRole(newRootFlowId as EARS.EntityId);
         }
         
-        // Send updated startup data to reflect the change
-        const data = repository.flowsQueries.startupData();
+        // Send updated connected data to reflect the change
+        const data = repository.flowsQueries.connectedData();
         const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
         
         system.get(bus).send(emit(pluginId, {
-          type: 'FLOWS_STARTUP',
+          type: 'FLOWS_CONNECTED',
           data: {
             ...data,
             settings: flowsSettings || {}

@@ -41,7 +41,7 @@ export type BrainInternalEvents =
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
-  // | { type: 'BRAIN_STARTUP'; data: FlowTNodeData }
+  // | { type: 'BRAIN_CONNECTED'; data: FlowTNodeData }
   | { type: 'TNODE_OPENED'; tNodeId: EARS.EntityId; data: FlowTNodeData }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
@@ -64,7 +64,7 @@ export const brainSystem = setup({
   actions: {
     handleAppStartup: ({ system, self }) => {
       // Get initial data to check available flows
-      const flowsData = repository.flowsQueries.startupData();
+      const flowsData = repository.flowsQueries.connectedData();
       const allFlows = flowsData.flows;
       
       // Check if any flow has the root_flow role

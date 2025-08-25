@@ -60,7 +60,7 @@ export type Event =
   | { type: 'commit.PULL_BRANCH' }
   | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
-  | { type: 'CODE_STARTUP' };
+  | { type: 'CODE_CONNECTED' };
 
 export const commitSystem = setup({
   types: {
@@ -440,7 +440,7 @@ export const commitSystem = setup({
   states: {
     idle: {
       on: {
-        'CODE_STARTUP': {
+        'CODE_CONNECTED': {
           // No specific action needed for commit on startup
         },
         'commit.GET_GIT_STATUS': {

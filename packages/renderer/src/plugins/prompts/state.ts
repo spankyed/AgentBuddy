@@ -70,7 +70,7 @@ const promptsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ event }) => {
-      const ev = typeOf('PROMPTS_STARTUP', event);
+      const ev = typeOf('PROMPTS_CONNECTED', event);
       return {
         prompts: ev.data.prompts,
         page: ev.data.page,
@@ -272,7 +272,7 @@ const promptsState = setup({
     },
   },
   on: {
-    PROMPTS_STARTUP: { actions: 'setPluginData' },
+    PROMPTS_CONNECTED: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
     PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: { 

@@ -50,11 +50,11 @@ export type OutgoingCodeEvents =
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
   // Broadcast events (sent to all child systems)
-  | { type: 'CODE_STARTUP'; data: CodeStartupData }
+  | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
   | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 // Import only the type needed for broadcast event
-import { TerminalInfo, CodeStartupData, CodeSettings } from './types'
+import { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
@@ -198,26 +198,26 @@ export const systemMachine = setup({
       rootEvents.emitOutgoing(wrapped.event)
     },
     
-    broadcastStartup: ({ system, context }) => {
-      // Send CODE_STARTUP to all children that need it
-      system.get('explorer')?.send({ type: 'CODE_STARTUP' });
-      system.get('terminal')?.send({ type: 'CODE_STARTUP' });
-      system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
-      system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
+    broadcastConnected: ({ system, context }) => {
+      // Send CODE_CONNECTED to all children that need it
+      system.get('explorer')?.send({ type: 'CODE_CONNECTED' });
+      system.get('terminal')?.send({ type: 'CODE_CONNECTED' });
+      system.get('codeActions')?.send({ type: 'CODE_CONNECTED' });
+      system.get('codePrompts')?.send({ type: 'CODE_CONNECTED' });
       
       // Get code settings - this will create default settings if they don't exist
       const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
       
       // Send initial directory state to frontend
-      const startupData: CodeStartupData = {
+      const connectedData: CodeConnectedData = {
         rootDirectory: context.rootDirectory,
         currentDirectory: context.currentDirectory,
         settings: codeSettings
       };
       
       const wrapped = emit(id, {
-        type: 'CODE_STARTUP',
-        data: startupData
+        type: 'CODE_CONNECTED',
+        data: connectedData
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -294,7 +294,7 @@ export const systemMachine = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: {
-          actions: 'broadcastStartup',
+          actions: 'broadcastConnected',
         },
         // Handle settings updates
         CODE_SETTINGS_UPDATED: {
