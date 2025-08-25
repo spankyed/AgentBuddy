@@ -90,7 +90,7 @@ export const threadsSystem = setup({
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
 
-      const result = repository.threadCommands.create({
+      const { id: newThreadId, shortCode, timestamp } = repository.threadCommands.create({
         topic: thread.topic,
         threadType: thread.threadType as ThreadEntity['threadType'],
         instructions: thread.instructions,
@@ -98,17 +98,10 @@ export const threadsSystem = setup({
         linkedThreads: thread.linkedThreads as ThreadLinkItem[],
       });
 
-      if (!result.success) {
-        console.error('Failed to create thread:', result.error);
-        return;
-      }
-
-      const { id: newThreadId, shortCode, timestamp } = result.data;
-
       // If this thread is being created as a child of another thread,
       // update the parent thread to link to this child
       if (thread.parentThreadId) {
-        const parentUpdate = repository.threadCommands.update(
+        repository.threadCommands.update(
           thread.parentThreadId as EARS.EntityId,
           {
             linkedThreads: [{
@@ -117,10 +110,6 @@ export const threadsSystem = setup({
             }]
           }
         );
-        
-        if (!parentUpdate.success) {
-          console.error('Failed to link parent thread:', parentUpdate.error);
-        }
       }
 
       system.get(bus).send(emit(threads, { 
@@ -143,12 +132,7 @@ export const threadsSystem = setup({
     updateThreadField: ({ system, event }) => {
       const { key, value, threadId } = typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
-      const result = repository.threadCommands.update(threadId as EARS.EntityId, updates);
-      
-      if (!result.success) {
-        console.error('Failed to update thread field:', result.error);
-        return;
-      }
+      repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
       // If status was updated, emit events and refresh dashboard
       if (key === 'status') {
@@ -170,12 +154,7 @@ export const threadsSystem = setup({
         status,
         updatedAt: Date.now() 
       };
-      const result = repository.threadCommands.update(threadId as EARS.EntityId, updates);
-      
-      if (!result.success) {
-        console.error('Failed to update thread status:', result.error);
-        return;
-      }
+      repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
       // Emit status update event to threads plugin
       system.get(bus).send(emit(threads, { 

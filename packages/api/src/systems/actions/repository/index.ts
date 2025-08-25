@@ -5,13 +5,8 @@ import {
   findWhere,
   createEntityWithDefaults,
   updateEntity,
-  successResult,
-  operationSuccess,
-  errorResult,
   RepositoryError,
-  RepositoryErrorCode,
-  type RepositoryResult,
-  type OperationResult
+  RepositoryErrorCode
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
 import { tx } from '@/core/utils/ears/helpers/transaction';
@@ -64,28 +59,24 @@ export const actionCommands = {
     input?: Record<string, any>;
     actionFn: string;
     output?: any;
-  }): RepositoryResult<ActionEntity> => {
-    try {
-      if (!data.label?.trim()) {
-        throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      if (!data.actionFn?.trim()) {
-        throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      
-      const action = createEntityWithDefaults<ActionEntity>(
-        EARS.Entity.Action,
-        {
-          ...data,
-          input: data.input || {},
-        } as any,
-        'ACT'
-      );
-      
-      return successResult(action);
-    } catch (error) {
-      return errorResult(error);
+  }): ActionEntity => {
+    if (!data.label?.trim()) {
+      throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
+    if (!data.actionFn?.trim()) {
+      throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
+    }
+    
+    const action = createEntityWithDefaults<ActionEntity>(
+      EARS.Entity.Action,
+      {
+        ...data,
+        input: data.input || {},
+      } as any,
+      'ACT'
+    );
+    
+    return action;
   },
   
   update: (id: EARS.EntityId, updates: {
@@ -95,46 +86,35 @@ export const actionCommands = {
     input?: Record<string, any>;
     actionFn?: string;
     output?: any;
-  }): OperationResult => {
-    try {
-      if (!actionQueries.byId(id)) {
-        throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-      }
+  }): void => {
+    if (!actionQueries.byId(id)) {
+      throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+    
+    const { input, ...rest } = updates;
+    
+    // If input is provided, use updateBatch to replace the entire input object
+    if (input !== undefined) {
+      tx(id).updateBatch({
+        input: input,
+        updatedAt: Date.now()
+      });
       
-      const { input, ...rest } = updates;
-      
-      // If input is provided, use updateBatch to replace the entire input object
-      if (input !== undefined) {
-        tx(id).updateBatch({
-          input: input,
-          updatedAt: Date.now()
-        });
-        
-        // Update other fields normally
-        if (Object.keys(rest).length > 0) {
-          updateEntity(id, rest);
-        }
-      } else {
-        // No input update, just update other fields
+      // Update other fields normally
+      if (Object.keys(rest).length > 0) {
         updateEntity(id, rest);
       }
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
+    } else {
+      // No input update, just update other fields
+      updateEntity(id, rest);
     }
   },
   
-  delete: (id: EARS.EntityId): OperationResult => {
-    try {
-      if (!actionQueries.byId(id)) {
-        throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-      }
-      
-      updateEntity(id, { deleted: true, deletedAt: Date.now() });
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
+  delete: (id: EARS.EntityId): void => {
+    if (!actionQueries.byId(id)) {
+      throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
+    
+    updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 } as const;

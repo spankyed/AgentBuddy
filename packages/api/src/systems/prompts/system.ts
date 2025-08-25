@@ -88,7 +88,7 @@ export const promptsSystem = setup({
     },
     createPrompt: ({ system, event }) => {
       const ev = typeOf('CREATE_PROMPT', event);
-      const result = repository.promptCommands.create({
+      const prompt = repository.promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
@@ -96,15 +96,11 @@ export const promptsSystem = setup({
         category: ev.category
       });
 
-      if (result.success) {
-        system.get(bus).send(emit(prompts, {
-          type: 'PROMPT_CREATED',
-          prompt: result.data,
-          promptId: result.data.id,
-        }));
-      } else {
-        logger.error('Failed to create prompt:', { error: result.error });
-      }
+      system.get(bus).send(emit(prompts, {
+        type: 'PROMPT_CREATED',
+        prompt: prompt,
+        promptId: prompt.id,
+      }));
     },
     updatePrompt: ({ system, event }) => {
       const ev = typeOf('UPDATE_PROMPT', event);
@@ -116,33 +112,25 @@ export const promptsSystem = setup({
       if (ev.description !== undefined) updates.description = ev.description;
       if (ev.category !== undefined) updates.category = ev.category;
       
-      const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, updates);
+      repository.promptCommands.update(ev.promptId as EARS.EntityId, updates);
 
-      if (result.success) {
-        const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
-        if (updatedPrompt) {
-          system.get(bus).send(emit(prompts, {
-            type: 'PROMPT_UPDATED',
-            prompt: updatedPrompt,
-            promptId: updatedPrompt.id,
-          }));
-        }
-      } else {
-        logger.error('Failed to update prompt:', { error: result.error });
+      const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
+      if (updatedPrompt) {
+        system.get(bus).send(emit(prompts, {
+          type: 'PROMPT_UPDATED',
+          prompt: updatedPrompt,
+          promptId: updatedPrompt.id,
+        }));
       }
     },
     deletePrompt: ({ system, event }) => {
       const ev = typeOf('DELETE_PROMPT', event);
-      const result = repository.promptCommands.delete(ev.promptId as EARS.EntityId);
+      repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      if (result.success) {
-        system.get(bus).send(emit(prompts, {
-          type: 'PROMPT_DELETED',
-          promptId: ev.promptId as EARS.EntityId,
-        }));
-      } else {
-        logger.error('Failed to delete prompt:', { error: result.error });
-      }
+      system.get(bus).send(emit(prompts, {
+        type: 'PROMPT_DELETED',
+        promptId: ev.promptId as EARS.EntityId,
+      }));
     },
     fetchPromptsPage: ({ system, event }) => {
       const ev = typeOf('FETCH_PROMPTS_PAGE', event);

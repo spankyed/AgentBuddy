@@ -1,13 +1,5 @@
 import { EARS } from '@/core/types';
-import { 
-  successResult,
-  operationSuccess,
-  errorResult,
-  RepositoryError,
-  RepositoryErrorCode,
-  type RepositoryResult,
-  type OperationResult
-} from '@/core/utils/repository';
+import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
 import { removeRelation } from '@/core/utils/ears/attribute-storage';
@@ -264,186 +256,148 @@ export const flowsQueries = {
 
 // Commands
 export const flowsCommands = {
-  createFlow: (flow?: Partial<FlowEntity>): RepositoryResult<FlowEntity> => {
-    try {
-      const ts = getTimestamp();
-      const shortCode = generateShortCode(EARS.Entity.Flow, 'F');
-      const label = flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow);
+  createFlow: (flow?: Partial<FlowEntity>): FlowEntity => {
+    const ts = getTimestamp();
+    const shortCode = generateShortCode(EARS.Entity.Flow, 'F');
+    const label = flow?.label || generateLabelWithCount('New Flow', EARS.Entity.Flow);
 
-      const newFlow: Omit<FlowEntity, 'id'> = {
-        entityType: EARS.Entity.Flow,
-        shortCode,
-        label,
-        description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
-        flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
-        createdAt: ts,
-        updatedAt: ts,
-      };
+    const newFlow: Omit<FlowEntity, 'id'> = {
+      entityType: EARS.Entity.Flow,
+      shortCode,
+      label,
+      description: flow?.description || FLOW_DEFAULTS.DESCRIPTION,
+      flowType: flow?.flowType || FLOW_DEFAULTS.TYPE,
+      createdAt: ts,
+      updatedAt: ts,
+    };
 
-      const id = tx(EARS.Entity.Flow)
-        .batchPut(newFlow)
-        .id();
-      
-      return successResult({ id, ...newFlow });
-    } catch (error) {
-      return errorResult(error);
-    }
+    const id = tx(EARS.Entity.Flow)
+      .batchPut(newFlow)
+      .id();
+    
+    return { id, ...newFlow };
   },
   
-  createFlowWithEntryNode: (flow?: Partial<FlowEntity>): RepositoryResult<{ flow: FlowEntity; entryNode: NodeEntity }> => {
-    try {
-      // Create the flow
-      const flowResult = flowsCommands.createFlow(flow);
-      if (!flowResult.success) {
-        return errorResult(flowResult.error);
-      }
-      const newFlow = flowResult.data;
-      
-      // Create the entry node
-      const entryNodeResult = flowsCommands.createNode(newFlow.id, {
-        nodeType: FLOW_ENTRY_NODE.TYPE,
-        label: FLOW_ENTRY_NODE.LABEL,
-        color: FLOW_ENTRY_NODE.COLOR,
-        mode: FLOW_ENTRY_NODE.MODE,
-        eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
-      } as Partial<NodeEntity>);
-      
-      if (!entryNodeResult.success) {
-        return errorResult(entryNodeResult.error);
-      }
-      const entryNode = entryNodeResult.data;
-      
-      // Establish entry node role
-      tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT).id();
-      
-      // Create EVENT_TRACE relationship from flow to entry node
-      tx(newFlow.id).link(EARS.RelKind.EVENT_TRACE, entryNode.id);
-      
-      return successResult({ flow: newFlow, entryNode });
-    } catch (error) {
-      return errorResult(error);
-    }
+  createFlowWithEntryNode: (flow?: Partial<FlowEntity>): { flow: FlowEntity; entryNode: NodeEntity } => {
+    // Create the flow
+    const newFlow = flowsCommands.createFlow(flow);
+    
+    // Create the entry node
+    const entryNode = flowsCommands.createNode(newFlow.id, {
+      nodeType: FLOW_ENTRY_NODE.TYPE,
+      label: FLOW_ENTRY_NODE.LABEL,
+      color: FLOW_ENTRY_NODE.COLOR,
+      mode: FLOW_ENTRY_NODE.MODE,
+      eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
+    } as Partial<NodeEntity>);
+    
+    // Establish entry node role
+    tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT).id();
+    
+    // Create EVENT_TRACE relationship from flow to entry node
+    tx(newFlow.id).link(EARS.RelKind.EVENT_TRACE, entryNode.id);
+    
+    return { flow: newFlow, entryNode };
   },
   
-  createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): RepositoryResult<NodeEntity> => {
-    try {
-      const ts = getTimestamp();
-      
-      // Determine node type (default to 'action' if not specified)
-      const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
-      
-      // Extract relations and attributes based on node type
-      const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
-      
-      // Ensure the node has the required fields
-      const newNode: Omit<NodeEntity, 'id'> = {
-        entityType: EARS.Entity.Node,
-        nodeType,
-        label: attributes.label || NODE_DEFAULTS.LABEL,
-        description: attributes.description || NODE_DEFAULTS.DESCRIPTION,
-        createdAt: ts,
-        updatedAt: ts,
-        ...attributes,
-      } as Omit<NodeEntity, 'id'>;
+  createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity => {
+    const ts = getTimestamp();
+    
+    // Determine node type (default to 'action' if not specified)
+    const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
+    
+    // Extract relations and attributes based on node type
+    const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
+    
+    // Ensure the node has the required fields
+    const newNode: Omit<NodeEntity, 'id'> = {
+      entityType: EARS.Entity.Node,
+      nodeType,
+      label: attributes.label || NODE_DEFAULTS.LABEL,
+      description: attributes.description || NODE_DEFAULTS.DESCRIPTION,
+      createdAt: ts,
+      updatedAt: ts,
+      ...attributes,
+    } as Omit<NodeEntity, 'id'>;
 
-      // Create the node
-      const nodeId = tx(EARS.Entity.Node)
-        .batchPut(newNode)
-        .id();
-      
-      // Establish relationship from flow to node
-      tx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
-      
-      // Create node-specific relationships
-      createNodeRelations(nodeType, nodeId, relations);
-      
-      // If this is a 'listen' node, create EVENT_TRACE relation from flow to node
-      if (nodeType === 'listen') {
-        tx(flowId).link(EARS.RelKind.EVENT_TRACE, nodeId);
-      }
-      
-      return successResult({ id: nodeId, ...newNode } as NodeEntity);
-    } catch (error) {
-      return errorResult(error);
+    // Create the node
+    const nodeId = tx(EARS.Entity.Node)
+      .batchPut(newNode)
+      .id();
+    
+    // Establish relationship from flow to node
+    tx(flowId).link(EARS.RelKind.CONTAINS, nodeId);
+    
+    // Create node-specific relationships
+    createNodeRelations(nodeType, nodeId, relations);
+    
+    // If this is a 'listen' node, create EVENT_TRACE relation from flow to node
+    if (nodeType === 'listen') {
+      tx(flowId).link(EARS.RelKind.EVENT_TRACE, nodeId);
     }
+    
+    return { id: nodeId, ...newNode } as NodeEntity;
   },
   
-  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): RepositoryResult<{ relId: EARS.EntityId }> => {
-    try {
-      // In EARS, edges are relationships, not entities
-      // We just create the relationship between the nodes
-      tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId);
-      
-      // Get the relation ID that was just created
-      const relIds = edgeStore.relIds({
-        sourceEntity: sourceId,
-        relationType: EARS.RelKind.TRANSITIONS_TO,
-        targetEntity: targetId,
-      });
-      
-      if (relIds.length === 0) {
-        throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
-      }
-      
-      return successResult({ relId: relIds[0] });
-    } catch (error) {
-      return errorResult(error);
+  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): { relId: EARS.EntityId } => {
+    // In EARS, edges are relationships, not entities
+    // We just create the relationship between the nodes
+    tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId);
+    
+    // Get the relation ID that was just created
+    const relIds = edgeStore.relIds({
+      sourceEntity: sourceId,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+      targetEntity: targetId,
+    });
+    
+    if (relIds.length === 0) {
+      throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
     }
+    
+    return { relId: relIds[0] };
   },
   
-  updateFlowLabel: (flowId: EARS.EntityId, label: string): OperationResult => {
-    try {
-      const ts = getTimestamp();
-      
-      tx(flowId).updateBatch({
-        label,
-        updatedAt: ts
-      });
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
+  updateFlowLabel: (flowId: EARS.EntityId, label: string): void => {
+    const ts = getTimestamp();
+    
+    tx(flowId).updateBatch({
+      label,
+      updatedAt: ts
+    });
   },
   
-  updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput): OperationResult => {
-    try {
-      const ts = getTimestamp();
-      
-      // Get the current node to determine its type
-      const currentNode = qx(nodeId).pickOne(['nodeType']) as { nodeType: NodeKind } | undefined;
-      if (!currentNode) {
-        throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
-      }
-      
-      // Extract relations and attributes based on node type
-      const { relations, attributes } = extractNodeRelations(currentNode.nodeType, updates);
-      
-      // Update node-specific relationships
-      updateNodeRelations(currentNode.nodeType, nodeId, relations);
-      
-      // Filter out system fields and build updates
-      const fieldsToUpdate = filterSystemFields(attributes);
-      
-      // Build the transaction for node attributes
-      const transaction = tx(nodeId);
-      
-      // Update each field using the new update method that replaces values
-      Object.entries(fieldsToUpdate).forEach(([key, value]) => {
-        transaction.update(key, value);
-      });
-      
-      // Always update the timestamp
-      transaction.update("updatedAt", ts);
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
+  updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput): void => {
+    const ts = getTimestamp();
+    
+    // Get the current node to determine its type
+    const currentNode = qx(nodeId).pickOne(['nodeType']) as { nodeType: NodeKind } | undefined;
+    if (!currentNode) {
+      throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
+    
+    // Extract relations and attributes based on node type
+    const { relations, attributes } = extractNodeRelations(currentNode.nodeType, updates);
+    
+    // Update node-specific relationships
+    updateNodeRelations(currentNode.nodeType, nodeId, relations);
+    
+    // Filter out system fields and build updates
+    const fieldsToUpdate = filterSystemFields(attributes);
+    
+    // Build the transaction for node attributes
+    const transaction = tx(nodeId);
+    
+    // Update each field using the new update method that replaces values
+    Object.entries(fieldsToUpdate).forEach(([key, value]) => {
+      transaction.update(key, value);
+    });
+    
+    // Always update the timestamp
+    transaction.update("updatedAt", ts);
   },
   
-  deleteNode: (nodeId: EARS.EntityId): OperationResult => {
-    try {
+  deleteNode: (nodeId: EARS.EntityId): void => {
       // First, find the flow that contains this node
       const allFlows = qx(EARS.Entity.Flow).map((flow) => flow) as EARS.EntityId[];
       let containingFlowId: EARS.EntityId | undefined;
@@ -539,21 +493,11 @@ export const flowsCommands = {
       
       // Finally, delete the node entity
       tx(nodeId).destroy();
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
   },
   
-  deleteEdge: (edgeId: EARS.EntityId): OperationResult => {
-    try {
-      // Directly remove the relation using its ID
-      removeRelation(edgeId);
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
+  deleteEdge: (edgeId: EARS.EntityId): void => {
+    // Directly remove the relation using its ID
+    removeRelation(edgeId);
   },
   
   updateEdge: (
@@ -562,52 +506,38 @@ export const flowsCommands = {
     oldTarget: EARS.EntityId,
     newSource: EARS.EntityId, 
     newTarget: EARS.EntityId
-  ): RepositoryResult<{ newRelId: EARS.EntityId }> => {
-    try {
-      // First remove the old relation
-      removeRelation(edgeId);
-      
-      // Then create a new relation with the new connections
-      tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
-      
-      // Get the new relation ID
-      const relIds = edgeStore.relIds({
-        sourceEntity: newSource,
-        relationType: EARS.RelKind.TRANSITIONS_TO,
-        targetEntity: newTarget,
-      });
-      
-      if (relIds.length === 0) {
-        throw new RepositoryError('Failed to retrieve updated edge ID', RepositoryErrorCode.OPERATION_FAILED);
-      }
-      
-      return successResult({ newRelId: relIds[0] });
-    } catch (error) {
-      return errorResult(error);
+  ): { newRelId: EARS.EntityId } => {
+    // First remove the old relation
+    removeRelation(edgeId);
+    
+    // Then create a new relation with the new connections
+    tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
+    
+    // Get the new relation ID
+    const relIds = edgeStore.relIds({
+      sourceEntity: newSource,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+      targetEntity: newTarget,
+    });
+    
+    if (relIds.length === 0) {
+      throw new RepositoryError('Failed to retrieve updated edge ID', RepositoryErrorCode.OPERATION_FAILED);
     }
+    
+    return { newRelId: relIds[0] };
   },
   
-  grantRootFlowRole: (flowId: EARS.EntityId): OperationResult => {
-    try {
-      // Grant the root_flow role to the specified flow
-      tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
-      
-      logger.info('Granted root_flow role to flow', { flowId });
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
+  grantRootFlowRole: (flowId: EARS.EntityId): void => {
+    // Grant the root_flow role to the specified flow
+    tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
+    
+    logger.info('Granted root_flow role to flow', { flowId });
   },
   
-  revokeRootFlowRole: (flowId: EARS.EntityId): OperationResult => {
-    try {
-      // Revoke the root_flow role from the specified flow
-      tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
-      
-      logger.info('Revoked root_flow role from flow', { flowId });
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
-    }
+  revokeRootFlowRole: (flowId: EARS.EntityId): void => {
+    // Revoke the root_flow role from the specified flow
+    tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
+    
+    logger.info('Revoked root_flow role from flow', { flowId });
   },
 } as const;

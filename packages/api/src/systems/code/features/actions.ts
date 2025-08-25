@@ -86,26 +86,16 @@ export const actionsSystem = setup({
       const ev = event as { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
       
       // Update the action with new actionFn
-      const result = repository.actionCommands.update(ev.actionId as EARS.EntityId, {
+      repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         actionFn: ev.actionFn
       })
       
-      if (result.success) {
-        const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
-        if (updatedAction) {
-          const wrapped = emit(pluginId, {
-            type: 'codeActions.ACTION_UPDATED',
-            action: updatedAction,
-            actionId: updatedAction.id
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        }
-      } else {
+      const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
+      if (updatedAction) {
         const wrapped = emit(pluginId, {
-          type: 'codeActions.CODE_ERROR',
-          data: {
-            message: `Failed to update action: ${result.error || 'Unknown error'}`
-          }
+          type: 'codeActions.ACTION_UPDATED',
+          action: updatedAction,
+          actionId: updatedAction.id
         })
         rootEvents.emitOutgoing(wrapped.event)
       }

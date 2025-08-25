@@ -86,7 +86,7 @@ export const actionsSystem = setup({
     createAction: ({ system, event }) => {
       const ev = typeOf('CREATE_ACTION', event);
       
-      const result = repository.actionCommands.create({
+      const action = repository.actionCommands.create({
         label: ev.label,
         input: ev.input,
         actionFn: ev.actionFn,
@@ -95,20 +95,16 @@ export const actionsSystem = setup({
         category: ev.category
       });
 
-      if (result.success) {
-        system.get(bus).send(emit(actions, {
-          type: 'ACTION_CREATED',
-          action: result.data,
-          actionId: result.data.id,
-        }));
-      } else {
-        logger.error('Failed to create action:', { error: result.error });
-      }
+      system.get(bus).send(emit(actions, {
+        type: 'ACTION_CREATED',
+        action: action,
+        actionId: action.id,
+      }));
     },
     updateAction: ({ system, event }) => {
       const ev = typeOf('UPDATE_ACTION', event);
       
-      const result = repository.actionCommands.update(ev.actionId as EARS.EntityId, {
+      repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         input: ev.input,
         actionFn: ev.actionFn,
@@ -117,32 +113,24 @@ export const actionsSystem = setup({
         category: ev.category
       });
 
-      if (result.success) {
-        const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
-        
-        if (updatedAction) {
-          system.get(bus).send(emit(actions, {
-            type: 'ACTION_UPDATED',
-            action: updatedAction,
-            actionId: updatedAction.id,
-          }));
-        }
-      } else {
-        logger.error('Failed to update action:', { error: result.error });
+      const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
+      
+      if (updatedAction) {
+        system.get(bus).send(emit(actions, {
+          type: 'ACTION_UPDATED',
+          action: updatedAction,
+          actionId: updatedAction.id,
+        }));
       }
     },
     deleteAction: ({ system, event }) => {
       const ev = typeOf('DELETE_ACTION', event);
-      const result = repository.actionCommands.delete(ev.actionId as EARS.EntityId);
+      repository.actionCommands.delete(ev.actionId as EARS.EntityId);
       
-      if (result.success) {
-        system.get(bus).send(emit(actions, {
-          type: 'ACTION_DELETED',
-          actionId: ev.actionId as EARS.EntityId,
-        }));
-      } else {
-        logger.error('Failed to delete action:', { error: result.error });
-      }
+      system.get(bus).send(emit(actions, {
+        type: 'ACTION_DELETED',
+        actionId: ev.actionId as EARS.EntityId,
+      }));
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);

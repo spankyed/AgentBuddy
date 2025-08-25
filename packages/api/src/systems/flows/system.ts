@@ -95,12 +95,7 @@ export const flowsSystem = setup({
       
       logger.info('Creating new flow');
       
-      const result = repository.flowsCommands.createFlowWithEntryNode();
-      if (!result.success) {
-        logger.error('Failed to create flow', { error: result.error });
-        return;
-      }
-      const { flow, entryNode } = result.data;
+      const { flow, entryNode } = repository.flowsCommands.createFlowWithEntryNode();
       
       const data = repository.flowsQueries.extendedData(flow.id);
       
@@ -117,10 +112,7 @@ export const flowsSystem = setup({
       
       logger.info('Updating flow label', { flowId, label });
       
-      const result = repository.flowsCommands.updateFlowLabel(flowId as EARS.EntityId, label);
-      if (!result.success) {
-        logger.error('Failed to update flow label', { error: result.error });
-      }
+      repository.flowsCommands.updateFlowLabel(flowId as EARS.EntityId, label);
     },
     
     createNode: ({ system, event }) => {
@@ -129,12 +121,7 @@ export const flowsSystem = setup({
       
       logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
       
-      const result = repository.flowsCommands.createNode(flowId as EARS.EntityId, nodeData);
-      if (!result.success) {
-        logger.error('Failed to create node', { error: result.error });
-        return;
-      }
-      const node = result.data;
+      const node = repository.flowsCommands.createNode(flowId as EARS.EntityId, nodeData);
       
       system.get(bus).send(emit(pluginId, {
         type: 'NODE_CREATED',
@@ -150,11 +137,7 @@ export const flowsSystem = setup({
       
       logger.info('Updating node', { flowId, nodeId, updates: nodeData });
       
-      const updateResult = repository.flowsCommands.updateNode(nodeId as EARS.EntityId, nodeData);
-      if (!updateResult.success) {
-        logger.error('Failed to update node', { error: updateResult.error });
-        return;
-      }
+      repository.flowsCommands.updateNode(nodeId as EARS.EntityId, nodeData);
       
       const node = repository.flowsQueries.node(nodeId as EARS.EntityId);
       
@@ -171,11 +154,7 @@ export const flowsSystem = setup({
       
       logger.info('Deleting node', { flowId, nodeId });
       
-      const deleteResult = repository.flowsCommands.deleteNode(nodeId as EARS.EntityId);
-      if (!deleteResult.success) {
-        logger.error('Failed to delete node', { error: deleteResult.error });
-        return;
-      }
+      repository.flowsCommands.deleteNode(nodeId as EARS.EntityId);
       
       // Send confirmation back to frontend
       system.get(bus).send(emit(pluginId, {
@@ -190,13 +169,7 @@ export const flowsSystem = setup({
       
       logger.info('Creating edge', { flowId, sourceId, targetId });
       
-      const result = repository.flowsCommands.createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
-      if (!result.success) {
-        logger.error('Failed to create edge', { error: result.error });
-        return;
-      }
-      
-      const { relId } = result.data;
+      const { relId } = repository.flowsCommands.createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
       
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
@@ -212,11 +185,7 @@ export const flowsSystem = setup({
       
       logger.info('Deleting edge', { flowId, edgeId });
       
-      const result = repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
-      if (!result.success) {
-        logger.error('Failed to delete edge', { error: result.error });
-        return;
-      }
+      repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
       
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_DELETED',
@@ -230,20 +199,13 @@ export const flowsSystem = setup({
       
       logger.info('Updating edge', { flowId, edgeId, oldSource, oldTarget, newSource, newTarget });
       
-      const result = repository.flowsCommands.updateEdge(
+      const { newRelId } = repository.flowsCommands.updateEdge(
         edgeId as EARS.EntityId, 
         oldSource as EARS.EntityId,
         oldTarget as EARS.EntityId,
         newSource as EARS.EntityId, 
         newTarget as EARS.EntityId
       );
-      
-      if (!result.success) {
-        logger.error('Failed to update edge', { error: result.error });
-        return;
-      }
-      
-      const { newRelId } = result.data;
       
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_UPDATED',

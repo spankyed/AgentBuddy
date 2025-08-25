@@ -4,14 +4,9 @@ import {
   findAll,
   createEntityWithDefaults,
   updateEntity,
-  successResult,
-  operationSuccess,
-  errorResult,
-  RepositoryError,
-  RepositoryErrorCode,
   createRelation,
-  type RepositoryResult,
-  type OperationResult
+  RepositoryError,
+  RepositoryErrorCode
 } from '@/core/utils/repository';
 import { qx } from '@/core/utils/ears/helpers/query';
 import { tx } from '@/core/utils/ears/helpers/transaction';
@@ -99,45 +94,41 @@ export const threadQueries = {
 
 // Commands
 export const threadCommands = {
-  create: (input: ThreadCreateData): RepositoryResult<{ id: EARS.EntityId; shortCode: string; timestamp: number }> => {
-    try {
-      if (!input.topic?.trim()) {
-        throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      
-      const ts = Date.now();
-      const count = qx(EARS.Entity.Thread).count() + 1;
-      const code: Record<ThreadEntity["threadType"], ThreadTypeCodes> = {
-        "work-item": "WI",
-        "project": "P",
-        "user": "U",
-      };
-      const shortCode = `${code[input.threadType]}-${count}` as ThreadTypeShortCode;
-
-      const id = tx(EARS.Entity.Thread).id();
-      
-      tx(id).updateBatch({
-        status: "Backlog", // Default status - should match settings default
-        shortCode: shortCode,
-        timestamp: ts,
-        lastMessageTimestamp: ts,
-        createdAt: ts,
-        updatedAt: ts,
-        topic: input.topic,
-        instructions: input.instructions,
-        threadType: input.threadType,
-        tags: input.tags || []  // Store tags as array of names
-      });
-
-      // Create relationships for linked threads only
-      for (const rel of input.linkedThreads ?? []) {
-        tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
-      }
-
-      return successResult({ id, shortCode, timestamp: ts });
-    } catch (error) {
-      return errorResult(error);
+  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number } => {
+    if (!input.topic?.trim()) {
+      throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
+    
+    const ts = Date.now();
+    const count = qx(EARS.Entity.Thread).count() + 1;
+    const code: Record<ThreadEntity["threadType"], ThreadTypeCodes> = {
+      "work-item": "WI",
+      "project": "P",
+      "user": "U",
+    };
+    const shortCode = `${code[input.threadType]}-${count}` as ThreadTypeShortCode;
+
+    const id = tx(EARS.Entity.Thread).id();
+    
+    tx(id).updateBatch({
+      status: "Backlog", // Default status - should match settings default
+      shortCode: shortCode,
+      timestamp: ts,
+      lastMessageTimestamp: ts,
+      createdAt: ts,
+      updatedAt: ts,
+      topic: input.topic,
+      instructions: input.instructions,
+      threadType: input.threadType,
+      tags: input.tags || []  // Store tags as array of names
+    });
+
+    // Create relationships for linked threads only
+    for (const rel of input.linkedThreads ?? []) {
+      tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
+    }
+
+    return { id, shortCode, timestamp: ts };
   },
   
   update: (id: EARS.EntityId, updates: {
@@ -146,36 +137,30 @@ export const threadCommands = {
     status?: string; // Dynamic status from settings
     tags?: string[];  // Tag names from settings
     linkedThreads?: any[];
-  }): OperationResult => {
-    try {
-      if (!threadQueries.byId(id)) {
-        throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+  }): void => {
+    if (!threadQueries.byId(id)) {
+      throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+    
+    const { linkedThreads, ...fieldUpdates } = updates;
+    
+    // Update fields (including tags as a direct field)
+    if (Object.keys(fieldUpdates).length > 0) {
+      updateEntity(id, fieldUpdates);
+    }
+    
+    // Update linked threads
+    if (linkedThreads !== undefined) {
+      // Remove all existing custom relations
+      const existingLinks = qx(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      for (const link of existingLinks) {
+        tx(id).unlinkIf(EARS.RelKind.Custom(link.relation), link.id);
       }
       
-      const { linkedThreads, ...fieldUpdates } = updates;
-      
-      // Update fields (including tags as a direct field)
-      if (Object.keys(fieldUpdates).length > 0) {
-        updateEntity(id, fieldUpdates);
+      // Add new relations
+      for (const rel of linkedThreads) {
+        tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
       }
-      
-      // Update linked threads
-      if (linkedThreads !== undefined) {
-        // Remove all existing custom relations
-        const existingLinks = qx(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
-        for (const link of existingLinks) {
-          tx(id).unlinkIf(EARS.RelKind.Custom(link.relation), link.id);
-        }
-        
-        // Add new relations
-        for (const rel of linkedThreads) {
-          tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
-        }
-      }
-      
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
     }
   },
 } as const;

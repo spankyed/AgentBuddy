@@ -2619,32 +2619,6 @@ declare const events: {
         path: string;
     }>];
     readonly outgoing: {
-        type: "AGENT_CONNECTED";
-        data: AgentConnectedData;
-        pluginId: "agent";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "agent";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "agent";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        artifacts: any[];
-        pluginId: "agent";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "agent";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -2687,6 +2661,32 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
+    } | {
+        type: "AGENT_CONNECTED";
+        data: AgentConnectedData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "agent";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "agent";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        artifacts: any[];
+        pluginId: "agent";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "agent";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
@@ -3660,53 +3660,6 @@ interface StartupData {
     terminals: TerminalInfo[];
 }
 
-/**
- * Type-safe query helpers to eliminate repetitive type casting
- * These are simple wrappers around EARS query functions
- */
-declare function findById<T>(id: EARS.EntityId): T | undefined;
-declare function findAll<T>(entityType: EARS.Entity): T[];
-declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
-declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
-declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
-declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
-declare function countEntities(entityType: EARS.Entity): number;
-declare function exists(id: EARS.EntityId): boolean;
-declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
-declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
-
-/**
- * Type-safe transaction helpers for common operations
- */
-declare function prepareEntity<T extends {
-    entityType: EARS.Entity;
-}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
-declare function createEntityWithDefaults<T extends {
-    entityType: EARS.Entity;
-    shortCode?: string;
-    label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
-    id: EARS.EntityId;
-};
-declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
-declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
-declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
-declare function grantRole(entityId: EARS.EntityId, role: string): void;
-declare function revokeRole(entityId: EARS.EntityId, role: string): void;
-
-/**
- * Common repository types for consistent return values and error handling
- */
-type RepositoryResult<T> = {
-    success: true;
-    data: T;
-} | {
-    success: false;
-    error: string;
-    code?: string;
-};
-type OperationResult = RepositoryResult<void>;
-
 declare class LibraryService {
     getById(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
     getDocByCode(shortCode: string): Promise<DocumentDTO | undefined>;
@@ -3836,6 +3789,25 @@ const emitter = /*#__PURE__*/Object.freeze({
   sendToSystem: sendToSystem
 });
 
+/**
+ * Type-safe transaction helpers for common operations
+ */
+declare function prepareEntity<T extends {
+    entityType: EARS.Entity;
+}>(entityType: EARS.Entity, data: Partial<T>, defaults?: Partial<T>): Omit<T, 'id'>;
+declare function createEntityWithDefaults<T extends {
+    entityType: EARS.Entity;
+    shortCode?: string;
+    label?: string;
+}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+    id: EARS.EntityId;
+};
+declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
+declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
+declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
+declare function grantRole(entityId: EARS.EntityId, role: string): void;
+declare function revokeRole(entityId: EARS.EntityId, role: string): void;
+
 type MaybeArr<T> = T | readonly T[];
 
 declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] | readonly EARS.EntityId[]) => {
@@ -3921,6 +3893,21 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     };
     readonly reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => T;
 };
+
+/**
+ * Type-safe query helpers to eliminate repetitive type casting
+ * These are simple wrappers around EARS query functions
+ */
+declare function findById<T>(id: EARS.EntityId): T | undefined;
+declare function findAll<T>(entityType: EARS.Entity): T[];
+declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
+declare function findFirst<T>(entityType: EARS.Entity, field: string, value: any): T | undefined;
+declare function findWithFields<T>(entityType: EARS.Entity, fields: string[]): T[];
+declare function findByIdWithFields<T>(id: EARS.EntityId, fields: string[]): T | undefined;
+declare function countEntities(entityType: EARS.Entity): number;
+declare function exists(id: EARS.EntityId): boolean;
+declare function findWithRole<T>(entityType: EARS.Entity, role: string): T[];
+declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T | undefined;
 
 /**
  * Database Service
@@ -4075,7 +4062,7 @@ declare const services: {
                 input?: Record<string, any>;
                 actionFn: string;
                 output?: any;
-            }) => RepositoryResult<ActionEntity>;
+            }) => ActionEntity;
             readonly update: (id: EARS.EntityId, updates: {
                 label?: string;
                 description?: string;
@@ -4083,8 +4070,8 @@ declare const services: {
                 input?: Record<string, any>;
                 actionFn?: string;
                 output?: any;
-            }) => OperationResult;
-            readonly delete: (id: EARS.EntityId) => OperationResult;
+            }) => void;
+            readonly delete: (id: EARS.EntityId) => void;
         };
         readonly agentQueries: {
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
@@ -4102,13 +4089,13 @@ declare const services: {
                 threadId: EARS.EntityId;
                 text: string;
                 sender: "user" | "assistant" | "system";
-            }) => RepositoryResult<{
+            }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
                 text: string;
                 sender: string;
                 timestamp: number;
-            }>;
+            };
         };
         readonly brainQueries: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
@@ -4152,24 +4139,24 @@ declare const services: {
             readonly connectedData: () => FlowsConnectedData;
         };
         readonly flowsCommands: {
-            readonly createFlow: (flow?: Partial<FlowEntity>) => RepositoryResult<FlowEntity>;
-            readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => RepositoryResult<{
+            readonly createFlow: (flow?: Partial<FlowEntity>) => FlowEntity;
+            readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => {
                 flow: FlowEntity;
                 entryNode: NodeEntity;
-            }>;
-            readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => RepositoryResult<NodeEntity>;
-            readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId) => RepositoryResult<{
+            };
+            readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => NodeEntity;
+            readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId) => {
                 relId: EARS.EntityId;
-            }>;
-            readonly updateFlowLabel: (flowId: EARS.EntityId, label: string) => OperationResult;
-            readonly updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput) => OperationResult;
-            readonly deleteNode: (nodeId: EARS.EntityId) => OperationResult;
-            readonly deleteEdge: (edgeId: EARS.EntityId) => OperationResult;
-            readonly updateEdge: (edgeId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => RepositoryResult<{
+            };
+            readonly updateFlowLabel: (flowId: EARS.EntityId, label: string) => void;
+            readonly updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput) => void;
+            readonly deleteNode: (nodeId: EARS.EntityId) => void;
+            readonly deleteEdge: (edgeId: EARS.EntityId) => void;
+            readonly updateEdge: (edgeId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => {
                 newRelId: EARS.EntityId;
-            }>;
-            readonly grantRootFlowRole: (flowId: EARS.EntityId) => OperationResult;
-            readonly revokeRootFlowRole: (flowId: EARS.EntityId) => OperationResult;
+            };
+            readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
+            readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
         };
         readonly libraryQueries: {
             readonly getDocuments: (collectionId?: string) => DocumentDTO[];
@@ -4217,15 +4204,15 @@ declare const services: {
                 templateFn: string;
                 inputs?: Record<string, any>;
                 category?: string;
-            }) => RepositoryResult<PromptEntity>;
+            }) => PromptEntity;
             update: (id: EARS.EntityId, updates: {
                 label?: string;
                 description?: string;
                 templateFn?: string;
                 inputs?: Record<string, any>;
                 category?: string;
-            }) => OperationResult;
-            delete: (id: EARS.EntityId) => OperationResult;
+            }) => void;
+            delete: (id: EARS.EntityId) => void;
         };
         readonly settingsQueries: {
             getAllSettings: () => SettingsEntity[];
@@ -4274,18 +4261,18 @@ declare const services: {
             readonly connectedData: () => ThreadConnectedData;
         };
         readonly threadCommands: {
-            readonly create: (input: ThreadCreateData) => RepositoryResult<{
+            readonly create: (input: ThreadCreateData) => {
                 id: EARS.EntityId;
                 shortCode: string;
                 timestamp: number;
-            }>;
+            };
             readonly update: (id: EARS.EntityId, updates: {
                 topic?: string;
                 instructions?: string;
                 status?: string;
                 tags?: string[];
                 linkedThreads?: any[];
-            }) => OperationResult;
+            }) => void;
         };
     };
     settings: SettingsService;

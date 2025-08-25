@@ -87,26 +87,16 @@ export const promptsSystem = setup({
       const ev = event as { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
       
       // Update the prompt with new templateFn
-      const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, {
+      repository.promptCommands.update(ev.promptId as EARS.EntityId, {
         templateFn: ev.templateFn
       })
       
-      if (result.success) {
-        const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
-        if (updatedPrompt) {
-          const wrapped = emit(pluginId, {
-            type: 'codePrompts.PROMPT_UPDATED',
-            prompt: updatedPrompt,
-            promptId: updatedPrompt.id
-          } as any)
-          rootEvents.emitOutgoing(wrapped.event as any)
-        }
-      } else {
+      const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
+      if (updatedPrompt) {
         const wrapped = emit(pluginId, {
-          type: 'codePrompts.CODE_ERROR',
-          data: {
-            message: `Failed to update prompt: ${result.error || 'Unknown error'}`
-          }
+          type: 'codePrompts.PROMPT_UPDATED',
+          prompt: updatedPrompt,
+          promptId: updatedPrompt.id
         } as any)
         rootEvents.emitOutgoing(wrapped.event as any)
       }

@@ -4,14 +4,9 @@ import {
   findAll,
   createEntityWithDefaults,
   updateEntity,
-  successResult,
-  operationSuccess,
-  errorResult,
+  findWhere,
   RepositoryError,
-  RepositoryErrorCode,
-  type RepositoryResult,
-  type OperationResult,
-  findWhere
+  RepositoryErrorCode
 } from '@/core/utils/repository';
 import type { PromptEntity } from '../types';
 
@@ -59,25 +54,21 @@ export const promptCommands = {
     templateFn: string;
     inputs?: Record<string, any>;
     category?: string;
-  }): RepositoryResult<PromptEntity> => {
-    try {
-      if (!input.label?.trim()) {
-        throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      if (!input.templateFn?.trim()) {
-        throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-      
-      const prompt = createEntityWithDefaults<PromptEntity>(
-        EARS.Entity.Prompt,
-        input as any,
-        'PROMPT'
-      );
-      
-      return successResult(prompt);
-    } catch (error) {
-      return errorResult(error);
+  }): PromptEntity => {
+    if (!input.label?.trim()) {
+      throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
+    if (!input.templateFn?.trim()) {
+      throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
+    }
+    
+    const prompt = createEntityWithDefaults<PromptEntity>(
+      EARS.Entity.Prompt,
+      input as any,
+      'PROMPT'
+    );
+    
+    return prompt;
   },
   
   update: (id: EARS.EntityId, updates: {
@@ -86,29 +77,19 @@ export const promptCommands = {
     templateFn?: string;
     inputs?: Record<string, any>;
     category?: string;
-  }): OperationResult => {
-    try {
-      if (!promptQueries.byId(id)) {
-        throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-      }
-      
-      updateEntity(id, updates);
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
+  }): void => {
+    if (!promptQueries.byId(id)) {
+      throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
+    
+    updateEntity(id, updates);
   },
   
-  delete: (id: EARS.EntityId): OperationResult => {
-    try {
-      if (!promptQueries.byId(id)) {
-        throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-      }
-      
-      updateEntity(id, { deleted: true, deletedAt: Date.now() });
-      return operationSuccess();
-    } catch (error) {
-      return errorResult(error);
+  delete: (id: EARS.EntityId): void => {
+    if (!promptQueries.byId(id)) {
+      throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
+    
+    updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 };
