@@ -16,8 +16,7 @@ export const threadRows: Rows = {
       topic: 'UI Layout Reorganization Instructions',
       instructions: 'Please reorganize the UI layout of the application to make it more user-friendly.',
       timestamp: nowMs - 9 * 60_000,
-      shortCode: 'U-182',
-      threadType: 'work-item',
+      shortCode: 'T-182',
       status: 'active'
     },
     { 
@@ -27,8 +26,7 @@ export const threadRows: Rows = {
       topic: 'Adding Padding to Scrollbar in CSS',
       instructions: 'Please add padding to the scrollbar of the application to make it more user-friendly.',
       timestamp: nowMs - 61 * 60_000,
-      shortCode: 'WI-45',
-      threadType: 'work-item',
+      shortCode: 'T-45',
       status: 'queued'
     },
     { 
@@ -38,8 +36,7 @@ export const threadRows: Rows = {
       topic: 'Enhancing Chat Interface Design',
       instructions: 'Please enhance the chat interface of the application to make it more user-friendly.',
       timestamp: nowMs - 60 * 60_000,
-      shortCode: 'U-67',
-      threadType: 'work-item',
+      shortCode: 'T-67',
       status: 'draft'
     },
     { 
@@ -49,8 +46,7 @@ export const threadRows: Rows = {
       topic: 'Project X',
       instructions: 'Please create a project X.',
       timestamp: nowMs - 60 * 60_000,
-      shortCode: 'P-13',
-      threadType: 'project',
+      shortCode: 'T-13',
       status: 'inactive'
     },
     /*───────────────────────────────────────────────────────────────*

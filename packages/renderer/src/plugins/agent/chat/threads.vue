@@ -88,7 +88,7 @@
             <div class="px-3 py-1 text-xs font-medium text-neutral-500 uppercase">Create as child of</div>
             
             <ContextMenuItem
-              v-for="projectThread in recentProjectThreads"
+              v-for="projectThread in recentThreads"
               :key="projectThread.id"
               @select="$emit('new-thread-as-child', projectThread.id)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -99,7 +99,7 @@
               </div>
             </ContextMenuItem>
             
-            <div v-if="recentProjectThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
+            <div v-if="recentThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
               No project threads available
             </div>
           </ContextMenuContent>
@@ -139,11 +139,10 @@ const containerRef = ref<HTMLDivElement | null>(null)
 const threadsActor: ThreadsState = applicationState.system.get(threadsId)
 const allThreads = useSelector(threadsActor, (state) => state.context.threads)
 
-const recentProjectThreads = computed(() => {
+const recentThreads = computed(() => {
   return allThreads.value
-    .filter(thread => thread.threadType === 'project')
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-    .slice(0, 10) // Show up to 10 most recent project threads
+    .slice(0, 10) // Show up to 10 most recent threads
 })
 
 const handleClickOutside = (event: MouseEvent) => {

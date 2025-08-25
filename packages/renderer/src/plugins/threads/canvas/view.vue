@@ -69,38 +69,25 @@
             </div>
           </div>
 
-          <!-- Instructions & Type -->
-          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
-              <div
-                v-show="!isEditingInstructions"
-                @click="startEditingInstructions"
-                class="min-h-[8rem] px-4 py-3 rounded-md bg-neutral-800 border border-neutral-700 cursor-text hover:border-neutral-600 transition-colors"
-              >
-                <p class="text-sm whitespace-pre-wrap text-neutral-300">{{ instructions || 'Click to add agent instructions...' }}</p>
-              </div>
-              <textarea
-                ref="instructionsInput"
-                v-show="isEditingInstructions"
-                :value="instructions"
-                @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
-                @blur.passive="isEditingInstructions = false"
-                placeholder="Enter instructions for the agent"
-                class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
-              ></textarea>
+          <!-- Instructions -->
+          <div>
+            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
+            <div
+              v-show="!isEditingInstructions"
+              @click="startEditingInstructions"
+              class="min-h-[8rem] px-4 py-3 rounded-md bg-neutral-800 border border-neutral-700 cursor-text hover:border-neutral-600 transition-colors"
+            >
+              <p class="text-sm whitespace-pre-wrap text-neutral-300">{{ instructions || 'Click to add agent instructions...' }}</p>
             </div>
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Type</label>
-              <select
-                :value="type"
-                @input="e => updateField('threadType', (e.target as HTMLSelectElement).value)"
-                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
-              >
-                <option value="work-item">Task</option>
-                <option value="project">Project</option>
-              </select>
-            </div>
+            <textarea
+              ref="instructionsInput"
+              v-show="isEditingInstructions"
+              :value="instructions"
+              @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
+              @blur.passive="isEditingInstructions = false"
+              placeholder="Enter instructions for the agent"
+              class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+            ></textarea>
           </div>
 
           <!-- Tags -->
@@ -189,7 +176,6 @@ const availableTags = useSelector(actor, (state) => state.context.availableTags)
 const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThreads || []);
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
-const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
 const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);

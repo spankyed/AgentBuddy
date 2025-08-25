@@ -17,7 +17,6 @@ export interface ThreadEntity extends BaseEntity {
   timestamp: number;
   lastMessageTimestamp?: number;
   shortCode?: string;
-  threadType: 'work-item' | 'project' | 'user';
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
 }
@@ -30,18 +29,15 @@ export interface ArtifactEntity extends BaseEntity {
   artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
 }
 
-export type ThreadTypeCodes = 'U' | 'P' | 'WI';
-export type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
-
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
-export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
+export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic'> & {
   relation: ThreadLinkRelation
 };
 
 export type ThreadEditFields = Simplify<
-  Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'>
+  Pick<ThreadEntity, 'topic' | 'instructions'>
   & { status?: ThreadEntity['status'] }
   & { tags?: string[] }  // Just tag names
   & ThreadLinkedFields
@@ -67,6 +63,8 @@ export type ThreadExtendedData = ThreadLinkedFields & {
   messages?: Partial<MessageEntity>[];
   tags?: string[];  // Tag names from thread entity
 }
+
+export type ThreadTypeShortCode = `T-${number}`;
 
 import type { ThreadsSettings, ThreadTagOption } from '@/systems/settings/types';
 export type { ThreadTagOption } from '@/systems/settings/types';

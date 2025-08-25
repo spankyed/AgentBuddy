@@ -17,7 +17,7 @@ export function getDashboardTab(
   
   // Get all threads and transform them into kanban work items
   const allThreads = qx(EARS.Entity.Thread)
-    .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode', 'threadType'] as const)
+    .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode'] as const)
     .filter(thread => thread.id !== dashboardThread.id); // Exclude dashboard thread itself
   
   // Sort threads by most recent update (fallback to createdAt)
@@ -41,8 +41,8 @@ export function getDashboardTab(
       month: '2-digit',
       day: '2-digit'
     }),
-    priority: thread.threadType === 'work-item' ? 1 : thread.threadType === 'project' ? 2 : 3,
-    tags: [thread.threadType],
+    priority: 1, // Default priority
+    tags: [],
     status: thread.status || 'backlog',
     type: 'work-item' as const
   }));

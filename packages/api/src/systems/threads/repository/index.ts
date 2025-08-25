@@ -14,7 +14,6 @@ import type {
   ThreadEntity, MessageEntity,
   ThreadCreateData, 
   ThreadExtendedData, 
-  ThreadTypeCodes, 
   ThreadTypeShortCode,
   ThreadConnectedData,
   ThreadTagOption
@@ -54,7 +53,7 @@ export const threadQueries = {
     qx(threadId)
       .linksPick(
         ["parent_of", "blocks", "blocked_by", "duplicates"],
-        ["shortCode", "topic", "threadType", "status"] as const,
+        ["shortCode", "topic", "status"] as const,
         EARS.Entity.Thread,
       ),
   
@@ -101,12 +100,7 @@ export const threadCommands = {
     
     const ts = Date.now();
     const count = qx(EARS.Entity.Thread).count() + 1;
-    const code: Record<ThreadEntity["threadType"], ThreadTypeCodes> = {
-      "work-item": "WI",
-      "project": "P",
-      "user": "U",
-    };
-    const shortCode = `${code[input.threadType]}-${count}` as ThreadTypeShortCode;
+    const shortCode = `T-${count}` as ThreadTypeShortCode;
 
     const id = tx(EARS.Entity.Thread).id();
     
@@ -119,7 +113,6 @@ export const threadCommands = {
       updatedAt: ts,
       topic: input.topic,
       instructions: input.instructions,
-      threadType: input.threadType,
       tags: input.tags || []  // Store tags as array of names
     });
 

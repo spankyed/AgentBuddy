@@ -2,7 +2,7 @@ export const exampleQuery =
 `// Example queries - modify and run to explore the database
 
 // Query all threads with their data
-return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'threadType', 'timestamp']).limit(10);
+return qx(EARS.Entity.Thread).pick(['id', 'topic', 'status', 'timestamp']).limit(10);
 
 // Or try these examples:
 // return qx(EARS.Entity.Agent).where('status', 'active').pickAll();

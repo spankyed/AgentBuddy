@@ -21,7 +21,6 @@ const tagsSchema = z.array(z.string()).optional();  // Just tag names
 
 const threadSchema = {
   topic: z.string(),
-  threadType: z.string(),
   tags: tagsSchema,
   instructions: z.string(),
 };
@@ -60,7 +59,7 @@ export type ThreadsInternalEvents =
 export type OutgoingThreadsEvents = 
   | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
-  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: string }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
   | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
 
 export interface ThreadsContext {}
@@ -92,7 +91,6 @@ export const threadsSystem = setup({
 
       const { id: newThreadId, shortCode, timestamp } = repository.threadCommands.create({
         topic: thread.topic,
-        threadType: thread.threadType as ThreadEntity['threadType'],
         instructions: thread.instructions,
         tags: thread.tags as string[],  // Tag names
         linkedThreads: thread.linkedThreads as ThreadLinkItem[],

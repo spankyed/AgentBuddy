@@ -14,7 +14,6 @@ export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 const defaultThread: ThreadCreateData | ThreadViewData = {
   topic: '',
-  threadType: 'work-item',
   instructions: '',
   tags: [],
   linkedThreads: [],
@@ -122,7 +121,6 @@ const threadsState = setup({
         entityType: typedEvent.entityType as any,
         shortCode: typedEvent.shortCode,
         topic: typedEvent.topic!,
-        threadType: typedEvent.threadType!,
         instructions: typedEvent.instructions!,
         status: typedEvent.status || '',
         createdAt: typedEvent.timestamp,
@@ -187,13 +185,13 @@ const threadsState = setup({
         return {};
       }
 
-      const { id, shortCode, status, timestamp, topic, threadType, instructions, tags } = selectedThread;
+      const { id, shortCode, status, timestamp, topic, instructions, tags } = selectedThread;
       
       return {
         selectedThreadCode: shortCode,
         view: {
           ...defaultThread,
-          id, shortCode, status, timestamp, topic, threadType, instructions,
+          id, shortCode, status, timestamp, topic, instructions,
           tags: tags as string[],
         },
       };

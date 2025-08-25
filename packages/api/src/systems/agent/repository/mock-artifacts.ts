@@ -182,8 +182,7 @@ export function loadMockThreadWithArtifacts(mockThreadId: EARS.EntityId): void {
     .put('topic', 'Example Thread with Artifacts')
     .put('instructions', 'This is a mock thread demonstrating artifacts')
     .put('timestamp', timestamp)
-    .put('shortCode', 'EX-1')
-    .put('threadType', 'work-item')
+    .put('shortCode', 'T-1')
     .put('status', 'open')
     .put('createdAt', timestamp)
     .id();
@@ -210,7 +209,6 @@ export function loadDashboardTab(): void {
   
   const tabId = tx(dashboardTabId)
     .put('topic', 'Dashboard')
-    .put('threadType', 'tab')
     .put('createdAt', timestamp)
     .put('entityType', EARS.Entity.Thread)
     .grant('catchup_thread')

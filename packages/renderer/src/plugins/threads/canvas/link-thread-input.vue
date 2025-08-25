@@ -231,7 +231,6 @@ function linkThread() {
     status: thread.status,
     timestamp: thread.timestamp,
     topic: thread.topic,
-    threadType: thread.threadType,
     relation: relation.value
   }
   values.value = [...values.value, newLink]
