@@ -381,8 +381,10 @@ export class DatabaseCLI {
         this.history = history.slice(-100); // Keep last 100 commands
         
         if (this.replServer) {
+          // Note: history property doesn't exist on REPLServer type
+          // but it exists at runtime. Using type assertion for compatibility.
           history.forEach(cmd => {
-            this.replServer!.history.push(cmd);
+            (this.replServer as any).history?.push(cmd);
           });
         }
       } catch (error) {

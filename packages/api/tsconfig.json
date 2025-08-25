@@ -21,5 +21,6 @@
     "module": "commonjs",
     "allowImportingTsExtensions": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/cli/**/*", "scripts/**/*"]
 }

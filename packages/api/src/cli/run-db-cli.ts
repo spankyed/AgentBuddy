@@ -195,14 +195,10 @@ Interactive Commands:
 }
 
 // Run if executed directly
-import { fileURLToPath } from 'node:url';
-const __filename = fileURLToPath(import.meta.url);
-
-if (process.argv[1] === __filename) {
-  main().catch(error => {
-    console.error('Unhandled error:', error);
-    process.exit(1);
-  });
-}
+// tsx handles ES modules properly, so we just run main directly
+main().catch(error => {
+  console.error('Unhandled error:', error);
+  process.exit(1);
+});
 
 export { initializeDatabase, cleanup };
