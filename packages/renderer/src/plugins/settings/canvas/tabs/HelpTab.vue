@@ -36,7 +36,7 @@
             rel="noopener noreferrer"
             class="text-neutral-400 hover:text-neutral-300 underline transition-colors"
           >
-            Kathy Lovett Ulrich
+            Kathie Lovett Ulrich
           </a>
         </p>
       </div>
