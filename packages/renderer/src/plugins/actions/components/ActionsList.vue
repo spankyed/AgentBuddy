@@ -47,9 +47,10 @@
               <td class="px-6 py-4">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
-                  :class="categoryStyle(action.category)"
+                  :class="action.category ? 'border' : 'text-neutral-500'"
+                  :style="categoryStyle(action.category)"
                 >
-                  {{ action.category || 'None' }}
+                  {{ getCategoryName(action.category) }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -71,7 +72,7 @@
                       +{{ Object.keys(action.input || {}).length - 2 }} more
                     </span>
                   </template>
-                  <span v-else class="text-xs text-neutral-500">None</span>
+                  <span v-else class="text-xs text-neutral-500">none</span>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -106,15 +107,16 @@
 </template>
 
 <script setup lang="ts">
-import type { ActionEntity, EARS } from '@app/api'
+import type { ActionEntity, EARS, Category } from '@app/api'
 import { Plus, Play, Trash2 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 
 interface Props {
   actions: ActionEntity[]
+  categories: Category[]
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'select': [actionId: EARS.EntityId]
@@ -128,15 +130,32 @@ function handleDelete(actionId: EARS.EntityId) {
   }
 }
 
-function categoryStyle(category?: string) {
-  const styles: Record<string, string> = {
-    'database': 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
-    'communication': 'bg-green-900/30 text-green-400 border border-green-800/50',
-    'integration': 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50',
-    'utility': 'bg-purple-900/30 text-purple-400 border border-purple-800/50',
-    'storage': 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50',
+// Get category name and style
+function getCategoryName(categoryName?: string) {
+  if (!categoryName) return 'none';
+  const category = props.categories.find(c => c.name === categoryName);
+  return category?.name || categoryName;
+}
+
+function categoryStyle(categoryName?: string) {
+  if (!categoryName) return {}; // Return empty object for inline styles when no category
+  
+  const category = props.categories.find(c => c.name === categoryName);
+  if (!category) {
+    // Default style for unrecognized categories - neutral like input fields
+    return {
+      backgroundColor: 'rgb(38 38 38)', // bg-neutral-800
+      color: 'rgb(245 245 245)', // text-neutral-100
+      borderColor: 'rgb(64 64 64)' // border-neutral-700
+    };
   }
-  return styles[category || ''] || 'text-neutral-500'
+  
+  // Create inline styles using the category color
+  return {
+    backgroundColor: `${category.color}1A`, // 10% opacity
+    color: category.color,
+    borderColor: `${category.color}33` // 20% opacity
+  };
 }
 </script>
 

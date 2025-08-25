@@ -30,9 +30,8 @@ export const libraryQueries = {
     const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt'])
 
     const documentsWithDetails = documents.map((doc) => {
-      const tags = qx(doc.id)
-        .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-        .pick(['name'])
+      // Tags are now stored as string array on documents
+      const tags = doc.tags || []
 
       // Find collection that contains this document
       const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
@@ -47,7 +46,7 @@ export const libraryQueries = {
         name: doc.name as string,
         content: doc.content as ContentSection[],
         shortCode: doc.shortCode as DocumentShortCode,
-        tags: tags.map((t) => t.name as string),
+        tags: tags as string[],
         collectionId: collection?.id,
         collectionPath,
         displayOrder: getDisplayOrder(doc),
@@ -66,9 +65,8 @@ export const libraryQueries = {
 
     if (!document) return null
 
-    const tags = qx(documentId as EARS.EntityId)
-      .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-      .pick(['name'])
+    // Tags are now stored as string array on documents
+    const tags = document.tags || []
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
       qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)
@@ -83,7 +81,7 @@ export const libraryQueries = {
       name: document.name as string,
       content: document.content as ContentSection[],
       shortCode: document.shortCode as DocumentShortCode,
-      tags: tags.map((t) => t.name as string),
+      tags: tags as string[],
       collectionId: collection?.id,
       collectionPath,
       displayOrder: getDisplayOrder(document),
@@ -195,9 +193,8 @@ export const libraryQueries = {
       const size = formatFileSize(contentLength)
       
       // Get tags
-      const tags = qx(doc.id as EARS.EntityId)
-        .linksTo(EARS.RelKind.HAS, EARS.Entity.Tag)
-        .pick(['name'])
+      // Tags are now stored as string array on documents
+      const tags = doc.tags || []
       
       items.push({
         type: 'document',
@@ -206,7 +203,7 @@ export const libraryQueries = {
         shortCode: doc.shortCode as DocumentShortCode,
         parentId: folderId,
         content: contentSections,
-        tags: tags.map(tag => tag.name as string),
+        tags: tags as string[],
         size,
         kind: 'Document',
         displayOrder: getDisplayOrder(doc),
@@ -313,5 +310,37 @@ export const libraryQueries = {
     const documents = documentIds.map((id) => this.getDocument(id))
     
     return documents.filter((doc): doc is DocumentDTO => doc !== null)
+  },
+
+  getAllDocuments(): DocumentDTO[] {
+    const documents = qx(EARS.Entity.Document)
+      .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
+
+    const documentsWithDetails = documents.map((doc) => {
+      // Tags are now stored as string array on documents
+      const tags = doc.tags || []
+
+      // Find collection that contains this document
+      const collectionLinks = qx(doc.id as EARS.EntityId)
+        .links(EARS.RelKind.CONTAINS, EARS.Entity.Collection, false)
+      const collection = collectionLinks.length > 0 ? qx(collectionLinks[0].id).pickAll()[0] : null
+
+      const collectionPath = collection ? getCollectionPath(collection.id as EARS.EntityId) : []
+
+      return {
+        id: doc.id,
+        name: doc.name as string,
+        content: doc.content as ContentSection[],
+        shortCode: doc.shortCode as DocumentShortCode,
+        tags: tags as string[],
+        collectionId: collection?.id,
+        collectionPath,
+        displayOrder: doc.displayOrder as number || 0,
+        createdAt: doc.createdAt as string,
+        updatedAt: doc.updatedAt as string,
+      }
+    })
+
+    return documentsWithDetails
   }
 } as const

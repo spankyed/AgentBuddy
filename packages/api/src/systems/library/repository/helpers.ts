@@ -43,18 +43,21 @@ export const getItemsForReordering = (folderId: EARS.EntityId | null) => {
   ]
 }
 
-export const createTagsForEntity = (entityId: EARS.EntityId, tagNames: string[]) =>
-  tagNames.forEach(name => {
-    const tagId = `Tag-${uuid()}` as EARS.EntityId
-    tx(tagId).put('name', name)
-    tx(entityId).link(EARS.RelKind.HAS, tagId)
-  })
+// Tags are now stored as string arrays on entities, not as separate entities
+// This function is no longer needed but kept for reference
+// export const createTagsForEntity = (entityId: EARS.EntityId, tagNames: string[]) =>
+//   tagNames.forEach(name => {
+//     const tagId = `Tag-${uuid()}` as EARS.EntityId
+//     tx(tagId).put('name', name)
+//     tx(entityId).link(EARS.RelKind.HAS, tagId)
+//   })
 
-export const removeAllTagsFromEntity = (entityId: EARS.EntityId) =>
-  qx(entityId).linksTo(EARS.RelKind.HAS, EARS.Entity.Tag).pickAll().forEach(tag => {
-    edgeStore.unlink({ sourceEntity: entityId, relationType: EARS.RelKind.HAS, targetEntity: tag.id as EARS.EntityId })
-    tx(tag.id as EARS.EntityId).destroy()
-  })
+// Tags are now managed in settings, not as entities
+// export const removeAllTagsFromEntity = (entityId: EARS.EntityId) =>
+//   qx(entityId).linksTo(EARS.RelKind.HAS, EARS.Entity.Tag).pickAll().forEach(tag => {
+//     edgeStore.unlink({ sourceEntity: entityId, relationType: EARS.RelKind.HAS, targetEntity: tag.id as EARS.EntityId })
+//     tx(tag.id as EARS.EntityId).destroy()
+//   })
 
 export function getNextDisplayOrder(parentId: EARS.EntityId | null): number {
   const items = getItemsForReordering(parentId)

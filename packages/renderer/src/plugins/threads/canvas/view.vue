@@ -58,11 +58,13 @@
                 @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option value="backlog">Backlog</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="in-review">In Review</option>
-                <option value="done">Done</option>
+                <option 
+                  v-for="statusOption in (settings?.statuses || [])" 
+                  :key="statusOption.label" 
+                  :value="statusOption.label"
+                >
+                  {{ statusOption.label }}
+                </option>
               </select>
             </div>
           </div>
@@ -105,7 +107,7 @@
           <div>
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Tags</label>
             <TagInput 
-              v-model="tagNames"
+              :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
               class="w-full"
@@ -142,6 +144,8 @@
           <ThreadLinkInput
             v-model="linkedThreads"
             :available-threads="threadsList"
+            :available-tags="availableTags"
+            :settings="settings"
             @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
             @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
             @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
@@ -174,9 +178,9 @@ import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import MessageList from './message-list.vue'
-import TagInput from './tag-input.vue'
+import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
-import type { TagEntity, ThreadTagItem, ThreadEditFields } from '@app/api';
+import type { ThreadEditFields } from '@app/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
 const threadId = useSelector(actor, (state) => state.context.view.id);
@@ -186,9 +190,10 @@ const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThr
 const tags = useSelector(actor, (state) => state.context.view.tags || []);
 const topic = useSelector(actor, (state) => state.context.view.topic || '');
 const type = useSelector(actor, (state) => state.context.view.threadType || 'work-item');
-const status = useSelector(actor, (state) => state.context.view.status || 'backlog');
+const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
 const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
+const settings = useSelector(actor, (state) => state.context.settings);
 
 const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields] | undefined) => {
   console.log('updateField', key, value);
@@ -200,10 +205,6 @@ const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
 const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
-const tagNames = computed(() => {
-  const tagList = tags.value || [];
-  return tagList;
-});
 
 const startEditingTopic = () => {
   isEditingTopic.value = true;

@@ -588,6 +588,13 @@ import { createInsertConsoleLogAction } from './monaco-actions'
 
 export type EditorAction = 'executeCode' | 'insertConsoleLog'
 
+export interface EditorActionOptions {
+  executeKeybinding?: {
+    key: string
+    modifiers: string[]
+  }
+}
+
 /**
  * Create editor actions based on requested action types
  */
@@ -596,7 +603,8 @@ export function createEditorActions(
   actions?: EditorAction[],
   callbacks?: {
     onExecute?: () => void
-  }
+  },
+  options?: EditorActionOptions
 ): editor.IActionDescriptor[] {
   if (!actions || actions.length === 0) return []
   
@@ -606,13 +614,14 @@ export function createEditorActions(
     switch (action) {
       case 'executeCode':
         if (callbacks?.onExecute) {
+          const keybindings = options?.executeKeybinding 
+            ? [convertKeybindingToMonaco(monaco, options.executeKeybinding), monaco.KeyCode.F5]
+            : [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, monaco.KeyCode.F5]
+          
           actionDescriptors.push({
             id: 'execute-code',
             label: 'Execute Code',
-            keybindings: [
-              monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-              monaco.KeyCode.F5,
-            ],
+            keybindings,
             run: callbacks.onExecute,
           })
         }
@@ -636,6 +645,74 @@ export function createEditorKeybindings(
   onExecute?: () => void
 ): editor.IActionDescriptor[] {
   return createEditorActions(monaco, ['executeCode'], { onExecute })
+}
+
+/**
+ * Convert a keybinding object to Monaco KeyCode
+ */
+function convertKeybindingToMonaco(
+  monaco: Monaco,
+  keybinding: { key: string; modifiers: string[] }
+): number {
+  let result = 0
+  
+  // Add modifiers
+  for (const modifier of keybinding.modifiers) {
+    switch (modifier.toLowerCase()) {
+      case 'cmd':
+      case 'meta':
+      case 'command':
+        result |= monaco.KeyMod.CtrlCmd
+        break
+      case 'ctrl':
+      case 'control':
+        result |= monaco.KeyMod.CtrlCmd
+        break
+      case 'alt':
+      case 'option':
+        result |= monaco.KeyMod.Alt
+        break
+      case 'shift':
+        result |= monaco.KeyMod.Shift
+        break
+    }
+  }
+  
+  // Add key
+  const keyMap: Record<string, number> = {
+    'Enter': monaco.KeyCode.Enter,
+    'Space': monaco.KeyCode.Space,
+    'Tab': monaco.KeyCode.Tab,
+    'Escape': monaco.KeyCode.Escape,
+    'ArrowUp': monaco.KeyCode.UpArrow,
+    'ArrowDown': monaco.KeyCode.DownArrow,
+    'ArrowLeft': monaco.KeyCode.LeftArrow,
+    'ArrowRight': monaco.KeyCode.RightArrow,
+    'F1': monaco.KeyCode.F1,
+    'F2': monaco.KeyCode.F2,
+    'F3': monaco.KeyCode.F3,
+    'F4': monaco.KeyCode.F4,
+    'F5': monaco.KeyCode.F5,
+    'F6': monaco.KeyCode.F6,
+    'F7': monaco.KeyCode.F7,
+    'F8': monaco.KeyCode.F8,
+    'F9': monaco.KeyCode.F9,
+    'F10': monaco.KeyCode.F10,
+    'F11': monaco.KeyCode.F11,
+    'F12': monaco.KeyCode.F12,
+  }
+  
+  if (keyMap[keybinding.key]) {
+    result |= keyMap[keybinding.key]
+  } else if (keybinding.key.length === 1) {
+    // Single character keys
+    const keyCode = `Key${keybinding.key.toUpperCase()}` as keyof typeof monaco.KeyCode
+    if (monaco.KeyCode[keyCode]) {
+      result |= monaco.KeyCode[keyCode]
+    }
+  }
+  
+  return result
 }
 
 // ============================================================================

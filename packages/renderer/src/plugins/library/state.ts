@@ -64,6 +64,9 @@ export interface LibraryContext {
   testQuery: string
   testResults: any[]
   isSearching: boolean
+  
+  // Settings
+  settings?: any
 }
 
 export type LibraryEvents =
@@ -478,6 +481,30 @@ export const librarySystem = setup({
       testResults: [],
       isSearching: false,
     }),
+    // ? think we're sending duplicate documents data on startup
+    setStartupData: assign({
+      documents: ({ event }) => {
+        if (event.type === 'LIBRARY_STARTUP') {
+          const documents = event.data.documents
+          // Sync tags to localStorage for backward compatibility
+          tagStorage.updateTagsFromDocuments(documents)
+          return documents
+        }
+        return []
+      },
+      collections: ({ event }) => {
+        if (event.type === 'LIBRARY_STARTUP') {
+          return event.data.collections
+        }
+        return []
+      },
+      settings: ({ event }) => {
+        if (event.type === 'LIBRARY_STARTUP') {
+          return event.data.settings
+        }
+        return undefined
+      },
+    }),
   },
   guards: {
     targetIs,
@@ -518,10 +545,16 @@ export const librarySystem = setup({
     testQuery: '',
     testResults: [],
     isSearching: false,
+    
+    // Settings
+    settings: undefined,
   },
   on: {
     PLUGIN_ACTIVATED: {
       actions: ['requestFolderContents', 'requestCollections'],
+    },
+    LIBRARY_STARTUP: {
+      actions: ['setStartupData'],
     },
     
     // New file browser events

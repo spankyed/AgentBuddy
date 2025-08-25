@@ -10,7 +10,6 @@ export namespace EARS {
     Brain    = 'Brain',
     Message  = 'Message',
     Thread   = 'Thread',
-    Tag      = 'Tag',
     Relation = 'Relation',
     Artifact = 'Artifact',
     Flow = 'Flow',
@@ -23,6 +22,9 @@ export namespace EARS {
     SearchIndex = 'SearchIndex',
     Terminal = 'Terminal',
     Directory = 'Directory',
+    Settings = 'Settings',
+    FAQ = 'FAQ',
+    Secret = 'Secret',
   }
   export type EntityId = `${Entity}-${string}`;
 

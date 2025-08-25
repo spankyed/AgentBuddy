@@ -7,6 +7,7 @@ import { actionService } from './action';
 import { libraryService } from './library';
 import * as browser from './browser';
 import { repositoryService } from './repository';
+import { settingsService } from './settings';
 
 const services = {
   logger: loggerService,
@@ -18,6 +19,7 @@ const services = {
   library: libraryService,
   browser,
   repository: repositoryService,
+  settings: settingsService,
 }
 
 export default services;

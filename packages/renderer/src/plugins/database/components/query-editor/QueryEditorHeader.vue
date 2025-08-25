@@ -63,7 +63,7 @@
         :error="error"
         :success-message="successMessage"
       />
-      <KeyboardHint />
+      <KeyboardHint :execute-query="executeQuery" />
       
       
       <QueryEditorActions
@@ -91,6 +91,8 @@ import KeyboardHint from './KeyboardHint.vue';
 import QueryEditorMessages from './QueryEditorMessages.vue';
 import QueryEditorActions from './QueryEditorActions.vue';
 
+import type { KeyboardShortcut } from '@app/api';
+
 defineProps<{
   activeMode: 'query' | 'examples';
   isLoading: boolean;
@@ -98,6 +100,7 @@ defineProps<{
   error: string | null;
   successMessage: string;
   mode: 'query' | 'transaction';
+  executeQuery?: KeyboardShortcut;
 }>();
 
 defineEmits<{

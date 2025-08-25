@@ -50,14 +50,15 @@ export type OutgoingCodeEvents =
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
   // Broadcast events (sent to all child systems)
-  | { type: 'CODE_STARTUP'; data: { terminals: TerminalInfo[]; rootDirectory: string | null; currentDirectory: string | null } }
+  | { type: 'CODE_STARTUP'; data: CodeStartupData }
+  | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 // Import only the type needed for broadcast event
-import { TerminalInfo } from './types'
+import { TerminalInfo, CodeStartupData, CodeSettings } from './types'
 
 export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
 
-type CodeInternalEvents = SystemEvents
+type CodeInternalEvents = SystemEvents | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
@@ -186,6 +187,17 @@ export const systemMachine = setup({
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
+    updateSettings: ({ event }) => {
+      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      
+      // Forward settings to frontend
+      const wrapped = emit(id, {
+        type: 'CODE_SETTINGS_UPDATED',
+        settings: ev.settings
+      })
+      rootEvents.emitOutgoing(wrapped.event)
+    },
+    
     broadcastStartup: ({ system, context }) => {
       // Send CODE_STARTUP to all children that need it
       system.get('explorer')?.send({ type: 'CODE_STARTUP' });
@@ -193,14 +205,19 @@ export const systemMachine = setup({
       system.get('codeActions')?.send({ type: 'CODE_STARTUP' });
       system.get('codePrompts')?.send({ type: 'CODE_STARTUP' });
       
+      // Get code settings - this will create default settings if they don't exist
+      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
+      
       // Send initial directory state to frontend
+      const startupData: CodeStartupData = {
+        rootDirectory: context.rootDirectory,
+        currentDirectory: context.currentDirectory,
+        settings: codeSettings
+      };
+      
       const wrapped = emit(id, {
         type: 'CODE_STARTUP',
-        data: {
-          terminals: [], // Will be populated by terminal system
-          rootDirectory: context.rootDirectory,
-          currentDirectory: context.currentDirectory
-        }
+        data: startupData
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -251,10 +268,19 @@ export const systemMachine = setup({
 }).createMachine({
   id,
   initial: 'idle',
-  context: (() => {
-    // Get last opened directory from EARS
-    const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
-    const rootDir = lastOpenedDir?.path || null
+  context: () => {
+    // Get code settings to check for default root directory
+    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
+    
+    // Priority: defaultRootDirectory > lastOpenedDir > null
+    let rootDir: string | null = null;
+    if (codeSettings?.defaultRootDirectory) {
+      rootDir = codeSettings.defaultRootDirectory;
+    } else {
+      // Fall back to last opened directory
+      const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
+      rootDir = lastOpenedDir?.path || null;
+    }
     
     return {
       currentDirectory: rootDir,
@@ -262,13 +288,17 @@ export const systemMachine = setup({
       gitRepository: rootDir ? new GitRepository(rootDir) : null,
       gitWatcher: rootDir ? new GitWatcherService(rootDir) : null
     }
-  })(),
+  },
   entry: ['spawnFeatureActors', 'setupGitWatcher'],
   states: {
     idle: {
       on: {
         CLIENT_CONNECTED: {
           actions: 'broadcastStartup',
+        },
+        // Handle settings updates
+        CODE_SETTINGS_UPDATED: {
+          actions: 'updateSettings'
         },
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {

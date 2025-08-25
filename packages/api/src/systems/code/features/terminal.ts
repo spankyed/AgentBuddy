@@ -4,7 +4,8 @@ import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { terminalService } from '../services/terminal'
-import { TerminalInfo } from '../types'
+import { TerminalInfo, CodeSettings } from '../types'
+import { repository } from '@/repository'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -67,12 +68,8 @@ export const terminalSystem = setup({
       const terminals = terminalService.list()
       
       const wrapped = emit(pluginId, {
-        type: 'CODE_STARTUP',
-        data: { 
-          terminals,
-          rootDirectory: context.rootDirectory,
-          currentDirectory: context.rootDirectory
-        }
+        type: 'terminal.TERMINALS_LISTED',
+        data: terminals
       })
       rootEvents.emitOutgoing(wrapped.event)
     },
@@ -247,7 +244,16 @@ export const terminalSystem = setup({
       terminalService.killAll()
     },
 
-    restoreTerminals: async () => {
+    restoreTerminals: async ({ context }) => {
+      // Get current settings directly from EARS - this will create default settings if they don't exist
+      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+      
+      // Check if terminal restoration is enabled
+      if (codeSettings?.restoreTerminals === false) {
+        console.log('[Terminal] Terminal restoration disabled by settings')
+        return
+      }
+      
       // Restore all active terminals from EARS
       await terminalService.restoreAll((terminalInfo) => {
         // Set up output handler for restored terminal

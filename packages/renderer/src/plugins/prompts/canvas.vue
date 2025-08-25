@@ -4,6 +4,7 @@
     <PromptsList 
       v-if="state.hasTag('list-prompts')"
       :prompts="prompts"
+      :categories="categories"
       @select="handleSelectPrompt"
       @create="handleCreatePrompt"
       @edit="handleEditPrompt"
@@ -15,6 +16,7 @@
       v-else-if="state.hasTag('create-prompt') || state.hasTag('detail-prompt')"
       :prompt="state.hasTag('detail-prompt') ? selectedPrompt : undefined"
       :form-data="formData"
+      :categories="categories"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-inputs="handleUpdateInputs"
@@ -40,6 +42,7 @@ const state = useSelector(actor, (state) => state);
 const prompts = useSelector(actor, (state) => state.context.prompts);
 const selectedPrompt = useSelector(actor, (state) => state.context.selectedPrompt);
 const formData = useSelector(actor, (state) => state.context.formData);
+const categories = useSelector(actor, (state) => state.context.categories);
 
 // List handlers
 function handleSelectPrompt(promptId: EARS.EntityId) {

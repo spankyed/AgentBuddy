@@ -1,35 +1,34 @@
 // plugins/types.ts
 import type { Component } from 'vue';
 import type { AnyStateMachine } from 'xstate';
+import type { PluginHotkeyDefinition } from '@/core/utils/hotkeys';
 
 type RouteName = string;
 export type RouteComponents = Record<RouteName, Component>;
 
-export interface HotkeyEvent {
-  type: 'HOTKEY_PRESSED';
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-  preventDefault: () => void;
-}
+// Re-export hotkey utilities for backward compatibility
+export { 
+  type HotkeyEvent,
+  type HotkeysMap,
+  type PluginHotkeyDefinition,
+  matchesHotkey,
+  processHotkeys,
+  createHotkeyProcessor
+} from '@/core/utils/hotkeys';
 
 export interface Plugin {
-  /** Toolbar key */
-  id: string;
+  id: string; // Toolbar key
   label: string;
+  isPinned?: boolean;
+  state: AnyStateMachine; // XState definition – the host will spin up the actor lazily
   icon?: Component;
-  /** XState definition – the host will spin up the actor lazily */
-  state: AnyStateMachine;
   /** UI fragments (omit one to fall back to Main) */
   canvas?: Component | RouteComponents;
   panel?: Component;
   chat?: Component;
-  isPinned?: boolean;
-  /** Optional plugin configuration */
+  settings?: Component; // Settings component for plugin-specific configuration
+  hotkeys?: PluginHotkeyDefinition[];
   options?: {
-    /** Custom header class for the canvas area */
-    headerClass?: string;
+    headerClass?: string; // Custom header class for the canvas area
   };
 }

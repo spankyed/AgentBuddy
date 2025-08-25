@@ -58,6 +58,7 @@ export const promptCommands = {
     description?: string;
     templateFn: string;
     inputs?: Record<string, any>;
+    category?: string;
   }): RepositoryResult<PromptEntity> => {
     try {
       if (!input.label?.trim()) {
@@ -84,6 +85,7 @@ export const promptCommands = {
     description?: string;
     templateFn?: string;
     inputs?: Record<string, any>;
+    category?: string;
   }): OperationResult => {
     try {
       if (!promptQueries.byId(id)) {

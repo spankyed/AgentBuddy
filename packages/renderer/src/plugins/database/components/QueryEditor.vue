@@ -7,6 +7,7 @@
       :error="error"
       :success-message="successMessage"
       :mode="mode"
+      :execute-query="settings?.hotkeys?.executeQuery"
       @execute="handleExecute"
       @clear="handleClear"
       @magic-prompt="showMagicPrompt = true"
@@ -22,6 +23,8 @@
         language="typescript"
         :function-body="true"
         dsl-type="database"
+        :actions="['executeCode']"
+        :execute-keybinding="settings?.hotkeys?.executeQuery || undefined"
         @execute="handleExecute"
         class="h-full"
       />
@@ -57,6 +60,7 @@ const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);
 const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMessage);
 const mode = useSelector(actor, (state) => state.context.mode);
+const settings = useSelector(actor, (state) => state.context.settings);
 
 // Local state
 const activeMode = ref<'query' | 'examples'>('query');

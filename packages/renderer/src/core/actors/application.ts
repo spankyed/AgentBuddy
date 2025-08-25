@@ -1,5 +1,8 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
-import type { Plugin, HotkeyEvent } from '@/core/types';
+import type { Plugin } from '@/core/types';
+import type { HotkeyEvent } from '@/core/utils/hotkeys';
+import { processHotkeys } from '@/core/utils/hotkeys';
+import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
@@ -22,6 +25,8 @@ export interface ApplicationContext {
   activePlugin: Plugin;
   defaultPlugin: Plugin;
   plugins: Plugin[];
+  visiblePlugins: Plugin[]; // Filtered list of visible plugins
+  pluginVisibility: Record<string, boolean>; // Plugin visibility settings
   breadcrumbs: BreadcrumbItem[];
   targetView: string;
   panelSizes: {
@@ -29,54 +34,11 @@ export interface ApplicationContext {
     inspectionWidth: number; // pixels
     previousInspectionWidth?: number; // for restoring after collapse
   };
+  hotkeysDisabled: boolean;
+  hotkeys: ApplicationHotkeys;
 }
 
 export const application = 'application' as const;
-
-// Global hotkey definitions
-interface GlobalHotkeyDefinition {
-  key: string
-  metaKey?: boolean
-  ctrlKey?: boolean
-  altKey?: boolean
-  shiftKey?: boolean
-  description: string
-  action: { type: string; payload?: any }
-}
-
-const globalHotkeys: GlobalHotkeyDefinition[] = [
-  {
-    key: 'b',
-    metaKey: true,
-    description: 'Toggle inspection panel',
-    action: { type: 'TOGGLE_INSPECTION_PANEL' }
-  },
-  {
-    key: 'ArrowUp',
-    metaKey: true,
-    altKey: true,
-    description: 'Switch to previous plugin',
-    action: { type: 'SWITCH_PLUGIN_UP' }
-  },
-  {
-    key: 'ArrowDown',
-    metaKey: true,
-    altKey: true,
-    description: 'Switch to next plugin',
-    action: { type: 'SWITCH_PLUGIN_DOWN' }
-  }
-];
-
-// Helper to match keyboard event with hotkey definition
-function matchesGlobalHotkey(e: KeyboardEvent, hotkey: GlobalHotkeyDefinition): boolean {
-  return (
-    e.key === hotkey.key &&
-    (hotkey.metaKey === undefined || e.metaKey === hotkey.metaKey) &&
-    (hotkey.ctrlKey === undefined || e.ctrlKey === hotkey.ctrlKey) &&
-    (hotkey.altKey === undefined || e.altKey === hotkey.altKey) &&
-    (hotkey.shiftKey === undefined || e.shiftKey === hotkey.shiftKey)
-  );
-}
 
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string }
@@ -89,6 +51,12 @@ export type ApplicationEvent =
   | { type: 'SWITCH_PLUGIN_UP' }
   | { type: 'SWITCH_PLUGIN_DOWN' }
   | { type: 'FORWARD_HOTKEY'; event: HotkeyEvent }
+  | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: KeyboardEvent }
+  | { type: 'HOTKEYS_RECORDING_START' }
+  | { type: 'HOTKEYS_RECORDING_END' }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
+  | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+  | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -101,18 +69,9 @@ export const createApplicationState = () => setup({
   actors: {
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Check for global hotkeys first
-        const matchingGlobalHotkey = globalHotkeys.find(hotkey => 
-          matchesGlobalHotkey(e, hotkey)
-        );
+        const appActor = system.get(application);
         
-        if (matchingGlobalHotkey) {
-          e.preventDefault();
-          system.get(application).send(matchingGlobalHotkey.action);
-          return;
-        }
-        
-        // Forward all other hotkeys to the active plugin
+        // Create hotkey event and send to be processed
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
           key: e.key,
@@ -123,7 +82,11 @@ export const createApplicationState = () => setup({
           preventDefault: () => e.preventDefault()
         };
         
-        system.get(application).send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+        appActor.send({ 
+          type: 'PROCESS_GLOBAL_HOTKEY', 
+          hotkeyEvent,
+          originalEvent: e
+        });
       };
 
       window.addEventListener('keydown', handleKeyDown);
@@ -161,7 +124,6 @@ export const createApplicationState = () => setup({
             console.error('Error in subscription:', error);
           },
           onData: (event: any) => {
-            // console.log('event: ', event);
             const { pluginId, ...ev } = event;
             system.get(pluginId).send(ev);
           },
@@ -174,23 +136,83 @@ export const createApplicationState = () => setup({
     }),
   },
   actions: {
+    updateHotkeys: assign(({ event }) => {
+      const { hotkeys } = typeOf('APPLICATION_HOTKEYS', event);
+      return { hotkeys };
+    }),
+    
+    updatePluginVisibility: assign(({ event, context }) => {
+      const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
+      
+      // Filter plugins based on visibility
+      const visiblePlugins = context.plugins.filter(plugin => 
+        pluginVisibility[plugin.id] !== false
+      );
+      
+      return { 
+        pluginVisibility,
+        visiblePlugins
+      };
+    }),
+    
+    syncLastActivePlugin: ({ event, self, context }) => {
+      const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
+      
+      // Sync localStorage with backend
+      localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
+      
+      // Only switch if plugin exists and differs from current
+      const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
+      if (targetPlugin && targetPlugin.id !== context.activePlugin.id) {
+        self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
+      }
+    },
+    
+    processGlobalHotkey: ({ self, context, system, event }) => {
+      const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
+      
+      const actionType = processHotkeys(
+        hotkeyEvent,
+        context.hotkeys,
+        {
+          toggleInspectionPanel: 'TOGGLE_INSPECTION_PANEL',
+          switchPluginUp: 'SWITCH_PLUGIN_UP',
+          switchPluginDown: 'SWITCH_PLUGIN_DOWN'
+        }
+      );
+      
+      if (actionType) {
+        if (originalEvent) {
+          originalEvent.preventDefault();
+        }
+        self.send({ type: actionType });
+      } else {
+        // Not an application hotkey, forward to plugins
+        self.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
+      }
+    },
+    
+    setHotkeysDisabled: assign({
+      hotkeysDisabled: (_, value: boolean) => value
+    }),
+    
     switchPluginByDirection: ({ context, event, self }) => {
-      // Use all plugins for switching
-      const allPlugins = context.plugins;
+      // Use only visible plugins for switching
+      const visiblePlugins = context.visiblePlugins;
       
-      if (allPlugins.length === 0) return;
+      if (visiblePlugins.length === 0) return;
       
-      const currentIndex = allPlugins.findIndex(p => p.id === context.activePlugin.id);
+      const currentIndex = visiblePlugins.findIndex(p => p.id === context.activePlugin.id);
       if (currentIndex === -1) return;
       
       let newIndex: number;
       if (event.type === 'SWITCH_PLUGIN_UP') {
-        newIndex = currentIndex === 0 ? allPlugins.length - 1 : currentIndex - 1;
+        newIndex = currentIndex === 0 ? visiblePlugins.length - 1 : currentIndex - 1;
       } else {
-        newIndex = currentIndex === allPlugins.length - 1 ? 0 : currentIndex + 1;
+        newIndex = currentIndex === visiblePlugins.length - 1 ? 0 : currentIndex + 1;
       }
       
-      const newPluginId = allPlugins[newIndex].id;
+      const newPluginId = visiblePlugins[newIndex].id;
       
       self.send({
         type: 'SELECT_PLUGIN',
@@ -199,15 +221,21 @@ export const createApplicationState = () => setup({
     },
     
     forwardHotkeyToPlugin: ({ context, event, system }) => {
-      try {
-        const activePluginActor = system.get(context.activePlugin.id);
-        if (activePluginActor) {
-          activePluginActor.send(typeOf('FORWARD_HOTKEY', event).event);
-        }
-      } catch (error) {
-        // Silently ignore if plugin can't receive hotkey events
-        console.debug(`Plugin ${context.activePlugin.id} cannot receive hotkey events`, error);
+      const hotkeyEvent = typeOf('FORWARD_HOTKEY', event).event;
+      
+      // First, send to all plugins that have global hotkeys
+      const globalPlugins = context.plugins.filter(plugin => 
+        plugin.hotkeys?.some(h => h.global)
+      );
+      
+      for (const plugin of globalPlugins) {
+        const pluginActor = system.get(plugin.id);
+        pluginActor.send(hotkeyEvent);
       }
+      
+      // Then send to active plugin for non-global hotkeys
+      const activePluginActor = system.get(context.activePlugin.id);
+      activePluginActor.send(hotkeyEvent);
     },
     
     setTargetView: assign(({ event, system }, params?: string) => ({
@@ -234,6 +262,26 @@ export const createApplicationState = () => setup({
         defaultToggles: { ...context.defaultToggles, canvas: false },
         activePlugin: newPlugin
       });
+      
+      // Persist the new active plugin if it changed
+      if (previousPlugin && previousPlugin.id !== newPlugin.id) {
+        enqueue(({ context }) => {
+          const pluginId = context.activePlugin.id;
+          
+          // Save to localStorage for immediate access on next load
+          localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
+          
+          // Send to backend to persist across sessions/devices
+          trpc.bus.send.mutate({
+            systemId: 'settings',
+            type: 'UPDATE_SETTINGS',
+            entityType: 'plugin',
+            label: '_meta',
+            path: ['lastActivePlugin'],
+            value: pluginId
+          });
+        });
+      }
     }),
     handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
       defaultToggles: {
@@ -255,9 +303,15 @@ export const createApplicationState = () => setup({
         id: pluginId
       });
       // enqueue({ type: 'setTargetView', params: pluginId });
-      enqueue.assign(({ system }) => ({
-        targetView: computeCrumbs(system.get(pluginId).getSnapshot()).target
-      }))
+      enqueue.assign(({ system }) => {
+        const pluginActor = system.get(pluginId);
+        if (pluginActor) {
+          return {
+            targetView: computeCrumbs(pluginActor.getSnapshot()).target
+          };
+        }
+        return {};
+      })
     }),
     spawnPluginActors: enqueueActions(({ enqueue, context }) => {
       // enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
@@ -305,6 +359,7 @@ export const createApplicationState = () => setup({
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
+    areHotkeysEnabled: ({ context }) => !context.hotkeysDisabled,
   },
 }).createMachine({
   id: application,
@@ -313,13 +368,33 @@ export const createApplicationState = () => setup({
     const savedSizes = localStorage.getItem('agentbuddy-panel-sizes');
     const defaultSizes = {
       canvasHeight: 50, // 50% of main area
-      inspectionWidth: 448, // 28rem = 448px (16px base)
+      inspectionWidth: 448, // 28rem = 448px (16px base),
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
     
+    // Load last active plugin from localStorage
+    const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
+    
+    // Initialize with all plugins visible by default
+    const pluginVisibility: Record<string, boolean> = {};
+    input.plugins.forEach(plugin => {
+      pluginVisibility[plugin.id] = true;
+    });
+    
+    // Determine initial active plugin - use saved one if it exists and is valid
+    let initialActivePlugin = input.plugins[0];
+    if (savedLastActivePlugin) {
+      const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
+      if (savedPlugin) {
+        initialActivePlugin = savedPlugin;
+      }
+    }
+    
     return {
       plugins: input.plugins,
-      activePlugin: input.plugins[0],
+      visiblePlugins: input.plugins, // Initially all plugins are visible
+      pluginVisibility,
+      activePlugin: initialActivePlugin,
       defaultPlugin: input.defaultPlugin,
       breadcrumbs: [],
       defaultToggles: {
@@ -328,6 +403,8 @@ export const createApplicationState = () => setup({
       },
       targetView: '',
       panelSizes,
+      hotkeysDisabled: false,
+      hotkeys: {}, // Start with empty hotkeys until loaded from backend
     };
   },
   initial: 'setup',
@@ -352,6 +429,15 @@ export const createApplicationState = () => setup({
     },
   },
   on: {
+    APPLICATION_HOTKEYS: {
+      actions: 'updateHotkeys'
+    },
+    PLUGIN_VISIBILITY_UPDATED: {
+      actions: 'updatePluginVisibility'
+    },
+    APPLICATION_RESTORE_LAST_PLUGIN: {
+      actions: 'syncLastActivePlugin'
+    },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],
     },
@@ -396,6 +482,22 @@ export const createApplicationState = () => setup({
     },
     FORWARD_HOTKEY: {
       actions: 'forwardHotkeyToPlugin'
+    },
+    PROCESS_GLOBAL_HOTKEY: {
+      guard: 'areHotkeysEnabled',
+      actions: 'processGlobalHotkey'
+    },
+    HOTKEYS_RECORDING_START: {
+      actions: {
+        type: 'setHotkeysDisabled',
+        params: true
+      }
+    },
+    HOTKEYS_RECORDING_END: {
+      actions: {
+        type: 'setHotkeysDisabled',
+        params: false
+      }
     },
   }
 });

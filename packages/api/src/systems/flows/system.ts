@@ -7,6 +7,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-h
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
 import { FlowsStartupData, FlowEntity, NodeEntity } from './config/types';
+import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 
@@ -38,6 +39,7 @@ export const IncomingFlowsEvents = [
 
 export type FlowsInternalEvents = 
   | SystemEvents
+  | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_STARTUP'; data: FlowsStartupData }
@@ -62,17 +64,17 @@ export const flowsSystem = setup({
   },
   actors: {},
   actions: {
-    sendFlowsStartup: ({ system }) => {
+    handleClientConnection: ({ system }) => {
       const pluginId = flows;
       const data = repository.flowsQueries.startupData();
       logger.info('Sending flows startup data to client', { flows: data.flows.length });
-      
+
       system.get(bus).send(emit(pluginId, {
         type: 'FLOWS_STARTUP',
         data,
       }));
     },
-    
+
     selectFlow: ({ system, event }) => {
       const { flowId } = typeOf('FLOW_SELECT', event);
       const pluginId = flows;
@@ -251,6 +253,46 @@ export const flowsSystem = setup({
         newTarget: newTarget as EARS.EntityId,
       }));
     },
+    
+    handleSettingsUpdate: ({ system, event }) => {
+      const { settings, changes } = typeOf('FLOWS_SETTINGS_UPDATED', event);
+      const pluginId = flows;
+      
+      // Get the current root flow (the one with the root_flow role)
+      const currentRootFlowId = repository.flowsQueries.rootFlow();
+      
+      // Check if rootFlowId changed by comparing with current
+      const newRootFlowId = settings.rootFlowId;
+      
+      if (currentRootFlowId !== newRootFlowId) {
+        logger.info('Updating root flow', { 
+          previousRootFlowId: currentRootFlowId, 
+          newRootFlowId 
+        });
+        
+        // Revoke root_flow role from previous flow if it exists
+        if (currentRootFlowId) {
+          repository.flowsCommands.revokeRootFlowRole(currentRootFlowId);
+        }
+        
+        // Grant root_flow role to new flow if specified
+        if (newRootFlowId) {
+          repository.flowsCommands.grantRootFlowRole(newRootFlowId as EARS.EntityId);
+        }
+        
+        // Send updated startup data to reflect the change
+        const data = repository.flowsQueries.startupData();
+        const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
+        
+        system.get(bus).send(emit(pluginId, {
+          type: 'FLOWS_STARTUP',
+          data: {
+            ...data,
+            settings: flowsSettings || {}
+          },
+        }));
+      }
+    },
   },
   guards: {},
   delays: {}
@@ -262,7 +304,7 @@ export const flowsSystem = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: {
-          actions: 'sendFlowsStartup',
+          actions: 'handleClientConnection',
         },
         FLOW_SELECT: {
           actions: 'selectFlow',
@@ -290,6 +332,9 @@ export const flowsSystem = setup({
         },
         UPDATE_EDGE: {
           actions: 'updateEdge',
+        },
+        FLOWS_SETTINGS_UPDATED: {
+          actions: 'handleSettingsUpdate',
         },
       }
     },

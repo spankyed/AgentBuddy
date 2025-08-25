@@ -101,28 +101,10 @@
               </span>
             </button>
             <div v-if="tagsExpanded" class="space-y-3">
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="(tag, index) in formData.tags"
-                  :key="index"
-                  class="inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                >
-                  {{ tag }}
-                  <button
-                    type="button"
-                    @click="removeTag(index)"
-                    class="ml-2 text-blue-300 hover:text-blue-100 transition-colors"
-                  >
-                    <X class="w-3 h-3" />
-                  </button>
-                </span>
-              </div>
-              <Autocomplete
-                v-model="newTag"
-                @enter="addTag"
-                :suggestions="availableTags"
-                placeholder="Add tag and press Enter"
-                input-class="w-full px-4 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+              <TagInput
+                :modelValue="formData.tags"
+                @update:modelValue="updateTags"
+                :availableTags="availableTags"
               />
             </div>
           </div>
@@ -137,14 +119,19 @@ import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import { X, Copy, Check, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
-import Autocomplete from '@/core/components/design/Autocomplete.vue'
-import { tagStorage } from '../services/tagStorage'
+import TagInput from '@/core/components/design/tag-input.vue'
+import { useSelector } from '@xstate/vue'
+import { applicationState } from '@/main'
 import type { DocumentDTO, CollectionDTO, ContentSection } from '@app/api'
 
 const props = defineProps<{
   document: DocumentDTO
   collections: CollectionDTO[]
 }>()
+
+// Get settings from state
+const actor = applicationState.system.get('library')
+const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const emit = defineEmits<{
   SAVE_DOCUMENT: [{ name: string; content: ContentSection[]; tags: string[]; collectionId?: string }]
@@ -157,7 +144,6 @@ const formData = reactive({
   tags: [] as string[],
 })
 
-const newTag = ref('')
 const copied = ref(false)
 const tagsExpanded = ref(false)
 const sectionRefs = ref<(InstanceType<typeof ContentSectionEditor> | null)[]>([])
@@ -167,7 +153,7 @@ const isValid = computed(() => {
 })
 
 const availableTags = computed(() => {
-  return tagStorage.getTagsSortedByUsage().filter(tag => !formData.tags.includes(tag))
+  return settings.value?.tags || []
 })
 
 
@@ -177,16 +163,8 @@ onMounted(() => {
   formData.tags = [...props.document.tags]
 })
 
-function addTag() {
-  const tag = newTag.value.trim()
-  if (tag && !formData.tags.includes(tag)) {
-    formData.tags.push(tag)
-    newTag.value = ''
-  }
-}
-
-function removeTag(index: number) {
-  formData.tags.splice(index, 1)
+function updateTags(newTags: string[]) {
+  formData.tags = newTags
 }
 
 function addContentSection() {

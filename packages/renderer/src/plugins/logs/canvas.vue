@@ -261,6 +261,19 @@
                 {{ filterLevel === 'error' && searchTerm ? filteredLogs.length : errorCount }}
               </button>
             </div>
+            
+            <!-- Excluded sources indicator -->
+            <button
+              v-if="settings.excludedSources && settings.excludedSources.length > 0"
+              @click="goToExcludedSourcesSettings"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/20 border border-amber-700/30 rounded-lg hover:bg-amber-900/30 transition-colors cursor-pointer"
+              title="Click to manage excluded sources"
+            >
+              <AlertTriangle :size="14" class="text-amber-500" />
+              <span class="text-sm text-amber-400">
+                {{ settings.excludedSources.length }} source{{ settings.excludedSources.length !== 1 ? 's' : '' }} excluded
+              </span>
+            </button>
           </div>
           
           <!-- Clear logs button (moved to far right) -->
@@ -332,6 +345,7 @@ const actor: LogsState = applicationState.system.get(id)
 const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
+const settings = useSelector(actor, (s) => (s as any).context.settings);
 
 const filteredLogs = computed(() => {
   let filtered = logs.value;
@@ -375,6 +389,20 @@ const clearSearch = () => {
 
 const clearLogs = () => {
   actor.send({ type: 'CLEAR_LOGS' });
+};
+
+const goToExcludedSourcesSettings = () => {
+  // Navigate to settings plugin
+  const settingsActor = applicationState.system.get('settings');
+  
+  // First select the Plugins tab
+  settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' });
+  
+  // Then select the logs plugin within that tab
+  settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'logs' });
+  
+  // Switch to settings plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
 };
 
 // Wrapper for the imported highlight function

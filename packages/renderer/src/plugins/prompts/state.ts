@@ -11,6 +11,8 @@ import type {
   OutgoingPromptEvents,
   EARS,
   TemplateInput,
+  Category,
+  PromptsSettings,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 
@@ -27,6 +29,7 @@ export interface PromptsContext {
   page: number;
   totalPages: number;
   totalCount: number;
+  categories: Category[]; // Categories from settings
   
   // Form data for create/edit
   formData: {
@@ -54,6 +57,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_TEMPLATE'; templateFn: string }
   | { type: 'FORM.UPDATE_OUTPUT_SCHEMA'; outputSchema: any }
   | { type: 'GO.BACK' }
+  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
 
 export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<PromptsEvents>()
@@ -72,6 +76,7 @@ const promptsState = setup({
         page: ev.data.page,
         totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
+        categories: ev.data.categories || [],
       }
     }),
 
@@ -237,6 +242,13 @@ const promptsState = setup({
         },
       };
     }),
+    
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_SETTINGS_UPDATED', event);
+      return {
+        categories: ev.settings?.categories || [],
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -249,6 +261,7 @@ const promptsState = setup({
     page: 1,
     totalPages: 1,
     totalCount: 0,
+    categories: [], // Will be populated from settings
     formData: {
       label: '',
       description: '',
@@ -261,6 +274,7 @@ const promptsState = setup({
   on: {
     PROMPTS_STARTUP: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
+    PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: { 
       actions: 'addCreatedPrompt'
     },

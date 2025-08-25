@@ -1,4 +1,5 @@
 import { EARS } from '@/core/types';
+import { Category } from '@/systems/settings/types';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
@@ -26,6 +27,7 @@ export interface ActionsStartupData {
   page: number;
   totalPages: number;
   totalCount: number;
+  categories?: Category[];
 }
 
 export type OutgoingActionEvents =

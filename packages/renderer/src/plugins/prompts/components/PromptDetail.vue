@@ -49,12 +49,13 @@
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
                 <option value="">None</option>
-                <option value="text-processing">Text Processing</option>
-                <option value="development">Development</option>
-                <option value="assistant">Assistant</option>
-                <option value="analysis">Analysis</option>
-                <option value="creative">Creative</option>
-                <option value="formatting">Formatting</option>
+                <option 
+                  v-for="category in categories" 
+                  :key="category.name"
+                  :value="category.name"
+                >
+                  {{ category.name }}
+                </option>
               </select>
             </div>
           </div>
@@ -152,7 +153,7 @@ import { computed } from 'vue';
 import { Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
-import type { PromptEntity, TemplateInput } from '@app/api';
+import type { PromptEntity, TemplateInput, Category } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
@@ -169,6 +170,7 @@ const props = defineProps<{
     templateFn: string;
     outputSchema?: any;
   };
+  categories: Category[];
 }>();
 
 const emit = defineEmits<{

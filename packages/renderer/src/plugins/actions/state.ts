@@ -11,6 +11,8 @@ import type {
   OutgoingActionEvents,
   EARS,
   ActionParameter,
+  Category,
+  ActionsSettings,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 
@@ -27,6 +29,7 @@ export interface ActionsContext {
   page: number;
   totalPages: number;
   totalCount: number;
+  categories: Category[]; // Categories from settings
   
   // Form data for create/edit
   formData: {
@@ -54,6 +57,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_OUTPUT'; output: any }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'GO.BACK' }
+  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
 
 export type ActionsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<ActionsEvents>()
@@ -72,6 +76,7 @@ const actionsState = setup({
         page: ev.data.page,
         totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
+        categories: ev.data.categories || [],
       }
     }),
 
@@ -237,6 +242,13 @@ const actionsState = setup({
         },
       };
     }),
+    
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      return {
+        categories: ev.settings?.categories || [],
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -249,6 +261,7 @@ const actionsState = setup({
     page: 1,
     totalPages: 1,
     totalCount: 0,
+    categories: [], // Will be populated from settings
     formData: {
       label: '',
       description: '',
@@ -261,6 +274,7 @@ const actionsState = setup({
   on: {
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
+    ACTIONS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: { 
       actions: 'addCreatedAction'
     },

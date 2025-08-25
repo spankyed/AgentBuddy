@@ -5,6 +5,7 @@ import Database from './database/plugin.ts';
 import Brain from './brain/plugin.ts';
 import Logs from './logs/plugin.ts';
 import Prompts from './prompts/plugin.ts';
+import Settings from './settings/plugin.ts';
 import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
@@ -16,7 +17,6 @@ import {
   Sparkle,
   Workflow,
   Bird,
-  Settings,
   ListTodo,
   Library as LucideLibrary,
   NotebookText,
@@ -32,7 +32,7 @@ export function mockPlugin(overrides: Partial<Plugin> = {}): Plugin {
   };
 }
 
-const mockPlugins = [
+const mockPlugins: Plugin[] = [
   // wont do
   // mockPlugin({ id: 'dialog', label: 'Dialog Flows', icon: Workflow, }),
   // mockPlugin({ id: 'evals', label: 'Evals', icon: LandPlot, }),
@@ -42,7 +42,6 @@ const mockPlugins = [
   // mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
   // mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
   // mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
-  mockPlugin({ id: 'settings', label: 'settings', icon: Settings, isPinned: true, }),
 ];
 
 export default [
@@ -56,6 +55,7 @@ export default [
   Brain,
   Database,
   Logs,
+  Settings,
   Blank,
   ...mockPlugins,
 ];

@@ -6,7 +6,6 @@ declare namespace EARS {
         Brain = "Brain",
         Message = "Message",
         Thread = "Thread",
-        Tag = "Tag",
         Relation = "Relation",
         Artifact = "Artifact",
         Flow = "Flow",
@@ -18,7 +17,10 @@ declare namespace EARS {
         Collection = "Collection",
         SearchIndex = "SearchIndex",
         Terminal = "Terminal",
-        Directory = "Directory"
+        Directory = "Directory",
+        Settings = "Settings",
+        FAQ = "FAQ",
+        Secret = "Secret"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {

@@ -195,7 +195,7 @@ export function tx(typeOrId: EARS.Entity | EARS.EntityId) {
     },
 
     /*─ entity lifecycle ─*/
-    destroy: () => (destroyEntity(id), undefined as never),
+    destroy: (skipPersistence = false) => (destroyEntity(id, skipPersistence), undefined as never),
 
     /*─ misc ─*/
     id: () => id,

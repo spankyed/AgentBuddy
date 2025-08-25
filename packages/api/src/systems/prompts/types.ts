@@ -3,6 +3,7 @@
  */
 
 import { BaseEntity, EARS } from '@/core/types';
+import { Category } from '@/systems/settings/types';
 
 /**
  * Defines an input parameter that a prompt template expects
@@ -43,4 +44,5 @@ export interface PromptsStartupData {
   page: number;
   totalPages: number;
   totalCount: number;
+  categories?: Category[];
 } 

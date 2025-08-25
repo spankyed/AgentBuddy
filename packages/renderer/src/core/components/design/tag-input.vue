@@ -2,36 +2,46 @@
 import { ComboboxAnchor, ComboboxContent, ComboboxGroup, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxLabel, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText, TagsInputRoot, useFilter } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { X, ChevronDown } from 'lucide-vue-next'
-import type { ThreadTagItem } from '@app/api';
 
 const isOpen = ref(false)
 
+interface TagOption {
+  name: string;
+  color?: string;
+}
+
 const props = defineProps<{
-  modelValue: ThreadTagItem[];
-  availableTags: ThreadTagItem[];
+  modelValue: string[];  // Tag names
+  availableTags: TagOption[];
 }>()
-const emit = defineEmits<(e: 'update:modelValue', value: ThreadTagItem[]) => void>()
+const emit = defineEmits<(e: 'update:modelValue', value: string[]) => void>()
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 const query = ref('')
+// Convert between tag names and display objects
+const displayTags = computed(() => 
+  props.modelValue.map(tagName => {
+    const tag = props.availableTags.find(t => t.name === tagName);
+    return {
+      name: tagName,
+      color: tag?.color
+    };
+  })
+)
+
 const values = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  get: () => displayTags.value,
+  set: (val) => emit('update:modelValue', val.map(v => v.name))
 })
 
 watch(values, () => {
-  console.log('values', values.value)
   query.value = ''
 }, { deep: true })
 
 const filteredOptions = computed(() =>
   props.availableTags
     .filter(option =>
-      startsWith(option.name, query.value) && !values.value.find(item => item.id === option.id))
-    .map(option => ({
-      id: option.id,
-      name: option.name,
-    }))
+      startsWith(option.name, query.value) && !props.modelValue.includes(option.name))
 )
 </script>
 
@@ -43,10 +53,10 @@ const filteredOptions = computed(() =>
     v-model="values"
     :open="isOpen"
     @update:open="isOpen = $event"
+    :allow-create="false"
   >
     <ComboboxAnchor class="w-full">
       <ComboboxTrigger as-child>
-        <!-- <div class="shadow-[0_2px_10px] shadow-black/10"></div> -->
         <div class="inline-flex items-center justify-between rounded-md data-[open=true]:rounded-b-none px-3 py-2 text-sm leading-none gap-2 bg-neutral-800 border border-neutral-700 text-neutral-200 data-[placeholder]:text-neutral-600 outline-none w-full hover:border-neutral-600 focus-within:border-neutral-600 transition-all duration-200" :data-open="isOpen">
           <TagsInputRoot
             delimiter=""
@@ -54,17 +64,22 @@ const filteredOptions = computed(() =>
           >
             <TagsInputItem
               v-for="item in values"
-              :key="item.id"
+              :key="item.name"
               :value="item"
-              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 aria-[current=true]:bg-purple-500/20 transition-colors"
+              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-md border transition-colors"
+              :style="{
+                backgroundColor: `${item.color || '#A855F7'}20`,
+                color: item.color || '#A855F7',
+                borderColor: `${item.color || '#A855F7'}33`
+              }"
             >
               <TagsInputItemText class="text-xs">
                 {{ item.name }}
               </TagsInputItemText>
               <TagsInputItemDelete
-                @click.stop="values = values.filter((v) => v.id !== item.id)"
+                @click.stop="values = values.filter((v) => v.name !== item.name)"
               >
-                <X :size="14" class="hover:text-purple-300" />
+                <X :size="14" class="hover:opacity-70" />
               </TagsInputItemDelete>
             </TagsInputItem>
 
@@ -73,7 +88,7 @@ const filteredOptions = computed(() =>
               as-child
             >
               <TagsInputInput
-                placeholder="Add tag..."
+                placeholder="Search tags..."
                 class="focus:outline-none flex-1 !bg-transparent placeholder:text-neutral-600 px-1 py-0.5 text-sm"
                 @keydown.enter.prevent
               />
@@ -101,7 +116,7 @@ const filteredOptions = computed(() =>
         <ComboboxGroup>
           <ComboboxItem
             v-for="(option, index) in filteredOptions"
-            :key="option.id"
+            :key="option.name"
             class="text-sm leading-none text-neutral-200 rounded flex items-center px-3 py-2 relative select-none data-[disabled]:text-neutral-600 data-[disabled]:pointer-events-none data-[highlighted]:outline-none data-[highlighted]:bg-neutral-700 data-[highlighted]:text-neutral-100 hover:bg-neutral-700 transition-colors cursor-pointer"
             :value="option"
           >
@@ -110,7 +125,7 @@ const filteredOptions = computed(() =>
             >
               <div class="w-1.5 h-1.5 rounded-full bg-purple-400" />
             </ComboboxItemIndicator>
-            <span>
+            <span class="ml-5">
               {{ option.name }}
             </span>
           </ComboboxItem>

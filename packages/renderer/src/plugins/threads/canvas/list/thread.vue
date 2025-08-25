@@ -28,29 +28,33 @@
         </div>
       </div>
       <!-- Status selector and tags -->
-      <div v-if="!lite" class="flex items-center gap-4">
+      <div v-if="!lite && thread.status" class="flex items-center gap-4">
+        <div class="flex gap-2 overflow-hidden max-w-[12rem]">
+          <span
+            @click.stop
+            v-for="(tag, index) in thread.tags"
+            :key="index"
+            :style="getTagStyles(tag)"
+            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors duration-200 truncate"
+          >
+            {{ tag }}
+          </span>
+        </div>
         <select
           @click.stop
           :value="thread.status"
           @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value as ThreadEntity['status'])"
           class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-700 border border-neutral-600 text-neutral-300 hover:bg-neutral-600 focus:outline-none focus:border-neutral-500 transition-all duration-200 appearance-none"
         >
-          <option value="backlog" class="bg-neutral-700 text-neutral-300">Backlog</option>
-          <option value="open" class="bg-neutral-700 text-neutral-300">Open</option>
-          <option value="in-progress" class="bg-neutral-700 text-neutral-300">In Progress</option>
-          <option value="in-review" class="bg-neutral-700 text-neutral-300">In Review</option>
-          <option value="done" class="bg-neutral-700 text-neutral-300">Done</option>
-        </select>
-        <div class="flex gap-2 overflow-hidden max-w-[12rem]">
-          <span
-            @click.stop
-            v-for="tag in thread.tags"
-            :key="tag.id"
-            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 transition-colors duration-200 truncate"
+          <option 
+            v-for="statusOption in (settings?.statuses || [])" 
+            :key="statusOption.label" 
+            :value="statusOption.label"
+            class="bg-neutral-700 text-neutral-300"
           >
-            {{ tag.name }}
-          </span>
-        </div>
+            {{ statusOption.label }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -60,26 +64,21 @@
       type="button"
       class="flex items-center justify-center h-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700 transition-all duration-200 border-l border-neutral-700"
     >
-      Chat
       <MessageCircleMore class="w-4 h-4 ml-1.5"/>
     </button>
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'Thread'
-}
-</script>
-
 <script setup lang="ts">
 import { MessageCircleMore } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/plugins/threads/state';
-import type { ThreadEntity } from '@app/api';
+import type { ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api';
 
-defineProps<{
+const props = defineProps<{
   lite?: boolean;
-  thread: ThreadListItem
+  thread: ThreadListItem;
+  availableTags?: ThreadTagOption[];
+  settings?: ThreadsSettings | null;
 }>();
 
 defineEmits<{
@@ -87,6 +86,16 @@ defineEmits<{
   'status-change': [id: string, status: ThreadEntity['status']]
   'chat-click': [id: string]
 }>();
+
+const getTagStyles = (tagName: string) => {
+  const color = props.availableTags?.find(t => t.name === tagName)?.color || '#A855F7';
+  return {
+    backgroundColor: `${color}1A`, // 10% opacity
+    color,
+    border: `1px solid ${color}33` // 20% opacity for border
+  };
+};
+
 </script>
 
 <style lang="scss">

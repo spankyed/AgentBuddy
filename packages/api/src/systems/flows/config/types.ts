@@ -176,6 +176,7 @@ export interface FlowsStartupData {
   models: ModelConfig[];
   prompts: PromptEntity[];
   actions: ActionEntity[];
+  settings?: any; // FlowsSettings from backend
 }
 
 export interface ModelConfig {

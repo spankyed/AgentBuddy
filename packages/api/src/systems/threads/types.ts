@@ -18,7 +18,8 @@ export interface ThreadEntity extends BaseEntity {
   lastMessageTimestamp?: number;
   shortCode?: string;
   threadType: 'work-item' | 'project' | 'user';
-  status: 'backlog' | 'open' | 'in-progress' | 'in-review' | 'done';
+  status: string; // Dynamic statuses from settings
+  tags?: string[]; // Tag names from settings
 }
 
 export interface ArtifactEntity extends BaseEntity {
@@ -29,33 +30,23 @@ export interface ArtifactEntity extends BaseEntity {
   artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
 }
 
-export interface TagEntity extends BaseEntity {
-  entityType: EARS.Entity.Tag;
-  name: string;
-  color?: string;
-}
-
 export type ThreadTypeCodes = 'U' | 'P' | 'WI';
 export type ThreadTypeShortCode = `${ThreadTypeCodes}-${number}`;
 
-export const ThreadStatuses = ['backlog', 'open', 'in-progress', 'in-review', 'done'] as const;
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
-
-export type ThreadStatus = typeof ThreadStatuses[number];
 export type ThreadLinkRelation = typeof ThreadRelations[number];
 
 export type ThreadLinkItem = Pick<ThreadEntity, 'id' | 'shortCode' | 'status' | 'timestamp' | 'topic' | 'threadType'> & {
   relation: ThreadLinkRelation
 };
-export type ThreadTagItem = Omit<TagEntity, 'createdAt' | 'updatedAt' | 'entityType'>
 
 export type ThreadEditFields = Simplify<
   Pick<ThreadEntity, 'topic' | 'threadType' | 'instructions'>
   & { status?: ThreadEntity['status'] }
+  & { tags?: string[] }  // Just tag names
   & ThreadLinkedFields
 >;
 export type ThreadLinkedFields = {
-  tags?: ThreadTagItem[];
   linkedThreads?: ThreadLinkItem[];
 }
 
@@ -74,9 +65,14 @@ export type ThreadViewData = Simplify<
 export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 export type ThreadExtendedData = ThreadLinkedFields & {
   messages?: Partial<MessageEntity>[];
+  tags?: string[];  // Tag names from thread entity
 }
+
+import type { ThreadsSettings, ThreadTagOption } from '@/systems/settings/types';
+export type { ThreadTagOption } from '@/systems/settings/types';
 
 export type ThreadStartupData = {
   threads: ThreadExtended[];
-  availableTags: TagEntity[];
+  availableTags: ThreadTagOption[];  // Tags from settings
+  settings?: ThreadsSettings | null; // Full thread settings
 }

@@ -100,6 +100,8 @@
           :lite="lite"
           :key="item.id"
           :thread="threadAsListItem(item)"
+          :available-tags="availableTags"
+          :settings="settings"
           @chat-click="emit('chat-click', item.id)"
           @select="emit('select', item.id)"
           @status-change="(id, status) => emit('status-change', id, status)"
@@ -141,7 +143,7 @@ import {
 } from 'reka-ui'
 import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
 import type { EARS } from '@app/api'
-import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended, ThreadEntity } from '@app/api'
+import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api'
 import Thread from './list/thread.vue'
 import type { ThreadListItem } from '../state'
 
@@ -149,6 +151,8 @@ const props = defineProps<{
   lite?: boolean
   modelValue: ThreadLinkItem[]
   availableThreads: Omit<ThreadLinkItem, 'relation'>[]
+  availableTags?: ThreadTagOption[]
+  settings?: ThreadsSettings | null
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: ThreadLinkItem[]): void
@@ -176,11 +180,15 @@ const values = computed({
 })
 
 const threadAsListItem = (thread: ThreadLinkItem) => {
+  // Find the full thread data from availableThreads to get tags
+  const fullThread = props.availableThreads.find(t => t.id === thread.id);
+  
   return {
     entityType: 'Thread' as EARS.Entity.Thread,
     instructions: '', // Default empty instructions since it's not available in ThreadLinkItem
     createdAt: thread.timestamp, // Use timestamp as createdAt since it's not available in ThreadLinkItem
     ...thread,
+    tags: (fullThread as any)?.tags || [], // Include tags from the full thread data
   } as ThreadListItem
 }
 

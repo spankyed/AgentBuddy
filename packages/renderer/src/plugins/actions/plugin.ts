@@ -2,6 +2,7 @@ import type { Plugin } from "@/core/types/index.ts";
 import { Play } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas.vue';
+import settings from './settings.vue';
 
 const actionsPlugin: Plugin = {
   id,
@@ -9,6 +10,7 @@ const actionsPlugin: Plugin = {
   icon: Play,
   state,
   canvas,
+  settings,
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }

@@ -4,6 +4,7 @@
     <ActionsList 
       v-if="state.hasTag('list-actions')"
       :actions="actions"
+      :categories="categories"
       @select="handleSelectAction"
       @create="handleCreateAction"
       @delete="handleDeleteAction"
@@ -14,6 +15,7 @@
       v-else-if="state.hasTag('create-action') || state.hasTag('detail-action')"
       :action="state.hasTag('detail-action') ? selectedAction : undefined"
       :form-data="formData"
+      :categories="categories"
       @update-label="handleUpdateLabel"
       @update-description="handleUpdateDescription"
       @update-parameters="handleUpdateParameters"
@@ -39,6 +41,7 @@ const state = useSelector(actor, (state) => state);
 const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);
 const formData = useSelector(actor, (state) => state.context.formData);
+const categories = useSelector(actor, (state) => state.context.categories);
 
 // List handlers
 function handleSelectAction(actionId: EARS.EntityId) {

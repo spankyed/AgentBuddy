@@ -3,6 +3,7 @@ import { Code2 } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas/canvas.vue';
 import panel from './features/panel.vue';
+import settings from './settings.vue';
 
 const codePlugin: Plugin = {
   id,
@@ -11,7 +12,22 @@ const codePlugin: Plugin = {
   state,
   canvas,
   panel,
-  isPinned: false
+  settings,
+  isPinned: false,
+  hotkeys: [
+    {
+      action: 'openTerminal',
+      global: false
+    },
+    {
+      action: 'navigatePrevPanel',
+      global: false
+    },
+    {
+      action: 'navigateNextPanel',
+      global: false
+    }
+  ]
 };
 
 export default codePlugin;

@@ -8,6 +8,7 @@ import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
+import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -40,6 +41,7 @@ export const IncomingActionEvents = [
 
 export type ActionsInternalEvents = 
   | SystemEvents
+  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingActionEvents =
   | { type: 'ACTIONS_LISTED'; data: ActionsStartupData }
@@ -58,9 +60,15 @@ export const actionsSystem = setup({
   },
   actions: {
     sendActionsStartupData: ({ system }) => {
+      const startupData = repository.actionQueries.startupData();
+      const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
+      
       system.get(bus).send(emit(actions, { 
         type: 'ACTIONS_LISTED',
-        data: repository.actionQueries.startupData()
+        data: {
+          ...startupData,
+          categories: actionsSettings?.categories || []
+        }
       }));
     },
     sendActionData: ({ system, event }) => {
@@ -136,6 +144,41 @@ export const actionsSystem = setup({
         logger.error('Failed to delete action:', { error: result.error });
       }
     },
+    handleSettingsUpdate: ({ system, event }) => {
+      const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      // Handle nested changes format from detectAllArrayChanges
+      const categoryChanges = changes?.categories || changes;
+      
+      if (!categoryChanges) return;
+      
+      const renames = toMap(categoryChanges.renames);
+      // Categories use 'name' property as identifier
+      const removed = toIdentifierSet(categoryChanges.removed, (item: any) => item.name);
+      
+      if (!renames.size && !removed.size) return;
+      
+      // Fallback to first available category or 'Utility'
+      const firstCategoryName = (): string | undefined =>
+        repository.settingsQueries.getPluginSettings('actions')?.categories?.[0]?.name || 'Utility';
+      
+      const busSvc = system.get(bus);
+      
+      for (const a of repository.actionQueries.all()) {
+        const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);
+        
+        if (nextCategory !== a.category) {
+          repository.actionCommands.update(a.id, { category: nextCategory });
+          const updated = repository.actionQueries.byId(a.id);
+          if (updated) {
+            busSvc.send(emit(actions, {
+              type: 'ACTION_UPDATED', 
+              action: updated, 
+              actionId: updated.id
+            }));
+          }
+        }
+      }
+    },
   },
 }).createMachine(
   {
@@ -154,6 +197,9 @@ export const actionsSystem = setup({
       },
       DELETE_ACTION: {
         actions: 'deleteAction',
+      },
+      ACTIONS_SETTINGS_UPDATED: {
+        actions: 'handleSettingsUpdate',
       },
     },
     states: {

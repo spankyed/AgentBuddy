@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, TagEntity, ThreadCreateData, ThreadViewData, ThreadTagItem, ThreadEditFields } from '@app/api';
+import type { ThreadStartupData, ThreadEntity, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings } from '@app/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -22,7 +22,8 @@ const defaultThread: ThreadCreateData | ThreadViewData = {
 
 type SystemEvent =
   | OutgoingThreadsEvents
-  | { type: 'THREAD_STATUS_UPDATED'; threadId: string; status: ThreadEntity['status'] }
+  | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
+  | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
@@ -49,7 +50,7 @@ type ThreadEvents =
 const typeOf = safeEvents<ThreadEvents>();
 
 export type ThreadListItem = Simplify<ThreadEntity & {
-  tags?: Partial<TagEntity>[];
+  tags?: string[];
   isNew?: boolean;
 }>;
 
@@ -61,7 +62,8 @@ interface ThreadsContext {
     parentThreadId?: string;
     parentThread?: ThreadListItem;
   };
-  availableTags: ThreadTagItem[];
+  availableTags: ThreadTagOption[];
+  settings: ThreadsSettings | null;
 }
 
 const threadsState = setup({
@@ -105,6 +107,7 @@ const threadsState = setup({
       return {
         threads: typedEvent.data.threads,
         availableTags: typedEvent.data.availableTags,
+        settings: typedEvent.data.settings,
       };
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
@@ -121,7 +124,7 @@ const threadsState = setup({
         topic: typedEvent.topic!,
         threadType: typedEvent.threadType!,
         instructions: typedEvent.instructions!,
-        status: typedEvent.status || 'backlog',
+        status: typedEvent.status || '',
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
@@ -136,7 +139,7 @@ const threadsState = setup({
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
         timestamp: typedEvent.timestamp,
-        status: 'backlog',
+        status: '',
         tags: context.create.tags,
         isNew: true,
       };
@@ -191,7 +194,7 @@ const threadsState = setup({
         view: {
           ...defaultThread,
           id, shortCode, status, timestamp, topic, threadType, instructions,
-          tags: tags as ThreadTagItem[],
+          tags: tags as string[],
         },
       };
     }),
@@ -235,7 +238,7 @@ const threadsState = setup({
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
-    updateThreadStatus: assign(({ event, context }) => {
+    updateThreadStatus: ({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
       // Send update to backend
       trpc.bus.send.mutate({
@@ -244,23 +247,22 @@ const threadsState = setup({
         threadId: typedEvent.id,
         status: typedEvent.status,
       });
-      // Update local state
+      // Note: Local state will be updated when we receive THREAD_UPDATED from backend
+    },
+    updateThreadFromBackend: assign(({ event, context }) => {
+      const typedEvent = typeOf('THREAD_UPDATED', event);
+      const { threadId, updates } = typedEvent;
+      
       return {
         threads: context.threads.map(t => 
-          t.id === typedEvent.id 
-            ? { ...t, status: typedEvent.status }
+          t.id === threadId 
+            ? { ...t, ...updates }
             : t
-        )
-      };
-    }),
-    updateThreadStatusFromBackend: assign(({ event, context }) => {
-      const typedEvent = typeOf('THREAD_STATUS_UPDATED', event);
-      return {
-        threads: context.threads.map(t => 
-          t.id === typedEvent.threadId 
-            ? { ...t, status: typedEvent.status }
-            : t
-        )
+        ),
+        // Also update view if it's the current thread
+        view: context.view.id === threadId
+          ? { ...context.view, ...updates }
+          : context.view
       };
     }),
     sendUpdateThreadField: ({ event, context }) => {
@@ -273,6 +275,14 @@ const threadsState = setup({
         value,
       });
     },
+    setThreadsSettings: assign(({ event, context }) => {
+      const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
+      // Keep existing available tags as they come from backend with proper IDs
+      // The backend handles syncing tags with settings
+      return {
+        settings: ev.settings
+      };
+    }),
   },
   guards: {
     targetIs
@@ -286,12 +296,13 @@ const threadsState = setup({
     view: {
       id: '' as ThreadEntity['id'],
       shortCode: '',
-      status: 'backlog',
+      status: '',
       timestamp: 0,
       ...defaultThread,
     } as ThreadViewData,
     create: { ...defaultThread },
     availableTags: [],
+    settings: null,
   }),
   on: {
     OPEN_THREAD_CHAT: {
@@ -317,8 +328,11 @@ const threadsState = setup({
     SET_VIEW_DATA: {
       actions: 'setViewData',
     },
-    THREAD_STATUS_UPDATED: {
-      actions: 'updateThreadStatusFromBackend',
+    THREAD_UPDATED: {
+      actions: 'updateThreadFromBackend',
+    },
+    THREADS_SETTINGS_UPDATED: {
+      actions: 'setThreadsSettings',
     },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([

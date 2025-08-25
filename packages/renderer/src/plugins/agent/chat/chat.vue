@@ -19,6 +19,7 @@
     :current-thread="currentThread"
     :threads="threads"
     :current-mode="currentMode"
+    :modes="modes"
     @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
     @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
     @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
@@ -44,6 +45,7 @@ const messages = useSelector(actor, (state) => (state.context.currentThread?.mes
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
+const modes = useSelector(actor, (state) => state.context.modes)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 watch(messages, async () => {

@@ -28,11 +28,17 @@ export interface BrainContext {
   selectedStepNode?: TNodeEntity;
   debugEnabled: boolean;
   animationsEnabled: boolean;
+  brainIsDead: boolean;
+  // Settings
+  settings?: any; // BrainSettings
 }
 
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'DEBUG_TOGGLED'; enabled: boolean }
+  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
+  | { type: 'BRAIN_KILLED' }
+  | { type: 'BRAIN_STARTED' }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -290,6 +296,18 @@ const brainState = setup({
     toggleAnimations: assign({
       animationsEnabled: ({ context }) => !context.animationsEnabled
     }),
+    updateSettings: assign(({ event }) => {
+      const typedEv = typeOf('BRAIN_SETTINGS_UPDATED', event);
+      return {
+        settings: typedEv.settings
+      };
+    }),
+    setBrainKilled: assign({
+      brainIsDead: true
+    }),
+    setBrainStarted: assign({
+      brainIsDead: false
+    }),
   },
   guards: {
     canGoBack: ({ context }) => {
@@ -304,6 +322,7 @@ const brainState = setup({
     showRightPanel: false,
     debugEnabled: false,
     animationsEnabled: true,
+    brainIsDead: true, // Start as dead until we receive BRAIN_STARTED
   },
   initial: 'loading',
   states: {
@@ -385,6 +404,15 @@ const brainState = setup({
         },
         CLEAR_PULSE: {
           actions: 'clearPulse'
+        },
+        BRAIN_SETTINGS_UPDATED: {
+          actions: 'updateSettings'
+        },
+        BRAIN_KILLED: {
+          actions: 'setBrainKilled'
+        },
+        BRAIN_STARTED: {
+          actions: 'setBrainStarted'
         }
       }
     }

@@ -7,6 +7,7 @@ import type {
   OutgoingDatabaseEvents,
   EARS,
   TNodeEntity,
+  DatabaseSettings,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
@@ -32,6 +33,7 @@ export interface DatabaseContext {
   mode: 'query' | 'transaction';
   isMagicPromptLoading: boolean;
   isRefreshing: boolean;
+  settings: DatabaseSettings | null;
   // Trace viewer fields
   viewMode: 'database' | 'trace';
   traceFlows: TNodeEntity[];
@@ -51,7 +53,8 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string } |
-  { type: 'MAGIC_PROMPT_GENERATED'; query: string }
+  { type: 'MAGIC_PROMPT_GENERATED'; query: string } |
+  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -93,6 +96,14 @@ const databaseState = setup({
       const ev = typeOf('DATABASE_REFRESH', event);
       return {
         schema: ev.data.schema
+      }
+    }),
+
+    /* ── settings ─────────────────────────────────────── */
+    setDatabaseSettings: assign(({ event }) => {
+      const ev = typeOf('DATABASE_SETTINGS_UPDATED', event);
+      return {
+        settings: ev.settings
       }
     }),
 
@@ -425,6 +436,7 @@ const databaseState = setup({
     mode: 'query',
     isMagicPromptLoading: false,
     isRefreshing: false,
+    settings: null,
     // Trace viewer fields
     viewMode: 'database',
     traceFlows: [],
@@ -448,6 +460,7 @@ const databaseState = setup({
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
     MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
+    DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },

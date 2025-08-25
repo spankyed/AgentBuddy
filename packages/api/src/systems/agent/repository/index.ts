@@ -12,6 +12,7 @@ import {
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentStartupData, Tab, ArtifactType, ArtifactItem } from '../types';
 import { getDashboardTab } from './dashboard';
+import { settingsQueries } from '@/systems/settings/repository';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -231,11 +232,16 @@ export const agentQueries = {
       .withRole('dashboard_artifact')
       .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[];
 
+    // Get agent settings
+    const allSettings = settingsQueries.getSettings();
+    const agentSettings = allSettings?.plugins?.agent;
+
     return {
       currentThread: currentThreadData,
       threads,
       dashboardArtifacts,
       tabs,
+      settings: agentSettings,
     };
   },
 } as const;

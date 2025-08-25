@@ -8,6 +8,8 @@ import { PromptsStartupData, PromptEntity } from './types';
 import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
+import { settings as settingsSystemId } from '@/systems/settings/system';
+import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 
 const logger = createLogger('prompts');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -41,6 +43,7 @@ export const IncomingPromptEvents = [
 
 export type PromptsInternalEvents = 
   | SystemEvents
+  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingPromptEvents =
   | { type: 'PROMPTS_STARTUP'; data: PromptsStartupData }
@@ -60,9 +63,15 @@ export const promptsSystem = setup({
   },
   actions: {
     sendPromptsStartupData: ({ system }) => {
+      const startupData = repository.promptQueries.startupData();
+      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
+      
       system.get(bus).send(emit(prompts, { 
         type: 'PROMPTS_STARTUP',
-        data: repository.promptQueries.startupData()
+        data: {
+          ...startupData,
+          categories: promptsSettings?.categories || []
+        }
       }));
     },
     sendPromptData: ({ system, event }) => {
@@ -83,7 +92,8 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
-        description: ev.description
+        description: ev.description,
+        category: ev.category
       });
 
       if (result.success) {
@@ -104,6 +114,7 @@ export const promptsSystem = setup({
       if (ev.inputs !== undefined) updates.inputs = ev.inputs;
       if (ev.templateFn !== undefined) updates.templateFn = ev.templateFn;
       if (ev.description !== undefined) updates.description = ev.description;
+      if (ev.category !== undefined) updates.category = ev.category;
       
       const result = repository.promptCommands.update(ev.promptId as EARS.EntityId, updates);
 
@@ -146,6 +157,40 @@ export const promptsSystem = setup({
         }
       }));
     },
+    handleSettingsUpdate: ({ system, event }) => {
+      const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
+      // Handle nested changes format from detectAllArrayChanges
+      const categoryChanges = changes?.categories || changes;
+      
+      if (!categoryChanges) return;
+      
+      const renames = toMap(categoryChanges.renames);
+      // Categories use 'name' property as identifier
+      const removed = toIdentifierSet(categoryChanges.removed, (item: any) => item.name);
+      
+      if (!renames.size && !removed.size) return;
+      
+      // Fallback to first available category or 'General'
+      const emptyCategoryName = (): string | undefined => '';
+      
+      const busSvc = system.get(bus);
+      
+      for (const p of repository.promptQueries.all()) {
+        const nextCategory = mapScalar(p.category, renames, removed, emptyCategoryName);
+        
+        if (nextCategory !== p.category) {
+          repository.promptCommands.update(p.id, { category: nextCategory });
+          const updated = repository.promptQueries.byId(p.id);
+          if (updated) {
+            busSvc.send(emit(prompts, {
+              type: 'PROMPT_UPDATED', 
+              prompt: updated, 
+              promptId: updated.id
+            }));
+          }
+        }
+      }
+    },
   },
 }).createMachine(
   {
@@ -167,6 +212,9 @@ export const promptsSystem = setup({
       },
       FETCH_PROMPTS_PAGE: {
         actions: 'fetchPromptsPage',
+      },
+      PROMPTS_SETTINGS_UPDATED: {
+        actions: 'handleSettingsUpdate',
       },
     },
     states: {

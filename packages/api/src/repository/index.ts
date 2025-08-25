@@ -12,6 +12,7 @@ import { brainQueries, brainCommands } from '@/systems/brain/repository';
 import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
 import { libraryQueries, libraryCommands } from '@/systems/library/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
+import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import { terminalQueries, terminalCommands, directoryQueries, directoryCommands } from '@/systems/code/repository';
 import { threadQueries, threadCommands } from '@/systems/threads/repository';
 
@@ -40,6 +41,10 @@ export const repository = {
   // Prompts system
   promptQueries,
   promptCommands,
+  
+  // Settings system
+  settingsQueries,
+  settingsCommands,
   
   // Code/Terminal system
   terminalQueries,

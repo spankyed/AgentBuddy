@@ -2,6 +2,7 @@ import type { Plugin } from "@/core/types/index.ts";
 import { Database } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import canvas from './canvas.vue';
+import settings from './settings.vue';
 
 const databasePlugin: Plugin = {
   id,
@@ -9,6 +10,7 @@ const databasePlugin: Plugin = {
   icon: Database,
   state,
   canvas,
+  settings,
 };
 
 export default databasePlugin; 

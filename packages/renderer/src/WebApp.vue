@@ -73,7 +73,7 @@ const send = applicationState.send
 const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
-const plugins = useSelector(applicationState, (state) => state.context.plugins)
+const plugins = useSelector(applicationState, (state) => state.context.visiblePlugins) // Use visible plugins
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)

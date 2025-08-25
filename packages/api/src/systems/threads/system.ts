@@ -6,30 +6,24 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-h
 import { EARS } from '@/core/types';
 import { z } from 'zod';
 import { repository } from '@/repository';
+import { tx } from '@/core/utils/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadStartupData } from '@/types';
-import { ThreadRelations, type ThreadExtendedData, type ThreadTagItem } from './types';
+import { ThreadRelations, type ThreadExtendedData } from './types';
 import type { MappedZodLiterals } from '@/core/utils/type-helpers';
 import { agent } from '@/systems/agent/system';
-const threadStartupData = () => repository.threadQueries.startupData();
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
 
 export const threads = 'threads' as const;
 
 const busEvent = systemBus(threads);
 
-const tagsSchema = z.array(z.object({
-  id: z.string(),
-  name: z.string(),
-  color: z.string().optional(),
-})).optional();
+const tagsSchema = z.array(z.string()).optional();  // Just tag names
 
 const threadSchema = {
   topic: z.string(),
   threadType: z.string(),
   tags: tagsSchema,
   instructions: z.string(),
-  // status: z.union(
-  //   ThreadStatuses.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadStatuses>,
-  // ),
 };
 
 const relatedThreadsSchema = z.array(z.object({
@@ -48,7 +42,7 @@ export const IncomingThreadsEvents = [
   busEvent('VIEW_THREAD', { threadId: z.string() }),
   busEvent('UPDATE_THREAD_STATUS', {
     threadId: z.string(),
-    status: z.enum(['backlog', 'open', 'in-progress', 'in-review', 'done']),
+    status: z.string(), // Dynamic statuses from settings
   }),
   busEvent('UPDATE_THREAD_FIELD', {
     threadId: z.string(),
@@ -60,13 +54,14 @@ export const IncomingThreadsEvents = [
 export type ThreadsInternalEvents = 
   | { type: 'CLIENT_CONNECTED' }
   | SystemEvents
+  | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   
 
 export type OutgoingThreadsEvents = 
   | { type: 'THREAD_STARTUP'; data: ThreadStartupData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
-  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: ThreadEntity['status'] }
-  | { type: 'THREAD_STATUS_UPDATED', threadId: string, status: ThreadEntity['status'] }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, threadType?: ThreadEntity['threadType'], instructions?: string, status?: string }
+  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
 
 export interface ThreadsContext {}
 
@@ -81,9 +76,15 @@ export const threadsSystem = setup({
   },
   actions: {
     sendThreadsStartupData: ({ system }) => {
+      const startupData = repository.threadQueries.startupData();
+      const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+      
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_STARTUP',
-        data: threadStartupData()
+        data: {
+          ...startupData,
+          settings: threadsSettings || null
+        }
       }));
     },
     createThread: ({ system, event }) => {
@@ -93,7 +94,7 @@ export const threadsSystem = setup({
         topic: thread.topic,
         threadType: thread.threadType as ThreadEntity['threadType'],
         instructions: thread.instructions,
-        tags: thread.tags as ThreadTagItem[],
+        tags: thread.tags as string[],  // Tag names
         linkedThreads: thread.linkedThreads as ThreadLinkItem[],
       });
 
@@ -153,9 +154,9 @@ export const threadsSystem = setup({
       if (key === 'status') {
         // Emit status update event to threads plugin
         system.get(bus).send(emit(threads, { 
-          type: 'THREAD_STATUS_UPDATED',
+          type: 'THREAD_UPDATED',
           threadId,
-          status: value as ThreadEntity['status'],
+          updates: { status: value as string },
         }));
         
         // Trigger dashboard refresh in agent system
@@ -178,14 +179,82 @@ export const threadsSystem = setup({
       
       // Emit status update event to threads plugin
       system.get(bus).send(emit(threads, { 
-        type: 'THREAD_STATUS_UPDATED',
+        type: 'THREAD_UPDATED',
         threadId,
-        status,
+        updates: { status },
       }));
       
       // Trigger dashboard refresh in agent system
       const agentActor = system.get(agent);
       agentActor.send({ type: 'REFRESH_DASHBOARD' });
+    },
+    handleSettingsUpdate: ({ system, event }) => {
+      const firstStatusLabel = (): string | undefined =>
+        repository.settingsQueries.getPluginSettings('threads')?.statuses?.[0]?.label;
+
+      const { changes } = typeOf('THREADS_SETTINGS_UPDATED', event);
+      if (!changes) return;
+
+      const busSvc = system.get(bus);
+
+      // ----- Status changes -----
+      const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
+      const sRenames = toMap(sBlock?.renames);
+      // Statuses use 'label' property as identifier
+      const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
+      const statusNeedsWork = sRenames.size || sRemoved.size;
+
+      // Fallback for removed statuses: prefer first available status, else keep old.
+      const statusFallback = () => firstStatusLabel();
+
+      // ----- Tag changes -----
+      const tBlock = changes.tags as ChangeBlock | undefined;
+      const tRenames = toMap(tBlock?.renames);
+      // Tags use 'name' property as identifier
+      const tRemoved = toIdentifierSet(tBlock?.removed, (item: any) => item.name);
+      const tagNeedsWork = tRenames.size || tRemoved.size;
+
+      if (!statusNeedsWork && !tagNeedsWork) return;
+
+      let touched = false;
+
+      for (const th of repository.threadQueries.all()) {
+        const patch: { status?: string; tags?: string[] } = {};
+
+        if (statusNeedsWork) {
+          const nextStatus = mapScalar(th.status, sRenames, sRemoved, statusFallback);
+          if (nextStatus !== th.status && nextStatus) {
+            patch.status = nextStatus;
+          }
+        }
+
+        if (tagNeedsWork) {
+          const { next: nextTags, changed } = mapArray(th.tags, tRenames, tRemoved);
+          if (changed) {
+            patch.tags = nextTags;
+          }
+        }
+
+        if (Object.keys(patch).length) {
+          repository.threadCommands.update(th.id, patch);
+          busSvc.send(emit(threads, { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
+          touched = true;
+        }
+      }
+
+      if (touched) {
+        busSvc.send(
+          emit(threads, {
+            type: 'THREAD_STARTUP',
+            data: {
+              ...repository.threadQueries.startupData(),
+              settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+            },
+          })
+        );
+      }
+
+      system.get(agent).send({ type: 'REFRESH_DASHBOARD' });
     },
   },
 }).createMachine(
@@ -196,6 +265,9 @@ export const threadsSystem = setup({
     on: {
       CLIENT_CONNECTED: {
         actions: 'sendThreadsStartupData',
+      },
+      THREADS_SETTINGS_UPDATED: {
+        actions: 'handleSettingsUpdate',
       },
     },
     states: {
