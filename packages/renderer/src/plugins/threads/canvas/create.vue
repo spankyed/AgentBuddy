@@ -29,10 +29,10 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
-      <div class="max-w-4xl p-6 mx-auto">
-        <div class="space-y-6">
-          <!-- Topic Section -->
-          <div class="space-y-4">
+      <div class="max-w-4xl p-6 mx-auto space-y-6">
+        <!-- Topic & Status Section -->
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
             <div>
               <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Topic</label>
               <input
@@ -43,53 +43,52 @@
                 class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
               />
             </div>
-
-            <!-- Instructions & Status -->
-            <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
-                <textarea
-                  :value="instructions"
-                  @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
-                  rows="4"
-                  placeholder="Enter instructions for the agent"
-                  class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
-                ></textarea>
-              </div>
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
-                <select
-                  disabled
-                  :value="settings?.statuses?.[0]?.label || 'Backlog'"
-                  class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md opacity-50 cursor-not-allowed bg-neutral-800 border-neutral-700 text-neutral-300"
+            <div>
+              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
+              <select
+                disabled
+                :value="settings?.statuses?.[0]?.label || 'Backlog'"
+                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md opacity-50 cursor-not-allowed bg-neutral-800 border-neutral-700 text-neutral-300"
+              >
+                <option 
+                  v-for="status in (settings?.statuses || [])" 
+                  :key="status.label" 
+                  :value="status.label"
                 >
-                  <option 
-                    v-for="status in (settings?.statuses || [])" 
-                    :key="status.label" 
-                    :value="status.label"
-                  >
-                    {{ status.label }}
-                  </option>
-                  <!-- Fallback if no settings loaded yet -->
-                  <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
-                </select>
-              </div>
+                  {{ status.label }}
+                </option>
+                <!-- Fallback if no settings loaded yet -->
+                <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
+              </select>
             </div>
-
-            <!-- Tags -->
-            <CollapsibleSection label="Tags" :default-open="false" class="pt-2">
-              <TagInput 
-                :modelValue="tags || []"
-                :available-tags="availableTags"
-                @update:modelValue="updateTags"
-                class="w-full"
-              />
-            </CollapsibleSection>
           </div>
 
-          <!-- Linked Threads Section -->
-          <div class="pt-6 border-t border-neutral-800">
-            <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Linked Threads</label>
+          <!-- Instructions -->
+          <div>
+            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
+            <textarea
+              :value="instructions"
+              @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
+              rows="4"
+              placeholder="Enter instructions for the agent"
+              class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+            ></textarea>
+          </div>
+
+          <!-- Tags -->
+          <CollapsibleSection label="Tags" :default-open="false" class="pt-2">
+            <TagInput 
+              :modelValue="tags || []"
+              :available-tags="availableTags"
+              @update:modelValue="updateTags"
+              class="w-full"
+            />
+          </CollapsibleSection>
+        </div>
+
+        <!-- Linked Threads Section -->
+        <div class="pt-6 border-t border-neutral-800">
+          <CollapsibleSection label="Linked Threads" :default-open="false">
             <ThreadLinkInput
               :lite="true"
               v-model="linkedThreads"
@@ -98,9 +97,8 @@
               :settings="settings"
               @update:modelValue="(links) => updateField('linkedThreads', links)"
             />
-          </div>
+          </CollapsibleSection>
         </div>
-
       </div>
     </div>
   </div>
