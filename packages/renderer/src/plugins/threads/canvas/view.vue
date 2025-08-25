@@ -104,51 +104,44 @@
 
         <!-- Messages Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <button
-            :disabled="messages.length === 0"
-            @click="isMessagesOpen = !isMessagesOpen"
-            :class="[
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all',
-              messages.length === 0 
-                ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed' 
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100'
-            ]"
-          >
-            <ChevronDown 
-              :size="16" 
-              :class="['transition-transform', isMessagesOpen ? 'rotate-180' : '']"
-            />
-            <span>Messages ({{ messages.length }})</span>
-          </button>
-          <div v-if="isMessagesOpen" class="mt-4">
-            <MessageList :is-messages-open="isMessagesOpen" :messages="messages" />
-          </div>
+          <CollapsibleSection :default-open="true">
+            <template #label>
+              Messages ({{ messages.length }})
+            </template>
+            <div v-if="messages.length > 0">
+              <MessageList :is-messages-open="true" :messages="messages" />
+            </div>
+            <div v-else class="text-sm text-neutral-500 italic">
+              No messages yet
+            </div>
+          </CollapsibleSection>
         </div>
 
         <!-- Linked Threads Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <label class="block mb-4 text-xs font-medium tracking-wider uppercase text-neutral-400">Linked Threads</label>
-          <ThreadLinkInput
-            v-model="linkedThreads"
-            :available-threads="threadsList"
-            :available-tags="availableTags"
-            :settings="settings"
-            @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
-            @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
-            @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
-            @update:modelValue="(links) => updateField('linkedThreads', links)"
-          >
-            <template #extra-buttons>
-              <button
-                @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
-                type="button"
-                class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
-              >
-                Create Child Thread
-                <Plus :size="16" class="text-neutral-300" />
-              </button>
-            </template>
-          </ThreadLinkInput>
+          <CollapsibleSection label="Linked Threads" :default-open="true">
+            <ThreadLinkInput
+              v-model="linkedThreads"
+              :available-threads="threadsList"
+              :available-tags="availableTags"
+              :settings="settings"
+              @chat-click="(id) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId: id })"
+              @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
+              @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
+              @update:modelValue="(links) => updateField('linkedThreads', links)"
+            >
+              <template #extra-buttons>
+                <button
+                  @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
+                  type="button"
+                  class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
+                >
+                  Create Child Thread
+                  <Plus :size="16" class="text-neutral-300" />
+                </button>
+              </template>
+            </ThreadLinkInput>
+          </CollapsibleSection>
         </div>
       </div>
     </div>
@@ -156,8 +149,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
-import { X, ChevronDown, MessageCircleMore, ArrowLeft, Plus } from 'lucide-vue-next'
+import { ref, nextTick } from 'vue'
+import { MessageCircleMore, ArrowLeft, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import Label from '@/core/components/design/label.vue'
 import type { Ref } from 'vue'
@@ -167,6 +160,7 @@ import Button from '@/core/components/design/button.vue'
 import MessageList from './message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
+import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { ThreadEditFields } from '@app/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
@@ -186,7 +180,6 @@ const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof 
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
 }
 
-const isMessagesOpen = ref(false);
 const isEditingTopic = ref(false);
 const isEditingInstructions = ref(false);
 const topicInput: Ref<HTMLInputElement | null> = ref(null);
@@ -206,13 +199,5 @@ const startEditingInstructions = () => {
   });
 };
 
-watch(isMessagesOpen, async (isOpen) => {
-  if (isOpen) {
-    await nextTick()
-    const messagesContainer = document.querySelector('.messages-container')
-    if (messagesContainer) {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight
-    }
-  }
-})
+// Scroll functionality removed as CollapsibleSection handles the open state
 </script>
