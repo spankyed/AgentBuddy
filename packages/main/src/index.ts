@@ -37,13 +37,9 @@ export async function initApp(initConfig: AppInitConfig) {
           ? [
             'https://vite.dev',
             'https://developer.mozilla.org',
-            'https://solidjs.com',
-            'https://qwik.dev',
-            'https://lit.dev',
-            'https://react.dev',
-            'https://preactjs.com',
             'https://www.typescriptlang.org',
             'https://vuejs.org',
+            'https://www.postandcourier.com',
           ]
           : [],
       )),
