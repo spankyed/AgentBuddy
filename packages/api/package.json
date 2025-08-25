@@ -13,7 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "generate:dsl-types": "../../scripts/generate-dsl-types-rollup.sh",
-    "postbuild": "npm run generate:dsl-types"
+    "postbuild": "npm run generate:dsl-types",
+    "db:cli": "tsx src/cli/run-db-cli.ts",
+    "db:exec": "tsx src/cli/run-db-cli.ts --exec",
+    "db:script": "tsx src/cli/run-db-cli.ts --script",
+    "db:export": "./scripts/db/export.sh"
   },
   "keywords": [],
   "author": "angel santiago",

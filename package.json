@@ -36,7 +36,11 @@
     "rebuild:dev": "cd packages/api && npm rebuild",
     "package": "npm run build && npm run package:mac",
     "package:mac": "electron-builder --mac --arm64",
-    "package:all": "electron-builder --mac --win --linux"
+    "package:all": "electron-builder --mac --win --linux",
+    "db:cli": "cd packages/api && npm run db:cli",
+    "db:exec": "cd packages/api && npm run db:exec",
+    "db:script": "cd packages/api && npm run db:script",
+    "db:export": "packages/api/scripts/db/export.sh"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
