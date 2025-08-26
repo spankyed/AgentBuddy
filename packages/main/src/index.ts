@@ -8,18 +8,21 @@ import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.js'
 import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createApiServer} from './modules/ApiServer.js';
+import {createSplashScreen} from './modules/SplashScreen.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
-  // Create API server instance first so we can wait for it
+  // Create instances that need to be shared between modules
   const apiServer = createApiServer();
+  const splashScreen = createSplashScreen();
   
   const moduleRunner = createModuleRunner()
     .init(disallowMultipleAppInstance())
     .init(hardwareAccelerationMode({enable: false}))
+    .init(splashScreen)  // Show splash screen early
     .init(apiServer)
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
-    .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer}))
+    .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer, splashScreen}))
     .init(terminateAppOnLastWindowClose())
     // Disable auto-updater until GitHub releases are configured
     // .init(autoUpdater())

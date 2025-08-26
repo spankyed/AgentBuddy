@@ -1,6 +1,7 @@
 import {getNodeMajorVersion} from '@app/electron-versions';
 import {spawn} from 'child_process';
 import electronPath from 'electron';
+import {viteStaticCopy} from 'vite-plugin-static-copy';
 
 export default /**
  * @type {import('vite').UserConfig}
@@ -26,6 +27,19 @@ export default /**
     reportCompressedSize: false,
   },
   plugins: [
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'src/modules/splash/*',
+          dest: 'modules/splash'
+        },
+        {
+          src: '../../resources/draft-final.svg',
+          dest: 'modules/splash',
+          rename: 'logo.svg'
+        }
+      ]
+    }),
     handleHotReload(),
   ],
 });

@@ -3,6 +3,7 @@ import {ModuleContext} from '../ModuleContext.js';
 import {BrowserWindow, ipcMain, app, dialog} from 'electron';
 import type {AppInitConfig} from '../AppInitConfig.js';
 import type {ApiServer} from './ApiServer.js';
+import type {SplashScreen} from './SplashScreen.js';
 import {join} from 'node:path';
 
 class WindowManager implements AppModule {
@@ -10,12 +11,19 @@ class WindowManager implements AppModule {
   readonly #renderer: {path: string} | URL;
   readonly #openDevTools;
   readonly #apiServer?: ApiServer;
+  readonly #splashScreen?: SplashScreen;
 
-  constructor({initConfig, openDevTools = false, apiServer}: {initConfig: AppInitConfig, openDevTools?: boolean, apiServer?: ApiServer}) {
+  constructor({initConfig, openDevTools = false, apiServer, splashScreen}: {
+    initConfig: AppInitConfig, 
+    openDevTools?: boolean, 
+    apiServer?: ApiServer,
+    splashScreen?: SplashScreen
+  }) {
     this.#preload = initConfig.preload;
     this.#renderer = initConfig.renderer;
     this.#openDevTools = openDevTools;
     this.#apiServer = apiServer;
+    this.#splashScreen = splashScreen;
   }
 
   async enable({app}: ModuleContext): Promise<void> {
@@ -30,11 +38,39 @@ class WindowManager implements AppModule {
     // Set up window control handlers
     this.setupWindowControls();
     
+    // Update splash screen status while waiting for API server
+    if (this.#splashScreen) {
+      this.#splashScreen.updateStatus('Starting API server...');
+    }
+    
     // Wait for API server to be ready before creating window
     if (this.#apiServer) {
-      console.log('[MAIN] Waiting for API server to be ready before creating window...');
-      await this.#apiServer.waitForReady();
-      console.log('[MAIN] API server is ready, creating window...');
+      try {
+        await this.#apiServer.waitForReady();
+      } catch (error) {
+        console.error('[MAIN] API server failed to start:', error);
+        
+        // Update splash screen with error message
+        if (this.#splashScreen) {
+          this.#splashScreen.updateStatus('Failed to start API server. Please restart the application.');
+        }
+        
+        // Wait a few seconds to show the error, then close
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Close splash and exit
+        if (this.#splashScreen) {
+          await this.#splashScreen.close();
+        }
+        
+        app.quit();
+        return;
+      }
+    }
+    
+    // Update splash status
+    if (this.#splashScreen && this.#splashScreen.isVisible()) {
+      this.#splashScreen.updateStatus('Loading application...');
     }
     
     await this.restoreOrCreateWindow(true);
@@ -94,6 +130,7 @@ class WindowManager implements AppModule {
       height: 1200,
       minWidth: 1200,
       minHeight: 800,
+      title: 'AgentBuddy-Main', // Used for window identification
       icon: iconPath, // Set the window icon
       titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
       frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
@@ -108,18 +145,40 @@ class WindowManager implements AppModule {
       },
     });
 
-    if (this.#renderer instanceof URL) {
-      await browserWindow.loadURL(this.#renderer.href);
-    } else {
-      await browserWindow.loadFile(this.#renderer.path);
+    try {
+      if (this.#renderer instanceof URL) {
+        await browserWindow.loadURL(this.#renderer.href);
+      } else {
+        await browserWindow.loadFile(this.#renderer.path);
+      }
+    } catch (error) {
+      console.error('[MAIN] Failed to load renderer:', error);
+      await this.closeSplashWithDelay();
+      throw error;
     }
 
     return browserWindow;
   }
 
-  async restoreOrCreateWindow(show = false) {
-    let window = BrowserWindow.getAllWindows().find(w => !w.isDestroyed());
+  private async closeSplashWithDelay(): Promise<void> {
+    if (this.#splashScreen && this.#splashScreen.isVisible()) {
+      setTimeout(async () => {
+        await this.#splashScreen?.close();
+      }, 200);
+    }
+  }
 
+  private isMainWindow(window: BrowserWindow): boolean {
+    // Use window title as identifier
+    return window.getTitle() === 'AgentBuddy-Main';
+  }
+
+  async restoreOrCreateWindow(show = false) {
+    // Find main window using window tagging
+    let window = BrowserWindow.getAllWindows().find(w => 
+      !w.isDestroyed() && this.isMainWindow(w)
+    );
+    
     if (window === undefined) {
       window = await this.createWindow();
     }
@@ -128,17 +187,22 @@ class WindowManager implements AppModule {
       return window;
     }
 
+    // Handle window visibility
     if (window.isMinimized()) {
       window.restore();
     }
 
-    window?.show();
-
+    // Show the window
+    window.show();
+    
     if (this.#openDevTools) {
-      window?.webContents.openDevTools();
+      window.webContents.openDevTools();
     }
-
+    
     window.focus();
+    
+    // Close splash after main window is shown
+    await this.closeSplashWithDelay();
 
     return window;
   }
