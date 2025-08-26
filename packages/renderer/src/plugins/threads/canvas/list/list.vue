@@ -87,6 +87,18 @@
                 </div>
               </td>
               <td class="px-4 py-2">
+                <div class="flex gap-2 overflow-hidden">
+                  <span
+                    v-for="(tag, index) in thread.tags"
+                    :key="index"
+                    :style="getTagStyles(tag)"
+                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-4 py-2">
                 <select
                   @click.stop
                   :value="thread.status"
@@ -102,18 +114,6 @@
                     {{ status.label }}
                   </option>
                 </select>
-              </td>
-              <td class="px-4 py-2">
-                <div class="flex gap-2 overflow-hidden">
-                  <span
-                    v-for="(tag, index) in thread.tags"
-                    :key="index"
-                    :style="getTagStyles(tag)"
-                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
-                  >
-                    {{ tag }}
-                  </span>
-                </div>
               </td>
               <td class="px-4 py-2">
                 <div class="flex items-center justify-end gap-2">
