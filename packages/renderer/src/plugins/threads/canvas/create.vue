@@ -88,7 +88,10 @@
 
         <!-- Linked Threads Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Linked Threads" :default-open="false">
+          <CollapsibleSection :default-open="false">
+            <template #label>
+              Linked Threads ({{ linkedThreads.length }})
+            </template>
             <ThreadLinkInput
               :lite="true"
               v-model="linkedThreads"

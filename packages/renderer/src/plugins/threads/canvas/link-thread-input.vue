@@ -2,7 +2,7 @@
   <div class="flex flex-col w-full gap-2">
     <!-- Link Thread Button / Input -->
     <div>
-      <div v-if="!isInputVisible" class="flex gap-2">
+      <div v-if="!isInputVisible" class="flex items-center gap-2">
         <button
           type="button"
           @click="toggleInput"
@@ -14,7 +14,7 @@
         <slot name="extra-buttons"></slot>
       </div>
 
-      <div v-else class="w-full gap-2 mt-2">
+      <div v-else class="w-full gap-2">
         <div class="flex items-center gap-2">
           <select v-model="relation" class="px-3 py-2 text-sm font-medium transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600">
             <option value="parent_of">parent_of</option>

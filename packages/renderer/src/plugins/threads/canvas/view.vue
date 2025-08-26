@@ -120,7 +120,10 @@
 
         <!-- Linked Threads Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Linked Threads" :default-open="false">
+          <CollapsibleSection :default-open="false">
+            <template #label>
+              Linked Threads ({{ linkedThreads.length }})
+            </template>
             <ThreadLinkInput
               v-model="linkedThreads"
               :available-threads="threadsList"
@@ -135,10 +138,10 @@
                 <button
                   @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
                   type="button"
-                  class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
+                  class="flex items-center gap-2 px-4 py-2 ml-auto text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
                 >
                   Create Child Thread
-                  <Plus :size="16" class="text-neutral-300" />
+                  <Plus :size="16" />
                 </button>
               </template>
             </ThreadLinkInput>
