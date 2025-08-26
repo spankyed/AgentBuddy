@@ -14,6 +14,7 @@ export default /** @type import('electron-builder').Configuration */
     output: 'dist',
     buildResources: 'buildResources',
   },
+  icon: 'buildResources/icon',
   
   // Build options
   artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
