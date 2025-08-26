@@ -42,7 +42,7 @@ class WindowManager implements AppModule {
     
     // Update splash screen status while waiting for API server
     if (this.#splashScreen) {
-      this.#splashScreen.updateStatus('Waking Up Assistant...');
+      this.#splashScreen.updateStatus('Waking Up Assistant');
     }
     
     // Wait for API server to be ready before creating window
