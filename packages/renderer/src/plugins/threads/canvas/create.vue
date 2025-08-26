@@ -136,7 +136,7 @@ import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';
 import TagInput from '@/core/components/design/tag-input.vue';
-import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
+import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 
 const actor: ThreadsState = applicationState.system.get(id);

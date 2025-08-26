@@ -87,7 +87,7 @@
 
     <!-- Existing links -->
     <div v-if="values.length" class="flex flex-wrap gap-2 mt-2">
-      <div v-for="item in values" class="flex items-center w-full gap-2">
+      <div v-for="item in values" :key="item.id" class="flex items-center w-full gap-2">
         <button
           type="button"
           @click="removeLink(item.id)"
@@ -127,25 +127,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import {
   ComboboxAnchor,
   ComboboxContent,
   ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
-  ComboboxItemIndicator,
-  ComboboxLabel,
   ComboboxPortal,
   ComboboxRoot,
-  ComboboxTrigger,
   ComboboxViewport,
 } from 'reka-ui'
-import { X, Plus, Link as LinkIcon } from 'lucide-vue-next'
+import { X, Plus } from 'lucide-vue-next'
 import type { EARS } from '@app/api'
-import type { ThreadLinkItem, ThreadLinkRelation, ThreadExtended, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api'
-import Thread from './list/thread.vue'
-import type { ThreadListItem } from '../state'
+import type { ThreadLinkItem, ThreadLinkRelation, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api'
+import Thread from './linked-thread.vue'
+import type { ThreadListItem } from '../../state'
 
 const props = defineProps<{
   lite?: boolean
@@ -207,7 +204,7 @@ const filteredOptions = computed(() => {
         !values.value.find((item) => item.id === thread.id)
       )
     })
-    .sort((a, b) => relationOrder[relation.value] - relationOrder[relation.value])
+    .sort(() => relationOrder[relation.value] - relationOrder[relation.value])
 })
 
 function toggleInput() {

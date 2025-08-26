@@ -87,14 +87,17 @@
                 </div>
               </td>
               <td class="px-4 py-2">
-                <div class="flex gap-2 overflow-hidden">
+                <div class="flex items-center gap-2">
                   <span
-                    v-for="(tag, index) in thread.tags"
+                    v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
                     :key="index"
                     :style="getTagStyles(tag)"
-                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
+                    class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate max-w-[6rem]"
                   >
                     {{ tag }}
+                  </span>
+                  <span v-if="thread.tags && thread.tags.length > 3" class="px-2 py-0.5 text-xs text-neutral-400">
+                    +{{ thread.tags.length - 3 }} more
                   </span>
                 </div>
               </td>
@@ -173,7 +176,6 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import Pagination from '@/core/components/design/pagination.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
-import type { ThreadTagOption } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)

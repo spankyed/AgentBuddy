@@ -26,15 +26,18 @@
       </div>
       <!-- Status selector and tags -->
       <div v-if="!lite && thread.status" class="flex items-center gap-4">
-        <div class="flex gap-2 overflow-hidden max-w-[12rem]">
+        <div class="flex items-center gap-2">
           <span
             @click.stop
-            v-for="(tag, index) in thread.tags"
+            v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
             :key="index"
             :style="getTagStyles(tag)"
-            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors duration-200 truncate"
+            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors duration-200 truncate max-w-[6rem]"
           >
             {{ tag }}
+          </span>
+          <span v-if="thread.tags && thread.tags.length > 3" class="px-2 py-0.5 text-xs text-neutral-400">
+            +{{ thread.tags.length - 3 }} more
           </span>
         </div>
         <select
