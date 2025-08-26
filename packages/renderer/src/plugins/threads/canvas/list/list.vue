@@ -11,8 +11,8 @@
       
       <!-- Right section: Search and New Thread button -->
       <div class="flex items-center gap-3">
-                <!-- Filter buttons -->
-                <div class="flex gap-2">
+        <!-- Filter buttons -->
+        <div class="flex gap-2">
           <Button
             type="button"
             variant="transparent"
@@ -60,8 +60,7 @@
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
-              <th class="px-6 py-3">Code</th>
-              <th class="px-6 py-3">Topic</th>
+              <th class="px-6 py-3">Thread Label</th>
               <th class="px-6 py-3">Status</th>
               <th class="px-6 py-3">Tags</th>
               <th class="px-6 py-3 text-right">Actions</th>
@@ -77,22 +76,17 @@
               ]"
               @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
             >
-              <td class="px-6 py-4">
-                <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-                  {{ thread.shortCode }}
-                </span>
-              </td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-2">
                 <div class="flex items-center gap-3">
-                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                    <MessageCircleMore class="w-4 h-4 text-neutral-400" />
-                  </div>
+                  <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+                    {{ thread.shortCode || '-- --' }}
+                  </span>
                   <span class="font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
                     {{ thread.topic || 'Untitled thread' }}
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-2">
                 <select
                   @click.stop
                   :value="thread.status"
@@ -109,7 +103,7 @@
                   </option>
                 </select>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-2">
                 <div class="flex gap-2 overflow-hidden">
                   <span
                     v-for="(tag, index) in thread.tags"
@@ -121,7 +115,7 @@
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-2">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="actor.send({ type: 'OPEN_THREAD_CHAT', threadId: thread.id })"

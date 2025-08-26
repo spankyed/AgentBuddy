@@ -8,7 +8,7 @@
   >
     <div
       :class="[
-        'flex items-center flex-1 h-full px-4 py-3 gap-4',
+        'flex items-center flex-1 h-full px-4 py-1 gap-4',
         { 'cursor-pointer': !lite }
       ]"
       @click="$emit('select', thread.id)"
@@ -19,9 +19,6 @@
           {{ thread.shortCode }}
         </span>
         <div class="flex items-center gap-3 flex-1">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-700 transition-colors">
-            <MessageCircleMore class="w-4 h-4 text-neutral-400" />
-          </div>
           <span class="max-w-md text-sm font-medium truncate text-neutral-100">
             {{ thread.topic || 'Untitled thread' }}
           </span>
