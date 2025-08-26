@@ -60,13 +60,13 @@
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
-              <th class="px-6 py-3">Thread Label</th>
+              <th class="px-6 py-3">Label</th>
               <th class="px-6 py-3">Status</th>
               <th class="px-6 py-3">Tags</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-800">
+          <tbody class="p-6">
             <tr
               v-for="thread in paginatedThreads"
               :key="thread.id"
@@ -76,7 +76,7 @@
               ]"
               @click="actor.send({ type: 'SELECT_THREAD', id: thread.id })"
             >
-              <td class="px-4 py-2">
+              <td class="px-6 py-2">
                 <div class="flex items-center gap-3">
                   <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
                     {{ thread.shortCode || '-- --' }}
