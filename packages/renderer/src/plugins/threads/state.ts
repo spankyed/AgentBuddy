@@ -275,10 +275,10 @@ const threadsState = setup({
     },
     setThreadsSettings: assign(({ event, context }) => {
       const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
-      // Keep existing available tags as they come from backend with proper IDs
-      // The backend handles syncing tags with settings
+      // Update both settings and available tags when settings change
       return {
-        settings: ev.settings
+        settings: ev.settings,
+        availableTags: ev.settings?.tags || []
       };
     }),
   },
