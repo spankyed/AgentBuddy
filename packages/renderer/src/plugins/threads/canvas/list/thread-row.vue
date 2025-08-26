@@ -8,11 +8,11 @@
   >
     <td class="px-6 py-2">
       <div class="flex items-center gap-3">
-        <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-          {{ thread.shortCode || '-- --' }}
-        </span>
         <span class="font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
           {{ thread.topic || 'Untitled thread' }}
+        </span>
+        <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
+          ({{ thread.shortCode || '---' }})
         </span>
       </div>
     </td>
