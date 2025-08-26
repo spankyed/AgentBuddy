@@ -1,10 +1,12 @@
-import type {AppModule} from '../AppModule.js';
-import {ModuleContext} from '../ModuleContext.js';
+import type {AppModule} from '../../AppModule.js';
+import {ModuleContext} from '../../ModuleContext.js';
 import {BrowserWindow, ipcMain, app, dialog} from 'electron';
-import type {AppInitConfig} from '../AppInitConfig.js';
-import type {ApiServer} from './ApiServer.js';
-import type {SplashScreen} from './SplashScreen.js';
+import type {AppInitConfig} from '../../AppInitConfig.js';
+import type {ApiServer} from '../api-server/ApiServer.js';
+import type {SplashScreen} from '../splash-screen/SplashScreen.js';
 import {join} from 'node:path';
+import {WINDOW_CONFIG} from './constants.js';
+import {SPLASH_CONFIG} from '../splash-screen/constants.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -56,7 +58,7 @@ class WindowManager implements AppModule {
         }
         
         // Wait a few seconds to show the error, then close
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, WINDOW_CONFIG.ERROR_DISPLAY_TIME));
         
         // Close splash and exit
         if (this.#splashScreen) {
@@ -126,11 +128,11 @@ class WindowManager implements AppModule {
     
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
-      width: 1800,
-      height: 1200,
-      minWidth: 1200,
-      minHeight: 800,
-      title: 'AgentBuddy-Main', // Used for window identification
+      width: WINDOW_CONFIG.WIDTH,
+      height: WINDOW_CONFIG.HEIGHT,
+      minWidth: WINDOW_CONFIG.MIN_WIDTH,
+      minHeight: WINDOW_CONFIG.MIN_HEIGHT,
+      title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
       icon: iconPath, // Set the window icon
       titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
       frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
@@ -164,13 +166,13 @@ class WindowManager implements AppModule {
     if (this.#splashScreen && this.#splashScreen.isVisible()) {
       setTimeout(async () => {
         await this.#splashScreen?.close();
-      }, 200);
+      }, WINDOW_CONFIG.SPLASH_CLOSE_DELAY);
     }
   }
 
   private isMainWindow(window: BrowserWindow): boolean {
     // Use window title as identifier
-    return window.getTitle() === 'AgentBuddy-Main';
+    return window.getTitle() === WINDOW_CONFIG.MAIN_TITLE;
   }
 
   async restoreOrCreateWindow(show = false) {

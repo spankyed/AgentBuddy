@@ -30,12 +30,12 @@ export default /**
     viteStaticCopy({
       targets: [
         {
-          src: 'src/modules/splash/*',
-          dest: 'modules/splash'
+          src: 'src/modules/splash-screen/assets/*',
+          dest: 'assets'
         },
         {
           src: '../../resources/draft-final.svg',
-          dest: 'modules/splash',
+          dest: 'assets',
           rename: 'logo.svg'
         }
       ]

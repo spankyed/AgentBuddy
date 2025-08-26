@@ -1,9 +1,10 @@
 import { BrowserWindow } from 'electron';
-import { AppModule } from '../AppModule.js';
-import { ModuleContext } from '../ModuleContext.js';
+import { AppModule } from '../../AppModule.js';
+import { ModuleContext } from '../../ModuleContext.js';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { SPLASH_CONFIG } from './constants.js';
 
 export class SplashScreen implements AppModule {
   private splashWindow: BrowserWindow | null = null;
@@ -17,9 +18,9 @@ export class SplashScreen implements AppModule {
     const __dirname = dirname(fileURLToPath(import.meta.url));
     
     this.splashWindow = new BrowserWindow({
-      width: 400,
-      height: 400,
-      title: 'AgentBuddy-Splash', // Used for window identification
+      width: SPLASH_CONFIG.WIDTH,
+      height: SPLASH_CONFIG.HEIGHT,
+      title: SPLASH_CONFIG.TITLE,
       frame: false,
       transparent: true,
       alwaysOnTop: true,
@@ -33,8 +34,8 @@ export class SplashScreen implements AppModule {
       },
     });
 
-    // Load the splash HTML file
-    const splashPath = join(__dirname, 'modules', 'splash', 'splash.html');
+    // Load the splash HTML file from assets
+    const splashPath = join(__dirname, 'assets', 'splash.html');
     this.splashWindow.loadFile(splashPath);
 
     // Show window once ready
@@ -80,13 +81,11 @@ export class SplashScreen implements AppModule {
     try {
       // Fade out animation using Electron's setOpacity
       let opacity = 1.0;
-      const fadeStep = 0.05;
-      const fadeInterval = 20;
       
       while (opacity > 0 && this.isValid()) {
         this.splashWindow!.setOpacity(opacity);
-        opacity -= fadeStep;
-        await new Promise(resolve => setTimeout(resolve, fadeInterval));
+        opacity -= SPLASH_CONFIG.FADE_STEP;
+        await new Promise(resolve => setTimeout(resolve, SPLASH_CONFIG.FADE_INTERVAL));
       }
       
       if (this.isValid()) {
