@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "generate:dsl-types": "../../scripts/generate-dsl-types-rollup.sh",
-    "postbuild": "npm run generate:dsl-types",
+    "postbuild": "[ -z \"$SKIP_DSL_GEN\" ] && npm run generate:dsl-types || echo '⏭️  Skipping DSL generation'",
     "db:cli": "tsx src/cli/run-db-cli.ts",
     "db:exec": "tsx src/cli/run-db-cli.ts --exec",
     "db:script": "tsx src/cli/run-db-cli.ts --script",
