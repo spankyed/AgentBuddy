@@ -1,9 +1,9 @@
-import type {AppModule} from '../../AppModule.js';
+import type {AppModule} from '../../AppModule.ts';
 import {ModuleContext} from '../../ModuleContext.js';
 import {BrowserWindow, ipcMain, app, dialog} from 'electron';
-import type {AppInitConfig} from '../../AppInitConfig.js';
-import type {ApiServer} from '../api-server/ApiServer.js';
-import type {SplashScreen} from '../splash-screen/SplashScreen.js';
+import type {AppInitConfig} from '../../AppInitConfig.ts';
+import type {ApiServer} from '../api-server/ApiServer.ts';
+import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
 import {join} from 'node:path';
 import {WINDOW_CONFIG} from './constants.js';
 import {SPLASH_CONFIG} from '../splash-screen/constants.js';
@@ -141,7 +141,7 @@ class WindowManager implements AppModule {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.js api
+        sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.ts api
         webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
         preload: this.#preload.path,
       },

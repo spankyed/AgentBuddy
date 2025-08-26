@@ -3,8 +3,8 @@ import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import getPort from 'get-port';
-import { AppModule } from '../AppModule.js';
-import { ModuleContext } from '../ModuleContext.js';
+import { AppModule } from '../../AppModule.js';
+import { ModuleContext } from '../../ModuleContext.js';
 import { 
   API_CONFIG, 
   API_EVENTS, 
@@ -12,8 +12,8 @@ import {
   getEnvironment, 
   getNodeExecutable, 
   getExecutionArgs 
-} from './api-server/config.js';
-import { ProcessManager, broadcastEvent } from './api-server/process-manager.js';
+} from './config.js';
+import { ProcessManager, broadcastEvent } from './process-manager.js';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;

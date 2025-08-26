@@ -7,7 +7,7 @@ import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.js'
 // import {autoUpdater} from './modules/AutoUpdater.js';
 import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
-import {createApiServer} from './modules/ApiServer.js';
+import {createApiServer} from './modules/api-server/ApiServer.js';
 import {createSplashScreen} from './modules/splash-screen/index.js';
 
 
