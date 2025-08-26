@@ -93,7 +93,28 @@
           </div>
 
           <!-- Tags -->
-          <CollapsibleSection label="Tags" :default-open="false" class="pt-2">
+          <CollapsibleSection :default-open="false" class="pt-2">
+            <template #label>
+              <div class="flex items-center gap-2">
+                <span>Tags</span>
+                <div v-if="tags && tags.length > 0" class="flex items-center gap-1">
+                  <span class="text-neutral-500 mr-1">•</span>
+                  <div class="flex flex-wrap gap-1">
+                    <span 
+                      v-for="(tag, index) in tags.slice(0, 5)" 
+                      :key="tag"
+                      :style="getTagStyles(tag)"
+                      class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
+                    >
+                      {{ tag }}
+                    </span>
+                    <span v-if="tags.length > 5" class="px-2 py-0.5 text-xs text-neutral-400">
+                      +{{ tags.length - 5 }} more
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
             <TagInput 
               :modelValue="tags || []"
               :available-tags="availableTags"
@@ -212,5 +233,14 @@ const onMessagesToggle = (isOpen: boolean) => {
       messagesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
+};
+
+const getTagStyles = (tagName: string) => {
+  const color = availableTags.value?.find(t => t.name === tagName)?.color || '#A855F7';
+  return {
+    backgroundColor: `${color}1A`, // 10% opacity
+    color,
+    border: `1px solid ${color}33` // 20% opacity for border
+  };
 };
 </script>
