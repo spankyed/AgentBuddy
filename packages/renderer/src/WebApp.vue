@@ -5,10 +5,7 @@
     <Toolbar 
         :plugins="plugins"
         :active-plugin="activePlugin"
-        :plugin-order="pluginOrder"
-        :pinned-plugin-order="pinnedPluginOrder"
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
-        @reorder-plugins="(pluginId: string, targetIndex: number, isPinnedSection: boolean) => send({ type: 'REORDER_PLUGINS', pluginId, targetIndex, isPinnedSection })"
     />
     
     <!-- Main Area -->
@@ -77,8 +74,6 @@ const activePlugin = useSelector(applicationState, (state) => state.context.acti
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
 const plugins = useSelector(applicationState, (state) => state.context.visiblePlugins) // Use visible plugins
-const pluginOrder = useSelector(applicationState, (state) => state.context.pluginOrder)
-const pinnedPluginOrder = useSelector(applicationState, (state) => state.context.pinnedPluginOrder)
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)

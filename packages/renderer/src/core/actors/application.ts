@@ -27,8 +27,6 @@ export interface ApplicationContext {
   plugins: Plugin[];
   visiblePlugins: Plugin[]; // Filtered list of visible plugins
   pluginVisibility: Record<string, boolean>; // Plugin visibility settings
-  pluginOrder: string[]; // Custom order for regular plugins
-  pinnedPluginOrder: string[]; // Custom order for pinned plugins
   pluginHistory: string[]; // History of plugin IDs for back/forward navigation
   historyIndex: number; // Current position in history
   breadcrumbs: BreadcrumbItem[];
@@ -63,52 +61,8 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'REORDER_PLUGINS'; pluginId: string; targetIndex: number; isPinnedSection: boolean }
 
 const typeOf = safeEvents<ApplicationEvent>();
-
-// Helper function to sort plugins by custom order
-function sortPluginsByOrder(
-  plugins: Plugin[],
-  pluginOrder: string[] | undefined,
-  pinnedPluginOrder: string[] | undefined
-): Plugin[] {
-  // Ensure we have valid arrays
-  const regularOrder = Array.isArray(pluginOrder) ? pluginOrder : [];
-  const pinnedOrder = Array.isArray(pinnedPluginOrder) ? pinnedPluginOrder : [];
-  
-  const regularPlugins = plugins.filter(p => !p.isPinned);
-  const pinnedPlugins = plugins.filter(p => p.isPinned);
-  
-  // Sort regular plugins by order
-  const sortedRegular = [...regularPlugins].sort((a, b) => {
-    const aIndex = regularOrder.indexOf(a.id);
-    const bIndex = regularOrder.indexOf(b.id);
-    
-    // If plugin not in order array, put at end
-    if (aIndex === -1 && bIndex === -1) return 0;
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    
-    return aIndex - bIndex;
-  });
-  
-  // Sort pinned plugins by order
-  const sortedPinned = [...pinnedPlugins].sort((a, b) => {
-    const aIndex = pinnedOrder.indexOf(a.id);
-    const bIndex = pinnedOrder.indexOf(b.id);
-    
-    // If plugin not in order array, put at end
-    if (aIndex === -1 && bIndex === -1) return 0;
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    
-    return aIndex - bIndex;
-  });
-  
-  // Combine sorted arrays (pinned plugins are handled separately in the toolbar)
-  return [...sortedRegular, ...sortedPinned];
-}
 
 export const createApplicationState = () => setup({
   types: {
@@ -215,69 +169,14 @@ export const createApplicationState = () => setup({
     updatePluginVisibility: assign(({ event, context }) => {
       const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
       
-      // Filter and sort plugins based on visibility and custom order
-      const visiblePlugins = sortPluginsByOrder(
-        context.plugins.filter(plugin => pluginVisibility[plugin.id] !== false),
-        context.pluginOrder,
-        context.pinnedPluginOrder
+      // Filter plugins based on visibility
+      const visiblePlugins = context.plugins.filter(plugin => 
+        pluginVisibility[plugin.id] !== false
       );
       
       return { 
         pluginVisibility,
         visiblePlugins
-      };
-    }),
-    
-    reorderPlugins: assign(({ event, context }) => {
-      const { pluginId, targetIndex, isPinnedSection } = typeOf('REORDER_PLUGINS', event);
-      
-      // Get the plugin being moved
-      const plugin = context.plugins.find(p => p.id === pluginId);
-      if (!plugin) return {};
-      
-      // Ensure we have valid arrays
-      const currentPluginOrder = Array.isArray(context.pluginOrder) ? context.pluginOrder : [];
-      const currentPinnedOrder = Array.isArray(context.pinnedPluginOrder) ? context.pinnedPluginOrder : [];
-      
-      // Update plugin's pinned status if moving between sections
-      const updatedPlugins = context.plugins.map(p => {
-        if (p.id === pluginId) {
-          return { ...p, isPinned: isPinnedSection };
-        }
-        return p;
-      });
-      
-      // Update the appropriate order array
-      let pluginOrder = [...currentPluginOrder];
-      let pinnedPluginOrder = [...currentPinnedOrder];
-      
-      // Remove from both arrays first
-      pluginOrder = pluginOrder.filter(id => id !== pluginId);
-      pinnedPluginOrder = pinnedPluginOrder.filter(id => id !== pluginId);
-      
-      // Add to the appropriate array at the target index
-      if (isPinnedSection) {
-        pinnedPluginOrder.splice(targetIndex, 0, pluginId);
-      } else {
-        pluginOrder.splice(targetIndex, 0, pluginId);
-      }
-      
-      // Save to localStorage
-      localStorage.setItem('agentbuddy-plugin-order', JSON.stringify(pluginOrder));
-      localStorage.setItem('agentbuddy-pinned-plugin-order', JSON.stringify(pinnedPluginOrder));
-      
-      // Update visible plugins with new order
-      const visiblePlugins = sortPluginsByOrder(
-        updatedPlugins.filter(plugin => context.pluginVisibility[plugin.id] !== false),
-        pluginOrder,
-        pinnedPluginOrder
-      );
-      
-      return {
-        plugins: updatedPlugins,
-        visiblePlugins,
-        pluginOrder,
-        pinnedPluginOrder
       };
     }),
     
@@ -529,68 +428,25 @@ export const createApplicationState = () => setup({
     // Load last active plugin from localStorage
     const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
     
-    // Load saved plugin orders from localStorage
-    const savedPluginOrder = localStorage.getItem('agentbuddy-plugin-order');
-    const savedPinnedPluginOrder = localStorage.getItem('agentbuddy-pinned-plugin-order');
-    
-    // Initialize plugin orders - use saved or create from current plugins
-    let pluginOrder: string[] = [];
-    let pinnedPluginOrder: string[] = [];
-    
-    try {
-      if (savedPluginOrder) {
-        const parsed = JSON.parse(savedPluginOrder);
-        if (Array.isArray(parsed)) {
-          pluginOrder = parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse saved plugin order:', e);
-    }
-    
-    try {
-      if (savedPinnedPluginOrder) {
-        const parsed = JSON.parse(savedPinnedPluginOrder);
-        if (Array.isArray(parsed)) {
-          pinnedPluginOrder = parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse saved pinned plugin order:', e);
-    }
-    
-    // If no saved order or invalid, create from current plugins
-    if (!pluginOrder.length) {
-      pluginOrder = input.plugins.filter(p => !p.isPinned).map(p => p.id);
-    }
-    if (!pinnedPluginOrder.length) {
-      pinnedPluginOrder = input.plugins.filter(p => p.isPinned).map(p => p.id);
-    }
-    
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
     input.plugins.forEach(plugin => {
       pluginVisibility[plugin.id] = true;
     });
     
-    // Sort plugins by saved order
-    const sortedPlugins = sortPluginsByOrder(input.plugins, pluginOrder, pinnedPluginOrder);
-    
     // Determine initial active plugin - use saved one if it exists and is valid
-    let initialActivePlugin = sortedPlugins[0];
+    let initialActivePlugin = input.plugins[0];
     if (savedLastActivePlugin) {
-      const savedPlugin = sortedPlugins.find(p => p.id === savedLastActivePlugin);
+      const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
       if (savedPlugin) {
         initialActivePlugin = savedPlugin;
       }
     }
     
     return {
-      plugins: sortedPlugins,
-      visiblePlugins: sortedPlugins, // Initially all plugins are visible and sorted
+      plugins: input.plugins,
+      visiblePlugins: input.plugins, // Initially all plugins are visible
       pluginVisibility,
-      pluginOrder,
-      pinnedPluginOrder,
       activePlugin: initialActivePlugin,
       defaultPlugin: input.defaultPlugin,
       pluginHistory: [initialActivePlugin.id], // Start with initial plugin in history
@@ -635,9 +491,6 @@ export const createApplicationState = () => setup({
   on: {
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
-    },
-    REORDER_PLUGINS: {
-      actions: 'reorderPlugins'
     },
     PLUGIN_VISIBILITY_UPDATED: {
       actions: 'updatePluginVisibility'
