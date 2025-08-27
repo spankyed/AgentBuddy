@@ -50,7 +50,7 @@ npm install --no-workspaces --silent
 npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64
 
 # Verify native modules
-for module in better-sqlite3 node-pty usearch; do
+for module in lmdb node-pty usearch; do
   if [ -d "node_modules/$module" ]; then
     echo -e "  ${GREEN}✓${NC} $module"
   fi

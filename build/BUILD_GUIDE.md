@@ -47,7 +47,7 @@ npm start              # Start in development mode
 ### Native Modules
 
 The app uses these native modules:
-- `better-sqlite3` - SQLite database
+- `lmbd` - database / persistence
 - `node-pty` - Terminal emulation
 - `usearch` - Vector search
 - `onnxruntime-node` - Machine learning runtime
