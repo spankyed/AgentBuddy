@@ -1,6 +1,7 @@
 import { ChildProcess } from 'child_process';
 import { BrowserWindow, app } from 'electron';
 import { API_EVENTS } from './config.js';
+import { logInfo, logError } from './logger.js';
 
 export interface ProcessHandlers {
   onReady?: (port: number) => void;
@@ -80,8 +81,8 @@ export class ProcessManager {
         const isDev = !app.isPackaged;
         
         // Always log errors in production for debugging
-        console.error(`[API Server Error]: ${message.trim()}`);
-        
+        logError(`[API Server Error]: ${message.trim()}`);
+
         // Broadcast stderr to renderer in dev mode
         if (isDev) {
           broadcastEvent(API_EVENTS.LOG, { 

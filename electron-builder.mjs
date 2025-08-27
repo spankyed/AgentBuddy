@@ -106,8 +106,11 @@ export default /** @type import('electron-builder').Configuration */
     'packages/api/node_modules/**/*'
   ],
   
-  // Disable asar for API server file access
+  // IMPORTANT: Disable asar completely for API server and native modules
   asar: false,
+  asarUnpack: [
+    '**/*'  // Unpack everything if asar is somehow enabled
+  ],
   
   // Extra resources
   extraResources: [

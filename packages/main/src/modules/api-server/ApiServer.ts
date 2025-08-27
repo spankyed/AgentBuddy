@@ -71,25 +71,17 @@ export class ApiServer implements AppModule {
     broadcastEvent(API_EVENTS.STARTING);
 
     const paths = getApiPaths();
-    
-    // In development, the API should already be built
-    // Just launch it directly
-    await this.launchApiServer(paths.apiPath, paths.fallbackPath);
+    await this.launchApiServer(paths.apiPath);
   }
 
-  private async launchApiServer(apiPath: string, fallbackPath?: string): Promise<void> {
-    // Check paths
+  private async launchApiServer(apiPath: string): Promise<void> {
+    // Validate API path exists
     logInfo(`[MAIN] Checking API path: ${apiPath}`);
     if (!fs.existsSync(apiPath)) {
-      if (fallbackPath && fs.existsSync(fallbackPath)) {
-        logInfo(`[MAIN] Using fallback path: ${fallbackPath}`);
-        apiPath = fallbackPath;
-      } else {
-        const error = `[MAIN] API path does not exist: ${apiPath}${fallbackPath ? ` and fallback: ${fallbackPath}` : ''}`;
-        logError(error);
-        broadcastEvent(API_EVENTS.ERROR, { error });
-        return;
-      }
+      const error = `[MAIN] API path does not exist: ${apiPath}`;
+      logError(error);
+      broadcastEvent(API_EVENTS.ERROR, { error });
+      return;
     }
 
     const serverPath = path.join(apiPath, 'dist', 'server.js');

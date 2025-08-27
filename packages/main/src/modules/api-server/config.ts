@@ -26,8 +26,7 @@ export const getApiPaths = () => {
   const isDev = !app.isPackaged;
   
   if (isDev) {
-    // Use app.getAppPath() to get the project root reliably
-    // In dev, this returns the project root directory
+    // Development: Use app.getAppPath() to get the project root
     const appPath = app.getAppPath();
     return {
       apiPath: path.join(appPath, 'packages', 'api'),
@@ -35,13 +34,9 @@ export const getApiPaths = () => {
     };
   }
   
-  // Production paths
-  const primaryPath = path.join(process.resourcesPath, 'app', 'packages', 'api');
-  const fallbackPath = path.join(process.resourcesPath, 'app', 'node_modules', '@app', 'api');
-  
+  // Production: With asar disabled, files are in /Resources/app/
   return {
-    apiPath: primaryPath,
-    fallbackPath,
+    apiPath: path.join(process.resourcesPath, 'app', 'packages', 'api'),
     serverFile: 'dist/server.js',
   };
 };
