@@ -34,7 +34,7 @@ export const getApiPaths = () => {
     };
   }
   
-  // Production: With asar disabled, files are in /Resources/app/
+  // Production: ASAR disabled for API compatibility
   return {
     apiPath: path.join(process.resourcesPath, 'app', 'packages', 'api'),
     serverFile: 'dist/server.js',

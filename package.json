@@ -20,7 +20,8 @@
     "build": "npm run build -ws --if-present",
     "build-prod": "sh build/build.sh",
     "prod-app": "sh build/run_with_logs.sh",
-    "rebuild": "cd packages/api && npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64",
+    "copy-dev-data": "sh build/copy-dev-data.sh",
+    "rebuild": "cd packages/api && npm rebuild",
     "package:all": "electron-builder --mac --win --linux",
     "test": "npx playwright test ./tests/e2e.spec.ts",
     "start": "SKIP_DSL_GEN=1 npm run build:be && node packages/dev-mode.js",
@@ -36,7 +37,6 @@
     "db:script": "cd packages/api && npm run db:script"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
     "@npmcli/map-workspaces": "4.0.2",
     "@playwright/test": "1.54.1",
     "@types/node": "24.1.0",

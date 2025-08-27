@@ -55,7 +55,6 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
     "@trpc/client": "^11.1.2",
     "@trpc/server": "^11.1.2",
     "@types/node": "^22.15.17",
