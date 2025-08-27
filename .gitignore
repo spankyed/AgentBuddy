@@ -5,3 +5,4 @@ local_cache
 search-indices
 untracked
 .serena
+.DS_Store
