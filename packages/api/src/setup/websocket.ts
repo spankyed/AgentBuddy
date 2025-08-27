@@ -14,7 +14,7 @@ export function createWebSocketServer() {
     verifyClient: WS_CONFIG.verifyClient
   });
 
-  // Log server startup (both to logger and console for main process)
+  // ! Log server startup (both to logger and console for main process) do not remove or modify
   const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
   console.log(message);
 
