@@ -18,8 +18,8 @@
   },
   "scripts": {
     "build": "npm run build -ws --if-present",
-    "build-app": "sh build/build.sh",
-    "run-app": "sh build/run_with_logs.sh",
+    "build-prod": "sh build/build.sh",
+    "prod-run": "sh build/run_with_logs.sh",
     "rebuild": "cd packages/api && npx @electron/rebuild --force --module-dir . --electron-version 37.2.4 --arch arm64",
     "package:all": "electron-builder --mac --win --linux",
     "test": "npx playwright test ./tests/e2e.spec.ts",
