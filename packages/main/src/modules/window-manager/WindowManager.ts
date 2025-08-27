@@ -77,7 +77,27 @@ class WindowManager implements AppModule {
     
     await this.restoreOrCreateWindow(true);
     app.on('second-instance', () => this.restoreOrCreateWindow(true));
-    app.on('activate', () => this.restoreOrCreateWindow(true));
+    
+    // On macOS, only create/restore window if there are no windows open
+    app.on('activate', () => {
+      // Check if there are any windows currently open
+      if (BrowserWindow.getAllWindows().length === 0) {
+        // No windows exist, create one
+        this.restoreOrCreateWindow(true);
+      } else {
+        // Windows exist, just focus the main one
+        const mainWindow = BrowserWindow.getAllWindows().find(w => 
+          !w.isDestroyed() && this.isMainWindow(w)
+        );
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    });
   }
 
   private setupWindowControls(): void {
