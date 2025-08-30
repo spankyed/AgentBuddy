@@ -103,9 +103,10 @@ export const threadCommands = {
     const shortCode = `T-${count}` as ThreadTypeShortCode;
 
     const id = tx(EARS.Entity.Thread).id();
-    
+
+    const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || "Backlog";
     tx(id).updateBatch({
-      status: "Backlog", // Default status - should match settings default
+      status: status,
       shortCode: shortCode,
       timestamp: ts,
       lastMessageTimestamp: ts,
