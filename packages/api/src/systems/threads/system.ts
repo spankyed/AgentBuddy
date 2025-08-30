@@ -89,7 +89,7 @@ export const threadsSystem = setup({
     createThread: ({ system, event }) => {
       const thread = typeOf('CREATE_THREAD', event);
 
-      const { id: newThreadId, shortCode, timestamp } = repository.threadCommands.create({
+      const { id: newThreadId, ...rest } = repository.threadCommands.create({
         topic: thread.topic,
         instructions: thread.instructions,
         tags: thread.tags as string[],  // Tag names
@@ -113,9 +113,8 @@ export const threadsSystem = setup({
       system.get(bus).send(emit(threads, { 
         type: 'THREAD_CREATED',
         id: newThreadId,
-        shortCode,
         entityType: EARS.Entity.Thread,
-        timestamp,
+        ...rest
       }));
     },
     sendViewData: ({ system, event }) => {

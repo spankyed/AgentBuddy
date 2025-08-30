@@ -93,7 +93,7 @@ export const threadQueries = {
 
 // Commands
 export const threadCommands = {
-  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number } => {
+  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number, status: string } => {
     if (!input.topic?.trim()) {
       throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
@@ -122,7 +122,7 @@ export const threadCommands = {
       tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
     }
 
-    return { id, shortCode, timestamp: ts };
+    return { id, shortCode, timestamp: ts, status };
   },
   
   update: (id: EARS.EntityId, updates: {

@@ -111,36 +111,16 @@ const threadsState = setup({
     }),
     addThenResetCreateForm: assign(({ context, event }) => {
       const typedEvent = typeOf('THREAD_CREATED', event);
-      
-      // Check if thread data is coming from the event (external creation) or context.create (internal creation)
-      const hasEventData = 'topic' in typedEvent;
-      
-      const newThread: ThreadListItem = hasEventData ? {
-        // Thread created externally (e.g., from add-to-thread.js)
-        id: typedEvent.id,
-        entityType: typedEvent.entityType as any,
-        shortCode: typedEvent.shortCode,
-        topic: typedEvent.topic!,
-        instructions: typedEvent.instructions!,
-        status: typedEvent.status || '',
-        createdAt: typedEvent.timestamp,
-        updatedAt: typedEvent.timestamp,
-        timestamp: typedEvent.timestamp,
-        tags: [],
-        isNew: true,
-      } : {
+      const newThread: ThreadListItem = {
         // Thread created internally from the threads plugin
         ...context.create,
-        id: typedEvent.id,
-        entityType: typedEvent.entityType as any,
-        shortCode: typedEvent.shortCode,
         createdAt: typedEvent.timestamp,
         updatedAt: typedEvent.timestamp,
-        timestamp: typedEvent.timestamp,
         status: '',
         tags: context.create.tags,
-        isNew: true,
-      };
+          isNew: true,
+          ...typedEvent
+      } as ThreadListItem;
 
       return {
         threads: [newThread, ...context.threads],
