@@ -1,0 +1,190 @@
+<template>
+  <div class="onboarding-container">
+    <div class="onboarding-content">
+      <div class="onboarding-header">
+        <h1 class="title">Welcome to AgentBuddy</h1>
+        <p class="subtitle">Your AI-powered development assistant</p>
+      </div>
+
+      <div class="onboarding-steps">
+        <div class="step" :class="{ completed: step >= 1 }">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Getting Started</h3>
+            <p>AgentBuddy helps you manage your development workflow with AI assistance.</p>
+          </div>
+        </div>
+
+        <div class="step" :class="{ completed: step >= 2 }">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Explore Plugins</h3>
+            <p>Use the sidebar to access different tools like Agent, Code, Threads, and more.</p>
+          </div>
+        </div>
+
+        <div class="step" :class="{ completed: step >= 3 }">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Start Building</h3>
+            <p>Chat with the AI assistant to help you code, debug, and manage your projects.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="onboarding-actions">
+        <button 
+          v-if="step < 3"
+          @click="nextStep"
+          class="btn btn-secondary"
+        >
+          Next
+        </button>
+        <button 
+          v-if="step === 3"
+          @click="completeOnboarding"
+          class="btn btn-primary"
+        >
+          Get Started
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { applicationState } from '@/main';
+
+const step = ref(1);
+
+const nextStep = () => {
+  if (step.value < 3) {
+    step.value++;
+  }
+};
+
+const completeOnboarding = () => {
+  applicationState.send({ type: 'COMPLETE_ONBOARDING' });
+};
+</script>
+
+<style scoped>
+.onboarding-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+  padding: 2rem;
+}
+
+.onboarding-content {
+  background: #262626;
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.onboarding-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #999;
+}
+
+.onboarding-steps {
+  margin-bottom: 3rem;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.step.completed {
+  opacity: 1;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #404040;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 1.5rem;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.step.completed .step-number {
+  background: #4a9eff;
+}
+
+.step-content h3 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.step-content p {
+  color: #999;
+  line-height: 1.5;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #4a9eff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #3a8eef;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+}
+
+.btn-secondary {
+  background: #404040;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #505050;
+  transform: translateY(-1px);
+}
+</style>

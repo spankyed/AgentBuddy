@@ -1,6 +1,6 @@
-import type { SettingsData } from './types';
+import type { SETTINGS_SCOPE, SettingsData } from './types';
 
-export const getDefaultsByLabel = (type: 'general' | 'plugin' | 'internal', label: string) =>
+export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
 ({
   internal: defaultSettings.internal,
   general: defaultSettings.general[label as keyof typeof defaultSettings.general] ?? {},

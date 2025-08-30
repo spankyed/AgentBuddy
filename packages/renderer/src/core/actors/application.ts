@@ -1,4 +1,4 @@
-import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
+import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent } from '@/core/utils/hotkeys';
 import { processHotkeys } from '@/core/utils/hotkeys';
@@ -42,6 +42,10 @@ export interface ApplicationContext {
 
 export const application = 'application' as const;
 
+type AppActor = ReturnType<typeof createApplicationState>;
+
+export type AppState = ActorRefFrom<AppActor>;
+
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
@@ -61,6 +65,8 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
+  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+  | { type: 'COMPLETE_ONBOARDING' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -137,7 +143,7 @@ export const createApplicationState = () => setup({
       return unsubscribe;
     }),
     
-    backendListener: fromCallback(({ system }) => {
+    backendListener: fromCallback(({ system, sendBack }) => {
       console.log('connecting to backend');
       
       const subscription = trpc.bus.sub.subscribe(
@@ -150,7 +156,12 @@ export const createApplicationState = () => setup({
           },
           onData: (event: any) => {
             const { pluginId, ...ev } = event;
-            system.get(pluginId).send(ev);
+
+            if (application === pluginId) {
+              sendBack(ev);
+            } else {
+              system.get(pluginId).send(ev);
+            }
           },
         }
       );
@@ -409,6 +420,17 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
+    completeOnboarding: ({ context }) => {
+      // Send event to backend to update hasOnboarded setting
+      // trpc.bus.send.mutate({
+      //   systemId: 'settings',
+      //   type: 'UPDATE_SETTINGS',
+      //   entityType: 'internal',
+      //   label: 'internal',
+      //   path: ['hasOnboarded'],
+      //   value: true
+      // });
+    },
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
@@ -475,12 +497,33 @@ export const createApplicationState = () => setup({
   ],
   states: {
     'setup': {
-      always: [{
-        target: 'running',
-        actions: spawnChild('backendListener'),
-      }]
+      tags: ['setup'],
+      entry: spawnChild('backendListener'),
+      on: {
+        'CLIENT_CONNECTED': [
+          {
+            actions: [],
+            target: 'onboarding',
+            guard: ({ event }) => event.hasOnboarded === false
+          },
+          {
+            actions: [],
+            target: 'running',
+          }
+        ]
+      }
+    },
+    'onboarding': {
+      tags: ['onboarding'],
+      on: {
+        COMPLETE_ONBOARDING: {
+          actions: 'completeOnboarding',
+          target: 'running',
+        }
+      }
     },
     'running': {
+      tags: ['running'],
       initial: 'connected',
       states: {
         'connected': {},

@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { applicationState } from '@/main'
+import type { SETTINGS_SCOPE } from '@app/api'
 
 /**
  * Composable for managing settings save status with automatic timeout
@@ -32,7 +33,7 @@ export function useSettingsSaveStatus() {
    * Update settings with automatic save status management
    */
   const updateSettings = (params: {
-    entityType: 'general' | 'plugin'
+    entityType: SETTINGS_SCOPE
     label: string
     path: string[]
     value: any
