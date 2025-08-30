@@ -67,11 +67,15 @@ export const flowsSystem = setup({
     handleClientConnection: ({ system }) => {
       const pluginId = flows;
       const data = repository.flowsQueries.connectedData();
+      const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
       logger.info('Sending flows connected data to client', { flows: data.flows.length });
 
       system.get(bus).send(emit(pluginId, {
         type: 'FLOWS_CONNECTED',
-        data,
+        data: {
+          ...data,
+          settings: flowsSettings || {}
+        },
       }));
     },
 
