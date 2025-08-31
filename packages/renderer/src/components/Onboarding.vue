@@ -11,7 +11,7 @@
           <div class="step-number">1</div>
           <div class="step-content">
             <h3>Getting Started</h3>
-            <p>AgentBuddy helps you manage your development workflow with AI assistance.</p>
+            <p>AgentBuddy helps you manage your work with AI assistance.</p>
           </div>
         </div>
 
@@ -19,7 +19,7 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Explore Plugins</h3>
-            <p>Use the sidebar to access different tools like Agent, Code, Threads, and more.</p>
+            <p>Use the toolbar to access different plugins allowing you to personalize your assistant.</p>
           </div>
         </div>
 
@@ -27,7 +27,7 @@
           <div class="step-number">3</div>
           <div class="step-content">
             <h3>Start Building</h3>
-            <p>Chat with the AI assistant to help you code, debug, and manage your projects.</p>
+            <p>Chat with your assistant to help plan, manage, code, debug, and deploy your projects.</p>
           </div>
         </div>
       </div>
