@@ -19,7 +19,7 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Explore Plugins</h3>
-            <p>Customize your assistant with plugins, easily accessible from the toolbar.</p>
+            <p>Customize your experience with plugins, easily accessible from the toolbar.</p>
           </div>
         </div>
 
