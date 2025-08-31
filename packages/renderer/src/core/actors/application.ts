@@ -80,7 +80,7 @@ export const createApplicationState = () => setup({
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
         const appActor = system.get(application);
-        
+
         // Create hotkey event and send to be processed
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
@@ -91,25 +91,25 @@ export const createApplicationState = () => setup({
           shiftKey: e.shiftKey,
           preventDefault: () => e.preventDefault()
         };
-        
-        appActor.send({ 
-          type: 'PROCESS_GLOBAL_HOTKEY', 
+
+        appActor.send({
+          type: 'PROCESS_GLOBAL_HOTKEY',
           hotkeyEvent,
           originalEvent: e
         });
       };
 
       window.addEventListener('keydown', handleKeyDown);
-      
+
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }),
-    
+
     mouseListener: fromCallback(({ system }) => {
       const handleMouseDown = (e: MouseEvent) => {
         const appActor = system.get(application);
-        
+
         // Mouse button 3 = back, mouse button 4 = forward
         if (e.button === 3) {
           e.preventDefault();
@@ -121,12 +121,12 @@ export const createApplicationState = () => setup({
       };
 
       window.addEventListener('mousedown', handleMouseDown);
-      
+
       return () => {
         window.removeEventListener('mousedown', handleMouseDown);
       };
     }),
-    
+
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target }: UpdateData) =>
         system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target });
@@ -142,10 +142,10 @@ export const createApplicationState = () => setup({
 
       return unsubscribe;
     }),
-    
+
     backendListener: fromCallback(({ system, sendBack }) => {
       console.log('connecting to backend');
-      
+
       const subscription = trpc.bus.sub.subscribe(
         undefined, // sessionId is ignored now
         {
@@ -165,7 +165,7 @@ export const createApplicationState = () => setup({
           },
         }
       );
-      
+
       return () => {
         subscription.unsubscribe();
       };
@@ -176,37 +176,37 @@ export const createApplicationState = () => setup({
       const { hotkeys } = typeOf('APPLICATION_HOTKEYS', event);
       return { hotkeys };
     }),
-    
+
     updatePluginVisibility: assign(({ event, context }) => {
       const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
-      
+
       // Filter plugins based on visibility
-      const visiblePlugins = context.plugins.filter(plugin => 
+      const visiblePlugins = context.plugins.filter(plugin =>
         pluginVisibility[plugin.id] !== false
       );
-      
-      return { 
+
+      return {
         pluginVisibility,
         visiblePlugins
       };
     }),
-    
+
     syncLastActivePlugin: ({ event, self, context }) => {
       const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
-      
+
       // Sync localStorage with backend
       localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
-      
+
       // Only switch if plugin exists and differs from current
       const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
       if (targetPlugin && targetPlugin.id !== context.activePlugin.id) {
         self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
       }
     },
-    
+
     processGlobalHotkey: ({ self, context, system, event }) => {
       const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
-      
+
       const actionType = processHotkeys(
         hotkeyEvent,
         context.hotkeys,
@@ -216,7 +216,7 @@ export const createApplicationState = () => setup({
           switchPluginDown: 'SWITCH_PLUGIN_DOWN'
         }
       );
-      
+
       if (actionType) {
         if (originalEvent) {
           originalEvent.preventDefault();
@@ -227,91 +227,91 @@ export const createApplicationState = () => setup({
         self.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
       }
     },
-    
+
     setHotkeysDisabled: assign({
       hotkeysDisabled: (_, value: boolean) => value
     }),
-    
+
     navigate: ({ context, self }, direction: -1 | 1) => {
       const newIndex = context.historyIndex + direction;
       if (newIndex < 0 || newIndex >= context.pluginHistory.length) return;
-      
-      self.send({ 
-        type: 'SELECT_PLUGIN', 
+
+      self.send({
+        type: 'SELECT_PLUGIN',
         pluginId: context.pluginHistory[newIndex],
         historyIndex: newIndex
       });
     },
-    
+
     switchPluginByDirection: ({ context, event, self }) => {
       // Use only visible plugins for switching
       const visiblePlugins = context.visiblePlugins;
-      
+
       if (visiblePlugins.length === 0) return;
-      
+
       const currentIndex = visiblePlugins.findIndex(p => p.id === context.activePlugin.id);
       if (currentIndex === -1) return;
-      
+
       let newIndex: number;
       if (event.type === 'SWITCH_PLUGIN_UP') {
         newIndex = currentIndex === 0 ? visiblePlugins.length - 1 : currentIndex - 1;
       } else {
         newIndex = currentIndex === visiblePlugins.length - 1 ? 0 : currentIndex + 1;
       }
-      
+
       const newPluginId = visiblePlugins[newIndex].id;
-      
+
       self.send({
         type: 'SELECT_PLUGIN',
         pluginId: newPluginId
       });
     },
-    
+
     forwardHotkeyToPlugin: ({ context, event, system }) => {
       const hotkeyEvent = typeOf('FORWARD_HOTKEY', event).event;
-      
+
       // First, send to all plugins that have global hotkeys
-      const globalPlugins = context.plugins.filter(plugin => 
+      const globalPlugins = context.plugins.filter(plugin =>
         plugin.hotkeys?.some(h => h.global)
       );
-      
+
       for (const plugin of globalPlugins) {
         const pluginActor = system.get(plugin.id);
         pluginActor.send(hotkeyEvent);
       }
-      
+
       // Then send to active plugin for non-global hotkeys
       const activePluginActor = system.get(context.activePlugin.id);
       activePluginActor.send(hotkeyEvent);
     },
-    
+
     setTargetView: assign(({ event, system }, params?: string) => ({
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
     })),
-    sendRouteClick: sendTo(({ system, context }) => 
+    sendRouteClick: sendTo(({ system, context }) =>
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
       const { pluginId, historyIndex } = typeOf('SELECT_PLUGIN', event);
       const newPlugin = context.plugins.find(p => p.id === pluginId) || context.activePlugin;
-      
+
       // Send plugin activation events
       if (context.activePlugin.id !== newPlugin.id) {
         system.get(context.activePlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
         system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
       }
-      
+
       // Update context and history in one assignment
       enqueue.assign(({ context }) => {
         const updates: any = {
           activePlugin: newPlugin,
           defaultToggles: { ...context.defaultToggles, canvas: false }
         };
-        
+
         // Skip history update if same plugin
         if (context.activePlugin.id === newPlugin.id) return updates;
-        
+
         if (historyIndex !== undefined) {
           // Navigation: just update index
           updates.historyIndex = historyIndex;
@@ -323,18 +323,18 @@ export const createApplicationState = () => setup({
             updates.historyIndex = history.length;
           }
         }
-        
+
         return updates;
       });
-      
+
       // Persist the new active plugin if it changed
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(({ context }) => {
           const pluginId = newPlugin.id;
-          
+
           // Save to localStorage for immediate access on next load
           localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
-          
+
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
             systemId: 'settings',
@@ -388,15 +388,15 @@ export const createApplicationState = () => setup({
       const { panel, size } = typeOf('RESIZE_PANEL', event);
       const newSizes = {
         ...context.panelSizes,
-        ...(panel === 'canvas' 
+        ...(panel === 'canvas'
           ? { canvasHeight: Math.max(20, Math.min(80, size)) } // 20-80% bounds
           : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
         )
       };
-      
+
       // Save to localStorage
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      
+
       return {
         panelSizes: newSizes
       };
@@ -405,17 +405,17 @@ export const createApplicationState = () => setup({
       const isCollapsed = context.panelSizes.inspectionWidth === 0;
       const newSizes = {
         ...context.panelSizes,
-        inspectionWidth: isCollapsed 
-          ? (context.panelSizes.previousInspectionWidth || 448) 
+        inspectionWidth: isCollapsed
+          ? (context.panelSizes.previousInspectionWidth || 448)
           : 0,
-        previousInspectionWidth: isCollapsed 
-          ? context.panelSizes.previousInspectionWidth 
+        previousInspectionWidth: isCollapsed
+          ? context.panelSizes.previousInspectionWidth
           : context.panelSizes.inspectionWidth
       };
-      
+
       // Save to localStorage
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      
+
       return {
         panelSizes: newSizes
       };
@@ -446,16 +446,16 @@ export const createApplicationState = () => setup({
       inspectionWidth: 448, // 28rem = 448px (16px base),
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
-    
+
     // Load last active plugin from localStorage
     const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
-    
+
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
     input.plugins.forEach(plugin => {
       pluginVisibility[plugin.id] = true;
     });
-    
+
     // Determine initial active plugin - use saved one if it exists and is valid
     let initialActivePlugin = input.plugins[0];
     if (savedLastActivePlugin) {
@@ -464,7 +464,7 @@ export const createApplicationState = () => setup({
         initialActivePlugin = savedPlugin;
       }
     }
-    
+
     return {
       plugins: input.plugins,
       visiblePlugins: input.plugins, // Initially all plugins are visible

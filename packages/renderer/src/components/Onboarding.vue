@@ -3,7 +3,7 @@
     <div class="onboarding-content">
       <div class="onboarding-header">
         <h1 class="title">Welcome to AgentBuddy</h1>
-        <p class="subtitle">Your AI-powered development assistant</p>
+        <p class="subtitle">Your AI-powered assistant</p>
       </div>
 
       <div class="onboarding-steps">
@@ -19,7 +19,7 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Explore Plugins</h3>
-            <p>Use the toolbar to access different plugins allowing you to personalize your assistant.</p>
+            <p>Customize your assistant with plugins, easily accessible from the toolbar.</p>
           </div>
         </div>
 
@@ -27,7 +27,7 @@
           <div class="step-number">3</div>
           <div class="step-content">
             <h3>Start Building</h3>
-            <p>Chat with your assistant to help plan, manage, code, debug, and deploy your projects.</p>
+            <p>Work with your assistant to plan, manage, code, debug, and deploy your projects.</p>
           </div>
         </div>
       </div>
@@ -71,11 +71,17 @@ const completeOnboarding = () => {
 
 <style scoped>
 .onboarding-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(3px);
+  z-index: 9999;
   padding: 2rem;
 }
 

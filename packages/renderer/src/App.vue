@@ -6,8 +6,8 @@ import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
+const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
-const isRunning = useSelector(applicationState, (s) => s.hasTag('running'));
 
 // Toggle for showing API status (can be toggled with a hotkey)
 const showApiStatus = ref(false);
@@ -21,12 +21,15 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- Onboarding component -->
-  <Onboarding v-if="isOnboarding" />
-  <!-- Main web app component -->
-  <WebApp v-if="isRunning" />
-  <!-- Onboarding component -->
-  <Skeleton v-else />
+  <!-- Loading skeleton for initial state -->
+  <Skeleton v-if="isSettingUp" />
+
+  <template v-else>
+    <!-- Onboarding modal overlay -->
+    <Onboarding v-if="isOnboarding" />
+    <!-- Main web app component (always rendered when running) -->
+    <WebApp />
+  </template>
   
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
   <div v-if="showApiStatus" class="api-status-overlay">
