@@ -1,74 +1,69 @@
 <template>
   <div class="tour-overlay">
-    <!-- Always use multi-div overlay approach for consistency -->
-    <template v-if="spotlightRect">
+    <!-- Show multi-div backdrop when element is targeted -->
+    <template v-if="targetRect">
       <!-- Top overlay -->
       <div 
-        v-if="spotlightRect.top > 0"
         class="tour-backdrop-section"
         :style="{
           top: 0,
           left: 0,
           right: 0,
-          height: `${Math.max(0, spotlightRect.top)}px`
+          height: `${targetRect.top}px`
         }"
-        @click="handleBackdropClick"
       ></div>
       
       <!-- Left overlay -->
       <div 
-        v-if="spotlightRect.left > 0"
         class="tour-backdrop-section"
         :style="{
-          top: `${Math.max(0, spotlightRect.top)}px`,
+          top: `${targetRect.top}px`,
           left: 0,
-          width: `${Math.max(0, spotlightRect.left)}px`,
-          height: `${spotlightRect.height}px`
+          width: `${targetRect.left}px`,
+          height: `${targetRect.height}px`
         }"
-        @click="handleBackdropClick"
       ></div>
       
       <!-- Right overlay -->
       <div 
         class="tour-backdrop-section"
         :style="{
-          top: `${Math.max(0, spotlightRect.top)}px`,
+          top: `${targetRect.top}px`,
           right: 0,
-          left: `${spotlightRect.left + spotlightRect.width}px`,
-          height: `${spotlightRect.height}px`
+          left: `${targetRect.left + targetRect.width}px`,
+          height: `${targetRect.height}px`
         }"
-        @click="handleBackdropClick"
       ></div>
       
       <!-- Bottom overlay -->
       <div 
         class="tour-backdrop-section"
         :style="{
-          top: `${spotlightRect.top + spotlightRect.height}px`,
+          top: `${targetRect.top + targetRect.height}px`,
           left: 0,
           right: 0,
           bottom: 0
         }"
-        @click="handleBackdropClick"
       ></div>
       
-      <!-- Spotlight border/glow effect (only show if there's a real target) -->
+      <!-- Spotlight border -->
       <div 
-        v-if="targetRect"
         class="tour-spotlight-border"
         :style="{
-          top: `${spotlightRect.top}px`,
-          left: `${spotlightRect.left}px`,
-          width: `${spotlightRect.width}px`,
-          height: `${spotlightRect.height}px`
+          top: `${targetRect.top}px`,
+          left: `${targetRect.left}px`,
+          width: `${targetRect.width}px`,
+          height: `${targetRect.height}px`
         }"
       ></div>
     </template>
     
-    <!-- Tour content tooltip -->
+    <!-- Simple full backdrop when no target -->
+    <div v-else class="tour-backdrop"></div>
+    
+    <!-- Tour tooltip -->
     <div 
       v-if="currentStep"
-      ref="tooltipRef"
       class="tour-tooltip"
       :style="tooltipStyle"
     >
@@ -112,7 +107,7 @@
       </div>
     </div>
     
-    <!-- Persistent End Tour button -->
+    <!-- End Tour button -->
     <button 
       class="tour-end-button"
       @click="endTour"
@@ -149,38 +144,17 @@ const emit = defineEmits<{
 }>();
 
 const targetRect = ref<DOMRect | null>(null);
-const tooltipPosition = ref({ x: 0, y: 0 });
-const tooltipRef = ref<HTMLElement | null>(null);
-const tooltipActualHeight = ref(300); // Default height, will be updated dynamically
-
-// Computed property for spotlight rect - creates virtual full-screen when no target
-const spotlightRect = computed(() => {
-  if (targetRect.value) {
-    const padding = 2;
-
-    // Use actual target rect with appropriate padding
-    return {
-      top: Math.max(0, targetRect.value.top - padding),
-      left: Math.max(0, targetRect.value.left - padding),
-      width: targetRect.value.width + (padding * 2),
-      height: targetRect.value.height + (padding * 2),
-    };
-  } else {
-    // Create a virtual full-screen spotlight (basically no visible spotlight)
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    return {
-      top: windowHeight / 2 - 1,
-      left: windowWidth / 2 - 1,
-      width: 2,
-      height: 2,
-    };
-  }
-});
 
 const tooltipStyle = computed(() => {
+  const tooltipWidth = 400;
+  const tooltipHeight = 250; // Fixed reasonable height
+  const padding = 20;
+  
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // Center tooltip if no target
   if (!targetRect.value) {
-    // Center tooltip if no target
     return {
       left: '50%',
       top: '50%',
@@ -188,27 +162,10 @@ const tooltipStyle = computed(() => {
     };
   }
   
-  const tooltipWidth = 400;
-  const tooltipHeight = tooltipActualHeight.value; // Use dynamically measured height
-  const offset = 20;
-  
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-  
-  // Check if element is very tall (more than 50% of viewport)
-  const isFullHeight = targetRect.value.height > windowHeight * 0.5;
-  
-  // Special positioning for toolbar and other full-height elements
-  if (isFullHeight || props.currentStep?.targetId === 'toolbar') {
-    // Position to the right of the element, vertically centered
-    let x = targetRect.value.right + offset;
-    let y = windowHeight / 2 - tooltipHeight / 2;
-    
-    // If no room on the right, try positioning in the center of the viewport
-    if (x + tooltipWidth > windowWidth - offset) {
-      x = windowWidth / 2 - tooltipWidth / 2;
-      y = windowHeight / 2 - tooltipHeight / 2;
-    }
+  // Special positioning for toolbar (full-height element on the left)
+  if (props.currentStep?.targetId === 'toolbar') {
+    const x = targetRect.value.right + padding;
+    const y = windowHeight / 2 - tooltipHeight / 2;
     
     return {
       left: `${x}px`,
@@ -216,23 +173,19 @@ const tooltipStyle = computed(() => {
     };
   }
   
-  // Normal positioning for regular elements
+  // Default positioning: below the target element
   let x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
-  let y = targetRect.value.bottom + offset;
+  let y = targetRect.value.bottom + padding;
   
-  // Adjust horizontal position if tooltip goes off screen
-  if (x < offset) x = offset;
-  if (x + tooltipWidth > windowWidth - offset) {
-    x = windowWidth - tooltipWidth - offset;
-  }
+  // Keep tooltip within viewport horizontally
+  x = Math.max(padding, Math.min(x, windowWidth - tooltipWidth - padding));
   
-  // Adjust vertical position if tooltip goes off bottom
-  if (y + tooltipHeight > windowHeight - offset) {
-    // Try positioning above target
-    y = targetRect.value.top - tooltipHeight - offset;
+  // If tooltip would go off bottom, position above target
+  if (y + tooltipHeight > windowHeight - padding) {
+    y = targetRect.value.top - tooltipHeight - padding;
     
-    // If still off screen (element too high), center vertically
-    if (y < offset) {
+    // If still off screen, center vertically
+    if (y < padding) {
       y = windowHeight / 2 - tooltipHeight / 2;
     }
   }
@@ -243,85 +196,37 @@ const tooltipStyle = computed(() => {
   };
 });
 
-const measureTooltipHeight = () => {
-  if (tooltipRef.value) {
-    const rect = tooltipRef.value.getBoundingClientRect();
-    tooltipActualHeight.value = rect.height;
-    console.log('[Tour] Measured tooltip height:', rect.height);
-  }
-};
-
-const updateTargetRect = () => {
-  if (!props.currentStep) {
-    console.log('[Tour] No current step');
+const updateTargetRect = async () => {
+  if (!props.currentStep?.targetId) {
     targetRect.value = null;
     return;
   }
   
-  // Check if targetId is empty or not provided
-  if (!props.currentStep.targetId || props.currentStep.targetId === '') {
-    console.log('[Tour] No target ID specified for this step');
-    targetRect.value = null;
-    return;
-  }
+  await nextTick();
   
-  console.log('[Tour] Looking for element with id:', props.currentStep.targetId);
-  const element = document.querySelector(`[data-onboarding-id="${props.currentStep.targetId}"]`) as HTMLElement;
-  
+  const element = document.querySelector(`[data-onboarding-id="${props.currentStep.targetId}"]`);
   if (element) {
-    console.log('[Tour] Found element:', element);
     targetRect.value = element.getBoundingClientRect();
-    console.log('[Tour] Element rect:', targetRect.value);
-
-    // Scroll element into view if needed
     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else {
-    console.log('[Tour] Element not found!');
     targetRect.value = null;
   }
 };
 
-const handleBackdropClick = () => {
-  // Prevent closing tour on backdrop click
-};
+const nextStep = () => emit('next');
+const previousStep = () => emit('previous');
+const endTour = () => emit('end');
+const completeTour = () => emit('complete');
 
-const nextStep = () => {
-  emit('next');
-};
-
-const previousStep = () => {
-  emit('previous');
-};
-
-const endTour = () => {
-  emit('end');
-};
-
-const completeTour = () => {
-  emit('complete');
-};
-
-// Update target rect when step changes
-watch(() => props.currentStep, async () => {
-  // Wait for DOM updates before trying to find the element
-  await nextTick();
-  // Add a small delay to ensure everything is rendered
-  setTimeout(() => {
-    updateTargetRect();
-    measureTooltipHeight();
-  }, 100);
+// Update target when step changes
+watch(() => props.currentStep, () => {
+  updateTargetRect();
 });
 
-// Update target rect on window resize
-onMounted(async () => {
+// Initial setup and resize handling
+onMounted(() => {
+  updateTargetRect();
   window.addEventListener('resize', updateTargetRect);
-  // Wait for DOM to be fully ready
-  await nextTick();
-  // Add a small delay to ensure everything is rendered
-  setTimeout(() => {
-    updateTargetRect();
-    measureTooltipHeight();
-  }, 200);
 });
 
 onUnmounted(() => {
@@ -364,7 +269,16 @@ onUnmounted(() => {
     0 0 20px rgba(74, 158, 255, 0.5),
     inset 0 0 20px rgba(74, 158, 255, 0.2);
   pointer-events: none;
-  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .tour-tooltip {
@@ -375,10 +289,12 @@ onUnmounted(() => {
   padding: 1.5rem;
   min-width: 400px;
   max-width: 500px;
+  max-height: 350px;
+  overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
-  z-index: 10001; /* Ensure tooltip is always above everything */
-  transition: left 0.3s ease, top 0.3s ease; /* Smooth position transitions */
+  z-index: 10001;
+  transition: all 0.3s ease;
 }
 
 .tour-header {
@@ -493,12 +409,31 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   pointer-events: auto;
-  z-index: 3;
+  z-index: 10002;
 }
 
 .tour-end-button:hover {
   background: rgba(220, 38, 38, 0.9);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Custom scrollbar for tooltip */
+.tour-tooltip::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tour-tooltip::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.tour-tooltip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.tour-tooltip::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
