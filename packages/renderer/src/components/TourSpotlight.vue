@@ -64,6 +64,7 @@
     <!-- Tour tooltip -->
     <div 
       v-if="currentStep"
+      ref="tooltipRef"
       class="tour-tooltip"
       :style="tooltipStyle"
     >
@@ -145,10 +146,13 @@ const emit = defineEmits<{
 }>();
 
 const targetRect = ref<DOMRect | null>(null);
+const tooltipRef = ref<HTMLElement | null>(null);
 
 const tooltipStyle = computed(() => {
-  const tooltipWidth = 400;
-  const tooltipHeight = 250; // Fixed reasonable height
+  // Measure tooltip directly if available, otherwise use defaults
+  const tooltipRect = tooltipRef.value?.getBoundingClientRect();
+  const tooltipWidth = tooltipRect?.width || 400;
+  const tooltipHeight = tooltipRect?.height || 250;
   const padding = 20;
   
   const windowWidth = window.innerWidth;
@@ -282,9 +286,9 @@ const updateTargetRect = async () => {
     targetRect.value = null;
     return;
   }
-  
+
   await nextTick();
-  
+
   const element = document.querySelector(`[data-onboarding-id="${props.currentStep.targetId}"]`);
   if (element) {
     targetRect.value = element.getBoundingClientRect();
