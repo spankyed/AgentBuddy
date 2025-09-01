@@ -342,6 +342,7 @@ onUnmounted(() => {
   position: absolute;
   background: rgba(0, 0, 0, 0.5);
   pointer-events: auto;
+  transition: all 0.3s ease;
 }
 
 .tour-spotlight-border {
@@ -353,6 +354,7 @@ onUnmounted(() => {
     inset 0 0 20px rgba(74, 158, 255, 0.2);
   pointer-events: none;
   animation: pulse 2s infinite;
+  transition: all 0.3s ease;
 }
 
 @keyframes pulse {
