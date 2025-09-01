@@ -56,37 +56,21 @@ const isLastStep = computed(() => {
   return tourContext.value.currentStepIndex === tourContext.value.steps.length - 1;
 });
 
-// Tour controls
+// Tour controls - send events through application state for proper reactivity
 const nextStep = () => {
-  const snapshot = applicationState.getSnapshot();
-  const tourActorRef = snapshot.children?.guidedTour;
-  if (tourActorRef) {
-    tourActorRef.send({ type: 'NEXT' } as any);
-  }
+  applicationState.send({ type: 'TOUR_NEXT' });
 };
 
 const previousStep = () => {
-  const snapshot = applicationState.getSnapshot();
-  const tourActorRef = snapshot.children?.guidedTour;
-  if (tourActorRef) {
-    tourActorRef.send({ type: 'PREVIOUS' } as any);
-  }
+  applicationState.send({ type: 'TOUR_PREVIOUS' });
 };
 
 const endTour = () => {
-  const snapshot = applicationState.getSnapshot();
-  const tourActorRef = snapshot.children?.guidedTour;
-  if (tourActorRef) {
-    tourActorRef.send({ type: 'END' } as any);
-  }
+  applicationState.send({ type: 'TOUR_END' });
 };
 
 const completeTour = () => {
-  const snapshot = applicationState.getSnapshot();
-  const tourActorRef = snapshot.children?.guidedTour;
-  if (tourActorRef) {
-    tourActorRef.send({ type: 'COMPLETE' } as any);
-  }
+  applicationState.send({ type: 'TOUR_COMPLETE' });
 };
 
 // Toggle for showing API status (can be toggled with a hotkey)

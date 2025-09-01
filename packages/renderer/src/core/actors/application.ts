@@ -69,10 +69,15 @@ export type ApplicationEvent =
   | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; tourStarted: boolean }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'START_GUIDED_TOUR' }
+  | { type: 'TOUR_NEXT' }
+  | { type: 'TOUR_PREVIOUS' }
+  | { type: 'TOUR_END' }
+  | { type: 'TOUR_COMPLETE' }
   | { type: 'TOUR_ENDED' }
   | { type: 'TOUR_COMPLETED' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
+  | { type: 'ROUTE_EVENT'; target: string; event: any }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -499,6 +504,23 @@ export const createApplicationState = () => setup({
         inspectionWidth: 0,
       }),
     }),
+    routeEvent: ({ context, system, self, event }) => {
+      const { target, event: targetEvent } = typeOf('ROUTE_EVENT', event);
+      
+      // If target is 'application', handle the event locally
+      if (target === 'application') {
+        self.send(targetEvent);
+      } 
+      // Otherwise, route to the specified plugin
+      else {
+        const targetActor = system.get(target);
+        if (targetActor) {
+          targetActor.send(targetEvent);
+        } else {
+          console.warn(`[Tour] Could not find actor for target: ${target}`);
+        }
+      }
+    },
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
@@ -610,11 +632,26 @@ export const createApplicationState = () => setup({
         }
       },
       on: {
+        TOUR_NEXT: {
+          actions: sendTo('guidedTour', { type: 'NEXT' })
+        },
+        TOUR_PREVIOUS: {
+          actions: sendTo('guidedTour', { type: 'PREVIOUS' })
+        },
+        TOUR_END: {
+          actions: sendTo('guidedTour', { type: 'END' })
+        },
+        TOUR_COMPLETE: {
+          actions: sendTo('guidedTour', { type: 'COMPLETE' })
+        },
         TOUR_ENDED: {
           target: 'running',
         },
         TOUR_COMPLETED: {
           target: 'running',
+        },
+        ROUTE_EVENT: {
+          actions: 'routeEvent'
         },
         SELECT_PLUGIN: {
           actions: [
