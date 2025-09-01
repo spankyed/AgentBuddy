@@ -40,13 +40,20 @@
         >
           Next
         </button>
-        <button 
-          v-if="step === 3"
-          @click="completeOnboarding"
-          class="btn btn-primary"
-        >
-          Get Started
-        </button>
+        <div v-if="step === 3" class="final-actions">
+          <button 
+            @click="startGuidedTour"
+            class="btn btn-tour"
+          >
+            Take Guided Tour
+          </button>
+          <button 
+            @click="completeOnboarding"
+            class="btn btn-primary"
+          >
+            Get Started
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -66,6 +73,10 @@ const nextStep = () => {
 
 const completeOnboarding = () => {
   applicationState.send({ type: 'COMPLETE_ONBOARDING' });
+};
+
+const startGuidedTour = () => {
+  applicationState.send({ type: 'START_GUIDED_TOUR' });
 };
 </script>
 
@@ -163,6 +174,11 @@ const completeOnboarding = () => {
   gap: 1rem;
 }
 
+.final-actions {
+  display: flex;
+  gap: 1rem;
+}
+
 .btn {
   padding: 0.75rem 2rem;
   border-radius: 8px;
@@ -182,6 +198,17 @@ const completeOnboarding = () => {
   background: #3a8eef;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+}
+
+.btn-tour {
+  background: #10b981;
+  color: white;
+}
+
+.btn-tour:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .btn-secondary {

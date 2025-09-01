@@ -6,6 +6,7 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
+import { guidedTourMachine } from '@/core/actors/guided-tour';
 
 interface BreadcrumbItem {
   label: string;
@@ -65,8 +66,14 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; tourStarted: boolean }
   | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'START_GUIDED_TOUR' }
+  | { type: 'TOUR_ENDED' }
+  | { type: 'TOUR_COMPLETED' }
+  | { type: 'SHOW_INSPECTION_PANEL' }
+  | { type: 'HIDE_INSPECTION_PANEL' }
+  | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -170,6 +177,7 @@ export const createApplicationState = () => setup({
         subscription.unsubscribe();
       };
     }),
+    guidedTour: guidedTourMachine,
   },
   actions: {
     updateHotkeys: assign(({ event }) => {
@@ -431,6 +439,66 @@ export const createApplicationState = () => setup({
       //   value: true
       // });
     },
+    startGuidedTour: ({ context, self }) => {
+      console.log('[Tour] Starting guided tour');
+      
+      // Update tourStarted setting to true
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'internal',
+        label: 'internal',
+        path: ['tourStarted'],
+        value: true
+      });
+      
+      // Hide all plugins except threads, agent, and settings for the tour
+      const tourVisibility: Record<string, boolean> = {
+        threads: true,
+        agent: true,
+        settings: true,
+        code: false,
+        library: false,
+        actions: false,
+        prompts: false,
+        flows: false,
+        brain: false,
+        database: false,
+        logs: false,
+        blank: false,
+      };
+      
+      console.log('[Tour] Setting plugin visibility:', tourVisibility);
+      
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin',
+        label: '_meta',
+        path: ['visibility'],
+        value: tourVisibility,
+      });
+      
+      // Also update the local state immediately
+      self.send({ 
+        type: 'PLUGIN_VISIBILITY_UPDATED', 
+        pluginVisibility: tourVisibility 
+      });
+    },
+    showInspectionPanel: assign({
+      panelSizes: ({ context }) => ({
+        ...context.panelSizes,
+        inspectionWidth: context.panelSizes.previousInspectionWidth || 400,
+        previousInspectionWidth: undefined,
+      }),
+    }),
+    hideInspectionPanel: assign({
+      panelSizes: ({ context }) => ({
+        ...context.panelSizes,
+        previousInspectionWidth: context.panelSizes.inspectionWidth,
+        inspectionWidth: 0,
+      }),
+    }),
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
@@ -504,7 +572,13 @@ export const createApplicationState = () => setup({
           {
             actions: [],
             target: 'onboarding',
-            guard: ({ event }) => event.hasOnboarded === false
+            guard: ({ event }) => event.hasOnboarded === false && !event.tourStarted
+          },
+          {
+            // If tour was started, go to guided tour state
+            actions: [],
+            target: 'guided-tour',
+            guard: ({ event }) => event.hasOnboarded === false && event.tourStarted === true
           },
           {
             actions: [],
@@ -519,6 +593,43 @@ export const createApplicationState = () => setup({
         COMPLETE_ONBOARDING: {
           actions: 'completeOnboarding',
           target: 'running',
+        },
+        START_GUIDED_TOUR: {
+          actions: ['completeOnboarding', 'startGuidedTour'],
+          target: 'guided-tour',
+        }
+      }
+    },
+    'guided-tour': {
+      tags: ['guided-tour'],
+      invoke: {
+        id: 'guidedTour',
+        src: 'guidedTour',
+        onDone: {
+          target: 'running',
+        }
+      },
+      on: {
+        TOUR_ENDED: {
+          target: 'running',
+        },
+        TOUR_COMPLETED: {
+          target: 'running',
+        },
+        SELECT_PLUGIN: {
+          actions: [
+            'setActivePlugin',
+            'trailNewPlugin',
+          ]
+        },
+        SHOW_INSPECTION_PANEL: {
+          actions: 'showInspectionPanel'
+        },
+        HIDE_INSPECTION_PANEL: {
+          actions: 'hideInspectionPanel'
+        },
+        PLUGIN_VISIBILITY_UPDATED: {
+          actions: 'updatePluginVisibility'
         }
       }
     },
@@ -609,6 +720,15 @@ export const createApplicationState = () => setup({
         type: 'setHotkeysDisabled',
         params: false
       }
+    },
+    SHOW_INSPECTION_PANEL: {
+      actions: 'showInspectionPanel'
+    },
+    HIDE_INSPECTION_PANEL: {
+      actions: 'hideInspectionPanel'
+    },
+    NOOP: {
+      // No-op event, do nothing
     },
   }
 });

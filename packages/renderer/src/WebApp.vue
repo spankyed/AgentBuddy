@@ -13,6 +13,7 @@
         <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px - 4px)` : 'calc(100% - 4px)' }">
             <!-- Canvas Area -->
             <CanvasArea
+            data-onboarding-id="canvas-area"
             @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
             :style="{ height: `${panelSizes.canvasHeight}%` }"
@@ -31,7 +32,7 @@
             />
 
             <!-- Chat Area -->
-            <ChatArea :style="{ height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }">
+            <ChatArea data-onboarding-id="chat-area" :style="{ height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }">
             <component :is="defaultPlugin.chat" />
             </ChatArea>
         </div>
@@ -46,6 +47,7 @@
         <!-- Context Panel -->
         <InspectionPanel 
             v-if="panelSizes.inspectionWidth > 0"
+            data-onboarding-id="inspection-panel"
             @panel-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'panel' })"
             :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${toggles.panel ? defaultPlugin.label : activePlugin.label} Inspection`">

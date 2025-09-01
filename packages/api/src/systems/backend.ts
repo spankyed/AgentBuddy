@@ -72,13 +72,14 @@ export const backendSystem = setup({
       for (const id of Object.keys(systems)) {
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
-      // Query for hasOnboarded from internal settings and emit to application actor
+      // Query for hasOnboarded and tourStarted from internal settings and emit to application actor
       const internalSettings = settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {
           type: 'CLIENT_CONNECTED',
           hasOnboarded: internalSettings.hasOnboarded,
+          tourStarted: internalSettings.tourStarted,
           pluginId: 'application'
         }
       });

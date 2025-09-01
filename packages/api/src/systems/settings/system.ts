@@ -19,7 +19,7 @@ const busEvent = systemBus(settings);
 export const IncomingSettingsEvents = [
   busEvent('GET_SETTINGS', {}),
   busEvent('UPDATE_SETTINGS', {
-    entityType: z.enum(['general', 'plugin']),
+    entityType: z.enum(['general', 'plugin', 'internal']),
     label: z.string(),
     path: z.array(z.string()),
     value: z.any()
@@ -249,7 +249,25 @@ export const settingsSystem = setup({
         systemId: 'secrets',
         input: { parentRef: settings }
       });
-    })
+    }),
+    completeTour: () => {
+      // Check if tourStarted is true and reset it
+      const internalSettings = settingsQueries.getInternalSettings();
+      if (internalSettings.tourStarted) {
+        // Reset tourStarted to false
+        settingsCommands.updateSettings('internal', 'internal', ['tourStarted'], false);
+
+        // Show all plugins
+        const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank'];
+        const visibilityUpdate: Record<string, boolean> = {};
+        allPlugins.forEach(plugin => {
+          visibilityUpdate[plugin] = true;
+        });
+        visibilityUpdate['settings'] = true; // Settings should always be visible
+
+        settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
+      }
+    }
   },
 }).createMachine({
   id: settings,

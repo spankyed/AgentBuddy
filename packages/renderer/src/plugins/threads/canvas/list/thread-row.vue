@@ -31,7 +31,7 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-2">
+    <td class="px-4 py-2" data-onboarding-id="thread-status">
       <select
         @click.stop
         :value="thread.status"
@@ -48,7 +48,7 @@
         </option>
       </select>
     </td>
-    <td class="px-4 py-2">
+    <td class="px-4 py-2" data-onboarding-id="thread-actions">
       <div class="flex items-center justify-end gap-2">
         <button
           @click.stop="$emit('chat-click', thread.id)"

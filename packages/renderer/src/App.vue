@@ -2,12 +2,92 @@
 import WebApp from './WebApp.vue';
 import ApiStatus from './components/ApiStatus.vue';
 import Onboarding from './components/Onboarding.vue';
-import { ref } from 'vue';
+import TourSpotlight from './components/TourSpotlight.vue';
+import { ref, computed } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
 const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
+const isTouring = useSelector(applicationState, (s) => s.hasTag('guided-tour'));
+
+// Get tour context from application state
+const tourContext = useSelector(applicationState, (state) => {
+  if (!state.hasTag('guided-tour')) return null;
+  
+  const tourActorRef = state.children?.guidedTour;
+  if (!tourActorRef) {
+    console.log('[Tour App.vue] No tour actor in children');
+    return null;
+  }
+  
+  const tourSnapshot = tourActorRef.getSnapshot();
+  console.log('[Tour App.vue] Tour snapshot:', tourSnapshot);
+  return (tourSnapshot as any).context;
+});
+
+const currentStep = computed(() => {
+  if (!tourContext.value) {
+    console.log('[Tour App.vue] No tour context');
+    return null;
+  }
+  const step = tourContext.value.steps[tourContext.value.currentStepIndex];
+  console.log('[Tour App.vue] Current step:', step);
+  return step;
+});
+
+const stepNumber = computed(() => {
+  if (!tourContext.value) return 0;
+  return tourContext.value.currentStepIndex + 1;
+});
+
+const totalSteps = computed(() => {
+  if (!tourContext.value) return 0;
+  return tourContext.value.steps.length;
+});
+
+const isFirstStep = computed(() => {
+  if (!tourContext.value) return true;
+  return tourContext.value.currentStepIndex === 0;
+});
+
+const isLastStep = computed(() => {
+  if (!tourContext.value) return false;
+  return tourContext.value.currentStepIndex === tourContext.value.steps.length - 1;
+});
+
+// Tour controls
+const nextStep = () => {
+  const snapshot = applicationState.getSnapshot();
+  const tourActorRef = snapshot.children?.guidedTour;
+  if (tourActorRef) {
+    tourActorRef.send({ type: 'NEXT' } as any);
+  }
+};
+
+const previousStep = () => {
+  const snapshot = applicationState.getSnapshot();
+  const tourActorRef = snapshot.children?.guidedTour;
+  if (tourActorRef) {
+    tourActorRef.send({ type: 'PREVIOUS' } as any);
+  }
+};
+
+const endTour = () => {
+  const snapshot = applicationState.getSnapshot();
+  const tourActorRef = snapshot.children?.guidedTour;
+  if (tourActorRef) {
+    tourActorRef.send({ type: 'END' } as any);
+  }
+};
+
+const completeTour = () => {
+  const snapshot = applicationState.getSnapshot();
+  const tourActorRef = snapshot.children?.guidedTour;
+  if (tourActorRef) {
+    tourActorRef.send({ type: 'COMPLETE' } as any);
+  }
+};
 
 // Toggle for showing API status (can be toggled with a hotkey)
 const showApiStatus = ref(false);
@@ -29,6 +109,19 @@ window.addEventListener('keydown', (e) => {
     <Onboarding v-if="isOnboarding" />
     <!-- Main web app component (always rendered when running) -->
     <WebApp />
+    <!-- Guided tour overlay -->
+    <TourSpotlight 
+      v-if="isTouring"
+      :current-step="currentStep"
+      :step-number="stepNumber"
+      :total-steps="totalSteps"
+      :is-first-step="isFirstStep"
+      :is-last-step="isLastStep"
+      @next="nextStep"
+      @previous="previousStep"
+      @end="endTour"
+      @complete="completeTour"
+    />
   </template>
   
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
