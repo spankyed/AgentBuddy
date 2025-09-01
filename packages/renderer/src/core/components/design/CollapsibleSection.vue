@@ -20,27 +20,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 
 const props = defineProps<{
   label?: string;
   buttonClass?: string;
   defaultOpen?: boolean;
+  modelValue?: boolean; // For v-model binding
 }>();
 
 const emit = defineEmits<{
   toggle: [isOpen: boolean];
+  'update:modelValue': [value: boolean];
 }>();
 
-const isOpen = ref(true);
+// Use internal state that can be controlled externally via modelValue
+const internalIsOpen = ref(true);
+
+// Compute the actual open state - prefer modelValue if provided, otherwise use internal state
+const isOpen = computed(() => {
+  return props.modelValue !== undefined ? props.modelValue : internalIsOpen.value;
+});
 
 const toggle = () => {
-  isOpen.value = !isOpen.value;
+  if (props.modelValue !== undefined) {
+    // Controlled mode - emit update event
+    emit('update:modelValue', !props.modelValue);
+  } else {
+    // Uncontrolled mode - update internal state
+    internalIsOpen.value = !internalIsOpen.value;
+  }
   emit('toggle', isOpen.value);
 };
 
+// Initialize internal state on mount
 onMounted(() => {
-  isOpen.value = props.defaultOpen ?? true;
+  if (props.modelValue === undefined) {
+    internalIsOpen.value = props.defaultOpen ?? true;
+  }
+});
+
+// Sync internal state when modelValue changes (for cases where it transitions from undefined to defined)
+watch(() => props.modelValue, (newVal) => {
+  if (newVal !== undefined) {
+    internalIsOpen.value = newVal;
+  }
 });
 </script>

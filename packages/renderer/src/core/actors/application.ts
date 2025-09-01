@@ -77,7 +77,7 @@ export type ApplicationEvent =
   | { type: 'TOUR_COMPLETED' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
-  | { type: 'ROUTE_EVENT'; target: string; event: any }
+  | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -505,7 +505,7 @@ export const createApplicationState = () => setup({
       }),
     }),
     routeEvent: ({ context, system, self, event }) => {
-      const { target, event: targetEvent } = typeOf('ROUTE_EVENT', event);
+      const { target, event: targetEvent } = typeOf('ROUTE_TOUR_EVENT', event);
       
       // If target is 'application', handle the event locally
       if (target === 'application') {
@@ -514,6 +514,7 @@ export const createApplicationState = () => setup({
       // Otherwise, route to the specified plugin
       else {
         const targetActor = system.get(target);
+        console.log( {targetActor, targetEvent});
         if (targetActor) {
           targetActor.send(targetEvent);
         } else {
@@ -650,7 +651,7 @@ export const createApplicationState = () => setup({
         TOUR_COMPLETED: {
           target: 'running',
         },
-        ROUTE_EVENT: {
+        ROUTE_TOUR_EVENT: {
           actions: 'routeEvent'
         },
         SELECT_PLUGIN: {

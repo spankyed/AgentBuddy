@@ -75,15 +75,68 @@ const tourSteps: TourStep[] = [
     content: 'Now let\'s explore the Threads plugin. It shows your past conversations and lets you organize them into hierarchical threads for easier management.',
     setupActions: [
       { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'VIEW_LIST' } },
     ],
   },
   {
     id: 'threads-create',
     targetId: 'thread-create-button',
     title: 'Creating Threads',
-    content: 'Click this button to create a new thread. You can customize the status, add tags, and link related threads.',
+    content: 'Click this button to create a new thread. Let\'s explore the thread creation form.',
     setupActions: [
       { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'VIEW_LIST' } },
+    ],
+  },
+  {
+    id: 'threads-create-topic',
+    targetId: 'thread-topic-input',
+    title: 'Thread Topic',
+    content: 'Enter a descriptive topic for your thread. This helps you quickly identify what the thread is about.',
+    setupActions: [
+      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'SHOW_CREATE_FORM' } },
+    ],
+  },
+  {
+    id: 'threads-create-instructions',
+    targetId: 'thread-instructions-input',
+    title: 'Thread Instructions',
+    content: 'Provide detailed instructions for the AI agent. These guide the agent\'s behavior within this thread.',
+    setupActions: [
+      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'SHOW_CREATE_FORM' } },
+    ],
+  },
+  {
+    id: 'threads-create-tags',
+    targetId: 'thread-tags-section',
+    title: 'Thread Tags',
+    content: 'Add tags to categorize and organize your threads. Click to expand this section and add tags.',
+    setupActions: [
+      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'SHOW_CREATE_FORM' } },
+      { target: 'threads', event: { type: 'TOGGLE_TAGS_SECTION', show: true } },
+    ],
+  },
+  {
+    id: 'threads-create-linked',
+    targetId: 'thread-linked-section',
+    title: 'Linked Threads',
+    content: 'Link related threads together for better context. Click to expand and link other threads.',
+    setupActions: [
+      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
+      { target: 'threads', event: { type: 'SHOW_CREATE_FORM' } },
+      { target: 'threads', event: { type: 'TOGGLE_LINKED_SECTION', show: true } },
+    ],
+  },
+  {
+    id: 'threads-create-cancel',
+    targetId: 'thread-cancel-button',
+    title: 'Cancel Creation',
+    content: 'We\'ll cancel for now and return to the threads list. You can create threads anytime you need them.',
+    setupActions: [
+      { target: 'threads', event: { type: 'CANCEL_CREATE' } },
     ],
   },
   {
@@ -91,18 +144,14 @@ const tourSteps: TourStep[] = [
     targetId: 'thread-status',
     title: 'Thread Status',
     content: 'Each thread has a status (Backlog, Open, In Progress, etc.). You can customize these in settings.',
-    setupActions: [
-      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
-    ],
+    setupActions: [],
   },
   {
     id: 'threads-actions',
     targetId: 'thread-actions',
     title: 'Thread Actions',
     content: 'Use these actions to delete threads or open them in the chat. The chat button switches to the Agent plugin.',
-    setupActions: [
-      { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
-    ],
+    setupActions: [],
   },
   
   // Agent Plugin
@@ -170,7 +219,7 @@ export const guidedTourMachine = setup({
       if (currentStep.setupActions && currentStep.setupActions.length > 0) {
         currentStep.setupActions.forEach(action => {
           self._parent?.send({
-            type: 'ROUTE_EVENT',
+            type: 'ROUTE_TOUR_EVENT',
             target: action.target,
             event: action.event
           });
