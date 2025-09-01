@@ -9,6 +9,7 @@
   >
     <div
       v-if="node"
+      data-onboarding-id="brain-step-details"
       class="absolute inset-y-0 right-0 z-20 flex w-96 flex-col border-l border-neutral-800/50 bg-neutral-900 shadow-2xl"
       @click.stop
     >

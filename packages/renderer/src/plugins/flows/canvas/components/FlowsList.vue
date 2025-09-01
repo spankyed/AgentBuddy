@@ -65,6 +65,7 @@
         </Button>
         <Button 
           class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center"
+          data-onboarding-id="flow-create-button"
           @click="$emit('create-flow')"
         >
           <Plus class="w-4 h-4" />

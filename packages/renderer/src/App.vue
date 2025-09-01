@@ -22,7 +22,6 @@ const tourContext = useSelector(applicationState, (state) => {
   }
   
   const tourSnapshot = tourActorRef.getSnapshot();
-  console.log('[Tour App.vue] Tour snapshot:', tourSnapshot);
   return (tourSnapshot as any).context;
 });
 

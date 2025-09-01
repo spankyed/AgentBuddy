@@ -31,8 +31,9 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-2" data-onboarding-id="thread-status">
+    <td class="px-4 py-2">
       <select
+        data-onboarding-id="thread-status"
         @click.stop
         :value="thread.status"
         @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value)"
@@ -48,9 +49,10 @@
         </option>
       </select>
     </td>
-    <td class="px-4 py-2" data-onboarding-id="thread-actions">
+    <td class="px-4 py-2">
       <div class="flex items-center justify-end gap-2">
         <button
+          data-onboarding-id="thread-actions"
           @click.stop="$emit('chat-click', thread.id)"
           type="button"
           class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"

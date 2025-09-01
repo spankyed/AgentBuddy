@@ -281,8 +281,11 @@ const updateTargetRect = async () => {
 
   const element = document.querySelector(`[data-onboarding-id="${props.currentStep.targetId}"]`);
   if (element) {
+    // First scroll the element into view instantly
+    element.scrollIntoView({ behavior: 'instant', block: 'center' });
+    
+    // Then measure its position
     targetRect.value = element.getBoundingClientRect();
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else {
     targetRect.value = null;
   }

@@ -12,7 +12,7 @@
     <div class="space-y-4">
       <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">Standard Providers</h3>
       
-      <div class="grid grid-cols-[1fr,400px,80px] gap-y-3 gap-x-4 items-center">
+      <div class="grid grid-cols-[1fr,400px,80px] gap-y-3 gap-x-4 items-center" data-onboarding-id="settings-secrets-section">
         <template v-for="provider in standardProviders" :key="provider.key">
           <!-- Provider Info Column -->
           <div>
@@ -30,6 +30,7 @@
                 :type="showKeyFor[provider.key] ? 'text' : 'password'"
                 v-model="inlineKeyValues[provider.key]"
                 :placeholder="isEditing(provider.key) ? 'Enter new API key' : 'Enter API key'"
+                :data-onboarding-id="`settings-${provider.key}-key-input`"
                 @input="handleKeyInput(provider.key)"
                 @keyup.enter="saveInlineKey(provider.key)"
                 @keyup.escape="cancelEdit(provider.key)"

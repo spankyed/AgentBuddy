@@ -23,12 +23,14 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   label?: string;
   buttonClass?: string;
   defaultOpen?: boolean;
   modelValue?: boolean; // For v-model binding
-}>();
+}>(), {
+  modelValue: undefined
+});
 
 const emit = defineEmits<{
   toggle: [isOpen: boolean];

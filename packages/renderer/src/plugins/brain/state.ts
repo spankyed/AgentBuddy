@@ -42,6 +42,7 @@ type SystemEvent = OutgoingBrainEvents
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
+  | { type: 'SELECT_AND_SHOW_FIRST_NODE' }
   | { type: 'FLOW.NAVIGATE'; flowId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
@@ -263,15 +264,55 @@ const brainState = setup({
     toggleRightPanel: assign({
       showRightPanel: ({ context }) => !context.showRightPanel
     }),
-    requestNodeDetails: ({ event }) => {
-      if (event.type !== 'NODE.CLICK') return;
+    requestNodeDetails: assign(({ event }) => {
+      if (event.type !== 'NODE.CLICK') return {};
       
       trpc.bus.send.mutate({
         systemId: id,
         type: 'GET_TNODE_DETAILS',
         tNodeId: event.nodeId
       });
-    },
+      
+      // Set the selected node ID immediately
+      return {
+        selectedStepNode: {
+          id: event.nodeId
+        } as any
+      };
+    }),
+    
+    selectAndShowFirstNode: assign(({ context }) => {
+      // Get all nodes from the normalized tree
+      const byId = context.normalizedTree?.byId;
+      const rootIds = context.normalizedTree?.rootIds || [];
+      
+      if (!byId) {
+        console.warn('No nodes available in brain');
+        return {};
+      }
+      
+      // Find the first node that is not a root node
+      const firstNodeId = Object.keys(byId).find(id => !rootIds.includes(id));
+      
+      if (!firstNodeId) {
+        console.warn('No child nodes available in brain');
+        return {};
+      }
+      
+      // Request details for this node
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_TNODE_DETAILS',
+        tNodeId: firstNodeId
+      });
+      
+      // Set the selected node ID immediately
+      return {
+        selectedStepNode: {
+          id: firstNodeId
+        } as any
+      };
+    }),
     setStepNodeDetails: assign(({ event }) => {
       if (event.type !== 'TNODE_DETAILS') return {};
       return {
@@ -322,6 +363,7 @@ const brainState = setup({
     showRightPanel: false,
     debugEnabled: false,
     animationsEnabled: true,
+    selectedStepNode: undefined,
     brainIsDead: false, // Start as running to prevent flash of dead UI
   },
   initial: 'loading',
@@ -341,6 +383,9 @@ const brainState = setup({
         },
         'NODE.CLICK': {
           actions: 'requestNodeDetails'
+        },
+        'SELECT_AND_SHOW_FIRST_NODE': {
+          actions: 'selectAndShowFirstNode'
         },
         'FLOW.NAVIGATE': {
           actions: 'navigateToFlow'
