@@ -70,7 +70,7 @@
     >
       <div class="tour-header">
         <h3>{{ currentStep.title }}</h3>
-        <button @click="endTour" class="tour-close">×</button>
+        <button title="End Tour" @click="endTour" class="tour-close">×</button>
       </div>
       
       <div class="tour-body">
@@ -83,6 +83,12 @@
         </div>
         
         <div class="tour-actions">
+          <!-- <button 
+            @click="endTour"
+            class="tour-btn tour-btn-ghost"
+          >
+            End Tour
+          </button> -->
           <button 
             v-if="!isFirstStep"
             @click="previousStep"
@@ -107,14 +113,6 @@
         </div>
       </div>
     </div>
-    
-    <!-- End Tour button -->
-    <button 
-      class="tour-end-button"
-      @click="endTour"
-    >
-      End Tour
-    </button>
   </div>
 </template>
 
@@ -480,27 +478,21 @@ onUnmounted(() => {
   background: #059669;
 }
 
-.tour-end-button {
-  position: fixed;
-  top: 20px;
-  right: 20px;
+.tour-btn-ghost {
   padding: 0.5rem 1.25rem;
-  background: rgba(239, 68, 68, 0.9);
-  color: white;
-  border: none;
   border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #999;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  pointer-events: auto;
-  z-index: 10002;
 }
 
-.tour-end-button:hover {
-  background: rgba(220, 38, 38, 0.9);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+.tour-btn-ghost:hover {
+  background: #404040;
+  color: white;
 }
 
 /* Custom scrollbar for tooltip */
