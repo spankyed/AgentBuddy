@@ -296,6 +296,19 @@ const previousStep = () => emit('previous');
 const endTour = () => emit('end');
 const completeTour = () => emit('complete');
 
+// Handle keyboard navigation
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'ArrowLeft' && !props.isFirstStep) {
+    previousStep();
+  } else if (event.key === 'ArrowRight') {
+    if (!props.isLastStep) {
+      nextStep();
+    } else {
+      completeTour();
+    }
+  }
+};
+
 // Update target when step changes
 watch(() => props.currentStep, () => {
   updateTargetRect();
@@ -305,10 +318,12 @@ watch(() => props.currentStep, () => {
 onMounted(() => {
   updateTargetRect();
   window.addEventListener('resize', updateTargetRect);
+  window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateTargetRect);
+  window.removeEventListener('keydown', handleKeydown);
 });
 </script>
 
