@@ -8,7 +8,7 @@ export interface TourStep {
   content: string;
   setupActions?: Array<{
     target: string; // 'application' or plugin ID (e.g., 'threads', 'agent')
-    event: any; // The event to send to the target
+    event: unknown; // The event to send to the target
   }>;
   tooltipPosition?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
 }
@@ -72,7 +72,7 @@ const tourSteps: TourStep[] = [
     id: 'threads-intro',
     targetId: 'plugin-threads',
     title: 'Threads Plugin',
-    content: 'Now let\'s explore the Threads plugin. This helps you organize conversations into manageable threads.',
+    content: 'Now let\'s explore the Threads plugin. It shows your past conversations and lets you organize them into hierarchical threads for easier management.',
     setupActions: [
       { target: 'application', event: { type: 'SELECT_PLUGIN', pluginId: 'threads' } },
     ],
