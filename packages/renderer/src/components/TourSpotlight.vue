@@ -118,15 +118,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-
-export interface TourStep {
-  id: string;
-  targetId: string;
-  title: string;
-  content: string;
-  action?: () => void;
-  tooltipPosition?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
-}
+import type { TourStep } from '@/core/actors/tour-steps';
 
 const props = defineProps<{
   currentStep: TourStep | null;
