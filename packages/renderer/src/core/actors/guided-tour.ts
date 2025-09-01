@@ -9,6 +9,7 @@ export interface TourStep {
   action?: () => void;
   pluginId?: string;
   hideInspection?: boolean;
+  tooltipPosition?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
 }
 
 interface Context {
@@ -36,6 +37,7 @@ const tourSteps: TourStep[] = [
     targetId: 'toolbar',
     title: 'Plugin Toolbar',
     content: 'This is the plugin toolbar. Each icon represents a different plugin you can use. Click on any icon to switch between plugins.',
+    tooltipPosition: 'right',
   },
   {
     id: 'canvas',
@@ -55,6 +57,7 @@ const tourSteps: TourStep[] = [
     title: 'Inspection Panel',
     content: 'The inspection panel shows contextual information like event traces from the brain. It may also display additional details or data from plugins.',
     hideInspection: false,
+    tooltipPosition: 'left',
   },
   
   // Threads Plugin

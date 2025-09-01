@@ -126,6 +126,7 @@ export interface TourStep {
   title: string;
   content: string;
   action?: () => void;
+  tooltipPosition?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
 }
 
 const props = defineProps<{
@@ -162,32 +163,112 @@ const tooltipStyle = computed(() => {
     };
   }
   
-  // Special positioning for toolbar (full-height element on the left)
-  if (props.currentStep?.targetId === 'toolbar') {
-    const x = targetRect.value.right + padding;
-    const y = windowHeight / 2 - tooltipHeight / 2;
-    
-    return {
-      left: `${x}px`,
-      top: `${y}px`,
-    };
+  let x = 0;
+  let y = 0;
+  const position = props.currentStep?.tooltipPosition || 'auto';
+  
+  // Calculate position based on hint
+  switch (position) {
+    case 'left':
+      // Position to the left of element
+      x = targetRect.value.left - tooltipWidth - padding;
+      y = targetRect.value.top + targetRect.value.height / 2 - tooltipHeight / 2;
+      
+      // For very tall elements, center vertically in viewport
+      if (targetRect.value.height > windowHeight * 0.7) {
+        y = windowHeight / 2 - tooltipHeight / 2;
+      }
+      
+      // Fallback if off-screen
+      if (x < padding) {
+        // Try right instead
+        x = targetRect.value.right + padding;
+        if (x + tooltipWidth > windowWidth - padding) {
+          // Center horizontally as last resort
+          x = windowWidth / 2 - tooltipWidth / 2;
+        }
+      }
+      break;
+      
+    case 'right':
+      // Position to the right of element
+      x = targetRect.value.right + padding;
+      y = targetRect.value.top + targetRect.value.height / 2 - tooltipHeight / 2;
+      
+      // For very tall elements (like toolbar), center vertically in viewport
+      if (targetRect.value.height > windowHeight * 0.7) {
+        y = windowHeight / 2 - tooltipHeight / 2;
+      }
+      
+      // Fallback if off-screen
+      if (x + tooltipWidth > windowWidth - padding) {
+        // Try left instead
+        x = targetRect.value.left - tooltipWidth - padding;
+        if (x < padding) {
+          // Center horizontally as last resort
+          x = windowWidth / 2 - tooltipWidth / 2;
+        }
+      }
+      break;
+      
+    case 'top':
+      // Position above element
+      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
+      y = targetRect.value.top - tooltipHeight - padding;
+      
+      // Fallback if off-screen
+      if (y < padding) {
+        // Try bottom instead
+        y = targetRect.value.bottom + padding;
+        if (y + tooltipHeight > windowHeight - padding) {
+          // Center vertically as last resort
+          y = windowHeight / 2 - tooltipHeight / 2;
+        }
+      }
+      break;
+      
+    case 'bottom':
+      // Position below element
+      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
+      y = targetRect.value.bottom + padding;
+      
+      // Fallback if off-screen
+      if (y + tooltipHeight > windowHeight - padding) {
+        // Try top instead
+        y = targetRect.value.top - tooltipHeight - padding;
+        if (y < padding) {
+          // Center vertically as last resort
+          y = windowHeight / 2 - tooltipHeight / 2;
+        }
+      }
+      break;
+      
+    case 'auto':
+    default:
+      // Smart positioning: prefer bottom, then top, then right, then left
+      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
+      y = targetRect.value.bottom + padding;
+      
+      // If would go off bottom, try top
+      if (y + tooltipHeight > windowHeight - padding) {
+        y = targetRect.value.top - tooltipHeight - padding;
+        
+        // If still off screen, center vertically
+        if (y < padding) {
+          y = windowHeight / 2 - tooltipHeight / 2;
+        }
+      }
+      break;
   }
   
-  // Default positioning: below the target element
-  let x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
-  let y = targetRect.value.bottom + padding;
+  // Always keep tooltip within horizontal bounds for auto positioning
+  if (position === 'auto' || position === 'top' || position === 'bottom') {
+    x = Math.max(padding, Math.min(x, windowWidth - tooltipWidth - padding));
+  }
   
-  // Keep tooltip within viewport horizontally
-  x = Math.max(padding, Math.min(x, windowWidth - tooltipWidth - padding));
-  
-  // If tooltip would go off bottom, position above target
-  if (y + tooltipHeight > windowHeight - padding) {
-    y = targetRect.value.top - tooltipHeight - padding;
-    
-    // If still off screen, center vertically
-    if (y < padding) {
-      y = windowHeight / 2 - tooltipHeight / 2;
-    }
+  // Always keep tooltip within vertical bounds for left/right positioning
+  if (position === 'left' || position === 'right') {
+    y = Math.max(padding, Math.min(y, windowHeight - tooltipHeight - padding));
   }
   
   return {
