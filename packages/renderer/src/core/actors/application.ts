@@ -507,14 +507,39 @@ export const createApplicationState = () => setup({
     routeEvent: ({ context, system, self, event }) => {
       const { target, event: targetEvent } = typeOf('ROUTE_TOUR_EVENT', event);
       
-      // If target is 'application', handle the event locally
+      // Check if this is a plugin visibility update and handle it immediately
+      if (target === 'settings' && 
+          targetEvent.type === 'SETTINGS.UPDATE' &&
+          targetEvent.entityType === 'plugin' &&
+          targetEvent.label === '_meta' &&
+          targetEvent.path?.[0] === 'visibility') {
+        
+        let newVisibility = context.pluginVisibility || {};
+        
+        // Single plugin update: path = ['visibility', pluginId]
+        if (targetEvent.path.length === 2) {
+          const pluginId = targetEvent.path[1];
+          newVisibility = { ...newVisibility, [pluginId]: targetEvent.value };
+        }
+        // Full visibility update: path = ['visibility']
+        else if (targetEvent.path.length === 1 && typeof targetEvent.value === 'object') {
+          newVisibility = targetEvent.value;
+        }
+        
+        // Send immediate visibility update to application
+        self.send({
+          type: 'PLUGIN_VISIBILITY_UPDATED',
+          pluginVisibility: newVisibility
+        });
+      }
+      
+      // Continue with normal routing
       if (target === 'application') {
         self.send(targetEvent);
       } 
       // Otherwise, route to the specified plugin
       else {
         const targetActor = system.get(target);
-        console.log( {targetActor, targetEvent});
         if (targetActor) {
           targetActor.send(targetEvent);
         } else {
