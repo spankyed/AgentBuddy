@@ -138,15 +138,17 @@ const emit = defineEmits<{
 const targetRect = ref<DOMRect | null>(null);
 const tooltipRef = ref<HTMLElement | null>(null);
 
+// Cache window dimensions to avoid frequent DOM reads
+const windowDimensions = ref({ width: window.innerWidth, height: window.innerHeight });
+
 const tooltipStyle = computed(() => {
-  // Measure tooltip directly if available, otherwise use defaults
-  const tooltipRect = tooltipRef.value?.getBoundingClientRect();
-  const tooltipWidth = tooltipRect?.width || 400;
-  const tooltipHeight = tooltipRect?.height || 250;
+  // Use fixed dimensions to avoid getBoundingClientRect calls in computed
+  const tooltipWidth = 450;
+  const tooltipHeight = 250;
   const padding = 20;
   
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
+  const windowWidth = windowDimensions.value.width;
+  const windowHeight = windowDimensions.value.height;
   
   // Center tooltip if no target
   if (!targetRect.value) {
@@ -309,6 +311,12 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
+// Update window dimensions on resize
+const handleResize = () => {
+  windowDimensions.value = { width: window.innerWidth, height: window.innerHeight };
+  updateTargetRect();
+};
+
 // Update target when step changes
 watch(() => props.currentStep, () => {
   updateTargetRect();
@@ -317,12 +325,12 @@ watch(() => props.currentStep, () => {
 // Initial setup and resize handling
 onMounted(() => {
   updateTargetRect();
-  window.addEventListener('resize', updateTargetRect);
+  window.addEventListener('resize', handleResize);
   window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateTargetRect);
+  window.removeEventListener('resize', handleResize);
   window.removeEventListener('keydown', handleKeydown);
 });
 </script>
@@ -344,19 +352,15 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  background: rgba(0, 0, 0, 0.6);
   pointer-events: auto;
 }
 
 .tour-backdrop-section {
   position: absolute;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  background: rgba(0, 0, 0, 0.6);
   pointer-events: auto;
-  transition: all 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .tour-spotlight-border {
@@ -364,11 +368,11 @@ onUnmounted(() => {
   border: 2px solid rgba(74, 158, 255, 0.5);
   border-radius: 8px;
   box-shadow: 
-    0 0 20px rgba(74, 158, 255, 0.5),
-    inset 0 0 20px rgba(74, 158, 255, 0.2);
+    0 0 10px rgba(74, 158, 255, 0.4),
+    inset 0 0 10px rgba(74, 158, 255, 0.2);
   pointer-events: none;
   animation: pulse 2s infinite;
-  transition: all 0.3s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 @keyframes pulse {
@@ -390,10 +394,10 @@ onUnmounted(() => {
   max-width: 500px;
   max-height: 350px;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
   z-index: 10001;
-  transition: all 0.3s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .tour-header {
@@ -423,7 +427,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.2s;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .tour-close:hover {
@@ -464,7 +468,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 .tour-btn-primary {
@@ -503,7 +507,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .tour-btn-ghost:hover {

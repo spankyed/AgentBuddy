@@ -90,8 +90,7 @@ const startGuidedTour = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.7);
   z-index: 9999;
   padding: 2rem;
 }
@@ -102,7 +101,7 @@ const startGuidedTour = () => {
   padding: 3rem;
   max-width: 600px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .onboarding-header {
@@ -131,7 +130,7 @@ const startGuidedTour = () => {
   align-items: flex-start;
   margin-bottom: 2rem;
   opacity: 0.5;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .step.completed {
@@ -150,7 +149,7 @@ const startGuidedTour = () => {
   font-weight: bold;
   margin-right: 1.5rem;
   flex-shrink: 0;
-  transition: background 0.3s ease;
+  transition: background-color 0.15s ease;
 }
 
 .step.completed .step-number {
@@ -186,7 +185,8 @@ const startGuidedTour = () => {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  will-change: transform;
 }
 
 .btn-primary {
@@ -196,8 +196,7 @@ const startGuidedTour = () => {
 
 .btn-primary:hover {
   background: #3a8eef;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+  transform: translateY(-2px);
 }
 
 .btn-tour {
@@ -207,8 +206,7 @@ const startGuidedTour = () => {
 
 .btn-tour:hover {
   background: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -218,6 +216,6 @@ const startGuidedTour = () => {
 
 .btn-secondary:hover {
   background: #505050;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 </style>

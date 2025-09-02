@@ -17,7 +17,6 @@ const tourContext = useSelector(applicationState, (state) => {
   
   const tourActorRef = state.children?.guidedTour;
   if (!tourActorRef) {
-    console.log('[Tour App.vue] No tour actor in children');
     return null;
   }
   
@@ -27,11 +26,9 @@ const tourContext = useSelector(applicationState, (state) => {
 
 const currentStep = computed(() => {
   if (!tourContext.value) {
-    console.log('[Tour App.vue] No tour context');
     return null;
   }
   const step = tourContext.value.steps[tourContext.value.currentStepIndex];
-  console.log('[Tour App.vue] Current step:', step);
   return step;
 });
 

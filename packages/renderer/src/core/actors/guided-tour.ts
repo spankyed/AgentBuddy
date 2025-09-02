@@ -28,7 +28,6 @@ export const guidedTourMachine = setup({
     }),
     executeSetupActions: ({ context, self }) => {
       const currentStep = context.steps[context.currentStepIndex];
-      console.log('[Tour] Executing setup actions for:', currentStep.id);
       
       if (currentStep.setupActions && currentStep.setupActions.length > 0) {
         currentStep.setupActions.forEach(action => {
