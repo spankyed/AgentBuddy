@@ -90,7 +90,7 @@ export const tourSteps: TourStep[] = [
     id: 'threads-create',
     targetId: 'thread-create-button',
     title: 'Creating Threads',
-    content: 'Click this button to create a new thread. Let\'s explore the thread creation form.',
+    content: 'Click this button to create a new thread.',
     setupActions: [
       selectPlugin('threads'),
       { target: 'threads', event: { type: 'VIEW_LIST' } },
@@ -152,7 +152,7 @@ export const tourSteps: TourStep[] = [
     id: 'threads-status',
     targetId: 'thread-status',
     title: 'Thread Status',
-    content: 'Each thread has a status (Backlog, Open, In Progress, etc.). You can customize these in settings.',
+    content: 'Each thread has a status (Backlog, Open, In Progress, etc.). Statuses can be used to track progress and prioritize work for the AI. You can customize these in settings.',
     setupActions: [
       selectPlugin('threads'),
       { target: 'threads', event: { type: 'CANCEL_CREATE' } },
