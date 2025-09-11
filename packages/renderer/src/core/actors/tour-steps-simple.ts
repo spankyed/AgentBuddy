@@ -241,24 +241,25 @@ export const tourSteps: TourStep[] = [
     setupActions: [...showAndSelectPlugin('settings')],
   },
   {
-    id: 'settings-overview',
+    id: 'tour-complete',
     targetId: 'canvas-area',
-    title: 'Settings Overview',
-    content: 'The Settings plugin is organized into tabs. General settings for core configuration, Plugins tab for individual plugin settings, and Help for documentation and support.',
+    title: 'Final Step: Configure API Keys',
+    content: 'To finish setting up AgentBuddy, you\'ll need API keys from some AI providers. Your keys are stored securely and never shared.',
     setupActions: [
       selectPlugin('settings'),
       { target: 'settings', event: { type: 'TAB.SELECT', tab: 'general' } },
+      { target: 'settings', event: { type: 'GENERAL_NAV.SELECT', item: 'secrets' } },
     ],
   },
 
   // ========================================
   // Tour Complete
   // ========================================
-  {
-    id: 'tour-complete',
-    targetId: '', // No target for centered modal
-    title: 'Tour Complete!',
-    content: 'Congratulations! You\'ve completed the guided tour. All plugins are now visible and you\'re ready to start using AgentBuddy. Explore, customize, and build amazing workflows!',
-    setupActions: [],
-  },
+  // {
+  //   id: 'tour-complete',
+  //   targetId: '', // No target for centered modal
+  //   title: 'Tour Complete!',
+  //   content: 'Congratulations! You\'ve completed the guided tour. All plugins are now visible and you\'re ready to start using AgentBuddy. Explore, customize, and build amazing workflows!',
+  //   setupActions: [],
+  // },
 ];
