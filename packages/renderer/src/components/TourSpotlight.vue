@@ -296,7 +296,7 @@ const updateTargetRect = async () => {
     return;
   }
 
-  await nextTick();
+  // await nextTick();
 
   const element = document.querySelector(`[data-onboarding-id="${currentStep.value.targetId}"]`);
   if (element) {
