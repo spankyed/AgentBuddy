@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
 
 const step = ref(1);
@@ -71,6 +71,12 @@ const nextStep = () => {
   }
 };
 
+const previousStep = () => {
+  if (step.value > 1) {
+    step.value--;
+  }
+};
+
 const completeOnboarding = () => {
   applicationState.send({ type: 'COMPLETE_ONBOARDING' });
 };
@@ -78,6 +84,32 @@ const completeOnboarding = () => {
 const startGuidedTour = () => {
   applicationState.send({ type: 'START_GUIDED_TOUR' });
 };
+
+// Handle keyboard navigation
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'ArrowLeft' && step.value > 1) {
+    previousStep();
+  } else if (event.key === 'ArrowRight' && step.value < 3) {
+    nextStep();
+  } else if (event.key === 'Enter') {
+    // Handle Enter key based on current step
+    if (step.value < 3) {
+      nextStep();
+    } else {
+      // On last step, Enter triggers "Get Started" (not tour)
+      completeOnboarding();
+    }
+  }
+};
+
+// Setup and cleanup keyboard event listeners
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <style scoped>
