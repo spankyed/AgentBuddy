@@ -83,12 +83,6 @@
         </div>
         
         <div class="tour-actions">
-          <!-- <button 
-            @click="endTour"
-            class="tour-btn tour-btn-ghost"
-          >
-            End Tour
-          </button> -->
           <button 
             v-if="!isFirstStep"
             @click="previousStep"
@@ -118,22 +112,42 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import type { TourStep } from '@/core/actors/tour-steps';
+import { useSelector } from '@xstate/vue';
+import { applicationState } from '@/main';
 
-const props = defineProps<{
-  currentStep: TourStep | null;
-  stepNumber: number;
-  totalSteps: number;
-  isFirstStep: boolean;
-  isLastStep: boolean;
-}>();
+// Get tour context from application state
+const tourContext = useSelector(applicationState, (snapshot) => {
+  const tourActor = snapshot.children.guidedTour;
+  return tourActor?.getSnapshot().context;
+});
 
-const emit = defineEmits<{
-  next: [];
-  previous: [];
-  end: [];
-  complete: [];
-}>();
+const currentStep = computed(() => {
+  if (!tourContext.value) {
+    return null;
+  }
+  const step = tourContext.value.steps[tourContext.value.currentStepIndex];
+  return step;
+});
+
+const stepNumber = computed(() => {
+  if (!tourContext.value) return 0;
+  return tourContext.value.currentStepIndex + 1;
+});
+
+const totalSteps = computed(() => {
+  if (!tourContext.value) return 0;
+  return tourContext.value.steps.length;
+});
+
+const isFirstStep = computed(() => {
+  if (!tourContext.value) return true;
+  return tourContext.value.currentStepIndex === 0;
+});
+
+const isLastStep = computed(() => {
+  if (!tourContext.value) return false;
+  return tourContext.value.currentStepIndex === tourContext.value.steps.length - 1;
+});
 
 const targetRect = ref<DOMRect | null>(null);
 const tooltipRef = ref<HTMLElement | null>(null);
@@ -161,7 +175,7 @@ const tooltipStyle = computed(() => {
   
   let x = 0;
   let y = 0;
-  const position = props.currentStep?.tooltipPosition || 'auto';
+  const position = currentStep.value?.tooltipPosition || 'auto';
   
   // Calculate position based on hint
   switch (position) {
@@ -274,14 +288,14 @@ const tooltipStyle = computed(() => {
 });
 
 const updateTargetRect = async () => {
-  if (!props.currentStep?.targetId) {
+  if (!currentStep.value?.targetId) {
     targetRect.value = null;
     return;
   }
 
   await nextTick();
 
-  const element = document.querySelector(`[data-onboarding-id="${props.currentStep.targetId}"]`);
+  const element = document.querySelector(`[data-onboarding-id="${currentStep.value.targetId}"]`);
   if (element) {
     // First scroll the element into view instantly
     element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -293,17 +307,12 @@ const updateTargetRect = async () => {
   }
 };
 
-const nextStep = () => emit('next');
-const previousStep = () => emit('previous');
-const endTour = () => emit('end');
-const completeTour = () => emit('complete');
-
 // Handle keyboard navigation
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'ArrowLeft' && !props.isFirstStep) {
+  if (event.key === 'ArrowLeft' && !isFirstStep.value) {
     previousStep();
   } else if (event.key === 'ArrowRight') {
-    if (!props.isLastStep) {
+    if (!isLastStep.value) {
       nextStep();
     } else {
       completeTour();
@@ -318,7 +327,7 @@ const handleResize = () => {
 };
 
 // Update target when step changes
-watch(() => props.currentStep, () => {
+watch(() => currentStep.value, () => {
   updateTargetRect();
 });
 
@@ -333,6 +342,23 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   window.removeEventListener('keydown', handleKeydown);
 });
+
+// Tour controls - send events through application state for proper reactivity
+const nextStep = () => {
+  applicationState.send({ type: 'TOUR_NEXT' });
+};
+
+const previousStep = () => {
+  applicationState.send({ type: 'TOUR_PREVIOUS' });
+};
+
+const endTour = () => {
+  applicationState.send({ type: 'TOUR_END' });
+};
+
+const completeTour = () => {
+  applicationState.send({ type: 'TOUR_COMPLETE' });
+};
 </script>
 
 <style scoped>
