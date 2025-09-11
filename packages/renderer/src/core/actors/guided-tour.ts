@@ -1,6 +1,6 @@
 import { setup, assign, sendParent, fromCallback, emit, sendTo } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { tourSteps, type TourStep } from './tour-steps';
+import { tourSteps, type TourStep } from './tour-steps-simple';
 
 interface Context {
   currentStepIndex: number;
