@@ -169,10 +169,15 @@ export const createApplicationState = () => setup({
           onData: (event: any) => {
             const { pluginId, ...ev } = event;
 
-            if (application === pluginId) {
+            if (application === pluginId || pluginId === '_meta') {
               sendBack(ev);
             } else {
-              system.get(pluginId).send(ev);
+              const pluginActor = system.get(pluginId);
+              if (pluginActor) {
+                pluginActor.send(ev);
+              } else {
+                console.warn(`[Backend] Plugin actor not found for ID: ${pluginId}`, ev);
+              }
             }
           },
         }
