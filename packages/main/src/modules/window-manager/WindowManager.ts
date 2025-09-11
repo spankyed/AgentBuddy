@@ -146,6 +146,10 @@ class WindowManager implements AppModule {
                      process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
     const iconPath = join(process.cwd(), 'buildResources', iconName);
     
+    // Get the API port before creating the window
+    const apiPort = this.#apiServer?.getStatus().port || 3001;
+    console.log(`[MAIN] Creating window with API port: ${apiPort}`);
+    
     const browserWindow = new BrowserWindow({
       show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
       width: WINDOW_CONFIG.WIDTH,
@@ -164,6 +168,7 @@ class WindowManager implements AppModule {
         sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.ts api
         webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
         preload: this.#preload.path,
+        additionalArguments: [`--api-port=${apiPort}`],
       },
     });
 
