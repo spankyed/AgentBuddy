@@ -46,7 +46,7 @@ export const tourSteps: TourStep[] = [
     id: 'toolbar',
     targetId: 'toolbar',
     title: 'Plugin Toolbar',
-    content: 'This is the plugin toolbar. Each icon represents a different plugin you can use. Click on any icon to switch between plugins.',
+    content: 'Each icon in the plugin toolbar represents a different plugin you can use. Click on any icon to switch between plugins.',
     tooltipPosition: 'right',
     setupActions: [],
   },
@@ -54,21 +54,21 @@ export const tourSteps: TourStep[] = [
     id: 'canvas',
     targetId: 'canvas-area',
     title: 'Canvas Area',
-    content: 'The canvas is the main workspace where most plugins display their content. It adapts based on the active plugin.',
+    content: 'The canvas is the main workspace for plugins to display their content – and the assistant. It adapts based on the active plugin.',
     setupActions: [],
   },
   {
     id: 'chat',
     targetId: 'chat-area',
     title: 'Chat Area',
-    content: 'This is where you interact with the AI assistant. Type messages, send commands, and receive responses here.',
+    content: 'This is where you interact with the AI assistant. Type in messages, send commands, and receive responses here.',
     setupActions: [],
   },
   {
     id: 'inspection',
     targetId: 'inspection-panel',
     title: 'Inspection Panel',
-    content: 'The inspection panel shows contextual information like event traces from the brain. It may also display additional details or data from plugins.',
+    content: 'The inspection panel shows contextual information like event traces from the brain. Plugins may also display some additional details or data in the inspection panel.',
     tooltipPosition: 'left',
     setupActions: [
       { target: 'application', event: { type: 'SHOW_INSPECTION_PANEL' } },
@@ -90,7 +90,7 @@ export const tourSteps: TourStep[] = [
     id: 'threads-intro',
     targetId: 'canvas-area',
     title: 'Thread Management',
-    content: 'The Threads plugin shows your past conversations and lets you organize them into hierarchical threads for easier management.',
+    content: 'The Threads plugin shows your past conversations. Organize threads hierarchically for advanced thread management.',
     setupActions: [
       selectPlugin('threads'),
         { target: 'threads', event: { type: 'VIEW_LIST' } },
@@ -113,8 +113,8 @@ export const tourSteps: TourStep[] = [
   {
     id: 'agent-intro',
     targetId: 'canvas-area',
-    title: 'AI Assistant Interface',
-    content: 'This is where you interact with the AI assistant. You can have multiple conversation tabs, view artifacts, and chat with the AI.',
+    title: 'AI Assistant Canvas',
+    content: 'This is the main canvas for the AI assistant to display content to users. With thread tabs, users can quickly switch between different content.',
     setupActions: [
       selectPlugin('agent'),
     ],
@@ -135,7 +135,7 @@ export const tourSteps: TourStep[] = [
     id: 'library-overview',
     targetId: 'canvas-area',
     title: 'Knowledge Library',
-    content: 'Store and organize your documents, notes, and knowledge bases. Create collections to group related content together.',
+    content: 'Store and organize your documents, knowledge bases. Group related documents together using folders.',
     setupActions: [
       selectPlugin('library'),
       { target: 'library', event: { type: 'VIEW_BROWSER' } },
@@ -157,7 +157,7 @@ export const tourSteps: TourStep[] = [
     id: 'actions-overview',
     targetId: 'canvas-area',
     title: 'Action Templates',
-    content: 'Actions serve as building blocks for workflows. Each action defines a specific task with parameters and implementation.',
+    content: 'Actions serve as building blocks for workflows. Each action accepts parameters and automates specific tasks.',
     setupActions: [
       selectPlugin('actions'),
       { target: 'actions', event: { type: 'VIEW_LIST' } },
@@ -179,7 +179,7 @@ export const tourSteps: TourStep[] = [
     id: 'prompts-overview',
     targetId: 'canvas-area',
     title: 'Prompt Templates',
-    content: 'Create and manage prompt templates with variables that can be reused across different contexts.',
+    content: 'Create and manage prompt templates and their parameters. Combine prompts using `usePrompt(\'label\')`',
     setupActions: [
       selectPlugin('prompts'),
       { target: 'prompts', event: { type: 'VIEW_LIST' } },
@@ -201,7 +201,7 @@ export const tourSteps: TourStep[] = [
     id: 'flows-overview',
     targetId: 'canvas-area',
     title: 'Visual Workflow Editor',
-    content: 'Design and manage workflows using a visual node-based editor. Connect actions, decisions, and AI steps together.',
+    content: 'Design and manage workflows using a visual node-based editor. With support for hierarchical sub-flows, you can create complex processes easily.',
     setupActions: [
       selectPlugin('flows'),
       { target: 'flows', event: { type: 'VIEW_LIST' } },
@@ -223,7 +223,7 @@ export const tourSteps: TourStep[] = [
     id: 'brain-overview',
     targetId: 'canvas-area',
     title: 'Execution Monitor',
-    content: 'See a real-time execution graph of your flows. Watch events flow through your system and debug issues.',
+    content: 'See a real-time execution graph of your flows. Select a node to view details and debug issues.',
     setupActions: [
       selectPlugin('brain'),
     ],
