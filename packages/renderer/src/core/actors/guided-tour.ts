@@ -1,10 +1,13 @@
-import { setup, assign, sendParent, fromCallback, emit, sendTo } from 'xstate';
+import { setup, assign, sendParent, fromCallback, emit, sendTo, type SnapshotFrom } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { tourSteps, type TourStep } from './tour-steps';
+
+export type GuidedTourState = SnapshotFrom<typeof guidedTourMachine>
 
 interface Context {
   currentStepIndex: number;
   steps: TourStep[];
+  isAutoPlaying: boolean;
 }
 
 type Event =
@@ -12,7 +15,10 @@ type Event =
   | { type: 'PREVIOUS' }
   | { type: 'END' }
   | { type: 'COMPLETE' }
-  | { type: 'STEP_ACTION_COMPLETED' };
+  | { type: 'STEP_ACTION_COMPLETED' }
+  | { type: 'AUTO_PLAY' }
+  | { type: 'STOP_AUTO_PLAY' }
+  | { type: 'AUTO_NEXT' };
 
 export const guidedTourMachine = setup({
   types: {
@@ -25,6 +31,12 @@ export const guidedTourMachine = setup({
     }),
     decrementStep: assign({
       currentStepIndex: ({ context }) => Math.max(context.currentStepIndex - 1, 0),
+    }),
+    startAutoPlay: assign({
+      isAutoPlaying: true,
+    }),
+    stopAutoPlay: assign({
+      isAutoPlaying: false,
     }),
     executeSetupActions: ({ context, self }) => {
       const currentStep = context.steps[context.currentStepIndex];
@@ -68,16 +80,71 @@ export const guidedTourMachine = setup({
       });
     },
   },
+  delays: {
+    stepTimeout: ({ context }) => {
+      const currentStep = context.steps[context.currentStepIndex];
+      return currentStep.timeout || 5000;
+    },
+  },
 }).createMachine({
   id: 'guidedTour',
   initial: 'touring',
   context: {
     currentStepIndex: 0,
     steps: tourSteps,
+    isAutoPlaying: false,
   },
   states: {
     touring: {
+      initial: 'manual',
       entry: ['executeSetupActions'],
+      states: {
+        manual: {
+          on: {
+            AUTO_PLAY: [
+              {
+                // If on welcome step (index 0), immediately go to step 1
+                guard: ({ context }) => context.currentStepIndex === 0,
+                target: 'autoPlaying',
+                actions: ['incrementStep', 'executeSetupActions', 'startAutoPlay'],
+              },
+              {
+                // Otherwise, start auto-play normally
+                target: 'autoPlaying',
+                actions: 'startAutoPlay',
+              },
+            ],
+          },
+        },
+        autoPlaying: {
+          after: {
+            stepTimeout: {
+              target: 'autoPlayingNext',
+            },
+          },
+          on: {
+            STOP_AUTO_PLAY: {
+              target: 'manual',
+              actions: 'stopAutoPlay',
+            },
+          },
+        },
+        autoPlayingNext: {
+          // Transient state to force re-entry into autoPlaying
+          always: [
+            {
+              guard: ({ context }) => context.currentStepIndex < context.steps.length - 1,
+              target: 'autoPlaying',
+              actions: ['incrementStep', 'executeSetupActions'],
+            },
+            {
+              // Last step reached
+              target: '#guidedTour.completed',
+              actions: 'completeTour',
+            },
+          ],
+        },
+      },
       on: {
         NEXT: {
           actions: ['incrementStep', 'executeSetupActions'],

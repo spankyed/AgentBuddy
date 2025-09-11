@@ -73,6 +73,8 @@ export type ApplicationEvent =
   | { type: 'TOUR_PREVIOUS' }
   | { type: 'TOUR_END' }
   | { type: 'TOUR_COMPLETE' }
+  | { type: 'TOUR_AUTO_PLAY' }
+  | { type: 'TOUR_STOP_AUTO_PLAY' }
   | { type: 'TOUR_ENDED' }
   | { type: 'TOUR_COMPLETED' }
   | { type: 'SHOW_INSPECTION_PANEL' }
@@ -669,6 +671,12 @@ export const createApplicationState = () => setup({
         },
         TOUR_COMPLETE: {
           actions: sendTo('guidedTour', { type: 'COMPLETE' })
+        },
+        TOUR_AUTO_PLAY: {
+          actions: sendTo('guidedTour', { type: 'AUTO_PLAY' })
+        },
+        TOUR_STOP_AUTO_PLAY: {
+          actions: sendTo('guidedTour', { type: 'STOP_AUTO_PLAY' })
         },
         TOUR_ENDED: {
           target: 'running',

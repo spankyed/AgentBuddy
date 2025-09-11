@@ -1,4 +1,22 @@
-import type { TourStep } from './guided-tour';
+export interface TourStep {
+  id: string;
+  targetId: string;
+  title: string;
+  content: string;
+  tooltipPosition?: 'auto' | 'top' | 'bottom' | 'left' | 'right';
+  setupActions?: Array<{
+    target: string;
+    event: any;
+  }>;
+  timeout?: number; // Optional timeout in milliseconds for auto-play
+}
+
+// Helper function to calculate timeout based on content length
+function calculateStepTimeout(content: string, wordsPerMinute = 600): number {
+  const words = content.split(' ').length;
+  const readingTime = (words / wordsPerMinute) * 60 * 1000; // Convert to milliseconds
+  return Math.max(1500, Math.min(readingTime, 8000)); // Between 1.5-8 seconds
+}
 
 // Helper function to create a plugin selection action
 const selectPlugin = (pluginId: string) => ({
@@ -21,7 +39,8 @@ const showAndSelectPlugin = (pluginId: string) => [
   selectPlugin(pluginId)
 ];
 
-export const tourSteps: TourStep[] = [
+// Add timeouts to all tour steps
+const tourStepsRaw: TourStep[] = [
   // ========================================
   // UI Overview
   // ========================================
@@ -659,3 +678,9 @@ export const tourSteps: TourStep[] = [
     setupActions: [],
   },
 ];
+
+// Add calculated timeouts to all tour steps
+export const tourSteps: TourStep[] = tourStepsRaw.map(step => ({
+  ...step,
+  timeout: step.timeout ?? calculateStepTimeout(step.content)
+}));
