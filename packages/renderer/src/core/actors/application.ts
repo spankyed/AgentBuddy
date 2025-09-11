@@ -438,7 +438,17 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
-    completeOnboarding: ({ context }) => {
+    completeOnboarding: ({ context, self }) => {
+      // Navigate to settings/secrets view
+      self.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
+      
+      // Send events to settings plugin to navigate to secrets
+      const settingsActor = self.system.get('settings');
+      if (settingsActor) {
+        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
+        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+      }
+      
       // Send event to backend to update hasOnboarded setting
       // trpc.bus.send.mutate({
       //   systemId: 'settings',
