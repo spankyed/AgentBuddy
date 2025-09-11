@@ -316,6 +316,14 @@ const handleKeydown = (event: KeyboardEvent) => {
     previousStep();
   } else if (event.key === 'ArrowRight' && !isLastStep.value) {
     nextStep();
+  } else if (event.key === 'Enter') {
+    // Handle Enter key based on current step
+    if (!isLastStep.value) {
+      nextStep();
+    } else {
+      // On last step, Enter completes the tour
+      completeTour();
+    }
   }
 };
 
