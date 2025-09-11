@@ -37,6 +37,7 @@
                 :value="formData.label"
                 @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
                 type="text"
+                data-onboarding-id="prompt-name-input"
                 class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                 placeholder="Enter prompt name"
               />
@@ -77,7 +78,7 @@
 
         <!-- Input Parameters -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Input Parameters">
+          <CollapsibleSection v-model="inputsExpanded" label="Input Parameters">
             <PromptInputsEditor
               :inputs="formData.inputs"
               @update="$emit('update-inputs', $event)"
@@ -103,7 +104,7 @@
           <p class="mb-4 text-xs text-neutral-500">
             Write a JavaScript function body that returns a template string. The function will receive a `params` object with your defined inputs.
           </p>
-          <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 300px;">
+          <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 300px;" data-onboarding-id="prompt-template-editor">
             <PromptTemplateEditor
               :value="formData.templateFn"
               @update="$emit('update-template', $event)"
@@ -113,7 +114,7 @@
 
         <!-- Output Schema -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Output Schema (Optional)" :defaultOpen="!!formData.outputSchema">
+          <CollapsibleSection v-model="outputExpanded" label="Output Schema (Optional)" :defaultOpen="!!formData.outputSchema">
             <div class="space-y-4">
               <JsonSchemaEditor
                 :value="formData.outputSchema"
@@ -125,7 +126,7 @@
 
         <!-- Metadata -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection label="Metadata">
+          <CollapsibleSection v-model="metadataExpanded" label="Metadata">
             <dl class="grid grid-cols-2 gap-4">
               <div>
                 <dt class="text-xs text-neutral-500">Created</dt>
@@ -158,7 +159,9 @@ import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
+import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
 import { applicationState } from '@/main';
+import { id as promptsId, type PromptsState } from '@/plugins/prompts/state';
 
 const props = defineProps<{
   prompt?: PromptEntity;
@@ -183,6 +186,14 @@ const emit = defineEmits<{
   save: [];
   back: [];
 }>();
+
+// Get the prompts state machine actor
+const actor: PromptsState = applicationState.system.get(promptsId);
+
+// Use the composable for managing collapsible section states
+const inputsExpanded = useCollapsibleState(actor, ['formData', 'inputsExpanded'], 'TOGGLE_INPUTS_SECTION');
+const outputExpanded = useCollapsibleState(actor, ['formData', 'outputExpanded'], 'TOGGLE_OUTPUT_SECTION');
+const metadataExpanded = useCollapsibleState(actor, ['formData', 'metadataExpanded'], 'TOGGLE_METADATA_SECTION');
 
 const isValid = computed(() => {
   return props.formData.label.trim() !== '' && props.formData.templateFn.trim() !== '';

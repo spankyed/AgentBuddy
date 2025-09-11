@@ -72,6 +72,7 @@ export interface LibraryContext {
 export type LibraryEvents =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
+  | { type: 'VIEW_BROWSER' }
   
   // Legacy document events
   | { type: 'CREATE_DOCUMENT' }
@@ -555,6 +556,9 @@ export const librarySystem = setup({
     },
     LIBRARY_CONNECTED: {
       actions: ['setConnectedData'],
+    },
+    VIEW_BROWSER: {
+      target: '.browser',
     },
     
     // New file browser events

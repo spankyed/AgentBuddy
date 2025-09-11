@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3">
+  <div class="p-3" data-onboarding-id="flow-node-palette">
     <div class="mt-3 space-y-1.5">
       <button
         v-for="item in paletteItems"

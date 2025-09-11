@@ -13,6 +13,7 @@
         <Button
           @click="actor.send({ type: 'CANCEL_CREATE' })"
           variant="transparent"
+          data-onboarding-id="thread-cancel-button"
         >
           Cancel
         </Button>
@@ -40,6 +41,7 @@
                 @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
                 type="text"
                 placeholder="Enter thread topic"
+                data-onboarding-id="thread-topic-input"
                 class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -71,12 +73,13 @@
               @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
               rows="4"
               placeholder="Enter instructions for the agent"
+              data-onboarding-id="thread-instructions-input"
               class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
             ></textarea>
           </div>
 
           <!-- Tags -->
-          <CollapsibleSection :default-open="false" class="pt-2">
+          <CollapsibleSection v-model="tagsExpanded" :default-open="false" class="pt-2">
             <template #label>
               <div class="flex items-center gap-2">
                 <span>Tags</span>
@@ -98,7 +101,8 @@
                 </div>
               </div>
             </template>
-            <TagInput 
+            <TagInput
+              data-onboarding-id="thread-tags-section"
               :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="updateTags"
@@ -109,7 +113,7 @@
 
         <!-- Linked Threads Section -->
         <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection :default-open="false">
+          <CollapsibleSection v-model="linkedExpanded" :default-open="false">
             <template #label>
               Linked Threads ({{ linkedThreads.length }})
             </template>
@@ -138,6 +142,7 @@ import Button from '@/core/components/design/button.vue';
 import TagInput from '@/core/components/design/tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
+import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
 
 const actor: ThreadsState = applicationState.system.get(id);
 const topic = useSelector(actor, (state) => state.context.create.topic);
@@ -147,6 +152,10 @@ const availableTags = useSelector(actor, (state) => state.context.availableTags)
 const linkedThreads = useSelector(actor, (state) => state.context.create.linkedThreads || []);
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 const settings = useSelector(actor, (state) => state.context.settings);
+
+// Use the composable for managing collapsible section states
+const tagsExpanded = useCollapsibleState(actor, ['create', 'tagsExpanded'], 'TOGGLE_TAGS_SECTION');
+const linkedExpanded = useCollapsibleState(actor, ['create', 'linkedExpanded'], 'TOGGLE_LINKED_SECTION');
 
 const isSaving = ref(false)
 

@@ -27,7 +27,7 @@ type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
-  | { type: 'GO_BACK' }
+  | { type: 'VIEW_LIST' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD' }
@@ -41,6 +41,8 @@ type UIEvent =
   | { type: 'LINK_THREAD' }
   | { type: 'REMOVE_LINK'; index: number }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
+  | { type: 'TOGGLE_TAGS_SECTION'; show: boolean }
+  | { type: 'TOGGLE_LINKED_SECTION'; show: boolean }
 type ThreadEvents =
   | UIEvent
   | SystemEvent
@@ -60,6 +62,8 @@ interface ThreadsContext {
   create: ThreadCreateData & { 
     parentThreadId?: string;
     parentThread?: ThreadListItem;
+    tagsExpanded?: boolean;
+    linkedExpanded?: boolean;
   };
   availableTags: ThreadTagOption[];
   settings: ThreadsSettings | null;
@@ -283,6 +287,7 @@ const threadsState = setup({
     settings: null,
   }),
   on: {
+    VIEW_LIST: { target: '.list' },
     OPEN_THREAD_CHAT: {
       actions: 'openAgentChat'
     },
@@ -350,6 +355,22 @@ const threadsState = setup({
         UPDATE_THREAD_FIELD: {
           actions: 'updateThreadData',
         },
+        TOGGLE_TAGS_SECTION: {
+          actions: assign({
+            create: ({ context, event }) => ({
+              ...context.create,
+              tagsExpanded: typeOf('TOGGLE_TAGS_SECTION', event).show
+            })
+          })
+        },
+        TOGGLE_LINKED_SECTION: {
+          actions: assign({
+            create: ({ context, event }) => ({
+              ...context.create,
+              linkedExpanded: typeOf('TOGGLE_LINKED_SECTION', event).show
+            })
+          })
+        },
       },
     },
 
@@ -361,7 +382,6 @@ const threadsState = setup({
         })
       },
       on: {
-        GO_BACK: { target: 'list' },
         SHOW_CREATE_FORM_AS_CHILD: {
           target: 'create',
           actions: 'setupParentThread'

@@ -2,12 +2,14 @@
 import WebApp from './WebApp.vue';
 import ApiStatus from './components/ApiStatus.vue';
 import Onboarding from './components/Onboarding.vue';
+import TourSpotlight from './components/TourSpotlight.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
 const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
+const isTouring = useSelector(applicationState, (s) => s.hasTag('guided-tour'));
 
 // Toggle for showing API status (can be toggled with a hotkey)
 const showApiStatus = ref(false);
@@ -29,6 +31,8 @@ window.addEventListener('keydown', (e) => {
     <Onboarding v-if="isOnboarding" />
     <!-- Main web app component (always rendered when running) -->
     <WebApp />
+    <!-- Guided tour overlay -->
+    <TourSpotlight v-if="isTouring" />
   </template>
   
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->

@@ -11,7 +11,7 @@
       </div>
       <div class="flex items-center gap-2">
         <Button
-          @click="actor.send({ type: 'GO_BACK' })"
+          @click="actor.send({ type: 'VIEW_LIST' })"
           variant="transparent"
         >
           Back

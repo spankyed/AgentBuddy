@@ -143,6 +143,7 @@ export interface PluginSettings {
 
 export interface InternalSettings {
   hasOnboarded: boolean;
+  tourStarted: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
 }

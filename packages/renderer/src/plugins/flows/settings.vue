@@ -12,6 +12,7 @@
             Root Flow:
           </label>
           <select
+            data-onboarding-id="settings-root-flow"
             v-model="selectedRootFlowId"
             @change="handleRootFlowChange"
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"

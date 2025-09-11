@@ -67,6 +67,8 @@ type UIEvent =
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
+  | { type: 'SELECT_ROOT_FLOW' }
+  | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
@@ -118,6 +120,23 @@ const flowsState = setup({
         systemId: id,
         type: 'FLOW_SELECT',
         flowId: ev.flowId,
+      });
+    },
+
+    selectRootFlow: ({ context }) => {
+      const rootFlowId = context.settings?.rootFlowId;
+      if (!rootFlowId) {
+        console.warn('No root flow configured');
+        return;
+      }
+      if (context.selectedFlowId === rootFlowId) {
+        return;
+      }
+      // Send event to backend to get root flow data
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FLOW_SELECT',
+        flowId: rootFlowId,
       });
     },
 
@@ -187,6 +206,21 @@ const flowsState = setup({
     }),
     editNode: assign({ editingNodeId: ({ event }) => typeOf('NODE.DOUBLE_CLICK', event).nodeId as EARS.EntityId }),
     closeNodeEditor: assign({ editingNodeId: undefined }),
+    
+    selectAndEditFirstNode: assign(({ context }) => {
+      // Get the first node from the current flow
+      const firstNode = context.graph.nodes[0];
+      if (!firstNode) {
+        console.warn('No nodes available to edit');
+        return {};
+      }
+      
+      // Return both selected and editing node IDs
+      return {
+        selectedNodeId: firstNode.id as EARS.EntityId,
+        editingNodeId: firstNode.id as EARS.EntityId
+      };
+    }),
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
@@ -637,7 +671,7 @@ const flowsState = setup({
   on: {
     FLOWS_CONNECTED: { 
       actions: 'setPluginData',
-      target: '.view' // Go directly to view since we have the selected flow's data
+      // target: '.view' // Go directly to view since we have the selected flow's data
     },
     FLOWS_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
@@ -676,6 +710,10 @@ const flowsState = setup({
           actions: 'selectFlow',
           target: 'view',
         },
+        'SELECT_ROOT_FLOW': {
+          actions: 'selectRootFlow',
+          target: 'view',
+        },
         'FLOW.CREATE': {
           actions: 'sendCreateFlow',
         },
@@ -707,6 +745,8 @@ const flowsState = setup({
       },
       on: {
         'FLOW.SELECT': { actions: 'selectFlow'},
+        'SELECT_ROOT_FLOW': { actions: 'selectRootFlow' },
+        'SELECT_AND_EDIT_FIRST_NODE': { actions: 'selectAndEditFirstNode' },
         'NODE.CLICK': { actions: 'selectNode' },
         'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },

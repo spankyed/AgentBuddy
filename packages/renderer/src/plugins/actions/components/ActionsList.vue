@@ -5,7 +5,7 @@
       <div>
         <p class="text-sm text-neutral-400">Manage your action functions</p>
       </div>
-      <Button @click="$emit('create')" variant="primary">
+      <Button @click="$emit('create')" variant="primary" data-onboarding-id="actions-create-button">
         <Plus class="w-4 h-4" />
         <span>Create Action</span>
       </Button>
@@ -79,6 +79,7 @@
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="handleDelete(action.id)"
+                    data-onboarding-id="action-delete-button"
                     class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
                     aria-label="Delete action"
                     title="Delete action"

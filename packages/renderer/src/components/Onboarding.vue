@@ -40,20 +40,27 @@
         >
           Next
         </button>
-        <button 
-          v-if="step === 3"
-          @click="completeOnboarding"
-          class="btn btn-primary"
-        >
-          Get Started
-        </button>
+        <div v-if="step === 3" class="final-actions">
+          <button 
+            @click="startGuidedTour"
+            class="btn btn-tour"
+          >
+            Take Guided Tour
+          </button>
+          <button 
+            @click="completeOnboarding"
+            class="btn btn-primary"
+          >
+            Get Started
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
 
 const step = ref(1);
@@ -64,9 +71,45 @@ const nextStep = () => {
   }
 };
 
+const previousStep = () => {
+  if (step.value > 1) {
+    step.value--;
+  }
+};
+
 const completeOnboarding = () => {
   applicationState.send({ type: 'COMPLETE_ONBOARDING' });
 };
+
+const startGuidedTour = () => {
+  applicationState.send({ type: 'START_GUIDED_TOUR' });
+};
+
+// Handle keyboard navigation
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'ArrowLeft' && step.value > 1) {
+    previousStep();
+  } else if (event.key === 'ArrowRight' && step.value < 3) {
+    nextStep();
+  } else if (event.key === 'Enter') {
+    // Handle Enter key based on current step
+    if (step.value < 3) {
+      nextStep();
+    } else {
+      // On last step, Enter triggers "Get Started" (not tour)
+      completeOnboarding();
+    }
+  }
+};
+
+// Setup and cleanup keyboard event listeners
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <style scoped>
@@ -79,8 +122,7 @@ const completeOnboarding = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.7);
   z-index: 9999;
   padding: 2rem;
 }
@@ -91,7 +133,7 @@ const completeOnboarding = () => {
   padding: 3rem;
   max-width: 600px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .onboarding-header {
@@ -120,7 +162,7 @@ const completeOnboarding = () => {
   align-items: flex-start;
   margin-bottom: 2rem;
   opacity: 0.5;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .step.completed {
@@ -139,7 +181,7 @@ const completeOnboarding = () => {
   font-weight: bold;
   margin-right: 1.5rem;
   flex-shrink: 0;
-  transition: background 0.3s ease;
+  transition: background-color 0.15s ease;
 }
 
 .step.completed .step-number {
@@ -163,6 +205,11 @@ const completeOnboarding = () => {
   gap: 1rem;
 }
 
+.final-actions {
+  display: flex;
+  gap: 1rem;
+}
+
 .btn {
   padding: 0.75rem 2rem;
   border-radius: 8px;
@@ -170,7 +217,8 @@ const completeOnboarding = () => {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  will-change: transform;
 }
 
 .btn-primary {
@@ -180,8 +228,17 @@ const completeOnboarding = () => {
 
 .btn-primary:hover {
   background: #3a8eef;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-tour {
+  background: #10b981;
+  color: white;
+}
+
+.btn-tour:hover {
+  background: #059669;
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -191,6 +248,6 @@ const completeOnboarding = () => {
 
 .btn-secondary:hover {
   background: #505050;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 </style>

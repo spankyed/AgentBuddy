@@ -4,6 +4,7 @@
       :nodes="nodes"
       :edges="edges"
       class="w-full h-full bg-neutral-900"
+      data-onboarding-id="flow-editor-canvas"
       :fit-view-on-init="false"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{

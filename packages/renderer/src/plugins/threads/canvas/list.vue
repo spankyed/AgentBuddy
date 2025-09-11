@@ -47,6 +47,7 @@
           @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
           type="button"
           variant="primary"
+          data-onboarding-id="thread-create-button"
         >
           <Plus class="w-4 h-4" />
           <span>New Thread</span>
