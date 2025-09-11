@@ -314,12 +314,8 @@ const updateTargetRect = async () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowLeft' && !isFirstStep.value) {
     previousStep();
-  } else if (event.key === 'ArrowRight') {
-    if (!isLastStep.value) {
-      nextStep();
-    } else {
-      completeTour();
-    }
+  } else if (event.key === 'ArrowRight' && !isLastStep.value) {
+    nextStep();
   }
 };
 
