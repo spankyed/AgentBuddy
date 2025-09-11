@@ -79,7 +79,10 @@
       
       <div class="tour-footer">
         <div class="tour-progress">
-          <span>{{ stepNumber }} of {{ totalSteps }}</span>
+          <span v-if="!isFirstStep">{{ stepNumber }} of {{ totalSteps }}</span>
+          <span v-else class="tour-keyboard-tip">
+            Use <kbd>←</kbd> <kbd>→</kbd> arrow keys
+          </span>
         </div>
         
         <div class="tour-actions">
@@ -480,6 +483,29 @@ const completeTour = () => {
 .tour-progress {
   color: #666;
   font-size: 0.875rem;
+}
+
+.tour-keyboard-tip {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.tour-keyboard-tip kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  margin: 0 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: #888;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  vertical-align: middle;
 }
 
 .tour-actions {
