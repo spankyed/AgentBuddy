@@ -1,8 +1,14 @@
 <template>
   <div class="tour-overlay">
-    <!-- Backdrop effect via box-shadow -->
+    <!-- Full backdrop when no targets -->
     <div 
-      v-if="targetRects.length > 0"
+      v-if="targetRects.length === 0"
+      class="tour-backdrop-full"
+    />
+    
+    <!-- Backdrop with cutout when we have targets -->
+    <div 
+      v-else
       class="tour-backdrop-cutout"
       :style="{
         top: `${targetRects[0].rect.top}px`,
@@ -315,7 +321,8 @@ const handleResize = () => {
 };
 
 // Update target when step changes
-watch(() => currentStep.value, () => {
+watch(() => currentStep.value, async () => {
+  await nextTick();
   updateTargetRect();
 });
 
@@ -358,6 +365,16 @@ const completeTour = () => {
   bottom: 0;
   z-index: 10000;
   pointer-events: none;
+}
+
+.tour-backdrop-full {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
 }
 
 .tour-backdrop-cutout {
