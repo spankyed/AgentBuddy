@@ -67,10 +67,12 @@ const step = ref(1);
 const autoplayTimer = ref<NodeJS.Timeout | null>(null);
 const autoplayActive = ref(true);
 
+const AUTOPLAY_DELAY_SECONDS = 2.4;
 const setAutoplay = () => {
   clearTimeout(autoplayTimer.value!);
   if (autoplayActive.value && step.value < 3) {
-    autoplayTimer.value = setTimeout(() => step.value++, 1500);
+    const delay = step.value === 1 ? AUTOPLAY_DELAY_SECONDS * .7 : AUTOPLAY_DELAY_SECONDS;
+    autoplayTimer.value = setTimeout(() => step.value++, delay * 1000);
   }
 };
 
@@ -120,7 +122,10 @@ watch(step, setAutoplay);
 // Setup and cleanup
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
-  setAutoplay();
+  setTimeout(() => {
+    autoplayActive.value = true;
+    setAutoplay();
+  }, 400); // Initial delay before starting autoplay
 });
 
 onUnmounted(() => {
