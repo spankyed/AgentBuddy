@@ -250,7 +250,7 @@ export const tourSteps: TourStep[] = [
       { id: 'settings-anthropic-key-input', flash: true }
     ],
     title: 'Final Step: Configure API Keys',
-    content: 'To finish setting up AgentBuddy, you will need to set some API keys, preferably from multiple AI providers. Your keys are stored securely and never shared.',
+    content: 'To finish setting up AgentBuddy, you will need to set some API keys. Click an AI provider\'s name to go to their settings page and copy your keys. Your keys are stored locally and are never shared.',
     setupActions: [
       selectPlugin('settings'),
       { target: 'settings', event: { type: 'TAB.SELECT', tab: 'general' } },

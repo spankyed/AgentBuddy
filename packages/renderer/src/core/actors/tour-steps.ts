@@ -640,7 +640,7 @@ export const tourSteps: TourStep[] = [
     id: 'settings-secrets-tab',
     targetId: 'settings-secrets-section',
     title: 'API Keys & Secrets',
-    content: 'To use AI features, you\'ll need API keys from AI providers. Your keys are stored securely and never shared.',
+    content: 'To use AI features, you\'ll need API keys from AI providers. Your keys are stored securely and are never shared.',
     setupActions: [
       selectPlugin('settings'),
       { target: 'settings', event: { type: 'TAB.SELECT', tab: 'general' } },
