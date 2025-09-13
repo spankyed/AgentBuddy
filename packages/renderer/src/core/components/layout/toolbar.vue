@@ -1,5 +1,5 @@
 <template>
-  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800">
+  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar">
     <!-- Window controls area (macOS traffic lights) -->
     <div class="window-controls-area h-[50px] flex items-center justify-center">
       <WindowControls v-if="!isMac" />
@@ -12,6 +12,7 @@
           <button
             v-for="item in pluginItems"
             :key="item.id"
+            :data-onboarding-id="`plugin-${item.id}`"
             :class="[
               'p-2 rounded-lg transition-all duration-200 ease-in-out',
               activePlugin.id === item.id
@@ -31,6 +32,7 @@
         <button
           v-for="item in pinnedItems"
           :key="item.id"
+          :data-onboarding-id="`plugin-${item.id}`"
           :class="[
             'p-2 rounded-lg transition-all duration-200 ease-in-out',
             activePlugin.id === item.id

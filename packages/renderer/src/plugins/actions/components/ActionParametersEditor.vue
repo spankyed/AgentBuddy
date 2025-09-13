@@ -80,6 +80,7 @@
 
     <!-- Add Parameter Button -->
     <button
+      data-onboarding-id="action-parameters-section"
       @click="addParameter"
       class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
     >

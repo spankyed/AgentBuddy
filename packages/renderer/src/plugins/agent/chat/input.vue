@@ -4,7 +4,7 @@
       @submit.prevent="handleSubmit"
       class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
-      <div class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible" :class="$style.input">
+      <div class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible" :class="$style.input"  data-onboarding-id="agent-chat-input">
         <StatusIndicator/>
 
         <!-- Editor container -->

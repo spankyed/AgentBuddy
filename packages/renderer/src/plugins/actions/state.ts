@@ -39,6 +39,9 @@ export interface ActionsContext {
     input: Record<string, ActionParameter>;
     actionFn: string;
     output?: any;
+    parametersExpanded?: boolean;
+    outputExpanded?: boolean;
+    metadataExpanded?: boolean;
   };
 }
 
@@ -56,7 +59,10 @@ type UIEvent =
   | { type: 'FORM.UPDATE_ACTION'; actionFn: string }
   | { type: 'FORM.UPDATE_OUTPUT'; output: any }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
-  | { type: 'GO.BACK' }
+  | { type: 'VIEW_LIST' }
+  | { type: 'TOGGLE_PARAMETERS_SECTION'; show: boolean }
+  | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
+  | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
 
 export type ActionsEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -249,6 +255,36 @@ const actionsState = setup({
         categories: ev.settings?.categories || [],
       };
     }),
+
+    toggleParametersSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_PARAMETERS_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          parametersExpanded: ev.show,
+        },
+      };
+    }),
+
+    toggleOutputSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_OUTPUT_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          outputExpanded: ev.show,
+        },
+      };
+    }),
+
+    toggleMetadataSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_METADATA_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          metadataExpanded: ev.show,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -285,6 +321,12 @@ const actionsState = setup({
       actions: 'removeDeletedAction',
       target: '.list'
     },
+    VIEW_LIST: {
+      target: '.list'
+    },
+    TOGGLE_PARAMETERS_SECTION: { actions: 'toggleParametersSection' },
+    TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
+    TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
@@ -323,9 +365,6 @@ const actionsState = setup({
           actions: 'sendSaveAction',
           target: 'list',
         },
-        'GO.BACK': {
-          target: 'list',
-        },
       },
     },
     detail: {
@@ -347,9 +386,6 @@ const actionsState = setup({
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
         'ACTION.SAVE': {
           actions: 'sendSaveAction',
-          target: 'list',
-        },
-        'GO.BACK': {
           target: 'list',
         },
       },

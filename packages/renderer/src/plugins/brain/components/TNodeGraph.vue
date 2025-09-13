@@ -4,6 +4,7 @@
       :nodes="nodes"
       :edges="edges"
       class="w-full h-full bg-neutral-900"
+      data-onboarding-id="brain-flow-graph"
       :fit-view-on-init="true"
       :connection-line-type="ConnectionLineType.SmoothStep"
       :default-edge-options="{

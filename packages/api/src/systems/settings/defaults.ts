@@ -1,6 +1,6 @@
-import type { SettingsData } from './types';
+import type { SETTINGS_SCOPE, SettingsData } from './types';
 
-export const getDefaultsByLabel = (type: 'general' | 'plugin' | 'internal', label: string) =>
+export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
 ({
   internal: defaultSettings.internal,
   general: defaultSettings.general[label as keyof typeof defaultSettings.general] ?? {},
@@ -38,19 +38,19 @@ export const defaultSettings: SettingsData = {
   plugins: {
     _meta: {
       visibility: {
-        // All plugins visible by default
+        // Only threads and agent visible for guided tour
         threads: true,
         agent: true,
-        code: true,
-        library: true,
-        actions: true,
-        prompts: true,
-        flows: true,
-        brain: true,
-        database: true,
-        logs: true,
+        code: false,
+        library: false,
+        actions: false,
+        prompts: false,
+        flows: false,
+        brain: false,
+        database: false,
+        logs: false,
         settings: true, // Settings should always be visible
-        blank: true,
+        blank: false,
       }
     },
     agent: {
@@ -138,6 +138,7 @@ export const defaultSettings: SettingsData = {
   },
   internal: {
     hasOnboarded: false,
+    tourStarted: false,
     lastInteractionTimestamp: null,
     version: '1.0.0'
   }

@@ -86,6 +86,6 @@ function handleSave() {
 }
 
 function handleGoBack() {
-  actor.send({ type: 'GO.BACK' });
+  actor.send({ type: 'VIEW_LIST' });
 }
 </script>

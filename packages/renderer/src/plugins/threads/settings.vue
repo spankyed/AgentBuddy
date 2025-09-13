@@ -70,7 +70,7 @@
       <p class="text-sm text-neutral-500 mb-4">
         Manage the tags available for organizing threads
       </p>
-      <div class="space-y-3">
+      <div class="space-y-3"  data-onboarding-id="settings-thread-tags">
         <div 
           v-for="(tag, index) in tags" 
           :key="`tag-${index}`"

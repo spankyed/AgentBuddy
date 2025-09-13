@@ -5,7 +5,7 @@
       <div>
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
       </div>
-      <Button @click="$emit('create')" variant="primary">
+      <Button @click="$emit('create')" variant="primary" data-onboarding-id="prompts-create-button">
         <Plus class="w-4 h-4" />
         <span>Create Prompt</span>
       </Button>

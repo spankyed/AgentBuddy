@@ -87,6 +87,7 @@
             @click="createSearchIndex" 
             variant="transparent" 
             size="sm"
+            data-onboarding-id="library-search-index-button"
             class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
           >
             <Search class="w-4 h-4" />
@@ -101,7 +102,7 @@
             <FolderPlus class="w-4 h-4" />
             <span>New Folder</span>
           </Button>
-          <Button @click="createDocument" variant="primary" size="sm">
+          <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
             <span>New Document</span>
           </Button>
@@ -112,7 +113,7 @@
     <!-- File Table -->
     <div class="flex-1 overflow-hidden" @click="handleTableContainerClick">
       <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" @click="handleScrollAreaClick">
-        <table class="w-full">
+        <table class="w-full"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
               <TableHeader @click="sort('name')">Name</TableHeader>

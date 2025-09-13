@@ -38,6 +38,7 @@
                   :value="formData.label"
                   @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
                   type="text"
+                  data-onboarding-id="action-label-input"
                   class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                   placeholder="Enter action name"
                 />
@@ -70,6 +71,7 @@
                 :value="formData.description"
                 @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
                 rows="3"
+                data-onboarding-id="action-description-input"
                 class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                 placeholder="Describe what this action does..."
               />
@@ -78,7 +80,7 @@
 
           <!-- Parameters -->
           <div class="pt-6 border-t border-neutral-800">
-            <CollapsibleSection label="Input Parameters">
+            <CollapsibleSection v-model="parametersExpanded" label="Input Parameters">
               <ActionParametersEditor
                 :parameters="formData.input"
                 @update="$emit('update-parameters', $event)"
@@ -101,10 +103,10 @@
                 Open in editor
               </button>
             </div>
-            <p class="mb-4 text-xs text-neutral-500">
+            <p class="mb-4 text-xs text-neutral-500" data-onboarding-id="action-services-info">
               An async JavaScript function body that receives `params` object and `services` (logger, database, LLM, http) object.
             </p>
-            <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;">
+            <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;" data-onboarding-id="action-function-editor">
               <ActionFunctionEditor
                 :value="formData.actionFn"
                 @update="$emit('update-action', $event)"
@@ -114,7 +116,7 @@
 
           <!-- Output Schema -->
           <div class="pt-6 border-t border-neutral-800">
-            <CollapsibleSection label="Output Schema (Optional)" :defaultOpen="!!formData.output">
+            <CollapsibleSection v-model="outputExpanded" label="Output Schema (Optional)" :defaultOpen="!!formData.output">
               <div class="space-y-4">
                 <JsonSchemaEditor
                   :value="formData.output"
@@ -126,7 +128,7 @@
 
           <!-- Metadata -->
           <div class="pt-6 border-t border-neutral-800">
-            <CollapsibleSection label="Metadata">
+            <CollapsibleSection v-model="metadataExpanded" label="Metadata">
               <dl class="grid grid-cols-2 gap-4">
                 <div>
                   <dt class="text-xs text-neutral-500">Created</dt>
@@ -161,6 +163,8 @@ import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@/core/components/design/JsonSchemaEditor.vue';
 import { applicationState } from '@/main';
+import { useCollapsibleState } from '@/core/composables/useCollapsibleState';
+import { id as actionsId, type ActionsState } from '@/plugins/actions/state';
 
 const props = defineProps<{
   action?: ActionEntity;
@@ -185,6 +189,14 @@ const emit = defineEmits<{
   save: [];
   back: [];
 }>();
+
+// Get the actions state machine actor
+const actor: ActionsState = applicationState.system.get(actionsId);
+
+// Use the composable for managing collapsible section states
+const parametersExpanded = useCollapsibleState(actor, ['formData', 'parametersExpanded'], 'TOGGLE_PARAMETERS_SECTION');
+const outputExpanded = useCollapsibleState(actor, ['formData', 'outputExpanded'], 'TOGGLE_OUTPUT_SECTION');
+const metadataExpanded = useCollapsibleState(actor, ['formData', 'metadataExpanded'], 'TOGGLE_METADATA_SECTION');
 
 const isValid = computed(() => {
   return props.formData.label.trim() !== '' && props.formData.actionFn.trim() !== '';

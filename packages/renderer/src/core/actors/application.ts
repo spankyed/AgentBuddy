@@ -1,4 +1,4 @@
-import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise } from 'xstate';
+import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, fromPromise, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent } from '@/core/utils/hotkeys';
 import { processHotkeys } from '@/core/utils/hotkeys';
@@ -6,6 +6,7 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
+import { guidedTourMachine } from '@/core/actors/guided-tour';
 
 interface BreadcrumbItem {
   label: string;
@@ -42,6 +43,10 @@ export interface ApplicationContext {
 
 export const application = 'application' as const;
 
+type AppActor = ReturnType<typeof createApplicationState>;
+
+export type AppState = ActorRefFrom<AppActor>;
+
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
@@ -61,6 +66,18 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
+  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; tourStarted: boolean }
+  | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'START_GUIDED_TOUR' }
+  | { type: 'TOUR_NEXT' }
+  | { type: 'TOUR_PREVIOUS' }
+  | { type: 'TOUR_END' }
+  | { type: 'TOUR_COMPLETE' }
+  | { type: 'TOUR_ABORTED' }
+  | { type: 'SHOW_INSPECTION_PANEL' }
+  | { type: 'HIDE_INSPECTION_PANEL' }
+  | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
+  | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
 
@@ -74,7 +91,7 @@ export const createApplicationState = () => setup({
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
         const appActor = system.get(application);
-        
+
         // Create hotkey event and send to be processed
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
@@ -85,25 +102,25 @@ export const createApplicationState = () => setup({
           shiftKey: e.shiftKey,
           preventDefault: () => e.preventDefault()
         };
-        
-        appActor.send({ 
-          type: 'PROCESS_GLOBAL_HOTKEY', 
+
+        appActor.send({
+          type: 'PROCESS_GLOBAL_HOTKEY',
           hotkeyEvent,
           originalEvent: e
         });
       };
 
       window.addEventListener('keydown', handleKeyDown);
-      
+
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }),
-    
+
     mouseListener: fromCallback(({ system }) => {
       const handleMouseDown = (e: MouseEvent) => {
         const appActor = system.get(application);
-        
+
         // Mouse button 3 = back, mouse button 4 = forward
         if (e.button === 3) {
           e.preventDefault();
@@ -115,12 +132,12 @@ export const createApplicationState = () => setup({
       };
 
       window.addEventListener('mousedown', handleMouseDown);
-      
+
       return () => {
         window.removeEventListener('mousedown', handleMouseDown);
       };
     }),
-    
+
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target }: UpdateData) =>
         system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target });
@@ -136,10 +153,10 @@ export const createApplicationState = () => setup({
 
       return unsubscribe;
     }),
-    
-    backendListener: fromCallback(({ system }) => {
+
+    backendListener: fromCallback(({ system, sendBack }) => {
       console.log('connecting to backend');
-      
+
       const subscription = trpc.bus.sub.subscribe(
         undefined, // sessionId is ignored now
         {
@@ -150,52 +167,63 @@ export const createApplicationState = () => setup({
           },
           onData: (event: any) => {
             const { pluginId, ...ev } = event;
-            system.get(pluginId).send(ev);
+
+            if (application === pluginId || pluginId === '_meta') {
+              sendBack(ev);
+            } else {
+              const pluginActor = system.get(pluginId);
+              if (pluginActor) {
+                pluginActor.send(ev);
+              } else {
+                console.warn(`[Backend] Plugin actor not found for ID: ${pluginId}`, ev);
+              }
+            }
           },
         }
       );
-      
+
       return () => {
         subscription.unsubscribe();
       };
     }),
+    guidedTour: guidedTourMachine,
   },
   actions: {
     updateHotkeys: assign(({ event }) => {
       const { hotkeys } = typeOf('APPLICATION_HOTKEYS', event);
       return { hotkeys };
     }),
-    
+
     updatePluginVisibility: assign(({ event, context }) => {
       const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
-      
+
       // Filter plugins based on visibility
-      const visiblePlugins = context.plugins.filter(plugin => 
+      const visiblePlugins = context.plugins.filter(plugin =>
         pluginVisibility[plugin.id] !== false
       );
-      
-      return { 
+
+      return {
         pluginVisibility,
         visiblePlugins
       };
     }),
-    
+
     syncLastActivePlugin: ({ event, self, context }) => {
       const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
-      
+
       // Sync localStorage with backend
       localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
-      
+
       // Only switch if plugin exists and differs from current
       const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
       if (targetPlugin && targetPlugin.id !== context.activePlugin.id) {
         self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
       }
     },
-    
+
     processGlobalHotkey: ({ self, context, system, event }) => {
       const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
-      
+
       const actionType = processHotkeys(
         hotkeyEvent,
         context.hotkeys,
@@ -205,7 +233,7 @@ export const createApplicationState = () => setup({
           switchPluginDown: 'SWITCH_PLUGIN_DOWN'
         }
       );
-      
+
       if (actionType) {
         if (originalEvent) {
           originalEvent.preventDefault();
@@ -216,91 +244,91 @@ export const createApplicationState = () => setup({
         self.send({ type: 'FORWARD_HOTKEY', event: hotkeyEvent });
       }
     },
-    
+
     setHotkeysDisabled: assign({
       hotkeysDisabled: (_, value: boolean) => value
     }),
-    
+
     navigate: ({ context, self }, direction: -1 | 1) => {
       const newIndex = context.historyIndex + direction;
       if (newIndex < 0 || newIndex >= context.pluginHistory.length) return;
-      
-      self.send({ 
-        type: 'SELECT_PLUGIN', 
+
+      self.send({
+        type: 'SELECT_PLUGIN',
         pluginId: context.pluginHistory[newIndex],
         historyIndex: newIndex
       });
     },
-    
+
     switchPluginByDirection: ({ context, event, self }) => {
       // Use only visible plugins for switching
       const visiblePlugins = context.visiblePlugins;
-      
+
       if (visiblePlugins.length === 0) return;
-      
+
       const currentIndex = visiblePlugins.findIndex(p => p.id === context.activePlugin.id);
       if (currentIndex === -1) return;
-      
+
       let newIndex: number;
       if (event.type === 'SWITCH_PLUGIN_UP') {
         newIndex = currentIndex === 0 ? visiblePlugins.length - 1 : currentIndex - 1;
       } else {
         newIndex = currentIndex === visiblePlugins.length - 1 ? 0 : currentIndex + 1;
       }
-      
+
       const newPluginId = visiblePlugins[newIndex].id;
-      
+
       self.send({
         type: 'SELECT_PLUGIN',
         pluginId: newPluginId
       });
     },
-    
+
     forwardHotkeyToPlugin: ({ context, event, system }) => {
       const hotkeyEvent = typeOf('FORWARD_HOTKEY', event).event;
-      
+
       // First, send to all plugins that have global hotkeys
-      const globalPlugins = context.plugins.filter(plugin => 
+      const globalPlugins = context.plugins.filter(plugin =>
         plugin.hotkeys?.some(h => h.global)
       );
-      
+
       for (const plugin of globalPlugins) {
         const pluginActor = system.get(plugin.id);
         pluginActor.send(hotkeyEvent);
       }
-      
+
       // Then send to active plugin for non-global hotkeys
       const activePluginActor = system.get(context.activePlugin.id);
       activePluginActor.send(hotkeyEvent);
     },
-    
+
     setTargetView: assign(({ event, system }, params?: string) => ({
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       targetView: params ? computeCrumbs(system.get(params).getSnapshot()) : (event as any).target
     })),
-    sendRouteClick: sendTo(({ system, context }) => 
+    sendRouteClick: sendTo(({ system, context }) =>
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
     setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
       const { pluginId, historyIndex } = typeOf('SELECT_PLUGIN', event);
       const newPlugin = context.plugins.find(p => p.id === pluginId) || context.activePlugin;
-      
+
       // Send plugin activation events
       if (context.activePlugin.id !== newPlugin.id) {
         system.get(context.activePlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
         system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
       }
-      
+
       // Update context and history in one assignment
       enqueue.assign(({ context }) => {
         const updates: any = {
           activePlugin: newPlugin,
           defaultToggles: { ...context.defaultToggles, canvas: false }
         };
-        
+
         // Skip history update if same plugin
         if (context.activePlugin.id === newPlugin.id) return updates;
-        
+
         if (historyIndex !== undefined) {
           // Navigation: just update index
           updates.historyIndex = historyIndex;
@@ -312,18 +340,18 @@ export const createApplicationState = () => setup({
             updates.historyIndex = history.length;
           }
         }
-        
+
         return updates;
       });
-      
+
       // Persist the new active plugin if it changed
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(({ context }) => {
           const pluginId = newPlugin.id;
-          
+
           // Save to localStorage for immediate access on next load
           localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
-          
+
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
             systemId: 'settings',
@@ -377,15 +405,15 @@ export const createApplicationState = () => setup({
       const { panel, size } = typeOf('RESIZE_PANEL', event);
       const newSizes = {
         ...context.panelSizes,
-        ...(panel === 'canvas' 
+        ...(panel === 'canvas'
           ? { canvasHeight: Math.max(20, Math.min(80, size)) } // 20-80% bounds
           : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
         )
       };
-      
+
       // Save to localStorage
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      
+
       return {
         panelSizes: newSizes
       };
@@ -394,21 +422,146 @@ export const createApplicationState = () => setup({
       const isCollapsed = context.panelSizes.inspectionWidth === 0;
       const newSizes = {
         ...context.panelSizes,
-        inspectionWidth: isCollapsed 
-          ? (context.panelSizes.previousInspectionWidth || 448) 
+        inspectionWidth: isCollapsed
+          ? (context.panelSizes.previousInspectionWidth || 448)
           : 0,
-        previousInspectionWidth: isCollapsed 
-          ? context.panelSizes.previousInspectionWidth 
+        previousInspectionWidth: isCollapsed
+          ? context.panelSizes.previousInspectionWidth
           : context.panelSizes.inspectionWidth
       };
-      
+
       // Save to localStorage
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      
+
       return {
         panelSizes: newSizes
       };
     }),
+    completeOnboarding: ({ context, self }) => {
+      // Navigate to settings/secrets view
+      self.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
+      
+      // Send events to settings plugin to navigate to secrets
+      const settingsActor = self.system.get('settings');
+      if (settingsActor) {
+        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
+        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+      }
+      
+      // Send event to backend to update hasOnboarded setting
+
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'internal',
+        label: 'internal',
+        path: ['hasOnboarded'],
+        value: true
+      });
+    },
+    startGuidedTour: ({ context, self }) => {
+      console.log('[Tour] Starting guided tour');
+      
+      // Update tourStarted setting to true
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'internal',
+        label: 'internal',
+        path: ['tourStarted'],
+        value: true
+      });
+      
+      // Hide all plugins except threads, agent, and settings for the tour
+      const tourVisibility: Record<string, boolean> = {
+        threads: true,
+        agent: true,
+        settings: true,
+        code: false,
+        library: false,
+        actions: false,
+        prompts: false,
+        flows: false,
+        brain: false,
+        database: false,
+        logs: false,
+        blank: false,
+      };
+      
+      console.log('[Tour] Setting plugin visibility:', tourVisibility);
+      
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin',
+        label: '_meta',
+        path: ['visibility'],
+        value: tourVisibility,
+      });
+      
+      // Also update the local state immediately
+      self.send({ 
+        type: 'PLUGIN_VISIBILITY_UPDATED', 
+        pluginVisibility: tourVisibility 
+      });
+    },
+    showInspectionPanel: assign({
+      panelSizes: ({ context }) => ({
+        ...context.panelSizes,
+        inspectionWidth: context.panelSizes.previousInspectionWidth || 400,
+        previousInspectionWidth: undefined,
+      }),
+    }),
+    hideInspectionPanel: assign({
+      panelSizes: ({ context }) => ({
+        ...context.panelSizes,
+        previousInspectionWidth: context.panelSizes.inspectionWidth,
+        inspectionWidth: 0,
+      }),
+    }),
+    routeEvent: ({ context, system, self, event }) => {
+      const { target, event: targetEvent } = typeOf('ROUTE_TOUR_EVENT', event);
+      
+      // Check if this is a plugin visibility update and handle it immediately
+      if (target === 'settings' && 
+          targetEvent.type === 'SETTINGS.UPDATE' &&
+          targetEvent.entityType === 'plugin' &&
+          targetEvent.label === '_meta' &&
+          targetEvent.path?.[0] === 'visibility') {
+        
+        let newVisibility = context.pluginVisibility || {};
+        
+        // Single plugin update: path = ['visibility', pluginId]
+        if (targetEvent.path.length === 2) {
+          const pluginId = targetEvent.path[1];
+          newVisibility = { ...newVisibility, [pluginId]: targetEvent.value };
+        }
+        // Full visibility update: path = ['visibility']
+        else if (targetEvent.path.length === 1 && typeof targetEvent.value === 'object') {
+          newVisibility = targetEvent.value;
+        }
+        
+        // Send immediate visibility update to application
+        self.send({
+          type: 'PLUGIN_VISIBILITY_UPDATED',
+          pluginVisibility: newVisibility
+        });
+      }
+      
+      // Continue with normal routing
+      if (target === 'application') {
+        self.send(targetEvent);
+      } 
+      // Otherwise, route to the specified plugin
+      else {
+        const targetActor = system.get(target);
+        if (targetActor) {
+          targetActor.send(targetEvent);
+        } else {
+          console.warn(`[Tour] Could not find actor for target: ${target}`);
+        }
+      }
+    },
   },
   guards: {
     isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
@@ -424,16 +577,16 @@ export const createApplicationState = () => setup({
       inspectionWidth: 448, // 28rem = 448px (16px base),
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
-    
+
     // Load last active plugin from localStorage
     const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
-    
+
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
     input.plugins.forEach(plugin => {
       pluginVisibility[plugin.id] = true;
     });
-    
+
     // Determine initial active plugin - use saved one if it exists and is valid
     let initialActivePlugin = input.plugins[0];
     if (savedLastActivePlugin) {
@@ -442,7 +595,7 @@ export const createApplicationState = () => setup({
         initialActivePlugin = savedPlugin;
       }
     }
-    
+
     return {
       plugins: input.plugins,
       visiblePlugins: input.plugins, // Initially all plugins are visible
@@ -475,12 +628,88 @@ export const createApplicationState = () => setup({
   ],
   states: {
     'setup': {
-      always: [{
-        target: 'running',
-        actions: spawnChild('backendListener'),
-      }]
+      tags: ['setup'],
+      entry: spawnChild('backendListener'),
+      on: {
+        'CLIENT_CONNECTED': [
+          {
+            actions: [],
+            target: 'onboarding',
+            guard: ({ event }) => event.hasOnboarded === false && !event.tourStarted
+          },
+          {
+            // If tour was started, go to guided tour state
+            actions: [],
+            target: 'guided-tour',
+            guard: ({ event }) => event.hasOnboarded === false && event.tourStarted === true
+          },
+          {
+            actions: [],
+            target: 'running',
+          }
+        ]
+      }
+    },
+    'onboarding': {
+      tags: ['onboarding'],
+      on: {
+        COMPLETE_ONBOARDING: {
+          actions: 'completeOnboarding',
+          target: 'running',
+        },
+        START_GUIDED_TOUR: {
+          actions: ['startGuidedTour'],
+          target: 'guided-tour',
+        }
+      }
+    },
+    'guided-tour': {
+      tags: ['guided-tour'],
+      invoke: {
+        id: 'guidedTour',
+        src: 'guidedTour',
+        onDone: {
+          actions: 'completeOnboarding',
+          target: 'running',
+        }
+      },
+      on: {
+        TOUR_NEXT: {
+          actions: sendTo('guidedTour', { type: 'NEXT' })
+        },
+        TOUR_PREVIOUS: {
+          actions: sendTo('guidedTour', { type: 'PREVIOUS' })
+        },
+        TOUR_END: {
+          actions: sendTo('guidedTour', { type: 'END' })
+        },
+        TOUR_COMPLETE: {
+          actions: sendTo('guidedTour', { type: 'COMPLETE' })
+        },
+        TOUR_ABORTED: {
+        },
+        ROUTE_TOUR_EVENT: {
+          actions: 'routeEvent'
+        },
+        SELECT_PLUGIN: {
+          actions: [
+            'setActivePlugin',
+            'trailNewPlugin',
+          ]
+        },
+        SHOW_INSPECTION_PANEL: {
+          actions: 'showInspectionPanel'
+        },
+        HIDE_INSPECTION_PANEL: {
+          actions: 'hideInspectionPanel'
+        },
+        PLUGIN_VISIBILITY_UPDATED: {
+          actions: 'updatePluginVisibility'
+        }
+      }
     },
     'running': {
+      tags: ['running'],
       initial: 'connected',
       states: {
         'connected': {},
@@ -566,6 +795,15 @@ export const createApplicationState = () => setup({
         type: 'setHotkeysDisabled',
         params: false
       }
+    },
+    SHOW_INSPECTION_PANEL: {
+      actions: 'showInspectionPanel'
+    },
+    HIDE_INSPECTION_PANEL: {
+      actions: 'hideInspectionPanel'
+    },
+    NOOP: {
+      // No-op event, do nothing
     },
   }
 });

@@ -1,11 +1,11 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { SettingsEntity, SettingsData } from '../types';
+import { SettingsEntity, SettingsData, SETTINGS_SCOPE } from '../types';
 import { defaultSettings, getDefaultsByLabel } from '../defaults';
 
 // Deterministic ID generation for Settings entities
-const getSettingsId = (type: 'general' | 'plugin' | 'internal', label: string): EARS.EntityId => {
+const getSettingsId = (type: SETTINGS_SCOPE, label: string): EARS.EntityId => {
   // Generate a deterministic ID based on type and label
   // This ensures only one Settings entity can exist per type/label combination
   return `Settings-${type}-${label}` as EARS.EntityId;
@@ -13,7 +13,7 @@ const getSettingsId = (type: 'general' | 'plugin' | 'internal', label: string): 
 
 // Core helpers
 const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-const findSettings = (type: 'general' | 'plugin' | 'internal', label: string) => {
+const findSettings = (type: SETTINGS_SCOPE, label: string) => {
   // First try to get by deterministic ID (fast path)
   const deterministicId = getSettingsId(type, label);
   const directResult = qx(deterministicId).pickAll()[0] as unknown as SettingsEntity | undefined;
@@ -28,7 +28,7 @@ const findSettings = (type: 'general' | 'plugin' | 'internal', label: string) =>
 const setValueAtPath = (obj: any, path: string[], value: any): any => 
   path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
 
-const getOrCreateSettings = (type: 'general' | 'plugin' | 'internal', label: string, customDefaults?: any): SettingsEntity => {
+const getOrCreateSettings = (type: SETTINGS_SCOPE, label: string, customDefaults?: any): SettingsEntity => {
   const existing = findSettings(type, label);
   if (existing) return existing;
   
@@ -96,12 +96,12 @@ export const settingsQueries = {
     return getOrCreateSettings('plugin', pluginId).data;
   },
   getInternalSettings: () => getInternalSettings().data,
-  getSettingsByLabel: (type: 'general' | 'plugin' | 'internal', label: string) => findSettings(type, label) || null
+  getSettingsByLabel: (type: SETTINGS_SCOPE, label: string) => findSettings(type, label) || null
 };
 
 // COMMANDS
 export const settingsCommands = {
-  updateSettings(type: 'general' | 'plugin' | 'internal', label: string, path: string[], value: any): SettingsEntity {
+  updateSettings(type: SETTINGS_SCOPE, label: string, path: string[], value: any): SettingsEntity {
     const settings = type === 'general' 
       ? getGeneralSettings(label as keyof typeof generalConfig)
       : type === 'internal'
@@ -127,7 +127,7 @@ export const settingsCommands = {
 export const createDefaultSettings = (): void => {
   if (getAllSettings().length) return;
 
-  const put = (type: 'general' | 'plugin' | 'internal', label: string, data: unknown) => {
+  const put = (type: SETTINGS_SCOPE, label: string, data: unknown) => {
     if (!findSettings(type, label)) {
       const id = getSettingsId(type, label);
       // Use forceCreate=true to create with deterministic ID

@@ -6,6 +6,7 @@
     <button
       class="relative w-full overflow-hidden flow-button group"
       :class="[isSelected ? 'selected' : '', isRoot ? 'root-flow' : 'sub-flow']"
+      :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
       @click="$emit('click')"
     >
       <!-- Glow effect on hover -->

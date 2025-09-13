@@ -1,12 +1,13 @@
-import { emit as notify, setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
+import { setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import systems from '@/systems';
-import { safeEvents, type SystemId } from '@/core/utils/actor-helpers';
+import { emit, safeEvents, type SystemId } from '@/core/utils/actor-helpers';
 import { entries } from '@/core/utils';
 import { EARS } from '@/core/types';
 import { createEntity } from '@/core/ears';
 import { createLogger } from '@/core/utils/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
+import { settingsQueries } from '@/systems/settings/repository';
 
 const logger = createLogger('backend');
 
@@ -71,6 +72,17 @@ export const backendSystem = setup({
       for (const id of Object.keys(systems)) {
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
+      // Query for hasOnboarded and tourStarted from internal settings and emit to application actor
+      const internalSettings = settingsQueries.getInternalSettings();
+      system.get(bus).send({
+        type: 'OUTGOING',
+        event: {
+          type: 'CLIENT_CONNECTED',
+          hasOnboarded: internalSettings.hasOnboarded,
+          tourStarted: internalSettings.tourStarted,
+          pluginId: 'application'
+        }
+      });
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {
