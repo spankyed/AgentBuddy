@@ -19,7 +19,7 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Explore Plugins</h3>
-            <p>Customize your experience with plugins, easily accessible from the toolbar.</p>
+            <p>Checkout the different ways to interact with and customize your assistant.</p>
           </div>
         </div>
 
@@ -27,7 +27,7 @@
           <div class="step-number">3</div>
           <div class="step-content">
             <h3>Start Building</h3>
-            <p>Work with your assistant to plan, manage, code, debug, and deploy your projects.</p>
+            <p>Plan, code, debug, and deploy your projects with your assistant.</p>
           </div>
         </div>
       </div>

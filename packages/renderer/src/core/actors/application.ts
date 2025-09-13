@@ -450,6 +450,7 @@ export const createApplicationState = () => setup({
       }
       
       // Send event to backend to update hasOnboarded setting
+
       // trpc.bus.send.mutate({
       //   systemId: 'settings',
       //   type: 'UPDATE_SETTINGS',

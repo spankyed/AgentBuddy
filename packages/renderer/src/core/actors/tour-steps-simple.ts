@@ -82,7 +82,7 @@ export const tourSteps: TourStep[] = [
     id: 'threads-plugin-icon',
     targetId: 'plugin-threads',
     title: 'Threads Plugin',
-    content: 'The Threads plugin manages your conversations and chat history.',
+    content: 'The Threads plugin helps you manage your chat threads.',
     tooltipPosition: 'right',
     setupActions: [],
   },
@@ -90,7 +90,7 @@ export const tourSteps: TourStep[] = [
     id: 'threads-intro',
     targetId: 'canvas-area',
     title: 'Thread Management',
-    content: 'The Threads plugin shows your past conversations. Organize threads hierarchically for advanced thread management.',
+    content: 'See your past conversations and threads. Organize threads hierarchically for advanced thread management.',
     setupActions: [
       selectPlugin('threads'),
         { target: 'threads', event: { type: 'VIEW_LIST' } },
@@ -113,8 +113,8 @@ export const tourSteps: TourStep[] = [
   {
     id: 'agent-intro',
     targetId: 'canvas-area',
-    title: 'AI Assistant Canvas',
-    content: 'This is the main canvas for the AI assistant to display content to users. With thread tabs, users can quickly switch between different content.',
+    title: 'Assistant Canvas',
+    content: 'The assistant canvas is a place for your assistant to display longer text or image artifacts, without cluttering the main chat area below. With tabs, users can quickly switch between and show artifacts from different threads.',
     setupActions: [
       selectPlugin('agent'),
     ],
@@ -135,7 +135,7 @@ export const tourSteps: TourStep[] = [
     id: 'library-overview',
     targetId: 'canvas-area',
     title: 'Knowledge Library',
-    content: 'Store and organize your documents, knowledge bases. Group related documents together using folders.',
+    content: 'Store and organize documents to create a knowledge base for the assistant. Group related documents together using folders.',
     setupActions: [
       selectPlugin('library'),
       { target: 'library', event: { type: 'VIEW_BROWSER' } },
@@ -149,7 +149,7 @@ export const tourSteps: TourStep[] = [
     id: 'actions-plugin-icon',
     targetId: 'plugin-actions',
     title: 'Actions Plugin',
-    content: 'The Actions plugin manages reusable templates for workflow steps.',
+    content: 'The Actions plugin allows you to create reusable templates for workflow steps.',
     tooltipPosition: 'right',
     setupActions: [...showAndSelectPlugin('actions')],
   },
@@ -157,7 +157,7 @@ export const tourSteps: TourStep[] = [
     id: 'actions-overview',
     targetId: 'canvas-area',
     title: 'Action Templates',
-    content: 'Actions serve as building blocks for workflows. Each action accepts parameters and automates specific tasks.',
+    content: 'Actions are custom building blocks you can use in workflows. Each action accepts parameters and has access to services allowing the assistant to automate various tasks.',
     setupActions: [
       selectPlugin('actions'),
       { target: 'actions', event: { type: 'VIEW_LIST' } },
@@ -171,7 +171,7 @@ export const tourSteps: TourStep[] = [
     id: 'prompts-plugin-icon',
     targetId: 'plugin-prompts',
     title: 'Prompts Plugin',
-    content: 'The Prompts plugin allows you to manage your reusable LLM prompt templates.',
+    content: 'The Prompts plugin can be used to manage and keep track of your LLM prompt templates.',
     tooltipPosition: 'right',
     setupActions: [...showAndSelectPlugin('prompts')],
   },
@@ -179,7 +179,7 @@ export const tourSteps: TourStep[] = [
     id: 'prompts-overview',
     targetId: 'canvas-area',
     title: 'Prompt Templates',
-    content: 'Create and manage prompt templates and their parameters. Combine prompts using `usePrompt(\'label\')`',
+    content: 'Create and manage your prompt templates. Tip: Combine prompts using `usePrompt(\'label\')`',
     setupActions: [
       selectPlugin('prompts'),
       { target: 'prompts', event: { type: 'VIEW_LIST' } },
@@ -244,7 +244,7 @@ export const tourSteps: TourStep[] = [
     id: 'tour-complete',
     targetId: 'canvas-area',
     title: 'Final Step: Configure API Keys',
-    content: 'To finish setting up AgentBuddy, you\'ll need API keys from some AI providers. Your keys are stored securely and never shared.',
+    content: 'To finish setting up AgentBuddy, you will need to set some API keys, preferably from multiple AI providers. Your keys are stored securely and never shared.',
     setupActions: [
       selectPlugin('settings'),
       { target: 'settings', event: { type: 'TAB.SELECT', tab: 'general' } },
