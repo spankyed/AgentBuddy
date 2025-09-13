@@ -16,7 +16,37 @@
         <template v-for="provider in standardProviders" :key="provider.key">
           <!-- Provider Info Column -->
           <div>
-            <label class="block text-sm font-medium text-gray-200">{{ provider.label }}</label>
+            <div class="flex items-center">
+              <button 
+                @click="openProviderUrl(provider.url)"
+                class="flex items-center gap-1 text-sm font-medium text-gray-200 hover:text-blue-400 transition-colors group"
+                :title="`Open ${provider.label} API keys page`"
+              >
+                {{ provider.label }}
+                <ExternalLink class="w-3 h-3 text-gray-400 group-hover:text-blue-400 transition-colors" />
+              </button>
+              <div 
+                v-if="provider.priority"
+                class="flex items-center gap-1 ml-2"
+              >
+                <div 
+                  :class="{
+                    'w-1 h-1 rounded-full flex-shrink-0': true,
+                    'bg-red-400': provider.priority === 'required',
+                    'bg-amber-400': provider.priority === 'recommended'
+                  }"
+                ></div>
+                <span 
+                  :class="{
+                    'text-[11px] font-medium': true,
+                    'text-red-400/80': provider.priority === 'required',
+                    'text-amber-400/80': provider.priority === 'recommended'
+                  }"
+                >
+                  {{ provider.priority }}
+                </span>
+              </div>
+            </div>
             <p class="text-xs text-gray-500 mt-0.5">{{ provider.description }}</p>
           </div>
           
@@ -209,7 +239,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X } from 'lucide-vue-next'
+import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
 
 interface Props {
@@ -244,12 +274,12 @@ const emit = defineEmits<{
 }>()
 
 const standardProviders = [
-  { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2' },
-  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E' },
-  { key: 'google', label: 'Google AI', description: 'Gemini, PaLM' },
-  { key: 'groq', label: 'Groq', description: 'Fast inference API' },
-  { key: 'mistral', label: 'Mistral AI', description: 'Mistral models' },
-  { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank' },
+  { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2', url: 'https://console.anthropic.com/settings/keys', priority: 'required' },
+  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E', url: 'https://platform.openai.com/api-keys', priority: 'required' },
+  { key: 'google', label: 'Google AI', description: 'Gemini, PaLM', url: 'https://makersuite.google.com/app/apikey', priority: 'recommended' },
+  { key: 'groq', label: 'Groq', description: 'Fast inference API', url: 'https://console.groq.com/keys' },
+  { key: 'mistral', label: 'Mistral AI', description: 'Mistral models', url: 'https://console.mistral.ai/api-keys' },
+  { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank', url: 'https://dashboard.cohere.com/api-keys' },
 ]
 
 // State for inline editing
@@ -414,5 +444,15 @@ const cancelNewCustom = () => {
   newCustomProvider.key = ''
   showKeyFor.value.newCustom = false
   showNewCustomForm.value = false
+}
+
+const openProviderUrl = (url: string) => {
+  if (window.electron) {
+    // Use Electron's shell API to open external links
+    window.electron.shell.openExternal(url)
+  } else {
+    // Fallback for web environment
+    window.open(url, '_blank')
+  }
 }
 </script>
