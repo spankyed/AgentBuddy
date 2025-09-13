@@ -406,37 +406,25 @@ const completeTour = () => {
 
 @keyframes flash {
   0%, 100% {
-    opacity: 1;
+    opacity: 0.8;
     box-shadow: 
-      0 0 20px rgba(74, 158, 255, 0.8),
-      0 0 40px rgba(74, 158, 255, 0.6),
-      inset 0 0 20px rgba(74, 158, 255, 0.4);
-  }
-  25% {
-    opacity: 0.5;
-    box-shadow: 
-      0 0 10px rgba(74, 158, 255, 0.4),
-      inset 0 0 10px rgba(74, 158, 255, 0.2);
+      0 0 8px rgba(74, 158, 255, 0.3),
+      0 0 12px rgba(74, 158, 255, 0.2),
+      inset 0 0 8px rgba(74, 158, 255, 0.15);
   }
   50% {
-    opacity: 1;
+    opacity: 0.95;
     box-shadow: 
-      0 0 30px rgba(255, 255, 255, 0.8),
-      0 0 60px rgba(74, 158, 255, 1),
-      inset 0 0 30px rgba(74, 158, 255, 0.6);
-  }
-  75% {
-    opacity: 0.5;
-    box-shadow: 
-      0 0 10px rgba(74, 158, 255, 0.4),
+      0 0 12px rgba(74, 158, 255, 0.4),
+      0 0 18px rgba(74, 158, 255, 0.3),
       inset 0 0 10px rgba(74, 158, 255, 0.2);
   }
 }
 
 .tour-flash {
-  animation: flash 1.5s infinite !important;
-  border-color: rgba(74, 158, 255, 0.8) !important;
-  border-width: 3px !important;
+  animation: flash 3s ease-in-out infinite !important;
+  border-color: rgba(74, 158, 255, 0.6) !important;
+  border-width: 2px !important;
 }
 
 
