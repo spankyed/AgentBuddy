@@ -1,4 +1,4 @@
-import type { TourStep } from './guided-tour';
+import type { TourStep } from './tour-steps-simple';
 
 // Helper function to create a plugin selection action
 const selectPlugin = (pluginId: string) => ({

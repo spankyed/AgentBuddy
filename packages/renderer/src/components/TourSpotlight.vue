@@ -1,65 +1,31 @@
 <template>
   <div class="tour-overlay">
-    <!-- Show multi-div backdrop when element is targeted -->
-    <template v-if="targetRect">
-      <!-- Top overlay -->
+    <!-- Backdrop sections when we have targets -->
+    <template v-if="targetRects.length > 0">
+      <!-- 4-section backdrop around first target -->
       <div 
+        v-for="(style, i) in backdropSections"
+        :key="`backdrop-${i}`"
         class="tour-backdrop-section"
-        :style="{
-          top: 0,
-          left: 0,
-          right: 0,
-          height: `${targetRect.top}px`
-        }"
-      ></div>
+        :style="style"
+      />
       
-      <!-- Left overlay -->
+      <!-- Spotlight borders for all targets -->
       <div 
-        class="tour-backdrop-section"
+        v-for="(target, index) in targetRects"
+        :key="`border-${index}`"
+        :class="['tour-spotlight-border', { 'tour-spotlight-flash': target.flash }]"
         :style="{
-          top: `${targetRect.top}px`,
-          left: 0,
-          width: `${targetRect.left}px`,
-          height: `${targetRect.height}px`
+          top: `${target.rect.top}px`,
+          left: `${target.rect.left}px`,
+          width: `${target.rect.width}px`,
+          height: `${target.rect.height}px`
         }"
-      ></div>
-      
-      <!-- Right overlay -->
-      <div 
-        class="tour-backdrop-section"
-        :style="{
-          top: `${targetRect.top}px`,
-          right: 0,
-          left: `${targetRect.left + targetRect.width}px`,
-          height: `${targetRect.height}px`
-        }"
-      ></div>
-      
-      <!-- Bottom overlay -->
-      <div 
-        class="tour-backdrop-section"
-        :style="{
-          top: `${targetRect.top + targetRect.height}px`,
-          left: 0,
-          right: 0,
-          bottom: 0
-        }"
-      ></div>
-      
-      <!-- Spotlight border -->
-      <div 
-        class="tour-spotlight-border"
-        :style="{
-          top: `${targetRect.top}px`,
-          left: `${targetRect.left}px`,
-          width: `${targetRect.width}px`,
-          height: `${targetRect.height}px`
-        }"
-      ></div>
+      />
     </template>
     
-    <!-- Simple full backdrop when no target -->
-    <div v-else class="tour-backdrop"></div>
+    <!-- Full backdrop when no targets -->
+    <div v-else class="tour-backdrop" />
     
     <!-- Tour tooltip -->
     <div 
@@ -79,10 +45,7 @@
       
       <div class="tour-footer">
         <div class="tour-progress">
-          <span v-if="!isFirstStep">{{ stepNumber }} of {{ totalSteps }}</span>
-          <span v-else class="tour-keyboard-tip">
-            Use <kbd>←</kbd> <kbd>→</kbd> arrow keys
-          </span>
+          {{ stepNumber }} of {{ totalSteps }}
         </div>
         
         <div class="tour-actions">
@@ -94,18 +57,10 @@
             Previous
           </button>
           <button 
-            v-if="!isLastStep"
-            @click="nextStep"
-            class="tour-btn tour-btn-primary"
+            @click="isLastStep ? completeTour() : nextStep()"
+            :class="['tour-btn', isLastStep ? 'tour-btn-success' : 'tour-btn-primary']"
           >
-            Next
-          </button>
-          <button 
-            v-else
-            @click="completeTour"
-            class="tour-btn tour-btn-success"
-          >
-            Finish Tour
+            {{ isLastStep ? 'Finish Tour' : 'Next' }}
           </button>
         </div>
       </div>
@@ -117,11 +72,13 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { applicationState } from '@/main';
+import type { TourTarget } from '@/core/actors/tour-steps-simple';
 
 // Get tour context from application state
 const tourContext = useSelector(applicationState, (snapshot) => {
   const tourActor = snapshot.children.guidedTour;
-  return tourActor?.getSnapshot().context;
+  const tourSnapshot = tourActor?.getSnapshot();
+  return tourSnapshot && 'context' in tourSnapshot ? tourSnapshot.context : null;
 });
 
 const currentStep = computed(() => {
@@ -152,11 +109,33 @@ const isLastStep = computed(() => {
   return tourContext.value.currentStepIndex === tourContext.value.steps.length - 1;
 });
 
-const targetRect = ref<DOMRect | null>(null);
+interface TargetInfo {
+  rect: DOMRect;
+  flash: boolean;
+}
+
+const targetRects = ref<TargetInfo[]>([]);
 const tooltipRef = ref<HTMLElement | null>(null);
 
 // Cache window dimensions to avoid frequent DOM reads
 const windowDimensions = ref({ width: window.innerWidth, height: window.innerHeight });
+
+// Computed backdrop sections for first target
+const backdropSections = computed(() => {
+  if (!targetRects.value.length) return [];
+  
+  const rect = targetRects.value[0].rect;
+  return [
+    // Top section
+    { top: 0, left: 0, right: 0, height: `${rect.top}px` },
+    // Left section
+    { top: `${rect.top}px`, left: 0, width: `${rect.left}px`, height: `${rect.height}px` },
+    // Right section
+    { top: `${rect.top}px`, right: 0, left: `${rect.left + rect.width}px`, height: `${rect.height}px` },
+    // Bottom section
+    { top: `${rect.top + rect.height}px`, left: 0, right: 0, bottom: 0 }
+  ];
+});
 
 const tooltipStyle = computed(() => {
   // Use fixed dimensions to avoid getBoundingClientRect calls in computed
@@ -167,14 +146,17 @@ const tooltipStyle = computed(() => {
   const windowWidth = windowDimensions.value.width;
   const windowHeight = windowDimensions.value.height;
   
-  // Center tooltip if no target
-  if (!targetRect.value) {
+  // Center tooltip if no targets
+  if (!targetRects.value.length) {
     return {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%, -50%)',
     };
   }
+  
+  // Use the first target for positioning the tooltip
+  const targetRect = targetRects.value[0].rect;
   
   let x = 0;
   let y = 0;
@@ -184,18 +166,18 @@ const tooltipStyle = computed(() => {
   switch (position) {
     case 'left':
       // Position to the left of element
-      x = targetRect.value.left - tooltipWidth - padding;
-      y = targetRect.value.top + targetRect.value.height / 2 - tooltipHeight / 2;
+      x = targetRect.left - tooltipWidth - padding;
+      y = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
       
       // For very tall elements, center vertically in viewport
-      if (targetRect.value.height > windowHeight * 0.7) {
+      if (targetRect.height > windowHeight * 0.7) {
         y = windowHeight / 2 - tooltipHeight / 2;
       }
       
       // Fallback if off-screen
       if (x < padding) {
         // Try right instead
-        x = targetRect.value.right + padding;
+        x = targetRect.right + padding;
         if (x + tooltipWidth > windowWidth - padding) {
           // Center horizontally as last resort
           x = windowWidth / 2 - tooltipWidth / 2;
@@ -205,18 +187,18 @@ const tooltipStyle = computed(() => {
       
     case 'right':
       // Position to the right of element
-      x = targetRect.value.right + padding;
-      y = targetRect.value.top + targetRect.value.height / 2 - tooltipHeight / 2;
+      x = targetRect.right + padding;
+      y = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
       
       // For very tall elements (like toolbar), center vertically in viewport
-      if (targetRect.value.height > windowHeight * 0.7) {
+      if (targetRect.height > windowHeight * 0.7) {
         y = windowHeight / 2 - tooltipHeight / 2;
       }
       
       // Fallback if off-screen
       if (x + tooltipWidth > windowWidth - padding) {
         // Try left instead
-        x = targetRect.value.left - tooltipWidth - padding;
+        x = targetRect.left - tooltipWidth - padding;
         if (x < padding) {
           // Center horizontally as last resort
           x = windowWidth / 2 - tooltipWidth / 2;
@@ -226,13 +208,13 @@ const tooltipStyle = computed(() => {
       
     case 'top':
       // Position above element
-      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
-      y = targetRect.value.top - tooltipHeight - padding;
+      x = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
+      y = targetRect.top - tooltipHeight - padding;
       
       // Fallback if off-screen
       if (y < padding) {
         // Try bottom instead
-        y = targetRect.value.bottom + padding;
+        y = targetRect.bottom + padding;
         if (y + tooltipHeight > windowHeight - padding) {
           // Center vertically as last resort
           y = windowHeight / 2 - tooltipHeight / 2;
@@ -242,13 +224,13 @@ const tooltipStyle = computed(() => {
       
     case 'bottom':
       // Position below element
-      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
-      y = targetRect.value.bottom + padding;
+      x = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
+      y = targetRect.bottom + padding;
       
       // Fallback if off-screen
       if (y + tooltipHeight > windowHeight - padding) {
         // Try top instead
-        y = targetRect.value.top - tooltipHeight - padding;
+        y = targetRect.top - tooltipHeight - padding;
         if (y < padding) {
           // Center vertically as last resort
           y = windowHeight / 2 - tooltipHeight / 2;
@@ -259,12 +241,12 @@ const tooltipStyle = computed(() => {
     case 'auto':
     default:
       // Smart positioning: prefer bottom, then top, then right, then left
-      x = targetRect.value.left + targetRect.value.width / 2 - tooltipWidth / 2;
-      y = targetRect.value.bottom + padding;
+      x = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
+      y = targetRect.bottom + padding;
       
       // If would go off bottom, try top
       if (y + tooltipHeight > windowHeight - padding) {
-        y = targetRect.value.top - tooltipHeight - padding;
+        y = targetRect.top - tooltipHeight - padding;
         
         // If still off screen, center vertically
         if (y < padding) {
@@ -292,22 +274,40 @@ const tooltipStyle = computed(() => {
 
 const updateTargetRect = async () => {
   if (!currentStep.value?.targetId) {
-    targetRect.value = null;
+    targetRects.value = [];
     return;
   }
 
-  // await nextTick();
-
-  const element = document.querySelector(`[data-onboarding-id="${currentStep.value.targetId}"]`);
-  if (element) {
-    // First scroll the element into view instantly
-    element.scrollIntoView({ behavior: 'instant', block: 'center' });
-    
-    // Then measure its position
-    targetRect.value = element.getBoundingClientRect();
+  // Normalize targetId to array of targets
+  let targets: TourTarget[] = [];
+  if (Array.isArray(currentStep.value.targetId)) {
+    targets = currentStep.value.targetId;
   } else {
-    targetRect.value = null;
+    targets = [currentStep.value.targetId];
   }
+
+  const rects: TargetInfo[] = [];
+  
+  for (const target of targets) {
+    const targetId = typeof target === 'string' ? target : target.id;
+    const flash = typeof target === 'object' ? target.flash === true : false;
+    
+    const element = document.querySelector(`[data-onboarding-id="${targetId}"]`);
+    if (element) {
+      // First scroll the element into view instantly (only for first element)
+      if (rects.length === 0) {
+        element.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
+      
+      // Then measure its position
+      rects.push({
+        rect: element.getBoundingClientRect(),
+        flash
+      });
+    }
+  }
+  
+  targetRects.value = rects;
 };
 
 // Handle keyboard navigation
@@ -417,6 +417,42 @@ const completeTour = () => {
   }
 }
 
+@keyframes flash {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 
+      0 0 20px rgba(74, 158, 255, 0.8),
+      0 0 40px rgba(74, 158, 255, 0.6),
+      inset 0 0 20px rgba(74, 158, 255, 0.4);
+  }
+  25% {
+    opacity: 0.5;
+    box-shadow: 
+      0 0 10px rgba(74, 158, 255, 0.4),
+      inset 0 0 10px rgba(74, 158, 255, 0.2);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 
+      0 0 30px rgba(255, 255, 255, 0.8),
+      0 0 60px rgba(74, 158, 255, 1),
+      inset 0 0 30px rgba(74, 158, 255, 0.6);
+  }
+  75% {
+    opacity: 0.5;
+    box-shadow: 
+      0 0 10px rgba(74, 158, 255, 0.4),
+      inset 0 0 10px rgba(74, 158, 255, 0.2);
+  }
+}
+
+.tour-spotlight-flash {
+  animation: flash 1.5s infinite !important;
+  border-color: rgba(74, 158, 255, 0.8) !important;
+  border-width: 3px !important;
+}
+
+
 .tour-tooltip {
   position: absolute;
   background: #1a1a1a;
@@ -489,29 +525,6 @@ const completeTour = () => {
   font-size: 0.875rem;
 }
 
-.tour-keyboard-tip {
-  color: #666;
-  font-size: 0.8rem;
-}
-
-.tour-keyboard-tip kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 20px;
-  padding: 0 5px;
-  margin: 0 3px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-  color: #888;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 500;
-  vertical-align: middle;
-}
-
 .tour-actions {
   display: flex;
   gap: 0.75rem;
@@ -552,23 +565,6 @@ const completeTour = () => {
 
 .tour-btn-success:hover {
   background: #059669;
-}
-
-.tour-btn-ghost {
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #999;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.tour-btn-ghost:hover {
-  background: #404040;
-  color: white;
 }
 
 /* Custom scrollbar for tooltip */

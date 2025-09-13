@@ -1,6 +1,8 @@
+export type TourTarget = string | { id: string; flash?: boolean };
+
 export interface TourStep {
   id: string;
-  targetId: string;
+  targetId: string | TourTarget | TourTarget[];
   title: string;
   content: string;
   tooltipPosition?: 'auto' | 'left' | 'right' | 'top' | 'bottom';
@@ -242,7 +244,11 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: 'tour-complete',
-    targetId: 'canvas-area',
+    targetId: [
+      'canvas-area',
+      { id: 'settings-openai-key-input', flash: true },
+      { id: 'settings-anthropic-key-input', flash: true }
+    ],
     title: 'Final Step: Configure API Keys',
     content: 'To finish setting up AgentBuddy, you will need to set some API keys, preferably from multiple AI providers. Your keys are stored securely and never shared.',
     setupActions: [

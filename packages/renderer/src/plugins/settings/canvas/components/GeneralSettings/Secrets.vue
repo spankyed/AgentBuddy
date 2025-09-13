@@ -21,7 +21,7 @@
           </div>
           
           <!-- Input/Display Column -->
-          <div>
+          <div :data-onboarding-id="`settings-${provider.key}-key-input`">
             <div v-if="getSecretForProvider(provider.key) && !isEditing(provider.key)">
               <span class="w-full inline-block text-center text-xs text-gray-500 bg-neutral-800 px-3 py-1.5 rounded-md border border-neutral-700">••••••••</span>
             </div>
@@ -30,7 +30,6 @@
                 :type="showKeyFor[provider.key] ? 'text' : 'password'"
                 v-model="inlineKeyValues[provider.key]"
                 :placeholder="isEditing(provider.key) ? 'Enter new API key' : 'Enter API key'"
-                :data-onboarding-id="`settings-${provider.key}-key-input`"
                 @input="handleKeyInput(provider.key)"
                 @keyup.enter="saveInlineKey(provider.key)"
                 @keyup.escape="cancelEdit(provider.key)"
