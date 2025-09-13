@@ -1,31 +1,29 @@
 <template>
   <div class="tour-overlay">
-    <!-- Backdrop sections when we have targets -->
-    <template v-if="targetRects.length > 0">
-      <!-- 4-section backdrop around first target -->
-      <div 
-        v-for="(style, i) in backdropSections"
-        :key="`backdrop-${i}`"
-        class="tour-backdrop-section"
-        :style="style"
-      />
-      
-      <!-- Spotlight borders for all targets -->
-      <div 
-        v-for="(target, index) in targetRects"
-        :key="`border-${index}`"
-        :class="['tour-spotlight-border', { 'tour-spotlight-flash': target.flash }]"
-        :style="{
-          top: `${target.rect.top}px`,
-          left: `${target.rect.left}px`,
-          width: `${target.rect.width}px`,
-          height: `${target.rect.height}px`
-        }"
-      />
-    </template>
+    <!-- Backdrop effect via box-shadow -->
+    <div 
+      v-if="targetRects.length > 0"
+      class="tour-backdrop-cutout"
+      :style="{
+        top: `${targetRects[0].rect.top}px`,
+        left: `${targetRects[0].rect.left}px`,
+        width: `${targetRects[0].rect.width}px`,
+        height: `${targetRects[0].rect.height}px`
+      }"
+    />
     
-    <!-- Full backdrop when no targets -->
-    <div v-else class="tour-backdrop" />
+    <!-- Spotlight borders for all targets -->
+    <div 
+      v-for="(target, index) in targetRects"
+      :key="index"
+      :class="['tour-spotlight', { 'tour-flash': target.flash }]"
+      :style="{
+        top: `${target.rect.top}px`,
+        left: `${target.rect.left}px`,
+        width: `${target.rect.width}px`,
+        height: `${target.rect.height}px`
+      }"
+    />
     
     <!-- Tour tooltip -->
     <div 
@@ -119,23 +117,6 @@ const tooltipRef = ref<HTMLElement | null>(null);
 
 // Cache window dimensions to avoid frequent DOM reads
 const windowDimensions = ref({ width: window.innerWidth, height: window.innerHeight });
-
-// Computed backdrop sections for first target
-const backdropSections = computed(() => {
-  if (!targetRects.value.length) return [];
-  
-  const rect = targetRects.value[0].rect;
-  return [
-    // Top section
-    { top: 0, left: 0, right: 0, height: `${rect.top}px` },
-    // Left section
-    { top: `${rect.top}px`, left: 0, width: `${rect.left}px`, height: `${rect.height}px` },
-    // Right section
-    { top: `${rect.top}px`, right: 0, left: `${rect.left + rect.width}px`, height: `${rect.height}px` },
-    // Bottom section
-    { top: `${rect.top + rect.height}px`, left: 0, right: 0, bottom: 0 }
-  ];
-});
 
 const tooltipStyle = computed(() => {
   // Use fixed dimensions to avoid getBoundingClientRect calls in computed
@@ -379,25 +360,15 @@ const completeTour = () => {
   pointer-events: none;
 }
 
-.tour-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+.tour-backdrop-cutout {
+  position: fixed;
   pointer-events: auto;
+  /* Massive box-shadow creates the backdrop with a hole */
+  box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.6);
 }
 
-.tour-backdrop-section {
-  position: absolute;
-  background: rgba(0, 0, 0, 0.6);
-  pointer-events: auto;
-  transition: opacity 0.15s ease;
-}
-
-.tour-spotlight-border {
-  position: absolute;
+.tour-spotlight {
+  position: fixed;
   border: 2px solid rgba(74, 158, 255, 0.5);
   border-radius: 8px;
   box-shadow: 
@@ -405,7 +376,6 @@ const completeTour = () => {
     inset 0 0 10px rgba(74, 158, 255, 0.2);
   pointer-events: none;
   animation: pulse 2s infinite;
-  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 @keyframes pulse {
@@ -446,7 +416,7 @@ const completeTour = () => {
   }
 }
 
-.tour-spotlight-flash {
+.tour-flash {
   animation: flash 1.5s infinite !important;
   border-color: rgba(74, 158, 255, 0.8) !important;
   border-width: 3px !important;
