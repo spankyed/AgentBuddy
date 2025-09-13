@@ -60,20 +60,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { applicationState } from '@/main';
 
 const step = ref(1);
+const autoplayTimer = ref<NodeJS.Timeout | null>(null);
+const autoplayActive = ref(true);
+
+const setAutoplay = () => {
+  clearTimeout(autoplayTimer.value!);
+  if (autoplayActive.value && step.value < 3) {
+    autoplayTimer.value = setTimeout(() => step.value++, 1500);
+  }
+};
 
 const nextStep = () => {
   if (step.value < 3) {
     step.value++;
+    setAutoplay();
   }
 };
 
 const previousStep = () => {
   if (step.value > 1) {
     step.value--;
+    autoplayActive.value = false;
+    clearTimeout(autoplayTimer.value!);
   }
 };
 
@@ -102,13 +114,18 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
-// Setup and cleanup keyboard event listeners
+// Watch for step changes to trigger autoplay
+watch(step, setAutoplay);
+
+// Setup and cleanup
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
+  setAutoplay();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
+  clearTimeout(autoplayTimer.value!);
 });
 </script>
 
