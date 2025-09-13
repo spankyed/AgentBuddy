@@ -73,8 +73,7 @@ export type ApplicationEvent =
   | { type: 'TOUR_PREVIOUS' }
   | { type: 'TOUR_END' }
   | { type: 'TOUR_COMPLETE' }
-  | { type: 'TOUR_ENDED' }
-  | { type: 'TOUR_COMPLETED' }
+  | { type: 'TOUR_ABORTED' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
@@ -687,11 +686,7 @@ export const createApplicationState = () => setup({
         TOUR_COMPLETE: {
           actions: sendTo('guidedTour', { type: 'COMPLETE' })
         },
-        TOUR_ENDED: {
-          target: 'running',
-        },
-        TOUR_COMPLETED: {
-          target: 'running',
+        TOUR_ABORTED: {
         },
         ROUTE_TOUR_EVENT: {
           actions: 'routeEvent'

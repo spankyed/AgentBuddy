@@ -97,11 +97,10 @@ export const guidedTourMachine = setup({
     },
     ended: {
       type: 'final',
-      entry: sendParent({ type: 'TOUR_ENDED' }),
+      entry: sendParent({ type: 'TOUR_ABORTED' }),
     },
     completed: {
       type: 'final',
-      entry: sendParent({ type: 'TOUR_COMPLETED' }),
     },
   },
 });
