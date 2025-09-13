@@ -1,6 +1,7 @@
 import { ChildProcess } from 'child_process';
 import { BrowserWindow, app } from 'electron';
 import { API_EVENTS } from './config.js';
+import { logInfo, logError } from './logger.js';
 
 export interface ProcessHandlers {
   onReady?: (port: number) => void;
@@ -34,17 +35,25 @@ export class ProcessManager {
         const message = data.toString();
         const isDev = !app.isPackaged;
         
-        // Only log and broadcast in development mode
-        if (isDev) {
+        // Log critical startup messages even in production
+        const isCriticalMessage = message.includes('WebSocket Server listening') || 
+                                  message.includes('ERROR') || 
+                                  message.includes('Failed') ||
+                                  message.includes('Server started');
+        
+        // Log and broadcast in development mode or for critical messages
+        if (isDev || isCriticalMessage) {
           // Log to main process console
           console.log(`[API Server]: ${message.trim()}`);
           
-          // Broadcast stdout to renderer
-          broadcastEvent(API_EVENTS.LOG, { 
-            type: 'stdout', 
-            message,
-            timestamp: new Date().toISOString()
-          });
+          // Broadcast stdout to renderer in dev mode
+          if (isDev) {
+            broadcastEvent(API_EVENTS.LOG, { 
+              type: 'stdout', 
+              message,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
         
         // Check for server ready message (only trigger once)
@@ -71,12 +80,11 @@ export class ProcessManager {
         const message = data.toString();
         const isDev = !app.isPackaged;
         
-        // Only log and broadcast in development mode
+        // Always log errors in production for debugging
+        logError(`[API Server Error]: ${message.trim()}`);
+
+        // Broadcast stderr to renderer in dev mode
         if (isDev) {
-          // Log to main process console
-          console.error(`[API Server Error]: ${message.trim()}`);
-          
-          // Broadcast stderr to renderer
           broadcastEvent(API_EVENTS.LOG, { 
             type: 'stderr', 
             message,

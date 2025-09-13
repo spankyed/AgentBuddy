@@ -39,6 +39,9 @@ export interface PromptsContext {
     inputs: Record<string, TemplateInput>;
     templateFn: string;
     outputSchema?: any;
+    inputsExpanded?: boolean;
+    outputExpanded?: boolean;
+    metadataExpanded?: boolean;
   };
 }
 
@@ -56,7 +59,10 @@ type UIEvent =
   | { type: 'FORM.UPDATE_INPUTS'; inputs: Record<string, TemplateInput> }
   | { type: 'FORM.UPDATE_TEMPLATE'; templateFn: string }
   | { type: 'FORM.UPDATE_OUTPUT_SCHEMA'; outputSchema: any }
-  | { type: 'GO.BACK' }
+  | { type: 'VIEW_LIST' }
+  | { type: 'TOGGLE_INPUTS_SECTION'; show: boolean }
+  | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
+  | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
 
 export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -249,6 +255,36 @@ const promptsState = setup({
         categories: ev.settings?.categories || [],
       };
     }),
+
+    toggleInputsSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_INPUTS_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          inputsExpanded: ev.show,
+        },
+      };
+    }),
+
+    toggleOutputSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_OUTPUT_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          outputExpanded: ev.show,
+        },
+      };
+    }),
+
+    toggleMetadataSection: assign(({ event, context }) => {
+      const ev = typeOf('TOGGLE_METADATA_SECTION', event);
+      return {
+        formData: {
+          ...context.formData,
+          metadataExpanded: ev.show,
+        },
+      };
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -272,6 +308,9 @@ const promptsState = setup({
     },
   },
   on: {
+    'VIEW_LIST': {
+      target: '.list',
+    },
     PROMPTS_CONNECTED: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
     PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
@@ -285,6 +324,9 @@ const promptsState = setup({
       actions: 'removeDeletedPrompt',
       target: '.list'
     },
+    TOGGLE_INPUTS_SECTION: { actions: 'toggleInputsSection' },
+    TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
+    TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
@@ -323,9 +365,6 @@ const promptsState = setup({
           actions: 'sendSavePrompt',
           target: 'list',
         },
-        'GO.BACK': {
-          target: 'list',
-        },
       },
     },
     detail: {
@@ -347,9 +386,6 @@ const promptsState = setup({
         'FORM.UPDATE_CATEGORY': { actions: 'updateFormCategory' },
         'PROMPT.SAVE': {
           actions: 'sendSavePrompt',
-          target: 'list',
-        },
-        'GO.BACK': {
           target: 'list',
         },
       },

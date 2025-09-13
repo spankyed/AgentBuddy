@@ -6,6 +6,7 @@
         v-for="tab in tabs"
         :key="tab.id"
         @click="selectTab(tab.id)"
+        :data-onboarding-id="`settings-${tab.id}-tab`"
         :class="[
           'flex-1 px-4 py-3 text-sm font-medium transition-colors relative',
           activeTab === tab.id

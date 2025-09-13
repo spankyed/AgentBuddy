@@ -14,6 +14,7 @@ export default /** @type import('electron-builder').Configuration */
     output: 'dist',
     buildResources: 'buildResources',
   },
+  icon: 'buildResources/icon',
   
   // Build options
   artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
@@ -29,11 +30,11 @@ export default /** @type import('electron-builder').Configuration */
     target: [
       {
         target: 'dmg',
-        arch: ['arm64', 'x64']
+        arch: ['arm64'] // Only build for Apple Silicon
       },
       {
         target: 'zip',
-        arch: ['arm64', 'x64']
+        arch: ['arm64'] // Only build for Apple Silicon
       }
     ]
   },
@@ -77,8 +78,8 @@ export default /** @type import('electron-builder').Configuration */
   },
   
   // Native modules configuration
-  npmRebuild: false, // We handle rebuilding in build.sh
-  nodeGypRebuild: false, // We use @electron/rebuild in build.sh
+  npmRebuild: true, // Let electron-builder handle native module rebuilding
+  nodeGypRebuild: false, // Use npmRebuild instead
   
   // Files configuration
   files: [
@@ -105,7 +106,7 @@ export default /** @type import('electron-builder').Configuration */
     'packages/api/node_modules/**/*'
   ],
   
-  // Disable asar for API server file access
+  // Disable ASAR - API needs full filesystem access to dependencies
   asar: false,
   
   // Extra resources

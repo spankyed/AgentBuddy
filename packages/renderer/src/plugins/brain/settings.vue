@@ -20,6 +20,7 @@
           <div class="mt-4 pt-4 border-t border-neutral-700/30">
             <button 
               @click="handleRestart"
+              data-onboarding-id="settings-restart-brain-button"
               class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium"
             >
               <PlayCircle class="w-4 h-4" />
@@ -46,6 +47,7 @@
             <div class="flex gap-2">
               <button 
                 @click="handleRestart"
+                data-onboarding-id="settings-restart-brain-button"
                 class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <RefreshCw class="w-4 h-4" />
@@ -53,6 +55,7 @@
               </button>
               <button 
                 @click="handleKill"
+                data-onboarding-id="settings-kill-brain-button"
                 class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <Power class="w-4 h-4" />
@@ -81,6 +84,7 @@
             <div class="flex gap-2">
               <button 
                 @click="handleRestart"
+                data-onboarding-id="settings-restart-brain-button"
                 class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <RefreshCw class="w-4 h-4" />
@@ -89,6 +93,7 @@
               <button 
                 v-if="!brainIsDead"
                 @click="handleKill"
+                data-onboarding-id="settings-kill-brain-button"
                 class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm font-medium"
               >
                 <Power class="w-4 h-4" />

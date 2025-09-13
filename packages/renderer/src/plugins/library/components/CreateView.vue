@@ -36,6 +36,7 @@
               <input
                 v-model="formData.name"
                 type="text"
+                data-onboarding-id="library-document-name-input"
                 class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                 placeholder="Enter document name"
               />
@@ -57,7 +58,7 @@
                 Add Section
               </button>
             </div>
-            <div class="space-y-4">
+            <div class="space-y-4"  data-onboarding-id="library-content-sections">
               <ContentSectionEditor
                 v-for="(section, index) in formData.content"
                 :key="index"

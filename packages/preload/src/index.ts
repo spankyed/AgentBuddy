@@ -6,6 +6,17 @@ function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
 }
 
+// Parse API port from command line arguments
+function getApiPort(): number {
+  // Look for --api-port= in process.argv
+  const portArg = process.argv.find(arg => arg.startsWith('--api-port='));
+  if (portArg) {
+    const port = parseInt(portArg.split('=')[1], 10);
+    return port;
+  }
+  return 3001;
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
@@ -18,10 +29,14 @@ const fileUtils = {
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
 };
 
+// Get the API port
+const apiPort = getApiPort();
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
   fileUtils,
+  apiPort,
 });
 
 // Export the tRPC client and connection status

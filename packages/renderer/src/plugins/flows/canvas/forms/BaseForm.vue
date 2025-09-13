@@ -24,6 +24,7 @@
         <input
           :value="node.label"
           @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
+          data-onboarding-id="flow-node-label-input"
           class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           placeholder="Enter node label..."
         />

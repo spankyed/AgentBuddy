@@ -11,7 +11,7 @@
       </div>
       <div class="flex items-center gap-2">
         <Button
-          @click="actor.send({ type: 'GO_BACK' })"
+          @click="actor.send({ type: 'VIEW_LIST' })"
           variant="transparent"
         >
           Back
@@ -177,14 +177,13 @@
 import { ref, nextTick } from 'vue'
 import { MessageCircleMore, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import Label from '@/core/components/design/label.vue'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
-import MessageList from './message-list.vue'
+import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
-import ThreadLinkInput from '@/plugins/threads/canvas/link-thread-input.vue'
+import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { ThreadEditFields } from '@app/api';
 

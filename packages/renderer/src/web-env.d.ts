@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_API_WS: string
+  // Removed VITE_API_WS - port is now injected dynamically
   // more env variables...
 }
 

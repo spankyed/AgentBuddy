@@ -6,10 +6,10 @@ This file provides guidance to Claude Code when developing in the AgentBuddy rep
 
 The frontend (/packages/renderer) uses a plugin-based architecture where each plugin is an XState actor that manages its own state and UI. Plugins communicate with backend systems via WebSocket (trpc) events and display content in designated UI areas.
 
-The backend (/packages/api) uses an event-driven, actor-based architecture built on XState state machines. Each system is an independent actor that communicates through typed events via a central bus.
+The backend (/packages/api) uses an event-driven, actor-based system architecture built on XState state machines. Each system is an independent actor that communicates through typed events via a central bus.
 
 ## Debugging
 
-- Run `npm run type-check` to type check the FE
-- Run `npm run build` to build the backend
-- Run `npm run dev:types` to run type check for the backend
+- Run `npm run typecheck:fe` to type check the FE
+- Run `npm run typecheck:be` to run type check for the backend
+- Run `npm run test-build` to ensure build the backend & frontend compile

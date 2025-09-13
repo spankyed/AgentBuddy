@@ -1,9 +1,10 @@
 import { BaseEntity } from "@/core/ears";
 import type { EARS } from "@/types";
 
+export type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
 export interface SettingsEntity extends BaseEntity {
   entityType: EARS.Entity.Settings;
-  type: 'general' | 'plugin' | 'internal';
+  type: SETTINGS_SCOPE;
   label: string; // e.g., 'general', 'agent', 'flows' (always lowercase)
   data: any; // Flexible data structure
 }
@@ -142,6 +143,7 @@ export interface PluginSettings {
 
 export interface InternalSettings {
   hasOnboarded: boolean;
+  tourStarted: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
 }

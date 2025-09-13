@@ -93,7 +93,7 @@ export const threadQueries = {
 
 // Commands
 export const threadCommands = {
-  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number } => {
+  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number, status: string } => {
     if (!input.topic?.trim()) {
       throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
@@ -103,9 +103,10 @@ export const threadCommands = {
     const shortCode = `T-${count}` as ThreadTypeShortCode;
 
     const id = tx(EARS.Entity.Thread).id();
-    
+
+    const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || "Backlog";
     tx(id).updateBatch({
-      status: "Backlog", // Default status - should match settings default
+      status: status,
       shortCode: shortCode,
       timestamp: ts,
       lastMessageTimestamp: ts,
@@ -121,7 +122,7 @@ export const threadCommands = {
       tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
     }
 
-    return { id, shortCode, timestamp: ts };
+    return { id, shortCode, timestamp: ts, status };
   },
   
   update: (id: EARS.EntityId, updates: {

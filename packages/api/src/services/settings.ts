@@ -6,7 +6,7 @@
  */
 
 import { repository } from '@/repository';
-import type { SettingsData } from '@/systems/settings/types';
+import type { SETTINGS_SCOPE, SettingsData } from '@/systems/settings/types';
 
 export class SettingsService {
   /**
@@ -89,7 +89,7 @@ export class SettingsService {
    * @param label - The setting label/category
    * @param path - Path to the specific value
    */
-  getSettingValue(type: 'general' | 'plugin' | 'internal', label: string, path: string[]): any {
+  getSettingValue(type: SETTINGS_SCOPE, label: string, path: string[]): any {
     const settings = type === 'general' 
       ? this.getGeneralSettings()[label as keyof SettingsData['general']]
       : type === 'plugin'
