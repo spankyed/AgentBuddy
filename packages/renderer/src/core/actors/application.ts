@@ -451,14 +451,14 @@ export const createApplicationState = () => setup({
       
       // Send event to backend to update hasOnboarded setting
 
-      // trpc.bus.send.mutate({
-      //   systemId: 'settings',
-      //   type: 'UPDATE_SETTINGS',
-      //   entityType: 'internal',
-      //   label: 'internal',
-      //   path: ['hasOnboarded'],
-      //   value: true
-      // });
+      trpc.bus.send.mutate({
+        systemId: 'settings',
+        type: 'UPDATE_SETTINGS',
+        entityType: 'internal',
+        label: 'internal',
+        path: ['hasOnboarded'],
+        value: true
+      });
     },
     startGuidedTour: ({ context, self }) => {
       console.log('[Tour] Starting guided tour');
@@ -659,7 +659,7 @@ export const createApplicationState = () => setup({
           target: 'running',
         },
         START_GUIDED_TOUR: {
-          actions: ['completeOnboarding', 'startGuidedTour'],
+          actions: ['startGuidedTour'],
           target: 'guided-tour',
         }
       }
@@ -670,6 +670,7 @@ export const createApplicationState = () => setup({
         id: 'guidedTour',
         src: 'guidedTour',
         onDone: {
+          actions: 'completeOnboarding',
           target: 'running',
         }
       },
