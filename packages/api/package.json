@@ -17,6 +17,7 @@
     "db:cli": "tsx src/cli/run-db-cli.ts",
     "db:exec": "tsx src/cli/run-db-cli.ts --exec",
     "db:script": "tsx src/cli/run-db-cli.ts --script",
+    "db:clearSettings": "tsx ./scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh"
   },
   "keywords": [],
