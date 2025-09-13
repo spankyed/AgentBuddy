@@ -245,8 +245,8 @@ const emit = defineEmits<{
 }>()
 
 const standardProviders = [
-  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E' },
   { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2' },
+  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E' },
   { key: 'google', label: 'Google AI', description: 'Gemini, PaLM' },
   { key: 'groq', label: 'Groq', description: 'Fast inference API' },
   { key: 'mistral', label: 'Mistral AI', description: 'Mistral models' },
