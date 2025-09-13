@@ -6,17 +6,49 @@
       class="tour-backdrop-full"
     />
     
-    <!-- Backdrop with cutout when we have targets -->
-    <div 
-      v-else
-      class="tour-backdrop-cutout"
-      :style="{
-        top: `${targetRects[0].rect.top}px`,
-        left: `${targetRects[0].rect.left}px`,
-        width: `${targetRects[0].rect.width}px`,
-        height: `${targetRects[0].rect.height}px`
-      }"
-    />
+    <!-- Backdrop sections when we have targets (4-section approach for proper click blocking) -->
+    <template v-else>
+      <!-- Top backdrop -->
+      <div 
+        class="tour-backdrop-section"
+        :style="{
+          top: 0,
+          left: 0,
+          right: 0,
+          height: `${targetRects[0].rect.top}px`
+        }"
+      />
+      <!-- Left backdrop -->
+      <div 
+        class="tour-backdrop-section"
+        :style="{
+          top: `${targetRects[0].rect.top}px`,
+          left: 0,
+          width: `${targetRects[0].rect.left}px`,
+          height: `${targetRects[0].rect.height}px`
+        }"
+      />
+      <!-- Right backdrop -->
+      <div 
+        class="tour-backdrop-section"
+        :style="{
+          top: `${targetRects[0].rect.top}px`,
+          right: 0,
+          left: `${targetRects[0].rect.left + targetRects[0].rect.width}px`,
+          height: `${targetRects[0].rect.height}px`
+        }"
+      />
+      <!-- Bottom backdrop -->
+      <div 
+        class="tour-backdrop-section"
+        :style="{
+          top: `${targetRects[0].rect.top + targetRects[0].rect.height}px`,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }"
+      />
+    </template>
     
     <!-- Spotlight borders for all targets -->
     <div 
@@ -377,11 +409,10 @@ const completeTour = () => {
   pointer-events: auto;
 }
 
-.tour-backdrop-cutout {
+.tour-backdrop-section {
   position: fixed;
+  background: rgba(0, 0, 0, 0.6);
   pointer-events: auto;
-  /* Massive box-shadow creates the backdrop with a hole */
-  box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.6);
 }
 
 .tour-spotlight {
