@@ -60,7 +60,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
-  { type: 'IMPORT_DATABASE_SUCCESS' } |
+  { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
   { type: 'IMPORT_DATABASE_ERROR'; error: string } |
   { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null } |
   { type: 'DEFAULT_BACKUP_PATH_RESULT'; path: string }

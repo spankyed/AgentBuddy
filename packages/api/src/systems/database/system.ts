@@ -16,6 +16,8 @@ import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace
 import { exportDatabase, importDatabase, getBackupInfo, getDefaultBackupPath } from './backup';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
+import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
+import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
 
 const logger = createLogger('database');
 
@@ -79,7 +81,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null }
   | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
-  | { type: 'IMPORT_DATABASE_SUCCESS' }
+  | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }
   | { type: 'IMPORT_DATABASE_ERROR'; error: string }
   | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
   | { type: 'DEFAULT_BACKUP_PATH_RESULT'; path: string };
@@ -282,18 +284,32 @@ export const databaseSystem = setup({
       const { path } = typeOf('IMPORT_DATABASE', event);
       
       importDatabase(path).then(
-        () => {
+        async (result) => {
+          // Clear memory and rehydrate from imported databases
+          clearMemory();
+          await hydrateSharded({ 
+            envs, 
+            policy,
+            includeVolatile: result.databases.includes('volatileLmdb'),
+            shardedPersistence: persistence
+          });
+          
+          // Stop brain and notify success
+          getActor(system, brain).send({ type: 'KILL_BRAIN' });
           system.get(bus).send(emit(database, { 
-            type: 'IMPORT_DATABASE_SUCCESS'
+            type: 'IMPORT_DATABASE_SUCCESS',
+            message: 'Import successful. Please restart the brain manually.'
           }));
-          // Also send a refresh to update the UI with the new data
-          const schema = generateSchemaInfo();
           system.get(bus).send(emit(database, { 
             type: 'DATABASE_REFRESH',
-            data: { schema }
+            data: { schema: generateSchemaInfo() }
           }));
         },
-        (error: unknown) => {
+        async (error: unknown) => {
+          // Restore memory state
+          clearMemory();
+          await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+          
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });
           system.get(bus).send(emit(database, { 

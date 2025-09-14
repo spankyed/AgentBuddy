@@ -468,7 +468,12 @@ async function handleImport() {
       path: importPath.value,
     });
     
-    toast.value?.success('Backup imported successfully!', 'Please restart the brain manually to continue.');
+    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
+    
+    // Refresh the page after a short delay to reload client state
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     toast.value?.error('Import failed', errorMessage);

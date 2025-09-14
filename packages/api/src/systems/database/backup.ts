@@ -3,6 +3,7 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { createLogger } from '@/core/utils/debug/logger';
 import { getLmdbPath, getSearchIndicesPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/utils/paths';
+import { closePersistence, reinitializeLmdb } from '@/core/ears/attribute-storage';
 
 const logger = createLogger('database:backup');
 
@@ -40,7 +41,7 @@ export async function exportDatabase(
   return fullBackupPath;
 }
 
-export async function importDatabase(backupPath: string): Promise<void> {
+export async function importDatabase(backupPath: string) {
   if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
     throw new Error('Invalid backup: metadata.json not found');
   }
@@ -58,6 +59,9 @@ export async function importDatabase(backupPath: string): Promise<void> {
   }
 
   try {
+    // Close LMDB connections before modifying files
+    closePersistence();
+    
     // Import databases
     for (const dbName of metadata.databases) {
       const backupDbPath = path.join(backupPath, dbName);
@@ -69,10 +73,17 @@ export async function importDatabase(backupPath: string): Promise<void> {
         logger.info(`Imported ${dbName}`);
       }
     }
+    
+    // Reopen LMDB connections with new files
+    reinitializeLmdb();
+    
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
+    return { databases: metadata.databases as string[] };
   } catch (error) {
     // Restore on failure
+    closePersistence();
+    
     for (const dbName of metadata.databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
       const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
@@ -81,6 +92,9 @@ export async function importDatabase(backupPath: string): Promise<void> {
         await fs.copy(tempDbPath, targetPath);
       }
     }
+    
+    reinitializeLmdb();
+    
     await fs.remove(tempBackupPath);
     throw error;
   }

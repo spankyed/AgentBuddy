@@ -3,7 +3,7 @@
  *─────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/core/utils";
 import { logInternal }   from "@/core/utils/debug/cli/log-internal";
-import { relationIndex, addToIndex, removeFromIndex, updateIndex } from "./relation-index";
+import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from "./relation-index";
 import { EARS } from "../types";
 import { randomId } from "../utils/random-id";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/utils/paths";
@@ -13,14 +13,14 @@ import { makePolicy } from "@/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
 
 // 1) Open two environments
-const envs = openShardedEnvs({
+let envs = openShardedEnvs({
   primary: getLmdbPath(),
   volatileBackup: getVolatileLmdbPath(),
   secrets: getSecretsLmdbPath(),
-});;
+});
 
 // 2) Create base sinks
-const sinks = {
+let sinks = {
   primary: makeLmdbAdapter(envs.primary),
   volatileBackup: makeLmdbAdapter(envs.volatileBackup),
   secrets: makeLmdbAdapter(envs.secrets),
@@ -34,7 +34,7 @@ const policy = makePolicy({
 });
 
 // 4) Sharded router
-const persistence = makeShardedPersistence(policy, sinks);
+let persistence = makeShardedPersistence(policy, sinks);
 
 // Export for hydration and testing
 export { envs, policy, persistence };
@@ -45,12 +45,42 @@ export function closePersistence() {
   closeShardedEnvs(envs);
 }
 
+// Reinitialize LMDB after import
+export function reinitializeLmdb() {
+  // Close existing connections
+  closePersistence();
+  
+  // Reopen environments
+  envs = openShardedEnvs({
+    primary: getLmdbPath(),
+    volatileBackup: getVolatileLmdbPath(),
+    secrets: getSecretsLmdbPath(),
+  });
+  
+  // Recreate sinks
+  sinks = {
+    primary: makeLmdbAdapter(envs.primary),
+    volatileBackup: makeLmdbAdapter(envs.volatileBackup),
+    secrets: makeLmdbAdapter(envs.secrets),
+  };
+  
+  // Recreate persistence
+  persistence = makeShardedPersistence(policy, sinks);
+}
+
 export const createEntity = (t: EARS.Entity) =>
   `${t}-${randomId()}` as EARS.EntityId;
 
 /*─ base buckets ─*/
 const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
 const entityIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();
+
+/*─ memory management ─*/
+export function clearMemory() {
+  store.clear();
+  entityIndex.clear();
+  clearRelationIndex();
+}
 
 /*─ helpers ─*/
 const bucket = (k: EARS.AttrKind) => {
