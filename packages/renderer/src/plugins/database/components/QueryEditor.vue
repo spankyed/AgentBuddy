@@ -1,7 +1,8 @@
 <template>
   <div class="flex flex-col h-full border-r border-neutral-800">
     <QueryEditorHeader
-      v-model:active-mode="activeMode"
+      :active-mode="activeMode"
+      @update:active-mode="$emit('update:activeMode', $event)"
       :is-loading="isLoading"
       :current-query="currentQuery"
       :error="error"
@@ -62,8 +63,16 @@ const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMess
 const mode = useSelector(actor, (state) => state.context.mode);
 const settings = useSelector(actor, (state) => state.context.settings);
 
+// Props and emits
+defineProps<{
+  activeMode: 'query' | 'examples';
+}>();
+
+const emit = defineEmits<{
+  'update:activeMode': [mode: 'query' | 'examples'];
+}>();
+
 // Local state
-const activeMode = ref<'query' | 'examples'>('query');
 const successMessage = ref('');
 const showMagicPrompt = ref(false);
 const editorQuery = ref(currentQuery.value);
@@ -134,7 +143,7 @@ function handleMagicPrompt(prompt: string) {
 
 function handleExampleSelect(query: string) {
   editorQuery.value = query;
-  activeMode.value = 'query';
+  emit('update:activeMode', 'query');
 }
 
 

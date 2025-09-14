@@ -25,12 +25,13 @@
       <div 
         ref="queryPanel"
         class="relative overflow-hidden shadow-sm bg-neutral-900"
-        :style="{ height: queryPanelHeight + '%' }"
+        :style="{ height: activeMode === 'examples' ? '100%' : queryPanelHeight + '%' }"
       >
-        <QueryEditor />
+        <QueryEditor v-model:active-mode="activeMode" />
         
-        <!-- Resize Handle (Horizontal) -->
+        <!-- Resize Handle (Horizontal) - Hidden in examples view -->
         <div
+          v-if="activeMode !== 'examples'"
           class="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize group hover:bg-neutral-600/20"
           @mousedown="startResizeQuery"
         >
@@ -38,8 +39,8 @@
         </div>
       </div>
       
-      <!-- Results Table -->
-      <div class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-800">
+      <!-- Results Table - Hidden in examples view -->
+      <div v-if="activeMode !== 'examples'" class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-800">
         <SimpleTable />
       </div>
     </div>
@@ -59,6 +60,9 @@ import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
 
 const databaseActor: DatabaseState = applicationState.system.get(databaseId)
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
+
+// Active mode for query editor
+const activeMode = ref<'query' | 'examples'>('query')
 
 // Panel sizing
 const schemaPanelWidth = ref(15)
