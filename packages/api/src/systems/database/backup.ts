@@ -1,0 +1,116 @@
+import fs from 'fs-extra';
+import path from 'node:path';
+import { homedir } from 'node:os';
+import { createLogger } from '@/core/utils/debug/logger';
+import { getLmdbPath, getSearchIndicesPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/utils/paths';
+
+const logger = createLogger('database:backup');
+
+const DATABASE_PATHS = {
+  lmdb: getLmdbPath(),
+  searchIndices: getSearchIndicesPath(),
+  volatileLmdb: getVolatileLmdbPath(),
+  secretsLmdb: getSecretsLmdbPath(),
+} as const;
+
+export async function exportDatabase(
+  targetPath: string,
+  name?: string,
+  databases: Array<keyof typeof DATABASE_PATHS> = ['lmdb', 'searchIndices']
+): Promise<string> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
+  
+  await fs.ensureDir(fullBackupPath);
+  await fs.writeJson(path.join(fullBackupPath, 'metadata.json'), {
+    timestamp: Date.now(),
+    databases,
+    version: '1.0.0',
+  });
+
+  for (const dbName of databases) {
+    const sourcePath = DATABASE_PATHS[dbName];
+    if (await fs.pathExists(sourcePath)) {
+      await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
+      logger.info(`Backed up ${dbName}`);
+    }
+  }
+
+  logger.info('Backup completed', { path: fullBackupPath });
+  return fullBackupPath;
+}
+
+export async function importDatabase(backupPath: string): Promise<void> {
+  if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
+    throw new Error('Invalid backup: metadata.json not found');
+  }
+
+  const metadata = await fs.readJson(path.join(backupPath, 'metadata.json'));
+  const tempBackupPath = path.join(path.dirname(getLmdbPath()), 'temp-backup-' + Date.now());
+  
+  // Backup current databases
+  await fs.ensureDir(tempBackupPath);
+  for (const dbName of metadata.databases) {
+    const sourcePath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+    if (await fs.pathExists(sourcePath)) {
+      await fs.copy(sourcePath, path.join(tempBackupPath, dbName));
+    }
+  }
+
+  try {
+    // Import databases
+    for (const dbName of metadata.databases) {
+      const backupDbPath = path.join(backupPath, dbName);
+      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+      
+      if (await fs.pathExists(backupDbPath)) {
+        await fs.remove(targetPath);
+        await fs.copy(backupDbPath, targetPath);
+        logger.info(`Imported ${dbName}`);
+      }
+    }
+    await fs.remove(tempBackupPath);
+    logger.info('Import completed');
+  } catch (error) {
+    // Restore on failure
+    for (const dbName of metadata.databases) {
+      const tempDbPath = path.join(tempBackupPath, dbName);
+      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
+      if (await fs.pathExists(tempDbPath)) {
+        await fs.remove(targetPath);
+        await fs.copy(tempDbPath, targetPath);
+      }
+    }
+    await fs.remove(tempBackupPath);
+    throw error;
+  }
+}
+
+export async function getBackupInfo(backupPath: string) {
+  try {
+    const metadataPath = path.join(backupPath, 'metadata.json');
+    if (!await fs.pathExists(metadataPath)) return null;
+    
+    const metadata = await fs.readJson(metadataPath);
+    let totalSize = 0;
+    
+    for (const dbName of metadata.databases) {
+      const dbPath = path.join(backupPath, dbName);
+      if (await fs.pathExists(dbPath)) {
+        totalSize += (await fs.stat(dbPath)).size;
+      }
+    }
+
+    return {
+      timestamp: metadata.timestamp,
+      databases: metadata.databases,
+      size: totalSize,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function getDefaultBackupPath(): string {
+  return path.join(homedir(), 'Documents', 'AgentBuddy Backups');
+}

@@ -15,7 +15,7 @@ const SUBDIRS = {
   searchIndices: { prod: 'search-indices', dev: 'src/persistence/data/untracked/search-indices' },
   lmdb: { prod: 'ears-db', dev: 'src/persistence/data/untracked/ears-db' },
   volatileLmdb: { prod: 'ears-trace', dev: 'src/persistence/data/untracked/ears-trace' },
-  secretsLmdb: { prod: 'secrets', dev: 'src/persistence/data/untracked/secrets' },
+  secretsLmdb: { prod: 'ears-secrets', dev: 'src/persistence/data/untracked/ears-secrets' },
 }
 
 // === Public API ===

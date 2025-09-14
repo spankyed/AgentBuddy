@@ -53,6 +53,13 @@
               <Camera :size="16" class="flex-shrink-0 text-primary-500" />
               Save Snapshot
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-all duration-200 rounded outline-none cursor-pointer text-neutral-50 hover:bg-neutral-700 focus:bg-neutral-700" 
+              @select="$emit('viewBackup')"
+            >
+              <HardDriveDownload :size="16" class="flex-shrink-0 text-green-400" />
+              Backup & Restore
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>
@@ -78,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileX, Wand2, Camera, MoreVertical, History } from 'lucide-vue-next';
+import { FileX, Wand2, Camera, MoreVertical, History, HardDriveDownload } from 'lucide-vue-next';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -111,5 +118,6 @@ defineEmits<{
   saveSnapshot: [];
   toggleMode: [];
   viewTrace: [];
+  viewBackup: [];
 }>();
 </script> 

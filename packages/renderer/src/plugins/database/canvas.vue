@@ -1,6 +1,8 @@
 <template>
+  <!-- Show Backup/Restore UI when in backup state -->
+  <BackupRestore v-if="isInBackupState" />
   <!-- Show Trace Viewer or Database UI based on viewMode -->
-  <TraceHistoryViewer v-if="viewMode === 'trace'" />
+  <TraceHistoryViewer v-else-if="viewMode === 'trace'" />
   <div v-else class="flex w-full h-full overflow-hidden bg-neutral-800">
     <!-- Schema Panel -->
     <div 
@@ -57,9 +59,11 @@ import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
 import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
+import BackupRestore from './components/BackupRestore.vue'
 
 const databaseActor: DatabaseState = applicationState.system.get(databaseId)
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
+const isInBackupState = useSelector(databaseActor, (state) => state.matches('backup'))
 
 // Active mode for query editor
 const activeMode = ref<'query' | 'examples'>('query')

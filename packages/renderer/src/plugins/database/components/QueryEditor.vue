@@ -15,6 +15,7 @@
       @save-snapshot="handleSaveSnapshot"
       @toggle-mode="handleToggleMode"
       @view-trace="handleViewTrace"
+      @view-backup="handleViewBackup"
     />
     
     <div class="flex-1 overflow-hidden">
@@ -162,6 +163,12 @@ function handleToggleMode() {
 function handleViewTrace() {
   actor.send({
     type: 'VIEW_MODE.TOGGLE'
+  });
+}
+
+function handleViewBackup() {
+  actor.send({
+    type: 'VIEW_BACKUP'
   });
 }
 </script> 

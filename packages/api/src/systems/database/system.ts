@@ -13,6 +13,7 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
+import { exportDatabase, importDatabase, getBackupInfo, getDefaultBackupPath } from './backup';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
 
@@ -46,6 +47,18 @@ export const IncomingDatabaseEvents = [
   busEvent('GET_NODE_DETAILS', { 
     nodeId: z.string() 
   }),
+  busEvent('EXPORT_DATABASE', {
+    path: z.string(),
+    name: z.string().optional(),
+    databases: z.array(z.enum(['lmdb', 'searchIndices', 'volatileLmdb', 'secretsLmdb'])),
+  }),
+  busEvent('IMPORT_DATABASE', {
+    path: z.string(),
+  }),
+  busEvent('GET_BACKUP_INFO', {
+    path: z.string(),
+  }),
+  busEvent('GET_DEFAULT_BACKUP_PATH', {}),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -63,7 +76,13 @@ export type OutgoingDatabaseEvents =
   | { type: 'MAGIC_PROMPT_GENERATED'; query: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
   | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }
-  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null };
+  | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null }
+  | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
+  | { type: 'EXPORT_DATABASE_ERROR'; error: string }
+  | { type: 'IMPORT_DATABASE_SUCCESS' }
+  | { type: 'IMPORT_DATABASE_ERROR'; error: string }
+  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
+  | { type: 'DEFAULT_BACKUP_PATH_RESULT'; path: string };
 
 export interface DatabaseContext { }
 
@@ -239,6 +258,76 @@ export const databaseSystem = setup({
         }));
       }
     },
+    exportDatabase: ({ system, event }) => {
+      const { path, name, databases } = typeOf('EXPORT_DATABASE', event);
+      
+      exportDatabase(path, name, databases).then(
+        (resultPath) => {
+          system.get(bus).send(emit(database, { 
+            type: 'EXPORT_DATABASE_SUCCESS',
+            path: resultPath
+          }));
+        },
+        (error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error('Failed to export database:', { error: errorMessage });
+          system.get(bus).send(emit(database, { 
+            type: 'EXPORT_DATABASE_ERROR',
+            error: errorMessage
+          }));
+        }
+      );
+    },
+    importDatabase: ({ system, event }) => {
+      const { path } = typeOf('IMPORT_DATABASE', event);
+      
+      importDatabase(path).then(
+        () => {
+          system.get(bus).send(emit(database, { 
+            type: 'IMPORT_DATABASE_SUCCESS'
+          }));
+          // Also send a refresh to update the UI with the new data
+          const schema = generateSchemaInfo();
+          system.get(bus).send(emit(database, { 
+            type: 'DATABASE_REFRESH',
+            data: { schema }
+          }));
+        },
+        (error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.error('Failed to import database:', { error: errorMessage });
+          system.get(bus).send(emit(database, { 
+            type: 'IMPORT_DATABASE_ERROR',
+            error: errorMessage
+          }));
+        }
+      );
+    },
+    getBackupInfo: async ({ system, event }) => {
+      const { path } = typeOf('GET_BACKUP_INFO', event);
+      
+      try {
+        const info = await getBackupInfo(path);
+        system.get(bus).send(emit(database, { 
+          type: 'BACKUP_INFO_RESULT',
+          info
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Failed to get backup info:', { error: errorMessage });
+        system.get(bus).send(emit(database, { 
+          type: 'BACKUP_INFO_RESULT',
+          info: null
+        }));
+      }
+    },
+    getDefaultBackupPath: ({ system }) => {
+      const path = getDefaultBackupPath();
+      system.get(bus).send(emit(database, { 
+        type: 'DEFAULT_BACKUP_PATH_RESULT',
+        path
+      }));
+    },
   },
 }).createMachine({
   id: database,
@@ -275,6 +364,18 @@ export const databaseSystem = setup({
         },
         GET_NODE_DETAILS: {
           actions: 'getNodeDetails',
+        },
+        EXPORT_DATABASE: {
+          actions: 'exportDatabase',
+        },
+        IMPORT_DATABASE: {
+          actions: 'importDatabase',
+        },
+        GET_BACKUP_INFO: {
+          actions: 'getBackupInfo',
+        },
+        GET_DEFAULT_BACKUP_PATH: {
+          actions: 'getDefaultBackupPath',
         },
       },
     },
