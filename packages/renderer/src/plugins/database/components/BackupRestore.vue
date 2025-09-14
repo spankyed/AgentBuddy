@@ -455,8 +455,8 @@ async function selectImportDirectory() {
 
 async function handleImport() {
   if (!canImport.value) return;
-  
-  const confirmed = confirm('Are you sure you want to import this backup? This will replace all existing data.');
+
+  const confirmed = confirm('Are you sure you want to import this backup? This will stop the assistant\'s brain and replace all of your current data with the imported data.');
   if (!confirmed) return;
   
   isImporting.value = true;
@@ -468,7 +468,7 @@ async function handleImport() {
       path: importPath.value,
     });
     
-    toast.value?.success('Backup imported successfully!');
+    toast.value?.success('Backup imported successfully!', 'Please restart the brain manually to continue.');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     toast.value?.error('Import failed', errorMessage);
