@@ -40,7 +40,7 @@ echo -e "${BLUE}Target:${NC} $USER_DATA_DIR"
 echo ""
 
 # Copy LMDB database directories
-DATABASES=("ears-db" "ears-trace" "secrets-db")
+DATABASES=("ears-db" "ears-trace" "ears-secrets")
 DB_COPIED=0
 DB_SKIPPED=0
 DB_MISSING=0
