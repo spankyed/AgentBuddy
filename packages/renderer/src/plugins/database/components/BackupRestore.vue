@@ -1,5 +1,6 @@
 <template>
-  <div class="h-full flex flex-col bg-[#1a1a1a]">
+  <div class="h-full flex flex-col bg-[#1a1a1a] relative overflow-hidden">
+    <ToastNotification ref="toast" />
     <!-- Unified Header with Tabs and Action Button -->
     <div class="border-b border-neutral-800 bg-[#0d0d0d]/50">
       <div class="px-6 py-4">
@@ -221,19 +222,6 @@
             </div>
           </div>
 
-          <!-- Messages -->
-          <Transition name="fade">
-            <div v-if="exportMessage" :class="[
-              'p-4 rounded-lg border flex items-start gap-3',
-              exportMessageType === 'success' 
-                ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                : 'bg-red-500/10 border-red-500/20 text-red-400'
-            ]">
-              <CheckCircle v-if="exportMessageType === 'success'" class="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <AlertCircle v-else class="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <div class="text-sm">{{ exportMessage }}</div>
-            </div>
-          </Transition>
         </div>
 
         <!-- Import Tab Content -->
@@ -302,19 +290,6 @@
             </div>
           </div>
 
-          <!-- Messages -->
-          <Transition name="fade">
-            <div v-if="importMessage" :class="[
-              'p-4 rounded-lg border flex items-start gap-3',
-              importMessageType === 'success' 
-                ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                : 'bg-red-500/10 border-red-500/20 text-red-400'
-            ]">
-              <CheckCircle v-if="importMessageType === 'success'" class="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <AlertCircle v-else class="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <div class="text-sm">{{ importMessage }}</div>
-            </div>
-          </Transition>
         </div>
       </div>
     </div>
@@ -348,6 +323,7 @@ import {
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
 import { trpc } from '@/core/trpc';
+import ToastNotification from '@/core/components/design/ToastNotification.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 
@@ -368,15 +344,12 @@ const selectedDatabases = ref({
   secretsLmdb: false,
 });
 const isExporting = ref(false);
-const exportMessage = ref('');
-const exportMessageType = ref<'success' | 'error'>('success');
+const toast = ref<InstanceType<typeof ToastNotification>>();
 
 // Import state
 const importPath = ref('');
 const backupInfo = ref<any>(null);
 const isImporting = ref(false);
-const importMessage = ref('');
-const importMessageType = ref<'success' | 'error'>('success');
 
 // Computed
 const canExport = computed(() => {
@@ -443,7 +416,6 @@ async function handleExport() {
   if (!canExport.value) return;
   
   isExporting.value = true;
-  exportMessage.value = '';
   
   try {
     const databases = Object.entries(selectedDatabases.value)
@@ -458,12 +430,10 @@ async function handleExport() {
       databases,
     });
     
-    exportMessage.value = 'Backup exported successfully!';
-    exportMessageType.value = 'success';
+    toast.value?.success('Backup exported successfully!');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    exportMessage.value = `Export failed: ${errorMessage}`;
-    exportMessageType.value = 'error';
+    toast.value?.error('Export failed', errorMessage);
   } finally {
     isExporting.value = false;
   }
@@ -490,7 +460,6 @@ async function handleImport() {
   if (!confirmed) return;
   
   isImporting.value = true;
-  importMessage.value = '';
   
   try {
     await trpc.bus.send.mutate({
@@ -499,12 +468,10 @@ async function handleImport() {
       path: importPath.value,
     });
     
-    importMessage.value = 'Backup imported successfully!';
-    importMessageType.value = 'success';
+    toast.value?.success('Backup imported successfully!');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    importMessage.value = `Import failed: ${errorMessage}`;
-    importMessageType.value = 'error';
+    toast.value?.error('Import failed', errorMessage);
   } finally {
     isImporting.value = false;
   }
@@ -531,16 +498,6 @@ function formatSize(bytes: number) {
 
 <style scoped>
 /* Transitions */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
 .slide-fade-enter-active {
   transition: all 0.3s ease;
 }
