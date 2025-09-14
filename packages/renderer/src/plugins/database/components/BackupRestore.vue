@@ -327,8 +327,7 @@ import ToastNotification from '@/core/components/design/ToastNotification.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 
-// Get backup path from state
-const backupPath = useSelector(actor, (state) => state.context.backupPath);
+// Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
 
 // Tab state
@@ -382,13 +381,6 @@ function handleUnifiedAction() {
   }
 }
 
-// Watch for backup path updates from state
-watch(backupPath, (newPath) => {
-  if (newPath && !exportPath.value) {
-    exportPath.value = newPath;
-  }
-});
-
 // Watch for backup info updates
 watch(storedBackupInfo, (newInfo) => {
   if (newInfo) {
@@ -396,12 +388,17 @@ watch(storedBackupInfo, (newInfo) => {
   }
 });
 
-// Request default path on mount
+// Load saved paths from localStorage on mount
 onMounted(() => {
-  trpc.bus.send.mutate({
-    systemId: id,
-    type: 'GET_DEFAULT_BACKUP_PATH',
-  });
+  const savedExportPath = localStorage.getItem('database-backup-export-path');
+  const savedImportPath = localStorage.getItem('database-backup-import-path');
+  
+  if (savedExportPath) {
+    exportPath.value = savedExportPath;
+  }
+  if (savedImportPath) {
+    importPath.value = savedImportPath;
+  }
 });
 
 // Export functions
@@ -409,6 +406,8 @@ async function selectExportDirectory() {
   const directoryPath = await window.electronAPI?.fileUtils.selectDirectory();
   if (directoryPath) {
     exportPath.value = directoryPath;
+    // Save to localStorage for future use
+    localStorage.setItem('database-backup-export-path', directoryPath);
   }
 }
 
@@ -444,6 +443,8 @@ async function selectImportDirectory() {
   const directoryPath = await window.electronAPI?.fileUtils.selectDirectory();
   if (directoryPath) {
     importPath.value = directoryPath;
+    // Save to localStorage for future use
+    localStorage.setItem('database-backup-import-path', directoryPath);
     // Get backup info for the selected directory
     trpc.bus.send.mutate({
       systemId: id,

@@ -1,6 +1,5 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { homedir } from 'node:os';
 import { createLogger } from '@/core/utils/debug/logger';
 import { getLmdbPath, getSearchIndicesPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/utils/paths';
 import { closePersistence, reinitializeLmdb } from '@/core/ears/attribute-storage';
@@ -123,8 +122,4 @@ export async function getBackupInfo(backupPath: string) {
   } catch {
     return null;
   }
-}
-
-export function getDefaultBackupPath(): string {
-  return path.join(homedir(), 'Documents', 'AgentBuddy Backups');
 }

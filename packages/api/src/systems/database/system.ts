@@ -13,7 +13,7 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
-import { exportDatabase, importDatabase, getBackupInfo, getDefaultBackupPath } from './backup';
+import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
 import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
@@ -60,7 +60,6 @@ export const IncomingDatabaseEvents = [
   busEvent('GET_BACKUP_INFO', {
     path: z.string(),
   }),
-  busEvent('GET_DEFAULT_BACKUP_PATH', {}),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -83,8 +82,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }
   | { type: 'IMPORT_DATABASE_ERROR'; error: string }
-  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
-  | { type: 'DEFAULT_BACKUP_PATH_RESULT'; path: string };
+  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null };
 
 export interface DatabaseContext { }
 
@@ -337,13 +335,6 @@ export const databaseSystem = setup({
         }));
       }
     },
-    getDefaultBackupPath: ({ system }) => {
-      const path = getDefaultBackupPath();
-      system.get(bus).send(emit(database, { 
-        type: 'DEFAULT_BACKUP_PATH_RESULT',
-        path
-      }));
-    },
   },
 }).createMachine({
   id: database,
@@ -389,9 +380,6 @@ export const databaseSystem = setup({
         },
         GET_BACKUP_INFO: {
           actions: 'getBackupInfo',
-        },
-        GET_DEFAULT_BACKUP_PATH: {
-          actions: 'getDefaultBackupPath',
         },
       },
     },

@@ -48,7 +48,6 @@ export interface DatabaseContext {
     hasMore: boolean;
   };
   // Backup fields
-  backupPath: string;
   backupInfo: { timestamp: number; databases: string[]; size: number } | null;
 }
 
@@ -62,8 +61,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
   { type: 'IMPORT_DATABASE_ERROR'; error: string } |
-  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null } |
-  { type: 'DEFAULT_BACKUP_PATH_RESULT'; path: string }
+  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -466,13 +464,6 @@ const databaseState = setup({
     }),
     
     /* ── backup actions ─────────────────────────────────── */
-    setBackupPath: assign(({ event }) => {
-      const ev = typeOf('DEFAULT_BACKUP_PATH_RESULT', event);
-      return {
-        backupPath: ev.path,
-      };
-    }),
-    
     setBackupInfo: assign(({ event }) => {
       const ev = typeOf('BACKUP_INFO_RESULT', event);
       return {
@@ -514,7 +505,6 @@ const databaseState = setup({
       hasMore: false,
     },
     // Backup fields
-    backupPath: '',
     backupInfo: null,
   },
   on: {
@@ -532,7 +522,6 @@ const databaseState = setup({
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
-    DEFAULT_BACKUP_PATH_RESULT: { actions: 'setBackupPath' },
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
   },
   states: {
