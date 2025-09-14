@@ -201,7 +201,6 @@ const threadsList = useSelector(actor, (state) => state.context.threads || []);
 const settings = useSelector(actor, (state) => state.context.settings);
 
 const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields] | undefined) => {
-  console.log('updateField', key, value);
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
 }
 
