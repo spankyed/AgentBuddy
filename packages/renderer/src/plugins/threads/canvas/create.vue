@@ -87,7 +87,7 @@
                   <span class="text-neutral-500 mr-1">•</span>
                   <div class="flex flex-wrap gap-1">
                     <span 
-                      v-for="(tag, index) in tags.slice(0, 5)" 
+                      v-for="(tag) in tags.slice(0, 5)" 
                       :key="tag"
                       :style="getTagStyles(tag)"
                       class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
@@ -173,16 +173,7 @@ const updateTags = (newTags: string[]) => {
   });
 };
 
-const addThread = () => {
-  actor.send({ type: 'LINK_THREAD' })
-}
-
-const removeThread = (index: number) => {
-  actor.send({ type: 'REMOVE_LINK', index })
-}
-
 const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields]) => {
-  console.log('updateField', key, value);
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'create' });
 }
 
