@@ -282,9 +282,9 @@
 
           <!-- Warning Section -->
           <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-            <div class="flex items-start gap-3">
-              <AlertTriangle class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-              <p class="text-xs text-amber-400/80">
+            <div class="flex items-center gap-3">
+              <AlertTriangle class="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <p class="text-sm text-amber-400">
                 Importing will replace all existing data. This action cannot be undone.
               </p>
             </div>
