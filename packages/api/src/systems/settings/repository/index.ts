@@ -1,152 +1,102 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { SettingsEntity, SettingsData, SETTINGS_SCOPE } from '../types';
-import { defaultSettings, getDefaultsByLabel } from '../defaults';
+import { SettingsEntity, SettingsData } from '../types';
+import { defaultSettings } from '../defaults';
 
-// Deterministic ID generation for Settings entities
-const getSettingsId = (type: SETTINGS_SCOPE, label: string): EARS.EntityId => {
-  // Generate a deterministic ID based on type and label
-  // This ensures only one Settings entity can exist per type/label combination
-  return `Settings-${type}-${label}` as EARS.EntityId;
-};
+// Use a fixed ID without hyphen to avoid LMDB persistence issues
+// The ID "Settings-app" has a bug where updates don't persist
+const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
-// Core helpers
-const getAllSettings = () => qx(EARS.Entity.Settings).pickAll() as unknown as SettingsEntity[];
-const findSettings = (type: SETTINGS_SCOPE, label: string) => {
-  // First try to get by deterministic ID (fast path)
-  const deterministicId = getSettingsId(type, label);
-  const directResult = qx(deterministicId).pickAll()[0] as unknown as SettingsEntity | undefined;
-  if (directResult && directResult.type === type && directResult.label === label) {
-    return directResult;
+// Get or create the single settings entity
+const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
+  // Always query first
+  const existing = qx(SETTINGS_ID).pickOne(['data']) as { data?: any };
+
+  // If doesn't exist at all, create it
+  if (!existing) {
+    tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
+      .put('entityType', EARS.Entity.Settings)
+      .put('data', defaultSettings);
+
+    return { id: SETTINGS_ID, data: defaultSettings };
   }
-  
-  // Fallback to searching all settings (for migrating old data)
-  return getAllSettings().find(s => s.type === type && s.label === label);
+
+  // Return existing data (might be undefined if entity exists but has no data)
+  return {
+    id: SETTINGS_ID,
+    data: existing.data || defaultSettings
+  };
 };
 
-const setValueAtPath = (obj: any, path: string[], value: any): any => 
-  path.length === 0 ? value : { ...obj, [path[0]]: setValueAtPath(obj[path[0]] || {}, path.slice(1), value) };
+// Helper to update nested values
+const setNestedValue = (obj: any, path: string[], value: any): any => {
+  const newObj = JSON.parse(JSON.stringify(obj)); // Deep clone
+  let current = newObj;
 
-const getOrCreateSettings = (type: SETTINGS_SCOPE, label: string, customDefaults?: any): SettingsEntity => {
-  const existing = findSettings(type, label);
-  if (existing) return existing;
-  
-  // Use deterministic ID
-  const id = getSettingsId(type, label);
-  
-  // Check if entity exists with this ID (shouldn't happen, but be safe)
-  const existingById = qx(id).pickAll()[0];
-  if (existingById) {
-    return existingById as unknown as SettingsEntity;
+  for (let i = 0; i < path.length - 1; i++) {
+    current[path[i]] = current[path[i]] || {};
+    current = current[path[i]];
   }
-  
-  // Use custom defaults if provided, otherwise fetch from default settings
-  const defaultData = customDefaults !== undefined ? customDefaults : getDefaultsByLabel(type, label);
-  
-  const createdAt = Date.now();
-  
-  // Use tx with the deterministic ID and forceCreate=true to create with specific ID
-  tx(id, true).batchPut({
-    entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData
-  });
-  
-  return { id, entityType: EARS.Entity.Settings, type, label, createdAt, data: defaultData };
+
+  current[path[path.length - 1]] = value;
+  return newObj;
 };
 
-// General settings config
-const generalConfig = {
-  personal: 'personal',
-  secrets: 'secrets',
-  hotkeys: 'hotkeys',
-  misc: 'misc'
-} as const;
-
-const getGeneralSettings = (label: keyof typeof generalConfig) => 
-  getOrCreateSettings('general', generalConfig[label]);
-
-const getInternalSettings = () => 
-  getOrCreateSettings('internal', 'internal');
+// Initialize default settings (called on startup)
+export const createDefaultSettings = (): void => {
+  getSettingsEntity(); // Ensure entity exists
+};
 
 // QUERIES
 export const settingsQueries = {
-  getAllSettings,
-  
-  getSettings: (): SettingsData => ({
-    general: Object.fromEntries(
-      Object.keys(generalConfig).map(label => [
-        generalConfig[label as keyof typeof generalConfig],
-        getGeneralSettings(label as keyof typeof generalConfig).data
-      ])
-    ) as SettingsData['general'],
-    plugins: Object.fromEntries(
-      getAllSettings().filter(s => s.type === 'plugin').map(s => [s.label, s.data])
-    ),
-    internal: getInternalSettings().data
-  }),
-  
-  getGeneralSettings: () => Object.fromEntries(
-    Object.keys(generalConfig).map(label => [
-      generalConfig[label as keyof typeof generalConfig],
-      getGeneralSettings(label as keyof typeof generalConfig).data
-    ])
-  ) as SettingsData['general'],
-  
+  getSettings: (): SettingsData => getSettingsEntity().data,
+
+  getGeneralSettings: () => getSettingsEntity().data.general,
+
+  getInternalSettings: () => getSettingsEntity().data.internal,
+
   getPluginSettings: (pluginId: string) => {
-    return getOrCreateSettings('plugin', pluginId).data;
+    const data = getSettingsEntity().data;
+    return data.plugins?.[pluginId] || (defaultSettings.plugins as any)[pluginId] || {};
   },
-  getInternalSettings: () => getInternalSettings().data,
-  getSettingsByLabel: (type: SETTINGS_SCOPE, label: string) => findSettings(type, label) || null
 };
 
 // COMMANDS
 export const settingsCommands = {
-  updateSettings(type: SETTINGS_SCOPE, label: string, path: string[], value: any): SettingsEntity {
-    const settings = type === 'general' 
-      ? getGeneralSettings(label as keyof typeof generalConfig)
-      : type === 'internal'
-      ? getInternalSettings()
-      : getOrCreateSettings('plugin', label);
-    
-    const updatedData = path.length === 0 ? value : setValueAtPath(settings.data, path, value);
-    tx(settings.id).updateBatch({ data: updatedData, updatedAt: Date.now() });
-    
-    return { ...settings, data: updatedData };
+  updateSettings(type: string, label: string | null, path: string[], value: any): SettingsEntity {
+    const entity = getSettingsEntity();
+
+    // For internal settings, label is not needed
+    const fullPath = type === 'internal'
+      ? ['internal', ...path]
+      : type === 'general'
+      ? ['general', label!, ...path]
+      : ['plugins', label!, ...path];
+
+    const newData = setNestedValue(entity.data, fullPath, value);
+
+    tx(entity.id)
+      .put('data', newData)
+      .put('updatedAt', Date.now());
+
+    return {
+      id: entity.id,
+      entityType: EARS.Entity.Settings,
+      name: type === 'internal' ? 'internal' : `${type}.${label}`,
+      data: type === 'internal'
+        ? newData.internal
+        : type === 'general'
+        ? newData.general[label!]
+        : newData.plugins[label!],
+      createdAt: Date.now()
+    } as SettingsEntity;
   },
-  
+
   resetSettings: () => {
-    getAllSettings().forEach(s => tx(s.id).destroy());
-    Object.keys(generalConfig).forEach(label => 
-      getGeneralSettings(label as keyof typeof generalConfig)
-    );
-    getInternalSettings();
+    const entity = getSettingsEntity();
+    tx(entity.id).put('data', defaultSettings);
   }
-};
-
-// Initialize all default settings at startup
-export const createDefaultSettings = (): void => {
-  if (getAllSettings().length) return;
-
-  const put = (type: SETTINGS_SCOPE, label: string, data: unknown) => {
-    if (!findSettings(type, label)) {
-      const id = getSettingsId(type, label);
-      // Use forceCreate=true to create with deterministic ID
-      tx(id, true).batchPut({
-        entityType: EARS.Entity.Settings,
-        type, label, data
-      });
-    }
-  };
-
-  Object.values(generalConfig).forEach(label =>
-    put('general', label, defaultSettings.general[label] ?? {})
-  );
-
-  Object.entries(defaultSettings.plugins).forEach(([label, data]) =>
-    put('plugin', label, data ?? {})
-  );
-
-  put('internal', 'internal', defaultSettings.internal);
 };
 
 // Re-export change detection utilities

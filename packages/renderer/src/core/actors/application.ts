@@ -448,48 +448,31 @@ export const createApplicationState = () => setup({
         settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
       }
       
-      // Send event to backend to update hasOnboarded setting
-
+      // Send single event to backend to complete onboarding
+      // Backend will handle setting hasOnboarded, tourStarted, and plugin visibility
       trpc.bus.send.mutate({
         systemId: 'settings',
-        type: 'UPDATE_SETTINGS',
-        entityType: 'internal',
-        label: 'internal',
-        path: ['hasOnboarded'],
-        value: true
+        type: 'COMPLETE_ONBOARDING'
       });
     },
     startGuidedTour: ({ context, self }) => {
-      console.log('[Tour] Starting guided tour');
-      
       // Update tourStarted setting to true
       trpc.bus.send.mutate({
         systemId: 'settings',
         type: 'UPDATE_SETTINGS',
         entityType: 'internal',
-        label: 'internal',
+        label: '',
         path: ['tourStarted'],
         value: true
       });
       
-      // Hide all plugins except threads, agent, and settings for the tour
-      const tourVisibility: Record<string, boolean> = {
-        threads: true,
-        agent: true,
-        settings: true,
-        code: false,
-        library: false,
-        actions: false,
-        prompts: false,
-        flows: false,
-        brain: false,
-        database: false,
-        logs: false,
-        blank: false,
-      };
-      
-      console.log('[Tour] Setting plugin visibility:', tourVisibility);
-      
+      // Hide non-tour plugins - only show threads, agent, and settings
+      const tourVisibility: Record<string, boolean> = {};
+      for (const plugin of context.plugins) {
+        tourVisibility[plugin.id] = plugin.id === 'threads' || plugin.id === 'agent' || plugin.id === 'settings';
+      }
+
+      // Update backend settings
       trpc.bus.send.mutate({
         systemId: 'settings',
         type: 'UPDATE_SETTINGS',
@@ -498,7 +481,7 @@ export const createApplicationState = () => setup({
         path: ['visibility'],
         value: tourVisibility,
       });
-      
+
       // Also update the local state immediately
       self.send({ 
         type: 'PLUGIN_VISIBILITY_UPDATED', 

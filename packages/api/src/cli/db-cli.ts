@@ -75,8 +75,7 @@ export class DatabaseCLI {
       eval: this.evalCommand.bind(this),
       writer: this.formatOutput.bind(this),
       ignoreUndefined: true,
-      useGlobal: true,
-      breakEvalOnSigint: true
+      useGlobal: true
     });
 
     // Add context
@@ -192,6 +191,21 @@ export class DatabaseCLI {
       }
     });
 
+    this.replServer.defineCommand('cleanup-tombstoned', {
+      help: 'Delete all tombstoned entities',
+      action: async () => {
+        try {
+          const { cleanupTombstoned } = await import('./cleanup-tombstoned');
+          console.log('🔄 Starting cleanup of tombstoned entities...');
+          const count = cleanupTombstoned();
+          console.log(`✅ Successfully deleted ${count} tombstoned entities`);
+        } catch (error) {
+          console.error('❌ Failed to cleanup tombstoned entities:', error);
+        }
+        this.replServer!.displayPrompt();
+      }
+    });
+
     this.replServer.defineCommand('help', {
       help: 'Show help',
       action: () => {
@@ -209,6 +223,7 @@ export class DatabaseCLI {
         console.log('  .stats  - Show database statistics');
         console.log('  .export - Export last result');
         console.log('  .clear  - Clear screen');
+        console.log('  .cleanup-tombstoned - Delete all tombstoned entities');
         console.log('  .exit   - Exit CLI');
         console.log();
         this.replServer!.displayPrompt();

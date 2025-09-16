@@ -40,31 +40,11 @@ export const guidedTourMachine = setup({
       }
     },
     completeTour: () => {
-      // Same as endTour - mark tour as not started and show all plugins
+      // Send event to backend to complete the tour
+      // Backend will handle setting tourStarted to false and showing all plugins
       trpc.bus.send.mutate({
         systemId: 'settings',
-        type: 'UPDATE_SETTINGS',
-        entityType: 'internal',
-        label: 'internal',
-        path: ['tourStarted'],
-        value: false,
-      });
-      
-      // Show all plugins
-      const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank'];
-      const visibilityUpdate: Record<string, boolean> = {};
-      allPlugins.forEach(plugin => {
-        visibilityUpdate[plugin] = true;
-      });
-      visibilityUpdate['settings'] = true; // Settings should always be visible
-      
-      trpc.bus.send.mutate({
-        systemId: 'settings',
-        type: 'UPDATE_SETTINGS',
-        entityType: 'plugin',
-        label: '_meta',
-        path: ['visibility'],
-        value: visibilityUpdate,
+        type: 'COMPLETE_ONBOARDING'
       });
     },
   },

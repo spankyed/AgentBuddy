@@ -12,6 +12,9 @@ import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
 import { makePolicy } from "@/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
 
+// Configuration for hard delete mode
+const HARD_DELETE_MODE = true; // Set to true to permanently delete entities instead of tombstoning
+
 // 1) Open two environments
 let envs = openShardedEnvs({
   primary: getLmdbPath(),
@@ -21,9 +24,9 @@ let envs = openShardedEnvs({
 
 // 2) Create base sinks
 let sinks = {
-  primary: makeLmdbAdapter(envs.primary),
-  volatileBackup: makeLmdbAdapter(envs.volatileBackup),
-  secrets: makeLmdbAdapter(envs.secrets),
+  primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
+  volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
+  secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
 };
 
 // 3) Policy: exclude TNode, handle secrets
@@ -49,19 +52,19 @@ export function closePersistence() {
 export function reinitializeLmdb() {
   // Close existing connections
   closePersistence();
-  
+
   // Reopen environments
   envs = openShardedEnvs({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
     secrets: getSecretsLmdbPath(),
   });
-  
+
   // Recreate sinks
   sinks = {
-    primary: makeLmdbAdapter(envs.primary),
-    volatileBackup: makeLmdbAdapter(envs.volatileBackup),
-    secrets: makeLmdbAdapter(envs.secrets),
+    primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
+    volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
+    secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
   };
   
   // Recreate persistence
