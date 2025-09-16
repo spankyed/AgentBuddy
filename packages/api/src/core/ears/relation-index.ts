@@ -17,6 +17,10 @@ interface RelationIndexEntry {
 
 export const relationIndex: Record<string, RelationIndexEntry> = {};
 
+export function clearRelationIndex() {
+  Object.keys(relationIndex).forEach(key => delete relationIndex[key]);
+}
+
 const ensureEntry = (kind: string): RelationIndexEntry => {
   if (!relationIndex[kind]) relationIndex[kind] = { bySource: {}, byTarget: {} };
   return relationIndex[kind];

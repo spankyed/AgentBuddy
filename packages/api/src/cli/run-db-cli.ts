@@ -113,13 +113,6 @@ async function initializeDatabase(verbose: boolean) {
     });
     
     if (verbose) {
-      console.log('  - Creating default settings...');
-    }
-    
-    // Initialize default settings if they don't exist
-    createDefaultSettings();
-    
-    if (verbose) {
       console.log('  - Database ready');
     }
   } catch (error) {

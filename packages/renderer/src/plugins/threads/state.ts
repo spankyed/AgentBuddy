@@ -38,8 +38,6 @@ type UIEvent =
     value: ThreadEditFields[keyof ThreadEditFields];
     state: 'create' | 'view';
   }
-  | { type: 'LINK_THREAD' }
-  | { type: 'REMOVE_LINK'; index: number }
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | { type: 'TOGGLE_TAGS_SECTION'; show: boolean }
   | { type: 'TOGGLE_LINKED_SECTION'; show: boolean }
@@ -388,12 +386,6 @@ const threadsState = setup({
         },
         UPDATE_THREAD_FIELD: {
           actions: ['updateThreadData', 'updateThreadInThreads', 'sendUpdateThreadField'],
-        },
-        LINK_THREAD: {
-          actions: 'addChildThread',
-        },
-        REMOVE_LINK: {
-          actions: 'removeChildThread',
         },
       },
     },

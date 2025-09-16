@@ -4,9 +4,10 @@ import type { EARS } from "@/types";
 export type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
 export interface SettingsEntity extends BaseEntity {
   entityType: EARS.Entity.Settings;
-  type: SETTINGS_SCOPE;
-  label: string; // e.g., 'general', 'agent', 'flows' (always lowercase)
+  name: string; // e.g., 'internal', 'general.secrets', 'plugin.flows'
   data: any; // Flexible data structure
+  type?: SETTINGS_SCOPE; // Optional for backward compatibility
+  label?: string; // Optional for backward compatibility
 }
 
 export interface SettingsData {

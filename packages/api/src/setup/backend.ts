@@ -11,25 +11,25 @@ import { createDefaultSettings } from '@/systems/settings/repository';
 export async function setupBackend(): Promise<void> {
   // Initialize log capture first to catch all logs
   initializeLogCapture();
-  
+
   // Start logs actor before any other work
   const logsActor = createActor(logsSystem).start();
   logsActor.subscribe(logErrors('Logs'));
-  
+
   // Hydrate from LMDB using sharded approach (primary partition only by default)
   // Pass shardedPersistence to seed metadata caches
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
-  
+
   // Initialize default settings if they don't exist
   createDefaultSettings();
-  
+
   // Load data snapshot (can override LMDB data if needed)
   // await loadSnapshot();
-  
+
   // Start backend actor
   const backendActor = createActor(backendSystem, {
     systemId: bus,
   }).start();
-  
+
   backendActor.subscribe(logErrors('Backend'));
 }

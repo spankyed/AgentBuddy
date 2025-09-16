@@ -47,6 +47,8 @@ export interface DatabaseContext {
     limit: number;
     hasMore: boolean;
   };
+  // Backup fields
+  backupInfo: { timestamp: number; databases: string[]; size: number } | null;
 }
 
 type SystemEvent = OutgoingDatabaseEvents | 
@@ -54,7 +56,12 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string } |
   { type: 'MAGIC_PROMPT_GENERATED'; query: string } |
-  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings }
+  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
+  { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
+  { type: 'EXPORT_DATABASE_ERROR'; error: string } |
+  { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
+  { type: 'IMPORT_DATABASE_ERROR'; error: string } |
+  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -71,6 +78,8 @@ type UIEvent =
   | { type: 'TRACE.LOAD_MORE' }
   | { type: 'TRACE.REQUEST_FLOWS' }
   | { type: 'ENTITY.DELETE'; entityId: string }
+  | { type: 'VIEW_BACKUP' }
+  | { type: 'BACK_TO_EXPLORER' }
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -453,6 +462,14 @@ const databaseState = setup({
       }
       return {};
     }),
+    
+    /* ── backup actions ─────────────────────────────────── */
+    setBackupInfo: assign(({ event }) => {
+      const ev = typeOf('BACKUP_INFO_RESULT', event);
+      return {
+        backupInfo: ev.info,
+      };
+    }),
   },
 }).createMachine({
   id,
@@ -487,6 +504,8 @@ const databaseState = setup({
       limit: 50,
       hasMore: false,
     },
+    // Backup fields
+    backupInfo: null,
   },
   on: {
     DATABASE_REFRESH: { actions: ['setDatabaseRefresh', 'setRefreshComplete'] },
@@ -502,6 +521,8 @@ const databaseState = setup({
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
+    // Backup events
+    BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
   },
   states: {
     explorer: {
@@ -549,6 +570,17 @@ const databaseState = setup({
         },
         'TRACE.REQUEST_FLOWS': {
           actions: 'requestTraceFlows',
+        },
+        'VIEW_BACKUP': {
+          target: 'backup',
+        },
+      },
+    },
+    backup: {
+      meta: { ...breadcrumb('backup', 'Backup & Restore') },
+      on: {
+        'BACK_TO_EXPLORER': {
+          target: 'explorer',
         },
       },
     },

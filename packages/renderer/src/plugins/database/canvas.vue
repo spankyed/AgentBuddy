@@ -1,6 +1,8 @@
 <template>
+  <!-- Show Backup/Restore UI when in backup state -->
+  <BackupRestore v-if="isInBackupState" />
   <!-- Show Trace Viewer or Database UI based on viewMode -->
-  <TraceHistoryViewer v-if="viewMode === 'trace'" />
+  <TraceHistoryViewer v-else-if="viewMode === 'trace'" />
   <div v-else class="flex w-full h-full overflow-hidden bg-neutral-800">
     <!-- Schema Panel -->
     <div 
@@ -25,12 +27,13 @@
       <div 
         ref="queryPanel"
         class="relative overflow-hidden shadow-sm bg-neutral-900"
-        :style="{ height: queryPanelHeight + '%' }"
+        :style="{ height: activeMode === 'examples' ? '100%' : queryPanelHeight + '%' }"
       >
-        <QueryEditor />
+        <QueryEditor v-model:active-mode="activeMode" />
         
-        <!-- Resize Handle (Horizontal) -->
+        <!-- Resize Handle (Horizontal) - Hidden in examples view -->
         <div
+          v-if="activeMode !== 'examples'"
           class="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize group hover:bg-neutral-600/20"
           @mousedown="startResizeQuery"
         >
@@ -38,8 +41,8 @@
         </div>
       </div>
       
-      <!-- Results Table -->
-      <div class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-800">
+      <!-- Results Table - Hidden in examples view -->
+      <div v-if="activeMode !== 'examples'" class="flex-1 overflow-hidden border-t shadow-sm bg-neutral-900 border-neutral-800">
         <SimpleTable />
       </div>
     </div>
@@ -56,9 +59,14 @@ import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
 import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
+import BackupRestore from './components/BackupRestore.vue'
 
 const databaseActor: DatabaseState = applicationState.system.get(databaseId)
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
+const isInBackupState = useSelector(databaseActor, (state) => state.matches('backup'))
+
+// Active mode for query editor
+const activeMode = ref<'query' | 'examples'>('query')
 
 // Panel sizing
 const schemaPanelWidth = ref(15)

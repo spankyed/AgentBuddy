@@ -25,6 +25,7 @@ export const IncomingSettingsEvents = [
     value: z.any()
   }),
   busEvent('RESET_SETTINGS', {}),
+  busEvent('COMPLETE_ONBOARDING', {}),
   // Secret management events
   busEvent('SECRETS.CMD.CREATE_API_KEY', {
     provider: z.string(),
@@ -255,7 +256,7 @@ export const settingsSystem = setup({
       const internalSettings = settingsQueries.getInternalSettings();
       if (internalSettings.tourStarted) {
         // Reset tourStarted to false
-        settingsCommands.updateSettings('internal', 'internal', ['tourStarted'], false);
+        settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
 
         // Show all plugins
         const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank'];
@@ -267,6 +268,25 @@ export const settingsSystem = setup({
 
         settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
       }
+    },
+    
+    completeOnboarding: ({ system }) => {
+      settingsCommands.updateSettings('internal', null, ['hasOnboarded'], true);
+      settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
+
+      const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
+      const visibilityUpdate: Record<string, boolean> = {};
+      allPlugins.forEach(plugin => {
+        visibilityUpdate[plugin] = true;
+      });
+
+      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
+
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
     }
   },
 }).createMachine({
@@ -294,6 +314,9 @@ export const settingsSystem = setup({
         ],
         RESET_SETTINGS: {
           actions: 'resetSettings',
+        },
+        COMPLETE_ONBOARDING: {
+          actions: 'completeOnboarding',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {

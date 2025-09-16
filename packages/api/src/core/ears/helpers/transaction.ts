@@ -24,14 +24,16 @@ export interface SafeLinkOptions {
   acyclicGroup?: readonly EARS.RelKind[];
 }
 
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate = false) {
-  const isNew = forceCreate || Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
-  const id: EARS.EntityId = isNew && !forceCreate
+export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId = false) {
+  const isEntityType = Object.values(EARS.Entity).includes(typeOrId as EARS.Entity);
+
+  // Generate new ID if entity type provided, otherwise use the provided ID
+  const id: EARS.EntityId = isEntityType && !useProvidedId
     ? createEntity(typeOrId as EARS.Entity)
     : (typeOrId as EARS.EntityId);
 
-  // If creating a new entity, add a timestamp so it exists in the store
-  if (isNew) {
+  // Add timestamp for new entities (either from entity type or when explicitly marked as new)
+  if (isEntityType || useProvidedId) {
     putAttr(id, EARS.AttrKind.Custom('createdAt'), Date.now());
   }
 

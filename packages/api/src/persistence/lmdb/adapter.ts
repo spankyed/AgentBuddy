@@ -1,6 +1,10 @@
 import type { LmdbDbs } from './envs';
 import type { PersistenceSink } from '../partitioning/base-sink';
 
+export interface LmdbAdapterOptions {
+  hardDelete?: boolean; // If true, permanently delete instead of tombstoning
+}
+
 type Encoded = { t: string; v: any };
 
 function enc(value: unknown): Encoded {
@@ -43,8 +47,9 @@ const entTypeOf = (id: string) => id.split('-')[0] ?? id;
 let errorCount = 0;
 let lastError: { op: string; key?: string; error: any } | null = null;
 
-export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
+export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}): PersistenceSink {
   const { entities, attrs, relations } = dbs;
+  const { hardDelete = false } = options;
 
   // Keyed buffers for coalescing writes
   const arrayRewrites = new Map<string, unknown[]>(); // kind\x1FentityId -> final array
@@ -185,13 +190,40 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
 
     onDestroyEntity(entityId: string) {
       if (closed) return;
-      // Mark entity as deleted with timestamp
-      const ts = Date.now();
-      entityUpdates.set(entityId, { deletedAt: ts });
-      
-      // Option B: Keep attrs/relations on disk, filter during hydration
-      // This is cleaner and avoids the expensive scan operation
-      scheduleFlush();
+
+      if (hardDelete) {
+        // Immediate hard delete - remove entity and all its attributes
+        try {
+          entities.transactionSync(() => {
+            // Delete entity record
+            entities.remove(entityId);
+
+            // Delete all attributes for this entity
+            // Attributes are stored with format: kind\x1FentityId\x1Findex
+            for (const { key } of attrs.getRange()) {
+              const keyStr = String(key);
+              // Check if this attribute belongs to the entity
+              if (keyStr.includes(`\x1F${entityId}\x1F`)) {
+                attrs.remove(key);
+              }
+            }
+
+            // Delete relations where this entity is source or target
+            for (const { key, value } of relations.getRange()) {
+              if (value && (value.src === entityId || value.tgt === entityId)) {
+                relations.remove(key);
+              }
+            }
+          });
+        } catch (error) {
+          console.error(`[LMDB] Failed to hard delete entity ${entityId}:`, error);
+        }
+      } else {
+        // Current behavior - mark as deleted (tombstone)
+        const ts = Date.now();
+        entityUpdates.set(entityId, { deletedAt: ts });
+        scheduleFlush();
+      }
     },
 
     onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]) {

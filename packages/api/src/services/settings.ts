@@ -64,7 +64,7 @@ export class SettingsService {
    * @param value - The new value
    */
   updateInternalSetting(path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('internal', 'internal', path, value);
+    repository.settingsCommands.updateSettings('internal', null, path, value);
   }
 
   /**
