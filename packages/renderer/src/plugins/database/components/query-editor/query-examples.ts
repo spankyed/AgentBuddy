@@ -6,11 +6,6 @@ export interface QueryExample {
 
 export const queryExamples: QueryExample[] = [
   {
-    title: 'Reset Settings',
-    description: 'Reset all settings by destroying all entries in the Settings collection',
-    query: `return qx('Settings').ids().forEach(id => tx(id).destroy());`
-  },
-  {
     title: 'Recent Messages',
     description: 'Get messages ordered by timestamp',
     query: `return qx(EARS.Entity.Message).orderBy('timestamp', 'desc').limit(10).pick(['id', 'text', 'timestamp']);`
