@@ -1,9 +1,14 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="px-4 pt-3 pb-2 border-b border-neutral-800">
-      <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Trace Flows</h3>
-      <p class="mt-1 text-xs text-neutral-600">{{ traceFlows.length }} flow{{ traceFlows.length !== 1 ? 's' : '' }} available</p>
+    <div class="px-3 py-3 border-b border-neutral-800">
+      <button
+        @click="exitTraceView"
+        class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded-lg transition-colors w-full"
+      >
+        <ArrowLeft class="w-4 h-4" />
+        Back to Database
+      </button>
     </div>
     
     <!-- Flow List -->
@@ -76,7 +81,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as databaseId, type DatabaseState } from '../../state'
-import { GitBranch, Loader2 } from 'lucide-vue-next'
+import { GitBranch, Loader2, ArrowLeft } from 'lucide-vue-next'
 import type { TNodeEntity } from '@app/api'
 
 const databaseActor: DatabaseState = applicationState.system.get(databaseId)
@@ -89,6 +94,10 @@ const isLoadingTrace = useSelector(databaseActor, (state) => state.context.isLoa
 // Actions
 function selectFlow(flowId: string) {
   databaseActor.send({ type: 'TRACE.SELECT_FLOW', flowId })
+}
+
+function exitTraceView() {
+  databaseActor.send({ type: 'VIEW_MODE.TOGGLE' })
 }
 
 // Formatting helpers

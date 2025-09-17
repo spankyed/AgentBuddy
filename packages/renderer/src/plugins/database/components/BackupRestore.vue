@@ -11,7 +11,7 @@
             class="group flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all duration-200"
           >
             <ArrowLeft class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Database</span>
+            <span>Back to Database</span>
           </button>
 
           <!-- Tabs -->

@@ -22,23 +22,15 @@
       <!-- Header -->
       <div class="px-4 py-3 border-b border-neutral-800 bg-neutral-900">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <button
-              @click="exitTraceView"
-              class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded-lg transition-colors"
-            >
-              <ArrowLeft class="w-4 h-4" />
-              Back to Database
-            </button>
-            
-            <div v-if="currentFlowId" class="flex items-center gap-2">
-              <div class="w-px h-5 bg-neutral-700"></div>
-              <span class="text-sm text-neutral-400">
-                Flow: <span class="font-medium text-neutral-200">{{ currentFlowLabel }}</span>
-              </span>
-            </div>
+          <div v-if="currentFlowId" class="flex items-center gap-2">
+            <span class="text-sm text-neutral-400">
+              Flow: <span class="font-medium text-neutral-200">{{ currentFlowLabel }}</span>
+            </span>
           </div>
-          
+          <div v-else class="text-sm text-neutral-500">
+            No flow selected
+          </div>
+
           <div class="flex items-center gap-2">
             <button
               @click="refreshFlows"
@@ -46,11 +38,11 @@
               class="p-2 transition-colors rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh trace data"
             >
-              <RefreshCw 
+              <RefreshCw
                 :class="[
                   'w-4 h-4 text-neutral-400',
                   isLoadingTrace && 'animate-spin'
-                ]" 
+                ]"
               />
             </button>
           </div>
@@ -79,7 +71,7 @@ import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as databaseId, type DatabaseState } from '../../state'
-import { ArrowLeft, RefreshCw, History } from 'lucide-vue-next'
+import { RefreshCw, History } from 'lucide-vue-next'
 import TraceFlowSelector from './TraceFlowSelector.vue'
 import TraceEventList from './TraceEventList.vue'
 
@@ -134,10 +126,6 @@ function handleMouseUp() {
 }
 
 // Actions
-function exitTraceView() {
-  databaseActor.send({ type: 'VIEW_MODE.TOGGLE' })
-}
-
 function refreshFlows() {
   databaseActor.send({ type: 'TRACE.REQUEST_FLOWS' })
 }
