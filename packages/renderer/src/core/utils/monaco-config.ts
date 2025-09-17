@@ -94,6 +94,7 @@ const baseEditorOptions: editor.IStandaloneEditorConstructionOptions = {
     verticalScrollbarSize: 10,
     horizontalScrollbarSize: 10,
   },
+  fixedOverflowWidgets: true,
 }
 
 // Suggest options with all features disabled

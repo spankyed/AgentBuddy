@@ -342,4 +342,19 @@ defineExpose({
 .unified-monaco-editor :deep(.monaco-editor .monaco-hover-content) {
   z-index: 100 !important;
 }
+
+/* Fix for suggest widget cutoff issues */
+.unified-monaco-editor :deep(.monaco-editor .suggest-widget) {
+  z-index: 1000 !important;
+}
+
+/* Ensure proper overflow handling for Monaco containers */
+.unified-monaco-editor :deep(.monaco-editor .overflow-guard) {
+  overflow: visible !important;
+}
+
+/* Ensure suggest details widget is visible */
+.unified-monaco-editor :deep(.monaco-editor .suggest-details) {
+  z-index: 1001 !important;
+}
 </style>
