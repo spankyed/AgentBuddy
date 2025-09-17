@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
 import { edgeStore } from '@/core/ears/helpers/edge-store'
@@ -26,17 +25,20 @@ export const libraryCommands = {
     tags: string[],
     collectionId?: EARS.EntityId
   ): DocumentDTO {
-    const documentId = `Document-${uuid()}` as EARS.EntityId
     const now = Date.now()
-    
+
     // Generate shortcode
     const documentCount = qx(EARS.Entity.Document).count() + 1
     const shortCode = `DOC-${documentCount}` as DocumentShortCode
-    
+
     // Get display order
     const displayOrder = getNextDisplayOrder(collectionId || null)
 
-    tx(documentId).updateBatch({
+    // Create document entity with auto-generated ID
+    const builder = tx(EARS.Entity.Document)
+    const documentId = builder.id()
+
+    builder.updateBatch({
       name,
       content,
       shortCode,
@@ -51,10 +53,10 @@ export const libraryCommands = {
     }
 
     const document = libraryQueries.getDocument(documentId)
-    
+
     // Auto-index in search indices (fire and forget)
     searchIndexRepo.autoIndexNewDocument(documentId)
-    
+
     return document!
   },
 
@@ -142,7 +144,9 @@ export const libraryCommands = {
     description?: string,
     parentId?: EARS.EntityId
   ): CollectionDTO {
-    const collectionId = `Collection-${uuid()}` as EARS.EntityId
+    // Create collection entity with auto-generated ID
+    const builder = tx(EARS.Entity.Collection)
+    const collectionId = builder.id()
     const now = Date.now()
     
     // Get display order
@@ -159,7 +163,7 @@ export const libraryCommands = {
       attrs.description = description
     }
 
-    tx(collectionId).updateBatch(attrs)
+    builder.updateBatch(attrs)
     if (parentId) {
       tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
     }

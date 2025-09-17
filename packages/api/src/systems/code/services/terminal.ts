@@ -1,5 +1,5 @@
 import * as pty from 'node-pty'
-import { v4 as uuidv4 } from 'uuid'
+import { tx } from '@/core/ears/helpers/transaction'
 import * as os from 'os'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
@@ -42,8 +42,8 @@ class TerminalService {
       throw new Error(`Maximum number of terminals (${this.MAX_TERMINALS}) reached`)
     }
 
-    // Generate a proper terminal ID that matches EARS.EntityId format
-    const id = `Terminal-${uuidv4()}` as EARS.EntityId
+    // Generate a proper terminal ID using EARS entity creation
+    const id = tx(EARS.Entity.Terminal).id()
     
     // Validate and sanitize shell
     const requestedShell = options.shell || process.env.SHELL || '/bin/bash'

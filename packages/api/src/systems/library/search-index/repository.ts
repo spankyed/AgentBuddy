@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import { Index } from 'usearch'
 import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
@@ -239,9 +238,12 @@ export async function createSearchIndex(
   config: SearchIndexConfig,
   folderId: EARS.EntityId | null
 ): Promise<SearchIndex> {
-  const indexId = `SearchIndex-${uuid()}` as EARS.EntityId
   const now = Date.now()
-  
+
+  // Create SearchIndex entity with auto-generated ID
+  const builder = tx(EARS.Entity.SearchIndex)
+  const indexId = builder.id()
+
   const searchIndex: SearchIndex = {
     ...config,
     id: indexId,
@@ -251,9 +253,9 @@ export async function createSearchIndex(
     createdAt: now,
     updatedAt: now,
   }
-  
+
   // Save to EARS
-  tx(indexId).updateBatch({
+  builder.updateBatch({
     ...searchIndex,
     type: 'SearchIndex',
   })

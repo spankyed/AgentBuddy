@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid'
 import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
 import { edgeStore } from '@/core/ears/helpers/edge-store'
