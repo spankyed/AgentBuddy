@@ -159,8 +159,8 @@ const availableTags = computed(() => {
 
 onMounted(() => {
   formData.name = props.document.name
-  formData.content = [...props.document.content]
-  formData.tags = [...props.document.tags]
+  formData.content = props.document.content ? [...props.document.content] : []
+  formData.tags = props.document.tags ? [...props.document.tags] : []
 })
 
 function updateTags(newTags: string[]) {
