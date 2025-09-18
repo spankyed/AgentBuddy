@@ -84,7 +84,7 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ event }) => {
+    setPluginData: assign(({ context, event }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
@@ -94,7 +94,7 @@ const flowsState = setup({
         selectedFlowId: ev.data.selectedFlowId,
         graph: {
           ...ev.data.graph,
-          positions: {}, // Start with empty positions, will be set by layout
+          positions: context.graph?.positions || {}, // Preserve existing positions
         },
         settings: ev.data.settings || {},
       }
@@ -140,16 +140,16 @@ const flowsState = setup({
       });
     },
 
-    loadFlowData: assign(({ event }) => {
+    loadFlowData: assign(({ context, event }) => {
       const ev = typeOf('FLOW_SELECTED', event);
-      
+
       return {
         selectedFlowId: ev.flowId,
         selectedNodeId: undefined,
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions: {}, // Start with empty positions, will be set by layout
+          positions: context.graph?.positions || {}, // Preserve existing positions
         },
       };
     }),
