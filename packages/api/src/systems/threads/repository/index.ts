@@ -131,6 +131,7 @@ export const threadCommands = {
     status?: string; // Dynamic status from settings
     tags?: string[];  // Tag names from settings
     linkedThreads?: any[];
+    lastMessageTimestamp?: number;
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
