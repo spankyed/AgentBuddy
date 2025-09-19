@@ -41,6 +41,7 @@ export async function dbQuery(params: any, services: typeof Services) {
     const classificationResult = await services.llm.generateObject({
       model: { provider: 'openai', model: 'gpt-5-nano-2025-08-07' },
       schema: MessageClassificationSchema,
+      "reasoning_effort": "minimal",
       prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):
 
       A query is any operation that reads or retrieves data without modifying it.
@@ -77,7 +78,10 @@ export async function dbQuery(params: any, services: typeof Services) {
 
     // Generate the database operation code
     const result = await services.llm.generateText({
-      model: { provider: 'openai', model: 'gpt-4o' },
+      model: {
+        provider: 'openai', model: 'gpt-5-nano-2025-08-07',
+      },
+      "reasoning_effort": "minimal",
       prompt: dbPrompt,
       system: `
         <examples>
