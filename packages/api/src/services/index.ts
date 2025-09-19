@@ -8,6 +8,7 @@ import { libraryService } from './library';
 import * as browser from './browser';
 import { repositoryService } from './repository';
 import { settingsService } from './settings';
+import { createTextStreamService } from './text-stream';
 
 const services = {
   logger: loggerService,
@@ -20,6 +21,7 @@ const services = {
   browser,
   repository: repositoryService,
   settings: settingsService,
+  textStream: createTextStreamService(),
 }
 
 export default services;
