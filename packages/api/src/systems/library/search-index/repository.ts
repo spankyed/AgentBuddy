@@ -167,7 +167,7 @@ async function indexDocumentsBatch(
     keys[i] = BigInt(id)
     vectors.set(embeddings[i].embedding, i * dim)
     mappings.set(chunk.key, id)
-    
+
     // Store metadata - check if IndexedDoc already exists
     const existing = findIndexedDoc(indexId, chunk.key)
     if (existing) {
@@ -202,9 +202,11 @@ async function indexDocumentsBatch(
       })
     }
   })
-  
+
   // Batch insert to index
-  index.add(keys, vectors)
+  if (chunks.length > 0) {
+    index.add(keys, vectors)
+  }
   
   return chunks.length
 }
@@ -421,29 +423,34 @@ export async function indexDocument(
 ): Promise<void> {
   const searchIndex = await getSearchIndex(indexId)
   if (!searchIndex) throw new Error(`Search index ${indexId} not found`)
-  
+
   const document = libraryQueries.getDocument(documentId)
   if (!document) throw new Error(`Document ${documentId} not found`)
-  
+
   if (searchIndex.excludedDocumentIds.includes(documentId)) return
-  
+
   // Get or load index
   let index = indexCache.get(indexId)
   if (!index) {
     index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
-  
+
   const mappings = searchService.loadMappings(indexId)
-  
-  // Remove old chunks and reindex
+
+  // Remove old chunks first
   removeDocumentChunks(documentId, indexId, index, mappings)
-  await indexDocumentsBatch([document], indexId, searchIndex, index, mappings, mappings.size, false)
-  
+
+  // Calculate next vector ID - handle empty mappings case
+  const nextVectorId = mappings.size === 0 ? 0 : Math.max(...Array.from(mappings.values())) + 1
+
+  // Reindex with the new vector ID
+  await indexDocumentsBatch([document], indexId, searchIndex, index, mappings, nextVectorId, false)
+
   // Update and save
   searchIndex.documentCount = mappings.size
   tx(indexId).updateBatch({ ...searchIndex, type: 'SearchIndex', documentCount: mappings.size })
-  
+
   await searchService.saveIndex(index, searchService.getIndexPath(indexId))
   searchService.saveMappings(indexId, mappings)
 }
