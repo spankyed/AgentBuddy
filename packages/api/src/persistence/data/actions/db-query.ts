@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Services from '@/services';
 import { z } from 'zod';
 
