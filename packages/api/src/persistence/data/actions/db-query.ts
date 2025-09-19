@@ -38,7 +38,7 @@ export async function dbQuery(params: any, services: typeof Services) {
 
     // Classify the user's message
     const classificationResult = await services.llm.generateObject({
-      model: { provider: 'openai', model: 'gpt-4o' },
+      model: { provider: 'openai', model: 'gpt-5-nano-2025-08-07' },
       schema: MessageClassificationSchema,
       prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):
 
