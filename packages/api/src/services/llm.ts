@@ -41,7 +41,8 @@ function getApiKey(providerName: ProviderName, explicitApiKey?: string): string 
   if (explicitApiKey) return explicitApiKey;
 
   // Check if we're in production
-  const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH;
+  const isProd = true;
+  // const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH;
 
   if (isProd) {
     // Get API key from settings/secrets
