@@ -52,11 +52,11 @@ function getApiKey(providerName: ProviderName, explicitApiKey?: string): string 
       const secret = repository.secretsQueries.getSecret(secretId);
       if (secret?.encryptedValue) return secret.encryptedValue;
     }
+  } else {
+    // Fallback to environment variables
+    const envKey = process.env[`${providerName.toUpperCase()}_API_KEY`];
+    if (envKey) return envKey;
   }
-
-  // Fallback to environment variables
-  // const envKey = process.env[`${providerName.toUpperCase()}_API_KEY`];
-  // if (envKey) return envKey;
 
   throw new Error(`API key not found for provider: ${providerName}`);
 }
