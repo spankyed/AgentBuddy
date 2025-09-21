@@ -7,11 +7,21 @@ import { repository } from '@/repository';
 import { EARS } from '@/core/types';
 
 export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
-export type Provider = ProviderName;
+export type Provider = ProviderName | 'openai.responses' | string; // Allow string for flexibility
 export type ModelConfig = {
   provider: Provider;
   model: string;
   apiKey?: string; // Optional explicit API key
+};
+
+// Provider aliases - maps base provider to its variations
+const PROVIDER_ALIASES: Record<ProviderName, string[]> = {
+  anthropic: [],
+  google: [],
+  openai: ['openai.responses'],
+  groq: [],
+  mistral: [],
+  cohere: [],
 };
 
 // Provider configuration map
@@ -32,11 +42,19 @@ const PROVIDER_CONFIGS = {
   }
 } as const;
 
+function resolveProvider(name: string): ProviderName {
+  for (const [base, aliases] of Object.entries(PROVIDER_ALIASES)) {
+    if (base === name || aliases.includes(name)) return base as ProviderName;
+  }
+  return name as ProviderName;
+}
+
 /**
  * Get API key for a provider
  * Priority: explicitApiKey > production settings > env vars
  */
-function getApiKey(providerName: ProviderName, explicitApiKey?: string): string {
+function getApiKey(providerName: string, explicitApiKey?: string): string {
+  const baseProvider = resolveProvider(providerName);
   // Use explicit API key if provided
   if (explicitApiKey) return explicitApiKey;
 
@@ -47,7 +65,7 @@ function getApiKey(providerName: ProviderName, explicitApiKey?: string): string 
   if (isProd) {
     // Get API key from settings/secrets
     const settings = repository.settingsQueries.getGeneralSettings();
-    const secretId = settings.secrets?.[providerName] as EARS.EntityId | undefined;
+    const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined;
 
     if (secretId) {
       const secret = repository.secretsQueries.getSecret(secretId);
@@ -55,19 +73,28 @@ function getApiKey(providerName: ProviderName, explicitApiKey?: string): string 
     }
   } else {
     // Fallback to environment variables
-    const envKey = process.env[`${providerName.toUpperCase()}_API_KEY`];
+    const envKey = process.env[`${baseProvider.toUpperCase()}_API_KEY`];
     if (envKey) return envKey;
   }
 
-  throw new Error(`API key not found for provider: ${providerName}`);
+  throw new Error(`API key not found for provider: ${baseProvider}`);
 }
 
 /**
  * Get a configured provider instance
  */
-function getProvider(providerName: ProviderName, explicitApiKey?: string): any {
+function getProvider(providerName: string, explicitApiKey?: string): any {
+  // Special case for openai.responses
+  if (providerName === 'openai.responses') {
+    const apiKey = getApiKey(providerName, explicitApiKey);
+    const openaiProvider = createOpenAI({ apiKey });
+    return (modelId: string) => openaiProvider.responses(modelId);
+  }
+
+  // Regular providers
+  const baseProvider = resolveProvider(providerName);
   const apiKey = getApiKey(providerName, explicitApiKey);
-  const createFn = PROVIDER_CONFIGS[providerName];
+  const createFn = PROVIDER_CONFIGS[baseProvider];
 
   if (!createFn) {
     throw new Error(`Unknown provider: ${providerName}`);
