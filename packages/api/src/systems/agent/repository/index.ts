@@ -6,7 +6,8 @@ import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
 import { getDashboardTab } from './dashboard';
-import { settingsQueries } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { repository } from '@/repository';
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -294,5 +295,39 @@ export const agentCommands = {
       sender,
       timestamp
     };
+  },
+
+  createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
+    // Create the thread using repository
+    const { id: threadId, shortCode, timestamp, status } = repository.threadCommands.create({
+      topic: 'Assistant Birth',
+      instructions: 'Welcome! This thread will help you get started with your new assistant.',
+      tags: []
+    });
+
+    // Create the todo artifact
+    const artifactId = tx(EARS.Entity.Artifact)
+      .put('entityType', EARS.Entity.Artifact)
+      .put('title', 'Getting Started Tasks')
+      .put('artifactType', 'todo')
+      .put('content', {
+        tasks: [
+          { id: '1', description: 'Give your assistant a name', completed: false },
+          { id: '2', description: 'Share your technical skill level', completed: false },
+          { id: '3', description: 'Discuss projects you\'re working on', completed: false }
+        ],
+        status: 'pending'
+      })
+      .put('createdAt', Date.now())
+      .id();
+
+    // Link artifact to thread
+    tx(threadId).link(EARS.RelKind.HAS, artifactId);
+    tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+
+    // Update settings with birthdate
+    settingsCommands.updateSettings('internal', null, ['assistantBirthdate'], new Date().toISOString());
+
+    return { threadId, artifactId };
   },
 } as const;

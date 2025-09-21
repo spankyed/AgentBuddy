@@ -49,8 +49,18 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
+    birthAssistant: () => {
+      // Check if we need to create the assistant birth thread
+      const internalSettings = repository.settingsQueries.getInternalSettings();
+
+      if (!internalSettings.hasOnboarded && !internalSettings.assistantBirthdate) {
+        // Create the birth thread for first-time users
+        const { threadId, artifactId } = repository.agentCommands.createAssistantBirthThread();
+        logger.info('Created Assistant Birth thread', { threadId, artifactId });
+      }
+    },
     sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(agent, { 
+      system.get(bus).send(emit(agent, {
         type: 'AGENT_CONNECTED',
         data: repository.agentQueries.connectedData()
       }));
@@ -67,9 +77,6 @@ export const agentSystem = setup({
         type: 'AGENT_CONNECTED',
         data: repository.agentQueries.connectedData()
       }));
-    },
-    initializeMockData: () => {
-      // initializeMockData();
     },
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
@@ -110,7 +117,7 @@ export const agentSystem = setup({
     id: agent,
     initial: 'idle',
     context: ({}),
-    entry: ['initializeMockData'],
+    entry: ['birthAssistant'],
     on: {
       CLIENT_CONNECTED: {
         actions: ['sendConnectedData'],
