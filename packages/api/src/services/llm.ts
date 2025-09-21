@@ -14,7 +14,7 @@ export type ModelConfig = {
   apiKey?: string; // Optional explicit API key
 };
 
-// Provider aliases - maps base provider to its variations
+// Provider aliases - more maintainable structure
 const PROVIDER_ALIASES: Record<ProviderName, string[]> = {
   anthropic: [],
   google: [],
@@ -23,6 +23,12 @@ const PROVIDER_ALIASES: Record<ProviderName, string[]> = {
   mistral: [],
   cohere: [],
 };
+
+// Build reverse mapping for fast lookups
+const ALIASES = Object.entries(PROVIDER_ALIASES).reduce((acc, [base, aliases]) => {
+  aliases.forEach(alias => acc[alias] = base as ProviderName);
+  return acc;
+}, {} as Record<string, ProviderName>);
 
 // Provider configuration map
 const PROVIDER_CONFIGS = {
@@ -42,19 +48,12 @@ const PROVIDER_CONFIGS = {
   }
 } as const;
 
-function resolveProvider(name: string): ProviderName {
-  for (const [base, aliases] of Object.entries(PROVIDER_ALIASES)) {
-    if (base === name || aliases.includes(name)) return base as ProviderName;
-  }
-  return name as ProviderName;
-}
-
 /**
  * Get API key for a provider
  * Priority: explicitApiKey > production settings > env vars
  */
 function getApiKey(providerName: string, explicitApiKey?: string): string {
-  const baseProvider = resolveProvider(providerName);
+  const baseProvider = (ALIASES[providerName] || providerName) as ProviderName;
   // Use explicit API key if provided
   if (explicitApiKey) return explicitApiKey;
 
@@ -84,21 +83,17 @@ function getApiKey(providerName: string, explicitApiKey?: string): string {
  * Get a configured provider instance
  */
 function getProvider(providerName: string, explicitApiKey?: string): any {
+  const apiKey = getApiKey(providerName, explicitApiKey);
+
   // Special case for openai.responses
   if (providerName === 'openai.responses') {
-    const apiKey = getApiKey(providerName, explicitApiKey);
-    const openaiProvider = createOpenAI({ apiKey });
-    return (modelId: string) => openaiProvider.responses(modelId);
+    return (modelId: string) => createOpenAI({ apiKey }).responses(modelId);
   }
 
   // Regular providers
-  const baseProvider = resolveProvider(providerName);
-  const apiKey = getApiKey(providerName, explicitApiKey);
+  const baseProvider = (ALIASES[providerName] || providerName) as ProviderName;
   const createFn = PROVIDER_CONFIGS[baseProvider];
-
-  if (!createFn) {
-    throw new Error(`Unknown provider: ${providerName}`);
-  }
+  if (!createFn) throw new Error(`Unknown provider: ${providerName}`);
 
   return createFn(apiKey);
 }
