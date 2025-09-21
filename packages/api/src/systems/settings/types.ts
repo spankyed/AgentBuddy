@@ -46,6 +46,7 @@ export interface Secrets {
   mistral?: string | null; // Secret ID reference
   cohere?: string | null; // Secret ID reference
   custom?: Record<string, string>; // Custom provider name -> Secret ID
+  required: string[]; // List of required providers, e.g., ['openai']
 }
 
 // Base keyboard shortcut configuration

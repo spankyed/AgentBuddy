@@ -40,6 +40,7 @@ export type AgentConnectedData = {
   dashboardArtifacts: Partial<ArtifactEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
+  hasRequiredApiKeys: boolean;
 };
 
 // UI types for agent canvas

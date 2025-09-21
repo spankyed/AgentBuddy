@@ -9,6 +9,7 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
+import { agent } from '@/systems/agent/system';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -231,15 +232,21 @@ export const settingsSystem = setup({
         
         // Update settings
         settingsCommands.updateSettings('general', 'secrets', [], newSecrets);
-        
+
         // Send updated settings to frontend
         const updatedSettings = settingsQueries.getSettings();
         system.get(bus).send(emit(settings, {
           type: 'SETTINGS_UPDATED',
           data: updatedSettings
         }));
+
+        // Notify agent system about API key changes
+        const agentActor = system.get(agent);
+        if (agentActor) {
+          agentActor.send({ type: 'API_KEYS_CHANGED' });
+        }
       }
-      
+
       // Forward to frontend
       system.get(bus).send(emit(settings, event as SecretsOutputEvents));
     },

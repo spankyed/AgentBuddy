@@ -27,7 +27,9 @@ export const IncomingAgentEvents = [
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
 ] as const
 
-export type AgentInternalEvents = SystemEvents
+export type AgentInternalEvents =
+  | SystemEvents
+  | { type: 'API_KEYS_CHANGED' }
 
 export type OutgoingAgentEvents =
   | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
@@ -36,6 +38,7 @@ export type OutgoingAgentEvents =
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
+  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
 
 export interface AgentContext {}
 
@@ -73,9 +76,16 @@ export const agentSystem = setup({
     },
     sendRefreshDashboard: ({ system }) => {
       // ? Re-send connected data which includes refreshed dashboard
-      system.get(bus).send(emit(agent, { 
+      system.get(bus).send(emit(agent, {
         type: 'AGENT_CONNECTED',
         data: repository.agentQueries.connectedData()
+      }));
+    },
+    sendApiKeyStatus: ({ system }) => {
+      const hasRequiredApiKeys = repository.agentQueries.hasRequiredApiKeys();
+      system.get(bus).send(emit(agent, {
+        type: 'API_KEYS_STATUS',
+        hasRequiredApiKeys
       }));
     },
     sendThreadChatData: ({ system, event }) => {
@@ -130,6 +140,9 @@ export const agentSystem = setup({
       },
       REFRESH_DASHBOARD: {
         actions: 'sendRefreshDashboard',
+      },
+      API_KEYS_CHANGED: {
+        actions: 'sendApiKeyStatus',
       },
     },
     states: {

@@ -17,7 +17,8 @@ export const defaultSettings: SettingsData = {
       groq: null,
       mistral: null,
       cohere: null,
-      custom: {}
+      custom: {},
+      required: ['openai', 'anthropic'],
     },
     hotkeys: {
       switchPluginUp: {

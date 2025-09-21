@@ -4,7 +4,10 @@
       @submit.prevent="handleSubmit"
       class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
-      <div class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible" :class="$style.input"  data-onboarding-id="agent-chat-input">
+      <div
+        class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
+        :class="[$style.input, { 'opacity-50': disabled }]"
+        data-onboarding-id="agent-chat-input">
         <StatusIndicator/>
 
         <!-- Editor container -->
@@ -12,12 +15,13 @@
           <!-- Contenteditable div -->
           <div
             ref="editorRef"
-            contenteditable="true"
+            :contenteditable="!disabled"
             translate="no"
             class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
+            :class="{ 'cursor-not-allowed': disabled }"
             @input="handleInput"
             @keydown="handleKeydown"
-            data-placeholder="Message Agent"
+            :data-placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
           ></div>
         </div>
 
@@ -29,8 +33,10 @@
               v-for="btn in leftButtons"
               :key="btn.action"
               type="button"
-              class="p-2 transition-colors text-neutral-500 hover:text-neutral-200"
+              class="p-2 transition-colors text-neutral-500"
+              :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
               :aria-label="btn.label"
+              :disabled="disabled"
               @click="handleButtonClick(btn.action)"
             >
               <component :is="btn.icon" :size="20" />
@@ -40,10 +46,10 @@
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
             <!-- Stop button -->
-            <Button 
+            <Button
               title="Stop agent work"
               type="submit"
-              :disabled="!messageContent"
+              :disabled="!messageContent || disabled"
               variant="secondary"
             >
               Stop Agent
@@ -51,7 +57,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="!messageContent"
+              :disabled="!messageContent || disabled"
             >
               Send
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -63,7 +69,9 @@
           <select
             :value="currentMode"
             @change="handleModeChange"
-            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
+            :disabled="disabled"
             :title="modes.find(m => m.id === currentMode)?.description"
           >
             <option 
@@ -108,11 +116,12 @@ interface ModeConfig {
   description: string
 }
 
-defineProps<{
+const props = defineProps<{
   currentThread: AgentThreadData
   threads: ThreadEntity[]
   currentMode: 'plan' | 'work' | 'chat' | 'note'
   modes: ModeConfig[]
+  disabled?: boolean
 }>()
 
 // Define emits including new button actions
@@ -186,11 +195,13 @@ onMounted(() => {
 })
 
 const handleInput = (e: Event) => {
+  if (props.disabled) return
   const target = e.target as HTMLDivElement
   messageContent.value = target.textContent || ''
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
+  if (props.disabled) return
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleSubmit()
@@ -199,16 +210,19 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 
 const handleButtonClick = (action: string) => {
+  if (props.disabled) return
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   emit(action as any)
 }
 
 const handleModeChange = (e: Event) => {
+  if (props.disabled) return
   const target = e.target as HTMLSelectElement
   emit('mode-change', target.value)
 }
 
 const handleSubmit = () => {
+  if (props.disabled) return
   if (messageContent.value.trim()) {
     emit('send-message', messageContent.value)
     if (editorRef.value) {

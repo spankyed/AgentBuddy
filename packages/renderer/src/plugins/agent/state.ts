@@ -38,6 +38,7 @@ interface AgentContext {
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   settings: AgentSettings;
+  hasRequiredApiKeys: boolean;
 }
 
 type Brain_FE_AgentEvents =
@@ -65,6 +66,8 @@ type AgentEvent =
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
+  | { type: 'NAVIGATE_TO_SECRETS' }
+  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -97,6 +100,22 @@ const agentState = setup({
     }),
     setMode: assign(({ event }) => ({
       mode: typeOf('SET_MODE', event).mode
+    })),
+    navigateToSecrets: ({ system }) => {
+      // Navigate to settings plugin
+      system.get(application).send({
+        type: 'SELECT_PLUGIN',
+        pluginId: 'settings'
+      });
+      // Navigate to the secrets tab within settings
+      const settingsActor = system.get('settings');
+      if (settingsActor) {
+        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
+        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+      }
+    },
+    updateApiKeyStatus: assign(({ event }) => ({
+      hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
       trpc.bus.send.mutate({
@@ -213,6 +232,7 @@ const agentState = setup({
         hotkeys,
         modes,
         settings,
+        hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
       };
     }),
     
@@ -404,6 +424,7 @@ const agentState = setup({
     modes: [],
     hotkeys: {}, // Will be loaded from settings
     settings: { modes: [], hotkeys: {} }, // Will be loaded from settings
+    hasRequiredApiKeys: true, // Default to true, will be updated on AGENT_CONNECTED
   }),
   on: {
     // Hotkey handling
@@ -430,6 +451,12 @@ const agentState = setup({
     },
     AGENT_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
+    },
+    NAVIGATE_TO_SECRETS: {
+      actions: 'navigateToSecrets'
+    },
+    API_KEYS_STATUS: {
+      actions: 'updateApiKeyStatus'
     },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'

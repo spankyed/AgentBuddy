@@ -136,6 +136,18 @@ function createTabFromThread(
 
 // Queries - read-only operations that compose data
 export const agentQueries = {
+  // Check if required API keys are configured
+  hasRequiredApiKeys: (): boolean => {
+    const secrets = settingsQueries.getGeneralSettings().secrets;
+    const required = ['openai', 'anthropic']; // Could also read from defaults if needed
+
+    // Check if at least one required key is configured
+    return required.some(provider => {
+      const secretId = secrets[provider as keyof typeof secrets];
+      return secretId !== null && secretId !== undefined && secretId !== '';
+    });
+  },
+
   // Get thread artifacts
   threadArtifacts: (threadId: EARS.EntityId) => {
     return qx()
@@ -237,6 +249,7 @@ export const agentQueries = {
       dashboardArtifacts,
       tabs,
       settings: agentSettings,
+      hasRequiredApiKeys: agentQueries.hasRequiredApiKeys(),
     };
   },
 } as const;
