@@ -140,6 +140,6 @@ export const defaultSettings: SettingsData = {
     hasOnboarded: false,
     tourStarted: false,
     lastInteractionTimestamp: null,
-    version: '1.0.0'
+    version: '0.1.0'
   }
 };
