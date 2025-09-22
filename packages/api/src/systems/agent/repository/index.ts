@@ -314,6 +314,22 @@ export const agentCommands = {
   },
 
   createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
+    // Check if an assistant birth thread already exists
+    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
+    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+
+    if (existingBirthThreadId) {
+      // Return existing birth thread and its artifact
+      const existingArtifact = qx(existingBirthThreadId)
+        .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)
+        ?.[0];
+
+      return {
+        threadId: existingBirthThreadId,
+        artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id()
+      };
+    }
+
     // Create the thread using repository
     const { id: threadId, shortCode, timestamp, status } = repository.threadCommands.create({
       topic: 'Assistant Birth',
@@ -323,6 +339,9 @@ export const agentCommands = {
 
     // Set the forced mode to 'birth' for this special thread
     tx(threadId).put('forcedMode', 'birth');
+
+    // Grant the assistant_birth role to prevent duplicates
+    tx(threadId).grant(ASSISTANT_BIRTH_ROLE);
 
     // Create the todo artifact
     const artifactId = tx(EARS.Entity.Artifact)

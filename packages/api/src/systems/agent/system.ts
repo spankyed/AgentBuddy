@@ -57,9 +57,16 @@ export const agentSystem = setup({
       const internalSettings = repository.settingsQueries.getInternalSettings();
 
       if (!internalSettings.hasOnboarded && !internalSettings.assistantBirthdate) {
-        // Create the birth thread for first-time users
+        // Create the birth thread for first-time users (will check for existing internally)
         const { threadId, artifactId } = repository.agentCommands.createAssistantBirthThread();
-        logger.info('Created Assistant Birth thread', { threadId, artifactId });
+
+        // Only log if we actually created a new thread
+        const isNew = !internalSettings.assistantBirthdate;
+        if (isNew) {
+          logger.info('Created Assistant Birth thread', { threadId, artifactId });
+        } else {
+          logger.debug('Using existing Assistant Birth thread', { threadId });
+        }
       }
     },
     sendConnectedData: ({ system }) => {
