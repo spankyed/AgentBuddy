@@ -14,6 +14,7 @@ export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
   internal: InternalSettings;
+  assistant: AssistantSettings;
 }
 
 export interface GeneralSettings {
@@ -149,4 +150,8 @@ export interface InternalSettings {
   assistantBirthdate: string | null;
   lastInteractionTimestamp: number | null;
   version: string;
+}
+
+export interface AssistantSettings {
+  name: string;
 }
