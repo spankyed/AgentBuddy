@@ -2,7 +2,18 @@
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Agent Chat Content -->
     <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-      <div v-if="!hasRequiredApiKeys && messages.length === 0" class="w-9/12 py-2 mx-auto">
+      <div v-if="messages.length === 0 && hasRequiredApiKeys" class="flex items-center justify-center h-full">
+        <p class="text-gray-500">Start a conversation for this thread</p>
+      </div>
+      <div v-else-if="messages.length > 0" class="w-9/12 py-2 mx-auto space-y-1">
+        <ChatMessage
+          v-for="message in messages"
+          :key="message.id"
+          :message="message"
+        />
+      </div>
+      <!-- API Keys Alert - Always show when keys are missing -->
+      <div v-if="!hasRequiredApiKeys" class="w-9/12 py-2 mx-auto">
         <div class="flex pb-3 animate-fade-in w-full justify-start">
           <div class="relative rounded-xl px-4 py-3 bg-yellow-900/20 text-yellow-50 border border-yellow-600/30 hover:shadow-md transition-all duration-200">
             <div class="flex items-start gap-3">
@@ -21,16 +32,6 @@
             </div>
           </div>
         </div>
-      </div>
-      <div v-else-if="messages.length === 0" class="flex items-center justify-center h-full">
-        <p class="text-gray-500">Start a conversation for this thread</p>
-      </div>
-      <div v-else class="w-9/12 py-2 mx-auto space-y-1">
-        <ChatMessage
-          v-for="message in messages"
-          :key="message.id"
-          :message="message"
-        />
       </div>
     </div>
     <!-- @select-thread="(id: string) => send({ type: 'SELECT_THREAD', id })" -->
