@@ -200,21 +200,6 @@ const threadsState = setup({
         threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
       };
     }),
-    addChildThread: assign(({ context }) => {
-      return {
-        view: {
-          ...context.view,
-        }
-      };
-    }),
-    removeChildThread: assign(({ event, context }) => {
-      const typedEvent = typeOf('REMOVE_LINK', event);
-      return {
-        view: {
-          ...context.view,
-        }
-      };
-    }),
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),

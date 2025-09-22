@@ -9,6 +9,9 @@ declare global {
       fileUtils: {
         selectDirectory: () => Promise<string | null>;
       };
+      shell: {
+        openExternal: (url: string) => Promise<void>;
+      };
       apiPort: number;
     };
   }

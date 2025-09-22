@@ -25,7 +25,7 @@
         class="relative overflow-hidden bg-neutral-800 shadow-sm dark:bg-gray-800"
         :style="{ width: queryPanelWidth + '%' }"
       >
-        <QueryEditor />
+        <QueryEditor :active-mode="activeMode" @update:active-mode="activeMode = $event" />
         
         <!-- Resize Handle -->
         <div
@@ -53,6 +53,7 @@ import GraphExplorer from './graph-explorer/GraphExplorer.vue'
 // Panel sizing
 const schemaPanelWidth = ref(280)
 const queryPanelWidth = ref(50) // percentage
+const activeMode = ref<'query' | 'examples'>('query')
 const minSchemaPanelWidth = 200
 const maxSchemaPanelWidth = 400
 const minQueryPanelWidth = 30
