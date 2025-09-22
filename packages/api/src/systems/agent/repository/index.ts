@@ -25,22 +25,18 @@ export function byEntityType<
 // Helper function to get threads with optional current thread data
 interface ThreadsQueryOptions {
   limit?: number;
-  orderBy?: keyof ThreadEntity;
-  orderDirection?: 'asc' | 'desc';
   includeCurrentThreadData?: boolean;
   threadFields?: readonly (keyof ThreadEntity)[];
   messageFields?: readonly (keyof MessageEntity)[];
   artifactFields?: readonly (keyof ArtifactEntity)[];
 }
 
-function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): { 
-  threads: Partial<ThreadEntity>[]; 
-  currentThreadData: AgentThreadData | null 
+function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
+  threads: Partial<ThreadEntity>[];
+  currentThreadData: AgentThreadData | null
 } {
   const {
     limit = 4,
-    orderBy = 'lastMessageTimestamp',
-    orderDirection = 'desc',
     includeCurrentThreadData = true,
     threadFields = [
       "shortCode",
@@ -49,16 +45,25 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
       "status",
       "timestamp",
       "lastMessageTimestamp",
+      "lastVisitedTimestamp",
       "forcedMode",
     ] as const,
     messageFields = ["id", "text", "sender", "timestamp"] as const,
     artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
   } = options;
 
-  const threads = qx(EARS.Entity.Thread)
-    .orderBy(orderBy, orderDirection)
-    .limit(limit)
+  // Get threads and sort with priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
+  // We need to sort manually since threads may not have lastVisitedTimestamp set
+  const allThreads = qx(EARS.Entity.Thread)
     .pick(threadFields) as Partial<ThreadEntity>[];
+
+  const threads = allThreads
+    .sort((a, b) => {
+      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp || 0;
+      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp || 0;
+      return bTime - aTime; // Descending order
+    })
+    .slice(0, limit);
   
   if (threads.length === 0 || !includeCurrentThreadData) {
     return {

@@ -120,7 +120,10 @@ export const threadsSystem = setup({
     sendViewData: ({ system, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
-      system.get(bus).send(emit(threads, { 
+      // Mark thread as visited
+      repository.threadCommands.markAsVisited(threadId);
+
+      system.get(bus).send(emit(threads, {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),

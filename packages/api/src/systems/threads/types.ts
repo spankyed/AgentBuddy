@@ -16,6 +16,7 @@ export interface ThreadEntity extends BaseEntity {
   sideTopics?: string[];
   timestamp: number;
   lastMessageTimestamp?: number;
+  lastVisitedTimestamp?: number;
   shortCode?: string;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings

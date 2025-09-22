@@ -36,8 +36,9 @@ export const threadQueries = {
   allByRecency: () => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
     return threads.sort((a, b) => {
-      const aTime = a.lastMessageTimestamp || a.timestamp;
-      const bTime = b.lastMessageTimestamp || b.timestamp;
+      // Priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
+      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp;
+      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp;
       return bTime - aTime;
     });
   },
@@ -132,18 +133,19 @@ export const threadCommands = {
     tags?: string[];  // Tag names from settings
     linkedThreads?: any[];
     lastMessageTimestamp?: number;
+    lastVisitedTimestamp?: number;
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     const { linkedThreads, ...fieldUpdates } = updates;
-    
+
     // Update fields (including tags as a direct field)
     if (Object.keys(fieldUpdates).length > 0) {
       updateEntity(id, fieldUpdates);
     }
-    
+
     // Update linked threads
     if (linkedThreads !== undefined) {
       // Remove all existing custom relations
@@ -151,11 +153,22 @@ export const threadCommands = {
       for (const link of existingLinks) {
         tx(id).unlinkIf(EARS.RelKind.Custom(link.relation), link.id);
       }
-      
+
       // Add new relations
       for (const rel of linkedThreads) {
         tx(id).link(EARS.RelKind.Custom(rel.relation), rel.id);
       }
     }
+  },
+
+  markAsVisited: (id: EARS.EntityId): void => {
+    if (!threadQueries.byId(id)) {
+      throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    updateEntity(id, {
+      lastVisitedTimestamp: Date.now(),
+      updatedAt: Date.now()
+    });
   },
 } as const;

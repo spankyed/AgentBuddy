@@ -98,18 +98,24 @@ export const agentSystem = setup({
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
-      system.get(bus).send(emit(agent, { 
+      // Mark thread as visited when opening chat
+      repository.threadCommands.markAsVisited(threadId);
+
+      system.get(bus).send(emit(agent, {
         type: 'LOAD_CHAT_THREAD',
         data: repository.agentQueries.threadData(threadId),
       }));
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = typeOf('OPEN_THREAD_TAB', event);
-      
+
+      // Mark thread as visited when opening tab
+      repository.threadCommands.markAsVisited(threadId as EARS.EntityId);
+
       // Query the artifacts from repository
       const artifacts = repository.agentQueries.threadArtifacts(threadId as EARS.EntityId);
-      
-      system.get(bus).send(emit(agent, { 
+
+      system.get(bus).send(emit(agent, {
         type: 'THREAD_TAB_REQUESTED',
         threadId,
         artifacts
