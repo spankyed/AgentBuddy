@@ -101,9 +101,18 @@ export const agentSystem = setup({
       // Mark thread as visited when opening chat
       repository.threadCommands.markAsVisited(threadId);
 
-      system.get(bus).send(emit(agent, {
+      const busSvc = system.get(bus);
+
+      // Send thread data
+      busSvc.send(emit(agent, {
         type: 'LOAD_CHAT_THREAD',
         data: repository.agentQueries.threadData(threadId),
+      }));
+
+      // Refresh recent threads list to reflect new ordering
+      busSvc.send(emit(agent, {
+        type: 'REFRESH_RECENT_THREADS',
+        data: repository.agentQueries.refreshThreadsData()
       }));
     },
     sendThreadTabData: ({ system, event }) => {
@@ -115,10 +124,19 @@ export const agentSystem = setup({
       // Query the artifacts from repository
       const artifacts = repository.agentQueries.threadArtifacts(threadId as EARS.EntityId);
 
-      system.get(bus).send(emit(agent, {
+      const busSvc = system.get(bus);
+
+      // Send thread tab data
+      busSvc.send(emit(agent, {
         type: 'THREAD_TAB_REQUESTED',
         threadId,
         artifacts
+      }));
+
+      // Refresh recent threads list to reflect new ordering
+      busSvc.send(emit(agent, {
+        type: 'REFRESH_RECENT_THREADS',
+        data: repository.agentQueries.refreshThreadsData()
       }));
     },
     forwardUserMessage: ({ system, event }) => {

@@ -64,7 +64,7 @@
           <button
             type="button"
             class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-            @click.stop="$emit('new-thread')"
+            @click.stop="handleNewThread"
           >
             <Plus :size="16" class="mr-2" />
             New thread
@@ -76,7 +76,7 @@
             class="min-w-[220px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
             <ContextMenuItem
-              @select="$emit('new-thread')"
+              @select="handleNewThread"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
               <Plus class="w-4 h-4" />
@@ -131,7 +131,7 @@ export interface ThreadsProps {
   threads: ThreadEntity[]
 }
 
-const props = defineProps<ThreadsProps>()
+defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
 
@@ -141,7 +141,7 @@ const allThreads = useSelector(threadsActor, (state) => state.context.threads)
 
 const recentThreads = computed(() => {
   return allThreads.value
-    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    // .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
     .slice(0, 10) // Show up to 10 most recent threads
 })
 
