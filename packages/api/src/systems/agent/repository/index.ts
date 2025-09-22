@@ -182,6 +182,12 @@ export const agentQueries = {
         "forcedMode",
       ] as const);
 
+    // Get thread-specific artifacts (not all artifacts)
+    const threadArtifacts = qx()
+      .relatedTo(threadId)
+      .ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const) ?? [];
+
     return {
       ...thread[0] as AgentThreadData,
       messages: qx(threadId)
@@ -190,7 +196,7 @@ export const agentQueries = {
           ["id", "text", "sender", "timestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
-      artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
+      artifacts: threadArtifacts as any as ArtifactEntity[],
     };
   },
   

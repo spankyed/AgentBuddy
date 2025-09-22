@@ -206,6 +206,17 @@ const agentState = setup({
     // })),
     setThreadChatData: assign(({ event }) => {
       const thread = typeOf('LOAD_CHAT_THREAD', event).data;
+
+      // Request backend to open tab if thread has artifacts
+      if (thread.artifacts?.length && thread.id) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'OPEN_THREAD_TAB',
+          threadId: thread.id,
+          label: thread.topic || `Thread ${thread.shortCode || ''}`
+        });
+      }
+
       return {
         currentThread: thread,
         ...(thread.forcedMode && { mode: thread.forcedMode })
