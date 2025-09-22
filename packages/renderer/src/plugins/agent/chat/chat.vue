@@ -39,6 +39,7 @@
         :current-thread="currentThread"
         :threads="threads"
         :current-mode="currentMode"
+        :current-phase="currentPhase"
         :modes="modes"
         :disabled="!hasRequiredApiKeys"
         @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
@@ -47,6 +48,7 @@
         @new-thread="actor.send({ type: 'CLEAR_THREAD' })"
         @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
         @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
+        @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
       />
     </div>
   </div>
@@ -67,6 +69,7 @@ const messages = useSelector(actor, (state) => (state.context.currentThread?.mes
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
+const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const hasRequiredApiKeys = useSelector(actor, (state) => state.context.hasRequiredApiKeys)
 const messagesContainer = ref<HTMLElement | null>(null)

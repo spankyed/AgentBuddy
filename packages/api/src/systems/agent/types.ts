@@ -12,6 +12,7 @@ export type AgentThreadData = {
   timestamp: ThreadEntity['timestamp'];
   messages: ThreadExtendedData['messages'];
   artifacts: ArtifactEntity[];
+  forcedMode?: ThreadEntity['forcedMode'];
 }
 
 export type RecentThreadRefreshData = {
@@ -19,10 +20,18 @@ export type RecentThreadRefreshData = {
   threads: Partial<ThreadEntity>[];
 };
 
+export interface AgentPhase {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface AgentMode {
   id: string;
   name: string;
   description: string;
+  phases?: AgentPhase[];
+  hidden?: boolean; // For modes that shouldn't appear in selector (e.g., birth)
 }
 
 export interface AgentSettings {

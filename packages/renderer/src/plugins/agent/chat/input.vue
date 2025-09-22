@@ -65,22 +65,51 @@
 
           </div>
 
-          <!-- Mode select -->
+          <!-- Mode select (slightly left of center) -->
           <select
+            v-if="!currentThread?.forcedMode"
             :value="currentMode"
             @change="handleModeChange"
-            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            class="absolute bottom-0 px-2 py-1 mb-2 text-center rounded-lg text-neutral-500 focus:outline-none bg-neutral-800"
             :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
+            :style="{ left: currentModePhases.length > 0 ? '40%' : '50%', transform: 'translateX(-50%)' }"
             :disabled="disabled"
             :title="modes.find(m => m.id === currentMode)?.description"
           >
-            <option 
-              v-for="mode in modes" 
-              :key="mode.id" 
+            <option
+              v-for="mode in visibleModes"
+              :key="mode.id"
               :value="mode.id"
               :title="mode.description"
             >
               {{ mode.name }}
+            </option>
+          </select>
+
+          <!-- Forced mode indicator -->
+          <div
+            v-if="currentThread?.forcedMode"
+            class="absolute bottom-0 px-3 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-400 bg-neutral-800 left-1/2"
+          >
+            {{ modes.find(m => m.id === currentThread.forcedMode)?.name || 'Birth' }}
+          </div>
+
+          <!-- Phase select (centered, only if current mode has phases) -->
+          <select
+            v-if="currentModePhases.length > 0 && !currentThread?.forcedMode"
+            :value="currentPhase"
+            @change="handlePhaseChange"
+            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
+            :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
+            :disabled="disabled"
+          >
+            <option
+              v-for="phase in currentModePhases"
+              :key="phase.id"
+              :value="phase.id"
+              :title="phase.description"
+            >
+              {{ phase.name }}
             </option>
           </select>
         </div>
@@ -101,26 +130,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Square from './square-svg.vue'
 import Threads from './threads.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, ThreadEntity } from '@app/api'
-
-interface ModeConfig {
-  id: string
-  name: string
-  description: string
-}
+import type { AgentThreadData, ThreadEntity, AgentMode } from '@app/api'
 
 const props = defineProps<{
   currentThread: AgentThreadData
   threads: ThreadEntity[]
-  currentMode: 'plan' | 'work' | 'chat' | 'note'
-  modes: ModeConfig[]
+  currentMode: string
+  currentPhase: string
+  modes: AgentMode[]
   disabled?: boolean
 }>()
 
@@ -136,6 +160,7 @@ const emit = defineEmits<{
   (e: 'new-thread-as-child', parentThreadId: string): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
+  (e: 'phase-change', phase: string): void
 }>()
 
 
@@ -173,6 +198,20 @@ const leftButtons: ActionButton[] = [
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
 
+// Computed properties for cleaner template
+const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
+const currentModePhases = computed(() => {
+  const mode = props.modes.find(m => m.id === props.currentMode)
+  return mode?.phases || []
+})
+
+// Reset to first visible mode when switching from forced-mode thread
+watch(() => props.currentThread?.id, () => {
+  if (props.currentMode && !props.currentThread?.forcedMode && !visibleModes.value.some(m => m.id === props.currentMode)) {
+    emit('mode-change', visibleModes.value[0].id)
+  }
+})
+
 onMounted(() => {
   // Set up placeholder behavior
   const editor = editorRef.value
@@ -182,13 +221,13 @@ onMounted(() => {
         editor.classList.remove('empty')
       }
     })
-    
+
     editor.addEventListener('blur', () => {
       if (editor.textContent === '') {
         editor.classList.add('empty')
       }
     })
-    
+
     // Initialize as empty
     editor.classList.add('empty')
   }
@@ -211,14 +250,24 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  emit(action as any)
+  // @ts-expect-error - dynamic event emission
+  emit(action)
 }
 
 const handleModeChange = (e: Event) => {
   if (props.disabled) return
-  const target = e.target as HTMLSelectElement
-  emit('mode-change', target.value)
+  const newMode = (e.target as HTMLSelectElement).value
+  emit('mode-change', newMode)
+  // If the new mode has phases, also set mode to first phase
+  const mode = props.modes.find(m => m.id === newMode)
+  if (mode?.phases?.length) {
+    emit('phase-change', mode.phases[0].id)
+  }
+}
+
+const handlePhaseChange = (e: Event) => {
+  if (props.disabled) return
+  emit('phase-change', (e.target as HTMLSelectElement).value)
 }
 
 const handleSubmit = () => {

@@ -49,6 +49,7 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
       "status",
       "timestamp",
       "lastMessageTimestamp",
+      "forcedMode",
     ] as const,
     messageFields = ["id", "text", "sender", "timestamp"] as const,
     artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
@@ -75,7 +76,8 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
     instructions: currentThread.instructions || '',
     status: currentThread.status || 'backlog',
     timestamp: currentThread.timestamp || Date.now(),
-    messages: currentThread.id 
+    forcedMode: currentThread.forcedMode,
+    messages: currentThread.id
       ? (qx(currentThread.id)
           .linksPick(
             EARS.RelKind.CONTAINS,
@@ -172,8 +174,9 @@ export const agentQueries = {
         "instructions",
         "status",
         "timestamp",
+        "forcedMode",
       ] as const);
-    
+
     return {
       ...thread[0] as AgentThreadData,
       messages: qx(threadId)
@@ -317,6 +320,9 @@ export const agentCommands = {
       instructions: 'Welcome! This thread will help you get started with your new assistant.',
       tags: []
     });
+
+    // Set the forced mode to 'birth' for this special thread
+    tx(threadId).put('forcedMode', 'birth');
 
     // Create the todo artifact
     const artifactId = tx(EARS.Entity.Artifact)

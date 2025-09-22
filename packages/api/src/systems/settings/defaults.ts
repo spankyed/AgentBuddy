@@ -56,8 +56,17 @@ export const defaultSettings: SettingsData = {
     },
     agent: {
       modes: [
-        { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },
-        { id: 'work', name: 'Work', description: 'Implementation and coding mode' },
+        { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
+        {
+          id: 'work',
+          name: 'Work',
+          description: 'Implementation and coding mode',
+          phases: [
+            { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
+            { id: 'edit', name: 'Edit', description: 'Implementation and development' },
+            { id: 'review', name: 'Review', description: 'Code review and refinement' }
+          ]
+        },
         { id: 'chat', name: 'Chat', description: 'General conversation mode' },
         { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
       ],

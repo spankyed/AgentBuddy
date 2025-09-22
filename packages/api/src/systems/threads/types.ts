@@ -19,6 +19,7 @@ export interface ThreadEntity extends BaseEntity {
   shortCode?: string;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
+  forcedMode?: 'birth' | 'work' | 'chat' | 'note'; // Force a specific mode for this thread
 }
 
 export interface ArtifactEntity extends BaseEntity {

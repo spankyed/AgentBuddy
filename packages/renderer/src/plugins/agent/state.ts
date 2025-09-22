@@ -13,7 +13,7 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
-type AgentMode = 'plan' | 'work' | 'chat' | 'note';
+// Modes and phases are fully configurable through settings
 
 const defaultThread: AgentThreadData = {
   id: undefined,
@@ -34,7 +34,8 @@ interface AgentContext {
   statusColor: StatusColor;
   tabs: Tab[];
   activeTabId: string;
-  mode: AgentMode;
+  mode: string; // Current mode
+  phase: string; // Current phase (when mode has phases)
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   settings: AgentSettings;
@@ -58,7 +59,8 @@ type AgentEvent =
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
-  | { type: 'SET_MODE'; mode: AgentMode }
+  | { type: 'SET_MODE'; mode: string }
+  | { type: 'SET_PHASE'; phase: string }
   | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: ThreadEntity['status'] }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
@@ -101,6 +103,9 @@ const agentState = setup({
     setMode: assign(({ event }) => ({
       mode: typeOf('SET_MODE', event).mode
     })),
+    setPhase: assign(({ event }) => ({
+      phase: typeOf('SET_PHASE', event).phase
+    })),
     navigateToSecrets: ({ system }) => {
       // Navigate to settings plugin
       system.get(application).send({
@@ -118,11 +123,15 @@ const agentState = setup({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
+      // Send phase if mode has phases, otherwise send mode
+      const currentMode = context.modes.find(m => m.id === context.mode);
+      const modeValue = currentMode?.phases?.length ? context.phase : context.mode;
+
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
         text: typeOf('SEND_MESSAGE', event).text,
-        mode: context.mode,
+        mode: modeValue,
         threadId: context.currentThread?.id,
       });
     },
@@ -196,9 +205,10 @@ const agentState = setup({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).text
     // })),
     setThreadChatData: assign(({ event }) => {
-      const typedEvent = typeOf('LOAD_CHAT_THREAD', event);
+      const thread = typeOf('LOAD_CHAT_THREAD', event).data;
       return {
-        currentThread: typedEvent.data,
+        currentThread: thread,
+        ...(thread.forcedMode && { mode: thread.forcedMode })
       };
     }),
     setStartupData: assign(({ context, event }) => {
@@ -233,6 +243,7 @@ const agentState = setup({
         modes,
         settings,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
+        ...(typedEvent.data.currentThread?.forcedMode && { mode: typedEvent.data.currentThread.forcedMode })
       };
     }),
     
@@ -392,18 +403,12 @@ const agentState = setup({
     },
     
     switchMode: ({ context, self }) => {
-      // Use modes from context to determine cycle order
-      const modeIds = context.modes.map(m => m.id) as AgentMode[];
-      const currentIndex = modeIds.indexOf(context.mode);
-      const nextIndex = (currentIndex + 1) % modeIds.length;
-      const nextMode = modeIds[nextIndex];
-      
-      // Send SET_MODE event to update the mode
-      self.send({ type: 'SET_MODE', mode: nextMode });
-      
-      const nextModeName = context.modes.find(m => m.id === nextMode)?.name || nextMode;
-      const currentModeName = context.modes.find(m => m.id === context.mode)?.name || context.mode;
-      console.log(`[Agent] Switched mode from ${currentModeName} to ${nextModeName}`);
+      const visibleModes = context.modes.filter(m => !m.hidden);
+      if (!visibleModes.length) return;
+
+      const currentIndex = visibleModes.findIndex(m => m.id === context.mode);
+      const nextMode = visibleModes[(currentIndex + 1) % visibleModes.length];
+      self.send({ type: 'SET_MODE', mode: nextMode.id });
     },
   },
   guards: {
@@ -420,7 +425,8 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
     tabs: [],
     activeTabId: 'dashboard',
-    mode: 'chat' as AgentMode,
+    mode: 'work', // Default mode
+    phase: 'plan', // Default phase
     modes: [],
     hotkeys: {}, // Will be loaded from settings
     settings: { modes: [], hotkeys: {} }, // Will be loaded from settings
@@ -488,6 +494,9 @@ const agentState = setup({
     },
     SET_MODE: {
       actions: 'setMode',
+    },
+    SET_PHASE: {
+      actions: 'setPhase',
     },
     CLEAR_THREAD: {
       actions: 'clearThread'
