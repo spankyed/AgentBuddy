@@ -65,53 +65,18 @@
 
           </div>
 
-          <!-- Mode select (slightly left of center) -->
-          <select
-            v-if="!currentThread?.forcedMode"
-            :value="currentMode"
-            @change="handleModeChange"
-            class="absolute bottom-0 px-2 py-1 mb-2 text-center rounded-lg text-neutral-500 focus:outline-none bg-neutral-800"
-            :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
-            :style="{ left: currentModePhases.length > 0 ? '40%' : '50%', transform: 'translateX(-50%)' }"
-            :disabled="disabled"
-            :title="modes.find(m => m.id === currentMode)?.description"
-          >
-            <option
-              v-for="mode in visibleModes"
-              :key="mode.id"
-              :value="mode.id"
-              :title="mode.description"
-            >
-              {{ mode.name }}
-            </option>
-          </select>
-
-          <!-- Forced mode indicator -->
-          <div
-            v-if="currentThread?.forcedMode"
-            class="absolute bottom-0 px-3 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-400 bg-neutral-800 left-1/2"
-          >
-            {{ modes.find(m => m.id === currentThread.forcedMode)?.name || 'Birth' }}
+          <!-- Mode/Phase Selector -->
+          <div class="absolute bottom-0 mb-2 transform -translate-x-1/2 left-1/2">
+            <ModePhaseSelector
+              :modes="modes"
+              :current-mode="currentMode"
+              :current-phase="currentPhase"
+              :forced-mode="currentThread?.forcedMode"
+              :disabled="disabled"
+              @mode-change="handleModeChange"
+              @phase-change="handlePhaseChange"
+            />
           </div>
-
-          <!-- Phase select (centered, only if current mode has phases) -->
-          <select
-            v-if="currentModePhases.length > 0 && !currentThread?.forcedMode"
-            :value="currentPhase"
-            @change="handlePhaseChange"
-            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
-            :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
-            :disabled="disabled"
-          >
-            <option
-              v-for="phase in currentModePhases"
-              :key="phase.id"
-              :value="phase.id"
-              :title="phase.description"
-            >
-              {{ phase.name }}
-            </option>
-          </select>
         </div>
       </div>
     </form>
@@ -134,6 +99,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Square from './square-svg.vue'
 import Threads from './threads.vue'
+import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
@@ -254,9 +220,8 @@ const handleButtonClick = (action: string) => {
   emit(action)
 }
 
-const handleModeChange = (e: Event) => {
+const handleModeChange = (newMode: string) => {
   if (props.disabled) return
-  const newMode = (e.target as HTMLSelectElement).value
   emit('mode-change', newMode)
   // If the new mode has phases, also set mode to first phase
   const mode = props.modes.find(m => m.id === newMode)
@@ -265,9 +230,9 @@ const handleModeChange = (e: Event) => {
   }
 }
 
-const handlePhaseChange = (e: Event) => {
+const handlePhaseChange = (newPhase: string) => {
   if (props.disabled) return
-  emit('phase-change', (e.target as HTMLSelectElement).value)
+  emit('phase-change', newPhase)
 }
 
 const handleSubmit = () => {
