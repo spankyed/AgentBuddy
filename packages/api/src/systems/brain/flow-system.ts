@@ -134,78 +134,91 @@ export function createFlowNodeSystem(
       actions: {
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const eventType = event.type;
-          const eventNode = context.eventNodes.find(
+          // Get ALL event nodes matching this event type (not just the first)
+          const matchingEventNodes = context.eventNodes.filter(
             (n) => n.eventType === eventType,
           );
 
-          if (!eventNode) return;
+          if (matchingEventNodes.length === 0) return;
 
-          const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
+          // Process ALL matching event nodes
+          let spawnedCount = 0;
 
-          if (!firstStep) {
-            brainLogger.warn(`Failed to handle event ${eventType}: No first step found to execute in response`);
-            return;
+          for (const eventNode of matchingEventNodes) {
+            const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
+
+            if (!firstStep) {
+              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No first step found to execute in response`);
+              continue; // Skip this event node but process others
+            }
+
+            const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
+
+            // Create execution context with cleaner structure
+            // Handle flow.entry events specially - they have a 'data' property we need to unwrap
+            const { type, ...eventPayload } = event;
+            const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
+
+            // Store event payload directly as nodeAttributes for event TNodes
+            // Use the full eventData if no specific payload property exists
+            const payloadToStore = eventData.payload !== undefined ? eventData.payload : eventData;
+            repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
+
+            // Emit TNODE_SPAWNED event for UI to display event TNode
+            system.get(brain).send({
+              type: 'TNODE_SPAWNED',
+              tNode: eventTNode,
+              parentId: flowTNodeId,
+              eventTNodeId: eventTNode.id,
+              flowTNodeId: flowTNodeId
+            });
+
+            const eventTrackContext: ExecutionContext = {
+              event: {
+                type: eventType,
+                data: eventData,
+                timestamp: Date.now(),
+              },
+              steps: [],
+              lastStep: undefined,
+            };
+
+            brainDebug(`${context.flowId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
+              { eventData, eventNodeId: eventNode.id }
+            );
+
+            // Spawn child based on node type
+            const [machine, systemId, childTNode] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
+            enqueue.spawnChild(machine, {
+              systemId,
+            });
+
+            // Emit TNODE_SPAWNED event for the UI to display child node
+            system.get(brain).send({
+              type: 'TNODE_SPAWNED',
+              tNode: childTNode,
+              parentId: eventTNode.id,
+              eventTNodeId: eventTNode.id,
+              flowTNodeId: flowTNodeId
+            });
+
+            // Store the execution context for this event track
+            enqueue.assign({
+              eventTrackContexts: ({ context }) => ({
+                ...context.eventTrackContexts,
+                [eventTNode.id]: eventTrackContext,
+              }),
+            });
+
+            spawnedCount++;
           }
 
-          const eventTNode = repository.brainCommands.createEventTNode(eventNode, flowTNodeId);
-
-          // Create execution context with cleaner structure
-          // Handle flow.entry events specially - they have a 'data' property we need to unwrap
-          const { type, ...eventPayload } = event;
-          const eventData = 'data' in eventPayload ? eventPayload.data : eventPayload;
-
-          // Store event payload directly as nodeAttributes for event TNodes
-          // Use the full eventData if no specific payload property exists
-          const payloadToStore = eventData.payload !== undefined ? eventData.payload : eventData;
-          repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
-
-          // Emit TNODE_SPAWNED event for UI to display event TNode
-          system.get(brain).send({
-            type: 'TNODE_SPAWNED',
-            tNode: eventTNode,
-            parentId: flowTNodeId,
-            eventTNodeId: eventTNode.id,
-            flowTNodeId: flowTNodeId
-          });
-
-          const eventTrackContext: ExecutionContext = {
-            event: {
-              type: eventType,
-              data: eventData,
-              timestamp: Date.now(),
-            },
-            steps: [],
-            lastStep: undefined,
-          };
-
-          brainDebug(`${context.flowId} received event: ${eventType}. Will begin handling.`,
-            { eventData }
-          );
-
-          // Spawn child based on node type
-          const [machine, systemId, childTNode] = createChildNode(firstStep, eventTNode.id, eventTrackContext);
-          enqueue.spawnChild(machine, {
-            systemId,
-          });
-
-          // Emit TNODE_SPAWNED event for the UI to display child node
-          system.get(brain).send({
-            type: 'TNODE_SPAWNED',
-            tNode: childTNode,
-            parentId: eventTNode.id,
-            eventTNodeId: eventTNode.id,
-            flowTNodeId: flowTNodeId
-          });
-
-
-          // Store the execution context for this event track and increment child count
-          enqueue.assign({
-            eventTrackContexts: ({ context }) => ({
-              ...context.eventTrackContexts,
-              [eventTNode.id]: eventTrackContext,
-            }),
-            activeChildrenCount: ({ context }) => context.activeChildrenCount + 1,
-          });
+          // Update activeChildrenCount for all spawned children at once
+          if (spawnedCount > 0) {
+            enqueue.assign({
+              activeChildrenCount: ({ context }) => context.activeChildrenCount + spawnedCount,
+            });
+          }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
           brainDebug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
