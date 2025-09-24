@@ -1,8 +1,8 @@
 <template>
-  <BaseForm 
+  <BaseForm
     v-if="node"
     :node="node"
-    @update-label="$emit('update-node', { label: $event })"
+    @update-node="$emit('update-node', $event)"
     @close="$emit('close')"
   >
     <div>
