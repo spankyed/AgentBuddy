@@ -132,13 +132,11 @@ const brainState = setup({
     }),
     addTNodeToTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_SPAWNED') return {};
-      
+
       const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
-      
-      // Only add nodes that belong to the currently viewed flow
-      if (flowTNodeId !== context.flowTNodeId) {
-        return {}; // Ignore events from other flows
-      }
+
+      // Note: We now accept all events regardless of flow to ensure real-time updates
+      // The view context is maintained separately
       
       if (!context.normalizedTree) {
         // Initialize if not present
@@ -433,16 +431,18 @@ const brainState = setup({
           actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
-          actions: ['pulseEvent', ({ system }) => {
+          actions: ['pulseEvent', ({ system, context }) => {
             // Clear pulse after animation
             setTimeout(() => {
               system.get(id).send({ type: 'CLEAR_PULSE' });
             }, 400);
-            // Also request fresh data to show the new event
+            // Request fresh data for the current flow to show new events
+            // Pass the current flowTNodeId to maintain the current view
             setTimeout(() => {
               trpc.bus.send.mutate({
                 systemId: id,
-                type: 'REQUEST_PLUGIN_DATA'
+                type: 'REQUEST_PLUGIN_DATA',
+                ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
               });
             }, 100);
           }]

@@ -23,7 +23,7 @@ const busEvent = systemBus(brain);
 export const IncomingBrainEvents = [
   busEvent('OPEN_TNODE', { tNodeId: z.string() }),
   busEvent('GO_BACK_TNODE', {}),
-  busEvent('REQUEST_PLUGIN_DATA', {}),
+  busEvent('REQUEST_PLUGIN_DATA', { flowTNodeId: z.string().optional() }),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
   busEvent('TOGGLE_DEBUG', {}),
   busEvent('START_BRAIN', {}),
@@ -254,21 +254,28 @@ export const brainSystem = setup({
         };
       });
     }),
-    sendPluginData: ({ system, context }) => {
-      const data = repository.brainQueries.rootData();
-      
-      system.get(bus).send(emit(brain, { 
+    sendPluginData: ({ system, context, event }) => {
+      // Use provided flowTNodeId or fall back to root
+      const flowId = event.type === 'REQUEST_PLUGIN_DATA' && event.flowTNodeId
+        ? event.flowTNodeId as EARS.EntityId
+        : undefined;
+
+      const data = flowId
+        ? repository.brainQueries.extendedTNodeData(flowId)
+        : repository.brainQueries.rootData();
+
+      system.get(bus).send(emit(brain, {
         type: 'RECEIVE_PLUGIN_DATA',
         data
       }));
-      
+
       // Send current brain state
       if (context.brainActor) {
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'BRAIN_STARTED'
         }));
       } else {
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'BRAIN_KILLED'
         }));
       }
@@ -276,16 +283,16 @@ export const brainSystem = setup({
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
-      
+
       // Check if this is a flow TNode before trying to get extended data
       const tNode = repository.brainQueries.tNodeById(tNodeId);
       if (!tNode || tNode.tNodeType !== 'flow') {
         // Silently ignore non-flow TNodes
         return;
       }
-      
+
       const data = repository.brainQueries.extendedTNodeData(tNodeId);
-      
+
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
         tNodeId,
@@ -294,7 +301,7 @@ export const brainSystem = setup({
     },
     goBackTNode: ({ system, context }) => {
       const data = repository.brainQueries.rootData();
-      
+
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
         tNodeId: data.flowTNodeId,
