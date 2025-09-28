@@ -46,6 +46,7 @@
     "fastembed": "^1.14.1",
     "fastify": "^5.3.2",
     "fs-extra": "^11.3.1",
+    "graceful-fs": "^4.2.11",
     "lmdb": "^3.4.2",
     "node-pty": "^1.0.0",
     "openai": "^4.100.0",
