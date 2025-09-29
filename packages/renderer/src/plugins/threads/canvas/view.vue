@@ -2,12 +2,15 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-900">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
-        <p class="text-xs text-neutral-400">
-          <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
-          {{ topic || 'Untitled thread' }}
-        </p>
+      <div class="flex items-center gap-3">
+        <BackButton @click="actor.send({ type: 'VIEW_LIST' })" />
+        <div>
+          <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
+          <p class="text-xs text-neutral-400">
+            <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
+            {{ topic || 'Untitled thread' }}
+          </p>
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <Button
@@ -181,6 +184,7 @@ import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
+import BackButton from '@/core/components/design/back-button.vue'
 import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
