@@ -77,6 +77,7 @@
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+              @delete-click="handleDeleteThread"
             />
           </tbody>
         </table>
@@ -137,4 +138,15 @@ const paginatedThreads = computed(() => {
 })
 
 const searchKeyword = ref('');
+
+const handleDeleteThread = (threadId: string) => {
+  const thread = threads.value.find(t => t.id === threadId);
+  if (!thread) return;
+
+  const confirmed = confirm(`Are you sure you want to delete thread "${thread.topic || 'Untitled'}"? This will permanently delete all messages and other data associated .`);
+
+  if (confirmed) {
+    actor.send({ type: 'DELETE_THREAD', threadId });
+  }
+};
 </script>

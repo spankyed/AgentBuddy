@@ -171,4 +171,44 @@ export const threadCommands = {
       updatedAt: Date.now()
     });
   },
+
+  delete: (id: EARS.EntityId): void => {
+    if (!threadQueries.byId(id)) {
+      throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    // 1. Delete all messages linked to this thread
+    const messages = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message).ids();
+    for (const messageId of messages) {
+      tx(messageId).destroy();
+    }
+
+    // 2. Remove all thread relationships (parent_of, blocks, blocked_by, duplicates)
+    // First, unlink this thread from any threads it links to
+    const existingLinks = qx(id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+    for (const link of existingLinks) {
+      tx(id).unlinkIf(EARS.RelKind.Custom(link.relation), link.id);
+    }
+
+    // Also unlink any threads that link to this thread
+    // Find threads that have this thread as a linked thread
+    const allThreads = findAll<ThreadEntity>(EARS.Entity.Thread);
+    for (const thread of allThreads) {
+      const linkedToThis = qx(thread.id).links(['parent_of', 'blocks', 'blocked_by', 'duplicates']);
+      for (const link of linkedToThis) {
+        if (link.id === id) {
+          tx(thread.id).unlinkIf(EARS.RelKind.Custom(link.relation), id);
+        }
+      }
+    }
+
+    // 3. Delete any artifacts linked to this thread
+    const artifacts = qx().relatedTo(id).ofType(EARS.Entity.Artifact).ids();
+    for (const artifactId of artifacts) {
+      tx(artifactId).destroy();
+    }
+
+    // 4. Finally, delete the thread entity itself
+    tx(id).destroy();
+  },
 } as const;
