@@ -25,7 +25,7 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      mode: "entry",
+      scope: "global",
       eventType: "chat.message",
     },
     {
@@ -34,7 +34,7 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 890,
       nodeType: "listen",
       label: "System Events",
-      mode: "internal",
+      scope: "local",
       eventType: "system.*",
     },
 

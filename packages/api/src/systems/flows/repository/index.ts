@@ -16,6 +16,7 @@ import type {
   FlowsConnectedData 
 } from '../config/types';
 import { availableModels } from '../config/available-models';
+import { createNodeDefaults } from '../config/node-config';
 import { repository } from '@/repository';
 
 const logger = createLogger('flows-repository');
@@ -44,7 +45,7 @@ export const FLOW_ENTRY_NODE = {
   TYPE: 'listen' as const,
   LABEL: 'Flow Entry',
   COLOR: '#1E88E5',
-  MODE: 'entry' as const,
+  SCOPE: 'entry' as const,
   EVENT_TYPE: 'flow.entry',
 } as const;
 
@@ -287,7 +288,7 @@ export const flowsCommands = {
       nodeType: FLOW_ENTRY_NODE.TYPE,
       label: FLOW_ENTRY_NODE.LABEL,
       color: FLOW_ENTRY_NODE.COLOR,
-      mode: FLOW_ENTRY_NODE.MODE,
+      scope: FLOW_ENTRY_NODE.SCOPE,
       eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
     } as Partial<NodeEntity>);
     
@@ -302,22 +303,31 @@ export const flowsCommands = {
   
   createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity => {
     const ts = getTimestamp();
-    
+
     // Determine node type (default to 'action' if not specified)
     const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
-    
+
+    // Get default values for this node type
+    const defaults = createNodeDefaults(nodeType);
+
     // Extract relations and attributes based on node type
     const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
-    
+
+    // Merge defaults with provided attributes (provided attributes take precedence)
+    const mergedAttributes = {
+      ...defaults,
+      ...attributes,
+      label: attributes.label || defaults.label || NODE_DEFAULTS.LABEL,
+      description: attributes.description || defaults.description || NODE_DEFAULTS.DESCRIPTION,
+    };
+
     // Ensure the node has the required fields
     const newNode: Omit<NodeEntity, 'id'> = {
+      ...mergedAttributes,
       entityType: EARS.Entity.Node,
       nodeType,
-      label: attributes.label || NODE_DEFAULTS.LABEL,
-      description: attributes.description || NODE_DEFAULTS.DESCRIPTION,
       createdAt: ts,
       updatedAt: ts,
-      ...attributes,
     } as Omit<NodeEntity, 'id'>;
 
     // Create the node

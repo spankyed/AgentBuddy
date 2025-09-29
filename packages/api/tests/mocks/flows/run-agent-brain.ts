@@ -27,7 +27,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Flow Entry",
-      mode: "entry",
+      scope: "entry",
       eventType: "flow.entry",
     },
     {
@@ -36,7 +36,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      mode: "internal",
+      scope: "local",
       eventType: "user.message",
       // Expected event structure: { type: "user.message", payload: "message text", userId?: "123", context?: "additional info" }
     },
@@ -46,7 +46,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Database Query Prompt",
-      mode: "internal",
+      scope: "local",
       eventType: "database.query.prompt",
     },
     /* First Steps (connected via TRANSITIONS_TO) */

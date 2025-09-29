@@ -583,7 +583,7 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    mode: 'entry' | 'internal';
+    scope: 'global' | 'local' | 'entry';
 }
 interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;
@@ -3331,10 +3331,9 @@ interface FireNode extends NodeBase {
 }
 interface ListenNode extends NodeBase {
     nodeType: 'listen';
-    mode: 'entry' | 'internal';
+    scope: 'global' | 'local' | 'entry';
     eventType: string;
     debounceMs?: number;
-    scope?: 'local' | 'global';
 }
 interface TransformNode extends NodeBase {
     nodeType: 'transform';

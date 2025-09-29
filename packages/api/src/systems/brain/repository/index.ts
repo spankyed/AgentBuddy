@@ -164,7 +164,7 @@ export const brainQueries = {
       nodeId: node.id!,
       eventType: node.eventType,
       label: node.label,
-      mode: node.mode
+      scope: node.scope
     }));
   },
   
@@ -421,12 +421,12 @@ export const brainCommands = {
     const eventNodes = brainQueries.flowEventNodes(rootFlow.id);
 
     // Find the entry event node
-    const entryNode = eventNodes.find(node => node.mode === ENTRY_EVENT_MODE);
+    const entryNode = eventNodes.find(node => node.scope === ENTRY_EVENT_MODE);
 
     if (!entryNode) {
       throw new Error(
         `Cannot create root flow TNode: No entry event node found in root flow. ` +
-        `Found ${eventNodes.length} event nodes but none with mode='entry'`
+        `Found ${eventNodes.length} event nodes but none with scope='entry'`
       );
     }
 
