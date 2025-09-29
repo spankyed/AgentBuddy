@@ -44,13 +44,22 @@ export { envs, policy, persistence };
 
 // Graceful shutdown function
 export function closePersistence() {
-  persistence.close?.();
-  closeShardedEnvs(envs);
+  try {
+    persistence.close?.();
+    closeShardedEnvs(envs);
+  } catch (error) {
+    // Log unexpected errors but don't throw
+    if (error instanceof Error &&
+        !error.message?.includes('Dbi is not open') &&
+        !error.message?.includes('already been closed')) {
+      console.warn('[Persistence] Non-critical close error:', error.message);
+    }
+  }
 }
 
 // Reinitialize LMDB after import
 export function reinitializeLmdb() {
-  // Close existing connections
+  // Always try to close (errors are ignored)
   closePersistence();
 
   // Reopen environments
@@ -66,7 +75,7 @@ export function reinitializeLmdb() {
     volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
     secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
   };
-  
+
   // Recreate persistence
   persistence = makeShardedPersistence(policy, sinks);
 }
