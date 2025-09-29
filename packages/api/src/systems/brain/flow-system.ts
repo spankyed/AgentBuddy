@@ -96,6 +96,7 @@ export function createFlowNodeSystem(
         eventTNodeId,
         executionContext
       );
+      console.log('[DEBUG] eventNodes: ', eventNodes);
       return {
         actualFlowId: flowId,
         flowTNodeId: flowTNode.id,
@@ -138,6 +139,7 @@ export function createFlowNodeSystem(
           const matchingEventNodes = context.eventNodes.filter(
             (n) => n.eventType === eventType,
           );
+          console.log('[DEBUG] matchingEventNodes: ', matchingEventNodes);
 
           if (matchingEventNodes.length === 0) return;
 
