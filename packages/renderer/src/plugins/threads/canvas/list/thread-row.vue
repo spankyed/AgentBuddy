@@ -59,7 +59,8 @@
           aria-label="Open chat"
           title="Open in chat"
         >
-          <MessageCircleMore class="ml-2 w-4 h-4"/>
+          Open in Chat
+          <!-- <MessageCircleMore class="ml-2 w-4 h-4"/> -->
         </button>
         <div class="w-px h-4 bg-neutral-700"></div>
         <button
