@@ -61,6 +61,7 @@
         >
           <MessageCircleMore class="ml-2 w-4 h-4"/>
         </button>
+        <div class="w-px h-4 bg-neutral-700"></div>
         <button
           @click.stop="$emit('delete-click', thread.id)"
           type="button"
