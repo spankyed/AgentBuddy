@@ -1,6 +1,7 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { sendToBrainSystem } from '@/services/event-emitter';
 
 /**
  * Handle execution of a fire node
@@ -13,28 +14,47 @@ export function fireNodeHandler(
   actor: any
 ) {
   const fireConfig = tNode.nodeAttributes || {};
-  
+
   if (!fireConfig.eventType) {
     brainLogger.error(`Fire node ${node.id} missing eventType`);
     actor.send({ type: 'ERROR', error: 'Missing eventType' });
     return;
   }
-  
-  brainDebug(`Firing event: ${fireConfig.eventType}`, {
-    scope: fireConfig.scope || 'local',
-    hasPayload: !!fireConfig.payload
+
+  const scope = fireConfig.scope || 'local';
+  const eventType = fireConfig.eventType as string;
+  const payload = fireConfig.payload;
+
+  brainDebug(`Firing event: ${eventType}`, {
+    scope,
+    hasPayload: !!payload,
+    flowTNodeId: executionContext.flowTNodeId
   });
-  
-  // TODO: Implement actual event firing based on scope
-  // For now, just simulate completion
-  setTimeout(() => {
-    actor.send({ 
-      type: 'COMPLETE', 
-      result: { 
-        eventFired: fireConfig.eventType,
-        eventScope: fireConfig.scope || 'local',
-        payload: fireConfig.payload
-      } 
+
+  // Determine targetFlowId based on scope
+  // For local events, use flowTNodeId (instance ID) for routing
+  const targetFlowId = scope === 'local' ? executionContext.flowTNodeId : undefined;
+
+  try {
+    // Send TRIGGER_BRAIN_EVENT via internal event emitter
+    sendToBrainSystem({
+      eventType,
+      payload,
+      targetFlowId
     });
-  }, 100);
+
+    // Complete the fire node execution
+    actor.send({
+      type: 'COMPLETE',
+      result: {
+        eventFired: eventType,
+        eventScope: scope,
+        targetFlowId,
+        payload
+      }
+    });
+  } catch (error) {
+    brainLogger.error('Failed to fire event:', { eventType, error });
+    actor.send({ type: 'ERROR', error: 'Failed to fire event' });
+  }
 } 
