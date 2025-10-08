@@ -2,6 +2,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
 import { edgeStore } from '@/core/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
+import { createLogger } from '@/core/utils/debug/logger'
 import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection } from '../types'
 import * as searchIndexRepo from '../search-index/repository'
 import { libraryQueries } from './queries'
@@ -17,6 +18,8 @@ import {
   getContentLength,
   getItemsForReordering
 } from './helpers'
+
+const logger = createLogger('library')
 
 export const libraryCommands = {
   createDocument(
@@ -55,7 +58,12 @@ export const libraryCommands = {
     const document = libraryQueries.getDocument(documentId)
 
     // Auto-index in search indices (fire and forget)
-    searchIndexRepo.autoIndexNewDocument(documentId)
+    searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
+      logger.error('Failed to auto-index new document', {
+        documentId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
 
     return document!
   },
@@ -109,10 +117,15 @@ export const libraryCommands = {
     // If collectionId is undefined, we keep the document in its current collection
 
     const document = libraryQueries.getDocument(documentId)
-    
+
     // Re-index in search indices (fire and forget)
-    searchIndexRepo.autoIndexNewDocument(documentId)
-    
+    searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
+      logger.error('Failed to re-index updated document', {
+        documentId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+
     return document!
   },
 

@@ -3,6 +3,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
 import { EARS } from '@/core/types'
 import { randomId } from '@/core/utils/random-id'
+import { createLogger } from '@/core/utils/debug/logger'
 import type {
   SearchIndex,
   SearchIndexConfig,
@@ -16,6 +17,8 @@ import type {
 import type { DocumentDTO } from '@/systems/library/types'
 import * as searchService from './service'
 import { libraryQueries, libraryCommands } from '@/systems/library/repository'
+
+const logger = createLogger('search-index')
 
 // In-memory cache for frequently accessed indices
 const indexCache = new Map<string, Index>()
@@ -148,13 +151,23 @@ async function indexDocumentsBatch(
   }
   
   if (!chunks.length) return 0
-  
+
   // Batch embed all texts
-  const embeddings = await searchService.embedTextsBatch(
-    chunks.map(c => c.text),
-    searchIndex.embeddingModel
-  )
-  
+  let embeddings
+  try {
+    embeddings = await searchService.embedTextsBatch(
+      chunks.map(c => c.text),
+      searchIndex.embeddingModel
+    )
+  } catch (error) {
+    logger.error('Failed to generate embeddings for documents', {
+      error: error instanceof Error ? error.message : String(error),
+      modelId: searchIndex.embeddingModel,
+      chunkCount: chunks.length
+    })
+    throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
   // Prepare batch insertion arrays
   const dim = embeddings[0].embedding.length
   const keys = new BigUint64Array(chunks.length)
@@ -493,10 +506,20 @@ export async function searchInIndex(
     index = await searchService.loadIndex(searchService.getIndexPath(indexId), searchIndex)
     indexCache.set(indexId, index)
   }
-  
+
   // Embed the query
-  const queryEmbedding = await searchService.embedText(query, searchIndex.embeddingModel)
-  
+  let queryEmbedding
+  try {
+    queryEmbedding = await searchService.embedText(query, searchIndex.embeddingModel)
+  } catch (error) {
+    logger.error('Failed to generate embedding for search query', {
+      error: error instanceof Error ? error.message : String(error),
+      modelId: searchIndex.embeddingModel,
+      query
+    })
+    throw new Error(`Failed to generate search query embedding: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
   // Search
   const results = index.search(queryEmbedding.embedding, limit)
   
