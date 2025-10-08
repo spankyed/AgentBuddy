@@ -79,14 +79,12 @@ const typeOf = safeEvents<ChildCompletedEvent>();
  * @param stepOrFlowNode - The node entity to create
  * @param eventTNodeId - The event track node ID that spawned this node
  * @param executionContext - The execution context for the step
- * @param hasParent - Whether this child has a parent flow (for child flows)
  * @returns Tuple of [machine, systemId, tNode]
  */
 function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
-  hasParent: boolean = false,
 ) {
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
@@ -94,7 +92,7 @@ function createChildNode(
 
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId, tNode } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, hasParent)
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true)
     : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
@@ -233,13 +231,11 @@ export function createFlowNodeSystem(
               { eventData, eventNodeId: eventNode.id }
             );
 
-            // Spawn child based on node type (pass true if it's a flow to indicate it has a parent)
-            const isFlow = firstStep.nodeType === 'flow';
+            // Spawn child based on node type
             const [machine, systemId, childTNode] = createChildNode(
               firstStep,
               eventTNode.id,
-              eventTrackContext,
-              isFlow
+              eventTrackContext
             );
 
             // Spawn child (both flows and steps)
@@ -342,19 +338,10 @@ export function createFlowNodeSystem(
             // Spawn next node if there is one (stepId guaranteed to exist here due to hasNextNode check)
             const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId!);
 
-            // brainDebug(`Spawning next node after ${typedEv.stepId}:`, {
-            //   nextNodeId: nextNode?.id,
-            //   nextNodeType: nextNode?.nodeType,
-            //   nextNodeLabel: nextNode?.label,
-            //   eventTNodeId: typedEv.eventTNodeId
-            // });
-
-            const isNextFlow = nextNode.nodeType === 'flow';
             const [nextMachine, nextSystemId, nextTNode] = createChildNode(
               nextNode,
               typedEv.eventTNodeId,
-              updatedContext,
-              isNextFlow ? true : false
+              updatedContext
             );
 
             // Spawn next child (both flows and steps)
