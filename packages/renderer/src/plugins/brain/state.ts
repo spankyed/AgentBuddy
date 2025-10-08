@@ -135,9 +135,12 @@ const brainState = setup({
 
       const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
 
-      // Note: We now accept all events regardless of flow to ensure real-time updates
-      // The view context is maintained separately
-      
+      // Filter: Only accept TNode spawns for the currently viewed flow
+      // This prevents subflow internal events from appearing in parent flow view
+      if (flowTNodeId !== context.flowTNodeId) {
+        return {};
+      }
+
       if (!context.normalizedTree) {
         // Initialize if not present
         return {
