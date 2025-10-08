@@ -387,21 +387,6 @@ export const brainSystem = setup({
         });
       }
     },
-    // handleEventReceived: ({ system, event, context }) => {
-    //   if (event.type === 'TRACE_EVENT_RECEIVED') {
-    //     // Pulse the event in UI
-    //     system.get(bus).send(emit(brain, {
-    //       type: 'EVENT_PULSE',
-    //       eventType: event.data.eventType
-    //     }));
-
-    //     // Forward event to brain runner
-    //     system.get(brainBus).send({
-    //       type: event.data.eventType,
-    //       payload: event.data.payload
-    //     });
-    //   }
-    // },
   },
 }).createMachine(
   {

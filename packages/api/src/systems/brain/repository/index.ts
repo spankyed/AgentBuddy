@@ -2,10 +2,10 @@ import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { descendants } from '@/core/ears/helpers/graph';
-import type { 
-  FlowTNodeData, 
-  TNodeEntity, 
-  TrackEntity, 
+import type {
+  FlowTNodeData,
+  TNodeEntity,
+  TrackEntity,
   EventListenerEntity,
   TNodeUpdate,
   ExecutionContext
@@ -13,6 +13,7 @@ import type {
 import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
+import { brainLogger } from '../utils/brain-debug';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context
@@ -509,12 +510,12 @@ export const brainCommands = {
   clearVolatileData: (): void => {
     // Get all TNode entities (volatile execution data)
     const allTNodes = qx(EARS.Entity.TNode).ids();
-    
+
     // Destroy each TNode entity without persisting (volatile data)
     allTNodes.forEach(tNodeId => {
       tx(tNodeId).destroy(true); // skip persistence for volatile data
     });
-    
-    console.log(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
+
+    brainLogger.info(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
   },
 } as const;

@@ -130,7 +130,6 @@ export function createFlowNodeSystem(
         eventTNodeId,
         executionContext
       );
-      console.log('[DEBUG] eventNodes: ', eventNodes);
       return {
         actualFlowId: flowId,
         flowTNodeId: flowTNode.id,
@@ -140,7 +139,6 @@ export function createFlowNodeSystem(
     })();
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
-
 
   const eventHandlers: Record<string, any> = {};
 
@@ -178,12 +176,7 @@ export function createFlowNodeSystem(
           brainDebug(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
-          console.log('handleTrackEvent: ', {
-            event,
-            eventNodes: context.eventNodes,
-          });
           const typedEv = event as { type: string; [key: string]: any };
-
           const eventType = typedEv.type;
 
           // Get ALL event nodes matching this event type (not just the first)
@@ -246,7 +239,7 @@ export function createFlowNodeSystem(
               firstStep,
               eventTNode.id,
               eventTrackContext,
-              isFlow ? true : false
+              isFlow
             );
 
             // Spawn child (both flows and steps)
