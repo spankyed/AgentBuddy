@@ -26,16 +26,17 @@ type ActionNode = NodeEntity & ActionNodeConfig;
 async function executeActionFunction(
   actionFn: string,
   params: Record<string, any>,
+  flowTNodeId: string,
 ): Promise<any> {
   try {
-    // Create a function that has access to services, params, and zod
+    // Create a function that has access to services, params, flowId (instance ID), and zod
     const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-    const func = new AsyncFunction('params', 'services', 'z', actionFn);
-    
-    // Execute the function with params, services, and zod
+    const func = new AsyncFunction('params', 'services', 'z', 'flowId', actionFn);
+
+    // Execute the function with params, services, zod, and flowId (which is actually the instance ID)
     const services = getServices();
-    const result = await func(params, services, z);
-    
+    const result = await func(params, services, z, flowTNodeId);
+
     return result;
   } catch (error) {
     brainLogger.error('Action function execution failed:', error as any);
@@ -88,11 +89,12 @@ export async function actionNodeHandler(
     }
     
     brainDebug(`Executing action with resolved params:`, params);
-    
+
     // Execute the action function
     const result = await executeActionFunction(
       action.actionFn,
       params,
+      executionContext.flowTNodeId,
     );
     
     brainDebug(`Action completed successfully:`, {

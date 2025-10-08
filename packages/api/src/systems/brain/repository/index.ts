@@ -79,8 +79,8 @@ export const brainQueries = {
   flowEventNodes: (flowId: EARS.EntityId): ListenNode[] => {
     return qx(flowId)
       .linksPick(
-        EARS.RelKind.EVENT_TRACE,
-        ["id", "nodeType", "label", "eventType", "mode"] as const,
+        EARS.RelKind.CONTAINS,
+        ["id", "nodeType", "label", "eventType", "scope"] as const,
         [EARS.Entity.Node]
       )
       .filter(isListenNode);

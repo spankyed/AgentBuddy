@@ -73,13 +73,14 @@ export interface ExecutionEvent {
 }
 
 export interface StepRun {
-  id: string;
+  id?: string;               // Trace TNode ID (for linking to execution trace)
   label: string;
   result: unknown;
   timestamp: TimestampMs;
 }
 
 export interface ExecutionContext {
+  flowTNodeId: EARS.EntityId;     // Flow instance ID (for routing & action functions)
   event: ExecutionEvent;
   steps: StepRun[];
   lastStep?: Omit<StepRun, 'timestamp'>;
@@ -128,7 +129,7 @@ export const ContextPaths = {
   STEPS: '$.steps' as const,
 
   // Helper functions (return the same string shapes as before)
-  stepById: (stepId: string): JsonPath => `$.steps[id=${stepId}].result`,
+  stepById: (tNodeId: string): JsonPath => `$.steps[id=${tNodeId}].result`,
   stepByLabel: (label: string): JsonPath => `$.steps[label=${label}].result`,
 } as const;
 

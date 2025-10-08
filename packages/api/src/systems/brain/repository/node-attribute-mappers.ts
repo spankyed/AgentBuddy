@@ -43,7 +43,7 @@ function extractValueByPath(source: any, path: string): any {
   for (const segment of segments) {
     if (current == null) return undefined;
 
-    // steps[id=123] / steps[label=Process User Message]
+    // steps[id=TNode-123] / steps[label=Process User Message]
     const selector = segment.match(/^(\w+)\[(\w+)=([^\]]+)\]$/);
     if (selector) {
       const [, arrayName, field, value] = selector;

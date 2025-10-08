@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
-import { createFlowNodeSystem } from './flow-system';
+import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
 
@@ -29,12 +29,16 @@ export const IncomingBrainEvents = [
   busEvent('START_BRAIN', {}),
   busEvent('KILL_BRAIN', {}),
   busEvent('RESTART_BRAIN', {}),
+  busEvent('TRIGGER_BRAIN_EVENT', {
+    eventType: z.string(),
+    payload: z.any().optional(),
+    targetFlowId: z.string().optional()
+  }),
 ] as const
 
-export type BrainInternalEvents = 
+export type BrainInternalEvents =
   | SystemEvents
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
-  | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
@@ -333,9 +337,7 @@ export const brainSystem = setup({
     },
     triggerBrainEvent: ({ system, event, context }) => {
       const ev = typeOf('TRIGGER_BRAIN_EVENT', event);
-      const { eventType, payload } = ev;
-      // const brainActor = getActor(system, brainBus);
-      const brainActor = system.get(brainBus);
+      const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
       system.get(bus).send(emit(brain, {
@@ -343,13 +345,46 @@ export const brainSystem = setup({
         eventType: eventType
       }));
 
-      if (brainActor && brainActor.send) {
-        brainActor.send({
-          type: eventType,
-          payload
-        });
+      // Handle local vs global events
+      if (targetFlowId) {
+        // LOCAL EVENT: Send to specific flow only
+        const targetActor = getFlowActor(targetFlowId as EARS.EntityId);
+
+        if (targetActor?.send) {
+          targetActor.send({
+            type: eventType,
+            payload,
+            targetFlowId
+          });
+        } else {
+          logger.error(`Target flow actor not found: ${eventType}`, { targetFlowId });
+        }
       } else {
-        console.error(`Brain actor is not available or has terminated. Cannot send event: ${eventType}`);
+        // GLOBAL EVENT: Broadcast to ALL registered flow actors
+        const allFlowActors = getAllFlowActors();
+        const allFlowActorIds = getAllFlowActorIds();
+
+        if (allFlowActors.length === 0) {
+          logger.warn(`No flow actors registered to receive global event: ${eventType}`);
+          return;
+        }
+
+        logger.info(`Broadcasting global event "${eventType}" to ${allFlowActors.length} flow actors`, {
+          eventType,
+          actorCount: allFlowActors.length,
+          flowActorIds: allFlowActorIds
+        });
+
+        // Send to all flow actors (including root and all children)
+        allFlowActors.forEach(actor => {
+          if (actor?.send) {
+            actor.send({
+              type: eventType,
+              payload,
+              // No targetFlowId for global events
+            });
+          }
+        });
       }
     },
     // handleEventReceived: ({ system, event, context }) => {
