@@ -294,10 +294,7 @@ export const flowsCommands = {
     
     // Establish entry node role
     tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT).id();
-    
-    // Create EVENT_TRACE relationship from flow to entry node
-    tx(newFlow.id).link(EARS.RelKind.EVENT_TRACE, entryNode.id);
-    
+
     return { flow: newFlow, entryNode };
   },
   
@@ -470,18 +467,7 @@ export const flowsCommands = {
         targetEntity: nodeId,
       });
       containsRelIds.forEach(relId => removeRelation(relId));
-      
-      // Remove EVENT_TRACE relationship if it exists (for listen nodes)
-      const currentNode = flowsQueries.node(nodeId);
-      if (currentNode?.nodeType === 'listen') {
-        const eventTraceRelIds = edgeStore.relIds({
-          sourceEntity: flowId,
-          relationType: EARS.RelKind.EVENT_TRACE,
-          targetEntity: nodeId,
-        });
-        eventTraceRelIds.forEach(relId => removeRelation(relId));
-      }
-      
+
       // Remove INSTANCE_OF relationships (for action/llm nodes)
       const instanceOfTargets = qx(nodeId)
         .links(EARS.RelKind.INSTANCE_OF)

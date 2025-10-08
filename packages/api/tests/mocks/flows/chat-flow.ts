@@ -157,9 +157,6 @@ export const chatFlow: Rows = {
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b10", info: {} },
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b11", info: {} },
 
-    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b1", info: {} },
-    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b2", info: {} },
-
     /* Listen node outputs */
     { source: "Node-b1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b3", info: {} },
     // { source: "Node-b1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: {} },

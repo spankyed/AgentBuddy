@@ -165,10 +165,6 @@ export const runAgentBrainFlow: Rows = {
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a8s", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-loa8s", info: {} },
 
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a1", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a3", info: {} },
-
     { source: "Node-a1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a4s", info: {} },
     { source: "Node-a2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a7s", info: {} },
     { source: "Node-a3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a6s", info: {} },
