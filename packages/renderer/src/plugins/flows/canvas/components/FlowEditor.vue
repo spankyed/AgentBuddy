@@ -65,9 +65,10 @@
       <!-- Menu and Auto Layout buttons (bottom left) -->
       <div class="absolute z-10 bottom-4 left-4 flex gap-2">
         <!-- Menu -->
-        <FlowActionsMenu 
+        <FlowActionsMenu
           :selected-flow-id="selectedFlowId"
           @edit-label="$emit('action-edit-label')"
+          @request-delete="$emit('request-delete-flow')"
         />
         
         <!-- Auto Layout Button -->
@@ -142,6 +143,7 @@ const emit = defineEmits<{
   'go-back': []
   'action-layout': [direction?: Direction]
   'action-edit-label': []
+  'request-delete-flow': []
   'overlay-click': []
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]

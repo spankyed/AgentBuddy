@@ -10,6 +10,7 @@
         :selected-flow-id="selectedFlowId"
         @flow-click="handleFlowClick"
         @create-flow="handleCreateFlow"
+        @request-delete="handleRequestDelete"
       />
 
       <!-- Steps palette view -->
@@ -36,6 +37,7 @@
       @go-back="handleGoBack"
       @action-layout="handleLayout"
       @action-edit-label="openLabelDialog"
+      @request-delete-flow="() => handleRequestDelete({ id: selectedFlowId })"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
@@ -65,6 +67,18 @@
       @cancel="labelDialogOpen = false"
       @save="handleUpdateFlowLabel"
     />
+
+    <!-- Centralized Delete Confirmation Dialog -->
+    <ConfirmationDialog
+      v-model="deleteDialogOpen"
+      title="Delete Flow"
+      :description="`Are you sure you want to delete '${flowToDelete?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`"
+      confirm-text="Delete Flow"
+      cancel-text="Cancel"
+      variant="danger"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
@@ -92,12 +106,15 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
+import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 
 const { layout } = useLayout()
 const { project } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
+const deleteDialogOpen = ref(false)
+const flowToDelete = ref<Partial<FlowEntity> | null>(null)
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
@@ -245,6 +262,26 @@ function handleUpdateFlowLabel(label: string) {
     })
     labelDialogOpen.value = false
   }
+}
+
+function handleRequestDelete(flow: Partial<FlowEntity>) {
+  // Don't allow deleting root flow
+  if (flow.id === rootFlow.value?.id) {
+    return
+  }
+  flowToDelete.value = flow
+  deleteDialogOpen.value = true
+}
+
+function confirmDelete() {
+  if (flowToDelete.value?.id) {
+    actor.send({ type: 'FLOW.DELETE', flowId: flowToDelete.value.id })
+    flowToDelete.value = null
+  }
+}
+
+function cancelDelete() {
+  flowToDelete.value = null
 }
 
 function handleOverlayClick() {

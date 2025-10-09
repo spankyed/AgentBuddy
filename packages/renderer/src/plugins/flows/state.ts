@@ -52,6 +52,7 @@ export interface FlowsContext {
 }
 
 type SystemEvent = OutgoingFlowsEvents
+  | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -70,6 +71,7 @@ type UIEvent =
   | { type: 'SELECT_ROOT_FLOW' }
   | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
   | { type: 'FLOW.CREATE'; }
+  | { type: 'FLOW.DELETE'; flowId: EARS.EntityId }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
@@ -182,7 +184,7 @@ const flowsState = setup({
 
     addCreatedFlow: assign(({ context, event }) => {
       const ev = typeOf('FLOW_CREATED', event);
-      
+
       return {
         flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
@@ -191,6 +193,33 @@ const flowsState = setup({
           edges: ev.data.edges,
           positions: {}, // Start with empty positions, will be set by layout
         },
+      };
+    }),
+
+    sendDeleteFlow: ({ event }) => {
+      const ev = event as { type: 'FLOW.DELETE'; flowId: EARS.EntityId };
+      if (ev.type !== 'FLOW.DELETE') return;
+
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_FLOW',
+        flowId: ev.flowId as string
+      });
+    },
+
+    handleFlowDeleted: assign(({ context, event }) => {
+      const ev = typeOf('FLOW_DELETED', event);
+
+      // Remove the deleted flow from the flows list
+      const updatedFlows = context.flows.filter(flow => flow.id !== ev.flowId);
+
+      // If the deleted flow was selected, clear selection and go back to list
+      const wasSelected = context.selectedFlowId === ev.flowId;
+
+      return {
+        flows: updatedFlows,
+        selectedFlowId: wasSelected ? undefined : context.selectedFlowId,
+        graph: wasSelected ? { nodes: [], edges: [], positions: {} } : context.graph,
       };
     }),
 
@@ -649,7 +678,13 @@ const flowsState = setup({
       };
     }),
   },
-  guards: { targetIs },
+  guards: {
+    targetIs,
+    isDeletedFlowSelected: ({ context, event }) => {
+      const ev = typeOf('FLOW_DELETED', event);
+      return context.selectedFlowId === ev.flowId;
+    },
+  },
 }).createMachine({
   id,
   initial: 'list',
@@ -677,10 +712,20 @@ const flowsState = setup({
       actions: 'handleSettingsUpdate'
     },
     FLOW_SELECTED: { actions: 'loadFlowData' },
-    FLOW_CREATED: { 
+    FLOW_CREATED: {
       actions: 'addCreatedFlow',
       target: '.view'
     },
+    FLOW_DELETED: [
+      {
+        guard: 'isDeletedFlowSelected',
+        target: '.list',
+        actions: 'handleFlowDeleted',
+      },
+      {
+        actions: 'handleFlowDeleted',
+      }
+    ],
     NODE_CREATED: { 
       actions: 'reconcileNodeId'
     },
@@ -716,6 +761,9 @@ const flowsState = setup({
         },
         'FLOW.CREATE': {
           actions: 'sendCreateFlow',
+        },
+        'FLOW.DELETE': {
+          actions: 'sendDeleteFlow',
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
@@ -766,6 +814,9 @@ const flowsState = setup({
         },
         'NODE.UPDATE_POSITION': {
           actions: 'updateNodePosition',
+        },
+        'FLOW.DELETE': {
+          actions: 'sendDeleteFlow',
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],

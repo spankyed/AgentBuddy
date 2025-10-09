@@ -521,14 +521,53 @@ export const flowsCommands = {
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
     // Grant the root_flow role to the specified flow
     tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
-    
+
     logger.info('Granted root_flow role to flow', { flowId });
   },
-  
+
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
     // Revoke the root_flow role from the specified flow
     tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
-    
+
     logger.info('Revoked root_flow role from flow', { flowId });
+  },
+
+  deleteFlow: (flowId: EARS.EntityId): void => {
+    // Check if this is the root flow
+    const isRootFlow = qx(flowId).withRole(FLOW_ROLES.ROOT_FLOW).first();
+    if (isRootFlow) {
+      throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
+    }
+
+    // Get all nodes in the flow
+    const nodeIds = qx(flowId)
+      .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+      .map(({ id }) => id);
+
+    // Delete all nodes (which will also delete their edges)
+    nodeIds.forEach(nodeId => {
+      try {
+        flowsCommands.deleteNode(nodeId);
+      } catch (error) {
+        logger.warn('Error deleting node during flow deletion', { nodeId, error });
+      }
+    });
+
+    // Remove any remaining relationships
+    const remainingRelations = edgeStore.relIds({
+      sourceEntity: flowId,
+    });
+    remainingRelations.forEach(relId => {
+      try {
+        removeRelation(relId);
+      } catch (error) {
+        logger.warn('Error removing relation during flow deletion', { relId, error });
+      }
+    });
+
+    // Finally, delete the flow entity
+    tx(flowId).destroy();
+
+    logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
 } as const;
