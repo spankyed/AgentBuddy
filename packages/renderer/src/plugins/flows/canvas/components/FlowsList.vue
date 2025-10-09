@@ -14,6 +14,7 @@
             is-root
             @click="$emit('flow-click', rootFlow)"
             @request-delete="$emit('request-delete', $event)"
+            @request-edit-label="$emit('request-edit-label', $event)"
           />
         </div>
 
@@ -30,6 +31,7 @@
               :is-selected="flow.id === selectedFlowId"
               @click="$emit('flow-click', flow)"
               @request-delete="$emit('request-delete', $event)"
+              @request-edit-label="$emit('request-edit-label', $event)"
             />
           </div>
         </div>
@@ -120,6 +122,7 @@ const emit = defineEmits<{
   'flow-click': [flow: Partial<FlowEntity>]
   'create-flow': []
   'request-delete': [flow: Partial<FlowEntity>]
+  'request-edit-label': [flow: Partial<FlowEntity>]
 }>()
 
 // Search state

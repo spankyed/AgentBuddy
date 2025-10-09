@@ -10,7 +10,8 @@
         :selected-flow-id="selectedFlowId"
         @flow-click="handleFlowClick"
         @create-flow="handleCreateFlow"
-        @request-delete="handleRequestDelete"
+        @request-delete="openDeleteDialog"
+        @request-edit-label="openEditDialog"
       />
 
       <!-- Steps palette view -->
@@ -36,8 +37,8 @@
       @drop="handleDrop"
       @go-back="handleGoBack"
       @action-layout="handleLayout"
-      @action-edit-label="openLabelDialog"
-      @request-delete-flow="() => handleRequestDelete({ id: selectedFlowId })"
+      @action-edit-label="() => openEditDialog()"
+      @request-delete-flow="() => { const flow = getCurrentFlow(); if (flow) openDeleteDialog(flow) }"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
@@ -64,20 +65,20 @@
     <FlowLabelDialog
       v-model="labelDialogOpen"
       :flow-label="currentFlowLabel"
-      @cancel="labelDialogOpen = false"
-      @save="handleUpdateFlowLabel"
+      @cancel="() => { labelDialogOpen = false; targetFlow = null }"
+      @save="handleUpdateLabel"
     />
 
     <!-- Centralized Delete Confirmation Dialog -->
     <ConfirmationDialog
       v-model="deleteDialogOpen"
       title="Delete Flow"
-      :description="`Are you sure you want to delete '${flowToDelete?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`"
+      :description="`Are you sure you want to delete '${targetFlow?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`"
       confirm-text="Delete Flow"
       cancel-text="Cancel"
       variant="danger"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
+      @confirm="handleConfirmDelete"
+      @cancel="handleCancelDelete"
     />
   </div>
 </template>
@@ -114,7 +115,7 @@ const { project } = useVueFlow()
 // Dialog state
 const labelDialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
-const flowToDelete = ref<Partial<FlowEntity> | null>(null)
+const targetFlow = ref<Partial<FlowEntity> | null>(null)
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
@@ -171,13 +172,13 @@ const plainEdges = computed(() =>
   }),
 )
 
-const currentFlowLabel = computed(() => {
-  const currentFlow = rootFlow.value?.id === selectedFlowId.value 
-    ? rootFlow.value 
-    : flows.value.find(f => f.id === selectedFlowId.value)
-  
-  return currentFlow?.label || ''
-})
+const currentFlowLabel = computed(() => targetFlow.value?.label || '')
+
+const getCurrentFlow = () => {
+  return rootFlow.value?.id === selectedFlowId.value
+    ? rootFlow.value
+    : flows.value.find(f => f.id === selectedFlowId.value) || null
+}
 
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
@@ -249,39 +250,42 @@ function handleCreateFlow() {
   actor.send({ type: 'FLOW.CREATE' })
 }
 
-function openLabelDialog() {
-  labelDialogOpen.value = true
-}
-
-function handleUpdateFlowLabel(label: string) {
-  if (selectedFlowId.value && label) {
-    actor.send({
-      type: 'FLOW.UPDATE_LABEL',
-      flowId: selectedFlowId.value,
-      label: label
-    })
-    labelDialogOpen.value = false
+// Unified dialog handlers
+function openEditDialog(flow?: Partial<FlowEntity>) {
+  targetFlow.value = flow || getCurrentFlow() || null
+  if (targetFlow.value) {
+    labelDialogOpen.value = true
   }
 }
 
-function handleRequestDelete(flow: Partial<FlowEntity>) {
-  // Don't allow deleting root flow
-  if (flow.id === rootFlow.value?.id) {
-    return
-  }
-  flowToDelete.value = flow
+function openDeleteDialog(flow: Partial<FlowEntity>) {
+  if (flow.id === rootFlow.value?.id) return
+  targetFlow.value = flow
   deleteDialogOpen.value = true
 }
 
-function confirmDelete() {
-  if (flowToDelete.value?.id) {
-    actor.send({ type: 'FLOW.DELETE', flowId: flowToDelete.value.id })
-    flowToDelete.value = null
+// Event handlers
+const handleUpdateLabel = (label: string) => {
+  if (targetFlow.value?.id && label) {
+    actor.send({
+      type: 'FLOW.UPDATE_LABEL',
+      flowId: targetFlow.value.id,
+      label
+    })
+    labelDialogOpen.value = false
+    targetFlow.value = null
   }
 }
 
-function cancelDelete() {
-  flowToDelete.value = null
+const handleConfirmDelete = () => {
+  if (targetFlow.value?.id) {
+    actor.send({ type: 'FLOW.DELETE', flowId: targetFlow.value.id })
+    targetFlow.value = null
+  }
+}
+
+const handleCancelDelete = () => {
+  targetFlow.value = null
 }
 
 function handleOverlayClick() {

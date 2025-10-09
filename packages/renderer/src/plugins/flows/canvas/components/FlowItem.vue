@@ -61,6 +61,14 @@
         :side-offset="2"
       >
         <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="handleRequestEditLabel"
+        >
+          <Edit :size="14" class="text-primary-400" />
+          Edit Label
+        </ContextMenuItem>
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+        <ContextMenuItem
           class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
           @select="handleRequestDelete"
         >
@@ -73,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { Brain, Workflow, Trash2 } from 'lucide-vue-next'
+import { Brain, Workflow, Trash2, Edit } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
 import {
   ContextMenuContent,
@@ -81,6 +89,7 @@ import {
   ContextMenuPortal,
   ContextMenuRoot,
   ContextMenuTrigger,
+  ContextMenuSeparator,
 } from 'reka-ui'
 
 interface Props {
@@ -94,10 +103,15 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   click: []
   'request-delete': [flow: Partial<FlowEntity>]
+  'request-edit-label': [flow: Partial<FlowEntity>]
 }>()
 
 const handleRequestDelete = () => {
   emit('request-delete', props.flow)
+}
+
+const handleRequestEditLabel = () => {
+  emit('request-edit-label', props.flow)
 }
 </script>
 
