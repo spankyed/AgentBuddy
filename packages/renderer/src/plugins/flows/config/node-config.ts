@@ -31,6 +31,7 @@ export interface NodeConfig {
     outputs: number   // -1 means unlimited
   }
   component?: string // Vue component name for the canvas
+  isImplemented?: boolean // Whether the node type is fully implemented
 }
 
 export interface NodeStyleOptions {
@@ -175,7 +176,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-neutral-700/20',
     hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: true
   },
   action: {
     type: 'action',
@@ -186,7 +188,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-neutral-700/20',
     hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'ActionNode'
+    component: 'ActionNode',
+    isImplemented: true
   },
   listen: {
     type: 'listen',
@@ -197,7 +200,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-blue-500/10',
     hoverBgColor: 'group-hover:bg-blue-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
-    component: 'ListenNode'
+    component: 'ListenNode',
+    isImplemented: true
   },
   query: {
     type: 'query',
@@ -208,7 +212,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-cyan-500/10',
     hoverBgColor: 'group-hover:bg-cyan-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: false
   },
   transform: {
     type: 'transform',
@@ -219,7 +224,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-emerald-500/10',
     hoverBgColor: 'group-hover:bg-emerald-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: false
   },
   llm: {
     type: 'llm',
@@ -230,7 +236,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-indigo-500/10',
     hoverBgColor: 'group-hover:bg-indigo-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: true
   },
   flow: {
     type: 'flow',
@@ -241,7 +248,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-purple-500/10',
     hoverBgColor: 'group-hover:bg-purple-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: true
   },
   create: {
     type: 'create',
@@ -252,7 +260,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-purple-500/10',
     hoverBgColor: 'group-hover:bg-purple-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: false
   },
   update: {
     type: 'update',
@@ -263,7 +272,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-purple-500/10',
     hoverBgColor: 'group-hover:bg-purple-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode'
+    component: 'VariableNode',
+    isImplemented: false
   },
   decision: {
     type: 'decision',
@@ -274,7 +284,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
     connectionRules: { inputs: 1, outputs: -1 },
-    component: 'DecisionNode'
+    component: 'DecisionNode',
+    isImplemented: false
   },
   fire: {
     type: 'fire',
@@ -285,7 +296,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-amber-500/10',
     hoverBgColor: 'group-hover:bg-amber-500/15',
     connectionRules: { inputs: 1, outputs: 0 },
-    component: 'FireNode'
+    component: 'FireNode',
+    isImplemented: true
   },
 } as const
 
@@ -446,7 +458,7 @@ export const getAllNodeTypes = (): NodeKind[] => {
 export const getPaletteItems = () => {
   return Object.values(nodeConfigs)
     .filter((config): config is NodeConfig => Boolean(config))
-    .map(({ type, label, icon }) => ({ type, label, icon }))
+    .map(({ type, label, icon, isImplemented }) => ({ type, label, icon, isImplemented }))
 }
 
 // ===========================
