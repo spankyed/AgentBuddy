@@ -20,6 +20,7 @@ import type {
   OutgoingBrainEvents,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
+import { getNodeConfig } from './config/node-config'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -392,12 +393,16 @@ const flowsState = setup({
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE', event)
-      
+
+      // Get the default label from node config
+      const nodeConfig = getNodeConfig(ev.nodeType)
+      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+
       // Create a partial node that will be completed by the backend
       const newNode = {
         id: tempId,
         nodeType: ev.nodeType,
-        label: `New ${ev.nodeType}`,
+        label: defaultLabel,
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node
@@ -441,10 +446,15 @@ const flowsState = setup({
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE_CONNECTED', event)
+
+      // Get the default label from node config
+      const nodeConfig = getNodeConfig(ev.nodeType)
+      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+
       const newNode = {
         id: tempId,
         nodeType: ev.nodeType,
-        label: `New ${ev.nodeType}`,
+        label: defaultLabel,
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node

@@ -1,13 +1,13 @@
-import { 
-  Workflow, 
-  Radio, 
-  Zap, 
-  Play, 
-  Plus, 
-  RefreshCw, 
-  Search, 
-  Split, 
-  Shuffle, 
+import {
+  Workflow,
+  Radio,
+  Zap,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Split,
+  Shuffle,
   Activity,
   Sparkle
 } from 'lucide-vue-next'
@@ -21,6 +21,7 @@ import type { NodeKind } from '@app/api'
 export interface NodeConfig {
   type: NodeKind
   label: string
+  defaultLabel?: string // Default label for newly created nodes
   icon: Component
   color: string
   bgColor: string
@@ -168,6 +169,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   keep_alive: {
     type: 'keep_alive',
     label: 'Keep Alive',
+    defaultLabel: 'keep alive',
     icon: Activity,
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
@@ -178,6 +180,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   action: {
     type: 'action',
     label: 'Action',
+    defaultLabel: 'do action',
     icon: Play,
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
@@ -188,6 +191,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   listen: {
     type: 'listen',
     label: 'Listen',
+    defaultLabel: 'on event',
     icon: Radio,
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
@@ -198,6 +202,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   query: {
     type: 'query',
     label: 'Query',
+    defaultLabel: 'query',
     icon: Search,
     color: 'text-cyan-400',
     bgColor: 'bg-cyan-500/10',
@@ -208,6 +213,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   transform: {
     type: 'transform',
     label: 'Transform',
+    defaultLabel: 'transform output',
     icon: Shuffle,
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',
@@ -218,6 +224,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   llm: {
     type: 'llm',
     label: 'LLM',
+    defaultLabel: 'generate text',
     icon: Sparkle,
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/10',
@@ -228,6 +235,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   flow: {
     type: 'flow',
     label: 'Flow',
+    defaultLabel: 'handle flow',
     icon: Workflow,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -238,6 +246,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   create: {
     type: 'create',
     label: 'Create',
+    defaultLabel: 'create entity',
     icon: Plus,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -248,6 +257,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   update: {
     type: 'update',
     label: 'Update',
+    defaultLabel: 'update entity',
     icon: RefreshCw,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -258,6 +268,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   decision: {
     type: 'decision',
     label: 'Decision',
+    defaultLabel: 'choose path',
     icon: Split,
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
@@ -268,6 +279,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   fire: {
     type: 'fire',
     label: 'Fire',
+    defaultLabel: 'fire event',
     icon: Zap,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
@@ -306,7 +318,7 @@ export const getNodeClasses = (nodeType: NodeKind | string, options?: NodeStyleO
   const baseClasses = 'px-4 py-3 rounded-lg border backdrop-blur-sm transition-all duration-200'
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
-  
+
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
@@ -325,7 +337,7 @@ export const getNodeGlowClasses = (nodeType: NodeKind | string, options?: NodeSt
 export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
-  
+
   const accentMap: Record<string, string> = {
     purple: 'bg-purple-400/40',
     blue: 'bg-blue-400/40',
@@ -336,7 +348,7 @@ export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: N
     indigo: 'bg-indigo-400/40',
     neutral: 'bg-neutral-400/40'
   }
-  
+
   return accentMap[colorKey] || accentMap.neutral
 }
 
@@ -356,12 +368,12 @@ export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: Nod
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   const baseClass = NODE_STYLE_CLASSES.solid[colorKey]
-  
+
   if (options?.includeRing) {
     const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
     return `${baseClass} ${ringClass}`
   }
-  
+
   return baseClass
 }
 
@@ -371,11 +383,11 @@ export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: Nod
 export const getNodeIconTextColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const config = getNodeConfig(effectiveType)
-  
+
   if (effectiveType === 'event') {
     return 'text-blue-400'
   }
-  
+
   return config?.color || 'text-neutral-400'
 }
 
@@ -385,11 +397,11 @@ export const getNodeIconTextColor = (nodeType: NodeKind | string, options?: Node
 export const getNodeIconBgColor = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
   const effectiveType = resolveNodeType(nodeType, options)
   const config = getNodeConfig(effectiveType)
-  
+
   if (effectiveType === 'event') {
     return 'bg-blue-500/10'
   }
-  
+
   return config?.bgColor || 'bg-neutral-500/10'
 }
 
@@ -397,13 +409,13 @@ export const getNodeIconBgColor = (nodeType: NodeKind | string, options?: NodeSt
  * Returns status indicator classes based on variant
  */
 export const getNodeStatusClasses = (
-  status: NodeStatus | string, 
+  status: NodeStatus | string,
   variant: StatusVariant = 'simple'
 ): string | { outer: string; inner: string } => {
   if (variant === 'simple') {
     return STATUS_STYLE_CLASSES.simple[status as NodeStatus] || STATUS_STYLE_CLASSES.simple.default
   }
-  
+
   // Detailed variant returns object with outer and inner classes
   const detailedStatus = STATUS_STYLE_CLASSES.detailed[status as NodeStatus] || STATUS_STYLE_CLASSES.detailed.default
   return detailedStatus
@@ -447,7 +459,7 @@ export const getPaletteItems = () => {
 export const getPaletteItemClasses = (type: string): string => {
   const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200 cursor-grab active:cursor-grabbing active:scale-[0.98]'
   const colorKey = getNodeColorKey(type)
-  
+
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
@@ -457,7 +469,7 @@ export const getPaletteItemClasses = (type: string): string => {
 export const getInspectionItemClasses = (type: string): string => {
   const baseClasses = 'rounded-md border backdrop-blur-sm transition-all duration-200'
   const colorKey = getNodeColorKey(type)
-  
+
   return `${baseClasses} ${NODE_STYLE_CLASSES.gradient[colorKey]}`
 }
 
@@ -468,10 +480,10 @@ export const getPaletteIconClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
   const solidClass = NODE_STYLE_CLASSES.solid[colorKey]
   const ringClass = NODE_STYLE_CLASSES.ring[colorKey]
-  const hoverRingClass = colorKey === 'neutral' 
+  const hoverRingClass = colorKey === 'neutral'
     ? 'group-hover:ring-neutral-400/50'
     : `group-hover:ring-${colorKey}-400/50`
-  
+
   return `${solidClass} ${ringClass} ${hoverRingClass}`
 }
 
@@ -480,7 +492,7 @@ export const getPaletteIconClasses = (type: string): string => {
  */
 export const getPaletteIconComponentClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
-  
+
   // Map color keys to text classes - muted and sophisticated
   const textColorMap: Record<string, string> = {
     purple: 'text-purple-300/70 group-hover:text-purple-300/90',
@@ -492,7 +504,7 @@ export const getPaletteIconComponentClasses = (type: string): string => {
     indigo: 'text-indigo-300/70 group-hover:text-indigo-300/90',
     neutral: 'text-neutral-400 group-hover:text-neutral-300'
   }
-  
+
   return textColorMap[colorKey] || textColorMap.neutral
 }
 
@@ -509,7 +521,7 @@ export const getPaletteGlowClasses = (type: string): string => {
  */
 export const getPaletteGradientClasses = (type: string): string => {
   const colorKey = getNodeColorKey(type)
-  
+
   // Map color keys to gradient classes
   const gradientMap: Record<string, string> = {
     purple: 'from-purple-400 to-purple-600',
@@ -521,6 +533,6 @@ export const getPaletteGradientClasses = (type: string): string => {
     indigo: 'from-indigo-400 to-indigo-600',
     neutral: 'from-neutral-400 to-neutral-600'
   }
-  
+
   return gradientMap[colorKey] || gradientMap.neutral
 }
