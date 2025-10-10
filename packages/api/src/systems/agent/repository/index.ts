@@ -330,6 +330,18 @@ export const agentCommands = {
     const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
 
     if (existingBirthThreadId) {
+      // Update birthdate even for existing thread to prevent re-triggering
+      const assistantSettings = settingsQueries.getAssistantSettings();
+      if (!assistantSettings.birthdate) {
+        // Get the thread's original creation timestamp
+        const threadData = qx(existingBirthThreadId).pickOne(['createdAt']);
+        const birthdate = threadData?.createdAt
+          ? new Date(threadData.createdAt).toISOString()
+          : new Date().toISOString(); // Fallback if createdAt is missing
+
+        settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+      }
+
       // Return existing birth thread and its artifact
       const existingArtifact = qx(existingBirthThreadId)
         .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)
