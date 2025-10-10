@@ -168,35 +168,56 @@ export const brainQueries = {
       scope: node.scope
     }));
   },
-  
+
+  /**
+   * Builds flow hierarchy from current flow back to root
+   * Returns array ordered from root → current flow
+   */
+  buildFlowHierarchy: (flowTNodeId: EARS.EntityId): Array<{ flowTNodeId: EARS.EntityId; label: string }> => {
+    const hierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }> = [];
+    let currentId: EARS.EntityId | undefined = flowTNodeId;
+
+    while (currentId) {
+      const node = qx(currentId).pickOne(['label', 'nodeAttributes']) as Pick<TNodeEntity, 'label' | 'nodeAttributes'> | null;
+      if (!node) break;
+
+      hierarchy.unshift({ flowTNodeId: currentId, label: node.label || 'Unknown Flow' });
+      currentId = node.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined;
+    }
+
+    return hierarchy;
+  },
+
   extendedTNodeData: (tNodeId: EARS.EntityId): FlowTNodeData => {
     const tNode = qx(tNodeId).pickOne(["tNodeType"]) as Pick<TNodeEntity, 'tNodeType'> | null;
-    
+
     if (!isFlowTNode(tNode as TNodeEntity)) {
       throw new Error(
         `Cannot get extended data for TNode ${tNodeId}: ` +
         `Expected flow type but found ${tNode?.tNodeType || 'none'}`
       );
     }
-    
+
     return {
       flowTNodeId: tNodeId,
       tNodeTree: brainQueries.eventTracks(tNodeId),
       possibleEvents: brainQueries.possibleEvents(tNodeId),
+      flowHierarchy: brainQueries.buildFlowHierarchy(tNodeId),
     };
   },
   
   rootData: (): FlowTNodeData => {
     const rootFlowTNode = brainQueries.rootFlowTNode();
-    
+
     if (!rootFlowTNode) {
       return {
         flowTNodeId: '' as EARS.EntityId,
         tNodeTree: [],
         possibleEvents: [],
+        flowHierarchy: [],
       };
     }
-    
+
     return brainQueries.extendedTNodeData(rootFlowTNode);
   },
 } as const;
@@ -279,18 +300,16 @@ export const brainCommands = {
 
     const now = Date.now();
 
-    const nodeAttributes = resolveNodeAttributes(
-      flowStepNode,
-      executionContext,
-    );
-
     const flowTNode: Partial<TNodeEntity> = {
       tNodeType: 'flow',
       label: flowStepNode.label || flow.label!,
       status: 'active',
       startedAt: now,
       stepNodeType: 'flow',
-      nodeAttributes,
+      nodeAttributes: {
+        ...resolveNodeAttributes(flowStepNode, executionContext),
+        ...(executionContext?.flowTNodeId && { _parentFlowTNodeId: executionContext.flowTNodeId })
+      },
       ...(parentFlowId && { 
         blueprint: { 
           nodeId: flowStepId, 

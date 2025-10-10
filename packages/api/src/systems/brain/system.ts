@@ -178,12 +178,13 @@ export const brainSystem = setup({
         
         // Send empty data to clear the UI
 
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'RECEIVE_PLUGIN_DATA',
           data: {
             flowTNodeId: '' as EARS.EntityId,
             tNodeTree: [],
             possibleEvents: [],
+            flowHierarchy: [],
           }
         }));
         
@@ -214,6 +215,7 @@ export const brainSystem = setup({
           flowTNodeId: '' as EARS.EntityId,
           tNodeTree: [],
           possibleEvents: [],
+          flowHierarchy: [],
         }
       }));
       

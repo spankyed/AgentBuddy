@@ -51,6 +51,7 @@ export interface FlowTNodeData {
   flowTNodeId: EARS.EntityId;
   tNodeTree: TrackEntity[];
   possibleEvents: EventListenerEntity[];
+  flowHierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }>;
 }
 
 export interface TNodeUpdate {
