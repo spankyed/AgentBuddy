@@ -10,6 +10,7 @@ import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
+import type { ActionEntity } from '@/systems/actions/types';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -53,6 +54,9 @@ export type OutgoingFlowsEvents =
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
   | { type: 'EDGE_DELETED'; edgeId: string }
   | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
+  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 

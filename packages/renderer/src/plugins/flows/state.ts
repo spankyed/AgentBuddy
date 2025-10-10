@@ -54,6 +54,9 @@ export interface FlowsContext {
 
 type SystemEvent = OutgoingFlowsEvents
   | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
+  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -223,6 +226,22 @@ const flowsState = setup({
         graph: wasSelected ? { nodes: [], edges: [], positions: {} } : context.graph,
       };
     }),
+
+    /* ── action interactions ──────────────────────────────── */
+    addCreatedAction: assign(({ context, event }) => ({
+      actions: [...context.actions, typeOf('ACTION_CREATED', event).action],
+    })),
+
+    updateActionInList: assign(({ context, event }) => {
+      const ev = typeOf('ACTION_UPDATED', event);
+      return {
+        actions: context.actions.map(a => a.id === ev.actionId ? ev.action : a),
+      };
+    }),
+
+    removeDeletedAction: assign(({ context, event }) => ({
+      actions: context.actions.filter(a => a.id !== typeOf('ACTION_DELETED', event).actionId),
+    })),
 
     /* ── graph interactions ───────────────────────────────── */
     selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
@@ -714,7 +733,7 @@ const flowsState = setup({
     tempIdMap: {},
   },
   on: {
-    FLOWS_CONNECTED: { 
+    FLOWS_CONNECTED: {
       actions: 'setPluginData',
       // target: '.view' // Go directly to view since we have the selected flow's data
     },
@@ -736,7 +755,7 @@ const flowsState = setup({
         actions: 'handleFlowDeleted',
       }
     ],
-    NODE_CREATED: { 
+    NODE_CREATED: {
       actions: 'reconcileNodeId'
     },
     EDGE_CREATED: {
@@ -750,6 +769,15 @@ const flowsState = setup({
     },
     NODE_DELETED: {
       // Backend confirmation - node already removed locally
+    },
+    ACTION_CREATED: {
+      actions: 'addCreatedAction'
+    },
+    ACTION_UPDATED: {
+      actions: 'updateActionInList'
+    },
+    ACTION_DELETED: {
+      actions: 'removeDeletedAction'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],
