@@ -58,19 +58,23 @@ export const agentSystem = setup({
       const assistantSettings = repository.settingsQueries.getAssistantSettings();
 
       if (!assistantSettings.birthdate) {
-        // Create the birth thread
-        const { threadId, artifactId } = repository.agentCommands.createAssistantBirthThread();
-        logger.info('Birth flow started - created assistant birth thread', { threadId, artifactId });
+        // Check if birth thread exists and get its creation date
+        const existingBirthThread = repository.agentQueries.getAssistantBirthThread();
+
+        // Set birthdate based on existing thread or current time
+        const birthdate = existingBirthThread
+          ? new Date(existingBirthThread.createdAt).toISOString()
+          : new Date().toISOString();
+
+        repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+        logger.info('Assistant birthdate set', { birthdate });
 
         // Trigger the brain event to start the birth flow
         const brainActor = getActor(system, brain);
         brainActor.send({
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'llm.now.available',
-          payload: {
-            threadId,
-            artifactId
-          }
+          payload: {} // Brain will handle thread creation
         });
       }
     },

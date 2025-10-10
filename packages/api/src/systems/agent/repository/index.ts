@@ -266,6 +266,24 @@ export const agentQueries = {
       hasRequiredApiKeys: agentQueries.hasRequiredApiKeys(),
     };
   },
+
+  // Get existing assistant birth thread if it exists
+  getAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId; createdAt: number } | null => {
+    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
+    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+
+    if (!existingBirthThreadId) return null;
+
+    const threadData = qx(existingBirthThreadId).pickOne(['createdAt']);
+    const existingArtifact = qx(existingBirthThreadId)
+      .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)?.[0];
+
+    return {
+      threadId: existingBirthThreadId,
+      artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id(),
+      createdAt: threadData?.createdAt || Date.now()
+    };
+  }
 } as const;
 
 // Commands - write operations that modify data
@@ -330,18 +348,6 @@ export const agentCommands = {
     const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
 
     if (existingBirthThreadId) {
-      // Update birthdate even for existing thread to prevent re-triggering
-      const assistantSettings = settingsQueries.getAssistantSettings();
-      if (!assistantSettings.birthdate) {
-        // Get the thread's original creation timestamp
-        const threadData = qx(existingBirthThreadId).pickOne(['createdAt']);
-        const birthdate = threadData?.createdAt
-          ? new Date(threadData.createdAt).toISOString()
-          : new Date().toISOString(); // Fallback if createdAt is missing
-
-        settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
-      }
-
       // Return existing birth thread and its artifact
       const existingArtifact = qx(existingBirthThreadId)
         .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)
@@ -385,9 +391,6 @@ export const agentCommands = {
     // Link artifact to thread
     tx(threadId).link(EARS.RelKind.HAS, artifactId);
     tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
-
-    // Update assistant settings with birthdate
-    settingsCommands.updateSettings('assistant', null, ['birthdate'], new Date().toISOString());
 
     return { threadId, artifactId };
   },
