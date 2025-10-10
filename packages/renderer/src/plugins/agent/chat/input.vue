@@ -109,7 +109,7 @@ const props = defineProps<{
   currentThread: AgentThreadData
   threads: ThreadEntity[]
   currentMode: string
-  currentPhase: string
+  currentPhase?: string
   modes: AgentMode[]
   disabled?: boolean
 }>()
@@ -223,11 +223,6 @@ const handleButtonClick = (action: string) => {
 const handleModeChange = (newMode: string) => {
   if (props.disabled) return
   emit('mode-change', newMode)
-  // If the new mode has phases, also set mode to first phase
-  const mode = props.modes.find(m => m.id === newMode)
-  if (mode?.phases?.length) {
-    emit('phase-change', mode.phases[0].id)
-  }
 }
 
 const handlePhaseChange = (newPhase: string) => {

@@ -36,6 +36,7 @@ interface AgentContext {
   activeTabId: string;
   mode: string; // Current mode
   phase: string; // Current phase (when mode has phases)
+  phaseByMode: Record<string, string | undefined>; // Remember last phase per mode
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   settings: AgentSettings;
@@ -100,12 +101,37 @@ const agentState = setup({
       }
       return { statusColor: 'bg-zinc-500' as StatusColor };
     }),
-    setMode: assign(({ event }) => ({
-      mode: typeOf('SET_MODE', event).mode
-    })),
-    setPhase: assign(({ event }) => ({
-      phase: typeOf('SET_PHASE', event).phase
-    })),
+    setMode: assign(({ context, event }) => {
+      const newMode = typeOf('SET_MODE', event).mode;
+      const modeConfig = context.modes.find(m => m.id === newMode);
+
+      // Save current phase for current mode
+      const updatedPhaseByMode = {
+        ...context.phaseByMode,
+        [context.mode]: context.phase
+      };
+
+      // Restore saved phase for new mode, or use first phase
+      const newPhase = modeConfig?.phases?.length
+        ? (newMode in updatedPhaseByMode ? updatedPhaseByMode[newMode] : modeConfig.phases[0].id)
+        : undefined;
+
+      return {
+        mode: newMode,
+        phase: newPhase,
+        phaseByMode: updatedPhaseByMode
+      };
+    }),
+    setPhase: assign(({ context, event }) => {
+      const newPhase = typeOf('SET_PHASE', event).phase;
+      return {
+        phase: newPhase,
+        phaseByMode: {
+          ...context.phaseByMode,
+          [context.mode]: newPhase
+        }
+      };
+    }),
     navigateToSecrets: ({ system }) => {
       // Navigate to settings plugin
       system.get(application).send({
@@ -123,15 +149,12 @@ const agentState = setup({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
-      // Send phase if mode has phases, otherwise send mode
-      const currentMode = context.modes.find(m => m.id === context.mode);
-      const modeValue = currentMode?.phases?.length ? context.phase : context.mode;
-
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
         text: typeOf('SEND_MESSAGE', event).text,
-        mode: modeValue,
+        mode: context.mode,
+        phase: context.phase,
         threadId: context.currentThread?.id,
       });
     },
@@ -204,7 +227,7 @@ const agentState = setup({
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).text
     // })),
-    setThreadChatData: assign(({ event }) => {
+    setThreadChatData: assign(({ context, event }) => {
       const thread = typeOf('LOAD_CHAT_THREAD', event).data;
 
       // Request backend to open tab if thread has artifacts
@@ -217,22 +240,35 @@ const agentState = setup({
         });
       }
 
+      // If thread has forcedMode, handle phase properly
+      if (thread.forcedMode) {
+        const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
+        const newPhase = modeConfig?.phases?.length
+          ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
+          : undefined;
+
+        return {
+          currentThread: thread,
+          mode: thread.forcedMode,
+          phase: newPhase
+        };
+      }
+
       return {
-        currentThread: thread,
-        ...(thread.forcedMode && { mode: thread.forcedMode })
+        currentThread: thread
       };
     }),
     setStartupData: assign(({ context, event }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
-      
+
       // Prioritize current thread tab if it exists and has artifacts
-      const currentThreadTab = typedEvent.data.tabs?.find(tab => 
+      const currentThreadTab = typedEvent.data.tabs?.find(tab =>
         tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
       );
-      
+
       const settings = typedEvent.data.settings || { modes: [], hotkeys: {} };
-      
-      // Extract hotkeys from settings - filter out undefined values  
+
+      // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (settings.hotkeys) {
         Object.entries(settings.hotkeys).forEach(([key, value]) => {
@@ -241,10 +277,25 @@ const agentState = setup({
           }
         });
       }
-      
+
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
-      
+
+      // If currentThread has forcedMode, handle phase properly
+      const forcedMode = typedEvent.data.currentThread?.forcedMode;
+      let modeUpdate = {};
+      if (forcedMode) {
+        const modeConfig = modes.find(m => m.id === forcedMode);
+        const newPhase = modeConfig?.phases?.length
+          ? (forcedMode in context.phaseByMode ? context.phaseByMode[forcedMode] : modeConfig.phases[0].id)
+          : undefined;
+
+        modeUpdate = {
+          mode: forcedMode,
+          phase: newPhase
+        };
+      }
+
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
@@ -254,15 +305,15 @@ const agentState = setup({
         modes,
         settings,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
-        ...(typedEvent.data.currentThread?.forcedMode && { mode: typedEvent.data.currentThread.forcedMode })
+        ...modeUpdate
       };
     }),
-    
+
     handleSettingsUpdate: assign(({ event }) => {
       const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
       const settings = typedEvent.settings;
-      
-      // Extract hotkeys from settings - filter out undefined values  
+
+      // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (settings.hotkeys) {
         Object.entries(settings.hotkeys).forEach(([key, value]) => {
@@ -271,10 +322,10 @@ const agentState = setup({
           }
         });
       }
-      
+
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
-      
+
       return {
         hotkeys,
         modes,
@@ -283,7 +334,7 @@ const agentState = setup({
     }),
     setRefreshThreadsData: assign(({ context, event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
-      
+
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
@@ -406,13 +457,13 @@ const agentState = setup({
       textToSpeech: 'TEXT_TO_SPEECH',
       switchMode: 'SWITCH_MODE'
     }),
-    
+
     textToSpeech: () => {
       // Stub implementation for text-to-speech
       console.log('[Agent] Text-to-speech triggered (stub)');
       // Future implementation will convert last agent message to speech
     },
-    
+
     switchMode: ({ context, self }) => {
       const visibleModes = context.modes.filter(m => !m.hidden);
       if (!visibleModes.length) return;
@@ -438,6 +489,7 @@ const agentState = setup({
     activeTabId: 'dashboard',
     mode: 'work', // Default mode
     phase: 'plan', // Default phase
+    phaseByMode: {}, // Track last phase per mode
     modes: [],
     hotkeys: {}, // Will be loaded from settings
     settings: { modes: [], hotkeys: {} }, // Will be loaded from settings

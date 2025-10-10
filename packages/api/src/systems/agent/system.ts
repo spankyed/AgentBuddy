@@ -18,7 +18,7 @@ export const agent = 'agent' as const;
 const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
-  busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), threadId: z.string().optional() }),
+  busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
   busEvent('REFRESH_DASHBOARD', {}),
@@ -140,14 +140,15 @@ export const agentSystem = setup({
       }));
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, threadId } = typeOf('USER_MSG', event);
+      const { text, mode, phase, threadId } = typeOf('USER_MSG', event);
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.message',
         payload: {
           text,
-          mode: mode || 'chat',
+          mode,
+          phase,
           threadId,
         },
       });

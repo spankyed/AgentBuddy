@@ -177,15 +177,6 @@ const phaseButtonClasses = computed(() => {
 const handleModeSelect = (modeId: string) => {
   emit('mode-change', modeId)
   isModeOpen.value = false
-
-  // If switching to a mode without phases from one with phases, clear the phase
-  const mode = props.modes.find(m => m.id === modeId)
-  if (!mode?.phases?.length && props.currentPhase) {
-    emit('phase-change', '')
-  } else if (mode?.phases?.length && !props.currentPhase) {
-    // If switching to a mode with phases and no phase is selected, select the first one
-    emit('phase-change', mode.phases[0].id)
-  }
 }
 
 const handlePhaseSelect = (phaseId: string) => {
