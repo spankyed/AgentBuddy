@@ -165,7 +165,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'toggle': [nodeId: string];
   'request-details': [nodeId: string];
-  'open-flow': [flowId: string];
+  'open-flow': [tNodeId: string];
 }>();
 
 const isExpanded = ref(false);

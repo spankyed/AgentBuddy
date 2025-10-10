@@ -46,7 +46,7 @@ type SystemEvent = OutgoingBrainEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'SELECT_AND_SHOW_FIRST_NODE' }
-  | { type: 'FLOW.NAVIGATE'; flowId: string }
+  | { type: 'FLOW.NAVIGATE'; tNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
   | { type: 'TOGGLE_LEFT_PANEL' }
@@ -245,11 +245,11 @@ const brainState = setup({
     }),
     navigateToFlow: ({ event }) => {
       if (event.type !== 'FLOW.NAVIGATE') return;
-      
+
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_TNODE',
-        tNodeId: event.flowId
+        tNodeId: event.tNodeId
       });
     },
     goBack: ({ context }) => {

@@ -113,7 +113,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'node-click': [tNodeId: string];
-  'flow-navigate': [flowId: string];
+  'flow-navigate': [tNodeId: string];
   'back-click': [];
   'toggle-left-panel': [];
   'toggle-right-panel': [];
