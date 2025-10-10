@@ -252,10 +252,11 @@ const brainState = setup({
         tNodeId: event.flowId
       });
     },
-    goBack: () => {
+    goBack: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'GO_BACK_TNODE'
+        type: 'GO_BACK_TNODE',
+        currentFlowTNodeId: context.flowTNodeId
       });
     },
     requestPluginData: ({ context }) => {

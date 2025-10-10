@@ -22,7 +22,7 @@ const busEvent = systemBus(brain);
 
 export const IncomingBrainEvents = [
   busEvent('OPEN_TNODE', { tNodeId: z.string() }),
-  busEvent('GO_BACK_TNODE', {}),
+  busEvent('GO_BACK_TNODE', { currentFlowTNodeId: z.string().optional() }),
   busEvent('REQUEST_PLUGIN_DATA', { flowTNodeId: z.string().optional() }),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
   busEvent('TOGGLE_DEBUG', {}),
@@ -305,8 +305,15 @@ export const brainSystem = setup({
         data
       }));
     },
-    goBackTNode: ({ system, context }) => {
-      const data = repository.brainQueries.rootData();
+    goBackTNode: ({ system, event }) => {
+      const currentFlowTNodeId = typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId | undefined;
+      const parentFlowTNodeId = currentFlowTNodeId
+        ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined
+        : undefined;
+
+      const data = parentFlowTNodeId
+        ? repository.brainQueries.extendedTNodeData(parentFlowTNodeId)
+        : repository.brainQueries.rootData();
 
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
