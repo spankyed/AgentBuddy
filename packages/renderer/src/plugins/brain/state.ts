@@ -253,10 +253,11 @@ const brainState = setup({
         type: 'GO_BACK_TNODE'
       });
     },
-    requestPluginData: () => {
+    requestPluginData: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'REQUEST_PLUGIN_DATA'
+        type: 'REQUEST_PLUGIN_DATA',
+        ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
       });
     },
     toggleLeftPanel: assign({
