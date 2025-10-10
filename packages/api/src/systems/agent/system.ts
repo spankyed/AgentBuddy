@@ -30,6 +30,7 @@ export const IncomingAgentEvents = [
 export type AgentInternalEvents =
   | SystemEvents
   | { type: 'API_KEYS_CHANGED' }
+  | { type: 'BIRTH_FLOW_START' }
 
 export type OutgoingAgentEvents =
   | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
@@ -52,21 +53,25 @@ export const agentSystem = setup({
     events: {} as ReceivableEvents,
   },
   actions: {
-    birthAssistant: () => {
-      // Check if we need to create the assistant birth thread
-      const internalSettings = repository.settingsQueries.getInternalSettings();
+    startBirthFlow: ({ system }) => {
+      // Triggered when required API keys are configured
+      const assistantSettings = repository.settingsQueries.getAssistantSettings();
 
-      if (!internalSettings.hasOnboarded && !internalSettings.assistantBirthdate) {
-        // Create the birth thread for first-time users (will check for existing internally)
+      if (!assistantSettings.birthdate) {
+        // Create the birth thread
         const { threadId, artifactId } = repository.agentCommands.createAssistantBirthThread();
+        logger.info('Birth flow started - created assistant birth thread', { threadId, artifactId });
 
-        // Only log if we actually created a new thread
-        const isNew = !internalSettings.assistantBirthdate;
-        if (isNew) {
-          logger.info('Created Assistant Birth thread', { threadId, artifactId });
-        } else {
-          logger.debug('Using existing Assistant Birth thread', { threadId });
-        }
+        // Trigger the brain event to start the birth flow
+        const brainActor = getActor(system, brain);
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'llm.now.available',
+          payload: {
+            threadId,
+            artifactId
+          }
+        });
       }
     },
     sendConnectedData: ({ system }) => {
@@ -159,7 +164,7 @@ export const agentSystem = setup({
     id: agent,
     initial: 'idle',
     context: ({}),
-    entry: ['birthAssistant'],
+    entry: [],
     on: {
       CLIENT_CONNECTED: {
         actions: ['sendConnectedData'],
@@ -175,6 +180,9 @@ export const agentSystem = setup({
       },
       API_KEYS_CHANGED: {
         actions: 'sendApiKeyStatus',
+      },
+      BIRTH_FLOW_START: {
+        actions: 'startBirthFlow',
       },
     },
     states: {

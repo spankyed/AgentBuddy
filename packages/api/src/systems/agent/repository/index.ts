@@ -374,8 +374,8 @@ export const agentCommands = {
     tx(threadId).link(EARS.RelKind.HAS, artifactId);
     tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
 
-    // Update settings with birthdate
-    settingsCommands.updateSettings('internal', null, ['assistantBirthdate'], new Date().toISOString());
+    // Update assistant settings with birthdate
+    settingsCommands.updateSettings('assistant', null, ['birthdate'], new Date().toISOString());
 
     return { threadId, artifactId };
   },

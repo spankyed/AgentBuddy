@@ -147,11 +147,11 @@ export interface PluginSettings {
 export interface InternalSettings {
   hasOnboarded: boolean;
   tourStarted: boolean;
-  assistantBirthdate: string | null;
   lastInteractionTimestamp: number | null;
   version: string;
 }
 
 export interface AssistantSettings {
   name: string;
+  birthdate: string | null;
 }

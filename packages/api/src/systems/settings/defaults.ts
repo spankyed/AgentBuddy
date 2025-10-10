@@ -149,11 +149,11 @@ export const defaultSettings: SettingsData = {
   internal: {
     hasOnboarded: false,
     tourStarted: false,
-    assistantBirthdate: null,
     lastInteractionTimestamp: null,
     version: '0.1.0'
   },
   assistant: {
     name: '',
+    birthdate: null
   }
 };

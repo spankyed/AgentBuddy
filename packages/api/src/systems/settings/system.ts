@@ -240,10 +240,26 @@ export const settingsSystem = setup({
           data: updatedSettings
         }));
 
+        // Check if we should trigger birth flow
+        const assistantSettings = settingsQueries.getAssistantSettings();
+
+        // Check if we have required API keys now
+        const hasRequiredKeys = (secretsData: any[]): boolean => {
+          const requiredProviders = updatedSettings.general.secrets.required || ['openai', 'anthropic'];
+          return requiredProviders.some((provider: string) =>
+            secretsData.some((secret: any) => secret.provider === provider)
+          );
+        };
+
         // Notify agent system about API key changes
         const agentActor = system.get(agent);
         if (agentActor) {
           agentActor.send({ type: 'API_KEYS_CHANGED' });
+
+          // If we now have required API keys and no birth has occurred, trigger birth flow
+          if (!assistantSettings.birthdate && hasRequiredKeys(secretsData)) {
+            agentActor.send({ type: 'BIRTH_FLOW_START' });
+          }
         }
       }
 

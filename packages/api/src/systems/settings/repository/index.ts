@@ -56,6 +56,8 @@ export const settingsQueries = {
 
   getInternalSettings: () => getSettingsEntity().data.internal,
 
+  getAssistantSettings: () => getSettingsEntity().data.assistant,
+
   getPluginSettings: (pluginId: string) => {
     const data = getSettingsEntity().data;
     return data.plugins?.[pluginId] || (defaultSettings.plugins as any)[pluginId] || {};
@@ -64,33 +66,27 @@ export const settingsQueries = {
 
 // COMMANDS
 export const settingsCommands = {
-  updateSettings(type: string, label: string | null, path: string[], value: any): SettingsEntity {
+  updateSettings(type: string, label: string | null, path: string[], value: any): void {
     const entity = getSettingsEntity();
 
-    // For internal settings, label is not needed
-    const fullPath = type === 'internal'
-      ? ['internal', ...path]
-      : type === 'general'
-      ? ['general', label!, ...path]
-      : ['plugins', label!, ...path];
+    // General & plugin settings are grouped by label (e.g., general.secrets, plugin.flows)
+    // Internal & assistant settings don't use labels
+    const needsLabel = type === 'general' || type === 'plugin';
+    if (needsLabel && !label) {
+      throw new Error(`Setting type '${type}' requires a label`);
+    }
+
+    // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
+    const dataKey = type === 'plugin' ? 'plugins' : type;
+    const fullPath = needsLabel
+      ? [dataKey, label!, ...path]
+      : [dataKey, ...path];
 
     const newData = setNestedValue(entity.data, fullPath, value);
 
     tx(entity.id)
       .put('data', newData)
       .put('updatedAt', Date.now());
-
-    return {
-      id: entity.id,
-      entityType: EARS.Entity.Settings,
-      name: type === 'internal' ? 'internal' : `${type}.${label}`,
-      data: type === 'internal'
-        ? newData.internal
-        : type === 'general'
-        ? newData.general[label!]
-        : newData.plugins[label!],
-      createdAt: Date.now()
-    } as SettingsEntity;
   },
 
   resetSettings: () => {
