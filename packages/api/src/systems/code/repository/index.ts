@@ -32,15 +32,15 @@ export const terminalQueries = {
   byId: (id: EARS.EntityId): TerminalEntity | undefined => {
     return findById<TerminalEntity>(id)
   },
-  
+
   all: (): TerminalEntity[] => {
     return findAll<TerminalEntity>(EARS.Entity.Terminal)
   },
-  
+
   active: (): TerminalEntity[] => {
-    return qx(EARS.Entity.Terminal)
-      .where('active', true)
-      .pickAll() as unknown as TerminalEntity[]
+    // findAll already filters soft-deleted, just filter for active=true
+    const all = findAll<TerminalEntity>(EARS.Entity.Terminal)
+    return all.filter(t => t.active === true)
   },
   
 

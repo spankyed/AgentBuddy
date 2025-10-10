@@ -1,7 +1,8 @@
 import { EARS } from '@/core/types';
-import { 
-  findById, 
-  findAll, 
+import {
+  findById,
+  findByIdRaw,
+  findAll,
   findWhere,
   createEntityWithDefaults,
   updateEntity,
@@ -17,18 +18,18 @@ import { tx } from '@/core/ears/helpers/transaction';
 
 // Queries
 export const actionQueries = {
-  byId: (id: EARS.EntityId) => 
+  byId: (id: EARS.EntityId) =>
     findById<ActionEntity>(id),
-  
-  all: () => 
+
+  all: () =>
     findAll<ActionEntity>(EARS.Entity.Action),
-  
-  byCategory: (category: string) => 
+
+  byCategory: (category: string) =>
     findWhere<ActionEntity>(EARS.Entity.Action, 'category', category),
-  
+
   // Simple pagination
   paginated: (page = 1, pageSize = 20) => {
-    const all = findAll<ActionEntity>(EARS.Entity.Action);
+    const all = actionQueries.all();
     const start = (page - 1) * pageSize;
     return {
       items: all.slice(start, start + pageSize),
@@ -38,7 +39,7 @@ export const actionQueries = {
       totalPages: Math.ceil(all.length / pageSize),
     };
   },
-  
+
   connectedData: (page = 1) => {
     const result = actionQueries.paginated(page, 20);
     return {
@@ -111,10 +112,12 @@ export const actionCommands = {
   },
   
   delete: (id: EARS.EntityId): void => {
-    if (!actionQueries.byId(id)) {
+    // Use findByIdRaw to check existence (including already deleted entities)
+    const existing = findByIdRaw<ActionEntity>(id);
+    if (!existing) {
       throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 } as const;
