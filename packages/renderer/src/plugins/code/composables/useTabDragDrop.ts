@@ -192,9 +192,13 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
   }
 
   const handleDragLeave = (event: DragEvent) => {
-    const tabBar = event.currentTarget as HTMLElement
     const relatedTarget = event.relatedTarget as HTMLElement
-    if (!tabBar.contains(relatedTarget)) {
+
+    // Only reset if the mouse left both containers entirely
+    const isInPinned = pinnedContainer.value?.contains(relatedTarget)
+    const isInMain = mainContainer.value?.contains(relatedTarget)
+
+    if (!isInPinned && !isInMain) {
       resetDragState()
     }
   }
