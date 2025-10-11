@@ -305,11 +305,7 @@ const removeTabFromGroup = (path: string) => {
 }
 
 const ungroupAll = (groupId: string) => {
-  // Remove all tabs from this group
-  const tabsInGroup = openFiles.value.filter(f => 'groupId' in f && f.groupId === groupId)
-  tabsInGroup.forEach(tab => {
-    actor.send({ type: 'REMOVE_TAB_FROM_GROUP', path: tab.path })
-  })
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: false })
 }
 
 const closeAllInGroup = (groupId: string) => {

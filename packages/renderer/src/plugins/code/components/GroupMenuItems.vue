@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Palette, FolderOpen, XCircle, Trash2, Pin } from 'lucide-vue-next'
+import { ChevronRight, Palette, FolderOpen, Trash2, Pin } from 'lucide-vue-next'
 import type { TabGroupColor } from '../state'
 
 defineProps<{
@@ -18,7 +18,6 @@ const emit = defineEmits<{
   'change-color': [color: TabGroupColor]
   'ungroup-all': []
   'close-all': []
-  delete: []
   'pin-group': []
   'unpin-group': []
 }>()
@@ -79,18 +78,11 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
 
   <component :is="ItemComponent" @select="$emit('ungroup-all')" :class="ITEM_CLASS">
     <FolderOpen class="w-4 h-4" />
-    Ungroup All Tabs
+    Ungroup
   </component>
 
-  <component :is="ItemComponent" @select="$emit('close-all')" :class="ITEM_CLASS">
-    <XCircle class="w-4 h-4" />
-    Close All Tabs
-  </component>
-
-  <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
-
-  <component :is="ItemComponent" @select="$emit('delete')" class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
+  <component :is="ItemComponent" @select="$emit('close-all')" class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
     <Trash2 class="w-4 h-4" />
-    Delete Group
+    Close Group
   </component>
 </template>

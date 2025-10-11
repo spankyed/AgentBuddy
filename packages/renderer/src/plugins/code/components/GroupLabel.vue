@@ -46,7 +46,6 @@
                 @change-color="$emit('change-color', $event)"
                 @ungroup-all="$emit('ungroup-all')"
                 @close-all="$emit('close-all')"
-                @delete="$emit('delete')"
                 @pin-group="$emit('pin-group')"
                 @unpin-group="$emit('unpin-group')"
               />
@@ -71,7 +70,6 @@
           @change-color="$emit('change-color', $event)"
           @ungroup-all="$emit('ungroup-all')"
           @close-all="$emit('close-all')"
-          @delete="$emit('delete')"
           @pin-group="$emit('pin-group')"
           @unpin-group="$emit('unpin-group')"
         />
@@ -121,7 +119,6 @@ defineEmits<{
   'change-color': [color: TabGroupColor]
   'ungroup-all': []
   'close-all': []
-  delete: []
   'pin-group': []
   'unpin-group': []
   'group-drag-over': [event: DragEvent]

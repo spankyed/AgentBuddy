@@ -731,11 +731,31 @@ const codeState = setup({
 
     removeTabFromGroup: assign(({ event, context }) => {
       const ev = event as { type: 'REMOVE_TAB_FROM_GROUP'; path: string }
+
+      // Find the group this tab belongs to
+      const tab = context.openFiles.find(f => f.path === ev.path)
+      const groupId = tab && 'groupId' in tab ? tab.groupId : undefined
+
+      // Remove tab from group
+      const updatedFiles = context.openFiles.map(file =>
+        file.path === ev.path ? { ...file, groupId: undefined } : file
+      )
+
+      // Check if group is now empty and delete it
+      let updatedGroups = context.tabGroups
+      if (groupId) {
+        const remainingTabsInGroup = updatedFiles.filter(
+          f => 'groupId' in f && f.groupId === groupId
+        )
+        if (remainingTabsInGroup.length === 0) {
+          updatedGroups = context.tabGroups.filter(g => g.id !== groupId)
+        }
+      }
+
       return {
         ...context,
-        openFiles: context.openFiles.map(file =>
-          file.path === ev.path ? { ...file, groupId: undefined } : file
-        )
+        openFiles: updatedFiles,
+        tabGroups: updatedGroups
       }
     }),
 
