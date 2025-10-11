@@ -101,6 +101,25 @@ export const terminalCommands = {
       updatedAt: Date.now()
     })
   },
+
+  updateCwd: (id: EARS.EntityId, cwd: string, title?: string): void => {
+    if (!exists(id)) {
+      console.error(`Terminal ${id} not found`)
+      return
+    }
+
+    const updates: any = {
+      cwd,
+      updatedAt: Date.now()
+    }
+
+    // Update title if provided (when no customTitle is set)
+    if (title) {
+      updates.title = title
+    }
+
+    tx(id).updateBatch(updates)
+  },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
     if (!exists(id)) {

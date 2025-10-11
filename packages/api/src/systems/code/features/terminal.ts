@@ -34,6 +34,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
+  | { type: 'terminal.CWD_CHANGED'; data: { terminalId: string; cwd: string; title?: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
@@ -98,6 +99,38 @@ export const terminalSystem = setup({
 
         // Set up output handler
         terminalService.onData(terminalInfo.id, (data) => {
+          // Check for OSC sequences indicating directory change
+          // OSC 7: \033]7;file://hostname/path\007 (or \033]7;file://hostname/path\033\\)
+          // OSC 633;P: \033]633;P;Cwd=/path\007
+          // OSC 1337: \033]1337;CurrentDir=/path\007
+          const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
+          const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
+          const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
+
+          const cwdMatch = osc7Match || osc633Match || osc1337Match
+
+          if (cwdMatch) {
+            try {
+              const newCwd = decodeURIComponent(cwdMatch[1])
+              const result = terminalService.updateCwd(terminalInfo.id, newCwd)
+
+              if (result) {
+                // Emit CWD change event to frontend
+                const cwdWrapped = emit(pluginId, {
+                  type: 'terminal.CWD_CHANGED',
+                  data: {
+                    terminalId: terminalInfo.id,
+                    cwd: result.cwd,
+                    title: result.title
+                  }
+                })
+                rootEvents.emitOutgoing(cwdWrapped.event)
+              }
+            } catch (error) {
+              console.error('Failed to parse CWD from OSC sequence:', error)
+            }
+          }
+
           // Send to frontend
           const wrapped = emit(pluginId, {
             type: 'terminal.OUTPUT',
@@ -290,6 +323,35 @@ export const terminalSystem = setup({
       await terminalService.restoreAll((terminalInfo) => {
         // Set up output handler for restored terminal
         terminalService.onData(terminalInfo.id, (data) => {
+          // Check for OSC sequences indicating directory change
+          const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
+          const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
+          const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
+
+          const cwdMatch = osc7Match || osc633Match || osc1337Match
+
+          if (cwdMatch) {
+            try {
+              const newCwd = decodeURIComponent(cwdMatch[1])
+              const result = terminalService.updateCwd(terminalInfo.id, newCwd)
+
+              if (result) {
+                // Emit CWD change event to frontend
+                const cwdWrapped = emit(pluginId, {
+                  type: 'terminal.CWD_CHANGED',
+                  data: {
+                    terminalId: terminalInfo.id,
+                    cwd: result.cwd,
+                    title: result.title
+                  }
+                })
+                rootEvents.emitOutgoing(cwdWrapped.event)
+              }
+            } catch (error) {
+              console.error('Failed to parse CWD from OSC sequence:', error)
+            }
+          }
+
           const wrapped = emit(pluginId, {
             type: 'terminal.OUTPUT',
             data: { terminalId: terminalInfo.id, data }

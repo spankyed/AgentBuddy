@@ -42,6 +42,7 @@ export type Event =
   | { type: 'terminal.CREATED'; data: TerminalInfo }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
+  | { type: 'terminal.CWD_CHANGED'; data: { terminalId: string; cwd: string; title?: string } }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
@@ -126,6 +127,53 @@ export const terminalState = setup({
             : t
         )
       }
+    }),
+
+    updateTerminalCwd: enqueueActions(({ enqueue, context, event, self }) => {
+      const ev = event as { type: 'terminal.CWD_CHANGED'; data: { terminalId: string; cwd: string; title?: string } }
+
+      // Update terminal info in context
+      enqueue(assign({
+        terminals: context.terminals.map(t => {
+          if (t.id === ev.data.terminalId) {
+            const updated = { ...t, cwd: ev.data.cwd }
+            // Update title if provided (when no customTitle is set)
+            if (ev.data.title) {
+              updated.title = ev.data.title
+            }
+            return updated
+          }
+          return t
+        })
+      }))
+
+      // Update parent state to refresh tab label
+      enqueue(() => {
+        const parentContext = getParentContext(self)
+        const terminalPath = `terminal:${ev.data.terminalId}`
+
+        // Find and update the terminal tab in openFiles
+        const updatedOpenFiles = (parentContext?.openFiles || []).map((file: any) => {
+          if (file.path === terminalPath && file.isTerminal) {
+            const terminal = context.terminals.find(t => t.id === ev.data.terminalId)
+            if (terminal) {
+              return {
+                ...file,
+                terminalInfo: {
+                  ...file.terminalInfo,
+                  cwd: ev.data.cwd,
+                  title: ev.data.title || file.terminalInfo.title
+                }
+              }
+            }
+          }
+          return file
+        })
+
+        updateParentState(self, {
+          openFiles: updatedOpenFiles
+        })
+      })
     }),
     
     clearTerminalError: assign({
@@ -325,6 +373,9 @@ export const terminalState = setup({
     },
     'terminal.RENAMED': {
       actions: 'updateTerminalTitle'
+    },
+    'terminal.CWD_CHANGED': {
+      actions: 'updateTerminalCwd'
     },
     'terminal.OUTPUT': {
       actions: 'handleTerminalOutput'

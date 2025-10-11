@@ -63,7 +63,10 @@ class TerminalService {
     try {
       // Sanitize environment variables
       const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
-      
+
+      // Add shell integration flag
+      sanitizedEnv['AGENTBUDDY_SHELL_INTEGRATION'] = '1'
+
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols,
@@ -71,6 +74,9 @@ class TerminalService {
         cwd,
         env: sanitizedEnv
       })
+
+      // Send shell integration setup commands based on shell type
+      this.injectShellIntegration(ptyProcess, shell, cwd)
 
       const info: TerminalInfo = {
         id,
@@ -149,6 +155,25 @@ class TerminalService {
     repository.terminalCommands.rename(id as EARS.EntityId, sanitizedTitle)
 
     return true
+  }
+
+  updateCwd(id: string, newCwd: string): { cwd: string; title?: string } | null {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return null
+
+    terminal.info.cwd = newCwd
+
+    // Auto-update title only if no customTitle is set
+    let newTitle: string | undefined
+    if (!terminal.info.customTitle) {
+      newTitle = newCwd.split('/').filter(Boolean).pop() || 'root'
+      terminal.info.title = this.sanitizeTitle(newTitle)
+    }
+
+    // Update in EARS storage
+    repository.terminalCommands.updateCwd(id as EARS.EntityId, newCwd, newTitle)
+
+    return { cwd: newCwd, title: newTitle }
   }
 
   kill(id: string): boolean {
@@ -265,16 +290,37 @@ class TerminalService {
 
   private sanitizeEnvironment(env: { [key: string]: string }): { [key: string]: string } {
     const sanitized = { ...env }
-    
+
     // Remove dangerous environment variables
     for (const blocked of this.BLOCKED_ENV_VARS) {
       delete sanitized[blocked]
     }
-    
+
     // Add security-related environment variables
     sanitized['NODE_ENV'] = 'production'
-    
+
     return sanitized
+  }
+
+  private injectShellIntegration(ptyProcess: pty.IPty, shell: string, initialCwd: string): void {
+    const shellName = shell.split('/').pop()?.toLowerCase() || ''
+
+    if (shellName.includes('bash')) {
+      // Bash: Use PROMPT_COMMAND to emit OSC 7 on every prompt
+      // Compact single-line version with clear to hide injection output
+      const bashIntegration = `[ -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED" ] && export AGENTBUDDY_SHELL_INTEGRATION_INJECTED=1 && __agentbuddy_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__agentbuddy_osc7\${PROMPT_COMMAND:+;\$PROMPT_COMMAND}" && clear`
+      ptyProcess.write(bashIntegration + '\n')
+    } else if (shellName.includes('zsh')) {
+      // Zsh: Use precmd hook to emit OSC 7
+      // Compact single-line version with clear to hide injection output
+      const zshIntegration = `[[ -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED" ]] && export AGENTBUDDY_SHELL_INTEGRATION_INJECTED=1 && __agentbuddy_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__agentbuddy_osc7) && clear`
+      ptyProcess.write(zshIntegration + '\n')
+    } else if (shellName.includes('fish')) {
+      // Fish: Use function and event
+      // Compact version with clear to hide injection output
+      const fishIntegration = `test -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED"; and set -gx AGENTBUDDY_SHELL_INTEGRATION_INJECTED 1; and function __agentbuddy_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end; and clear`
+      ptyProcess.write(fishIntegration + '\n')
+    }
   }
 
   async restoreAll(setupHandlers: (terminalInfo: TerminalInfo) => void): Promise<void> {
@@ -288,14 +334,21 @@ class TerminalService {
           continue
         }
         
+        // Sanitize environment and add shell integration flag
+        const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
+        sanitizedEnv['AGENTBUDDY_SHELL_INTEGRATION'] = '1'
+
         // Spawn new pty process for the terminal
         const ptyProcess = pty.spawn(persistedTerminal.shell, [], {
           name: 'xterm-color',
           cols: persistedTerminal.cols,
           rows: persistedTerminal.rows,
           cwd: persistedTerminal.cwd,
-          env: this.sanitizeEnvironment(process.env as { [key: string]: string })
+          env: sanitizedEnv
         })
+
+        // Inject shell integration
+        this.injectShellIntegration(ptyProcess, persistedTerminal.shell, persistedTerminal.cwd)
         
         const terminalInfo: TerminalInfo = {
           id: persistedTerminal.id,
