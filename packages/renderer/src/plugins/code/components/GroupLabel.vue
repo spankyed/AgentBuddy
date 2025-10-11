@@ -15,23 +15,8 @@
         @dragleave="$emit('group-drag-leave', $event)"
         @drop.prevent.stop="$emit('group-drop', $event)"
       >
-        <!-- Group name (editable on double-click) -->
-        <input
-          v-if="isEditing"
-          ref="nameInput"
-          v-model="editedName"
-          @click.stop
-          @blur="saveEdit"
-          @keydown.enter="saveEdit"
-          @keydown.escape="cancelEdit"
-          class="px-1 text-xs font-medium bg-transparent border rounded text-neutral-200 border-neutral-600 focus:outline-none focus:border-blue-500"
-          style="width: 80px"
-        />
-        <span
-          v-else
-          @dblclick.stop="startEdit"
-          class="text-xs font-medium text-neutral-300 whitespace-nowrap select-none"
-        >
+        <!-- Group name -->
+        <span class="text-xs font-medium text-neutral-300 whitespace-nowrap select-none">
           {{ name }}
         </span>
 
@@ -49,6 +34,7 @@
           <DropdownMenuPortal>
             <DropdownMenuContent class="min-w-[180px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
               <GroupMenuItems
+                :name="name"
                 :isPinned="isPinned"
                 :ItemComponent="DropdownMenuItem"
                 :SeparatorComponent="DropdownMenuSeparator"
@@ -56,7 +42,7 @@
                 :SubTriggerComponent="DropdownMenuSubTrigger"
                 :SubContentComponent="DropdownMenuSubContent"
                 :PortalComponent="DropdownMenuPortal"
-                @rename="startEdit"
+                @rename="$emit('rename', $event)"
                 @change-color="$emit('change-color', $event)"
                 @ungroup-all="$emit('ungroup-all')"
                 @close-all="$emit('close-all')"
@@ -73,6 +59,7 @@
     <ContextMenuPortal>
       <ContextMenuContent class="min-w-[180px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
         <GroupMenuItems
+          :name="name"
           :isPinned="isPinned"
           :ItemComponent="ContextMenuItem"
           :SeparatorComponent="ContextMenuSeparator"
@@ -80,7 +67,7 @@
           :SubTriggerComponent="ContextMenuSubTrigger"
           :SubContentComponent="ContextMenuSubContent"
           :PortalComponent="ContextMenuPortal"
-          @rename="startEdit"
+          @rename="$emit('rename', $event)"
           @change-color="$emit('change-color', $event)"
           @ungroup-all="$emit('ungroup-all')"
           @close-all="$emit('close-all')"
@@ -94,7 +81,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
 import { MoreHorizontal } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -119,7 +105,7 @@ import {
 import type { TabGroupColor } from '../state'
 import GroupMenuItems from './GroupMenuItems.vue'
 
-const props = defineProps<{
+defineProps<{
   name: string
   color: TabGroupColor
   isCollapsed: boolean
@@ -129,7 +115,7 @@ const props = defineProps<{
   isDragOver?: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   toggle: []
   rename: [name: string]
   'change-color': [color: TabGroupColor]
@@ -142,33 +128,6 @@ const emit = defineEmits<{
   'group-drag-leave': [event: DragEvent]
   'group-drop': [event: DragEvent]
 }>()
-
-// Inline editing
-const isEditing = ref(false)
-const editedName = ref(props.name)
-const nameInput = ref<HTMLInputElement | null>(null)
-
-const startEdit = () => {
-  isEditing.value = true
-  editedName.value = props.name
-  nextTick(() => {
-    nameInput.value?.focus()
-    nameInput.value?.select()
-  })
-}
-
-const saveEdit = () => {
-  if (editedName.value.trim() && editedName.value !== props.name) {
-    emit('rename', editedName.value.trim())
-  }
-  isEditing.value = false
-}
-
-const cancelEdit = () => {
-  editedName.value = props.name
-  isEditing.value = false
-}
-
 </script>
 
 <style scoped>

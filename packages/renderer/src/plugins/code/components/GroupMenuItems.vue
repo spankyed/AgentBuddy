@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ChevronRight, Edit2, Palette, FolderOpen, XCircle, Trash2, Pin } from 'lucide-vue-next'
+import { ChevronRight, Palette, FolderOpen, XCircle, Trash2, Pin } from 'lucide-vue-next'
 import type { TabGroupColor } from '../state'
 
 defineProps<{
+  name: string
   isPinned?: boolean
   ItemComponent: any
   SeparatorComponent: any
@@ -13,7 +14,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  rename: []
+  rename: [name: string]
   'change-color': [color: TabGroupColor]
   'ungroup-all': []
   'close-all': []
@@ -27,6 +28,19 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
 </script>
 
 <template>
+  <!-- Rename input at top -->
+  <div class="px-3 py-2">
+    <input
+      :value="name"
+      @input="$emit('rename', ($event.target as HTMLInputElement).value)"
+      @click.stop
+      class="w-full px-2 py-1 text-sm bg-neutral-800 border rounded text-neutral-200 border-neutral-600 focus:outline-none focus:border-blue-500"
+      placeholder="Group name..."
+    />
+  </div>
+
+  <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
+
   <component :is="ItemComponent" v-if="isPinned" @select="$emit('unpin-group')" :class="ITEM_CLASS">
     <Pin class="w-4 h-4" />
     Unpin Group
@@ -38,11 +52,6 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
   </component>
 
   <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
-
-  <component :is="ItemComponent" @select="$emit('rename')" :class="ITEM_CLASS">
-    <Edit2 class="w-4 h-4" />
-    Rename Group
-  </component>
 
   <component :is="SubComponent">
     <component :is="SubTriggerComponent" :class="ITEM_CLASS">
