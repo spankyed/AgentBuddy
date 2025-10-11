@@ -71,6 +71,7 @@ type UIEvent =
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
+  | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'SELECT_ROOT_FLOW' }
   | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
@@ -117,7 +118,7 @@ const flowsState = setup({
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {
-      const ev = typeOf(['FLOW.SELECT', 'FLOW_CREATED'], event);
+      const ev = typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'FLOW_CREATED'], event);
       if (context.selectedFlowId === ev.flowId) {
         return
       }
@@ -789,6 +790,10 @@ const flowsState = setup({
       tags: ['list-flows'],
       meta: { ...breadcrumb('list', 'Flows', true) },
       on: {
+        'FLOW.PREVIEW': {
+          actions: 'selectFlow',
+          // Stay in list state - just load the flow data
+        },
         'FLOW.SELECT': {
           actions: 'selectFlow',
           target: 'view',

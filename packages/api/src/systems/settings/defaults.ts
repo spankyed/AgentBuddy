@@ -136,7 +136,8 @@ export const defaultSettings: SettingsData = {
       ]
     },
     flows: {
-      rootFlowId: undefined // Will be set to first available flow or selected by user
+      rootFlowId: undefined, // Will be set to first available flow or selected by user
+      enableFlowPreview: true // Enable flow preview on single click
     },
     brain: {
       runningRootFlowId: undefined // No flow running initially

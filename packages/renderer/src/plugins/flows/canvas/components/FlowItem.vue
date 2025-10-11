@@ -1,16 +1,13 @@
 <template>
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
-      <div
-        class="flow-item"
-        :class="{ 'has-description': flow.description }"
+      <button
+        class="relative w-full overflow-hidden flow-button group"
+        :class="[isSelected ? 'selected' : '', isRoot ? 'root-flow' : 'sub-flow', { 'has-description': flow.description }]"
+        :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
+        @click="$emit('click')"
+        @dblclick="$emit('dblclick')"
       >
-        <button
-          class="relative w-full overflow-hidden flow-button group"
-          :class="[isSelected ? 'selected' : '', isRoot ? 'root-flow' : 'sub-flow']"
-          :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
-          @click="$emit('click')"
-    >
       <!-- Glow effect on hover -->
       <div 
         class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
@@ -51,7 +48,6 @@
           :class="isRoot ? 'from-purple-500/20 to-transparent' : 'from-blue-500/20 to-transparent'"
         />
       </button>
-      </div>
     </ContextMenuTrigger>
 
     <!-- Context Menu - Only show for non-root flows -->
@@ -102,6 +98,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   click: []
+  dblclick: []
   'request-delete': [flow: Partial<FlowEntity>]
   'request-edit-label': [flow: Partial<FlowEntity>]
 }>()
@@ -116,12 +113,6 @@ const handleRequestEditLabel = () => {
 </script>
 
 <style scoped>
-.flow-item {
-  user-select: none;
-  margin-bottom: 0.25rem;
-  width: 100%;
-}
-
 .flow-button {
   border-radius: 0.375rem;
   border: 1px solid transparent;
@@ -133,6 +124,8 @@ const handleRequestEditLabel = () => {
   width: 100%;
   cursor: pointer;
   padding: 0;
+  user-select: none;
+  margin-bottom: 0.25rem;
 }
 
 .flow-button:hover {
