@@ -4,6 +4,7 @@ import { trpc } from '@/core/trpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
+import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
 // Import child state machines
@@ -30,6 +31,17 @@ export interface OpenFile {
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
   isPinned?: boolean
+  groupId?: string
+}
+
+export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
+
+export interface TabGroup {
+  id: string
+  name: string
+  color: TabGroupColor
+  isCollapsed: boolean
+  order: number
 }
 
 export interface TerminalTab extends OpenFile {
@@ -47,6 +59,9 @@ export type Context = {
   selectedPanel: PanelType
   tabsRestored?: boolean
   pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
+  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean }>  // Track metadata to apply after restoration
+  // Tab groups state
+  tabGroups: TabGroup[]
   // Quick open state
   isQuickOpenVisible: boolean
   quickOpenQuery: string
@@ -68,7 +83,7 @@ export interface QuickOpenResult {
   matchRanges?: Array<[number, number]> // For highlighting matches
 }
 
-export type Event = 
+export type Event =
   | OutgoingCodeEvents
   // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
@@ -77,6 +92,15 @@ export type Event =
   // Tab pinning events
   | { type: 'PIN_TAB'; path: string }
   | { type: 'UNPIN_TAB'; path: string }
+  // Tab group events
+  | { type: 'CREATE_GROUP'; name: string; color: TabGroupColor; tabPaths?: string[] }
+  | { type: 'RENAME_GROUP'; groupId: string; name: string }
+  | { type: 'CHANGE_GROUP_COLOR'; groupId: string; color: TabGroupColor }
+  | { type: 'DELETE_GROUP'; groupId: string; closeTabsInGroup?: boolean }
+  | { type: 'TOGGLE_GROUP_COLLAPSE'; groupId: string }
+  | { type: 'ADD_TAB_TO_GROUP'; path: string; groupId: string }
+  | { type: 'REMOVE_TAB_FROM_GROUP'; path: string }
+  | { type: 'REORDER_GROUPS'; fromIndex: number; toIndex: number }
   // Hotkey events
   | HotkeyEvent
   | { type: 'OPEN_TERMINAL' }
@@ -156,27 +180,55 @@ const codeState = setup({
         return
       }
       saveOpenTabs(context.openFiles)
+      saveTabGroups(context.tabGroups)
     },
     updateState: assign(({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       const updates = { ...context, ...ev.updates }
-      
+
+      // Apply persisted metadata (groupId, isPinned) to newly created tabs
+      if (context.pendingPersistedMetadata && ev.updates.openFiles && ev.updates.openFiles.length > 0) {
+        const patchedFiles = ev.updates.openFiles.map(file => {
+          const metadata = context.pendingPersistedMetadata!.get(file.path)
+          if (metadata) {
+            return {
+              ...file,
+              groupId: metadata.groupId,
+              isPinned: metadata.isPinned
+            }
+          }
+          return file
+        })
+
+        // Check if we've applied all pending metadata
+        const appliedCount = patchedFiles.filter(f =>
+          context.pendingPersistedMetadata!.has(f.path)
+        ).length
+
+        updates.openFiles = patchedFiles
+
+        // Clear pending metadata if all tabs have been restored
+        if (appliedCount === context.pendingPersistedMetadata!.size) {
+          updates.pendingPersistedMetadata = undefined
+        }
+      }
+
       // Check if we need to reorder tabs based on pending order
-      if (context.pendingTabOrder && ev.updates.openFiles && ev.updates.openFiles.length > 0) {
-        const reorderedFiles = reorderTabsByStoredOrder(ev.updates.openFiles, context.pendingTabOrder)
+      if (context.pendingTabOrder && updates.openFiles && updates.openFiles.length > 0) {
+        const reorderedFiles = reorderTabsByStoredOrder(updates.openFiles, context.pendingTabOrder)
         if (reorderedFiles) {
           updates.openFiles = reorderedFiles
           updates.pendingTabOrder = undefined // Clear pending order after applying
         }
       }
-      
+
       // If root directory changed, notify commit, PR, and search panels to refresh
       if (ev.updates.rootDirectory && ev.updates.rootDirectory !== context.rootDirectory) {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
         system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', rootDirectory: ev.updates.rootDirectory });
       }
-      
+
       return updates
     }),
     assignFiles: assign({
@@ -193,15 +245,29 @@ const codeState = setup({
     
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
       const persistedTabs = loadPersistedTabs()
+      const persistedGroups = loadTabGroups()
       // console.log('[Code Plugin] Restoring persisted tabs:', persistedTabs)
-      
+
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
-      
+
+      // Create a map of path -> metadata (groupId, isPinned) to apply after tabs are created
+      const metadataMap = new Map<string, { groupId?: string; isPinned?: boolean }>()
+      persistedTabs.forEach(tab => {
+        if (tab.groupId || tab.isPinned) {
+          metadataMap.set(tab.path, {
+            groupId: tab.groupId,
+            isPinned: tab.isPinned
+          })
+        }
+      })
+
       // Mark tabs as restored immediately (even if empty)
       enqueue.assign({
         tabsRestored: true,
-        pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined
+        pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined,
+        pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
+        tabGroups: persistedGroups
       })
       
       // If no persisted tabs, we're done
@@ -464,7 +530,7 @@ const codeState = setup({
     pinTab: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_TAB'; path: string }
       const updatedFiles = context.openFiles.map(file =>
-        file.path === ev.path ? { ...file, isPinned: true } : file
+        file.path === ev.path ? { ...file, isPinned: true, groupId: undefined } : file
       )
       // Sort tabs to put pinned tabs first
       const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
@@ -485,6 +551,132 @@ const codeState = setup({
         openFiles: updatedFiles
       }
     }),
+
+    createGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'CREATE_GROUP'; name: string; color: TabGroupColor; tabPaths?: string[] }
+      const newGroup: TabGroup = {
+        id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: ev.name,
+        color: ev.color,
+        isCollapsed: false,
+        order: context.tabGroups.length
+      }
+
+      // Update files if tabPaths provided
+      const updatedFiles = ev.tabPaths
+        ? context.openFiles.map(file =>
+            ev.tabPaths!.includes(file.path) ? { ...file, groupId: newGroup.id } : file
+          )
+        : context.openFiles
+
+      return {
+        ...context,
+        tabGroups: [...context.tabGroups, newGroup],
+        openFiles: updatedFiles
+      }
+    }),
+
+    renameGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'RENAME_GROUP'; groupId: string; name: string }
+      return {
+        ...context,
+        tabGroups: context.tabGroups.map(group =>
+          group.id === ev.groupId ? { ...group, name: ev.name } : group
+        )
+      }
+    }),
+
+    changeGroupColor: assign(({ event, context }) => {
+      const ev = event as { type: 'CHANGE_GROUP_COLOR'; groupId: string; color: TabGroupColor }
+      return {
+        ...context,
+        tabGroups: context.tabGroups.map(group =>
+          group.id === ev.groupId ? { ...group, color: ev.color } : group
+        )
+      }
+    }),
+
+    deleteGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'DELETE_GROUP'; groupId: string; closeTabsInGroup?: boolean }
+
+      // Remove group
+      const updatedGroups = context.tabGroups.filter(g => g.id !== ev.groupId)
+
+      // Either close tabs or ungroup them
+      const updatedFiles = ev.closeTabsInGroup
+        ? context.openFiles.filter(file => !('groupId' in file) || file.groupId !== ev.groupId)
+        : context.openFiles.map(file =>
+            ('groupId' in file && file.groupId === ev.groupId) ? { ...file, groupId: undefined } : file
+          )
+
+      // Update active file if it was closed
+      const newActiveFilePath = ev.closeTabsInGroup && context.activeFilePath
+        ? (updatedFiles.some(f => f.path === context.activeFilePath)
+            ? context.activeFilePath
+            : (updatedFiles.length > 0 ? updatedFiles[0].path : null))
+        : context.activeFilePath
+
+      return {
+        ...context,
+        tabGroups: updatedGroups,
+        openFiles: updatedFiles,
+        activeFilePath: newActiveFilePath
+      }
+    }),
+
+    toggleGroupCollapse: assign(({ event, context }) => {
+      const ev = event as { type: 'TOGGLE_GROUP_COLLAPSE'; groupId: string }
+      return {
+        ...context,
+        tabGroups: context.tabGroups.map(group =>
+          group.id === ev.groupId ? { ...group, isCollapsed: !group.isCollapsed } : group
+        )
+      }
+    }),
+
+    addTabToGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'ADD_TAB_TO_GROUP'; path: string; groupId: string }
+
+      // If tab is pinned, unpin it first (pinned tabs can't be in groups)
+      const updatedFiles = context.openFiles.map(file =>
+        file.path === ev.path
+          ? { ...file, groupId: ev.groupId, isPinned: false }
+          : file
+      )
+
+      return {
+        ...context,
+        openFiles: updatedFiles
+      }
+    }),
+
+    removeTabFromGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'REMOVE_TAB_FROM_GROUP'; path: string }
+      return {
+        ...context,
+        openFiles: context.openFiles.map(file =>
+          file.path === ev.path ? { ...file, groupId: undefined } : file
+        )
+      }
+    }),
+
+    reorderGroups: assign(({ event, context }) => {
+      const ev = event as { type: 'REORDER_GROUPS'; fromIndex: number; toIndex: number }
+      const groups = [...context.tabGroups]
+      const [movedGroup] = groups.splice(ev.fromIndex, 1)
+      groups.splice(ev.toIndex, 0, movedGroup)
+
+      // Update order values
+      const reorderedGroups = groups.map((group, index) => ({
+        ...group,
+        order: index
+      }))
+
+      return {
+        ...context,
+        tabGroups: reorderedGroups
+      }
+    }),
   }
 }).createMachine({
   id,
@@ -498,6 +690,8 @@ const codeState = setup({
     isLoading: false,
     error: null,
     selectedPanel: 'explorer' as PanelType,
+    // Tab groups state
+    tabGroups: [],
     // Quick open state
     isQuickOpenVisible: false,
     quickOpenQuery: '',
@@ -542,6 +736,31 @@ const codeState = setup({
         },
         UNPIN_TAB: {
           actions: ['unpinTab', 'saveTabsAction']
+        },
+        // Tab groups
+        CREATE_GROUP: {
+          actions: ['createGroup', 'saveTabsAction']
+        },
+        RENAME_GROUP: {
+          actions: ['renameGroup', 'saveTabsAction']
+        },
+        CHANGE_GROUP_COLOR: {
+          actions: ['changeGroupColor', 'saveTabsAction']
+        },
+        DELETE_GROUP: {
+          actions: ['deleteGroup', 'saveTabsAction']
+        },
+        TOGGLE_GROUP_COLLAPSE: {
+          actions: ['toggleGroupCollapse', 'saveTabsAction']
+        },
+        ADD_TAB_TO_GROUP: {
+          actions: ['addTabToGroup', 'saveTabsAction']
+        },
+        REMOVE_TAB_FROM_GROUP: {
+          actions: ['removeTabFromGroup', 'saveTabsAction']
+        },
+        REORDER_GROUPS: {
+          actions: ['reorderGroups', 'saveTabsAction']
         },
         // Hotkey handling
         HOTKEY_PRESSED: {

@@ -3,11 +3,13 @@
  */
 
 import { sortTabsByPinned } from './persisted-tabs'
+import type { TabGroup } from '../state'
 
 // Base tab interface - all tabs must have at least a path
 interface BaseTab {
   path: string
   isPinned?: boolean
+  groupId?: string
 }
 
 /**
@@ -193,23 +195,23 @@ export function reorderTabs<T extends BaseTab>(
   toIndex: number
 ): T[] {
   // Validate indices
-  if (fromIndex < 0 || fromIndex >= openFiles.length || 
+  if (fromIndex < 0 || fromIndex >= openFiles.length ||
       toIndex < 0 || toIndex >= openFiles.length ||
       fromIndex === toIndex) {
     return openFiles
   }
-  
+
   const result = [...openFiles]
   const [movedTab] = result.splice(fromIndex, 1)
-  
+
   // Find the boundary between pinned and unpinned tabs
   const pinnedCount = result.filter(tab => tab.isPinned).length
-  
+
   // Enforce pinned boundaries:
   // - Pinned tabs can only be reordered within pinned section (0 to pinnedCount-1)
   // - Unpinned tabs can only be reordered within unpinned section (pinnedCount to end)
   let finalToIndex = toIndex
-  
+
   if (movedTab.isPinned) {
     // Moving a pinned tab - constrain to pinned section
     finalToIndex = Math.min(toIndex, pinnedCount)
@@ -217,8 +219,96 @@ export function reorderTabs<T extends BaseTab>(
     // Moving an unpinned tab - constrain to unpinned section
     finalToIndex = Math.max(toIndex, pinnedCount)
   }
-  
+
   result.splice(finalToIndex, 0, movedTab)
-  
+
   return result
+}
+
+/**
+ * Groups tabs by their groupId, maintaining order within each group
+ * @param tabs - Array of tabs
+ * @param groups - Array of tab groups (for ordering)
+ * @returns Object with pinned tabs, grouped tabs by group, and ungrouped tabs
+ */
+export function groupTabs<T extends BaseTab>(
+  tabs: T[],
+  groups: TabGroup[]
+): {
+  pinnedTabs: T[]
+  groupedTabs: Map<string, T[]>
+  ungroupedTabs: T[]
+} {
+  const pinnedTabs: T[] = []
+  const groupedTabs = new Map<string, T[]>()
+  const ungroupedTabs: T[] = []
+
+  // Initialize groups map in order
+  groups
+    .sort((a, b) => a.order - b.order)
+    .forEach(group => {
+      groupedTabs.set(group.id, [])
+    })
+
+  // Categorize tabs
+  for (const tab of tabs) {
+    if (tab.isPinned) {
+      pinnedTabs.push(tab)
+    } else if (tab.groupId && groupedTabs.has(tab.groupId)) {
+      groupedTabs.get(tab.groupId)!.push(tab)
+    } else {
+      ungroupedTabs.push(tab)
+    }
+  }
+
+  return { pinnedTabs, groupedTabs, ungroupedTabs }
+}
+
+/**
+ * Moves a tab to a specific group
+ * @param tabs - Array of tabs
+ * @param tabPath - Path of tab to move
+ * @param groupId - ID of group to move to (or undefined to remove from group)
+ * @returns Updated tabs array
+ */
+export function moveTabToGroup<T extends BaseTab>(
+  tabs: T[],
+  tabPath: string,
+  groupId: string | undefined
+): T[] {
+  return tabs.map(tab =>
+    tab.path === tabPath
+      ? { ...tab, groupId, isPinned: groupId ? false : tab.isPinned }
+      : tab
+  )
+}
+
+/**
+ * Gets all tabs in a specific group
+ * @param tabs - Array of tabs
+ * @param groupId - ID of group
+ * @returns Array of tabs in the group
+ */
+export function getTabsInGroup<T extends BaseTab>(
+  tabs: T[],
+  groupId: string
+): T[] {
+  return tabs.filter(tab => tab.groupId === groupId)
+}
+
+/**
+ * Removes all tabs from a group (ungroups them)
+ * @param tabs - Array of tabs
+ * @param groupId - ID of group
+ * @returns Updated tabs array
+ */
+export function ungroupTabs<T extends BaseTab>(
+  tabs: T[],
+  groupId: string
+): T[] {
+  return tabs.map(tab =>
+    tab.groupId === groupId
+      ? { ...tab, groupId: undefined }
+      : tab
+  )
 }

@@ -5,12 +5,22 @@
       :tabs="openFiles"
       :active-tab-path="activeFilePath"
       :root-directory="rootDirectory"
+      :tab-groups="tabGroups"
       @select="selectFile"
       @close="closeFile"
       @reorder="(fromIndex, toIndex) => $emit('reorder', fromIndex, toIndex)"
       @reveal-in-explorer="(path) => $emit('reveal-in-explorer', path)"
       @pin-tab="(path) => $emit('pin-tab', path)"
       @unpin-tab="(path) => $emit('unpin-tab', path)"
+      @create-group="(name, color, tabPaths) => $emit('create-group', name, color, tabPaths)"
+      @rename-group="(groupId, name) => $emit('rename-group', groupId, name)"
+      @change-group-color="(groupId, color) => $emit('change-group-color', groupId, color)"
+      @delete-group="(groupId) => $emit('delete-group', groupId)"
+      @toggle-group-collapse="(groupId) => $emit('toggle-group-collapse', groupId)"
+      @add-tab-to-group="(tabPath, groupId) => $emit('add-tab-to-group', tabPath, groupId)"
+      @remove-tab-from-group="(path) => $emit('remove-tab-from-group', path)"
+      @ungroup-all="(groupId) => $emit('ungroup-all', groupId)"
+      @close-all-in-group="(groupId) => $emit('close-all-in-group', groupId)"
     />
 
     <!-- Editor -->
@@ -69,6 +79,7 @@ const props = defineProps<{
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
   rootDirectory?: string
+  tabGroups: any[] // Will be typed properly
 }>()
 
 // Emits
@@ -80,6 +91,15 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
+  'create-group': [name: string, color: string, tabPaths: string[]]
+  'rename-group': [groupId: string, name: string]
+  'change-group-color': [groupId: string, color: string]
+  'delete-group': [groupId: string]
+  'toggle-group-collapse': [groupId: string]
+  'add-tab-to-group': [tabPath: string, groupId: string]
+  'remove-tab-from-group': [path: string]
+  'ungroup-all': [groupId: string]
+  'close-all-in-group': [groupId: string]
 }>()
 
 // Helper to check if a file is a terminal

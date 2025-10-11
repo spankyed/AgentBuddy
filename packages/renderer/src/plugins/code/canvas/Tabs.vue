@@ -1,193 +1,338 @@
 <template>
-  <div v-if="tabs.length > 0" class="flex flex-col flex-shrink-0">
+  <div v-if="tabs.length > 0 || tabGroups.length > 0" class="flex flex-col flex-shrink-0">
     <!-- Pinned tabs row -->
-    <div 
+    <div
       v-if="pinnedTabs.length > 0"
-      class="flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible pinned-tabs-container bg-neutral-900 border-b border-neutral-800"
+      ref="pinnedContainer"
+      class="relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
       data-container="pinned"
-      @dragover="handleContainerDragOver"
-      @drop="handleContainerDrop"
+      @dragover="handleDragOver"
+      @drop="handleDrop"
       @dragleave="handleDragLeave"
     >
-      <ContextMenuRoot v-for="(tab, index) in pinnedTabs" :key="tab.path">
-        <ContextMenuTrigger as-child>
-          <div
-            class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
-            :class="[
-              activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
-              draggedIndex === index && draggedContainer === 'pinned' ? 'opacity-50' : ''
-            ]"
-            :data-index="index"
-            :data-container="'pinned'"
-            draggable="true"
-            @dragstart="handleDragStart(index, 'pinned', $event)"
-            @dragend="handleDragEnd"
+      <!-- Drop indicator for pinned -->
+      <div
+        v-if="dropPosition && dropPosition.context === 'pinned' && dropPosition.index !== null && draggedTab"
+        class="absolute top-0 bottom-0 w-0.5 pointer-events-none z-50 transition-opacity bg-blue-500"
+        :style="getDropIndicatorStyle()"
+      ></div>
+      <!-- Pinned tabs -->
+    <ContextMenuRoot v-for="tab in pinnedTabs" :key="tab.path">
+      <ContextMenuTrigger as-child>
+        <div
+          class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
+          :class="[
+            activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
+            draggedTab?.path === tab.path ? 'opacity-50' : ''
+          ]"
+          :data-path="tab.path"
+          :data-context="'pinned'"
+          draggable="true"
+          @dragstart="handleDragStart(tab, $event)"
+          @dragend="handleDragEnd"
+        >
+          <button
+            @click="$emit('select', tab.path)"
+            class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+            :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
           >
-            <!-- Drop indicator -->
-            <div
-              v-if="draggedIndex !== null && dropPosition.container === 'pinned' && dropPosition.index === index && dropPosition.side === 'left'"
-              class="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-            />
-            <div
-              v-if="draggedIndex !== null && dropPosition.container === 'pinned' && dropPosition.index === index && dropPosition.side === 'right'"
-              class="absolute right-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-            />
-            
-            <button
-              @click="$emit('select', tab.path)"
-              class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
-              :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
-            >
-              <component 
-                :is="getTabIcon(tab)"
-                class="flex-shrink-0 w-4 h-4"
-              />
-              <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
-              <Pin 
-                v-if="tab.isPinned" 
-                class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
-                @dblclick.stop="unpinTab(tab)"
-                title="Double-click to unpin"
-              />
-              <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-              <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-            </button>
-          </div>
-        </ContextMenuTrigger>
-        
-        <ContextMenuPortal>
-          <ContextMenuContent
-            class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
-          >
-            <ContextMenuItem
+            <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
+            <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+            <Pin
               v-if="tab.isPinned"
-              @select="unpinTab(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Pin class="w-4 h-4" />
-              Unpin tab
-            </ContextMenuItem>
-            
-            <ContextMenuItem
-              v-if="shouldShowFileOperations(tab)"
-              @select="copyRelativePath(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Copy class="w-4 h-4" />
-              Copy relative path
-            </ContextMenuItem>
-            
-            <ContextMenuItem
-              v-if="shouldShowFileOperations(tab)"
-              @select="revealInExplorer(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Reveal in explorer
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenuPortal>
-      </ContextMenuRoot>
+              class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
+              @dblclick.stop="unpinTab(tab)"
+              title="Double-click to unpin"
+            />
+            <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+            <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          </button>
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuPortal>
+        <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+          <ContextMenuItem
+            v-if="tab.isPinned"
+            @select="unpinTab(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Pin class="w-4 h-4" />
+            Unpin tab
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            v-if="shouldShowFileOperations(tab)"
+            @select="copyRelativePath(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Copy class="w-4 h-4" />
+            Copy relative path
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            v-if="shouldShowFileOperations(tab)"
+            @select="revealInExplorer(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <FolderOpen class="w-4 h-4" />
+            Reveal in explorer
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenuPortal>
+    </ContextMenuRoot>
     </div>
 
-    <!-- Regular tabs row -->
-    <div 
-      v-if="unpinnedTabs.length > 0"
-      class="flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible tabs-container bg-neutral-900 border-b border-neutral-800"
-      data-container="unpinned"
-      @dragover="handleContainerDragOver"
-      @drop="handleContainerDrop"
+    <!-- Main tabs row (groups + ungrouped) -->
+    <div
+      ref="mainContainer"
+      class="relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
+      data-container="main"
+      @dragover="handleDragOver"
+      @drop="handleDrop"
       @dragleave="handleDragLeave"
     >
-      <ContextMenuRoot v-for="(tab, index) in unpinnedTabs" :key="tab.path">
-        <ContextMenuTrigger as-child>
-          <div
-            class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
-            :class="[
-              activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
-              draggedIndex === index && draggedContainer === 'unpinned' ? 'opacity-50' : ''
-            ]"
-            :data-index="index"
-            :data-container="'unpinned'"
-            draggable="true"
-            @dragstart="handleDragStart(index, 'unpinned', $event)"
-            @dragend="handleDragEnd"
-          >
-            <!-- Drop indicator -->
+      <!-- Drop indicator for main -->
+      <div
+        v-if="dropPosition && dropPosition.context !== 'pinned' && dropPosition.index !== null && draggedTab"
+        class="absolute top-0 bottom-0 w-0.5 pointer-events-none z-50 transition-opacity"
+        :style="getDropIndicatorStyle()"
+      ></div>
+
+    <!-- Groups inline (label + expanded tabs) -->
+    <template v-for="group in sortedGroups" :key="group.id">
+      <!-- Group label -->
+      <GroupLabel
+        :group-id="group.id"
+        :name="group.name"
+        :color="group.color"
+        :is-collapsed="group.isCollapsed"
+        :tab-count="getTabsForGroup(group.id).length"
+        @toggle="$emit('toggle-group-collapse', group.id)"
+        @rename="(name: string) => $emit('rename-group', group.id, name)"
+        @change-color="(color: string) => $emit('change-group-color', group.id, color)"
+        @ungroup-all="$emit('ungroup-all', group.id)"
+        @close-all="$emit('close-all-in-group', group.id)"
+        @delete="$emit('delete-group', group.id)"
+      />
+
+      <!-- Tabs in this group (when expanded) -->
+      <template v-if="!group.isCollapsed">
+        <ContextMenuRoot v-for="tab in getTabsForGroup(group.id)" :key="tab.path">
+          <ContextMenuTrigger as-child>
             <div
-              v-if="draggedIndex !== null && dropPosition.container === 'unpinned' && dropPosition.index === index && dropPosition.side === 'left'"
-              class="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-            />
-            <div
-              v-if="draggedIndex !== null && dropPosition.container === 'unpinned' && dropPosition.index === index && dropPosition.side === 'right'"
-              class="absolute right-0 top-0 bottom-0 w-0.5 bg-blue-500 z-10"
-            />
-            
-            <button
-              @click="$emit('select', tab.path)"
-              class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
-              :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
+              class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
+              :class="[
+                activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
+                draggedTab?.path === tab.path ? 'opacity-50' : ''
+              ]"
+              :style="{
+                borderBottom: `2px solid var(--color-${group.color})`
+              }"
+              :data-path="tab.path"
+              :data-group-id="group.id"
+              draggable="true"
+              @dragstart="handleDragStart(tab, $event)"
+              @dragend="handleDragEnd"
             >
-              <component 
-                :is="getTabIcon(tab)"
-                class="flex-shrink-0 w-4 h-4"
-              />
-              <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
-              <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-              <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-            </button>
-            <button
-              @click.stop="$emit('close', tab.path)"
-              class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-            >
-              <X class="w-3 h-3" />
-            </button>
-          </div>
-        </ContextMenuTrigger>
-        
-        <ContextMenuPortal>
-          <ContextMenuContent
-            class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+              <button
+                @click="$emit('select', tab.path)"
+                class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+                :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
+              >
+                <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
+                <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+                <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+              </button>
+              <button
+                @click.stop="$emit('close', tab.path)"
+                class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+          </ContextMenuTrigger>
+
+          <ContextMenuPortal>
+            <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+              <ContextMenuItem
+                @select="$emit('remove-tab-from-group', tab.path)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <FolderOpen class="w-4 h-4" />
+                Remove from group
+              </ContextMenuItem>
+
+              <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+
+              <ContextMenuItem
+                @select="pinTab(tab)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <Pin class="w-4 h-4" />
+                Pin tab
+              </ContextMenuItem>
+
+              <ContextMenuItem
+                v-if="shouldShowFileOperations(tab)"
+                @select="copyRelativePath(tab)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <Copy class="w-4 h-4" />
+                Copy relative path
+              </ContextMenuItem>
+
+              <ContextMenuItem
+                v-if="shouldShowFileOperations(tab)"
+                @select="revealInExplorer(tab)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <FolderOpen class="w-4 h-4" />
+                Reveal in explorer
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenuPortal>
+        </ContextMenuRoot>
+      </template>
+    </template>
+
+    <!-- Ungrouped tabs inline -->
+    <ContextMenuRoot v-for="tab in ungroupedTabs" :key="tab.path">
+      <ContextMenuTrigger as-child>
+        <div
+          class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
+          :class="[
+            activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
+            draggedTab?.path === tab.path ? 'opacity-50' : ''
+          ]"
+          :data-path="tab.path"
+          :data-context="'ungrouped'"
+          draggable="true"
+          @dragstart="handleDragStart(tab, $event)"
+          @dragend="handleDragEnd"
+        >
+          <button
+            @click="$emit('select', tab.path)"
+            class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+            :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
           >
-            <ContextMenuItem
-              v-if="!tab.isPinned"
-              @select="pinTab(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Pin class="w-4 h-4" />
-              Pin tab
-            </ContextMenuItem>
-            
-            <ContextMenuItem
-              v-if="shouldShowFileOperations(tab)"
-              @select="copyRelativePath(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Copy class="w-4 h-4" />
-              Copy relative path
-            </ContextMenuItem>
-            
-            <ContextMenuItem
-              v-if="shouldShowFileOperations(tab)"
-              @select="revealInExplorer(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Reveal in explorer
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenuPortal>
-      </ContextMenuRoot>
+            <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
+            <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+            <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+            <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          </button>
+          <button
+            @click.stop="$emit('close', tab.path)"
+            class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuPortal>
+        <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+          <ContextMenuItem
+            @select="pinTab(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Pin class="w-4 h-4" />
+            Pin tab
+          </ContextMenuItem>
+
+          <ContextMenuSub v-if="tabGroups.length > 0">
+            <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
+              <FolderPlus class="w-4 h-4" />
+              Add to Group
+              <ChevronRight class="w-3 h-3 ml-auto" />
+            </ContextMenuSubTrigger>
+            <ContextMenuPortal>
+              <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  v-for="group in sortedGroups"
+                  :key="group.id"
+                  @select="$emit('add-tab-to-group', tab.path, group.id)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <div
+                    class="w-3 h-3 rounded-full"
+                    :style="{ backgroundColor: `var(--color-${group.color})` }"
+                  />
+                  <span>{{ group.name }}</span>
+                </ContextMenuItem>
+                <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+                <ContextMenuItem
+                  @select="createNewGroupWithTab(tab)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <FolderPlus class="w-4 h-4" />
+                  New Group
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuPortal>
+          </ContextMenuSub>
+
+          <ContextMenuItem
+            v-else
+            @select="createNewGroupWithTab(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <FolderPlus class="w-4 h-4" />
+            Add to New Group
+          </ContextMenuItem>
+
+          <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+
+          <ContextMenuItem
+            v-if="shouldShowFileOperations(tab)"
+            @select="copyRelativePath(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Copy class="w-4 h-4" />
+            Copy relative path
+          </ContextMenuItem>
+
+          <ContextMenuItem
+            v-if="shouldShowFileOperations(tab)"
+            @select="revealInExplorer(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <FolderOpen class="w-4 h-4" />
+            Reveal in explorer
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenuPortal>
+    </ContextMenuRoot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { X, FileCode, File, FileJson, FileText, Image, GitCompare, Terminal, Play, Sparkle, Copy, FolderOpen, Pin } from 'lucide-vue-next'
-import type { OpenFile, TerminalTab } from '@/plugins/code/state'
+import {
+  X,
+  FileCode,
+  File,
+  FileJson,
+  FileText,
+  Image,
+  GitCompare,
+  Terminal,
+  Play,
+  Sparkle,
+  Copy,
+  FolderOpen,
+  FolderPlus,
+  Pin,
+  ChevronRight
+} from 'lucide-vue-next'
+import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
+import { groupTabs } from '../utils/tab-management'
+import GroupLabel from '../components/GroupLabel.vue'
+import { useTabDragDrop } from '../composables/useTabDragDrop'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -195,6 +340,9 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from 'reka-ui'
 
 // Props
@@ -202,11 +350,8 @@ const props = defineProps<{
   tabs: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeTabPath: string | null
   rootDirectory?: string
+  tabGroups: TabGroupType[]
 }>()
-
-// Computed properties to separate tabs
-const pinnedTabs = computed(() => props.tabs.filter(tab => tab.isPinned))
-const unpinnedTabs = computed(() => props.tabs.filter(tab => !tab.isPinned))
 
 // Emits
 const emit = defineEmits<{
@@ -216,15 +361,63 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
+  'create-group': [name: string, color: string, tabPaths: string[]]
+  'rename-group': [groupId: string, name: string]
+  'change-group-color': [groupId: string, color: string]
+  'delete-group': [groupId: string]
+  'toggle-group-collapse': [groupId: string]
+  'add-tab-to-group': [tabPath: string, groupId: string]
+  'remove-tab-from-group': [path: string]
+  'ungroup-all': [groupId: string]
+  'close-all-in-group': [groupId: string]
 }>()
 
-// Drag state
-const draggedIndex = ref<number | null>(null)
-const draggedContainer = ref<'pinned' | 'unpinned' | null>(null)
-const dropPosition = ref<{ index: number | null; side: 'left' | 'right'; container: 'pinned' | 'unpinned' | null }>({ 
-  index: null, 
-  side: 'left',
-  container: null 
+// Categorize tabs using utility function - must be reactive!
+const categorizedTabs = computed(() =>
+  groupTabs(props.tabs, props.tabGroups)
+)
+
+const pinnedTabs = computed(() => categorizedTabs.value.pinnedTabs)
+const groupedTabs = computed(() => categorizedTabs.value.groupedTabs)
+const ungroupedTabs = computed(() => categorizedTabs.value.ungroupedTabs)
+
+// Sorted groups by order
+const sortedGroups = computed(() =>
+  [...props.tabGroups].sort((a, b) => a.order - b.order)
+)
+
+// Get tabs for a specific group - reactive function
+const getTabsForGroup = (groupId: string) => {
+  return groupedTabs.value.get(groupId) || []
+}
+
+// Container refs
+const pinnedContainer = ref<HTMLElement | null>(null)
+const mainContainer = ref<HTMLElement | null>(null)
+
+// Drag and drop
+const {
+  draggedTab,
+  dropPosition,
+  handleDragStart,
+  handleDragOver,
+  handleDrop,
+  handleDragEnd,
+  handleDragLeave,
+  getDropIndicatorStyle
+} = useTabDragDrop({
+  tabs: computed(() => props.tabs),
+  pinnedTabs,
+  ungroupedTabs,
+  getTabsForGroup,
+  tabGroups: computed(() => props.tabGroups),
+  pinnedContainer,
+  mainContainer,
+  onPinTab: (path: string) => emit('pin-tab', path),
+  onUnpinTab: (path: string) => emit('unpin-tab', path),
+  onAddToGroup: (path: string, groupId: string) => emit('add-tab-to-group', path, groupId),
+  onRemoveFromGroup: (path: string) => emit('remove-tab-from-group', path),
+  onReorder: (fromIndex: number, toIndex: number) => emit('reorder', fromIndex, toIndex)
 })
 
 // Helper to check if a file is a terminal
@@ -232,14 +425,11 @@ const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file 
   return 'isTerminal' in file && file.isTerminal === true
 }
 
-// Helper to check if we should show file operations (copy path, reveal in explorer)
+// Helper to check if we should show file operations
 const shouldShowFileOperations = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
-  // Don't show file operations for terminals, actions, or prompts
   if (isTerminal(file)) return false
   if ('isAction' in file && file.isAction) return false
   if ('isPrompt' in file && file.isPrompt) return false
-  
-  // Only show for files with actual file paths (not special paths like action: or prompt:)
   return !file.path.includes(':')
 }
 
@@ -257,11 +447,9 @@ const getTabLabel = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
     const status = (file as any).gitFile.staged ? 'staged' : 'unstaged'
     return `${fileName} (${status})`
   }
-  // Check if this is an action file
   if ('isAction' in file && file.isAction && 'actionEntity' in file) {
     return (file as any).actionEntity.label
   }
-  // Check if this is a prompt file
   if ('isPrompt' in file && file.isPrompt && 'promptEntity' in file) {
     return (file as any).promptEntity.label
   }
@@ -269,20 +457,10 @@ const getTabLabel = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
 }
 
 const getTabIcon = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
-  if (isTerminal(file)) {
-    return Terminal
-  }
-  if ('isDiff' in file && file.isDiff) {
-    return GitCompare
-  }
-  // Check if this is an action file
-  if ('isAction' in file && file.isAction) {
-    return Play
-  }
-  // Check if this is a prompt file
-  if ('isPrompt' in file && file.isPrompt) {
-    return Sparkle
-  }
+  if (isTerminal(file)) return Terminal
+  if ('isDiff' in file && file.isDiff) return GitCompare
+  if ('isAction' in file && file.isAction) return Play
+  if ('isPrompt' in file && file.isPrompt) return Sparkle
   return getFileIcon(getFileExtension(file.path))
 }
 
@@ -293,162 +471,30 @@ const getFileExtension = (path: string) => {
 
 const getFileIcon = (extension?: string) => {
   if (!extension) return File
-  
   const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
   const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
   const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
-  
   if (codeExtensions.includes(extension)) return FileCode
   if (extension === 'json') return FileJson
   if (textExtensions.includes(extension)) return FileText
   if (imageExtensions.includes(extension)) return Image
-  
   return File
-}
-
-// Drag handlers
-const handleDragStart = (index: number, container: 'pinned' | 'unpinned', event: DragEvent) => {
-  draggedIndex.value = index
-  draggedContainer.value = container
-  event.dataTransfer!.effectAllowed = 'move'
-  // Store both index and container in dataTransfer
-  event.dataTransfer!.setData('text/plain', JSON.stringify({ index, container }))
-}
-
-const handleContainerDragOver = (event: DragEvent) => {
-  if (draggedIndex.value === null) return
-  
-  event.preventDefault()
-  event.dataTransfer!.dropEffect = 'move'
-  
-  // Determine which container we're over
-  const containerEl = event.currentTarget as HTMLElement
-  const containerType = containerEl.dataset.container as 'pinned' | 'unpinned'
-  
-  // Find which tab we're over
-  const tabElements = Array.from(containerEl.querySelectorAll('.tab-item')) as HTMLElement[]
-  const mouseX = event.clientX
-  
-  for (let i = 0; i < tabElements.length; i++) {
-    const rect = tabElements[i].getBoundingClientRect()
-    
-    // Check if mouse is over this tab or in the gap after it
-    if (mouseX >= rect.left && mouseX <= (tabElements[i + 1]?.getBoundingClientRect().left || rect.right + 10)) {
-      const midpoint = rect.left + rect.width / 2
-      const side = mouseX < midpoint ? 'left' : 'right'
-      dropPosition.value = { index: i, side, container: containerType }
-      return
-    }
-  }
-  
-  // If we're not over any tab but still in the container, position at the end
-  if (tabElements.length === 0 && containerType) {
-    dropPosition.value = { index: 0, side: 'left', container: containerType }
-  }
-}
-
-const handleContainerDrop = (event: DragEvent) => {
-  if (draggedIndex.value === null || dropPosition.value.index === null || !dropPosition.value.container) return
-  
-  event.preventDefault()
-  
-  const sourceContainer = draggedContainer.value!
-  const targetContainer = dropPosition.value.container
-  const sourceIndex = draggedIndex.value
-  const dropIndex = dropPosition.value.index
-  
-  // Get the actual tab being moved
-  const sourceTabs = sourceContainer === 'pinned' ? pinnedTabs.value : unpinnedTabs.value
-  const draggedTab = sourceTabs[sourceIndex]
-  
-  if (!draggedTab) return
-  
-  // If moving between containers, handle pin/unpin
-  if (sourceContainer !== targetContainer) {
-    if (targetContainer === 'pinned') {
-      // Moving to pinned - auto pin
-      emit('pin-tab', draggedTab.path)
-    } else {
-      // Moving to unpinned - auto unpin
-      emit('unpin-tab', draggedTab.path)
-    }
-  } else {
-    // Same container - just reorder
-    let targetIndex = dropIndex
-    
-    if (dropPosition.value.side === 'right') {
-      targetIndex = dropIndex + 1
-      if (sourceIndex < dropIndex) {
-        targetIndex = dropIndex
-      }
-    } else {
-      if (sourceIndex > dropIndex) {
-        targetIndex = dropIndex
-      } else {
-        targetIndex = dropIndex - 1
-      }
-    }
-    
-    // Calculate the actual indices in the full tabs array
-    const fullSourceIndex = props.tabs.findIndex(t => t.path === draggedTab.path)
-    const targetTabs = targetContainer === 'pinned' ? pinnedTabs.value : unpinnedTabs.value
-    
-    if (targetIndex >= 0 && targetIndex < targetTabs.length) {
-      const targetTab = targetTabs[targetIndex]
-      const fullTargetIndex = props.tabs.findIndex(t => t.path === targetTab.path)
-      emit('reorder', fullSourceIndex, fullTargetIndex)
-    } else if (targetIndex >= targetTabs.length && targetTabs.length > 0) {
-      // Dropping at the end
-      const lastTab = targetTabs[targetTabs.length - 1]
-      const fullTargetIndex = props.tabs.findIndex(t => t.path === lastTab.path)
-      emit('reorder', fullSourceIndex, fullTargetIndex)
-    }
-  }
-  
-  // Clean up
-  draggedIndex.value = null
-  draggedContainer.value = null
-  dropPosition.value = { index: null, side: 'left', container: null }
-}
-
-const handleDragEnd = () => {
-  // Clean up in case drop didn't fire
-  draggedIndex.value = null
-  draggedContainer.value = null
-  dropPosition.value = { index: null, side: 'left', container: null }
-}
-
-const handleDragLeave = (event: DragEvent) => {
-  // Only clear if leaving the container entirely
-  const container = event.currentTarget as HTMLElement
-  const relatedTarget = event.relatedTarget as HTMLElement
-  
-  if (!container.contains(relatedTarget)) {
-    dropPosition.value = { index: null, side: 'left', container: null }
-  }
 }
 
 // Context menu actions
 const copyRelativePath = async (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   try {
     let relativePath = tab.path
-    
-    // If rootDirectory is provided, calculate the relative path
     if (props.rootDirectory) {
-      // Ensure both paths use forward slashes
       const normalizedRoot = props.rootDirectory.replace(/\\/g, '/')
       const normalizedPath = tab.path.replace(/\\/g, '/')
-      
-      // Remove the root directory from the path
       if (normalizedPath.startsWith(normalizedRoot)) {
         relativePath = normalizedPath.slice(normalizedRoot.length)
-        // Remove leading slash if present
         if (relativePath.startsWith('/')) {
           relativePath = relativePath.slice(1)
         }
       }
     }
-    
     await navigator.clipboard.writeText(relativePath)
   } catch (err) {
     console.error('Failed to copy path to clipboard:', err)
@@ -466,10 +512,32 @@ const pinTab = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
 const unpinTab = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   emit('unpin-tab', tab.path)
 }
+
+const createNewGroupWithTab = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
+  // Create a new group with this tab
+  const groupName = `Group ${props.tabGroups.length + 1}`
+  const colors: Array<'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'> =
+    ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']
+  const color = colors[props.tabGroups.length % colors.length]
+  emit('create-group', groupName, color, [tab.path])
+}
 </script>
 
 <style>
 .bg-neutral-850 {
   background-color: rgb(28, 28, 30);
+}
+
+/* Custom CSS variables for tab group colors */
+:root {
+  --color-blue: rgb(59, 130, 246);
+  --color-purple: rgb(147, 51, 234);
+  --color-pink: rgb(236, 72, 153);
+  --color-red: rgb(239, 68, 68);
+  --color-orange: rgb(249, 115, 22);
+  --color-yellow: rgb(234, 179, 8);
+  --color-green: rgb(34, 197, 94);
+  --color-teal: rgb(20, 184, 166);
+  --color-gray: rgb(156, 163, 175);
 }
 </style>

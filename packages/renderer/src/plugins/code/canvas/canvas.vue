@@ -8,6 +8,7 @@
       :open-files="openFiles"
       :active-file-path="activeFilePath"
       :root-directory="rootDirectory"
+      :tab-groups="tabGroups"
       @select-file="selectFile"
       @close-file="closeFile"
       @content-change="handleContentChange"
@@ -15,6 +16,15 @@
       @reveal-in-explorer="revealInExplorer"
       @pin-tab="pinTab"
       @unpin-tab="unpinTab"
+      @create-group="createGroup"
+      @rename-group="renameGroup"
+      @change-group-color="changeGroupColor"
+      @delete-group="deleteGroup"
+      @toggle-group-collapse="toggleGroupCollapse"
+      @add-tab-to-group="addTabToGroup"
+      @remove-tab-from-group="removeTabFromGroup"
+      @ungroup-all="ungroupAll"
+      @close-all-in-group="closeAllInGroup"
       class="flex-1 min-h-0"
     />
 
@@ -76,6 +86,7 @@ const promptsActor = actor.system.get('codePrompts')
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
+const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
 
 // Computed
 const activeFile = computed(() => 
@@ -260,6 +271,47 @@ const pinTab = (path: string) => {
 
 const unpinTab = (path: string) => {
   actor.send({ type: 'UNPIN_TAB', path })
+}
+
+// Tab group handlers
+const createGroup = (name: string, color: string, tabPaths: string[]) => {
+  actor.send({ type: 'CREATE_GROUP', name, color: color as any, tabPaths })
+}
+
+const renameGroup = (groupId: string, name: string) => {
+  actor.send({ type: 'RENAME_GROUP', groupId, name })
+}
+
+const changeGroupColor = (groupId: string, color: string) => {
+  actor.send({ type: 'CHANGE_GROUP_COLOR', groupId, color: color as any })
+}
+
+const deleteGroup = (groupId: string) => {
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: false })
+}
+
+const toggleGroupCollapse = (groupId: string) => {
+  actor.send({ type: 'TOGGLE_GROUP_COLLAPSE', groupId })
+}
+
+const addTabToGroup = (path: string, groupId: string) => {
+  actor.send({ type: 'ADD_TAB_TO_GROUP', path, groupId })
+}
+
+const removeTabFromGroup = (path: string) => {
+  actor.send({ type: 'REMOVE_TAB_FROM_GROUP', path })
+}
+
+const ungroupAll = (groupId: string) => {
+  // Remove all tabs from this group
+  const tabsInGroup = openFiles.value.filter(f => 'groupId' in f && f.groupId === groupId)
+  tabsInGroup.forEach(tab => {
+    actor.send({ type: 'REMOVE_TAB_FROM_GROUP', path: tab.path })
+  })
+}
+
+const closeAllInGroup = (groupId: string) => {
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: true })
 }
 
 // Keyboard shortcuts

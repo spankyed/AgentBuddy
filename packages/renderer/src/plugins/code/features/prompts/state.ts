@@ -33,6 +33,7 @@ export interface PromptTab {
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
   isPinned?: boolean
+  groupId?: string
 }
 
 export type Event = 
