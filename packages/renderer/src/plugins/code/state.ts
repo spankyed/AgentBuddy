@@ -36,6 +36,17 @@ export interface OpenFile {
 
 export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
 
+const ALL_COLORS: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray']
+
+function getNextAvailableColor(tabGroups: TabGroup[], isPinned: boolean): TabGroupColor {
+  const sameRowGroups = tabGroups.filter(g => (g.isPinned || false) === isPinned)
+  const lastColor = sameRowGroups[sameRowGroups.length - 1]?.color
+  const nextIndex = tabGroups.length % ALL_COLORS.length
+  return ALL_COLORS[nextIndex] === lastColor
+    ? ALL_COLORS[(nextIndex + 1) % ALL_COLORS.length]
+    : ALL_COLORS[nextIndex]
+}
+
 export interface TabGroup {
   id: string
   name: string
@@ -94,7 +105,7 @@ export type Event =
   | { type: 'PIN_TAB'; path: string }
   | { type: 'UNPIN_TAB'; path: string }
   // Tab group events
-  | { type: 'CREATE_GROUP'; name: string; color: TabGroupColor; tabPaths?: string[] }
+  | { type: 'CREATE_GROUP'; name: string; tabPaths?: string[] }
   | { type: 'RENAME_GROUP'; groupId: string; name: string }
   | { type: 'CHANGE_GROUP_COLOR'; groupId: string; color: TabGroupColor }
   | { type: 'DELETE_GROUP'; groupId: string; closeTabsInGroup?: boolean }
@@ -595,7 +606,7 @@ const codeState = setup({
     }),
 
     createGroup: assign(({ event, context }) => {
-      const ev = event as { type: 'CREATE_GROUP'; name: string; color: TabGroupColor; tabPaths?: string[] }
+      const ev = event as { type: 'CREATE_GROUP'; name: string; tabPaths?: string[] }
 
       // Determine if group should be pinned based on tabs being added
       let shouldPinGroup = false
@@ -605,10 +616,12 @@ const codeState = setup({
         shouldPinGroup = tabsToAdd.some(tab => tab.isPinned)
       }
 
+      const color = getNextAvailableColor(context.tabGroups, shouldPinGroup)
+
       const newGroup: TabGroup = {
         id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: ev.name,
-        color: ev.color,
+        color,
         isCollapsed: false,
         isPinned: shouldPinGroup,
         order: context.tabGroups.length

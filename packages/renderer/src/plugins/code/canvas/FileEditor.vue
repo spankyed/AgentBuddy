@@ -12,7 +12,7 @@
       @reveal-in-explorer="(path) => $emit('reveal-in-explorer', path)"
       @pin-tab="(path) => $emit('pin-tab', path)"
       @unpin-tab="(path) => $emit('unpin-tab', path)"
-      @create-group="(name, color, tabPaths) => $emit('create-group', name, color, tabPaths)"
+      @create-group="(name, tabPaths) => $emit('create-group', name, tabPaths)"
       @rename-group="(groupId, name) => $emit('rename-group', groupId, name)"
       @change-group-color="(groupId, color) => $emit('change-group-color', groupId, color)"
       @delete-group="(groupId) => $emit('delete-group', groupId)"
@@ -93,7 +93,7 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
-  'create-group': [name: string, color: string, tabPaths: string[]]
+  'create-group': [name: string, tabPaths: string[]]
   'rename-group': [groupId: string, name: string]
   'change-group-color': [groupId: string, color: string]
   'delete-group': [groupId: string]

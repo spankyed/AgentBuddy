@@ -276,8 +276,8 @@ const unpinTab = (path: string) => {
 }
 
 // Tab group handlers
-const createGroup = (name: string, color: string, tabPaths: string[]) => {
-  actor.send({ type: 'CREATE_GROUP', name, color: color as any, tabPaths })
+const createGroup = (name: string, tabPaths: string[]) => {
+  actor.send({ type: 'CREATE_GROUP', name, tabPaths })
 }
 
 const renameGroup = (groupId: string, name: string) => {

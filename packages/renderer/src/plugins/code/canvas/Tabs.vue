@@ -519,7 +519,7 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
-  'create-group': [name: string, color: string, tabPaths: string[]]
+  'create-group': [name: string, tabPaths: string[]]
   'rename-group': [groupId: string, name: string]
   'change-group-color': [groupId: string, color: string]
   'delete-group': [groupId: string]
@@ -771,10 +771,7 @@ const unpinTab = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
 const createNewGroupWithTab = (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   // Create a new group with this tab
   const groupName = `Group ${props.tabGroups.length + 1}`
-  const colors: Array<'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'> =
-    ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']
-  const color = colors[props.tabGroups.length % colors.length]
-  emit('create-group', groupName, color, [tab.path])
+  emit('create-group', groupName, [tab.path])
 }
 </script>
 

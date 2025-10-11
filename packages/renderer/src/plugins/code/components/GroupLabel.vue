@@ -11,9 +11,9 @@
         }"
         :data-group-id="groupId"
         @click.stop="$emit('toggle')"
-        @dragover="handleDragOver"
-        @dragleave="handleDragLeave"
-        @drop.prevent.stop="handleDrop"
+        @dragover="$emit('group-drag-over', $event)"
+        @dragleave="$emit('group-drag-leave', $event)"
+        @drop.prevent.stop="$emit('group-drop', $event)"
       >
         <!-- Group name (editable on double-click) -->
         <input
@@ -35,97 +35,59 @@
           {{ name }}
         </span>
 
-        <!-- Context menu trigger -->
-        <button
-          @click.stop
-          class="flex items-center justify-center w-4 h-4 transition-opacity rounded-sm opacity-0 group-label:hover:opacity-100 hover:bg-neutral-700/50"
-        >
-          <MoreHorizontal class="w-3 h-3 text-neutral-400" />
-        </button>
+        <!-- Dropdown menu trigger button -->
+        <DropdownMenuRoot>
+          <DropdownMenuTrigger as-child>
+            <button
+              @click.stop
+              class="flex items-center justify-center w-4 h-4 transition-opacity rounded-sm hover:bg-neutral-700/50"
+            >
+              <MoreHorizontal class="w-3 h-3 text-neutral-400" />
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuPortal>
+            <DropdownMenuContent class="min-w-[180px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+              <GroupMenuItems
+                :isPinned="isPinned"
+                :ItemComponent="DropdownMenuItem"
+                :SeparatorComponent="DropdownMenuSeparator"
+                :SubComponent="DropdownMenuSub"
+                :SubTriggerComponent="DropdownMenuSubTrigger"
+                :SubContentComponent="DropdownMenuSubContent"
+                :PortalComponent="DropdownMenuPortal"
+                @rename="startEdit"
+                @change-color="$emit('change-color', $event)"
+                @ungroup-all="$emit('ungroup-all')"
+                @close-all="$emit('close-all')"
+                @delete="$emit('delete')"
+                @pin-group="$emit('pin-group')"
+                @unpin-group="$emit('unpin-group')"
+              />
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
       </div>
     </ContextMenuTrigger>
 
     <ContextMenuPortal>
       <ContextMenuContent class="min-w-[180px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-        <ContextMenuItem
-          @select="startEdit"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <Edit2 class="w-4 h-4" />
-          Rename Group
-        </ContextMenuItem>
-
-        <ContextMenuSub>
-          <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
-            <Palette class="w-4 h-4" />
-            Change Color
-            <ChevronRight class="w-3 h-3 ml-auto" />
-          </ContextMenuSubTrigger>
-          <ContextMenuPortal>
-            <ContextMenuSubContent class="min-w-[140px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-              <ContextMenuItem
-                v-for="colorOption in colors"
-                :key="colorOption"
-                @select="$emit('change-color', colorOption)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <div
-                  class="w-3 h-3 rounded-full"
-                  :style="{ backgroundColor: `var(--color-${colorOption})` }"
-                />
-                <span class="capitalize">{{ colorOption }}</span>
-              </ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuPortal>
-        </ContextMenuSub>
-
-        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-        <ContextMenuItem
-          @select="$emit('ungroup-all')"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <FolderOpen class="w-4 h-4" />
-          Ungroup All Tabs
-        </ContextMenuItem>
-
-        <ContextMenuItem
-          @select="$emit('close-all')"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <XCircle class="w-4 h-4" />
-          Close All Tabs
-        </ContextMenuItem>
-
-        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-        <ContextMenuItem
-          v-if="isPinned"
-          @select="$emit('unpin-group')"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <Pin class="w-4 h-4" />
-          Unpin Group
-        </ContextMenuItem>
-
-        <ContextMenuItem
-          v-else
-          @select="$emit('pin-group')"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <Pin class="w-4 h-4" />
-          Pin Group
-        </ContextMenuItem>
-
-        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-        <ContextMenuItem
-          @select="$emit('delete')"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-        >
-          <Trash2 class="w-4 h-4" />
-          Delete Group
-        </ContextMenuItem>
+        <GroupMenuItems
+          :isPinned="isPinned"
+          :ItemComponent="ContextMenuItem"
+          :SeparatorComponent="ContextMenuSeparator"
+          :SubComponent="ContextMenuSub"
+          :SubTriggerComponent="ContextMenuSubTrigger"
+          :SubContentComponent="ContextMenuSubContent"
+          :PortalComponent="ContextMenuPortal"
+          @rename="startEdit"
+          @change-color="$emit('change-color', $event)"
+          @ungroup-all="$emit('ungroup-all')"
+          @close-all="$emit('close-all')"
+          @delete="$emit('delete')"
+          @pin-group="$emit('pin-group')"
+          @unpin-group="$emit('unpin-group')"
+        />
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
@@ -133,16 +95,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import {
-  ChevronRight,
-  MoreHorizontal,
-  Edit2,
-  Palette,
-  FolderOpen,
-  XCircle,
-  Trash2,
-  Pin
-} from 'lucide-vue-next'
+import { MoreHorizontal } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -153,8 +106,18 @@ import {
   ContextMenuSub,
   ContextMenuSubTrigger,
   ContextMenuSubContent,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from 'reka-ui'
 import type { TabGroupColor } from '../state'
+import GroupMenuItems from './GroupMenuItems.vue'
 
 const props = defineProps<{
   name: string
@@ -179,8 +142,6 @@ const emit = defineEmits<{
   'group-drag-leave': [event: DragEvent]
   'group-drop': [event: DragEvent]
 }>()
-
-const colors: TabGroupColor[] = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']
 
 // Inline editing
 const isEditing = ref(false)
@@ -208,29 +169,9 @@ const cancelEdit = () => {
   isEditing.value = false
 }
 
-// Drag handlers
-const handleDragOver = (event: DragEvent) => {
-  emit('group-drag-over', event)
-}
-
-const handleDragLeave = (event: DragEvent) => {
-  emit('group-drag-leave', event)
-}
-
-const handleDrop = (event: DragEvent) => {
-  emit('group-drop', event)
-}
 </script>
 
 <style scoped>
-.group-label:hover .opacity-0 {
-  opacity: 1;
-}
-
-.group-label:hover .group-label-hover\:text-neutral-200 {
-  color: rgb(229, 229, 229);
-}
-
 /* Custom CSS variables for colors */
 :root {
   --color-blue: rgb(59, 130, 246);
