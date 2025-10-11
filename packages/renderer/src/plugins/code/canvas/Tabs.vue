@@ -17,118 +17,6 @@
         :style="getDropIndicatorStyle()"
       ></div>
 
-      <!-- Individual pinned tabs -->
-    <ContextMenuRoot v-for="tab in pinnedTabs" :key="tab.path">
-      <ContextMenuTrigger as-child>
-        <div
-          class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
-          :class="[
-            activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
-            draggedTab?.path === tab.path ? 'opacity-50' : ''
-          ]"
-          :style="{
-            borderTop: activeTabPath === tab.path ? '2px solid rgb(59, 130, 246)' : 'none'
-          }"
-          :data-path="tab.path"
-          :data-context="'pinned'"
-          draggable="true"
-          @dragstart="handleDragStart(tab, $event)"
-          @dragend="handleDragEnd"
-        >
-          <button
-            @click="$emit('select', tab.path)"
-            class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
-            :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
-          >
-            <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
-            <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
-            <Pin
-              v-if="tab.isPinned"
-              class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
-              @dblclick.stop="unpinTab(tab)"
-              title="Double-click to unpin"
-            />
-            <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
-            <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-          </button>
-        </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuPortal>
-        <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-          <ContextMenuItem
-            v-if="tab.isPinned"
-            @select="unpinTab(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <Pin class="w-4 h-4" />
-            Unpin tab
-          </ContextMenuItem>
-
-          <ContextMenuSub v-if="tabGroups.length > 0">
-            <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
-              <FolderPlus class="w-4 h-4" />
-              Add to Group
-              <ChevronRight class="w-3 h-3 ml-auto" />
-            </ContextMenuSubTrigger>
-            <ContextMenuPortal>
-              <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-                <ContextMenuItem
-                  v-for="group in tabGroups"
-                  :key="group.id"
-                  @select="$emit('add-tab-to-group', tab.path, group.id)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <div
-                    class="w-3 h-3 rounded-full"
-                    :style="{ backgroundColor: `var(--color-${group.color})` }"
-                  />
-                  <span>{{ group.name }}</span>
-                </ContextMenuItem>
-                <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-                <ContextMenuItem
-                  @select="createNewGroupWithTab(tab)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <FolderPlus class="w-4 h-4" />
-                  New Group
-                </ContextMenuItem>
-              </ContextMenuSubContent>
-            </ContextMenuPortal>
-          </ContextMenuSub>
-
-          <ContextMenuItem
-            v-else
-            @select="createNewGroupWithTab(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <FolderPlus class="w-4 h-4" />
-            Add to New Group
-          </ContextMenuItem>
-
-          <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-          <ContextMenuItem
-            v-if="shouldShowFileOperations(tab)"
-            @select="copyRelativePath(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <Copy class="w-4 h-4" />
-            Copy relative path
-          </ContextMenuItem>
-
-          <ContextMenuItem
-            v-if="shouldShowFileOperations(tab)"
-            @select="revealInExplorer(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <FolderOpen class="w-4 h-4" />
-            Reveal in explorer
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenuPortal>
-    </ContextMenuRoot>
-
       <!-- Pinned groups -->
       <template v-for="{ group, tabs: groupTabs } in pinnedGroups" :key="group.id">
         <!-- Group label -->
@@ -226,6 +114,118 @@
           </ContextMenuRoot>
         </template>
       </template>
+
+      <!-- Individual pinned tabs -->
+      <ContextMenuRoot v-for="tab in pinnedTabs" :key="tab.path">
+        <ContextMenuTrigger as-child>
+          <div
+            class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
+            :class="[
+              activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
+              draggedTab?.path === tab.path ? 'opacity-50' : ''
+            ]"
+            :style="{
+              borderTop: activeTabPath === tab.path ? '2px solid rgb(59, 130, 246)' : 'none'
+            }"
+            :data-path="tab.path"
+            :data-context="'pinned'"
+            draggable="true"
+            @dragstart="handleDragStart(tab, $event)"
+            @dragend="handleDragEnd"
+          >
+            <button
+              @click="$emit('select', tab.path)"
+              class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+              :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
+            >
+              <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
+              <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+              <Pin
+                v-if="tab.isPinned"
+                class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
+                @dblclick.stop="unpinTab(tab)"
+                title="Double-click to unpin"
+              />
+              <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+              <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+            </button>
+          </div>
+        </ContextMenuTrigger>
+
+        <ContextMenuPortal>
+          <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+            <ContextMenuItem
+              v-if="tab.isPinned"
+              @select="unpinTab(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Pin class="w-4 h-4" />
+              Unpin tab
+            </ContextMenuItem>
+
+            <ContextMenuSub v-if="tabGroups.length > 0">
+              <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
+                <FolderPlus class="w-4 h-4" />
+                Add to Group
+                <ChevronRight class="w-3 h-3 ml-auto" />
+              </ContextMenuSubTrigger>
+              <ContextMenuPortal>
+                <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                  <ContextMenuItem
+                    v-for="group in tabGroups"
+                    :key="group.id"
+                    @select="$emit('add-tab-to-group', tab.path, group.id)"
+                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                  >
+                    <div
+                      class="w-3 h-3 rounded-full"
+                      :style="{ backgroundColor: `var(--color-${group.color})` }"
+                    />
+                    <span>{{ group.name }}</span>
+                  </ContextMenuItem>
+                  <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+                  <ContextMenuItem
+                    @select="createNewGroupWithTab(tab)"
+                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                  >
+                    <FolderPlus class="w-4 h-4" />
+                    New Group
+                  </ContextMenuItem>
+                </ContextMenuSubContent>
+              </ContextMenuPortal>
+            </ContextMenuSub>
+
+            <ContextMenuItem
+              v-else
+              @select="createNewGroupWithTab(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderPlus class="w-4 h-4" />
+              Add to New Group
+            </ContextMenuItem>
+
+            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+
+            <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
+              @select="copyRelativePath(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Copy class="w-4 h-4" />
+              Copy relative path
+            </ContextMenuItem>
+
+            <ContextMenuItem
+              v-if="shouldShowFileOperations(tab)"
+              @select="revealInExplorer(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Reveal in explorer
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenuPortal>
+      </ContextMenuRoot>
     </div>
 
     <!-- Main tabs row (groups + ungrouped) -->
