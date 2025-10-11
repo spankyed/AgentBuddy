@@ -27,6 +27,18 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
 </script>
 
 <template>
+  <component :is="ItemComponent" v-if="isPinned" @select="$emit('unpin-group')" :class="ITEM_CLASS">
+    <Pin class="w-4 h-4" />
+    Unpin Group
+  </component>
+
+  <component :is="ItemComponent" v-else @select="$emit('pin-group')" :class="ITEM_CLASS">
+    <Pin class="w-4 h-4" />
+    Pin Group
+  </component>
+
+  <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
+
   <component :is="ItemComponent" @select="$emit('rename')" :class="ITEM_CLASS">
     <Edit2 class="w-4 h-4" />
     Rename Group
@@ -64,18 +76,6 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
   <component :is="ItemComponent" @select="$emit('close-all')" :class="ITEM_CLASS">
     <XCircle class="w-4 h-4" />
     Close All Tabs
-  </component>
-
-  <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
-
-  <component :is="ItemComponent" v-if="isPinned" @select="$emit('unpin-group')" :class="ITEM_CLASS">
-    <Pin class="w-4 h-4" />
-    Unpin Group
-  </component>
-
-  <component :is="ItemComponent" v-else @select="$emit('pin-group')" :class="ITEM_CLASS">
-    <Pin class="w-4 h-4" />
-    Pin Group
   </component>
 
   <component :is="SeparatorComponent" class="h-px my-1 bg-neutral-700" />
