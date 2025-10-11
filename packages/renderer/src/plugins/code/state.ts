@@ -42,6 +42,7 @@ export interface TabGroup {
   color: TabGroupColor
   isCollapsed: boolean
   order: number
+  isPinned?: boolean
 }
 
 export interface TerminalTab extends OpenFile {
@@ -101,6 +102,8 @@ export type Event =
   | { type: 'ADD_TAB_TO_GROUP'; path: string; groupId: string }
   | { type: 'REMOVE_TAB_FROM_GROUP'; path: string }
   | { type: 'REORDER_GROUPS'; fromIndex: number; toIndex: number }
+  | { type: 'PIN_GROUP'; groupId: string }
+  | { type: 'UNPIN_GROUP'; groupId: string }
   // Hotkey events
   | HotkeyEvent
   | { type: 'OPEN_TERMINAL' }
@@ -544,7 +547,7 @@ const codeState = setup({
     unpinTab: assign(({ event, context }) => {
       const ev = event as { type: 'UNPIN_TAB'; path: string }
       const updatedFiles = context.openFiles.map(file =>
-        file.path === ev.path ? { ...file, isPinned: false } : file
+        file.path === ev.path ? { ...file, isPinned: false, groupId: undefined } : file
       )
       return {
         ...context,
@@ -552,27 +555,82 @@ const codeState = setup({
       }
     }),
 
+    pinGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'PIN_GROUP'; groupId: string }
+      const updatedGroups = context.tabGroups.map(group =>
+        group.id === ev.groupId ? { ...group, isPinned: true } : group
+      )
+      // Also pin all tabs in this group
+      const updatedFiles = context.openFiles.map(file =>
+        'groupId' in file && file.groupId === ev.groupId
+          ? { ...file, isPinned: true }
+          : file
+      )
+      // Sort tabs to put pinned tabs first
+      const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
+      const unpinnedTabs = updatedFiles.filter(tab => !tab.isPinned)
+      return {
+        ...context,
+        tabGroups: updatedGroups,
+        openFiles: [...pinnedTabs, ...unpinnedTabs]
+      }
+    }),
+
+    unpinGroup: assign(({ event, context }) => {
+      const ev = event as { type: 'UNPIN_GROUP'; groupId: string }
+      const updatedGroups = context.tabGroups.map(group =>
+        group.id === ev.groupId ? { ...group, isPinned: false } : group
+      )
+      // Also unpin all tabs in this group
+      const updatedFiles = context.openFiles.map(file =>
+        'groupId' in file && file.groupId === ev.groupId
+          ? { ...file, isPinned: false }
+          : file
+      )
+      return {
+        ...context,
+        tabGroups: updatedGroups,
+        openFiles: updatedFiles
+      }
+    }),
+
     createGroup: assign(({ event, context }) => {
       const ev = event as { type: 'CREATE_GROUP'; name: string; color: TabGroupColor; tabPaths?: string[] }
+
+      // Determine if group should be pinned based on tabs being added
+      let shouldPinGroup = false
+      if (ev.tabPaths && ev.tabPaths.length > 0) {
+        const tabsToAdd = context.openFiles.filter(f => ev.tabPaths!.includes(f.path))
+        // Group is pinned if any of its tabs are pinned
+        shouldPinGroup = tabsToAdd.some(tab => tab.isPinned)
+      }
+
       const newGroup: TabGroup = {
         id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: ev.name,
         color: ev.color,
         isCollapsed: false,
+        isPinned: shouldPinGroup,
         order: context.tabGroups.length
       }
 
-      // Update files if tabPaths provided
+      // Update files if tabPaths provided - set isPinned to match group
       const updatedFiles = ev.tabPaths
         ? context.openFiles.map(file =>
-            ev.tabPaths!.includes(file.path) ? { ...file, groupId: newGroup.id } : file
+            ev.tabPaths!.includes(file.path)
+              ? { ...file, groupId: newGroup.id, isPinned: shouldPinGroup }
+              : file
           )
         : context.openFiles
+
+      // Sort tabs to put pinned tabs first (consistent with other actions)
+      const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
+      const unpinnedTabs = updatedFiles.filter(tab => !tab.isPinned)
 
       return {
         ...context,
         tabGroups: [...context.tabGroups, newGroup],
-        openFiles: updatedFiles
+        openFiles: [...pinnedTabs, ...unpinnedTabs]
       }
     }),
 
@@ -637,16 +695,24 @@ const codeState = setup({
     addTabToGroup: assign(({ event, context }) => {
       const ev = event as { type: 'ADD_TAB_TO_GROUP'; path: string; groupId: string }
 
-      // If tab is pinned, unpin it first (pinned tabs can't be in groups)
+      // Find the target group to check if it's pinned
+      const targetGroup = context.tabGroups.find(g => g.id === ev.groupId)
+      const shouldPin = targetGroup?.isPinned || false
+
+      // Set tab's isPinned to match the group's pinned status
       const updatedFiles = context.openFiles.map(file =>
         file.path === ev.path
-          ? { ...file, groupId: ev.groupId, isPinned: false }
+          ? { ...file, groupId: ev.groupId, isPinned: shouldPin }
           : file
       )
 
+      // Sort tabs to put pinned tabs first (consistent with pinGroup/unpinGroup)
+      const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
+      const unpinnedTabs = updatedFiles.filter(tab => !tab.isPinned)
+
       return {
         ...context,
-        openFiles: updatedFiles
+        openFiles: [...pinnedTabs, ...unpinnedTabs]
       }
     }),
 
@@ -761,6 +827,12 @@ const codeState = setup({
         },
         REORDER_GROUPS: {
           actions: ['reorderGroups', 'saveTabsAction']
+        },
+        PIN_GROUP: {
+          actions: ['pinGroup', 'saveTabsAction']
+        },
+        UNPIN_GROUP: {
+          actions: ['unpinGroup', 'saveTabsAction']
         },
         // Hotkey handling
         HOTKEY_PRESSED: {

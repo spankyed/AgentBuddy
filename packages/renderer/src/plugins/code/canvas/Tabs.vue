@@ -2,7 +2,7 @@
   <div v-if="tabs.length > 0 || tabGroups.length > 0" class="flex flex-col flex-shrink-0">
     <!-- Pinned tabs row -->
     <div
-      v-if="pinnedTabs.length > 0"
+      v-if="pinnedTabs.length > 0 || pinnedGroups.length > 0"
       ref="pinnedContainer"
       class="tab-container relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
       data-container="pinned"
@@ -12,11 +12,12 @@
     >
       <!-- Drop indicator for pinned -->
       <div
-        v-if="dropPosition && dropPosition.context === 'pinned' && dropPosition.index !== null && draggedTab"
+        v-if="dropPosition && isPinnedContext(dropPosition.context) && dropPosition.index !== null && draggedTab"
         class="absolute top-0 bottom-0 w-0.5 pointer-events-none z-50 transition-opacity bg-blue-500"
         :style="getDropIndicatorStyle()"
       ></div>
-      <!-- Pinned tabs -->
+
+      <!-- Individual pinned tabs -->
     <ContextMenuRoot v-for="tab in pinnedTabs" :key="tab.path">
       <ContextMenuTrigger as-child>
         <div
@@ -64,6 +65,49 @@
             Unpin tab
           </ContextMenuItem>
 
+          <ContextMenuSub v-if="tabGroups.length > 0">
+            <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
+              <FolderPlus class="w-4 h-4" />
+              Add to Group
+              <ChevronRight class="w-3 h-3 ml-auto" />
+            </ContextMenuSubTrigger>
+            <ContextMenuPortal>
+              <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  v-for="group in tabGroups"
+                  :key="group.id"
+                  @select="$emit('add-tab-to-group', tab.path, group.id)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <div
+                    class="w-3 h-3 rounded-full"
+                    :style="{ backgroundColor: `var(--color-${group.color})` }"
+                  />
+                  <span>{{ group.name }}</span>
+                </ContextMenuItem>
+                <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+                <ContextMenuItem
+                  @select="createNewGroupWithTab(tab)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <FolderPlus class="w-4 h-4" />
+                  New Group
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuPortal>
+          </ContextMenuSub>
+
+          <ContextMenuItem
+            v-else
+            @select="createNewGroupWithTab(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <FolderPlus class="w-4 h-4" />
+            Add to New Group
+          </ContextMenuItem>
+
+          <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+
           <ContextMenuItem
             v-if="shouldShowFileOperations(tab)"
             @select="copyRelativePath(tab)"
@@ -84,6 +128,100 @@
         </ContextMenuContent>
       </ContextMenuPortal>
     </ContextMenuRoot>
+
+      <!-- Pinned groups -->
+      <template v-for="{ group, tabs: groupTabs } in pinnedGroups" :key="group.id">
+        <!-- Group label -->
+        <GroupLabel
+          :group-id="group.id"
+          :name="group.name"
+          :color="group.color"
+          :is-collapsed="group.isCollapsed"
+          :is-pinned="true"
+          :tab-count="groupTabs.length"
+          @toggle="$emit('toggle-group-collapse', group.id)"
+          @rename="(name: string) => $emit('rename-group', group.id, name)"
+          @change-color="(color: string) => $emit('change-group-color', group.id, color)"
+          @ungroup-all="$emit('ungroup-all', group.id)"
+          @close-all="$emit('close-all-in-group', group.id)"
+          @delete="$emit('delete-group', group.id)"
+          @pin-group="$emit('pin-group', group.id)"
+          @unpin-group="$emit('unpin-group', group.id)"
+        />
+
+        <!-- Tabs in this pinned group (when expanded) -->
+        <template v-if="!group.isCollapsed">
+          <ContextMenuRoot v-for="(tab, tabIndex) in groupTabs" :key="tab.path">
+            <ContextMenuTrigger as-child>
+              <div
+                class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
+                :class="[
+                  draggedTab?.path === tab.path ? 'opacity-50' : ''
+                ]"
+                :style="{
+                  borderTop: activeTabPath === tab.path ? `2px solid var(--color-${group.color})` : 'none',
+                  borderBottom: `2px solid var(--color-${group.color})`,
+                  backgroundColor: activeTabPath === tab.path
+                    ? `color-mix(in srgb, var(--color-${group.color}) 20%, rgb(28, 28, 30))`
+                    : `color-mix(in srgb, var(--color-${group.color}) 10%, transparent)`
+                }"
+                :data-path="tab.path"
+                :data-group-id="group.id"
+                draggable="true"
+                @dragstart="handleDragStart(tab, $event)"
+                @dragend="handleDragEnd"
+              >
+                <button
+                  @click="$emit('select', tab.path)"
+                  class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+                  :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
+                >
+                  <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
+                  <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+                  <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                </button>
+                <button
+                  @click.stop="$emit('close', tab.path)"
+                  class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+                >
+                  <X class="w-3 h-3" />
+                </button>
+              </div>
+            </ContextMenuTrigger>
+
+            <ContextMenuPortal>
+              <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  @select="$emit('remove-tab-from-group', tab.path)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <FolderMinus class="w-4 h-4" />
+                  Remove from group
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  v-if="shouldShowFileOperations(tab)"
+                  @select="copyRelativePath(tab)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <Copy class="w-4 h-4" />
+                  Copy relative path
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  v-if="shouldShowFileOperations(tab)"
+                  @select="revealInExplorer(tab)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <FolderOpen class="w-4 h-4" />
+                  Reveal in explorer
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenuPortal>
+          </ContextMenuRoot>
+        </template>
+      </template>
     </div>
 
     <!-- Main tabs row (groups + ungrouped) -->
@@ -97,7 +235,7 @@
     >
       <!-- Drop indicator for main -->
       <div
-        v-if="dropPosition && dropPosition.context !== 'pinned' && dropPosition.index !== null && draggedTab"
+        v-if="dropPosition && !isPinnedContext(dropPosition.context) && dropPosition.index !== null && draggedTab"
         class="absolute top-0 bottom-0 w-0.5 pointer-events-none z-50 transition-opacity"
         :style="getDropIndicatorStyle()"
       ></div>
@@ -110,6 +248,7 @@
         :name="group.name"
         :color="group.color"
         :is-collapsed="group.isCollapsed"
+        :is-pinned="group.isPinned || false"
         :tab-count="getTabsForGroup(group.id).length"
         @toggle="$emit('toggle-group-collapse', group.id)"
         @rename="(name: string) => $emit('rename-group', group.id, name)"
@@ -117,6 +256,8 @@
         @ungroup-all="$emit('ungroup-all', group.id)"
         @close-all="$emit('close-all-in-group', group.id)"
         @delete="$emit('delete-group', group.id)"
+        @pin-group="$emit('pin-group', group.id)"
+        @unpin-group="$emit('unpin-group', group.id)"
       />
 
       <!-- Tabs in this group (when expanded) -->
@@ -379,6 +520,8 @@ const emit = defineEmits<{
   'remove-tab-from-group': [path: string]
   'ungroup-all': [groupId: string]
   'close-all-in-group': [groupId: string]
+  'pin-group': [groupId: string]
+  'unpin-group': [groupId: string]
 }>()
 
 // Categorize tabs using utility function - must be reactive!
@@ -387,17 +530,32 @@ const categorizedTabs = computed(() =>
 )
 
 const pinnedTabs = computed(() => categorizedTabs.value.pinnedTabs)
+const pinnedGroups = computed(() => categorizedTabs.value.pinnedGroups || [])
 const groupedTabs = computed(() => categorizedTabs.value.groupedTabs)
 const ungroupedTabs = computed(() => categorizedTabs.value.ungroupedTabs)
 
-// Sorted groups by order
+// Sorted groups by order (unpinned groups only)
 const sortedGroups = computed(() =>
-  [...props.tabGroups].sort((a, b) => a.order - b.order)
+  [...props.tabGroups].filter(g => !g.isPinned).sort((a, b) => a.order - b.order)
 )
 
-// Get tabs for a specific group - reactive function
+// Get tabs for a specific group - reactive function (checks both pinned and unpinned groups)
 const getTabsForGroup = (groupId: string) => {
-  return groupedTabs.value.get(groupId) || []
+  // Check unpinned groups first
+  const unpinnedGroupTabs = groupedTabs.value.get(groupId)
+  if (unpinnedGroupTabs) return unpinnedGroupTabs
+
+  // Check pinned groups
+  const pinnedGroup = pinnedGroups.value.find(pg => pg.group.id === groupId)
+  return pinnedGroup?.tabs || []
+}
+
+// Helper to check if context is in pinned row (individual pinned or pinned group)
+const isPinnedContext = (context: string) => {
+  if (context === 'pinned') return true
+  // Check if context is a pinned group ID
+  const group = props.tabGroups.find(g => g.id === context)
+  return group?.isPinned || false
 }
 
 // Container refs

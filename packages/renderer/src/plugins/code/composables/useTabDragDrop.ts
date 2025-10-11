@@ -47,8 +47,12 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
   const getContextFromElement = (el: HTMLElement): Context =>
     el.dataset.groupId || el.dataset.context || 'ungrouped'
 
-  const getSourceContext = (tab: Tab, groupId?: string): Context =>
-    tab.isPinned ? 'pinned' : (groupId || 'ungrouped')
+  const getSourceContext = (tab: Tab, groupId?: string): Context => {
+    // If tab is in a group (pinned or unpinned), use groupId as context
+    if (tab.isPinned && groupId) return groupId
+    if (tab.isPinned) return 'pinned'
+    return groupId || 'ungrouped'
+  }
 
   const resetDragState = () => {
     draggedTab.value = null
@@ -150,11 +154,18 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     if (targetContext === 'pinned') {
       onPinTab(sourceTab.path)
     } else if (sourceContext === 'pinned') {
+      // Moving from individual pinned tab
       onUnpinTab(sourceTab.path)
       if (targetContext !== 'ungrouped') {
         onAddToGroup(sourceTab.path, targetContext)
       }
     } else {
+      // Moving from group or ungrouped
+      // First check if we need to unpin (if tab is currently pinned, e.g., from pinned group)
+      if (sourceTab.isPinned) {
+        onUnpinTab(sourceTab.path)
+      }
+
       if (sourceContext !== 'ungrouped') {
         onRemoveFromGroup(sourceTab.path)
       }
@@ -282,7 +293,13 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const pos = dropPosition.value
     if (!pos || pos.index === null) return {}
 
-    const container = pos.context === 'pinned' ? pinnedContainer.value : mainContainer.value
+    // Determine which container based on context
+    // Context can be: 'pinned' (individual pinned), groupId (pinned or unpinned), or 'ungrouped'
+    const isPinnedContext = pos.context === 'pinned' || (() => {
+      const group = tabGroups.value.find(g => g.id === pos.context)
+      return group?.isPinned || false
+    })()
+    const container = isPinnedContext ? pinnedContainer.value : mainContainer.value
     const contextTabs = getContextTabs(pos.context)
     const targetTab = contextTabs[pos.index]
 

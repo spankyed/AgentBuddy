@@ -96,6 +96,26 @@
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
 
         <ContextMenuItem
+          v-if="isPinned"
+          @select="$emit('unpin-group')"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+        >
+          <Pin class="w-4 h-4" />
+          Unpin Group
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          v-else
+          @select="$emit('pin-group')"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+        >
+          <Pin class="w-4 h-4" />
+          Pin Group
+        </ContextMenuItem>
+
+        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+
+        <ContextMenuItem
           @select="$emit('delete')"
           class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
         >
@@ -116,7 +136,8 @@ import {
   Palette,
   FolderOpen,
   XCircle,
-  Trash2
+  Trash2,
+  Pin
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -137,6 +158,7 @@ const props = defineProps<{
   isCollapsed: boolean
   tabCount: number
   groupId: string
+  isPinned?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -146,6 +168,8 @@ const emit = defineEmits<{
   'ungroup-all': []
   'close-all': []
   delete: []
+  'pin-group': []
+  'unpin-group': []
 }>()
 
 const colors: TabGroupColor[] = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']

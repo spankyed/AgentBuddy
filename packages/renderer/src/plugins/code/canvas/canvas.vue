@@ -25,6 +25,8 @@
       @remove-tab-from-group="removeTabFromGroup"
       @ungroup-all="ungroupAll"
       @close-all-in-group="closeAllInGroup"
+      @pin-group="pinGroup"
+      @unpin-group="unpinGroup"
       class="flex-1 min-h-0"
     />
 
@@ -312,6 +314,14 @@ const ungroupAll = (groupId: string) => {
 
 const closeAllInGroup = (groupId: string) => {
   actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: true })
+}
+
+const pinGroup = (groupId: string) => {
+  actor.send({ type: 'PIN_GROUP', groupId })
+}
+
+const unpinGroup = (groupId: string) => {
+  actor.send({ type: 'UNPIN_GROUP', groupId })
 }
 
 // Keyboard shortcuts

@@ -229,39 +229,57 @@ export function reorderTabs<T extends BaseTab>(
  * Groups tabs by their groupId, maintaining order within each group
  * @param tabs - Array of tabs
  * @param groups - Array of tab groups (for ordering)
- * @returns Object with pinned tabs, grouped tabs by group, and ungrouped tabs
+ * @returns Object with pinned tabs, pinned groups, grouped tabs by group, and ungrouped tabs
  */
 export function groupTabs<T extends BaseTab>(
   tabs: T[],
   groups: TabGroup[]
 ): {
   pinnedTabs: T[]
+  pinnedGroups: { group: TabGroup; tabs: T[] }[]
   groupedTabs: Map<string, T[]>
   ungroupedTabs: T[]
 } {
   const pinnedTabs: T[] = []
+  const pinnedGroupsData: { group: TabGroup; tabs: T[] }[] = []
   const groupedTabs = new Map<string, T[]>()
   const ungroupedTabs: T[] = []
 
-  // Initialize groups map in order
-  groups
-    .sort((a, b) => a.order - b.order)
-    .forEach(group => {
-      groupedTabs.set(group.id, [])
-    })
+  // Separate pinned and unpinned groups
+  const pinnedGroups = groups.filter(g => g.isPinned).sort((a, b) => a.order - b.order)
+  const unpinnedGroups = groups.filter(g => !g.isPinned).sort((a, b) => a.order - b.order)
+
+  // Initialize pinned groups
+  pinnedGroups.forEach(group => {
+    pinnedGroupsData.push({ group, tabs: [] })
+  })
+
+  // Initialize unpinned groups map
+  unpinnedGroups.forEach(group => {
+    groupedTabs.set(group.id, [])
+  })
 
   // Categorize tabs
   for (const tab of tabs) {
-    if (tab.isPinned) {
+    if (tab.groupId && tab.isPinned) {
+      // Tab belongs to pinned group
+      const pinnedGroupData = pinnedGroupsData.find(pg => pg.group.id === tab.groupId)
+      if (pinnedGroupData) {
+        pinnedGroupData.tabs.push(tab)
+      }
+    } else if (tab.isPinned && !tab.groupId) {
+      // Individual pinned tab
       pinnedTabs.push(tab)
     } else if (tab.groupId && groupedTabs.has(tab.groupId)) {
+      // Tab in unpinned group
       groupedTabs.get(tab.groupId)!.push(tab)
     } else {
+      // Ungrouped tab
       ungroupedTabs.push(tab)
     }
   }
 
-  return { pinnedTabs, groupedTabs, ungroupedTabs }
+  return { pinnedTabs, pinnedGroups: pinnedGroupsData, groupedTabs, ungroupedTabs }
 }
 
 /**

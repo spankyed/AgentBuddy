@@ -21,6 +21,8 @@
       @remove-tab-from-group="(path) => $emit('remove-tab-from-group', path)"
       @ungroup-all="(groupId) => $emit('ungroup-all', groupId)"
       @close-all-in-group="(groupId) => $emit('close-all-in-group', groupId)"
+      @pin-group="(groupId) => $emit('pin-group', groupId)"
+      @unpin-group="(groupId) => $emit('unpin-group', groupId)"
     />
 
     <!-- Editor -->
@@ -100,6 +102,8 @@ const emit = defineEmits<{
   'remove-tab-from-group': [path: string]
   'ungroup-all': [groupId: string]
   'close-all-in-group': [groupId: string]
+  'pin-group': [groupId: string]
+  'unpin-group': [groupId: string]
 }>()
 
 // Helper to check if a file is a terminal
