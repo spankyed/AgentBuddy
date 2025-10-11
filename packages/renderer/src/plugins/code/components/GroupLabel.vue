@@ -14,7 +14,10 @@
         @drop.prevent.stop="$emit('group-drop', $event)"
       >
         <!-- Group name -->
-        <span class="text-xs font-medium text-neutral-300 whitespace-nowrap select-none">
+        <span
+          class="text-xs font-medium whitespace-nowrap select-none"
+          :class="(isDragOver || !isCollapsed) && ['orange', 'yellow', 'pink'].includes(color) ? 'text-neutral-900' : 'text-neutral-300'"
+        >
           {{ name }}
         </span>
 
@@ -25,7 +28,10 @@
               @click.stop
               class="flex items-center justify-center w-4 h-4 transition-opacity rounded-sm hover:bg-neutral-700/50"
             >
-              <MoreHorizontal class="w-3 h-3 text-neutral-400" />
+              <MoreHorizontal
+                class="w-3 h-3"
+                :class="(isDragOver || !isCollapsed) && ['orange', 'yellow', 'pink'].includes(color) ? 'text-neutral-900' : 'text-neutral-400'"
+              />
             </button>
           </DropdownMenuTrigger>
 
@@ -128,14 +134,14 @@ defineEmits<{
 <style scoped>
 /* Custom CSS variables for colors */
 :root {
-  --color-blue: rgb(59, 130, 246);
-  --color-purple: rgb(147, 51, 234);
+  --color-blue: rgb(96, 165, 250);
+  --color-purple: rgb(168, 85, 247);
   --color-pink: rgb(236, 72, 153);
-  --color-red: rgb(239, 68, 68);
-  --color-orange: rgb(249, 115, 22);
-  --color-yellow: rgb(234, 179, 8);
-  --color-green: rgb(34, 197, 94);
-  --color-teal: rgb(20, 184, 166);
+  --color-red: rgb(248, 113, 113);
+  --color-orange: rgb(251, 146, 60);
+  --color-yellow: rgb(250, 204, 21);
+  --color-green: rgb(74, 222, 128);
+  --color-teal: rgb(45, 212, 191);
   --color-gray: rgb(156, 163, 175);
 }
 </style>
