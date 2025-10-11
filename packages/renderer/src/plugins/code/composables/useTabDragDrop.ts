@@ -108,12 +108,68 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
       return true
     }
 
-    // Find tab under mouse
+    // Check if hovering over the gap where dragged tab originally was
+    const sourceTab = tabs.value.find(t => t.path === draggedTab.value!.path)
+    if (sourceTab) {
+      const sourceContext = sourceTab.isPinned ? 'pinned' : (draggedTab.value.groupId || 'ungrouped')
+
+      // Determine if we're in the same container as the dragged tab
+      const isInSameContainer = (sourceContext === 'pinned' && containerType === 'pinned') ||
+                                (sourceContext !== 'pinned' && containerType !== 'pinned')
+
+      if (isInSameContainer) {
+        const contextTabs = getContextTabs(sourceContext)
+        const sourceIndex = contextTabs.findIndex(t => t.path === sourceTab.path)
+
+        if (sourceIndex !== -1) {
+          const prevTab = sourceIndex > 0 ? contextTabs[sourceIndex - 1] : null
+          const nextTab = sourceIndex < contextTabs.length - 1 ? contextTabs[sourceIndex + 1] : null
+
+          // Only apply gap logic if there are adjacent tabs on both sides
+          if (prevTab && nextTab) {
+            const prevEl = validTabs.find(el => el.dataset.path === prevTab.path)
+            const nextEl = validTabs.find(el => el.dataset.path === nextTab.path)
+
+            if (prevEl && nextEl) {
+              const prevRect = prevEl.getBoundingClientRect()
+              const nextRect = nextEl.getBoundingClientRect()
+              const gapLeft = prevRect.right
+              const gapRight = nextRect.left
+
+              // Check if mouse is within the gap
+              if (mouseX >= gapLeft && mouseX <= gapRight) {
+                const gapWidth = gapRight - gapLeft
+                const relativeX = mouseX - gapLeft
+                const leftThreshold = gapWidth * 0.2
+                const rightThreshold = gapWidth * 0.8
+
+                if (relativeX < leftThreshold) {
+                  // Left 20% - show indicator before next tab
+                  setDropPositionForElement(nextEl, 'left')
+                } else if (relativeX > rightThreshold) {
+                  // Right 20% - show indicator after prev tab
+                  setDropPositionForElement(prevEl, 'right')
+                } else {
+                  // Middle 60% - no indicator (tab stays in place)
+                  dropPosition.value = { index: null, side: 'left', context: sourceContext }
+                }
+                return
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Find tab under mouse (normal detection)
     for (let i = 0; i < validTabs.length; i++) {
       const el = validTabs[i]
       const rect = el.getBoundingClientRect()
-      const nextRect = validTabs[i + 1]?.getBoundingClientRect()
-      const endX = nextRect ? nextRect.left : rect.right + 50
+      const nextEl = validTabs[i + 1]
+      const nextRect = nextEl?.getBoundingClientRect()
+
+      // Extend the hit area to the midpoint between this tab and the next
+      const endX = nextRect ? (rect.right + nextRect.left) / 2 : rect.right + 50
 
       if (mouseX >= rect.left && mouseX <= endX) {
         const side = mouseX < rect.left + rect.width / 2 ? 'left' : 'right'
@@ -122,14 +178,23 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
       }
     }
 
-    // Mouse beyond all tabs - position at end of last tab
-    setDropPositionForElement(validTabs[validTabs.length - 1], 'right')
+    // Only position at end if mouse is actually beyond the last tab
+    const lastTabRect = validTabs[validTabs.length - 1].getBoundingClientRect()
+    if (mouseX > lastTabRect.right) {
+      setDropPositionForElement(validTabs[validTabs.length - 1], 'right')
+    }
   }
 
   const handleDrop = (event: DragEvent) => {
-    if (!draggedTab.value || !dropPosition.value || dropPosition.value.index === null) return
+    if (!draggedTab.value || !dropPosition.value) return
 
     event.preventDefault()
+
+    // If index is null, tab stays in place (dropped in middle 60% zone)
+    if (dropPosition.value.index === null) {
+      resetDragState()
+      return
+    }
 
     const sourceTab = tabs.value.find(t => t.path === draggedTab.value!.path)
     if (!sourceTab) return
@@ -171,16 +236,32 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     // Handle reordering within same context
     if (targetContextTabs.length > 1) {
       const sourceIndex = tabs.value.findIndex(t => t.path === sourceTab.path)
-      const targetTabIndex = targetSide === 'right'
-        ? Math.min(targetIndex + 1, targetContextTabs.length - 1)
-        : targetIndex
 
-      const targetTab = targetContextTabs[targetTabIndex]
-      if (targetTab) {
-        const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
-        if (sourceIndex !== fullTargetIndex) {
-          onReorder(sourceIndex, fullTargetIndex)
-        }
+      // Get the target tab from context tabs (which excludes the dragged tab)
+      const targetTab = targetContextTabs[targetIndex]
+      if (!targetTab) return
+
+      // Find target's position in the full array (includes dragged tab)
+      const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
+
+      // Calculate the correct insertion index accounting for the removal of the source tab
+      // When reorderTabs removes the source, indices shift, so we need to adjust
+      let insertIndex: number
+
+      if (targetSide === 'left') {
+        // Insert BEFORE the target
+        insertIndex = sourceIndex < fullTargetIndex
+          ? fullTargetIndex - 1  // Source is before target, removal shifts target left
+          : fullTargetIndex       // Source is after target, target position unchanged
+      } else {
+        // Insert AFTER the target
+        insertIndex = sourceIndex < fullTargetIndex
+          ? fullTargetIndex       // Source is before target, this puts it after
+          : fullTargetIndex + 1   // Source is after target, need to move past it
+      }
+
+      if (sourceIndex !== insertIndex) {
+        onReorder(sourceIndex, insertIndex)
       }
     }
 
