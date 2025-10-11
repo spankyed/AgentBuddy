@@ -143,8 +143,8 @@
               <Pin
                 v-if="tab.isPinned"
                 class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
-                @dblclick.stop="unpinTab(tab)"
-                title="Double-click to unpin"
+                @click.stop="unpinTab(tab)"
+                title="Click to unpin"
               />
               <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
               <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>

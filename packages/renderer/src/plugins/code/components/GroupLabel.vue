@@ -21,6 +21,17 @@
           {{ name }}
         </span>
 
+        <!-- Pin icon (shown when group is pinned) -->
+        <Pin
+          v-if="isPinned"
+          class="w-3 h-3 ml-0.5 cursor-pointer transition-colors"
+          :class="(isDragOver || !isCollapsed) && ['orange', 'yellow', 'pink'].includes(color)
+            ? 'text-neutral-900 hover:text-neutral-700'
+            : 'text-neutral-400 hover:text-neutral-200'"
+          @click.stop="$emit('unpin-group')"
+          title="Click to unpin group"
+        />
+
         <!-- Dropdown menu trigger button -->
         <DropdownMenuRoot>
           <DropdownMenuTrigger as-child>
@@ -83,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { MoreHorizontal } from 'lucide-vue-next'
+import { MoreHorizontal, Pin } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
