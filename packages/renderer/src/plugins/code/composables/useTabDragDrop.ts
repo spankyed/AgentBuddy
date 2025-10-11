@@ -233,19 +233,28 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const sourceContext = getSourceContext(sourceTab, draggedTab.value.groupId)
     const { context: targetContext, index: targetIndex, side: targetSide } = dropPosition.value
 
-    // Update group membership if moving between contexts
-    if (sourceContext !== targetContext) {
-      handleContextChange(sourceTab, sourceContext, targetContext)
-    }
+    // Get target tab BEFORE context change to avoid index shifts
+    const targetContextTabsBeforeChange = getContextTabs(targetContext)
+    const targetTab = targetContextTabsBeforeChange[targetIndex]
 
-    // Calculate and apply positioning (for both same-context and cross-context moves)
-    const targetContextTabs = getContextTabs(targetContext)
-    const targetTab = targetContextTabs[targetIndex]
-    if (!targetTab || targetContextTabs.length <= 1) {
+    if (!targetTab) {
       resetDragState()
       return
     }
 
+    // Update group membership if moving between contexts
+    if (sourceContext !== targetContext) {
+      handleContextChange(sourceTab, sourceContext, targetContext)
+
+      // If target context has only the moved tab after the change, no positioning needed
+      const targetContextAfter = getContextTabs(targetContext)
+      if (targetContextAfter.length <= 1) {
+        resetDragState()
+        return
+      }
+    }
+
+    // Calculate and apply positioning (using targetTab reference from before context change)
     const sourceIndex = tabs.value.findIndex(t => t.path === sourceTab.path)
     const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
 
