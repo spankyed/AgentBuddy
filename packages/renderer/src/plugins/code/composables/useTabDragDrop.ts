@@ -44,15 +44,124 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     return getTabsForGroup(context)
   }
 
-  const getContextFromElement = (el: HTMLElement): Context => {
-    const tabGroupId = el.dataset.groupId
-    const tabContext = el.dataset.context
-    return tabGroupId || tabContext || 'ungrouped'
-  }
+  const getContextFromElement = (el: HTMLElement): Context =>
+    el.dataset.groupId || el.dataset.context || 'ungrouped'
+
+  const getSourceContext = (tab: Tab, groupId?: string): Context =>
+    tab.isPinned ? 'pinned' : (groupId || 'ungrouped')
 
   const resetDragState = () => {
     draggedTab.value = null
     dropPosition.value = { index: null, side: 'left', context: 'pinned' }
+  }
+
+  const setDropPositionForElement = (el: HTMLElement, side: 'left' | 'right'): boolean => {
+    const tabPath = el.dataset.path
+    if (!tabPath) return false
+
+    const context = getContextFromElement(el)
+    const contextTabs = getContextTabs(context)
+    const index = contextTabs.findIndex(t => t.path === tabPath)
+    if (index === -1) return false
+
+    dropPosition.value = { index, side, context }
+    return true
+  }
+
+  // Check if mouse is hovering over gap where dragged tab was (20% threshold logic)
+  const checkGapHover = (
+    sourceTab: Tab,
+    sourceContext: Context,
+    containerType: string,
+    mouseX: number,
+    validTabs: HTMLElement[]
+  ): boolean => {
+    const isInSameContainer = (sourceContext === 'pinned' && containerType === 'pinned') ||
+                              (sourceContext !== 'pinned' && containerType !== 'pinned')
+    if (!isInSameContainer) return false
+
+    const contextTabs = getContextTabs(sourceContext)
+    const sourceIndex = contextTabs.findIndex(t => t.path === sourceTab.path)
+    if (sourceIndex === -1) return false
+
+    const prevTab = sourceIndex > 0 ? contextTabs[sourceIndex - 1] : null
+    const nextTab = sourceIndex < contextTabs.length - 1 ? contextTabs[sourceIndex + 1] : null
+    if (!prevTab || !nextTab) return false
+
+    const prevEl = validTabs.find(el => el.dataset.path === prevTab.path)
+    const nextEl = validTabs.find(el => el.dataset.path === nextTab.path)
+    if (!prevEl || !nextEl) return false
+
+    const prevRect = prevEl.getBoundingClientRect()
+    const nextRect = nextEl.getBoundingClientRect()
+    const gapLeft = prevRect.right
+    const gapRight = nextRect.left
+
+    if (mouseX < gapLeft || mouseX > gapRight) return false
+
+    // Mouse is in gap - apply 20% threshold
+    const gapWidth = gapRight - gapLeft
+    const relativeX = mouseX - gapLeft
+
+    if (relativeX < gapWidth * 0.2) {
+      // Left 20% of gap - position after prevTab
+      setDropPositionForElement(prevEl, 'right')
+    } else if (relativeX > gapWidth * 0.8) {
+      // Right 20% of gap - position before nextTab
+      setDropPositionForElement(nextEl, 'left')
+    } else {
+      // Middle 60% - no change (tab stays in original position)
+      dropPosition.value = { index: null, side: 'left', context: sourceContext }
+    }
+    return true
+  }
+
+  // Find which tab the mouse is hovering over
+  const findTabUnderMouse = (validTabs: HTMLElement[], mouseX: number): boolean => {
+    for (let i = 0; i < validTabs.length; i++) {
+      const el = validTabs[i]
+      const rect = el.getBoundingClientRect()
+      const nextRect = validTabs[i + 1]?.getBoundingClientRect()
+      const endX = nextRect ? (rect.right + nextRect.left) / 2 : rect.right + 50
+
+      if (mouseX >= rect.left && mouseX <= endX) {
+        const side = mouseX < rect.left + rect.width / 2 ? 'left' : 'right'
+        setDropPositionForElement(el, side)
+        return true
+      }
+    }
+
+    // Check if beyond last tab
+    const lastTabRect = validTabs[validTabs.length - 1].getBoundingClientRect()
+    if (mouseX > lastTabRect.right) {
+      setDropPositionForElement(validTabs[validTabs.length - 1], 'right')
+      return true
+    }
+
+    return false
+  }
+
+  // Handle moving tab between contexts (pinned/ungrouped/groups)
+  const handleContextChange = (
+    sourceTab: Tab,
+    sourceContext: Context,
+    targetContext: Context
+  ): void => {
+    if (targetContext === 'pinned') {
+      onPinTab(sourceTab.path)
+    } else if (sourceContext === 'pinned') {
+      onUnpinTab(sourceTab.path)
+      if (targetContext !== 'ungrouped') {
+        onAddToGroup(sourceTab.path, targetContext)
+      }
+    } else {
+      if (sourceContext !== 'ungrouped') {
+        onRemoveFromGroup(sourceTab.path)
+      }
+      if (targetContext !== 'ungrouped') {
+        onAddToGroup(sourceTab.path, targetContext)
+      }
+    }
   }
 
   // Drag state
@@ -81,108 +190,31 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const containerType = containerEl.dataset.container
     if (!containerType) return
 
-    const tabElements = Array.from(containerEl.querySelectorAll('.tab-item')) as HTMLElement[]
-    const validTabs = tabElements.filter(el => el.dataset.path !== draggedTab.value?.path)
+    const validTabs = Array.from(containerEl.querySelectorAll('.tab-item'))
+      .filter(el => (el as HTMLElement).dataset.path !== draggedTab.value?.path) as HTMLElement[]
 
-    // Empty container - position at start
     if (validTabs.length === 0) {
-      const context = containerType === 'pinned' ? 'pinned' : 'ungrouped'
-      dropPosition.value = { index: 0, side: 'left', context }
+      dropPosition.value = {
+        index: 0,
+        side: 'left',
+        context: containerType === 'pinned' ? 'pinned' : 'ungrouped'
+      }
       return
     }
 
     const mouseX = event.clientX
-
-    // Helper to set drop position for a given element
-    const setDropPositionForElement = (el: HTMLElement, side: 'left' | 'right') => {
-      const tabPath = el.dataset.path
-      if (!tabPath) return false
-
-      const context = getContextFromElement(el)
-      const contextTabs = getContextTabs(context)
-      const index = contextTabs.findIndex(t => t.path === tabPath)
-
-      if (index === -1) return false
-
-      dropPosition.value = { index, side, context }
-      return true
-    }
-
-    // Check if hovering over the gap where dragged tab originally was
     const sourceTab = tabs.value.find(t => t.path === draggedTab.value!.path)
+
+    // Check gap hover first (if dragging to original position)
     if (sourceTab) {
-      const sourceContext = sourceTab.isPinned ? 'pinned' : (draggedTab.value.groupId || 'ungrouped')
-
-      // Determine if we're in the same container as the dragged tab
-      const isInSameContainer = (sourceContext === 'pinned' && containerType === 'pinned') ||
-                                (sourceContext !== 'pinned' && containerType !== 'pinned')
-
-      if (isInSameContainer) {
-        const contextTabs = getContextTabs(sourceContext)
-        const sourceIndex = contextTabs.findIndex(t => t.path === sourceTab.path)
-
-        if (sourceIndex !== -1) {
-          const prevTab = sourceIndex > 0 ? contextTabs[sourceIndex - 1] : null
-          const nextTab = sourceIndex < contextTabs.length - 1 ? contextTabs[sourceIndex + 1] : null
-
-          // Only apply gap logic if there are adjacent tabs on both sides
-          if (prevTab && nextTab) {
-            const prevEl = validTabs.find(el => el.dataset.path === prevTab.path)
-            const nextEl = validTabs.find(el => el.dataset.path === nextTab.path)
-
-            if (prevEl && nextEl) {
-              const prevRect = prevEl.getBoundingClientRect()
-              const nextRect = nextEl.getBoundingClientRect()
-              const gapLeft = prevRect.right
-              const gapRight = nextRect.left
-
-              // Check if mouse is within the gap
-              if (mouseX >= gapLeft && mouseX <= gapRight) {
-                const gapWidth = gapRight - gapLeft
-                const relativeX = mouseX - gapLeft
-                const leftThreshold = gapWidth * 0.2
-                const rightThreshold = gapWidth * 0.8
-
-                if (relativeX < leftThreshold) {
-                  // Left 20% - show indicator before next tab
-                  setDropPositionForElement(nextEl, 'left')
-                } else if (relativeX > rightThreshold) {
-                  // Right 20% - show indicator after prev tab
-                  setDropPositionForElement(prevEl, 'right')
-                } else {
-                  // Middle 60% - no indicator (tab stays in place)
-                  dropPosition.value = { index: null, side: 'left', context: sourceContext }
-                }
-                return
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Find tab under mouse (normal detection)
-    for (let i = 0; i < validTabs.length; i++) {
-      const el = validTabs[i]
-      const rect = el.getBoundingClientRect()
-      const nextEl = validTabs[i + 1]
-      const nextRect = nextEl?.getBoundingClientRect()
-
-      // Extend the hit area to the midpoint between this tab and the next
-      const endX = nextRect ? (rect.right + nextRect.left) / 2 : rect.right + 50
-
-      if (mouseX >= rect.left && mouseX <= endX) {
-        const side = mouseX < rect.left + rect.width / 2 ? 'left' : 'right'
-        setDropPositionForElement(el, side)
+      const sourceContext = getSourceContext(sourceTab, draggedTab.value.groupId)
+      if (checkGapHover(sourceTab, sourceContext, containerType, mouseX, validTabs)) {
         return
       }
     }
 
-    // Only position at end if mouse is actually beyond the last tab
-    const lastTabRect = validTabs[validTabs.length - 1].getBoundingClientRect()
-    if (mouseX > lastTabRect.right) {
-      setDropPositionForElement(validTabs[validTabs.length - 1], 'right')
-    }
+    // Normal tab detection
+    findTabUnderMouse(validTabs, mouseX)
   }
 
   const handleDrop = (event: DragEvent) => {
@@ -190,7 +222,6 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
 
     event.preventDefault()
 
-    // If index is null, tab stays in place (dropped in middle 60% zone)
     if (dropPosition.value.index === null) {
       resetDragState()
       return
@@ -199,113 +230,63 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const sourceTab = tabs.value.find(t => t.path === draggedTab.value!.path)
     if (!sourceTab) return
 
-    const sourceContext = sourceTab.isPinned ? 'pinned' : (draggedTab.value.groupId || 'ungrouped')
+    const sourceContext = getSourceContext(sourceTab, draggedTab.value.groupId)
     const { context: targetContext, index: targetIndex, side: targetSide } = dropPosition.value
-    const targetContextTabs = getContextTabs(targetContext)
 
-    // Handle context changes
+    // Update group membership if moving between contexts
     if (sourceContext !== targetContext) {
-      // Moving to pinned
-      if (targetContext === 'pinned') {
-        onPinTab(sourceTab.path)
-        resetDragState()
-        return
-      }
+      handleContextChange(sourceTab, sourceContext, targetContext)
+    }
 
-      // Moving from pinned
-      if (sourceContext === 'pinned') {
-        onUnpinTab(sourceTab.path)
-        if (targetContext !== 'ungrouped') {
-          onAddToGroup(sourceTab.path, targetContext)
-        }
-        resetDragState()
-        return
-      }
-
-      // Moving between groups or to/from ungrouped
-      if (sourceContext !== 'ungrouped') {
-        onRemoveFromGroup(sourceTab.path)
-      }
-      if (targetContext !== 'ungrouped') {
-        onAddToGroup(sourceTab.path, targetContext)
-      }
+    // Calculate and apply positioning (for both same-context and cross-context moves)
+    const targetContextTabs = getContextTabs(targetContext)
+    const targetTab = targetContextTabs[targetIndex]
+    if (!targetTab || targetContextTabs.length <= 1) {
       resetDragState()
       return
     }
 
-    // Handle reordering within same context
-    if (targetContextTabs.length > 1) {
-      const sourceIndex = tabs.value.findIndex(t => t.path === sourceTab.path)
+    const sourceIndex = tabs.value.findIndex(t => t.path === sourceTab.path)
+    const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
 
-      // Get the target tab from context tabs (which excludes the dragged tab)
-      const targetTab = targetContextTabs[targetIndex]
-      if (!targetTab) return
+    // Calculate insertion index accounting for removal of source tab
+    const offset = targetSide === 'left'
+      ? (sourceIndex < fullTargetIndex ? -1 : 0)
+      : (sourceIndex < fullTargetIndex ? 0 : 1)
+    const insertIndex = fullTargetIndex + offset
 
-      // Find target's position in the full array (includes dragged tab)
-      const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
-
-      // Calculate the correct insertion index accounting for the removal of the source tab
-      // When reorderTabs removes the source, indices shift, so we need to adjust
-      let insertIndex: number
-
-      if (targetSide === 'left') {
-        // Insert BEFORE the target
-        insertIndex = sourceIndex < fullTargetIndex
-          ? fullTargetIndex - 1  // Source is before target, removal shifts target left
-          : fullTargetIndex       // Source is after target, target position unchanged
-      } else {
-        // Insert AFTER the target
-        insertIndex = sourceIndex < fullTargetIndex
-          ? fullTargetIndex       // Source is before target, this puts it after
-          : fullTargetIndex + 1   // Source is after target, need to move past it
-      }
-
-      if (sourceIndex !== insertIndex) {
-        onReorder(sourceIndex, insertIndex)
-      }
+    if (sourceIndex !== insertIndex) {
+      onReorder(sourceIndex, insertIndex)
     }
 
-    resetDragState()
-  }
-
-  const handleDragEnd = () => {
     resetDragState()
   }
 
   const handleDragLeave = (event: DragEvent) => {
     const relatedTarget = event.relatedTarget as HTMLElement
-
-    // Only reset if the mouse left both containers entirely
-    const isInPinned = pinnedContainer.value?.contains(relatedTarget)
-    const isInMain = mainContainer.value?.contains(relatedTarget)
-
-    if (!isInPinned && !isInMain) {
-      resetDragState()
-    }
+    const leftBothContainers = !pinnedContainer.value?.contains(relatedTarget) &&
+                               !mainContainer.value?.contains(relatedTarget)
+    if (leftBothContainers) resetDragState()
   }
 
-  // Drop indicator styling
   const getDropIndicatorStyle = () => {
-    if (!dropPosition.value || dropPosition.value.index === null) return {}
+    const pos = dropPosition.value
+    if (!pos || pos.index === null) return {}
 
-    const { context, index, side } = dropPosition.value
-    const container = context === 'pinned' ? pinnedContainer.value : mainContainer.value
-    if (!container) return {}
+    const container = pos.context === 'pinned' ? pinnedContainer.value : mainContainer.value
+    const contextTabs = getContextTabs(pos.context)
+    const targetTab = contextTabs[pos.index]
 
-    const contextTabs = getContextTabs(context)
-    if (index < 0 || index >= contextTabs.length) return {}
-
-    const targetTab = contextTabs[index]
-    if (!targetTab) return {}
+    if (!container || !targetTab || pos.index < 0 || pos.index >= contextTabs.length) return {}
 
     const tabElement = container.querySelector(`[data-path="${CSS.escape(targetTab.path)}"]`) as HTMLElement
     if (!tabElement) return {}
 
     const rect = tabElement.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
-    const left = (side === 'left' ? rect.left : rect.right) - containerRect.left + container.scrollLeft
+    const left = (pos.side === 'left' ? rect.left : rect.right) - containerRect.left + container.scrollLeft
 
-    const group = tabGroups.value.find(g => g.id === context)
+    const group = tabGroups.value.find(g => g.id === pos.context)
     const backgroundColor = group ? `var(--color-${group.color})` : 'rgb(59, 130, 246)'
 
     return { left: `${left}px`, backgroundColor }
@@ -317,7 +298,7 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     handleDragStart,
     handleDragOver,
     handleDrop,
-    handleDragEnd,
+    handleDragEnd: resetDragState,
     handleDragLeave,
     getDropIndicatorStyle
   }
