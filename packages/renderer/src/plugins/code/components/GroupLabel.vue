@@ -2,20 +2,15 @@
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
       <div
-        class="flex items-center gap-1.5 px-2.5 py-1 mx-0.5 rounded-md cursor-pointer group-label flex-shrink-0 transition-colors"
+        class="flex items-center gap-1.5 px-2 py-0 min-h-[2.5rem] cursor-pointer group-label flex-shrink-0 transition-all hover:brightness-110"
         :style="{
-          backgroundColor: `color-mix(in srgb, var(--color-${color}) 20%, transparent)`,
-          borderLeft: `3px solid var(--color-${color})`
+          backgroundColor: `color-mix(in srgb, var(--color-${color}) 10%, transparent)`,
+          borderLeft: isCollapsed ? `3px solid var(--color-${color})` : 'none',
+          borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none'
         }"
         :data-group-id="groupId"
         @click.stop="$emit('toggle')"
       >
-        <!-- Collapse/Expand indicator -->
-        <ChevronRight
-          class="w-3 h-3 transition-transform text-neutral-400"
-          :class="{ 'rotate-0': isCollapsed, 'rotate-90': !isCollapsed }"
-        />
-
         <!-- Group name (editable on double-click) -->
         <input
           v-if="isEditing"
@@ -33,7 +28,7 @@
           @dblclick.stop="startEdit"
           class="text-xs font-medium text-neutral-300 whitespace-nowrap select-none"
         >
-          {{ name }} ({{ tabCount }})
+          {{ name }}
         </span>
 
         <!-- Context menu trigger -->
@@ -185,6 +180,10 @@ const cancelEdit = () => {
 <style scoped>
 .group-label:hover .opacity-0 {
   opacity: 1;
+}
+
+.group-label:hover .group-label-hover\:text-neutral-200 {
+  color: rgb(229, 229, 229);
 }
 
 /* Custom CSS variables for colors */

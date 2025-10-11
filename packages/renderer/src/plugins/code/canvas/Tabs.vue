@@ -4,7 +4,7 @@
     <div
       v-if="pinnedTabs.length > 0"
       ref="pinnedContainer"
-      class="relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
+      class="tab-container relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
       data-container="pinned"
       @dragover="handleDragOver"
       @drop="handleDrop"
@@ -22,9 +22,12 @@
         <div
           class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
           :class="[
-            activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
+            activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
             draggedTab?.path === tab.path ? 'opacity-50' : ''
           ]"
+          :style="{
+            borderTop: activeTabPath === tab.path ? '2px solid rgb(59, 130, 246)' : 'none'
+          }"
           :data-path="tab.path"
           :data-context="'pinned'"
           draggable="true"
@@ -86,7 +89,7 @@
     <!-- Main tabs row (groups + ungrouped) -->
     <div
       ref="mainContainer"
-      class="relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
+      class="tab-container relative flex items-center min-h-[2.5rem] overflow-x-auto overflow-y-visible bg-neutral-900 border-b border-neutral-800"
       data-container="main"
       @dragover="handleDragOver"
       @drop="handleDrop"
@@ -118,16 +121,19 @@
 
       <!-- Tabs in this group (when expanded) -->
       <template v-if="!group.isCollapsed">
-        <ContextMenuRoot v-for="tab in getTabsForGroup(group.id)" :key="tab.path">
+        <ContextMenuRoot v-for="(tab, tabIndex) in getTabsForGroup(group.id)" :key="tab.path">
           <ContextMenuTrigger as-child>
             <div
               class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
               :class="[
-                activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
                 draggedTab?.path === tab.path ? 'opacity-50' : ''
               ]"
               :style="{
-                borderBottom: `2px solid var(--color-${group.color})`
+                borderTop: activeTabPath === tab.path ? `2px solid var(--color-${group.color})` : 'none',
+                borderBottom: `2px solid var(--color-${group.color})`,
+                backgroundColor: activeTabPath === tab.path
+                  ? `color-mix(in srgb, var(--color-${group.color}) 20%, rgb(28, 28, 30))`
+                  : `color-mix(in srgb, var(--color-${group.color}) 10%, transparent)`
               }"
               :data-path="tab.path"
               :data-group-id="group.id"
@@ -203,9 +209,12 @@
         <div
           class="relative flex items-center min-h-[2.5rem] border-r tab-item group border-neutral-800"
           :class="[
-            activeTabPath === tab.path ? 'bg-neutral-850 border-t border-t-blue-500' : 'bg-neutral-900 hover:bg-neutral-800',
+            activeTabPath === tab.path ? 'bg-neutral-850' : 'bg-neutral-900 hover:bg-neutral-800',
             draggedTab?.path === tab.path ? 'opacity-50' : ''
           ]"
+          :style="{
+            borderTop: activeTabPath === tab.path ? '2px solid rgb(59, 130, 246)' : 'none'
+          }"
           :data-path="tab.path"
           :data-context="'ungrouped'"
           draggable="true"
@@ -539,5 +548,29 @@ const createNewGroupWithTab = (tab: OpenFile | TerminalTab | ActionTab | PromptT
   --color-green: rgb(34, 197, 94);
   --color-teal: rgb(20, 184, 166);
   --color-gray: rgb(156, 163, 175);
+}
+
+/* Custom horizontal scrollbar for tab containers */
+.tab-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tab-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-container::-webkit-scrollbar-thumb {
+  background: rgb(82, 82, 82);
+  border-radius: 3px;
+}
+
+.tab-container::-webkit-scrollbar-thumb:hover {
+  background: rgb(115, 115, 115);
+}
+
+/* Firefox scrollbar styling */
+.tab-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(82, 82, 82) transparent;
 }
 </style>
