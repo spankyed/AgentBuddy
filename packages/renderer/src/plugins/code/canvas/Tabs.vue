@@ -138,6 +138,7 @@
           :color="group.color"
           :is-collapsed="group.isCollapsed"
           :is-pinned="true"
+          :is-drag-over="dragOverGroupId === group.id"
           :tab-count="groupTabs.length"
           @toggle="$emit('toggle-group-collapse', group.id)"
           @rename="(name: string) => $emit('rename-group', group.id, name)"
@@ -147,6 +148,9 @@
           @delete="$emit('delete-group', group.id)"
           @pin-group="$emit('pin-group', group.id)"
           @unpin-group="$emit('unpin-group', group.id)"
+          @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, group.id)"
+          @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, group.id)"
+          @group-drop="(e: DragEvent) => handleGroupDrop(e, group.id)"
         />
 
         <!-- Tabs in this pinned group (when expanded) -->
@@ -249,6 +253,7 @@
         :color="group.color"
         :is-collapsed="group.isCollapsed"
         :is-pinned="group.isPinned || false"
+        :is-drag-over="dragOverGroupId === group.id"
         :tab-count="getTabsForGroup(group.id).length"
         @toggle="$emit('toggle-group-collapse', group.id)"
         @rename="(name: string) => $emit('rename-group', group.id, name)"
@@ -258,6 +263,9 @@
         @delete="$emit('delete-group', group.id)"
         @pin-group="$emit('pin-group', group.id)"
         @unpin-group="$emit('unpin-group', group.id)"
+        @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, group.id)"
+        @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, group.id)"
+        @group-drop="(e: DragEvent) => handleGroupDrop(e, group.id)"
       />
 
       <!-- Tabs in this group (when expanded) -->
@@ -586,6 +594,86 @@ const {
   onRemoveFromGroup: (path: string) => emit('remove-tab-from-group', path),
   onReorder: (fromIndex: number, toIndex: number) => emit('reorder', fromIndex, toIndex)
 })
+
+// Track which group is being dragged over
+const dragOverGroupId = ref<string | null>(null)
+
+// Group drag-over handling for auto-expand
+const handleGroupDragOver = (event: DragEvent, groupId: string) => {
+  const group = props.tabGroups.find(g => g.id === groupId)
+
+  // Set drag over state for visual feedback
+  dragOverGroupId.value = groupId
+
+  // Only handle collapsed groups - let normal logic handle expanded groups
+  if (!group || !group.isCollapsed) {
+    event.preventDefault()
+    event.stopPropagation()
+    return
+  }
+
+  // Now we know it's collapsed - prevent default and stop propagation
+  event.preventDefault()
+  event.stopPropagation()
+
+  // Expand immediately (no timer)
+  emit('toggle-group-collapse', groupId)
+}
+
+const handleGroupDragLeave = (event: DragEvent, groupId: string) => {
+  // Check if we're truly leaving the group label
+  const relatedTarget = event.relatedTarget as HTMLElement
+  if (relatedTarget && relatedTarget.closest('.group-label')?.getAttribute('data-group-id') === groupId) {
+    return
+  }
+
+  if (dragOverGroupId.value === groupId) {
+    dragOverGroupId.value = null
+  }
+}
+
+// Group drop handling
+const handleGroupDrop = (event: DragEvent, groupId: string) => {
+  if (!draggedTab.value) return
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  const sourceTab = props.tabs.find(t => t.path === draggedTab.value!.path)
+  if (!sourceTab) return
+
+  // Get source context
+  const sourceContext = sourceTab.isPinned && sourceTab.groupId
+    ? sourceTab.groupId
+    : sourceTab.isPinned
+      ? 'pinned'
+      : sourceTab.groupId || 'ungrouped'
+
+  // Add tab to this group
+  if (sourceContext !== groupId) {
+    // Moving from different context - handle context change
+    if (sourceContext === 'pinned') {
+      // From individual pinned
+      emit('unpin-tab', sourceTab.path)
+      emit('add-tab-to-group', sourceTab.path, groupId)
+    } else if (sourceTab.isPinned) {
+      // From pinned group - unpin and change groups
+      emit('unpin-tab', sourceTab.path)
+      emit('add-tab-to-group', sourceTab.path, groupId)
+    } else {
+      // From ungrouped or different group
+      if (sourceContext !== 'ungrouped') {
+        emit('remove-tab-from-group', sourceTab.path)
+      }
+      emit('add-tab-to-group', sourceTab.path, groupId)
+    }
+  }
+
+  // Reset drag state
+  draggedTab.value = null
+  dropPosition.value = { index: null, side: 'left', context: 'pinned' }
+  dragOverGroupId.value = null
+}
 
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {

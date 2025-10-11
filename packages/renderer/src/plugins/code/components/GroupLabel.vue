@@ -6,10 +6,14 @@
         :style="{
           backgroundColor: `color-mix(in srgb, var(--color-${color}) 10%, transparent)`,
           borderLeft: isCollapsed ? `3px solid var(--color-${color})` : 'none',
-          borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none'
+          borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none',
+          borderTop: isDragOver ? `3px solid var(--color-${color})` : 'none'
         }"
         :data-group-id="groupId"
         @click.stop="$emit('toggle')"
+        @dragover="handleDragOver"
+        @dragleave="handleDragLeave"
+        @drop.prevent.stop="handleDrop"
       >
         <!-- Group name (editable on double-click) -->
         <input
@@ -159,6 +163,7 @@ const props = defineProps<{
   tabCount: number
   groupId: string
   isPinned?: boolean
+  isDragOver?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -170,6 +175,9 @@ const emit = defineEmits<{
   delete: []
   'pin-group': []
   'unpin-group': []
+  'group-drag-over': [event: DragEvent]
+  'group-drag-leave': [event: DragEvent]
+  'group-drop': [event: DragEvent]
 }>()
 
 const colors: TabGroupColor[] = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']
@@ -198,6 +206,19 @@ const saveEdit = () => {
 const cancelEdit = () => {
   editedName.value = props.name
   isEditing.value = false
+}
+
+// Drag handlers
+const handleDragOver = (event: DragEvent) => {
+  emit('group-drag-over', event)
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  emit('group-drag-leave', event)
+}
+
+const handleDrop = (event: DragEvent) => {
+  emit('group-drop', event)
 }
 </script>
 

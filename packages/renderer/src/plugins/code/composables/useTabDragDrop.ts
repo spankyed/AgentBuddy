@@ -204,11 +204,29 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const validTabs = Array.from(containerEl.querySelectorAll('.tab-item'))
       .filter(el => (el as HTMLElement).dataset.path !== draggedTab.value?.path) as HTMLElement[]
 
+    // Check if we're hovering over a group label
+    const targetEl = event.target as HTMLElement
+    const groupLabel = targetEl.closest('.group-label')
+    if (groupLabel) {
+      // Let group label handle it
+      return
+    }
+
     if (validTabs.length === 0) {
-      dropPosition.value = {
-        index: 0,
-        side: 'left',
-        context: containerType === 'pinned' ? 'pinned' : 'ungrouped'
+      // Check if there are ANY group labels in the container
+      const hasGroups = containerEl.querySelectorAll('.group-label').length > 0
+
+      if (hasGroups) {
+        // Container has groups but no ungrouped tabs - don't set position
+        // User needs to hover over a specific group label
+        dropPosition.value = { index: null, side: 'left', context: containerType === 'pinned' ? 'pinned' : 'ungrouped' }
+      } else {
+        // Truly empty container - allow drop to ungrouped
+        dropPosition.value = {
+          index: 0,
+          side: 'left',
+          context: containerType === 'pinned' ? 'pinned' : 'ungrouped'
+        }
       }
       return
     }
@@ -244,8 +262,28 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     const sourceContext = getSourceContext(sourceTab, draggedTab.value.groupId)
     const { context: targetContext, index: targetIndex, side: targetSide } = dropPosition.value
 
+    // Special case: dropping into empty group (sentinel value -1)
+    if (targetIndex === -1) {
+      if (sourceContext !== targetContext) {
+        handleContextChange(sourceTab, sourceContext, targetContext)
+      }
+      resetDragState()
+      return
+    }
+
     // Get target tab BEFORE context change to avoid index shifts
     const targetContextTabsBeforeChange = getContextTabs(targetContext)
+
+    // Special case: dropping into truly empty ungrouped/pinned context
+    if (targetIndex === 0 && targetContextTabsBeforeChange.length === 0 &&
+        (targetContext === 'ungrouped' || targetContext === 'pinned')) {
+      if (sourceContext !== targetContext) {
+        handleContextChange(sourceTab, sourceContext, targetContext)
+      }
+      resetDragState()
+      return
+    }
+
     const targetTab = targetContextTabsBeforeChange[targetIndex]
 
     if (!targetTab) {
