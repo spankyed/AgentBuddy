@@ -408,7 +408,7 @@
             <ContextMenuPortal>
               <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
                 <ContextMenuItem
-                  v-for="group in sortedGroups"
+                  v-for="group in tabGroups"
                   :key="group.id"
                   @select="$emit('add-tab-to-group', tab.path, group.id)"
                   class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
