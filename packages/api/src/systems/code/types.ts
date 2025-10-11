@@ -104,6 +104,7 @@ export interface FileChangeInfo {
 export interface TerminalInfo {
   id: EARS.EntityId
   title: string
+  customTitle?: string // User-defined custom name, takes precedence over default
   pid: number
   shell?: string
   cwd: string

@@ -440,25 +440,26 @@
             Add to New Group
           </ContextMenuItem>
 
-          <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+          <template v-if="shouldShowFileOperations(tab)">
+            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
 
-          <ContextMenuItem
-            v-if="shouldShowFileOperations(tab)"
-            @select="copyRelativePath(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <Copy class="w-4 h-4" />
-            Copy relative path
-          </ContextMenuItem>
+            <ContextMenuItem
+              @select="copyRelativePath(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Copy class="w-4 h-4" />
+              Copy relative path
+            </ContextMenuItem>
 
-          <ContextMenuItem
-            v-if="shouldShowFileOperations(tab)"
-            @select="revealInExplorer(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <FolderOpen class="w-4 h-4" />
-            Reveal in explorer
-          </ContextMenuItem>
+            <ContextMenuItem
+              @select="revealInExplorer(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Reveal in explorer
+            </ContextMenuItem>
+          </template>
+
         </ContextMenuContent>
       </ContextMenuPortal>
     </ContextMenuRoot>

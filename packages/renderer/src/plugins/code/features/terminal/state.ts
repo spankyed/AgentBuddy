@@ -7,6 +7,7 @@ import { mergeTabs, removeTabs } from '../../utils/tab-management';
 export interface TerminalInfo {
   id: string
   title: string
+  customTitle?: string
   pid: number
   shell?: string
   cwd: string
@@ -28,17 +29,19 @@ export interface Context {
   terminalError: string | null
 }
 
-export type Event = 
+export type Event =
   | { type: 'terminal.CREATE'; title?: string; cwd?: string }
   | { type: 'terminal.CLOSE'; terminalId: string }
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
+  | { type: 'terminal.RENAME'; terminalId: string; customTitle: string }
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TAB'; terminalInfo: TerminalInfo }
   | { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
   | { type: 'terminal.CREATED'; data: TerminalInfo }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
+  | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
@@ -74,10 +77,18 @@ export const terminalState = setup({
     
     resizeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
-      sendToBackend('terminal.RESIZE_TERMINAL', { 
-        terminalId: ev.terminalId, 
-        cols: ev.cols, 
-        rows: ev.rows 
+      sendToBackend('terminal.RESIZE_TERMINAL', {
+        terminalId: ev.terminalId,
+        cols: ev.cols,
+        rows: ev.rows
+      })
+    },
+
+    renameTerminal: ({ event }) => {
+      const ev = event as { type: 'terminal.RENAME'; terminalId: string; customTitle: string }
+      sendToBackend('terminal.RENAME_TERMINAL', {
+        terminalId: ev.terminalId,
+        customTitle: ev.customTitle
       })
     },
     
@@ -103,6 +114,17 @@ export const terminalState = setup({
       terminals: ({ context, event }) => {
         const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
         return context.terminals.filter(t => t.id !== ev.data.terminalId)
+      }
+    }),
+
+    updateTerminalTitle: assign({
+      terminals: ({ context, event }) => {
+        const ev = event as { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
+        return context.terminals.map(t =>
+          t.id === ev.data.terminalId
+            ? { ...t, customTitle: ev.data.customTitle }
+            : t
+        )
       }
     }),
     
@@ -280,6 +302,9 @@ export const terminalState = setup({
     'terminal.RESIZE': {
       actions: 'resizeTerminal'
     },
+    'terminal.RENAME': {
+      actions: 'renameTerminal'
+    },
     'terminal.REFRESH_LIST': {
       actions: 'listTerminals'
     },
@@ -297,6 +322,9 @@ export const terminalState = setup({
     },
     'terminal.CLOSED': {
       actions: 'handleTerminalClosed'
+    },
+    'terminal.RENAMED': {
+      actions: 'updateTerminalTitle'
     },
     'terminal.OUTPUT': {
       actions: 'handleTerminalOutput'

@@ -13,6 +13,7 @@ export interface TerminalEntity {
   id: EARS.EntityId
   entityType: EARS.Entity.Terminal
   title: string
+  customTitle?: string
   pid: number
   shell: string
   cwd: string
@@ -81,10 +82,22 @@ export const terminalCommands = {
       console.error(`Terminal ${id} not found`)
       return
     }
-    
+
     tx(id).updateBatch({
       cols,
       rows,
+      updatedAt: Date.now()
+    })
+  },
+
+  rename: (id: EARS.EntityId, customTitle: string): void => {
+    if (!exists(id)) {
+      console.error(`Terminal ${id} not found`)
+      return
+    }
+
+    tx(id).updateBatch({
+      customTitle,
       updatedAt: Date.now()
     })
   },

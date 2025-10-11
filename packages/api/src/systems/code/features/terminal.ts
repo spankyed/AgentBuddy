@@ -22,6 +22,7 @@ export const IncomingTerminalEvents = [
   busEvent('terminal.CLOSE_TERMINAL', { terminalId: z.string() }),
   busEvent('terminal.TERMINAL_INPUT', { terminalId: z.string(), data: z.string() }),
   busEvent('terminal.RESIZE_TERMINAL', { terminalId: z.string(), cols: z.number(), rows: z.number() }),
+  busEvent('terminal.RENAME_TERMINAL', { terminalId: z.string(), customTitle: z.string() }),
   busEvent('terminal.REFRESH_LIST', {}),
   busEvent('terminal.OPEN_TERMINAL_TAB', { terminalId: z.string() }),
 ] as const
@@ -32,6 +33,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
+  | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
@@ -40,8 +42,8 @@ export interface Context {
   rootDirectory: string | null
 }
 
-export type Event = 
-  | { type: 'terminal.CREATE_TERMINAL'; 
+export type Event =
+  | { type: 'terminal.CREATE_TERMINAL';
       title?: string;
       cwd?: string;
       shell?: string;
@@ -51,6 +53,7 @@ export type Event =
   | { type: 'terminal.CLOSE_TERMINAL'; terminalId: string }
   | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
+  | { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
   | { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
@@ -192,6 +195,35 @@ export const terminalSystem = setup({
       }
     },
 
+    renameTerminal: ({ event }) => {
+      const ev = event as { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
+      try {
+        const terminal = terminalService.get(ev.terminalId)
+        const terminalName = terminal ? terminal.info.title : 'Terminal'
+        const success = terminalService.rename(ev.terminalId, ev.customTitle)
+        if (!success) {
+          const wrapped = emit(pluginId, {
+            type: 'terminal.ERROR',
+            data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        } else {
+          // Emit success event
+          const wrapped = emit(pluginId, {
+            type: 'terminal.RENAMED',
+            data: { terminalId: ev.terminalId, customTitle: ev.customTitle }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        }
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'terminal.ERROR',
+          data: { message: error.message, terminalId: ev.terminalId }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     listTerminals: () => {
       try {
         const terminals = terminalService.list()
@@ -310,6 +342,9 @@ export const terminalSystem = setup({
         },
         'terminal.RESIZE_TERMINAL': {
           actions: 'resizeTerminal'
+        },
+        'terminal.RENAME_TERMINAL': {
+          actions: 'renameTerminal'
         },
         'terminal.REFRESH_LIST': {
           actions: 'listTerminals'

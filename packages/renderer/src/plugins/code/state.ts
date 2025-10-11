@@ -521,9 +521,9 @@ const codeState = setup({
       //   });
       // } else {
         // Create a new terminal at the current directory
+        // Title will be auto-generated from cwd by backend
         system.get('terminal')?.send({
             type: 'terminal.CREATE',
-            title: `Terminal - ${context.currentDirectory.split('/').pop() || 'root'}`,
             cwd: context.currentDirectory
           });
       // }

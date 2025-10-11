@@ -51,11 +51,14 @@ class TerminalService {
     
     // Validate cwd exists and is accessible
     const cwd = this.validateCwd(options.cwd)
-    
+
     // Validate terminal dimensions
     const cols = Math.max(1, Math.min(options.cols || 80, 500))
     const rows = Math.max(1, Math.min(options.rows || 24, 200))
-    const title = this.sanitizeTitle(options.title || `Terminal ${this.terminals.size + 1}`)
+
+    // Generate default title from cwd (use directory name)
+    const defaultTitle = cwd.split('/').filter(Boolean).pop() || 'root'
+    const title = this.sanitizeTitle(options.title || defaultTitle)
 
     try {
       // Sanitize environment variables
@@ -128,10 +131,23 @@ class TerminalService {
     terminal.pty.resize(cols, rows)
     terminal.info.cols = cols
     terminal.info.rows = rows
-    
+
     // Update in EARS storage
     repository.terminalCommands.resize(id as EARS.EntityId, cols, rows)
-    
+
+    return true
+  }
+
+  rename(id: string, customTitle: string): boolean {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return false
+
+    const sanitizedTitle = this.sanitizeTitle(customTitle)
+    terminal.info.customTitle = sanitizedTitle
+
+    // Update in EARS storage
+    repository.terminalCommands.rename(id as EARS.EntityId, sanitizedTitle)
+
     return true
   }
 
