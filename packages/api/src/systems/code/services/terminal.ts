@@ -305,12 +305,14 @@ class TerminalService {
   private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
     const shellName = shell.split('/').pop()?.toLowerCase() || ''
 
+    const comment = '# AgentBuddy listener'
+
     if (shellName.includes('bash')) {
-      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}" # AgentBuddy shell integration\n`)
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ${comment}\n`)
     } else if (shellName.includes('zsh')) {
-      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; precmd_functions+=(__ab_osc7) # AgentBuddy shell integration\n`)
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; precmd_functions+=(__ab_osc7) ${comment}\n`)
     } else if (shellName.includes('fish')) {
-      ptyProcess.write(`function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end # AgentBuddy shell integration\n`)
+      ptyProcess.write(`function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end ${comment}\n`)
     }
   }
 
