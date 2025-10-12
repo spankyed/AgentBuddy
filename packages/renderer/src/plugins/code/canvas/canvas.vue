@@ -150,9 +150,23 @@ const closeFile = (path: string) => {
     ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
     : activeFilePath.value
 
+  // Check if the closed tab was in a group and if the group is now empty
+  const groupId = file && 'groupId' in file ? file.groupId : undefined
+  let newTabGroups = tabGroups.value
+
+  if (groupId) {
+    const remainingTabsInGroup = newOpenFiles.filter(
+      f => 'groupId' in f && f.groupId === groupId
+    )
+    if (remainingTabsInGroup.length === 0) {
+      // Group is now empty, remove it
+      newTabGroups = tabGroups.value.filter(g => g.id !== groupId)
+    }
+  }
+
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath }
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
   })
 
   explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
