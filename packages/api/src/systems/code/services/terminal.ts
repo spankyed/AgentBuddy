@@ -309,11 +309,11 @@ class TerminalService {
     const shellName = shell.split('/').pop()?.toLowerCase() || ''
 
     if (shellName.includes('bash')) {
-      ptyProcess.write(`[ -z "$AGENTBUDDY_SI" ] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}"\n`)
+      ptyProcess.write(`[ -z "$AGENTBUDDY_SI" ] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}";\r\n`)
     } else if (shellName.includes('zsh')) {
-      ptyProcess.write(`[[ -z "$AGENTBUDDY_SI" ]] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__ab_osc7)\n`)
+      ptyProcess.write(`[[ -z "$AGENTBUDDY_SI" ]] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__ab_osc7);\r\n`)
     } else if (shellName.includes('fish')) {
-      ptyProcess.write(`test -z "$AGENTBUDDY_SI"; and set -gx AGENTBUDDY_SI 1; and function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end\n`)
+      ptyProcess.write(`test -z "$AGENTBUDDY_SI"; and set -gx AGENTBUDDY_SI 1; and function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end;\r\n`)
     }
   }
 
