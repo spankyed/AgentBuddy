@@ -37,6 +37,7 @@ export const IncomingExplorerEvents = [
   busEvent('explorer.CREATE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.GET_FILE_INFO', { path: z.string() }),
   busEvent('explorer.CLOSE_FILE', { path: z.string() }),
+  busEvent('explorer.UPDATE_CURRENT_DIRECTORY', { path: z.string() }),
   busEvent('explorer.QUICK_OPEN_SEARCH', { rootDirectory: z.string() }),
 ] as const
 
@@ -62,7 +63,7 @@ export interface Context {
   fileWatcher: FileWatcherService
 }
 
-export type Event = 
+export type Event =
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.READ_FILE'; path: string }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
@@ -72,6 +73,7 @@ export type Event =
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.GET_FILE_INFO'; path: string }
   | { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
+  | { type: 'explorer.UPDATE_CURRENT_DIRECTORY'; path: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
@@ -343,6 +345,13 @@ export const explorerSystem = setup({
       },
     }),
 
+    updateCurrentDirectory: assign({
+      currentDirectory: ({ event }) => {
+        const ev = event as { type: 'explorer.UPDATE_CURRENT_DIRECTORY'; path: string }
+        return ev.path
+      }
+    }),
+
 
     closeFile: async ({ event, context }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
@@ -448,6 +457,9 @@ export const explorerSystem = setup({
         },
         'explorer.SET_ROOT_DIRECTORY': {
           actions: ['assignRootDirectory', 'setRootDirectory', 'listRootFiles']
+        },
+        'explorer.UPDATE_CURRENT_DIRECTORY': {
+          actions: 'updateCurrentDirectory'
         },
         'explorer.CLOSE_FILE': {
           actions: 'closeFile'

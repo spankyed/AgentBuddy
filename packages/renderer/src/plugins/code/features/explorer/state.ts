@@ -54,7 +54,7 @@ export interface QuickOpenResult {
   score?: number
 }
 
-export type Event = 
+export type Event =
   | { type: 'explorer.INITIALIZE'; rootDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.CREATE_FILE'; name: string }
@@ -92,23 +92,23 @@ export const explorerState = setup({
     setLoading: ({ self }) => {
       updateParentState(self, { isLoading: true, error: null })
     },
-    
+
     handleFileContent: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
-      
+
       // Track the file as recently opened
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
-      
+
       if (existingFile) {
         // Update content for existing file
-        const updatedFiles = openFiles.map((f: any) => 
-          f.path === ev.data.path 
-            ? { 
-                ...f, 
+        const updatedFiles = openFiles.map((f: any) =>
+          f.path === ev.data.path
+            ? {
+                ...f,
                 content: ev.data.content,
                 modified: false,
                 externallyModified: false,
@@ -142,32 +142,32 @@ export const explorerState = setup({
         })
       }
     },
-    
+
     handleFileSaved: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
       const parentContext = getParentContext(self)
-      
-      const updatedFiles = (parentContext?.openFiles || []).map((f: any) => 
-        f.path === ev.data.path 
-          ? { 
-              ...f, 
+
+      const updatedFiles = (parentContext?.openFiles || []).map((f: any) =>
+        f.path === ev.data.path
+          ? {
+              ...f,
               modified: false,
               pendingSaveConflict: false,
               externallyModified: false,
               externalModificationTime: undefined
-            } 
+            }
           : f
       )
-      
+
       updateParentState(self, { openFiles: updatedFiles })
     },
-    
+
     handleFileChangedExternally: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       const file = openFiles.find((f: any) => f.path === ev.data.path)
-      
+
       if (file && !file.isDiff) {
         const updatedFiles = openFiles.map((f: any) => {
           if (f.path === ev.data.path && !f.isDiff) {
@@ -180,31 +180,31 @@ export const explorerState = setup({
           }
           return f
         })
-        
+
         updateParentState(self, { openFiles: updatedFiles })
-        
+
         // Only refresh if file is not modified by user
         if (!file.modified) {
           sendToBackend('explorer.READ_FILE', { path: ev.data.path })
         }
       }
     },
-    
+
     handleCodeError: ({ event, self }) => {
       const ev = event as { type: 'explorer.CODE_ERROR'; data: { message: string } }
       updateParentState(self, { error: ev.data.message, isLoading: false })
     },
-    
+
     handleCurrentDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
       updateParentState(self, { currentDirectory: ev.data.path })
     },
-    
+
     listFiles: ({ event }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
     },
-    
+
     assignFiles: assign(({ event, self }) => {
       const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
       updateParentState(self, { isLoading: false, error: null })
@@ -212,27 +212,27 @@ export const explorerState = setup({
         files: ev.data.files
       }
     }),
-    
+
     deleteFile: ({ event }) => {
       const ev = event as { type: 'explorer.DELETE_FILE'; path: string }
       sendToBackend('explorer.DELETE_FILE', { path: ev.path })
     },
-    
+
     createDirectory: ({ event }) => {
       const ev = event as { type: 'explorer.CREATE_DIRECTORY'; path: string }
       sendToBackend('explorer.CREATE_DIRECTORY', { path: ev.path })
     },
-    
+
     renameFile: ({ event }) => {
       const ev = event as { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
       sendToBackend('explorer.RENAME_FILE', { oldPath: ev.oldPath, newPath: ev.newPath })
     },
-    
+
     assignError: ({ event, self }) => {
       const ev = event as { type: 'explorer.ERROR'; message: string }
       updateParentState(self, { error: ev.message, isLoading: false })
     },
-    
+
     initialize: ({ event, self }) => {
       const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
       // Only set root directory if we have one
@@ -241,12 +241,12 @@ export const explorerState = setup({
       }
       // Otherwise, explorer just waits for a directory to be selected
     },
-    
+
     openFile: ({ event }) => {
       const ev = event as { type: 'explorer.OPEN_FILE'; path: string }
       sendToBackend('explorer.READ_FILE', { path: ev.path })
     },
-    
+
     openFiles: enqueueActions(({ enqueue, event }) => {
       const ev = event as { type: 'explorer.OPEN_FILES'; paths: string[] }
       ev.paths.forEach(path => {
@@ -255,35 +255,36 @@ export const explorerState = setup({
         })
       })
     }),
-    
+
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
-      
+      sendToBackend('explorer.UPDATE_CURRENT_DIRECTORY', { path: ev.path })
+
       // Update parent state
       updateParentState(self, { currentDirectory: ev.path })
     },
-    
+
     setRootDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
-      
+
       // Send SET_ROOT_DIRECTORY to the parent code system to update everything
       sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
-      
+
       // Update parent state
-      updateParentState(self, { 
+      updateParentState(self, {
         rootDirectory: ev.path,
         currentDirectory: ev.path
       })
     },
-    
+
     handleFileDeleted: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_DELETED'; path: string }
       const parentContext = getParentContext(self)
-      
+
       // Refresh file list
       sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
-      
+
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
         const result = removeTabs(
@@ -291,63 +292,63 @@ export const explorerState = setup({
           ev.path,
           parentContext.activeFilePath
         )
-        
+
         updateParentState(self, result)
       }
     },
-    
+
     handleFileRenamed: ({ event, self }) => {
       const ev = event as { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
       const parentContext = getParentContext(self)
-      
+
       // Refresh file list
       sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
-      
+
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
       const hasRenamedFile = openFiles.some((f: any) => f.path === ev.oldPath)
-      
+
       if (hasRenamedFile) {
-        const newOpenFiles = openFiles.map((f: any) => 
+        const newOpenFiles = openFiles.map((f: any) =>
           f.path === ev.oldPath ? { ...f, path: ev.newPath } : f
         )
-        const newActiveFile = parentContext.activeFilePath === ev.oldPath 
-          ? ev.newPath 
+        const newActiveFile = parentContext.activeFilePath === ev.oldPath
+          ? ev.newPath
           : parentContext.activeFilePath
-          
+
         updateParentState(self, {
           openFiles: newOpenFiles,
           activeFilePath: newActiveFile
         })
       }
     },
-    
+
     handleDirectoryCreated: ({ event, self }) => {
       const ev = event as { type: 'explorer.DIRECTORY_CREATED'; path: string }
       const parentContext = getParentContext(self)
-      
+
       // Refresh file list to show new directory
       sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
     },
-    
+
     writeFile: ({ event }) => {
       const ev = event as { type: 'explorer.WRITE_FILE'; path: string; content: string }
       sendToBackend('explorer.WRITE_FILE', { path: ev.path, content: ev.content })
     },
-    
+
     closeFile: ({ event }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
       sendToBackend('explorer.CLOSE_FILE', { path: ev.path })
     },
-    
+
     quickOpenSearch: ({ event }) => {
       const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
       sendToBackend('explorer.QUICK_OPEN_SEARCH', { rootDirectory: ev.rootDirectory })
     },
-    
+
     handleQuickOpenResults: ({ event, self }) => {
       const ev = event as { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-      updateParentState(self, { 
+      updateParentState(self, {
         quickOpenResults: ev.data,
         quickOpenLoading: false
       })

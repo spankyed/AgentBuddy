@@ -179,17 +179,29 @@ export const systemMachine = setup({
         gitRepository: context.gitRepository,
         gitWatcher: context.gitWatcher
       });
-      system.get('pr')?.send({ 
-        type: 'pr.UPDATE_ROOT_DIRECTORY', 
+      system.get('pr')?.send({
+        type: 'pr.UPDATE_ROOT_DIRECTORY',
         path: newPath,
         gitRepository: context.gitRepository
       });
+      // Note: Updates terminal's base directory for new terminal creation.
+      // Individual terminal processes track their own cwd independently.
       system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
     },
 
-    updateSettings: ({ event }) => {
+    updateSettings: ({ event, context, self }) => {
       const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
-      
+
+      // Check if defaultRootDirectory changed and apply it
+      if (ev.settings.defaultRootDirectory &&
+          ev.settings.defaultRootDirectory !== context.rootDirectory) {
+        // Apply the new default root directory
+        self.send({
+          type: 'SET_ROOT_DIRECTORY',
+          path: ev.settings.defaultRootDirectory
+        })
+      }
+
       // Forward settings to frontend
       const wrapped = emit(id, {
         type: 'CODE_SETTINGS_UPDATED',
