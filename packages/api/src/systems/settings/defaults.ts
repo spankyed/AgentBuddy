@@ -84,6 +84,7 @@ export const defaultSettings: SettingsData = {
       restoreTerminals: true,
       defaultRootDirectory: null,
       enableShellIntegration: true,
+      confirmTerminalClose: true,
     },
     database: {
       hotkeys: {

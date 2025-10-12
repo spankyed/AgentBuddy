@@ -170,6 +170,7 @@ export interface CodeSettings {
   restoreTerminals?: boolean;
   defaultRootDirectory?: string | null;
   enableShellIntegration?: boolean;
+  confirmTerminalClose?: boolean;
 }
 
 export type CodeConnectedData = {

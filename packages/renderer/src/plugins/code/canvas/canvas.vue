@@ -81,6 +81,7 @@ const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
 const actionsActor = actor.system.get('codeActions')
 const promptsActor = actor.system.get('codePrompts')
+const settingsActor = applicationState.system.get('settings')
 
 // Terminal outputs are handled through state
 
@@ -89,6 +90,7 @@ const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
+const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 
 // Computed
 const activeFile = computed(() => 
@@ -133,24 +135,27 @@ const selectFile = (path: string) => {
 }
 
 const closeFile = (path: string) => {
+  const file = openFiles.value.find(f => f.path === path)
+  const isTerminal = file && 'isTerminal' in file && file.isTerminal
+
+  // Check if terminal close needs confirmation
+  if (isTerminal && confirmTerminalClose.value) {
+    const terminalInfo = (file as any).terminalInfo
+    const displayName = terminalInfo?.customTitle || terminalInfo?.title || 'Terminal'
+    if (!confirm(`Close terminal "${displayName}"?`)) return
+  }
+
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const newActiveFilePath = activeFilePath.value === path 
+  const newActiveFilePath = activeFilePath.value === path
     ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
     : activeFilePath.value
-    
-  actor.send({ 
+
+  actor.send({
     type: 'UPDATE_STATE',
-    updates: {
-      openFiles: newOpenFiles,
-      activeFilePath: newActiveFilePath
-    }
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath }
   })
-  
-  // Send event to explorer state machine
-  explorerActor?.send({
-    type: 'explorer.CLOSE_FILE',
-    path
-  })
+
+  explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
 }
 
 const handleContentChange = (path: string, content: string) => {

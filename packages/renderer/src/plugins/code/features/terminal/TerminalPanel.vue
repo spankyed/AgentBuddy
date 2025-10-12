@@ -110,6 +110,7 @@ import {
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const terminalActor = codeActor.system.get('terminal')!
+const settingsActor = applicationState.system.get('settings')
 
 
 // State selectors from parent actor
@@ -118,6 +119,9 @@ const activeFilePath = useSelector(codeActor, (state) => state.context.activeFil
 // State selectors from terminal actor
 const terminals = useSelector(terminalActor, (state: any) => state.context.terminals)
 const terminalError = useSelector(terminalActor, (state: any) => state.context.terminalError)
+
+// State selectors from settings actor
+const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 
 // Check if a terminal is active
 const isActiveTerminal = (terminalId: string) => {
@@ -148,11 +152,8 @@ const selectTerminal = (terminal: TerminalInfo) => {
 
 // Close a terminal with confirmation
 const closeTerminal = (terminal: TerminalInfo) => {
-  const displayName = getTerminalDisplayName(terminal)
-  const confirmed = confirm(`Close terminal "${displayName}"?`)
-  if (confirmed) {
-    terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
-  }
+  if (confirmTerminalClose.value && !confirm(`Close terminal "${getTerminalDisplayName(terminal)}"?`)) return
+  terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
 }
 
 // Rename functionality
