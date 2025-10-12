@@ -171,6 +171,7 @@ export interface CodeSettings {
   defaultRootDirectory?: string | null;
   enableShellIntegration?: boolean;
   confirmTerminalClose?: boolean;
+  closeTerminalOnTabClose?: boolean;
 }
 
 export type CodeConnectedData = {

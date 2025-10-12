@@ -106,6 +106,7 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
 } from 'reka-ui'
+import { useTerminalActions } from '@/plugins/code/composables/useTerminalActions'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -122,19 +123,18 @@ const terminalError = useSelector(terminalActor, (state: any) => state.context.t
 
 // State selectors from settings actor
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
+
+// Terminal actions composable
+const { closeTerminal, getTerminalDisplayName } = useTerminalActions(
+  terminalActor,
+  confirmTerminalClose,
+  closeTerminalOnTabClose
+)
 
 // Check if a terminal is active
 const isActiveTerminal = (terminalId: string) => {
   return activeFilePath.value === `terminal:${terminalId}`
-}
-
-// Get display name for terminal (customTitle or cwd basename)
-const getTerminalDisplayName = (terminal: TerminalInfo) => {
-  if (terminal.customTitle) {
-    return terminal.customTitle
-  }
-  // Use the last part of the cwd path as the display name
-  return terminal.cwd.split('/').filter(Boolean).pop() || terminal.title
 }
 
 // Create a new terminal
@@ -148,12 +148,6 @@ const selectTerminal = (terminal: TerminalInfo) => {
     type: 'terminal.OPEN_TAB',
     terminalInfo: terminal
   })
-}
-
-// Close a terminal with confirmation
-const closeTerminal = (terminal: TerminalInfo) => {
-  if (confirmTerminalClose.value && !confirm(`Close terminal "${getTerminalDisplayName(terminal)}"?`)) return
-  terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
 }
 
 // Rename functionality

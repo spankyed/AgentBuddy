@@ -76,9 +76,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
+import { useTerminalActions } from '../composables/useTerminalActions'
 
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
+const terminalActor = actor.system.get('terminal')
 const actionsActor = actor.system.get('codeActions')
 const promptsActor = actor.system.get('codePrompts')
 const settingsActor = applicationState.system.get('settings')
@@ -91,6 +93,14 @@ const activeFilePath = useSelector(actor, (state) => state.context.activeFilePat
 const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
+
+// Terminal actions composable
+const { closeTerminal: closeTerminalProcess } = useTerminalActions(
+  terminalActor,
+  confirmTerminalClose,
+  closeTerminalOnTabClose
+)
 
 // Computed
 const activeFile = computed(() => 
@@ -138,13 +148,17 @@ const closeFile = (path: string) => {
   const file = openFiles.value.find(f => f.path === path)
   const isTerminal = file && 'isTerminal' in file && file.isTerminal
 
-  // Check if terminal close needs confirmation
-  if (isTerminal && confirmTerminalClose.value) {
+  // Handle terminal closing with centralized logic
+  if (isTerminal) {
     const terminalInfo = (file as any).terminalInfo
-    const displayName = terminalInfo?.customTitle || terminalInfo?.title || 'Terminal'
-    if (!confirm(`Close terminal "${displayName}"?`)) return
+    // Use composable for confirmation and process closing
+    // Returns false if user cancelled
+    if (!closeTerminalProcess(terminalInfo)) {
+      return
+    }
   }
 
+  // Update UI state - remove tab from open files
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
   const newActiveFilePath = activeFilePath.value === path
     ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)

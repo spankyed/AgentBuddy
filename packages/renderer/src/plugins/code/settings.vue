@@ -78,6 +78,24 @@
             class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
           />
         </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="close-terminal-on-tab-close" class="text-sm font-medium text-neutral-200">
+              Close terminal process when tab is closed
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Terminate the terminal process when closing a terminal tab
+            </p>
+          </div>
+          <input
+            id="close-terminal-on-tab-close"
+            v-model="closeTerminalOnTabClose"
+            type="checkbox"
+            @change="saveCloseTerminalOnTabCloseSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
       </div>
     </CollapsibleSection>
     </div>
@@ -168,6 +186,7 @@ const hotkeys = reactive<CodeSettings['hotkeys']>({
 const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
 const defaultRootDirectory = ref(props.settings?.defaultRootDirectory || null)
 
 // Save functions
@@ -197,6 +216,13 @@ const saveConfirmTerminalCloseSetting = () => {
   emit('update-setting', {
     path: ['confirmTerminalClose'],
     value: confirmTerminalClose.value
+  })
+}
+
+const saveCloseTerminalOnTabCloseSetting = () => {
+  emit('update-setting', {
+    path: ['closeTerminalOnTabClose'],
+    value: closeTerminalOnTabClose.value
   })
 }
 
