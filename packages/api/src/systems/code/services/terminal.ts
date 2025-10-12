@@ -64,9 +64,6 @@ class TerminalService {
       // Sanitize environment variables
       const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
 
-      // Add shell integration flag
-      sanitizedEnv['AGENTBUDDY_SHELL_INTEGRATION'] = '1'
-
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols,
@@ -309,11 +306,11 @@ class TerminalService {
     const shellName = shell.split('/').pop()?.toLowerCase() || ''
 
     if (shellName.includes('bash')) {
-      ptyProcess.write(`[ -z "$AGENTBUDDY_SI" ] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}";\r\n`)
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}"\n`)
     } else if (shellName.includes('zsh')) {
-      ptyProcess.write(`[[ -z "$AGENTBUDDY_SI" ]] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__ab_osc7);\r\n`)
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; precmd_functions+=(__ab_osc7)\n`)
     } else if (shellName.includes('fish')) {
-      ptyProcess.write(`test -z "$AGENTBUDDY_SI"; and set -gx AGENTBUDDY_SI 1; and function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end;\r\n`)
+      ptyProcess.write(`function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end\n`)
     }
   }
 
@@ -332,9 +329,8 @@ class TerminalService {
           continue
         }
 
-        // Sanitize environment and add shell integration flag
+        // Sanitize environment variables
         const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
-        sanitizedEnv['AGENTBUDDY_SHELL_INTEGRATION'] = '1'
 
         // Spawn new pty process for the terminal
         const ptyProcess = pty.spawn(persistedTerminal.shell, [], {
