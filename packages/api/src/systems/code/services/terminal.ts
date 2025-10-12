@@ -75,8 +75,11 @@ class TerminalService {
         env: sanitizedEnv
       })
 
-      // Send shell integration setup commands based on shell type
-      this.injectShellIntegration(ptyProcess, shell, cwd)
+      // Send shell integration setup commands based on shell type (if enabled)
+      const codeSettings = repository.settingsQueries.getPluginSettings('code')
+      if (codeSettings?.enableShellIntegration !== false) {
+        this.injectShellIntegration(ptyProcess, shell)
+      }
 
       const info: TerminalInfo = {
         id,
@@ -302,38 +305,33 @@ class TerminalService {
     return sanitized
   }
 
-  private injectShellIntegration(ptyProcess: pty.IPty, shell: string, initialCwd: string): void {
+  private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
     const shellName = shell.split('/').pop()?.toLowerCase() || ''
 
     if (shellName.includes('bash')) {
-      // Bash: Use PROMPT_COMMAND to emit OSC 7 on every prompt
-      // Compact single-line version with clear to hide injection output
-      const bashIntegration = `[ -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED" ] && export AGENTBUDDY_SHELL_INTEGRATION_INJECTED=1 && __agentbuddy_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__agentbuddy_osc7\${PROMPT_COMMAND:+;\$PROMPT_COMMAND}" && clear`
-      ptyProcess.write(bashIntegration + '\n')
+      ptyProcess.write(`[ -z "$AGENTBUDDY_SI" ] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}"\n`)
     } else if (shellName.includes('zsh')) {
-      // Zsh: Use precmd hook to emit OSC 7
-      // Compact single-line version with clear to hide injection output
-      const zshIntegration = `[[ -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED" ]] && export AGENTBUDDY_SHELL_INTEGRATION_INJECTED=1 && __agentbuddy_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__agentbuddy_osc7) && clear`
-      ptyProcess.write(zshIntegration + '\n')
+      ptyProcess.write(`[[ -z "$AGENTBUDDY_SI" ]] && export AGENTBUDDY_SI=1 && __ab_osc7() { printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; } && precmd_functions+=(__ab_osc7)\n`)
     } else if (shellName.includes('fish')) {
-      // Fish: Use function and event
-      // Compact version with clear to hide injection output
-      const fishIntegration = `test -z "$AGENTBUDDY_SHELL_INTEGRATION_INJECTED"; and set -gx AGENTBUDDY_SHELL_INTEGRATION_INJECTED 1; and function __agentbuddy_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end; and clear`
-      ptyProcess.write(fishIntegration + '\n')
+      ptyProcess.write(`test -z "$AGENTBUDDY_SI"; and set -gx AGENTBUDDY_SI 1; and function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end\n`)
     }
   }
 
   async restoreAll(setupHandlers: (terminalInfo: TerminalInfo) => void): Promise<void> {
     // Get all active terminals from EARS
     const persistedTerminals = repository.terminalQueries.active()
-    
+
+    // Check if shell integration is enabled
+    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const shellIntegrationEnabled = codeSettings?.enableShellIntegration !== false
+
     for (const persistedTerminal of persistedTerminals) {
       try {
         // Skip if already in memory
         if (this.terminals.has(persistedTerminal.id)) {
           continue
         }
-        
+
         // Sanitize environment and add shell integration flag
         const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
         sanitizedEnv['AGENTBUDDY_SHELL_INTEGRATION'] = '1'
@@ -347,8 +345,10 @@ class TerminalService {
           env: sanitizedEnv
         })
 
-        // Inject shell integration
-        this.injectShellIntegration(ptyProcess, persistedTerminal.shell, persistedTerminal.cwd)
+        // Inject shell integration (if enabled)
+        if (shellIntegrationEnabled) {
+          this.injectShellIntegration(ptyProcess, persistedTerminal.shell)
+        }
         
         const terminalInfo: TerminalInfo = {
           id: persistedTerminal.id,

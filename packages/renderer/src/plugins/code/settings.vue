@@ -42,6 +42,24 @@
             class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
           />
         </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="enable-shell-integration" class="text-sm font-medium text-neutral-200">
+              Enable shell integration
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Track directory changes automatically (displays a brief setup command on terminal startup)
+            </p>
+          </div>
+          <input
+            id="enable-shell-integration"
+            v-model="enableShellIntegration"
+            type="checkbox"
+            @change="saveShellIntegrationSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
       </div>
     </CollapsibleSection>
     </div>
@@ -130,6 +148,7 @@ const hotkeys = reactive<CodeSettings['hotkeys']>({
 })
 
 const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
+const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const defaultRootDirectory = ref(props.settings?.defaultRootDirectory || null)
 
 // Save functions
@@ -145,6 +164,13 @@ const saveTerminalSettings = () => {
   emit('update-setting', {
     path: ['restoreTerminals'],
     value: restoreTerminals.value
+  })
+}
+
+const saveShellIntegrationSetting = () => {
+  emit('update-setting', {
+    path: ['enableShellIntegration'],
+    value: enableShellIntegration.value
   })
 }
 
