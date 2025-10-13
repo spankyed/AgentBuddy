@@ -52,7 +52,13 @@ export const createDefaultSettings = (): void => {
 export const settingsQueries = {
   getSettings: (): SettingsData => getSettingsEntity().data,
 
-  getGeneralSettings: () => getSettingsEntity().data.general,
+  getGeneralSettings: (label?: string) => {
+    const general = getSettingsEntity().data.general;
+    if (label) {
+      return (general as any)[label] || (defaultSettings.general as any)[label] || {};
+    }
+    return general;
+  },
 
   getInternalSettings: () => getSettingsEntity().data.internal,
 

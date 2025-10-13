@@ -37,8 +37,9 @@ const IncomingCodeEvents = [
   ...IncomingTerminalEvents,
   ...IncomingActionsEvents,
   ...IncomingPromptsEvents,
-  // Special root-level event
+  // Special root-level events
   busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
+  busEvent('CLEAR_DIRECTORY_HISTORY', {}),
 ] as const
 
 // Union all outgoing events from child systems  
@@ -260,21 +261,25 @@ export const systemMachine = setup({
       if (!context.gitWatcher || !context.gitRepository) {
         return
       }
-      
+
       // Set up the callback for git changes (same as setupGitWatcher)
       context.gitWatcher.setChangeCallback(() => {
         // Clear git cache when git status changes
         context.gitRepository?.clearCache()
-        
+
         // Notify commit system of changes
         system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        
+
         // Also notify the PR system
         system.get('pr')?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       })
-      
+
       // Start watching git changes
       await context.gitWatcher.startWatching()
+    },
+
+    clearDirectoryHistory: () => {
+      repository.directoryCommands.clearAll()
     }
   }
 }).createMachine({
@@ -283,17 +288,34 @@ export const systemMachine = setup({
   context: () => {
     // Get code settings to check for default root directory
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
-    
-    // Priority: defaultRootDirectory > lastOpenedDir > null
+
+    // Get workspaces from general settings
+    const workspacesSettings = repository.settingsQueries.getGeneralSettings('workspaces') as any;
+    const workspaces = workspacesSettings?.workspaces || [];
+
+    // Flatten all projects from all workspaces
+    const allProjects = workspaces.flatMap((ws: any) => ws.projects || []);
+
+    // Priority: defaultRootDirectory (if valid) > lastOpenedDir > first project > null
     let rootDir: string | null = null;
+
     if (codeSettings?.defaultRootDirectory) {
-      rootDir = codeSettings.defaultRootDirectory;
-    } else {
-      // Fall back to last opened directory
-      const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
-      rootDir = lastOpenedDir?.path || null;
+      // Validate it exists in any workspace project directories
+      const isValid = allProjects.some((p: any) => p.directories?.includes(codeSettings.defaultRootDirectory))
+      if (isValid) {
+        rootDir = codeSettings.defaultRootDirectory;
+      } else {
+        // Clear invalid default
+        repository.settingsCommands.updateSettings('plugin', 'code', ['defaultRootDirectory'], null)
+      }
     }
-    
+
+    if (!rootDir) {
+      // Fall back to last opened directory, or first directory of first project
+      const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
+      rootDir = lastOpenedDir?.path || allProjects[0]?.directories?.[0] || null;
+    }
+
     return {
       currentDirectory: rootDir,
       rootDirectory: rootDir,
@@ -315,6 +337,10 @@ export const systemMachine = setup({
         // Handle SET_ROOT_DIRECTORY specially
         SET_ROOT_DIRECTORY: {
           actions: ['updateRootDirectory', 'notifyChildSystemsOfRootChange', 'restartGitWatcher']
+        },
+        // Clear directory history
+        CLEAR_DIRECTORY_HISTORY: {
+          actions: 'clearDirectoryHistory'
         },
         // All other events get routed to children
         '*': {

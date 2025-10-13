@@ -82,8 +82,18 @@
         />
       </div>
       
-      <!-- Change Directory Button -->
-      <div class="p-2 border-t border-neutral-800">
+      <!-- Action Buttons -->
+      <div class="p-2 border-t border-neutral-800 space-y-2">
+        <!-- Add Project Button -->
+        <button
+          @click="handleAddProject"
+          class="w-full px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus class="w-4 h-4" />
+          Add Project
+        </button>
+
+        <!-- Change Directory Button -->
         <button
           @click="handleDirectorySelect"
           class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
@@ -115,7 +125,8 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
-import { FolderOpen, FolderPlus } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, Plus } from 'lucide-vue-next'
+import { trpc } from '@/core/trpc'
 
 interface FileItem {
   path: string
@@ -134,6 +145,7 @@ const props = defineProps<{
 const codeActor: CodeState = applicationState.system.get(codeId)
 const explorerActor = codeActor.system.get('explorer')!
 const terminalActor = codeActor.system.get('terminal')!
+const settingsActor = applicationState.system.get('settings')
 
 // State selectors
 const files = useSelector(explorerActor, (state: any) => state.context.files)
@@ -204,13 +216,36 @@ const handleDirectorySelect = async () => {
 
   try {
     const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
-    
+
     if (directoryPath && directoryPath !== props.rootDirectory) {
       explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: directoryPath })
     }
   } catch (error) {
     console.error('Error selecting directory:', error)
   }
+}
+
+const handleAddProject = () => {
+  // Navigate to Settings plugin, General tab, Workspaces section
+  const settingsActor = applicationState.system.get('settings')
+
+  // Switch to settings plugin
+  applicationState.send({
+    type: 'SELECT_PLUGIN',
+    pluginId: 'settings'
+  })
+
+  // Navigate to General tab
+  settingsActor?.send({
+    type: 'SETTINGS_TAB.SELECT',
+    tab: 'general'
+  })
+
+  // Navigate to Workspaces section
+  settingsActor?.send({
+    type: 'GENERAL_NAV.SELECT',
+    item: 'workspaces'
+  })
 }
 
 const handleOpenTerminal = (path: string) => {

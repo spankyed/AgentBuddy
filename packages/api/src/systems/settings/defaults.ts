@@ -34,7 +34,10 @@ export const defaultSettings: SettingsData = {
         modifiers: ['cmd']
       }
     },
-    misc: {}
+    misc: {},
+    workspaces: {
+      workspaces: []
+    }
   },
   plugins: {
     _meta: {
