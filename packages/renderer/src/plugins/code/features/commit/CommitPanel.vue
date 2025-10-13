@@ -451,8 +451,8 @@ commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 </script>
 
 <style scoped>
-/* Override window drag region to make header elements clickable */
-.commit-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.commit-header > * {
   -webkit-app-region: no-drag;
 }
 </style>

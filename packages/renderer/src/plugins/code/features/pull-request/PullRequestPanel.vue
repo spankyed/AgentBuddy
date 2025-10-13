@@ -179,8 +179,8 @@ const handleFileSelect = (file: TreeNode) => {
   border-bottom: 1px solid #27272a;
 }
 
-/* Override window drag region to make header elements clickable */
-.pr-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.pr-header > * {
   -webkit-app-region: no-drag;
 }
 </style>

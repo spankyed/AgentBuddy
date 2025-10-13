@@ -338,8 +338,8 @@ const handleWorkspaceDirectorySelect = (path: string) => {
 </script>
 
 <style scoped>
-/* Override window drag region to make header elements clickable */
-.explorer-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.explorer-header > * {
   -webkit-app-region: no-drag;
 }
 </style>

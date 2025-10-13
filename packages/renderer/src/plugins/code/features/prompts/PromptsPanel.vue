@@ -194,8 +194,8 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* Override window drag region to make header elements clickable */
-.prompts-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.prompts-header > * {
   -webkit-app-region: no-drag;
 }
 </style>

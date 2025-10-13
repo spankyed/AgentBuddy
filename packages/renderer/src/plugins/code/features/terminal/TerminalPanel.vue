@@ -181,8 +181,8 @@ const cancelRename = () => {
 </script>
 
 <style scoped>
-/* Override window drag region to make header elements clickable */
-.terminal-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.terminal-header > * {
   -webkit-app-region: no-drag;
 }
 </style>

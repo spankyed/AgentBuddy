@@ -383,8 +383,8 @@ watch(searchResults, (results) => {
 </script>
 
 <style scoped>
-/* Override window drag region to make header elements clickable */
-.search-header {
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.search-header > * {
   -webkit-app-region: no-drag;
 }
 </style>
