@@ -34,10 +34,29 @@
 
     <!-- Toolbar -->
     </div>
-        <div class="flex items-center justify-center gap-1 p-2 border-b border-neutral-800">
+    <div class="flex items-center justify-center gap-1 p-2 border-b border-neutral-800">
       <!-- Code navigation panels -->
       <button
         v-for="panel in codePanels"
+        :key="panel.id"
+        @click="selectPanel(panel.id)"
+        :class="[
+          'p-1.5 rounded transition-colors',
+          selectedPanel === panel.id
+            ? 'bg-primary-700 text-neutral-100'
+            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+        ]"
+        :title="panel.label"
+      >
+        <component :is="panel.icon" class="w-4 h-4" />
+      </button>
+
+      <!-- Divider -->
+      <div class="h-5 w-px bg-neutral-700 mx-1"></div>
+
+      <!-- Git panels -->
+      <button
+        v-for="panel in gitPanels"
         :key="panel.id"
         @click="selectPanel(panel.id)"
         :class="[
@@ -105,10 +124,13 @@ const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 // Panel configuration - split into two groups
 const codePanels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },
+  { id: 'terminal', label: 'Terminal', icon: Terminal },
   { id: 'search', label: 'Search', icon: Search },
+] as const
+
+const gitPanels = [
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
-  { id: 'terminal', label: 'Terminal', icon: Terminal }
 ] as const
 
 const actionPanels = [
