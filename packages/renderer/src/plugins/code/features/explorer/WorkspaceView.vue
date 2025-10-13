@@ -17,7 +17,7 @@
           :class="workspace.directory ? 'cursor-pointer hover:bg-neutral-800' : 'cursor-default'"
         >
           <div
-            class="flex-shrink-0 w-3 h-3 rounded-full"
+            class="flex-shrink-0 w-3 h-3 rounded"
             :style="{ backgroundColor: workspace.color }"
           ></div>
           <span class="font-medium truncate text-neutral-200">{{ workspace.name }}</span>
@@ -25,11 +25,6 @@
             v-if="workspace.directory"
             class="flex-shrink-0 w-3 h-3 ml-auto text-neutral-500"
           />
-        </div>
-
-        <!-- Workspace description -->
-        <div v-if="workspace.description" class="px-4 pb-2 ml-5 text-xs text-neutral-500">
-          {{ workspace.description }}
         </div>
 
         <!-- Projects list -->
