@@ -17,10 +17,10 @@
       >
         <component :is="panel.icon" class="w-4 h-4" />
       </button>
-      
+
       <!-- Divider -->
       <div class="h-5 w-px bg-neutral-700 mx-1"></div>
-      
+
       <!-- Actions/Prompts panels -->
       <button
         v-for="panel in actionPanels"
@@ -42,36 +42,36 @@
     <div class="flex-1 overflow-hidden">
       <ExplorerPanel
         v-if="selectedPanel === 'explorer'"
-        :root-directory="rootDirectory"
-        :current-directory="currentDirectory"
+        :base-directory="baseDirectory"
+        :active-directory="activeDirectory"
       />
-      
-      <SearchPanel 
-        v-else-if="selectedPanel === 'search'" 
+
+      <SearchPanel
+        v-else-if="selectedPanel === 'search'"
       />
-      
-      <CommitPanel 
+
+      <CommitPanel
         v-else-if="selectedPanel === 'commit'"
       />
-      
-      <PullRequestPanel 
+
+      <PullRequestPanel
         v-else-if="selectedPanel === 'pr'"
       />
-      
-      <TerminalPanel 
+
+      <TerminalPanel
         v-else-if="selectedPanel === 'terminal'"
       />
-      
-      <ActionsPanel 
+
+      <ActionsPanel
         v-else-if="selectedPanel === 'actions'"
       />
-      
-      <PromptsPanel 
+
+      <PromptsPanel
         v-else-if="selectedPanel === 'prompts'"
       />
     </div>
   </div>
-  
+
 </template>
 
 <script setup lang="ts">
@@ -79,10 +79,10 @@ import { onMounted, computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/state'
-import { 
-  FolderOpen, 
-  Search, 
-  GitCommit, 
+import {
+  FolderOpen,
+  Search,
+  GitCommit,
   GitPullRequest,
   Terminal,
   Play,
@@ -98,8 +98,8 @@ import PromptsPanel from '@/plugins/code/features/prompts/PromptsPanel.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 
-const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
-const currentDirectory = useSelector(actor, (state) => state.context.currentDirectory)
+const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
+const activeDirectory = useSelector(actor, (state) => state.context.activeDirectory)
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 
 // Panel configuration - split into two groups
@@ -118,9 +118,9 @@ const actionPanels = [
 
 // Event handlers
 const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts') => {
-  actor.send({ 
-    type: 'SELECT_PANEL', 
-    panel 
+  actor.send({
+    type: 'SELECT_PANEL',
+    panel
   })
 }
 </script>

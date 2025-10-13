@@ -1,16 +1,16 @@
 <template>
   <div class="max-w-3xl">
-    <!-- Default Root Directory Section -->
-    <CollapsibleSection label="Default Root Directory" :default-open="true" class="mb-8">
+    <!-- Default Base Directory Section -->
+    <CollapsibleSection label="Default Base Directory" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
         Configure which project directory the code editor opens to on startup
       </p>
       <div class="space-y-3">
         <label class="text-sm font-medium text-neutral-200">
-          Default Root Directory
+          Default Base Directory
         </label>
         <select
-          v-model="defaultRootDirectory"
+          v-model="defaultBaseDirectory"
           @change="saveDefaultDirectory"
           class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="getAllProjects().length === 0"
@@ -241,7 +241,7 @@ const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
-const defaultRootDirectory = ref<string | null>(props.settings?.defaultRootDirectory || null)
+const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 
 // Get workspaces from general settings
 const settingsActor = applicationState.system.get('settings')
@@ -299,8 +299,8 @@ const saveCloseTerminalOnTabCloseSetting = () => {
 
 const saveDefaultDirectory = () => {
   emit('update-setting', {
-    path: ['defaultRootDirectory'],
-    value: defaultRootDirectory.value
+    path: ['defaultBaseDirectory'],
+    value: defaultBaseDirectory.value
   })
 }
 

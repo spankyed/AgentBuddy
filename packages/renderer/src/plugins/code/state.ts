@@ -62,8 +62,8 @@ export interface TerminalTab extends OpenFile {
 }
 
 export type Context = {
-  rootDirectory: string
-  currentDirectory: string
+  baseDirectory: string
+  activeDirectory: string
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
   isLoading: boolean
@@ -236,11 +236,11 @@ const codeState = setup({
         }
       }
 
-      // If root directory changed, notify commit, PR, and search panels to refresh
-      if (ev.updates.rootDirectory && ev.updates.rootDirectory !== context.rootDirectory) {
+      // If base directory changed, notify commit, PR, and search panels to refresh
+      if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
-        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', rootDirectory: ev.updates.rootDirectory });
+        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
       }
 
       return updates
@@ -251,7 +251,7 @@ const codeState = setup({
     }),
     initializePlugin: ({ context, system }) => {
       // Always initialize all child machines
-      system.get('explorer')?.send({ type: 'explorer.INITIALIZE', rootDirectory: context.rootDirectory });
+      system.get('explorer')?.send({ type: 'explorer.INITIALIZE', baseDirectory: context.baseDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
       system.get('codePrompts')?.send({ type: 'codePrompts.REFRESH_LIST' });
@@ -453,13 +453,13 @@ const codeState = setup({
     requestQuickOpenFiles: ({ context, system }) => {
       system.get('explorer')?.send({
         type: 'explorer.QUICK_OPEN_SEARCH',
-        rootDirectory: context.rootDirectory
+        baseDirectory: context.baseDirectory
       });
     },
     
-    handleCodeConnected: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_CONNECTED'; data: { rootDirectory: string | null; currentDirectory: string | null; settings?: CodeSettings } }
-      
+    handleCodeConnected: assign(({ event, context, system }) => {
+      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null; settings?: CodeSettings } }
+
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (ev.data.settings?.hotkeys) {
@@ -469,12 +469,21 @@ const codeState = setup({
           }
         });
       }
-      
+
+      // Initialize explorer with the base directory from backend
+      // This ensures explorer loads files even when Code plugin isn't the active plugin
+      if (ev.data.baseDirectory) {
+        system.get('explorer')?.send({
+          type: 'explorer.INITIALIZE',
+          baseDirectory: ev.data.baseDirectory
+        });
+      }
+
       // Update directory state from backend
       return {
         ...context,
-        rootDirectory: ev.data.rootDirectory || '',
-        currentDirectory: ev.data.currentDirectory || '',
+        baseDirectory: ev.data.baseDirectory || '',
+        activeDirectory: ev.data.activeDirectory || '',
         settings: ev.data.settings,
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys // Use settings hotkeys if available, otherwise keep defaults
       }
@@ -507,11 +516,11 @@ const codeState = setup({
     }),
     
     openTerminal: ({ context, self, system }) => {
-      // Look for an existing terminal at the current directory
+      // Look for an existing terminal at the active directory
       // const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
       //   return 'isTerminal' in file &&
       //     file.isTerminal === true &&
-      //     file.terminalInfo.cwd === context.currentDirectory;
+      //     file.terminalInfo.cwd === context.activeDirectory;
       // });
       // if (existingTerminal) {
       //   // Activate the existing terminal tab
@@ -520,11 +529,11 @@ const codeState = setup({
       //     updates: { activeFilePath: existingTerminal.path }
       //   });
       // } else {
-        // Create a new terminal at the current directory
+        // Create a new terminal at the active directory
         // Title will be auto-generated from cwd by backend
         system.get('terminal')?.send({
             type: 'terminal.CREATE',
-            cwd: context.currentDirectory
+            cwd: context.activeDirectory
           });
       // }
     },
@@ -782,8 +791,8 @@ const codeState = setup({
   initial: 'canvas',
   entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
-    rootDirectory: '', // Will be loaded from backend EARS store
-    currentDirectory: '', // Will be loaded from backend EARS store
+    baseDirectory: '', // Will be loaded from backend EARS store
+    activeDirectory: '', // Will be loaded from backend EARS store
     openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
     activeFilePath: null,
     isLoading: false,

@@ -55,7 +55,7 @@ export interface QuickOpenResult {
 }
 
 export type Event =
-  | { type: 'explorer.INITIALIZE'; rootDirectory: string }
+  | { type: 'explorer.INITIALIZE'; baseDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.CREATE_FILE'; name: string }
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
@@ -66,7 +66,7 @@ export type Event =
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
-  | { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
+  | { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
   | { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
   | { type: 'explorer.FILE_DELETED'; path: string }
   | { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
@@ -78,10 +78,10 @@ export type Event =
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
   | { type: 'explorer.CODE_ERROR'; data: { message: string } }
   // Quick open events
-  | { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
+  | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
   // Directory events
-  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } };
+  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } };
 
 export const explorerState = setup({
   types: {
@@ -195,9 +195,9 @@ export const explorerState = setup({
       updateParentState(self, { error: ev.data.message, isLoading: false })
     },
 
-    handleCurrentDirectory: ({ event, self }) => {
-      const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; rootDirectory: string } }
-      updateParentState(self, { currentDirectory: ev.data.path })
+    handleactiveDirectory: ({ event, self }) => {
+      const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } }
+      updateParentState(self, { activeDirectory: ev.data.path })
     },
 
     listFiles: ({ event }) => {
@@ -234,10 +234,10 @@ export const explorerState = setup({
     },
 
     initialize: ({ event, self }) => {
-      const ev = event as { type: 'explorer.INITIALIZE'; rootDirectory: string }
-      // Only set root directory if we have one
-      if (ev.rootDirectory) {
-        self.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: ev.rootDirectory })
+      const ev = event as { type: 'explorer.INITIALIZE'; baseDirectory: string }
+      // Only set base directory if we have one
+      if (ev.baseDirectory) {
+        self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.baseDirectory })
       }
       // Otherwise, explorer just waits for a directory to be selected
     },
@@ -259,22 +259,25 @@ export const explorerState = setup({
     navigateToDirectory: ({ event, self }) => {
       const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
-      sendToBackend('explorer.UPDATE_CURRENT_DIRECTORY', { path: ev.path })
+      sendToBackend('explorer.UPDATE_ACTIVE_DIRECTORY', { path: ev.path })
 
       // Update parent state
-      updateParentState(self, { currentDirectory: ev.path })
+      updateParentState(self, { activeDirectory: ev.path })
     },
 
-    setRootDirectory: ({ event, self }) => {
-      const ev = event as { type: 'explorer.SET_ROOT_DIRECTORY'; path: string }
+    setBaseDirectory: ({ event, self }) => {
+      const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
 
-      // Send SET_ROOT_DIRECTORY to the parent code system to update everything
-      sendToBackend('SET_ROOT_DIRECTORY', { path: ev.path })
+      // Send SET_BASE_DIRECTORY to the parent code system to update everything
+      sendToBackend('SET_BASE_DIRECTORY', { path: ev.path })
+
+      // Explicitly request files after setting directory
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
 
       // Update parent state
       updateParentState(self, {
-        rootDirectory: ev.path,
-        currentDirectory: ev.path
+        baseDirectory: ev.path,
+        activeDirectory: ev.path
       })
     },
 
@@ -283,7 +286,7 @@ export const explorerState = setup({
       const parentContext = getParentContext(self)
 
       // Refresh file list
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
 
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
@@ -302,7 +305,7 @@ export const explorerState = setup({
       const parentContext = getParentContext(self)
 
       // Refresh file list
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
 
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
@@ -328,7 +331,7 @@ export const explorerState = setup({
       const parentContext = getParentContext(self)
 
       // Refresh file list to show new directory
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.currentDirectory || '' })
+      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
     },
 
     writeFile: ({ event }) => {
@@ -342,8 +345,8 @@ export const explorerState = setup({
     },
 
     quickOpenSearch: ({ event }) => {
-      const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; rootDirectory: string }
-      sendToBackend('explorer.QUICK_OPEN_SEARCH', { rootDirectory: ev.rootDirectory })
+      const ev = event as { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
+      sendToBackend('explorer.QUICK_OPEN_SEARCH', { baseDirectory: ev.baseDirectory })
     },
 
     handleQuickOpenResults: ({ event, self }) => {
@@ -390,8 +393,8 @@ export const explorerState = setup({
         'explorer.NAVIGATE_TO_DIRECTORY': {
           actions: 'navigateToDirectory'
         },
-        'explorer.SET_ROOT_DIRECTORY': {
-          actions: 'setRootDirectory'
+        'explorer.SET_BASE_DIRECTORY': {
+          actions: 'setBaseDirectory'
         },
         'explorer.FILE_DELETED': {
           actions: 'handleFileDeleted'
@@ -419,7 +422,7 @@ export const explorerState = setup({
           actions: 'handleCodeError'
         },
         'explorer.CURRENT_DIRECTORY': {
-          actions: 'handleCurrentDirectory'
+          actions: 'handleactiveDirectory'
         },
         'explorer.WRITE_FILE': {
           actions: 'writeFile'

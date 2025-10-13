@@ -508,7 +508,7 @@ import {
 const props = defineProps<{
   tabs: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeTabPath: string | null
-  rootDirectory?: string
+  baseDirectory?: string
   tabGroups: TabGroupType[]
 }>()
 
@@ -741,8 +741,8 @@ const getFileIcon = (extension?: string) => {
 const copyRelativePath = async (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   try {
     let relativePath = tab.path
-    if (props.rootDirectory) {
-      const normalizedRoot = props.rootDirectory.replace(/\\/g, '/')
+    if (props.baseDirectory) {
+      const normalizedRoot = props.baseDirectory.replace(/\\/g, '/')
       const normalizedPath = tab.path.replace(/\\/g, '/')
       if (normalizedPath.startsWith(normalizedRoot)) {
         relativePath = normalizedPath.slice(normalizedRoot.length)

@@ -85,7 +85,7 @@ export const defaultSettings: SettingsData = {
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
       },
       restoreTerminals: true,
-      defaultRootDirectory: null,
+      defaultBaseDirectory: null,
       enableShellIntegration: true,
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,

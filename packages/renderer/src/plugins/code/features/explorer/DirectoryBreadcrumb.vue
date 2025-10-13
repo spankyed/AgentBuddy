@@ -32,15 +32,15 @@
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenuRoot>
-        
+
         <!-- Regular segment with context menu -->
         <ContextMenuRoot v-else>
           <ContextMenuTrigger as-child>
             <button
               @click="$emit('navigate', segment.path)"
               class="px-2 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-              :class="{ 
-                'font-medium text-neutral-200': segment.path === currentDirectory
+              :class="{
+                'font-medium text-neutral-200': segment.path === activeDirectory
               }"
               :title="segment.path"
             >
@@ -52,15 +52,15 @@
               class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
             >
               <ContextMenuItem
-                @select="() => $emit('set-root', segment.path)"
+                @select="() => $emit('set-base', segment.path)"
                 class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               >
-                Set as Root Directory
+                Set as Base Directory
               </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenuPortal>
         </ContextMenuRoot>
-        
+
         <span v-if="index < segments.length - 1" class="text-neutral-600 mx-0.5">/</span>
       </span>
     </div>
@@ -90,40 +90,40 @@ interface BreadcrumbSegment {
 }
 
 const props = defineProps<{
-  rootDirectory: string | null
-  currentDirectory: string | null
+  baseDirectory: string | null
+  activeDirectory: string | null
 }>()
 
 defineEmits<{
   'navigate': [path: string]
-  'set-root': [path: string]
+  'set-base': [path: string]
 }>()
 
 const segments = computed<BreadcrumbSegment[]>(() => {
-  const root = props.rootDirectory
-  const current = props.currentDirectory
-  
-  if (!root || !current) return []
-  
-  const normalizedRoot = root.endsWith('/') && root.length > 1 
-    ? root.slice(0, -1) 
-    : root
-  const normalizedCurrent = current.endsWith('/') && current.length > 1 
-    ? current.slice(0, -1) 
+  const base = props.baseDirectory
+  const current = props.activeDirectory
+
+  if (!base || !current) return []
+
+  const normalizedBase = base.endsWith('/') && base.length > 1
+    ? base.slice(0, -1)
+    : base
+  const normalizedCurrent = current.endsWith('/') && current.length > 1
+    ? current.slice(0, -1)
     : current
-    
+
   const allSegments: Array<{ name: string; path: string }> = []
-  
-  const rootName = normalizedRoot.split('/').filter(Boolean).pop() || '/'
-  
-  if (normalizedCurrent.startsWith(normalizedRoot)) {
-    allSegments.push({ name: `~/${rootName}`, path: normalizedRoot })
-    
-    const relativePath = normalizedCurrent.slice(normalizedRoot.length)
+
+  const baseName = normalizedBase.split('/').filter(Boolean).pop() || '/'
+
+  if (normalizedCurrent.startsWith(normalizedBase)) {
+    allSegments.push({ name: `~/${baseName}`, path: normalizedBase })
+
+    const relativePath = normalizedCurrent.slice(normalizedBase.length)
     if (relativePath) {
       const segments = relativePath.split('/').filter(Boolean)
-      let currentPath = normalizedRoot
-      
+      let currentPath = normalizedBase
+
       segments.forEach(segment => {
         currentPath = currentPath + '/' + segment
         allSegments.push({ name: segment, path: currentPath })
@@ -133,25 +133,25 @@ const segments = computed<BreadcrumbSegment[]>(() => {
     allSegments.push({ name: '/', path: '/' })
     const segments = normalizedCurrent.slice(1).split('/').filter(Boolean)
     let currentPath = ''
-    
+
     segments.forEach(segment => {
       currentPath = currentPath + '/' + segment
       allSegments.push({ name: segment, path: currentPath })
     })
   }
-  
+
   // Apply truncation if needed
   const maxVisibleSegments = 5
   if (allSegments.length <= maxVisibleSegments) {
     return allSegments
   }
-  
+
   // Keep first 2 and last 2, put ellipsis in middle
   const result: BreadcrumbSegment[] = []
   const firstSegments = allSegments.slice(0, 2)
   const lastSegments = allSegments.slice(-2)
   const hiddenSegments = allSegments.slice(2, -2)
-  
+
   result.push(...firstSegments)
   result.push({
     name: '...',
@@ -160,7 +160,7 @@ const segments = computed<BreadcrumbSegment[]>(() => {
     hiddenSegments: hiddenSegments
   })
   result.push(...lastSegments)
-  
+
   return result
 })
 </script>

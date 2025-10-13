@@ -10,12 +10,12 @@
           'hover:bg-neutral-800': !isEditing
         }"
       >
-        <component 
+        <component
           :is="icon"
           class="flex-shrink-0 w-4 h-4"
           :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
         />
-        
+
         <input
           v-if="isEditing"
           v-model="editingName"
@@ -27,16 +27,16 @@
           ref="renameInput"
         />
         <span v-else class="text-sm truncate text-neutral-200">{{ file.name }}</span>
-        
-        <span 
-          v-if="file.type === 'file' && file.size && !isEditing" 
+
+        <span
+          v-if="file.type === 'file' && file.size && !isEditing"
           class="ml-auto text-xs text-neutral-500"
         >
           {{ formatFileSize(file.size) }}
         </span>
       </div>
     </ContextMenuTrigger>
-    
+
     <ContextMenuPortal>
       <ContextMenuContent
         class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
@@ -48,7 +48,7 @@
           <Edit2 class="w-4 h-4" />
           Rename
         </ContextMenuItem>
-        
+
         <ContextMenuItem
           @select="copyRelativePath"
           class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -56,7 +56,7 @@
           <Copy class="w-4 h-4" />
           Copy relative path
         </ContextMenuItem>
-        
+
         <ContextMenuItem
           v-if="file.type === 'directory'"
           @select="$emit('open-terminal', file.path)"
@@ -65,9 +65,9 @@
           <Terminal class="w-4 h-4" />
           Open Terminal Here
         </ContextMenuItem>
-        
+
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-        
+
         <ContextMenuItem
           @select="$emit('delete', file)"
           class="flex items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors cursor-pointer hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -113,7 +113,7 @@ interface FileItem {
 
 const props = defineProps<{
   file: FileItem
-  rootDirectory?: string | null
+  baseDirectory?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -131,19 +131,19 @@ const renameInput = ref<HTMLInputElement | null>(null)
 // Computed icon based on file type/extension
 const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
-  
+
   const ext = props.file.extension
   if (!ext) return File
-  
+
   const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
   const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
   const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
-  
+
   if (codeExtensions.includes(ext)) return FileCode
   if (ext === 'json') return FileJson
   if (textExtensions.includes(ext)) return FileText
   if (imageExtensions.includes(ext)) return Image
-  
+
   return File
 })
 
@@ -198,13 +198,13 @@ const formatFileSize = (bytes: number) => {
 const copyRelativePath = async () => {
   try {
     let relativePath = props.file.path
-    
-    // If rootDirectory is provided, calculate the relative path
-    if (props.rootDirectory) {
+
+    // If baseDirectory is provided, calculate the relative path
+    if (props.baseDirectory) {
       // Ensure both paths use forward slashes
-      const normalizedRoot = props.rootDirectory.replace(/\\/g, '/')
+      const normalizedRoot = props.baseDirectory.replace(/\\/g, '/')
       const normalizedPath = props.file.path.replace(/\\/g, '/')
-      
+
       // Remove the root directory from the path
       if (normalizedPath.startsWith(normalizedRoot)) {
         relativePath = normalizedPath.slice(normalizedRoot.length)
@@ -214,7 +214,7 @@ const copyRelativePath = async () => {
         }
       }
     }
-    
+
     await navigator.clipboard.writeText(relativePath)
   } catch (err) {
     console.error('Failed to copy path to clipboard:', err)

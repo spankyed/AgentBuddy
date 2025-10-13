@@ -463,14 +463,14 @@ interface CodeSettings {
         [key: string]: KeyboardShortcut | null | undefined;
     };
     restoreTerminals?: boolean;
-    defaultRootDirectory?: string | null;
+    defaultBaseDirectory?: string | null;
     enableShellIntegration?: boolean;
     confirmTerminalClose?: boolean;
     closeTerminalOnTabClose?: boolean;
 }
 type CodeConnectedData = {
-    rootDirectory: string | null;
-    currentDirectory: string | null;
+    baseDirectory: string | null;
+    activeDirectory: string | null;
     settings?: CodeSettings;
 };
 
@@ -2317,29 +2317,29 @@ declare const events: {
         systemId: "code";
         path: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"explorer.UPDATE_CURRENT_DIRECTORY">;
+        type: zod.ZodLiteral<"explorer.UPDATE_ACTIVE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "explorer.UPDATE_CURRENT_DIRECTORY";
+        type: "explorer.UPDATE_ACTIVE_DIRECTORY";
         systemId: "code";
         path: string;
     }, {
-        type: "explorer.UPDATE_CURRENT_DIRECTORY";
+        type: "explorer.UPDATE_ACTIVE_DIRECTORY";
         systemId: "code";
         path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
-        rootDirectory: zod.ZodString;
+        baseDirectory: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "explorer.QUICK_OPEN_SEARCH";
         systemId: "code";
-        rootDirectory: string;
+        baseDirectory: string;
     }, {
         type: "explorer.QUICK_OPEN_SEARCH";
         systemId: "code";
-        rootDirectory: string;
+        baseDirectory: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"search.SEARCH_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -2722,15 +2722,15 @@ declare const events: {
         promptId: string;
         templateFn: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SET_ROOT_DIRECTORY">;
+        type: zod.ZodLiteral<"SET_BASE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SET_ROOT_DIRECTORY";
+        type: "SET_BASE_DIRECTORY";
         systemId: "code";
         path: string;
     }, {
-        type: "SET_ROOT_DIRECTORY";
+        type: "SET_BASE_DIRECTORY";
         systemId: "code";
         path: string;
     }>, zod.ZodObject<{
@@ -3292,10 +3292,10 @@ declare const events: {
         data: CodeSystemError;
         pluginId: "code";
     } | {
-        type: "explorer.CURRENT_DIRECTORY";
+        type: "explorer.ACTIVE_DIRECTORY";
         data: {
             path: string;
-            rootDirectory: string;
+            baseDirectory: string;
         };
         pluginId: "code";
     } | {
@@ -3767,8 +3767,7 @@ interface MiscSettings {
 }
 interface WorkspaceProject {
     name: string;
-    description?: string;
-    directory: string;
+    directories: string[];
     color: string;
 }
 interface Workspace {

@@ -43,11 +43,11 @@ export interface Context {
     caseSensitive: boolean
     wholeWord: boolean
     useRegex: boolean
-    searchInCurrentDir: boolean
+    searchInActiveDir: boolean
   }
 }
 
-export type Event = 
+export type Event =
   | { type: 'search.START'; query: string }
   | { type: 'search.CANCEL' }
   | { type: 'search.CLEAR' }
@@ -57,7 +57,7 @@ export type Event =
   | { type: 'search.COMPLETE' }
   | { type: 'search.ERROR'; message: string }
   | { type: 'search.CLEAR_ERROR' }
-  | { type: 'search.DIRECTORY_CHANGED'; rootDirectory: string }
+  | { type: 'search.DIRECTORY_CHANGED'; baseDirectory: string }
   | { type: 'CODE_STARTUP' };
 
 export const searchState = setup({
@@ -69,12 +69,12 @@ export const searchState = setup({
     startSearch: ({ event, context, self }) => {
       const ev = event as { type: 'search.START'; query: string }
       const parentContext = getParentContext(self)
-      
+
       sendToBackend('search.SEARCH_FILES', {
         query: ev.query,
-        path: context.searchOptions.searchInCurrentDir 
-          ? parentContext?.currentDirectory 
-          : parentContext?.rootDirectory,
+        path: context.searchOptions.searchInActiveDir
+          ? parentContext?.activeDirectory
+          : parentContext?.baseDirectory,
         includePattern: context.searchOptions.includePattern || undefined,
         excludePattern: context.searchOptions.excludePattern || undefined,
         caseSensitive: context.searchOptions.caseSensitive,
@@ -82,11 +82,11 @@ export const searchState = setup({
         useRegex: context.searchOptions.useRegex
       })
     },
-    
+
     cancelSearch: () => {
       sendToBackend('search.CANCEL_SEARCH', {})
     },
-    
+
     assignSearchQuery: assign({
       searchQuery: ({ event }) => {
         const ev = event as { type: 'search.START'; query: string }
@@ -96,26 +96,26 @@ export const searchState = setup({
       searchError: null,
       searchResults: []
     }),
-    
+
     assignSearchResult: assign({
       searchResults: ({ context, event }) => {
         const ev = event as { type: 'search.RESULT'; data: SearchResult }
         return [...context.searchResults, ev.data]
       }
     }),
-    
+
     assignSearchProgress: assign({
       searchProgress: ({ event }) => {
         const ev = event as { type: 'search.PROGRESS'; data: SearchProgress }
         return ev.data
       }
     }),
-    
+
     assignSearchComplete: assign({
       isSearching: false,
       searchProgress: null
     }),
-    
+
     assignSearchError: assign({
       searchError: ({ event }) => {
         const ev = event as { type: 'search.ERROR'; message: string }
@@ -124,34 +124,34 @@ export const searchState = setup({
       isSearching: false,
       searchProgress: null
     }),
-    
+
     clearSearch: assign({
       searchQuery: '',
       searchResults: [],
       searchError: null,
       searchProgress: null
     }),
-    
+
     clearError: assign({
       searchError: null
     }),
-    
+
     updateSearchOptions: assign({
       searchOptions: ({ context, event }) => {
         const ev = event as { type: 'search.UPDATE_OPTIONS'; options: Partial<Context['searchOptions']> }
         return { ...context.searchOptions, ...ev.options }
       }
     }),
-    
+
     handleCodeStartup: ({ self }) => {
       // No immediate action needed on startup
       // Error will be shown if user tries to search without a directory
     },
-    
+
     handleDirectoryChanged: ({ self, context, event }) => {
-      const ev = event as { type: 'search.DIRECTORY_CHANGED'; rootDirectory: string }
+      const ev = event as { type: 'search.DIRECTORY_CHANGED'; baseDirectory: string }
       // Clear the "No directory selected" error when a directory is selected
-      if (context.searchError?.includes('No directory selected') && ev.rootDirectory) {
+      if (context.searchError?.includes('No directory selected') && ev.baseDirectory) {
         self.send({ type: 'search.CLEAR_ERROR' })
       }
     }
@@ -171,7 +171,7 @@ export const searchState = setup({
       caseSensitive: false,
       wholeWord: false,
       useRegex: false,
-      searchInCurrentDir: false
+      searchInActiveDir: false
     }
   },
   states: {

@@ -10,7 +10,7 @@
       @confirm="handleDelete"
       @cancel="cancelDelete"
     />
-    
+
     <!-- Create Folder Dialog -->
     <Dialog
       v-model="showCreateFolderDialog"
@@ -29,7 +29,7 @@
         ref="folderNameInput"
       />
     </Dialog>
-    
+
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
       <div class="flex items-center gap-2">
@@ -38,7 +38,7 @@
       </div>
       <!-- Create folder button - only show when a directory is selected -->
       <button
-        v-if="rootDirectory"
+        v-if="baseDirectory"
         @click="openCreateFolderDialog"
         class="p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
         title="Create new folder"
@@ -46,42 +46,42 @@
         <FolderPlus :size="16" />
       </button>
     </div>
-    
+
     <!-- Show breadcrumb and content only when directory is selected -->
-    <template v-if="rootDirectory">
+    <template v-if="baseDirectory">
       <DirectoryBreadcrumb
-        :root-directory="rootDirectory"
-        :current-directory="currentDirectory"
+        :base-directory="baseDirectory"
+        :active-directory="activeDirectory"
         @navigate="navigateToDirectory"
-        @set-root="setRootDirectory"
+        @set-base="setBaseDirectory"
       />
-      
+
       <div v-if="isLoading" class="flex items-center justify-center flex-1">
         <div class="text-sm text-neutral-400">Loading...</div>
       </div>
-      
+
       <div v-else-if="error" class="flex-1 p-4">
         <div class="text-sm text-red-400">{{ error }}</div>
       </div>
-      
+
       <div v-else-if="files.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
         <FolderOpen :size="48" class="text-neutral-600 mb-3" />
         <p class="text-neutral-400 text-center">This directory is empty</p>
       </div>
-      
+
       <div v-else class="flex-1 overflow-auto">
         <FileItem
           v-for="file in files"
           :key="file.path"
           :file="file"
-          :root-directory="rootDirectory"
+          :base-directory="baseDirectory"
           @click="handleFileClick(file)"
           @rename="handleRename"
           @delete="confirmDelete"
           @open-terminal="handleOpenTerminal"
         />
       </div>
-      
+
       <!-- Action Buttons -->
       <div class="p-2 border-t border-neutral-800 space-y-2">
         <!-- Add Project Button -->
@@ -102,7 +102,7 @@
         </button>
       </div>
     </template>
-    
+
     <!-- Show empty state when no directory selected -->
     <div v-else class="flex-1 flex flex-col items-center justify-start p-4">
       <!-- <FolderOpen :size="48" class="text-neutral-600 mb-3" /> -->
@@ -137,8 +137,8 @@ interface FileItem {
 }
 
 const props = defineProps<{
-  rootDirectory: string | null
-  currentDirectory: string | null
+  baseDirectory: string | null
+  activeDirectory: string | null
 }>()
 
 // Get actors
@@ -186,7 +186,7 @@ const handleRename = (oldPath: string, newName: string) => {
   const pathParts = oldPath.split('/')
   pathParts[pathParts.length - 1] = newName
   const newPath = pathParts.join('/')
-  
+
   // Send rename event directly to explorer state machine
   explorerActor?.send({ type: 'explorer.RENAME_FILE', oldPath, newPath })
 }
@@ -196,8 +196,8 @@ const navigateToDirectory = (path: string) => {
   explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path })
 }
 
-const setRootDirectory = (path: string) => {
-  explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path })
+const setBaseDirectory = (path: string) => {
+  explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
 }
 
 const handleFileClick = (file: FileItem) => {
@@ -217,8 +217,8 @@ const handleDirectorySelect = async () => {
   try {
     const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
 
-    if (directoryPath && directoryPath !== props.rootDirectory) {
-      explorerActor?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: directoryPath })
+    if (directoryPath && directoryPath !== props.baseDirectory) {
+      explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: directoryPath })
     }
   } catch (error) {
     console.error('Error selecting directory:', error)
@@ -265,9 +265,9 @@ const handleCreateFolder = () => {
   const trimmedName = newFolderName.value.trim()
   if (trimmedName) {
     // Create the folder in the current directory
-    const currentDir = props.currentDirectory || props.rootDirectory
-    if (currentDir) {
-      const newFolderPath = `${currentDir}/${trimmedName}`
+    const activeDir = props.activeDirectory || props.baseDirectory
+    if (activeDir) {
+      const newFolderPath = `${activeDir}/${trimmedName}`
       explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newFolderPath })
     }
   }

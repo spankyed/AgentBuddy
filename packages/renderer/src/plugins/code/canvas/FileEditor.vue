@@ -4,7 +4,7 @@
     <Tabs
       :tabs="openFiles"
       :active-tab-path="activeFilePath"
-      :root-directory="rootDirectory"
+      :base-directory="baseDirectory"
       :tab-groups="tabGroups"
       @select="selectFile"
       @close="closeFile"
@@ -33,7 +33,7 @@
           <p class="text-neutral-400">Open a file from the explorer to start editing</p>
         </div>
       </div>
-      
+
       <div v-else-if="activeFile" class="absolute inset-0 overflow-hidden">
         <!-- Terminal view -->
         <div v-show="isTerminal(activeFile)" class="h-full overflow-hidden">
@@ -44,7 +44,7 @@
             class="h-full"
           />
         </div>
-        
+
         <!-- Monaco editor for both regular files and diffs -->
         <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
           <MonacoEditor
@@ -80,7 +80,7 @@ import type { GitDiff } from '@/plugins/code/features/commit/state'
 const props = defineProps<{
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
-  rootDirectory?: string
+  baseDirectory?: string
   tabGroups: any[] // Will be typed properly
 }>()
 
@@ -122,7 +122,7 @@ const getDiffContent = (file: any): GitDiff | null => {
 }
 
 // Computed
-const activeFile = computed(() => 
+const activeFile = computed(() =>
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
 

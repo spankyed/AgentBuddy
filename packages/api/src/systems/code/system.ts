@@ -1,6 +1,6 @@
 /**
  * Directory State Management:
- * - rootDirectory is duplicated across parent and children for independence
+ * - baseDirectory is duplicated across parent and children for independence
  * - Parent broadcasts directory changes to all children
  * - Directory is persisted to EARS as "lastOpened"
  */
@@ -38,7 +38,7 @@ const IncomingCodeEvents = [
   ...IncomingActionsEvents,
   ...IncomingPromptsEvents,
   // Special root-level events
-  busEvent('SET_ROOT_DIRECTORY', { path: z.string() }),
+  busEvent('SET_BASE_DIRECTORY', { path: z.string() }),
   busEvent('CLEAR_DIRECTORY_HISTORY', {}),
 ] as const
 
@@ -63,8 +63,8 @@ type CodeInternalEvents = SystemEvents | { type: 'CODE_SETTINGS_UPDATED'; settin
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
-  currentDirectory: string | null
-  rootDirectory: string | null
+  activeDirectory: string | null
+  baseDirectory: string | null
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
 }
@@ -88,38 +88,38 @@ export const systemMachine = setup({
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Spawn all child systems with input and shared services
-      enqueue.spawnChild('explorerSystem', { 
+      enqueue.spawnChild('explorerSystem', {
         systemId: 'explorer',
         input: {
-          rootDirectory: context.rootDirectory,
-          currentDirectory: context.currentDirectory
+          baseDirectory: context.baseDirectory,
+          activeDirectory: context.activeDirectory
         }
       });
-      enqueue.spawnChild('searchSystem', { 
+      enqueue.spawnChild('searchSystem', {
         systemId: 'search',
         input: {
-          rootDirectory: context.rootDirectory
+          baseDirectory: context.baseDirectory
         }
       });
-      enqueue.spawnChild('commitSystem', { 
+      enqueue.spawnChild('commitSystem', {
         systemId: 'commit',
         input: {
-          rootDirectory: context.rootDirectory,
+          baseDirectory: context.baseDirectory,
           gitRepository: context.gitRepository,
           gitWatcher: context.gitWatcher
         }
       });
-      enqueue.spawnChild('pullRequestSystem', { 
+      enqueue.spawnChild('pullRequestSystem', {
         systemId: 'pr',
         input: {
-          rootDirectory: context.rootDirectory,
+          baseDirectory: context.baseDirectory,
           gitRepository: context.gitRepository
         }
       });
-      enqueue.spawnChild('terminalSystem', { 
+      enqueue.spawnChild('terminalSystem', {
         systemId: 'terminal',
         input: {
-          rootDirectory: context.rootDirectory
+          baseDirectory: context.baseDirectory
         }
       });
       enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
@@ -137,19 +137,19 @@ export const systemMachine = setup({
       }
     },
 
-    updateRootDirectory: assign({
-      rootDirectory: ({ event }) => {
-        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+    updateBaseDirectory: assign({
+      baseDirectory: ({ event }) => {
+        const ev = typeOf('SET_BASE_DIRECTORY', event)
         // Save to EARS as last opened directory
         repository.directoryCommands.markAsLastOpened(ev.path)
         return ev.path
       },
-      currentDirectory: ({ event }) => {
-        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+      activeDirectory: ({ event }) => {
+        const ev = typeOf('SET_BASE_DIRECTORY', event)
         return ev.path
       },
       gitRepository: ({ event, context }) => {
-        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        const ev = typeOf('SET_BASE_DIRECTORY', event)
         // Clear the old repository's cache before creating new one
         if (context.gitRepository) {
           context.gitRepository.clearCache()
@@ -157,7 +157,7 @@ export const systemMachine = setup({
         return new GitRepository(ev.path)
       },
       gitWatcher: ({ event, context }) => {
-        const ev = typeOf('SET_ROOT_DIRECTORY', event)
+        const ev = typeOf('SET_BASE_DIRECTORY', event)
         // Stop the old watcher before creating new one
         if (context.gitWatcher) {
           context.gitWatcher.stopWatching()
@@ -166,40 +166,40 @@ export const systemMachine = setup({
       }
     }),
 
-    notifyChildSystemsOfRootChange: ({ event, system, context }) => {
-      const ev = typeOf('SET_ROOT_DIRECTORY', event)
+    notifyChildSystemsOfBaseChange: ({ event, system, context }) => {
+      const ev = typeOf('SET_BASE_DIRECTORY', event)
       const newPath = ev.path
-      
+
       // Update child systems
-      system.get('explorer')?.send({ type: 'explorer.SET_ROOT_DIRECTORY', path: newPath });
-      system.get('search')?.send({ type: 'search.UPDATE_ROOT_DIRECTORY', path: newPath });
+      system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: newPath });
+      system.get('search')?.send({ type: 'search.UPDATE_BASE_DIRECTORY', path: newPath });
       // Pass the new git services to systems that need them
-      system.get('commit')?.send({ 
-        type: 'commit.UPDATE_ROOT_DIRECTORY', 
+      system.get('commit')?.send({
+        type: 'commit.UPDATE_BASE_DIRECTORY',
         path: newPath,
         gitRepository: context.gitRepository,
         gitWatcher: context.gitWatcher
       });
       system.get('pr')?.send({
-        type: 'pr.UPDATE_ROOT_DIRECTORY',
+        type: 'pr.UPDATE_BASE_DIRECTORY',
         path: newPath,
         gitRepository: context.gitRepository
       });
       // Note: Updates terminal's base directory for new terminal creation.
       // Individual terminal processes track their own cwd independently.
-      system.get('terminal')?.send({ type: 'terminal.UPDATE_CURRENT_DIRECTORY', path: newPath });
+      system.get('terminal')?.send({ type: 'terminal.UPDATE_BASE_DIRECTORY', path: newPath });
     },
 
     updateSettings: ({ event, context, self }) => {
       const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-      // Check if defaultRootDirectory changed and apply it
-      if (ev.settings.defaultRootDirectory &&
-          ev.settings.defaultRootDirectory !== context.rootDirectory) {
-        // Apply the new default root directory
+      // Check if defaultBaseDirectory changed and apply it
+      if (ev.settings.defaultBaseDirectory &&
+          ev.settings.defaultBaseDirectory !== context.baseDirectory) {
+        // Apply the new default base directory
         self.send({
-          type: 'SET_ROOT_DIRECTORY',
-          path: ev.settings.defaultRootDirectory
+          type: 'SET_BASE_DIRECTORY',
+          path: ev.settings.defaultBaseDirectory
         })
       }
 
@@ -217,17 +217,17 @@ export const systemMachine = setup({
       system.get('terminal')?.send({ type: 'CODE_CONNECTED' });
       system.get('codeActions')?.send({ type: 'CODE_CONNECTED' });
       system.get('codePrompts')?.send({ type: 'CODE_CONNECTED' });
-      
+
       // Get code settings - this will create default settings if they don't exist
       const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
-      
+
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
-        rootDirectory: context.rootDirectory,
-        currentDirectory: context.currentDirectory,
+        baseDirectory: context.baseDirectory,
+        activeDirectory: context.activeDirectory,
         settings: codeSettings
       };
-      
+
       const wrapped = emit(id, {
         type: 'CODE_CONNECTED',
         data: connectedData
@@ -286,7 +286,7 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: () => {
-    // Get code settings to check for default root directory
+    // Get code settings to check for default base directory
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
 
     // Get workspaces from general settings
@@ -296,31 +296,31 @@ export const systemMachine = setup({
     // Flatten all projects from all workspaces
     const allProjects = workspaces.flatMap((ws: any) => ws.projects || []);
 
-    // Priority: defaultRootDirectory (if valid) > lastOpenedDir > first project > null
-    let rootDir: string | null = null;
+    // Priority: defaultBaseDirectory (if valid) > lastOpenedDir > first project > null
+    let baseDir: string | null = null;
 
-    if (codeSettings?.defaultRootDirectory) {
+    if (codeSettings?.defaultBaseDirectory) {
       // Validate it exists in any workspace project directories
-      const isValid = allProjects.some((p: any) => p.directories?.includes(codeSettings.defaultRootDirectory))
+      const isValid = allProjects.some((p: any) => p.directories?.includes(codeSettings.defaultBaseDirectory))
       if (isValid) {
-        rootDir = codeSettings.defaultRootDirectory;
+        baseDir = codeSettings.defaultBaseDirectory;
       } else {
         // Clear invalid default
-        repository.settingsCommands.updateSettings('plugin', 'code', ['defaultRootDirectory'], null)
+        repository.settingsCommands.updateSettings('plugin', 'code', ['defaultBaseDirectory'], null)
       }
     }
 
-    if (!rootDir) {
+    if (!baseDir) {
       // Fall back to last opened directory, or first directory of first project
       const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
-      rootDir = lastOpenedDir?.path || allProjects[0]?.directories?.[0] || null;
+      baseDir = lastOpenedDir?.path || allProjects[0]?.directories?.[0] || null;
     }
 
     return {
-      currentDirectory: rootDir,
-      rootDirectory: rootDir,
-      gitRepository: rootDir ? new GitRepository(rootDir) : null,
-      gitWatcher: rootDir ? new GitWatcherService(rootDir) : null
+      activeDirectory: baseDir,
+      baseDirectory: baseDir,
+      gitRepository: baseDir ? new GitRepository(baseDir) : null,
+      gitWatcher: baseDir ? new GitWatcherService(baseDir) : null
     }
   },
   entry: ['spawnFeatureActors', 'setupGitWatcher'],
@@ -334,9 +334,9 @@ export const systemMachine = setup({
         CODE_SETTINGS_UPDATED: {
           actions: 'updateSettings'
         },
-        // Handle SET_ROOT_DIRECTORY specially
-        SET_ROOT_DIRECTORY: {
-          actions: ['updateRootDirectory', 'notifyChildSystemsOfRootChange', 'restartGitWatcher']
+        // Handle SET_BASE_DIRECTORY specially
+        SET_BASE_DIRECTORY: {
+          actions: ['updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher']
         },
         // Clear directory history
         CLEAR_DIRECTORY_HISTORY: {

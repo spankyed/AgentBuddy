@@ -40,7 +40,7 @@ export type OutgoingTerminalEvents =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
 
 export interface Context {
-  rootDirectory: string | null
+  baseDirectory: string | null
 }
 
 export type Event =
@@ -57,14 +57,14 @@ export type Event =
   | { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
-  | { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
+  | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
   | { type: 'CODE_CONNECTED' };
 
 export const terminalSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string | null }
+    input: {} as { baseDirectory: string | null }
   },
   actions: {
     sendConnectedData: ({ context }) => {
@@ -88,7 +88,7 @@ export const terminalSystem = setup({
         rows?: number;
       }
       try {
-        const cwd = ev.cwd || context.rootDirectory
+        const cwd = ev.cwd || context.baseDirectory
         const terminalInfo = terminalService.create({
           title: ev.title,
           cwd: cwd && cwd.trim() ? cwd : undefined,
@@ -372,9 +372,9 @@ export const terminalSystem = setup({
       console.log('Terminal restoration complete')
     },
 
-    updateCurrentDirectory: assign({
-      rootDirectory: ({ event }) => {
-        const ev = event as { type: 'terminal.UPDATE_CURRENT_DIRECTORY'; path: string }
+    updateBaseDirectory: assign({
+      baseDirectory: ({ event }) => {
+        const ev = event as { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
         return ev.path
       }
     })
@@ -382,8 +382,8 @@ export const terminalSystem = setup({
 }).createMachine({
   id: 'terminal',
   initial: 'idle',
-  context: ({ input }: { input?: { rootDirectory: string | null } }) => ({
-    rootDirectory: input?.rootDirectory || null
+  context: ({ input }: { input?: { baseDirectory: string | null } }) => ({
+    baseDirectory: input?.baseDirectory || null
   }),
   entry: 'restoreTerminals',
   exit: 'cleanupTerminals',
@@ -414,8 +414,8 @@ export const terminalSystem = setup({
         'terminal.OPEN_TERMINAL_TAB': {
           actions: 'openTerminalTab'
         },
-        'terminal.UPDATE_CURRENT_DIRECTORY': {
-          actions: 'updateCurrentDirectory'
+        'terminal.UPDATE_BASE_DIRECTORY': {
+          actions: 'updateBaseDirectory'
         }
       }
     }

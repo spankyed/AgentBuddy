@@ -145,7 +145,7 @@ export interface TerminalClose {
 // Quick Open types
 export interface QuickOpenOptions {
   query: string
-  rootDirectory: string
+  baseDirectory: string
   excludePatterns?: string[]
   maxResults?: number
 }
@@ -168,14 +168,14 @@ export interface CodeSettings {
     [key: string]: KeyboardShortcut | null | undefined;
   };
   restoreTerminals?: boolean;
-  defaultRootDirectory?: string | null;
+  defaultBaseDirectory?: string | null;
   enableShellIntegration?: boolean;
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;
 }
 
 export type CodeConnectedData = {
-  rootDirectory: string | null;
-  currentDirectory: string | null;
+  baseDirectory: string | null;
+  activeDirectory: string | null;
   settings?: CodeSettings;
 };

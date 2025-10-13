@@ -2,12 +2,12 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Quick Open Palette -->
     <QuickOpenPalette />
-    
+
     <!-- Always use FileEditor which now handles both regular files and diffs -->
     <FileEditor
       :open-files="openFiles"
       :active-file-path="activeFilePath"
-      :root-directory="rootDirectory"
+      :base-directory="baseDirectory"
       :tab-groups="tabGroups"
       @select-file="selectFile"
       @close-file="closeFile"
@@ -90,7 +90,7 @@ const settingsActor = applicationState.system.get('settings')
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
-const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
+const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
@@ -103,7 +103,7 @@ const { closeTerminal: closeTerminalProcess } = useTerminalActions(
 )
 
 // Computed
-const activeFile = computed(() => 
+const activeFile = computed(() =>
   openFiles.value.find(f => f.path === activeFilePath.value)
 )
 
@@ -114,7 +114,7 @@ let refreshTimeout: number | undefined
 // Watch for external file refreshes
 watch(openFiles, (newFiles, oldFiles) => {
   if (!oldFiles || !newFiles) return
-  
+
   // Check if any file was refreshed (externallyModified cleared)
   for (const newFile of newFiles) {
     const oldFile = oldFiles.find(f => f.path === newFile.path)
@@ -138,9 +138,9 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
-  actor.send({ 
-    type: 'UPDATE_STATE', 
-    updates: { activeFilePath: path } 
+  actor.send({
+    type: 'UPDATE_STATE',
+    updates: { activeFilePath: path }
   })
 }
 
@@ -187,11 +187,11 @@ const closeFile = (path: string) => {
 }
 
 const handleContentChange = (path: string, content: string) => {
-  const newOpenFiles = openFiles.value.map(f => 
+  const newOpenFiles = openFiles.value.map(f =>
     f.path === path ? { ...f, content, modified: true } : f
   )
-  
-  actor.send({ 
+
+  actor.send({
     type: 'UPDATE_STATE',
     updates: { openFiles: newOpenFiles }
   })
@@ -199,7 +199,7 @@ const handleContentChange = (path: string, content: string) => {
 
 const handleReorder = (fromIndex: number, toIndex: number) => {
   const reorderedFiles = reorderTabs(openFiles.value, fromIndex, toIndex)
-  
+
   actor.send({
     type: 'UPDATE_STATE',
     updates: { openFiles: reorderedFiles }
@@ -289,14 +289,14 @@ const getStatusText = (file: any) => {
 const revealInExplorer = (path: string) => {
   // Switch to explorer panel
   actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
-  
+
   // Get the directory of the file
   const directory = path.substring(0, path.lastIndexOf('/'))
-  
+
   // Navigate to the file's directory in the explorer
-  explorerActor?.send({ 
-    type: 'explorer.NAVIGATE_TO_DIRECTORY', 
-    path: directory 
+  explorerActor?.send({
+    type: 'explorer.NAVIGATE_TO_DIRECTORY',
+    path: directory
   })
 }
 
@@ -360,7 +360,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
     e.preventDefault()
     actor.send({ type: 'SHOW_QUICK_OPEN' })
   }
-  
+
   // Save file: Cmd/Ctrl + S
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault()
@@ -368,7 +368,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       saveFile()
     }
   }
-  
+
   // Close tab: Cmd/Ctrl + W
   if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
     e.preventDefault()
