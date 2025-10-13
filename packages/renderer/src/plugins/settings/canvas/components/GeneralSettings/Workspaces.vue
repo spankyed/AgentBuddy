@@ -31,11 +31,28 @@
               </svg>
             </button>
 
-            <!-- Color Badge -->
-            <div
-              class="w-3 h-3 rounded-full flex-shrink-0"
-              :style="{ backgroundColor: workspace.color }"
-            />
+            <!-- Color Badge with Picker -->
+            <div class="relative color-picker-container">
+              <button
+                @click.stop="toggleWorkspaceColorPicker(wsIndex)"
+                class="w-6 h-6 rounded border border-neutral-700 hover:border-neutral-600 transition-colors flex-shrink-0"
+                :style="{ backgroundColor: workspace.color }"
+                title="Change workspace color"
+              />
+              <!-- Color picker dropdown -->
+              <div
+                v-if="activeWorkspaceColorPicker === wsIndex"
+                class="absolute z-20 top-8 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1 shadow-xl"
+              >
+                <button
+                  v-for="color in colorOptions"
+                  :key="color"
+                  @click.stop="updateWorkspaceColor(wsIndex, color)"
+                  class="w-7 h-7 rounded hover:scale-110 transition-transform"
+                  :style="{ backgroundColor: color }"
+                />
+              </div>
+            </div>
 
             <!-- Workspace Name -->
             <input
@@ -113,11 +130,28 @@
           >
             <!-- Project Header -->
             <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-700/30">
-              <!-- Project Color Badge -->
-              <div
-                class="w-2 h-2 rounded-full flex-shrink-0"
-                :style="{ backgroundColor: project.color }"
-              />
+              <!-- Project Color Badge with Picker -->
+              <div class="relative color-picker-container">
+                <button
+                  @click.stop="toggleProjectColorPicker(wsIndex, pIndex)"
+                  class="w-5 h-5 rounded border border-neutral-700 hover:border-neutral-600 transition-colors flex-shrink-0"
+                  :style="{ backgroundColor: project.color }"
+                  title="Change project color"
+                />
+                <!-- Color picker dropdown -->
+                <div
+                  v-if="activeProjectColorPicker?.wsIndex === wsIndex && activeProjectColorPicker?.pIndex === pIndex"
+                  class="absolute z-20 top-7 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1 shadow-xl"
+                >
+                  <button
+                    v-for="color in colorOptions"
+                    :key="color"
+                    @click.stop="updateProjectColor(wsIndex, pIndex, color)"
+                    class="w-7 h-7 rounded hover:scale-110 transition-transform"
+                    :style="{ backgroundColor: color }"
+                  />
+                </div>
+              </div>
 
               <!-- Project Name -->
               <input
@@ -201,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Plus, X, FolderOpen } from 'lucide-vue-next'
 
 interface WorkspaceProject {
@@ -252,6 +286,10 @@ const migrateWorkspaces = (workspaces: any[]): Workspace[] => {
 const workspaces = ref<Workspace[]>(migrateWorkspaces(props.settings?.workspaces || []))
 const collapsedWorkspaces = ref<Set<number>>(new Set())
 const expandedDetails = ref<Set<number>>(new Set())
+
+// Color picker state
+const activeWorkspaceColorPicker = ref<number | null>(null)
+const activeProjectColorPicker = ref<{ wsIndex: number; pIndex: number } | null>(null)
 
 const colorOptions = [
   '#3B82F6', // blue
@@ -323,6 +361,32 @@ const toggleWorkspaceDetails = (wsIndex: number) => {
   } else {
     expandedDetails.value.add(wsIndex)
   }
+}
+
+// Workspace color picker management
+const toggleWorkspaceColorPicker = (wsIndex: number) => {
+  activeWorkspaceColorPicker.value = activeWorkspaceColorPicker.value === wsIndex ? null : wsIndex
+}
+
+const updateWorkspaceColor = (wsIndex: number, color: string) => {
+  workspaces.value[wsIndex].color = color
+  activeWorkspaceColorPicker.value = null
+  save()
+}
+
+// Project color picker management
+const toggleProjectColorPicker = (wsIndex: number, pIndex: number) => {
+  if (activeProjectColorPicker.value?.wsIndex === wsIndex && activeProjectColorPicker.value?.pIndex === pIndex) {
+    activeProjectColorPicker.value = null
+  } else {
+    activeProjectColorPicker.value = { wsIndex, pIndex }
+  }
+}
+
+const updateProjectColor = (wsIndex: number, pIndex: number, color: string) => {
+  workspaces.value[wsIndex].projects[pIndex].color = color
+  activeProjectColorPicker.value = null
+  save()
 }
 
 const selectWorkspaceDirectory = async (wsIndex: number) => {
@@ -444,4 +508,21 @@ const save = () => {
     value: workspaces.value
   })
 }
+
+// Close color pickers when clicking outside
+const handleClickOutside = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.color-picker-container')) {
+    activeWorkspaceColorPicker.value = null
+    activeProjectColorPicker.value = null
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', handleClickOutside)
+})
 </script>
