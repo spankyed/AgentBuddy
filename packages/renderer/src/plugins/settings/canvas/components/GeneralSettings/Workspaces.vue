@@ -16,6 +16,7 @@
           <div class="flex items-center gap-2">
             <!-- Collapse/Expand Button -->
             <button
+              v-if="workspace.projects && workspace.projects.length > 0"
               @click="toggleWorkspaceCollapse(wsIndex)"
               class="p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded transition-all flex-shrink-0"
               :title="collapsedWorkspaces.has(wsIndex) ? 'Expand' : 'Collapse'"
@@ -78,7 +79,7 @@
               title="Add project"
             >
               <Plus class="w-3 h-3" />
-              Add Project ({{ workspace.projects.length }})
+              Add Project <span v-if="workspace.projects.length > 0" class="text-neutral-400">({{ workspace.projects.length }})</span>
             </button>
 
             <!-- Remove Workspace Button -->
@@ -121,7 +122,7 @@
         </div>
 
         <!-- Projects List (collapsible) -->
-        <div v-if="!collapsedWorkspaces.has(wsIndex)" class="p-3 space-y-3">
+        <div v-if="!collapsedWorkspaces.has(wsIndex) && workspace.projects && workspace.projects.length > 0" class="p-3 space-y-3">
           <!-- Project Items -->
           <div
             v-for="(project, pIndex) in workspace.projects"
