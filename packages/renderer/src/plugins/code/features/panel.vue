@@ -1,7 +1,40 @@
 <template>
   <div class="flex flex-col h-full">
+    <!-- Panel Content -->
+    <div class="flex-1 overflow-hidden">
+      <ExplorerPanel
+        v-if="selectedPanel === 'explorer'"
+        :base-directory="baseDirectory"
+        :active-directory="activeDirectory"
+      />
+
+      <SearchPanel
+        v-else-if="selectedPanel === 'search'"
+      />
+
+      <CommitPanel
+        v-else-if="selectedPanel === 'commit'"
+      />
+
+      <PullRequestPanel
+        v-else-if="selectedPanel === 'pr'"
+      />
+
+      <TerminalPanel
+        v-else-if="selectedPanel === 'terminal'"
+      />
+
+      <ActionsPanel
+        v-else-if="selectedPanel === 'actions'"
+      />
+
+      <PromptsPanel
+        v-else-if="selectedPanel === 'prompts'"
+      />
+
     <!-- Toolbar -->
-    <div class="flex items-center justify-center gap-1 p-2 border-b border-neutral-800">
+    </div>
+        <div class="flex items-center justify-center gap-1 p-2 border-b border-neutral-800">
       <!-- Code navigation panels -->
       <button
         v-for="panel in codePanels"
@@ -36,39 +69,6 @@
       >
         <component :is="panel.icon" class="w-4 h-4" />
       </button>
-    </div>
-
-    <!-- Panel Content -->
-    <div class="flex-1 overflow-hidden">
-      <ExplorerPanel
-        v-if="selectedPanel === 'explorer'"
-        :base-directory="baseDirectory"
-        :active-directory="activeDirectory"
-      />
-
-      <SearchPanel
-        v-else-if="selectedPanel === 'search'"
-      />
-
-      <CommitPanel
-        v-else-if="selectedPanel === 'commit'"
-      />
-
-      <PullRequestPanel
-        v-else-if="selectedPanel === 'pr'"
-      />
-
-      <TerminalPanel
-        v-else-if="selectedPanel === 'terminal'"
-      />
-
-      <ActionsPanel
-        v-else-if="selectedPanel === 'actions'"
-      />
-
-      <PromptsPanel
-        v-else-if="selectedPanel === 'prompts'"
-      />
     </div>
   </div>
 
