@@ -7,9 +7,9 @@
       @confirm="confirmRevert"
       @cancel="cancelRevert"
     />
-    
+
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 commit-header">
       <div class="flex items-center gap-2">
         <GitCommit :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Source Control</h3>
@@ -17,18 +17,18 @@
       <button
         @click="refreshStatus"
         :disabled="isGitLoading"
-        class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+        class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
         title="Refresh"
       >
         <RefreshCw :size="16" :class="{ 'animate-spin': isGitLoading }" />
       </button>
     </div>
-    
+
     <!-- Show only error if no directory selected -->
     <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ gitError }}</div>
     </div>
-    
+
     <!-- Show normal UI only when directory is selected -->
     <template v-else>
       <!-- Branch Info -->
@@ -37,7 +37,7 @@
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">{{ gitBranch || 'unknown' }}</span>
       </div>
-      
+
       <!-- Branch Checkout -->
       <div class="relative mt-2">
         <div class="relative">
@@ -51,19 +51,19 @@
             placeholder="Switch branch or create new..."
             class="w-full px-3 py-1.5 pr-8 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 disabled:opacity-50"
           />
-          <ChevronDown 
-            :size="14" 
+          <ChevronDown
+            :size="14"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none"
           />
         </div>
-        
+
         <!-- Custom Dropdown -->
-        <div 
+        <div
           v-if="showBranchDropdown && (filteredBranches.length > 0 || branchInput.trim())"
           class="absolute z-10 w-full mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-lg max-h-48 overflow-y-auto"
         >
           <!-- Create new branch option -->
-          <div 
+          <div
             v-if="branchInput.trim() && !availableBranches.includes(branchInput.trim())"
             @mousedown.prevent="selectBranch(branchInput.trim())"
             class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2"
@@ -71,7 +71,7 @@
             <GitBranch :size="12" class="text-green-500" />
             <span class="text-xs text-neutral-300">Create new branch: <span class="font-medium text-green-400">{{ branchInput }}</span></span>
           </div>
-          
+
           <!-- Existing branches -->
           <div
             v-for="branch in filteredBranches"
@@ -116,7 +116,7 @@
         >
           {{ actionButtonText }}
         </button>
-        
+
         <button
           v-else
           @click="commit"
@@ -138,7 +138,7 @@
       <div v-if="gitStatus.length === 0" class="p-4 text-sm text-center text-neutral-500">
         No changes to commit
       </div>
-      
+
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
         <div v-if="stagedFiles.length > 0" class="p-3">
@@ -295,16 +295,16 @@ const actionButtonText = computed(() => {
   if (isPushing.value) return 'Pushing...'
   if (isPulling.value) return 'Pulling...'
   if (!hasUpstream.value) return 'Publish Branch'
-  
+
   // If we have both commits ahead and behind, prioritize pull
   if (commitsBehind.value > 0 && commitsAhead.value === 0) {
     return `Pull (${commitsBehind.value} commit${commitsBehind.value !== 1 ? 's' : ''} behind)`
   }
-  
+
   if (commitsAhead.value > 0) {
     return `Push (${commitsAhead.value} commit${commitsAhead.value !== 1 ? 's' : ''})`
   }
-  
+
   return 'Sync'
 })
 
@@ -319,7 +319,7 @@ const isActionButtonDisabled = computed(() => {
 const filteredBranches = computed(() => {
   const input = branchInput.value.toLowerCase().trim()
   if (!input) return availableBranches.value
-  return availableBranches.value.filter((branch: string) => 
+  return availableBranches.value.filter((branch: string) =>
     branch.toLowerCase().includes(input)
   )
 })
@@ -409,7 +409,7 @@ const formatFilePath = (path: string) => {
     // No directory, just filename
     return { filename: path, directory: '' }
   }
-  
+
   const filename = path.substring(lastSlashIndex + 1)
   const directory = path.substring(0, lastSlashIndex)
   return { filename, directory }
@@ -449,3 +449,10 @@ refreshStatus()
 // Also get available branches
 commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 </script>
+
+<style scoped>
+/* Override window drag region to make header elements clickable */
+.commit-header {
+  -webkit-app-region: no-drag;
+}
+</style>

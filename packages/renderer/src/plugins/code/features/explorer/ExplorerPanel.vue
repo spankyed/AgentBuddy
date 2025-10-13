@@ -31,24 +31,36 @@
     </Dialog>
 
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 explorer-header">
       <div class="flex items-center gap-2">
         <FolderOpen :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Explorer</h3>
+        <div class="flex items-center gap-1.5 text-sm">
+          <span
+            class="font-medium transition-colors"
+            :class="viewMode === 'workspaces' ? 'text-neutral-400 hover:text-neutral-200 cursor-pointer' : 'text-neutral-200'"
+            @click="viewMode === 'workspaces' ? toggleViewMode() : null"
+          >
+            Explorer
+          </span>
+          <template v-if="viewMode === 'workspaces'">
+            <span class="text-neutral-600">/</span>
+            <span class="font-medium text-neutral-200">Workspaces</span>
+          </template>
+        </div>
       </div>
-      <!-- Create folder button - only show when a directory is selected -->
+      <!-- Create folder button - only show when a directory is selected and in files view -->
       <button
-        v-if="baseDirectory"
+        v-if="baseDirectory && viewMode === 'files'"
         @click="openCreateFolderDialog"
-        class="p-1 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
+        class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
         title="Create new folder"
       >
         <FolderPlus :size="16" />
       </button>
     </div>
 
-    <!-- Show breadcrumb and content only when directory is selected -->
-    <template v-if="baseDirectory">
+    <!-- Files view -->
+    <template v-if="viewMode === 'files' && baseDirectory">
       <DirectoryBreadcrumb
         :base-directory="baseDirectory"
         :active-directory="activeDirectory"
@@ -82,28 +94,58 @@
         />
       </div>
 
-      <!-- Action Buttons -->
-      <div class="p-2 border-t border-neutral-800 space-y-2">
-        <!-- Add Project Button -->
+      <!-- Action Buttons for Files View -->
+      <div class="flex gap-2 p-2 border-t border-neutral-800">
+        <!-- View Workspaces Button -->
         <button
-          @click="handleAddProject"
-          class="w-full px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+          @click="toggleViewMode"
+          class="flex-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
         >
-          <Plus class="w-4 h-4" />
-          Add Project
+          <Layers class="w-4 h-4" />
+          View Workspaces
         </button>
 
         <!-- Change Directory Button -->
         <button
           @click="handleDirectorySelect"
-          class="w-full px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors"
+          class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors flex items-center justify-center gap-2"
         >
-          Change Directory
+          <FolderOpen class="w-4 h-4" />
+          Open Directory
         </button>
       </div>
     </template>
 
-    <!-- Show empty state when no directory selected -->
+    <!-- Workspaces view -->
+    <template v-else-if="viewMode === 'workspaces'">
+      <WorkspaceView
+        :workspaces="workspaces"
+        @set-directory="handleWorkspaceDirectorySelect"
+      />
+
+      <!-- Action Buttons for Workspaces View -->
+      <div class="flex gap-2 p-2 border-t border-neutral-800">
+        <!-- Back to Files Button -->
+        <button
+          @click="toggleViewMode"
+          class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors flex items-center justify-center gap-2"
+        >
+          <ArrowLeft class="w-4 h-4" />
+          Back to Files
+        </button>
+
+        <!-- Add Project Button -->
+        <button
+          @click="handleAddProject"
+          class="flex-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus class="w-4 h-4" />
+          Add Workspace
+        </button>
+      </div>
+    </template>
+
+    <!-- Show empty state when no directory selected (Files view only) -->
     <div v-else class="flex-1 flex flex-col items-center justify-start p-4">
       <!-- <FolderOpen :size="48" class="text-neutral-600 mb-3" /> -->
       <p class="text-neutral-400 text-center mb-4">No directory selected</p>
@@ -125,7 +167,8 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
-import { FolderOpen, FolderPlus, Plus } from 'lucide-vue-next'
+import WorkspaceView from '@/plugins/code/features/explorer/WorkspaceView.vue'
+import { FolderOpen, FolderPlus, Plus, Layers, ArrowLeft } from 'lucide-vue-next'
 import { trpc } from '@/core/trpc'
 
 interface FileItem {
@@ -151,6 +194,10 @@ const settingsActor = applicationState.system.get('settings')
 const files = useSelector(explorerActor, (state: any) => state.context.files)
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
+const workspaces = useSelector(settingsActor, (state: any) => state.context.settings?.general?.workspaces?.workspaces || [])
+
+// View mode state
+const viewMode = ref<'files' | 'workspaces'>('files')
 
 // No emits needed - handle everything internally
 
@@ -278,4 +325,21 @@ const cancelCreateFolder = () => {
   showCreateFolderDialog.value = false
   newFolderName.value = ''
 }
+
+const toggleViewMode = () => {
+  viewMode.value = viewMode.value === 'files' ? 'workspaces' : 'files'
+}
+
+const handleWorkspaceDirectorySelect = (path: string) => {
+  explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
+  // Switch back to files view after selecting a directory
+  viewMode.value = 'files'
+}
 </script>
+
+<style scoped>
+/* Override window drag region to make header elements clickable */
+.explorer-header {
+  -webkit-app-region: no-drag;
+}
+</style>

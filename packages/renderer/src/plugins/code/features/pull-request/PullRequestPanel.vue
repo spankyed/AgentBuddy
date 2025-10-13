@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 pr-header">
       <div class="flex items-center gap-2">
         <GitPullRequest :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
@@ -10,14 +10,14 @@
         <template v-if="prFiles.length > 0">
           <button
             @click="expandAll"
-            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Expand all folders"
           >
             <UnfoldVertical :size="16" />
           </button>
           <button
             @click="collapseAll"
-            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Collapse all folders"
           >
             <FoldVertical :size="16" />
@@ -26,7 +26,7 @@
         <button
           @click="refreshStatus"
           :disabled="isPrLoading"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Refresh PR changes"
         >
           <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
@@ -67,7 +67,7 @@
           </span>
         </div>
 
-        <FileTree 
+        <FileTree
           :files="prFiles"
           :all-collapsed="allCollapsed"
           :all-expanded="allExpanded"
@@ -102,7 +102,7 @@ const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 
 // Computed
-const isNoDirectoryError = computed(() => 
+const isNoDirectoryError = computed(() =>
   prError.value?.includes('No directory selected')
 )
 
@@ -135,13 +135,13 @@ interface TreeNode {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  
+
   const gitFile: GitStatusFile = {
     path: file.path,
     status: file.status,
     staged: false
   }
-  
+
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
@@ -177,5 +177,10 @@ const handleFileSelect = (file: TreeNode) => {
   padding: 0.5rem 1rem;
   background-color: #0a0a0a;
   border-bottom: 1px solid #27272a;
+}
+
+/* Override window drag region to make header elements clickable */
+.pr-header {
+  -webkit-app-region: no-drag;
 }
 </style>
