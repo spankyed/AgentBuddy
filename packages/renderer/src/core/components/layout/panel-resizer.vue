@@ -83,14 +83,14 @@ onUnmounted(() => {
 }
 
 .panel-resizer--horizontal {
-  width: 4px;
+  width: 3px;
   height: 100%;
   cursor: col-resize;
 }
 
 .panel-resizer--vertical {
   width: 100%;
-  height: 4px;
+  height: 3px;
   cursor: row-resize;
 }
 
@@ -103,13 +103,13 @@ onUnmounted(() => {
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
   left: 0px;
-  right: -5px;
+  right: -4px;
   bottom: 0;
 }
 
 .panel-resizer--vertical .panel-resizer__handle {
   left: 0;
-  top: -5px;
+  top: -4px;
   bottom: 0px;
   right: 0;
 }
