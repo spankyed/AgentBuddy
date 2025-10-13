@@ -457,7 +457,7 @@ const codeState = setup({
       });
     },
     
-    handleCodeConnected: assign(({ event, context, system }) => {
+    handleCodeConnected: assign(({ event, context }) => {
       const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null; settings?: CodeSettings } }
 
       // Extract hotkeys from settings - filter out undefined values
@@ -470,16 +470,8 @@ const codeState = setup({
         });
       }
 
-      // Initialize explorer with the base directory from backend
-      // This ensures explorer loads files even when Code plugin isn't the active plugin
-      if (ev.data.baseDirectory) {
-        system.get('explorer')?.send({
-          type: 'explorer.INITIALIZE',
-          baseDirectory: ev.data.baseDirectory
-        });
-      }
-
       // Update directory state from backend
+      // Explorer child will receive CODE_CONNECTED via broadcastToAllFeatures and initialize itself
       return {
         ...context,
         baseDirectory: ev.data.baseDirectory || '',

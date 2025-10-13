@@ -81,7 +81,9 @@ export type Event =
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
   // Directory events
-  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } };
+  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } }
+  // Broadcast events from parent
+  | { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null } };
 
 export const explorerState = setup({
   types: {
@@ -242,6 +244,14 @@ export const explorerState = setup({
       // Otherwise, explorer just waits for a directory to be selected
     },
 
+    handleCodeConnected: ({ event, self }) => {
+      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null } }
+      // Initialize explorer with base directory from backend if available
+      if (ev.data.baseDirectory) {
+        self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.data.baseDirectory })
+      }
+    },
+
     openFile: ({ event }) => {
       const ev = event as { type: 'explorer.OPEN_FILE'; path: string }
       sendToBackend('explorer.READ_FILE', { path: ev.path })
@@ -366,6 +376,9 @@ export const explorerState = setup({
   states: {
     idle: {
       on: {
+        'CODE_CONNECTED': {
+          actions: 'handleCodeConnected'
+        },
         'explorer.LIST_FILES': {
           actions: ['setLoading', 'listFiles']
         },
