@@ -18,7 +18,7 @@ import { promptsState, type PromptTab } from './features/prompts/state';
 
 export const id = 'code' as const;
 
-const ALL_PANELS: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'terminal', 'actions', 'prompts'];
+const ALL_PANELS: PanelType[] = ['explorer', 'terminal', 'search', 'commit', 'pr', 'actions', 'prompts'];
 
 export interface OpenFile {
   path: string
@@ -143,22 +143,22 @@ function reorderTabsByStoredOrder(
   const pendingPaths = pendingOrder.map(t => t.path)
   const loadedPaths = openFiles.map(f => f.path)
   const allTabsLoaded = pendingPaths.every(path => loadedPaths.includes(path))
-  
+
   if (!allTabsLoaded) {
     // Not all tabs loaded yet, wait
     return null
   }
-  
+
   // Create a map of path to order
   const orderMap = new Map(pendingOrder.map(t => [t.path, t.order]))
-  
+
   // Sort tabs by their original order
   const sorted = [...openFiles].sort((a, b) => {
     const orderA = orderMap.get(a.path) ?? Number.MAX_SAFE_INTEGER
     const orderB = orderMap.get(b.path) ?? Number.MAX_SAFE_INTEGER
     return orderA - orderB
   })
-  
+
   return sorted
 }
 
@@ -180,10 +180,10 @@ const codeState = setup({
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Only spawn if not already
         enqueue.spawnChild('explorerState', { systemId: 'explorer' });
+        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
         enqueue.spawnChild('searchState', { systemId: 'search' });
         enqueue.spawnChild('commitState', { systemId: 'commit' });
         enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
-        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
         enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
         enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
     }),
@@ -256,7 +256,7 @@ const codeState = setup({
       system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
       system.get('codePrompts')?.send({ type: 'codePrompts.REFRESH_LIST' });
     },
-    
+
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
       const persistedTabs = loadPersistedTabs()
       const persistedGroups = loadTabGroups()
@@ -283,50 +283,50 @@ const codeState = setup({
         pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
         tabGroups: persistedGroups
       })
-      
+
       // If no persisted tabs, we're done
       if (persistedTabs.length === 0) {
         return
       }
-      
+
       // Restore tabs
       enqueue(({ system }) => {
         const explorerActor = system.get('explorer')
         const terminalActor = system.get('terminal')
         const actionsActor = system.get('codeActions')
         const promptsActor = system.get('codePrompts')
-        
+
         // Filter tabs by type
         const fileTabs = persistedTabs.filter(tab => tab.type === 'file')
         const terminalTabs = persistedTabs.filter(tab => tab.type === 'terminal')
         const actionTabs = persistedTabs.filter(tab => tab.type === 'action')
         const promptTabs = persistedTabs.filter(tab => tab.type === 'prompt')
-        
+
         console.log('[Code Plugin] tabs to restore:', {
           actionTabs,
           fileTabs,
           terminalTabs,
           promptTabs,
         })
-        
+
         // Send file paths to restore
         if (fileTabs.length > 0 && explorerActor) {
           const filePaths = fileTabs.map(tab => tab.path)
-          explorerActor.send({ 
-            type: 'explorer.OPEN_FILES', 
-            paths: filePaths 
+          explorerActor.send({
+            type: 'explorer.OPEN_FILES',
+            paths: filePaths
           })
         }
-        
+
         // Send terminal IDs to restore
         if (terminalTabs.length > 0 && terminalActor) {
           const terminalIds = terminalTabs.map(tab => tab.terminalId!)
-          terminalActor.send({ 
-            type: 'terminal.OPEN_TABS', 
-            terminalIds 
+          terminalActor.send({
+            type: 'terminal.OPEN_TABS',
+            terminalIds
           })
         }
-        
+
         // Send action IDs to restore
         if (actionTabs.length > 0 && actionsActor) {
           const actionIds = actionTabs.map(tab => tab.actionId!)
@@ -335,7 +335,7 @@ const codeState = setup({
             actionIds
           })
         }
-        
+
         // Send prompt IDs to restore
         if (promptTabs.length > 0 && promptsActor) {
           const promptIds = promptTabs.map(tab => tab.promptId!)
@@ -358,21 +358,21 @@ const codeState = setup({
 
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
-      
+
       // Route based on prefix - prefix matches system ID
       if (eventType.includes('.')) {
         const [prefix] = eventType.split('.');
         system.get(prefix)?.send(event);
       }
     },
-    
+
     selectPanel: assign(({
       event,
       context,
       system
     }) => {
       const ev = event as { type: 'SELECT_PANEL'; panel: PanelType };
-      
+
       // Notify child machines if needed
       if (ev.panel === 'commit') {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
@@ -390,7 +390,7 @@ const codeState = setup({
         selectedPanel: ev.panel
       };
     }),
-    
+
     // Quick open actions
     showQuickOpen: assign({
       isQuickOpenVisible: true,
@@ -399,7 +399,7 @@ const codeState = setup({
       quickOpenSelectedIndex: 0,
       quickOpenLoading: true
     }),
-    
+
     hideQuickOpen: assign({
       isQuickOpenVisible: false,
       quickOpenQuery: '',
@@ -407,7 +407,7 @@ const codeState = setup({
       quickOpenSelectedIndex: 0,
       quickOpenLoading: false
     }),
-    
+
     toggleQuickOpen: assign(({ context }) => ({
       ...context,
       isQuickOpenVisible: !context.isQuickOpenVisible,
@@ -416,7 +416,7 @@ const codeState = setup({
       quickOpenSelectedIndex: 0,
       quickOpenLoading: context.isQuickOpenVisible ? false : true
     })),
-    
+
     updateQuickOpenQuery: assign(({ event }) => {
       const ev = event as { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string };
       return {
@@ -424,7 +424,7 @@ const codeState = setup({
         quickOpenSelectedIndex: 0
       };
     }),
-    
+
     selectQuickOpenResult: assign(({ event, context }) => {
       const ev = event as { type: 'SELECT_QUICK_OPEN_RESULT'; index: number };
       const maxIndex = Math.max(0, context.quickOpenResults.length - 1);
@@ -432,31 +432,31 @@ const codeState = setup({
         quickOpenSelectedIndex: Math.max(0, Math.min(ev.index, maxIndex))
       };
     }),
-    
+
     openQuickOpenResult: ({ context, system, self, event }) => {
       const ev = event as { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
-      
+
       // Track the file as recently opened
       const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path);
       self.send({
         type: 'UPDATE_STATE',
         updates: { recentlyOpenedFiles: updatedRecentFiles }
       });
-      
+
       // Open file through explorer
       system.get('explorer')?.send({
         type: 'explorer.OPEN_FILE',
         path: ev.path
       });
     },
-    
+
     requestQuickOpenFiles: ({ context, system }) => {
       system.get('explorer')?.send({
         type: 'explorer.QUICK_OPEN_SEARCH',
         baseDirectory: context.baseDirectory
       });
     },
-    
+
     handleCodeConnected: assign(({ event, context }) => {
       const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null; settings?: CodeSettings } }
 
@@ -480,10 +480,10 @@ const codeState = setup({
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys // Use settings hotkeys if available, otherwise keep defaults
       }
     }),
-    
+
     handleSettingsUpdate: assign(({ event, context }) => {
       const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
-      
+
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (ev.settings?.hotkeys) {
@@ -493,20 +493,20 @@ const codeState = setup({
           }
         });
       }
-      
+
       return {
         ...context,
         settings: ev.settings,
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
     }),
-    
+
     handleHotkey: createHotkeyProcessor({
       openTerminal: 'OPEN_TERMINAL',
       navigatePrevPanel: 'NAVIGATE_PREV_PANEL',
       navigateNextPanel: 'NAVIGATE_NEXT_PANEL'
     }),
-    
+
     openTerminal: ({ context, self, system }) => {
       // Look for an existing terminal at the active directory
       // const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
@@ -529,13 +529,13 @@ const codeState = setup({
           });
       // }
     },
-    
+
     navigatePrevPanel: ({ context, self }) => {
       const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
       const newIndex = currentIndex === 0 ? ALL_PANELS.length - 1 : currentIndex - 1;
       self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
     },
-    
+
     navigateNextPanel: ({ context, self }) => {
       const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
       const newIndex = currentIndex === ALL_PANELS.length - 1 ? 0 : currentIndex + 1;
