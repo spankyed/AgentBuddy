@@ -169,7 +169,6 @@ import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
 import WorkspaceView from '@/plugins/code/features/explorer/WorkspaceView.vue'
 import { FolderOpen, FolderPlus, Plus, Layers, ArrowLeft } from 'lucide-vue-next'
-import { trpc } from '@/core/trpc'
 
 interface FileItem {
   path: string
