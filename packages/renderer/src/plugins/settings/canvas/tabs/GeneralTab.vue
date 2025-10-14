@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800">
+    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
       <button
         v-for="item in navItems"
         :key="item.id"
