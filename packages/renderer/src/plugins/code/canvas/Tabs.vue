@@ -785,14 +785,31 @@ const createNewGroupWithTab = (tab: OpenFile | TerminalTab | ActionTab | PromptT
 /* Custom CSS variables for tab group colors */
 :root {
   --color-blue: rgb(59, 130, 246);
+  --color-blue-text: rgb(229, 231, 235);
+
   --color-purple: rgb(147, 51, 234);
-  --color-pink: rgb(236, 72, 153);
+  --color-purple-text: rgb(229, 231, 235);
+
+  --color-pink: rgb(219, 39, 119);
+  --color-pink-text: rgb(23, 23, 23);
+
   --color-red: rgb(239, 68, 68);
+  --color-red-text: rgb(23, 23, 23);
+
   --color-orange: rgb(249, 115, 22);
-  --color-yellow: rgb(234, 179, 8);
+  --color-orange-text: rgb(23, 23, 23);
+
+  --color-yellow: rgb(202, 138, 4);
+  --color-yellow-text: rgb(23, 23, 23);
+
   --color-green: rgb(34, 197, 94);
+  --color-green-text: rgb(23, 23, 23);
+
   --color-teal: rgb(20, 184, 166);
-  --color-gray: rgb(156, 163, 175);
+  --color-teal-text: rgb(23, 23, 23);
+
+  --color-gray: rgb(107, 114, 128);
+  --color-gray-text: rgb(229, 231, 235);
 }
 
 /* Custom horizontal scrollbar for tab containers */
