@@ -13,7 +13,8 @@ export class GitWatcherService {
   private workingDirWatcher?: chokidar.FSWatcher
   private onGitChangeCallback?: () => void
   private onFileChangeCallback?: (change: FileChangeInfo) => void
-  private changeTimeout?: NodeJS.Timeout
+  private gitStatusDebounceTimeout?: NodeJS.Timeout
+  private fileChangeTimeouts: Map<string, NodeJS.Timeout> = new Map()
   private isWatching = false
   private openFiles: Set<string> = new Set()
 
@@ -28,15 +29,19 @@ export class GitWatcherService {
   }
 
   registerOpenFile(filePath: string): void {
-    this.openFiles.add(filePath)
+    // Normalize to absolute path for consistency with chokidar
+    const normalized = path.resolve(filePath)
+    this.openFiles.add(normalized)
   }
 
   unregisterOpenFile(filePath: string): void {
-    this.openFiles.delete(filePath)
+    const normalized = path.resolve(filePath)
+    this.openFiles.delete(normalized)
   }
 
   isFileOpen(filePath: string): boolean {
-    return this.openFiles.has(filePath)
+    const normalized = path.resolve(filePath)
+    return this.openFiles.has(normalized)
   }
 
   getOpenFiles(): string[] {
@@ -64,6 +69,10 @@ export class GitWatcherService {
       path.join(gitDir, 'HEAD'),            // Branch changes
       path.join(gitDir, 'COMMIT_EDITMSG'),  // Recent commits
       path.join(gitDir, 'refs', 'heads'),   // Branch updates
+      path.join(gitDir, 'MERGE_HEAD'),      // During merges
+      path.join(gitDir, 'REBASE_HEAD'),     // During rebases
+      path.join(gitDir, 'CHERRY_PICK_HEAD'), // During cherry-picks
+      path.join(gitDir, 'ORIG_HEAD'),       // Previous HEAD position
     ]
 
     this.gitWatcher = chokidar.watch(watchPaths, {
@@ -155,26 +164,38 @@ export class GitWatcherService {
   }
 
   private handleFileChange(changeType: 'add' | 'change' | 'unlink', filePath: string) {
-    // Debounce changes since multiple files might change at once
-    if (this.changeTimeout) {
-      clearTimeout(this.changeTimeout)
+    // Debounce git status refresh globally (we only need one refresh for all changes)
+    if (this.gitStatusDebounceTimeout) {
+      clearTimeout(this.gitStatusDebounceTimeout)
     }
-
-    this.changeTimeout = setTimeout(() => {
-      // Always refresh git status (any file change might affect git)
+    this.gitStatusDebounceTimeout = setTimeout(() => {
       if (this.onGitChangeCallback) {
         this.onGitChangeCallback()
       }
+    }, 500)
 
-      // If file is open, notify explorer (for external change detection)
-      if (this.openFiles.has(filePath) && this.onFileChangeCallback) {
-        this.onFileChangeCallback({
-          path: filePath,
-          modifiedAt: new Date(),
-          changeType
-        })
+    // Per-file debouncing for file change notifications (so we don't lose notifications)
+    if (this.openFiles.has(filePath) && this.onFileChangeCallback) {
+      // Clear existing timeout for this specific file
+      const existingTimeout = this.fileChangeTimeouts.get(filePath)
+      if (existingTimeout) {
+        clearTimeout(existingTimeout)
       }
-    }, 500) // 500ms debounce
+
+      // Set new timeout for this file
+      const timeout = setTimeout(() => {
+        this.fileChangeTimeouts.delete(filePath)
+        if (this.onFileChangeCallback) {
+          this.onFileChangeCallback({
+            path: filePath,
+            modifiedAt: new Date(),
+            changeType
+          })
+        }
+      }, 300) // Shorter debounce for file notifications
+
+      this.fileChangeTimeouts.set(filePath, timeout)
+    }
   }
 
   async stopWatching(): Promise<void> {
@@ -190,10 +211,19 @@ export class GitWatcherService {
 
     this.isWatching = false
 
-    if (this.changeTimeout) {
-      clearTimeout(this.changeTimeout)
-      this.changeTimeout = undefined
+    // Clear all debounce timeouts
+    if (this.gitStatusDebounceTimeout) {
+      clearTimeout(this.gitStatusDebounceTimeout)
+      this.gitStatusDebounceTimeout = undefined
     }
+
+    for (const timeout of this.fileChangeTimeouts.values()) {
+      clearTimeout(timeout)
+    }
+    this.fileChangeTimeouts.clear()
+
+    // Clear open files set
+    this.openFiles.clear()
   }
 
   isActive(): boolean {
