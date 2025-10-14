@@ -64,20 +64,20 @@
                 @dragend="handleDragEnd"
               >
                 <button
+                  @click.stop="$emit('close', tab.path)"
+                  class="flex items-center justify-center w-5 h-5 mx-1.5 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+                >
+                  <X class="w-3 h-3" />
+                </button>
+                <button
                   @click="$emit('select', tab.path)"
-                  class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+                  class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
                   :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
                 >
                   <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
                   <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
                   <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
                   <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                </button>
-                <button
-                  @click.stop="$emit('close', tab.path)"
-                  class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-                >
-                  <X class="w-3 h-3" />
                 </button>
               </div>
             </ContextMenuTrigger>
@@ -291,20 +291,20 @@
               @dragend="handleDragEnd"
             >
               <button
+                @click.stop="$emit('close', tab.path)"
+                class="flex items-center justify-center w-5 h-5 mx-1.5 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+              >
+                <X class="w-3 h-3" />
+              </button>
+              <button
                 @click="$emit('select', tab.path)"
-                class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+                class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
                 :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
               >
                 <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
                 <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
                 <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
                 <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-              </button>
-              <button
-                @click.stop="$emit('close', tab.path)"
-                class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-              >
-                <X class="w-3 h-3" />
               </button>
             </div>
           </ContextMenuTrigger>
@@ -371,20 +371,20 @@
           @dragend="handleDragEnd"
         >
           <button
+            @click.stop="$emit('close', tab.path)"
+            class="flex items-center justify-center w-5 h-5 mx-1.5 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
+          >
+            <X class="w-3 h-3" />
+          </button>
+          <button
             @click="$emit('select', tab.path)"
-            class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
+            class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
             :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
           >
             <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
             <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
             <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
             <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-          </button>
-          <button
-            @click.stop="$emit('close', tab.path)"
-            class="flex items-center justify-center w-5 h-5 mx-2 transition-all rounded-sm opacity-0 group-hover:opacity-100 hover:bg-neutral-700"
-          >
-            <X class="w-3 h-3" />
           </button>
         </div>
       </ContextMenuTrigger>
@@ -475,6 +475,7 @@ import {
   File,
   FileJson,
   FileText,
+  FolderMinus,
   Image,
   GitCompare,
   Terminal,

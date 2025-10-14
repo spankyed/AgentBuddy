@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { ChevronRight, Palette, FolderOpen, Trash2, Pin } from 'lucide-vue-next'
 import type { TabGroupColor } from '../state'
 
-defineProps<{
+const props = defineProps<{
   name: string
   isPinned?: boolean
   ItemComponent: any
@@ -20,7 +21,35 @@ const emit = defineEmits<{
   'close-all': []
   'pin-group': []
   'unpin-group': []
+  'request-close': []
 }>()
+
+// Local state for editing
+const editingName = ref(props.name)
+
+// Watch for prop changes from parent
+watch(() => props.name, (newName) => {
+  editingName.value = newName
+})
+
+// Emit rename only on blur or Enter
+const handleRename = () => {
+  if (editingName.value.trim() !== props.name) {
+    emit('rename', editingName.value.trim())
+  }
+}
+
+// Cancel editing on Escape
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    (event.target as HTMLInputElement).blur()
+    emit('request-close')
+  } else if (event.key === 'Escape') {
+    editingName.value = props.name
+    ;(event.target as HTMLInputElement).blur()
+    emit('request-close')
+  }
+}
 
 const colors: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray']
 const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -30,8 +59,9 @@ const ITEM_CLASS = "flex items-center gap-2 px-3 py-2 text-sm transition-colors 
   <!-- Rename input at top -->
   <div class="px-3 py-2">
     <input
-      :value="name"
-      @input="$emit('rename', ($event.target as HTMLInputElement).value)"
+      v-model="editingName"
+      @blur="handleRename"
+      @keydown="handleKeydown"
       @click.stop
       class="w-full px-2 py-1 text-sm bg-neutral-800 border rounded text-neutral-200 border-neutral-600 focus:outline-none focus:border-blue-500"
       placeholder="Group name..."

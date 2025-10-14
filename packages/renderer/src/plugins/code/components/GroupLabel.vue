@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot>
+  <ContextMenuRoot v-model:open="contextMenuOpen">
     <ContextMenuTrigger as-child>
       <div
         class="flex items-center gap-1.5 px-2 py-0 min-h-[2.5rem] cursor-pointer group-label flex-shrink-0 transition-all hover:brightness-110"
@@ -33,7 +33,7 @@
         />
 
         <!-- Dropdown menu trigger button -->
-        <DropdownMenuRoot>
+        <DropdownMenuRoot v-model:open="dropdownOpen">
           <DropdownMenuTrigger as-child>
             <button
               @click.stop
@@ -63,6 +63,7 @@
                 @close-all="$emit('close-all')"
                 @pin-group="$emit('pin-group')"
                 @unpin-group="$emit('unpin-group')"
+                @request-close="closeMenus"
               />
             </DropdownMenuContent>
           </DropdownMenuPortal>
@@ -87,6 +88,7 @@
           @close-all="$emit('close-all')"
           @pin-group="$emit('pin-group')"
           @unpin-group="$emit('unpin-group')"
+          @request-close="closeMenus"
         />
       </ContextMenuContent>
     </ContextMenuPortal>
@@ -94,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { MoreHorizontal, Pin } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -140,6 +143,15 @@ defineEmits<{
   'group-drag-leave': [event: DragEvent]
   'group-drop': [event: DragEvent]
 }>()
+
+// Control menu open state
+const dropdownOpen = ref(false)
+const contextMenuOpen = ref(false)
+
+const closeMenus = () => {
+  dropdownOpen.value = false
+  contextMenuOpen.value = false
+}
 </script>
 
 <style scoped>
