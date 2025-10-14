@@ -34,14 +34,33 @@
       </div>
     </div>
 
-    <!-- Show only error if no directory selected -->
-    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+    <!-- Show friendly empty state if no git repository -->
+    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+      <GitPullRequest :size="48" class="mb-4 text-neutral-600" />
+      <h3 class="mb-2 text-base font-medium text-neutral-300">No Git Repository</h3>
+      <p class="max-w-xs text-sm text-neutral-500">
+        Open a folder with a git repository to create and view pull requests
+      </p>
+    </div>
+
+    <!-- Show error if no directory selected -->
+    <div v-else-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ prError }}</div>
     </div>
 
-    <!-- Show normal UI only when directory is selected -->
+    <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
-      <div v-if="prError" class="error-state">
+      <!-- Show friendly empty state if cannot determine base branch -->
+      <div v-if="isNoBaseBranchError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+        <GitBranch :size="48" class="mb-4 text-neutral-600" />
+        <h3 class="mb-2 text-base font-medium text-neutral-300">Cannot Determine Base Branch</h3>
+        <p class="max-w-sm text-sm text-neutral-500">
+          Unable to determine the base branch for comparison. This usually happens when the repository doesn't have a default branch configured or you're on an orphaned branch.
+        </p>
+      </div>
+
+      <!-- Generic error state for other errors -->
+      <div v-else-if="prError" class="error-state">
         <AlertCircle class="w-4 h-4 text-red-500" />
         <span class="text-sm text-red-500">{{ prError }}</span>
       </div>
@@ -104,6 +123,15 @@ const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoadi
 // Computed
 const isNoDirectoryError = computed(() =>
   prError.value?.includes('No directory selected')
+)
+
+const isNoGitRepoError = computed(() =>
+  prError.value?.includes('not a git repository') ||
+  prError.value?.includes('Not a git repository')
+)
+
+const isNoBaseBranchError = computed(() =>
+  prError.value?.includes('Could not determine PR base branch')
 )
 
 // Actions

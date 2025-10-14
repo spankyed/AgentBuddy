@@ -24,12 +24,21 @@
       </button>
     </div>
 
-    <!-- Show only error if no directory selected -->
-    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+    <!-- Show friendly empty state if no git repository -->
+    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+      <GitBranch :size="48" class="mb-4 text-neutral-600" />
+      <h3 class="mb-2 text-base font-medium text-neutral-300">No Git Repository</h3>
+      <p class="max-w-xs text-sm text-neutral-500">
+        Open a folder with a git repository to use source control features
+      </p>
+    </div>
+
+    <!-- Show error if no directory selected -->
+    <div v-else-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ gitError }}</div>
     </div>
 
-    <!-- Show normal UI only when directory is selected -->
+    <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
       <!-- Branch Info -->
       <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
@@ -281,6 +290,11 @@ const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value
 
 const isNoDirectoryError = computed(() => {
   return gitError.value?.includes('No directory selected')
+})
+
+const isNoGitRepoError = computed(() => {
+  return gitError.value?.includes('not a git repository') ||
+         gitError.value?.includes('Not a git repository')
 })
 
 const shouldShowActionButton = computed(() => {
