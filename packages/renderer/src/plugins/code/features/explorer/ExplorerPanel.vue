@@ -123,6 +123,7 @@
       <WorkspaceView
         :workspaces="workspaces"
         @set-directory="handleWorkspaceDirectorySelect"
+        @open-terminal="handleOpenTerminal"
       />
 
       <!-- Action Buttons for Workspaces View -->

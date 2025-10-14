@@ -21,10 +21,6 @@
             :style="{ backgroundColor: workspace.color }"
           ></div>
           <span class="font-medium truncate text-neutral-200">{{ workspace.name }}</span>
-          <FolderOpen
-            v-if="workspace.directory"
-            class="flex-shrink-0 w-3 h-3 ml-auto text-neutral-500"
-          />
         </div>
 
         <!-- Projects list -->
@@ -46,7 +42,6 @@
                 :style="{ backgroundColor: project.color }"
               ></div>
               <span class="text-sm truncate text-neutral-200">{{ project.name }}</span>
-              <FolderOpen class="flex-shrink-0 w-3 h-3 ml-auto text-neutral-500" />
             </div>
 
             <!-- Directories list -->
@@ -57,19 +52,34 @@
                 :class="projectIdx === workspace.projects.length - 1 && project.directories.length > 0 ? 'h-6' : 'bottom-0'"
               ></div>
 
-              <div
+              <ContextMenuRoot
                 v-for="(dir, idx) in project.directories"
                 :key="dir"
-                @click="handleDirectoryClick(dir)"
-                class="relative flex items-center gap-2 px-4 py-1 text-xs transition-colors cursor-pointer text-neutral-400 hover:bg-neutral-800"
               >
-                <!-- Connection line to guideline -->
-                <div class="absolute left-0 top-1/2 w-3 h-px bg-neutral-700"></div>
+                <ContextMenuTrigger as-child>
+                  <div
+                    @click="handleDirectoryClick(dir)"
+                    class="relative flex items-center gap-2 px-4 py-1 text-xs transition-colors cursor-pointer text-neutral-400 hover:bg-neutral-800"
+                  >
+                    <!-- Connection line to guideline -->
+                    <div class="absolute left-0 top-1/2 w-3 h-px bg-neutral-700"></div>
 
-                <Folder class="flex-shrink-0 w-3 h-3" />
-                <span class="flex-1 truncate" :title="dir">{{ getDirectoryName(dir) }}</span>
-                <span v-if="idx === 0" class="flex-shrink-0 ml-auto text-neutral-600">(primary)</span>
-              </div>
+                    <span class="flex-1 truncate" :title="dir">{{ getDirectoryName(dir) }}</span>
+                  </div>
+                </ContextMenuTrigger>
+
+                <ContextMenuPortal>
+                  <ContextMenuContent :class="MENU_CONTENT_CLASS">
+                    <ContextMenuItem
+                      @select="$emit('open-terminal', dir)"
+                      :class="MENU_ITEM_CLASS"
+                    >
+                      <Terminal class="w-4 h-4" />
+                      Open Terminal Here
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenuPortal>
+              </ContextMenuRoot>
             </div>
           </div>
         </div>
@@ -84,7 +94,15 @@
 </template>
 
 <script setup lang="ts">
-import { Layers, FolderOpen, Folder } from 'lucide-vue-next'
+import { Layers, Terminal } from 'lucide-vue-next'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+} from 'reka-ui'
+import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from './constants'
 
 interface WorkspaceProject {
   name: string
@@ -106,6 +124,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'set-directory': [path: string]
+  'open-terminal': [path: string]
 }>()
 
 const handleWorkspaceClick = (workspace: Workspace) => {
