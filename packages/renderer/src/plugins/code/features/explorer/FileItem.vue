@@ -43,15 +43,23 @@
       >
         <ContextMenuItem
           @select="startRename"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          :class="MENU_ITEM_CLASS"
         >
           <Edit2 class="w-4 h-4" />
           Rename
         </ContextMenuItem>
 
         <ContextMenuItem
+          @select="copyAbsolutePath"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Copy class="w-4 h-4" />
+          Copy path
+        </ContextMenuItem>
+
+        <ContextMenuItem
           @select="copyRelativePath"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          :class="MENU_ITEM_CLASS"
         >
           <Copy class="w-4 h-4" />
           Copy relative path
@@ -60,17 +68,31 @@
         <ContextMenuItem
           v-if="file.type === 'directory'"
           @select="$emit('open-terminal', file.path)"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          :class="MENU_ITEM_CLASS"
         >
           <Terminal class="w-4 h-4" />
           Open Terminal Here
         </ContextMenuItem>
 
-        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+        <!-- Workspace menu items - only for directories -->
+        <WorkspaceMenuItems
+          v-if="file.type === 'directory'"
+          :directory-path="file.path"
+          :ItemComponent="ContextMenuItem"
+          :SeparatorComponent="ContextMenuSeparator"
+          :SubComponent="ContextMenuSub"
+          :SubTriggerComponent="ContextMenuSubTrigger"
+          :SubContentComponent="ContextMenuSubContent"
+          :PortalComponent="ContextMenuPortal"
+          :CheckboxItemComponent="ContextMenuCheckboxItem"
+          :ItemIndicatorComponent="ContextMenuItemIndicator"
+        />
+
+        <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
 
         <ContextMenuItem
           @select="$emit('delete', file)"
-          class="flex items-center gap-2 px-3 py-2 text-sm text-red-400 transition-colors cursor-pointer hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          :class="MENU_ITEM_DANGER_CLASS"
         >
           <Trash2 class="w-4 h-4" />
           Delete
@@ -101,7 +123,14 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuCheckboxItem,
+  ContextMenuItemIndicator,
 } from 'reka-ui'
+import WorkspaceMenuItems from './components/WorkspaceMenuItems.vue'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
 
 interface FileItem {
   path: string
@@ -218,6 +247,14 @@ const copyRelativePath = async () => {
     await navigator.clipboard.writeText(relativePath)
   } catch (err) {
     console.error('Failed to copy path to clipboard:', err)
+  }
+}
+
+const copyAbsolutePath = async () => {
+  try {
+    await navigator.clipboard.writeText(props.file.path)
+  } catch (err) {
+    console.error('Failed to copy absolute path to clipboard:', err)
   }
 }
 </script>
