@@ -9,29 +9,12 @@
         <label class="text-sm font-medium text-neutral-200">
           Default Base Directory
         </label>
-        <select
+        <DirectorySelect
           v-model="defaultBaseDirectory"
-          @change="saveDefaultDirectory"
-          class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="getAllProjects().length === 0"
-        >
-          <option :value="null">Use last opened directory</option>
-          <optgroup
-            v-for="(workspace, wsIndex) in workspaces"
-            :key="`optgroup-${wsIndex}`"
-            :label="workspace.name || `Workspace ${wsIndex + 1}`"
-          >
-            <template v-for="(project, pIndex) in workspace.projects" :key="`project-${wsIndex}-${pIndex}`">
-              <option
-                v-for="(directory, dIndex) in project.directories"
-                :key="`option-${wsIndex}-${pIndex}-${dIndex}`"
-                :value="directory"
-              >
-                {{ project.name }}{{ project.directories.length > 1 ? ` (${dIndex + 1})` : '' }} - {{ truncatePath(directory) }}
-              </option>
-            </template>
-          </optgroup>
-        </select>
+          :workspaces="workspaces"
+          :disabled="getAllProjects().length === 0 && workspaces.every(ws => !ws.directory)"
+          @update:modelValue="saveDefaultDirectory"
+        />
         <p class="text-xs text-neutral-600">
           {{ getAllProjects().length === 0
             ? 'Add projects in Settings → General → Workspaces to set a default directory'
@@ -196,6 +179,7 @@ import { reactive, ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import DirectorySelect from '@/core/components/design/DirectorySelect.vue'
 import { X } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { trpc } from '@/core/trpc'
@@ -253,11 +237,6 @@ const workspaces = computed(() => {
 // Helper functions
 const getAllProjects = (): WorkspaceProject[] => {
   return workspaces.value.flatMap(ws => ws.projects)
-}
-
-const truncatePath = (path: string) => {
-  if (!path || path.length <= 40) return path
-  return '...' + path.slice(-37)
 }
 
 // Save functions
