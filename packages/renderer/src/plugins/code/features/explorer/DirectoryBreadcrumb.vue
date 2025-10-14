@@ -163,7 +163,7 @@ const segments = computed<BreadcrumbSegment[]>(() => {
   }
 
   // Apply truncation if needed
-  const maxVisibleSegments = 5
+  const maxVisibleSegments = 4
   if (allSegments.length <= maxVisibleSegments) {
     return allSegments
   }
