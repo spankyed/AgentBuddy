@@ -93,13 +93,6 @@ export interface GitDiff {
   modifiedContent?: string
 }
 
-// File watching types
-export interface FileChangeInfo {
-  path: string
-  modifiedAt: Date
-  changeType: 'add' | 'change' | 'unlink'
-}
-
 // Terminal types
 export interface TerminalInfo {
   id: EARS.EntityId

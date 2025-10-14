@@ -4,8 +4,9 @@ import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
 import { z } from 'zod'
 import { FileSystemRepository } from '../services/filesystem'
-import { FileWatcherService } from '../services/filewatcher'
-import { DirectoryContent, FileContent, FileInfo, CodeSystemError, FileChangeInfo, QuickOpenResult } from '../types'
+import { GitWatcherService } from '../services/gitwatcher'
+import type { FileChangeInfo } from '../services/gitwatcher'
+import { DirectoryContent, FileContent, FileInfo, CodeSystemError, QuickOpenResult } from '../types'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -60,7 +61,7 @@ export interface Context {
   activeDirectory: string | null
   baseDirectory: string | null
   repository: FileSystemRepository | null
-  fileWatcher: FileWatcherService
+  gitWatcher: GitWatcherService | null
 }
 
 export type Event =
@@ -73,6 +74,7 @@ export type Event =
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.GET_FILE_INFO'; path: string }
   | { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
+  | { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
   | { type: 'explorer.UPDATE_ACTIVE_DIRECTORY'; path: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
@@ -83,14 +85,16 @@ export const explorerSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { baseDirectory: string | null; activeDirectory: string | null }
+    input: {} as { baseDirectory: string | null; activeDirectory: string | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
     setupFileWatcher: ({ context, self }) => {
-      // Set up the callback for file changes
-      context.fileWatcher.setChangeCallback((change: FileChangeInfo) => {
-        self.send({ type: 'explorer.FILE_CHANGE_CALLBACK', change })
-      })
+      // Set up the callback for file changes from git watcher
+      if (context.gitWatcher) {
+        context.gitWatcher.setFileChangeCallback((change: FileChangeInfo) => {
+          self.send({ type: 'explorer.FILE_CHANGE_CALLBACK', change })
+        })
+      }
     },
 
     handleFileChange: ({ event }) => {
@@ -153,8 +157,10 @@ export const explorerSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
 
-        // Start watching the file for external changes
-        await context.fileWatcher.watchFile(ev.path)
+        // Register file with git watcher for external change detection
+        if (context.gitWatcher) {
+          context.gitWatcher.registerOpenFile(ev.path)
+        }
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'explorer.CODE_ERROR',
@@ -352,14 +358,23 @@ export const explorerSystem = setup({
       }
     }),
 
+    updateBaseDirectory: assign({
+      baseDirectory: ({ event }) => {
+        const ev = event as { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
+        return ev.path
+      },
+      gitWatcher: ({ event }) => {
+        const ev = event as { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
+        return ev.gitWatcher
+      }
+    }),
 
-    closeFile: async ({ event, context }) => {
+
+    closeFile: ({ event, context }) => {
       const ev = event as { type: 'explorer.CLOSE_FILE'; path: string }
-      try {
-        // Stop watching the file when it's closed
-        await context.fileWatcher.unwatchFile(ev.path)
-      } catch (error) {
-        console.error('Failed to unwatch file:', error)
+      // Unregister file from git watcher when closed
+      if (context.gitWatcher) {
+        context.gitWatcher.unregisterOpenFile(ev.path)
       }
     },
 
@@ -415,13 +430,13 @@ export const explorerSystem = setup({
 }).createMachine({
   id: 'explorer',
   initial: 'idle',
-  context: ({ input }: { input?: { baseDirectory: string | null; activeDirectory: string | null } }) => {
+  context: ({ input }: { input?: { baseDirectory: string | null; activeDirectory: string | null; gitWatcher?: GitWatcherService | null } }) => {
     const baseDir = input?.baseDirectory || null
     return {
       activeDirectory: input?.activeDirectory || baseDir,
       baseDirectory: baseDir,
       repository: baseDir ? new FileSystemRepository(baseDir) : null,
-      fileWatcher: new FileWatcherService(),
+      gitWatcher: input?.gitWatcher || null,
     }
   },
   entry: 'setupFileWatcher',
@@ -460,6 +475,9 @@ export const explorerSystem = setup({
         },
         'explorer.UPDATE_ACTIVE_DIRECTORY': {
           actions: 'updateActiveDirectory'
+        },
+        'explorer.UPDATE_BASE_DIRECTORY': {
+          actions: ['updateBaseDirectory', 'setupFileWatcher']
         },
         'explorer.CLOSE_FILE': {
           actions: 'closeFile'

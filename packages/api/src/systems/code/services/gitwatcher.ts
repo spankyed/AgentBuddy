@@ -2,22 +2,45 @@ import * as path from 'path'
 import * as chokidar from 'chokidar'
 import * as fs from 'fs/promises'
 
-export interface GitChangeInfo {
-  type: 'index' | 'head' | 'commit' | 'working'
-  timestamp: Date
+export interface FileChangeInfo {
+  path: string
+  modifiedAt: Date
+  changeType: 'add' | 'change' | 'unlink'
 }
 
 export class GitWatcherService {
   private gitWatcher?: chokidar.FSWatcher
   private workingDirWatcher?: chokidar.FSWatcher
-  private onChangeCallback?: () => void
+  private onGitChangeCallback?: () => void
+  private onFileChangeCallback?: (change: FileChangeInfo) => void
   private changeTimeout?: NodeJS.Timeout
   private isWatching = false
+  private openFiles: Set<string> = new Set()
 
   constructor(private workingDirectory: string) {}
 
   setChangeCallback(callback: () => void) {
-    this.onChangeCallback = callback
+    this.onGitChangeCallback = callback
+  }
+
+  setFileChangeCallback(callback: (change: FileChangeInfo) => void) {
+    this.onFileChangeCallback = callback
+  }
+
+  registerOpenFile(filePath: string): void {
+    this.openFiles.add(filePath)
+  }
+
+  unregisterOpenFile(filePath: string): void {
+    this.openFiles.delete(filePath)
+  }
+
+  isFileOpen(filePath: string): boolean {
+    return this.openFiles.has(filePath)
+  }
+
+  getOpenFiles(): string[] {
+    return Array.from(this.openFiles)
   }
 
   async startWatching(): Promise<void> {
@@ -58,13 +81,13 @@ export class GitWatcherService {
 
     this.gitWatcher
       .on('change', (filePath) => {
-        this.handleGitChange('change', filePath)
+        this.handleFileChange('change', filePath)
       })
       .on('add', (filePath) => {
-        this.handleGitChange('add', filePath)
+        this.handleFileChange('add', filePath)
       })
       .on('unlink', (filePath) => {
-        this.handleGitChange('unlink', filePath)
+        this.handleFileChange('unlink', filePath)
       })
       .on('error', (error) => {
         console.error('Git watcher error:', error)
@@ -115,13 +138,13 @@ export class GitWatcherService {
 
     this.workingDirWatcher
       .on('change', (filePath) => {
-        this.handleGitChange('working-change', filePath)
+        this.handleFileChange('change', filePath)
       })
       .on('add', (filePath) => {
-        this.handleGitChange('working-add', filePath)
+        this.handleFileChange('add', filePath)
       })
       .on('unlink', (filePath) => {
-        this.handleGitChange('working-unlink', filePath)
+        this.handleFileChange('unlink', filePath)
       })
       .on('error', (error) => {
         console.error('Working directory watcher error:', error)
@@ -131,28 +154,27 @@ export class GitWatcherService {
       })
   }
 
-  private handleGitChange(event: string, filePath: string) {
-    // Debounce git changes since multiple files might change at once
+  private handleFileChange(changeType: 'add' | 'change' | 'unlink', filePath: string) {
+    // Debounce changes since multiple files might change at once
     if (this.changeTimeout) {
       clearTimeout(this.changeTimeout)
     }
 
     this.changeTimeout = setTimeout(() => {
-      if (this.onChangeCallback) {
-        // Determine what type of change occurred
-        const changeType = this.getChangeType(filePath)
-        console.log(`Git change detected: ${event} on ${changeType} (${filePath})`)
-        this.onChangeCallback()
+      // Always refresh git status (any file change might affect git)
+      if (this.onGitChangeCallback) {
+        this.onGitChangeCallback()
       }
-    }, 500) // 500ms debounce for git operations
-  }
 
-  private getChangeType(filePath: string): string {
-    if (filePath.includes('index')) return 'index'
-    if (filePath.includes('HEAD')) return 'head'
-    if (filePath.includes('COMMIT_EDITMSG')) return 'commit'
-    if (filePath.includes('refs/heads')) return 'branch'
-    return 'other'
+      // If file is open, notify explorer (for external change detection)
+      if (this.openFiles.has(filePath) && this.onFileChangeCallback) {
+        this.onFileChangeCallback({
+          path: filePath,
+          modifiedAt: new Date(),
+          changeType
+        })
+      }
+    }, 500) // 500ms debounce
   }
 
   async stopWatching(): Promise<void> {

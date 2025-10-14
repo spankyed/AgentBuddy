@@ -130,7 +130,8 @@ export const systemMachine = setup({
         systemId: 'explorer',
         input: {
           baseDirectory: context.baseDirectory,
-          activeDirectory: context.activeDirectory
+          activeDirectory: context.activeDirectory,
+          gitWatcher: context.gitWatcher
         }
       });
       enqueue.spawnChild('searchSystem', {
@@ -212,7 +213,11 @@ export const systemMachine = setup({
       const newPath = ev.path
 
       // Update child systems
-      system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: newPath });
+      system.get('explorer')?.send({
+        type: 'explorer.UPDATE_BASE_DIRECTORY',
+        path: newPath,
+        gitWatcher: context.gitWatcher
+      });
       system.get('search')?.send({ type: 'search.UPDATE_BASE_DIRECTORY', path: newPath });
       // Pass the new git services to systems that need them
       system.get('commit')?.send({

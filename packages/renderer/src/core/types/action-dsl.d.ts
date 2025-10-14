@@ -122,6 +122,12 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
+interface FileChangeInfo {
+    path: string;
+    modifiedAt: Date;
+    changeType: 'add' | 'change' | 'unlink';
+}
+
 interface SecretEntity {
     id: EARS.EntityId;
     entityType: EARS.Entity.Secret;
@@ -430,11 +436,6 @@ interface GitDiff {
     staged: boolean;
     originalContent?: string;
     modifiedContent?: string;
-}
-interface FileChangeInfo {
-    path: string;
-    modifiedAt: Date;
-    changeType: 'add' | 'change' | 'unlink';
 }
 interface TerminalInfo {
     id: EARS.EntityId;
