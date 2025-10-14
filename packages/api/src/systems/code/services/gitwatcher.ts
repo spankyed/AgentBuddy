@@ -8,11 +8,12 @@ export interface GitChangeInfo {
 }
 
 export class GitWatcherService {
-  private watcher?: chokidar.FSWatcher
+  private gitWatcher?: chokidar.FSWatcher
+  private workingDirWatcher?: chokidar.FSWatcher
   private onChangeCallback?: () => void
   private changeTimeout?: NodeJS.Timeout
   private isWatching = false
-  
+
   constructor(private workingDirectory: string) {}
 
   setChangeCallback(callback: () => void) {
@@ -25,7 +26,7 @@ export class GitWatcherService {
     }
 
     const gitDir = path.join(this.workingDirectory, '.git')
-    
+
     // Check if .git directory exists
     try {
       await fs.access(gitDir)
@@ -34,7 +35,7 @@ export class GitWatcherService {
       return
     }
 
-    // Watch specific git files that indicate status changes
+    // Watch specific git files that indicate status changes (staged/committed changes)
     const watchPaths = [
       path.join(gitDir, 'index'),           // Staging area changes
       path.join(gitDir, 'HEAD'),            // Branch changes
@@ -42,7 +43,7 @@ export class GitWatcherService {
       path.join(gitDir, 'refs', 'heads'),   // Branch updates
     ]
 
-    this.watcher = chokidar.watch(watchPaths, {
+    this.gitWatcher = chokidar.watch(watchPaths, {
       persistent: true,
       ignoreInitial: true,
       // Don't follow symlinks to avoid watching outside .git
@@ -55,7 +56,7 @@ export class GitWatcherService {
       }
     })
 
-    this.watcher
+    this.gitWatcher
       .on('change', (filePath) => {
         this.handleGitChange('change', filePath)
       })
@@ -71,6 +72,62 @@ export class GitWatcherService {
       .on('ready', () => {
         console.log('Git watcher ready')
         this.isWatching = true
+      })
+
+    // Watch working directory for file changes (unstaged changes)
+    // Exclude common directories that shouldn't trigger git status updates
+    this.workingDirWatcher = chokidar.watch(this.workingDirectory, {
+      persistent: true,
+      ignoreInitial: true,
+      followSymlinks: false,
+      // Ignore patterns for performance
+      ignored: [
+        // Git directory
+        '**/.git/**',
+        // Dependencies
+        '**/node_modules/**',
+        // Build outputs
+        '**/dist/**',
+        '**/build/**',
+        '**/out/**',
+        '**/.next/**',
+        // IDE and temp files
+        '**/.vscode/**',
+        '**/.idea/**',
+        '**/.DS_Store',
+        '**/Thumbs.db',
+        // Logs
+        '**/logs/**',
+        '**/*.log',
+        // Common cache directories
+        '**/.cache/**',
+        '**/tmp/**',
+        '**/temp/**',
+        // Coverage
+        '**/coverage/**',
+        '**/.nyc_output/**'
+      ],
+      awaitWriteFinish: {
+        stabilityThreshold: 300,
+        pollInterval: 100
+      }
+    })
+
+    this.workingDirWatcher
+      .on('change', (filePath) => {
+        this.handleGitChange('working-change', filePath)
+      })
+      .on('add', (filePath) => {
+        this.handleGitChange('working-add', filePath)
+      })
+      .on('unlink', (filePath) => {
+        this.handleGitChange('working-unlink', filePath)
+      })
+      .on('error', (error) => {
+        console.error('Working directory watcher error:', error)
+      })
+      .on('ready', () => {
+        console.log('Working directory watcher ready')
       })
   }
 
@@ -99,12 +156,18 @@ export class GitWatcherService {
   }
 
   async stopWatching(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close()
-      this.watcher = undefined
-      this.isWatching = false
+    if (this.gitWatcher) {
+      await this.gitWatcher.close()
+      this.gitWatcher = undefined
     }
-    
+
+    if (this.workingDirWatcher) {
+      await this.workingDirWatcher.close()
+      this.workingDirWatcher = undefined
+    }
+
+    this.isWatching = false
+
     if (this.changeTimeout) {
       clearTimeout(this.changeTimeout)
       this.changeTimeout = undefined
