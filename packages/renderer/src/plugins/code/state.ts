@@ -162,6 +162,25 @@ function reorderTabsByStoredOrder(
   return sorted
 }
 
+// Helper to check and delete empty groups
+function deleteEmptyGroups(
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
+  tabGroups: TabGroup[],
+  targetGroupId?: string
+): TabGroup[] {
+  if (!targetGroupId) return tabGroups
+
+  const remainingTabsInGroup = openFiles.filter(
+    f => 'groupId' in f && f.groupId === targetGroupId
+  )
+
+  if (remainingTabsInGroup.length === 0) {
+    return tabGroups.filter(g => g.id !== targetGroupId)
+  }
+
+  return tabGroups
+}
+
 const codeState = setup({
   types: {
     context: {} as Context,
@@ -544,26 +563,47 @@ const codeState = setup({
 
     pinTab: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_TAB'; path: string }
+
+      // Get groupId before modifying
+      const tab = context.openFiles.find(f => f.path === ev.path)
+      const groupId = tab && 'groupId' in tab ? tab.groupId : undefined
+
       const updatedFiles = context.openFiles.map(file =>
         file.path === ev.path ? { ...file, isPinned: true, groupId: undefined } : file
       )
+
+      // Delete group if now empty
+      const updatedGroups = deleteEmptyGroups(updatedFiles, context.tabGroups, groupId)
+
       // Sort tabs to put pinned tabs first
       const pinnedTabs = updatedFiles.filter(tab => tab.isPinned)
       const unpinnedTabs = updatedFiles.filter(tab => !tab.isPinned)
+
       return {
         ...context,
-        openFiles: [...pinnedTabs, ...unpinnedTabs]
+        openFiles: [...pinnedTabs, ...unpinnedTabs],
+        tabGroups: updatedGroups
       }
     }),
 
     unpinTab: assign(({ event, context }) => {
       const ev = event as { type: 'UNPIN_TAB'; path: string }
+
+      // Get groupId before modifying
+      const tab = context.openFiles.find(f => f.path === ev.path)
+      const groupId = tab && 'groupId' in tab ? tab.groupId : undefined
+
       const updatedFiles = context.openFiles.map(file =>
         file.path === ev.path ? { ...file, isPinned: false, groupId: undefined } : file
       )
+
+      // Delete group if now empty
+      const updatedGroups = deleteEmptyGroups(updatedFiles, context.tabGroups, groupId)
+
       return {
         ...context,
-        openFiles: updatedFiles
+        openFiles: updatedFiles,
+        tabGroups: updatedGroups
       }
     }),
 
@@ -742,16 +782,8 @@ const codeState = setup({
         file.path === ev.path ? { ...file, groupId: undefined } : file
       )
 
-      // Check if group is now empty and delete it
-      let updatedGroups = context.tabGroups
-      if (groupId) {
-        const remainingTabsInGroup = updatedFiles.filter(
-          f => 'groupId' in f && f.groupId === groupId
-        )
-        if (remainingTabsInGroup.length === 0) {
-          updatedGroups = context.tabGroups.filter(g => g.id !== groupId)
-        }
-      }
+      // Delete group if now empty
+      const updatedGroups = deleteEmptyGroups(updatedFiles, context.tabGroups, groupId)
 
       return {
         ...context,
