@@ -6,9 +6,17 @@
         Configure which project directory the code editor opens to on startup
       </p>
       <div class="space-y-3">
-        <label class="text-sm font-medium text-neutral-200">
-          Default Base Directory
-        </label>
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-medium text-neutral-200">
+            Default Base Directory
+          </label>
+          <button
+            @click="goToWorkspaces"
+            class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            Go to Workspaces →
+          </button>
+        </div>
         <DirectorySelect
           v-model="defaultBaseDirectory"
           :workspaces="workspaces"
@@ -294,5 +302,14 @@ const clearDirectoryHistory = () => {
   })
 
   alert('Directory history cleared! Changes will take effect on next startup.')
+}
+
+const goToWorkspaces = () => {
+  // Navigate to settings plugin
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
+
+  // Switch to general tab and navigate to workspaces
+  settingsActor?.send({ type: 'TAB.SELECT', tab: 'general' })
+  settingsActor?.send({ type: 'GENERAL_NAV.SELECT', item: 'workspaces' })
 }
 </script>
