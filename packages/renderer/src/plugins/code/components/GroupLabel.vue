@@ -5,7 +5,8 @@
         class="flex items-center gap-1.5 px-2 py-0 min-h-[2.5rem] cursor-pointer group-label flex-shrink-0 transition-all hover:brightness-110"
         :style="{
           backgroundColor: (isDragOver || !isCollapsed) ? `var(--color-${color})` : `color-mix(in srgb, var(--color-${color}) 10%, transparent)`,
-          borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none'
+          borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none',
+          '--text-color': (isDragOver || !isCollapsed) ? `var(--color-${color}-text)` : 'rgb(156, 163, 175)'
         }"
         :data-group-id="groupId"
         @click.stop="$emit('toggle')"
@@ -14,10 +15,7 @@
         @drop.prevent.stop="$emit('group-drop', $event)"
       >
         <!-- Group name -->
-        <span
-          class="text-xs font-medium whitespace-nowrap select-none"
-          :style="{ color: (isDragOver || !isCollapsed) ? `var(--color-${color}-text)` : 'rgb(229, 231, 235)' }"
-        >
+        <span class="text-xs font-medium whitespace-nowrap select-none group-label-text">
           {{ name }}
         </span>
 
@@ -25,7 +23,6 @@
         <Pin
           v-if="isPinned"
           class="w-3 h-3 ml-0.5 cursor-pointer transition-colors"
-          :style="{ color: (isDragOver || !isCollapsed) ? `var(--color-${color}-text)` : 'rgb(156, 163, 175)' }"
           @click.stop="$emit('unpin-group')"
           title="Click to unpin group"
         />
@@ -37,10 +34,7 @@
               @click.stop
               class="flex items-center justify-center w-4 h-4 transition-opacity rounded-sm hover:bg-neutral-700/50"
             >
-              <MoreHorizontal
-                class="w-3 h-3"
-                :style="{ color: (isDragOver || !isCollapsed) ? `var(--color-${color}-text)` : 'rgb(156, 163, 175)' }"
-              />
+              <MoreHorizontal class="w-3 h-3" />
             </button>
           </DropdownMenuTrigger>
 
@@ -181,5 +175,11 @@ const closeMenus = () => {
 
   --color-gray: rgb(107, 114, 128);
   --color-gray-text: rgb(229, 231, 235);
+}
+
+/* Use cascaded text color from parent */
+.group-label-text,
+.group-label .w-3.h-3 {
+  color: var(--text-color);
 }
 </style>
