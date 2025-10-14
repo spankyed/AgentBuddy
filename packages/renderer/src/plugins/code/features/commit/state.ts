@@ -47,7 +47,7 @@ export interface Context {
   isPulling: boolean
 }
 
-export type Event = 
+export type Event =
   | { type: 'commit.REFRESH_STATUS' }
   | { type: 'commit.SELECT_FILE'; file: GitStatusFile }
   | { type: 'commit.STAGE_FILES'; paths: string[] }
@@ -86,80 +86,80 @@ export const commitState = setup({
     refreshGitStatus: () => {
       sendToBackend('commit.GET_GIT_STATUS', {})
     },
-    
-    
-    
+
+
+
     selectGitFile: assign({
       selectedGitFile: ({ event }) => {
         const ev = event as { type: 'commit.SELECT_FILE'; file: GitStatusFile }
         return ev.file
       }
     }),
-    
+
     stageFiles: ({ event }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
       sendToBackend('commit.STAGE_FILES', { paths: ev.paths })
     },
-    
+
     unstageFiles: ({ event }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
       sendToBackend('commit.UNSTAGE_FILES', { paths: ev.paths })
     },
-    
-    
+
+
     viewDiff: ({ event }) => {
       const ev = event as { type: 'commit.VIEW_DIFF'; path: string; staged: boolean }
       sendToBackend('commit.GET_GIT_DIFF', { path: ev.path, staged: ev.staged })
     },
-    
+
     updateCommitMessage: assign({
       commitMessage: ({ event }) => {
         const ev = event as { type: 'commit.UPDATE_MESSAGE'; message: string }
         return ev.message
       }
     }),
-    
+
     commit: ({ context }) => {
       if (context.commitMessage.trim()) {
         sendToBackend('commit.COMMIT', { message: context.commitMessage })
       }
     },
-    
+
     handleCommitSuccess: assign({
       commitMessage: '',
       selectedGitFile: null,
       gitDiff: null
     }),
-    
+
     toggleRevertDialog: assign({
       revertDialogFile: ({ event }) => {
         const ev = event as { type: 'commit.TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
         return ev.file || null
       }
     }),
-    
+
     revertFile: ({ context }) => {
       if (context.revertDialogFile) {
         sendToBackend('commit.REVERT_FILE', { path: context.revertDialogFile.path })
       }
     },
-    
+
     handleFileReverted: assign({
       revertDialogFile: null
     }),
-    
+
     setGitLoading: assign({ isGitLoading: true }),
-    
+
     clearGitDiff: assign({
       selectedGitFile: null,
       gitDiff: null
     }),
-    
+
     openFile: ({ event, self, system }) => {
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
-      const rootDirectory = parentContext?.rootDirectory || ''
-      
+      const baseDirectory = parentContext?.baseDirectory || ''
+
       // Git paths are relative to the repository root
       // We need to construct the absolute path correctly
       let fullPath: string
@@ -168,12 +168,12 @@ export const commitState = setup({
         fullPath = ev.file.path
       } else {
         // For git files, the path is relative to the git repository root
-        // which should be the same as our rootDirectory
-        fullPath = rootDirectory.endsWith('/') 
-          ? rootDirectory + ev.file.path 
-          : rootDirectory + '/' + ev.file.path
+        // which should be the same as our baseDirectory
+        fullPath = baseDirectory.endsWith('/')
+          ? baseDirectory + ev.file.path
+          : baseDirectory + '/' + ev.file.path
       }
-      
+
       // Send events to parent to switch to explorer panel and open file
       updateParentState(self, { selectedPanel: 'explorer' })
 
@@ -182,7 +182,7 @@ export const commitState = setup({
         path: fullPath
       })
     },
-    
+
     handleStatusReceived: assign({
       gitStatus: ({ event }) => {
         const ev = event as { type: 'commit.STATUS_RECEIVED'; data: { files: GitStatusFile[]; branch: string; hasUpstream: boolean; commitsAhead: number; commitsBehind: number } }
@@ -207,7 +207,7 @@ export const commitState = setup({
       isGitLoading: false,
       gitError: null
     }),
-    
+
     handleErrorReceived: assign({
       gitError: ({ event }) => {
         const ev = event as { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
@@ -218,8 +218,8 @@ export const commitState = setup({
       isPushing: false,
       isPulling: false
     }),
-    
-    
+
+
     handleDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
       const ev = event as { type: 'commit.DIFF_RECEIVED'; data: GitDiff }
       enqueue.assign({
@@ -229,7 +229,7 @@ export const commitState = setup({
         if (context.selectedGitFile) {
           const parentContext = getParentContext(self)
           const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-          
+
           // Create diff tab
           const diffTab = {
             path: diffTabId,
@@ -239,55 +239,55 @@ export const commitState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedGitFile
           }
-          
+
           const result = mergeTabs(
             parentContext?.openFiles || [],
             [diffTab],
             diffTabId // Set as active
           )
-          
+
           updateParentState(self, result)
         }
       })
     }),
-    
+
     getAllBranches: () => {
       sendToBackend('commit.GET_ALL_BRANCHES', {})
     },
-    
+
     updateBranchInput: assign({
       branchInput: ({ event }) => {
         const ev = event as { type: 'commit.UPDATE_BRANCH_INPUT'; input: string }
         return ev.input
       }
     }),
-    
+
     checkoutBranch: ({ context }) => {
       if (context.branchInput.trim()) {
         sendToBackend('commit.CHECKOUT_BRANCH', { branchName: context.branchInput.trim() })
       }
     },
-    
+
     setCheckingOutBranch: assign({ isCheckingOutBranch: true }),
-    
+
     handleBranchesReceived: assign({
       availableBranches: ({ event }) => {
         const ev = event as { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
         return ev.data.branches
       }
     }),
-    
+
     handleBranchCheckoutSuccess: assign({
       branchInput: '',
       isCheckingOutBranch: false
     }),
-    
+
     pushBranch: () => {
       sendToBackend('commit.PUBLISH_BRANCH', {})
     },
-    
+
     setPushing: assign({ isPushing: true }),
-    
+
     handleBranchPushed: assign({
       isPushing: false
     }),
@@ -295,17 +295,17 @@ export const commitState = setup({
     pullBranch: () => {
       sendToBackend('commit.PULL_BRANCH', {})
     },
-    
+
     setPulling: assign({ isPulling: true }),
-    
+
     handleBranchPulled: assign({
       isPulling: false
     }),
-    
+
     handleCodeStartup: ({ self }) => {
       // Check if we have a directory from parent context
       const parentContext = getParentContext(self)
-      if (parentContext?.rootDirectory) {
+      if (parentContext?.baseDirectory) {
         // Refresh git status when directory is available
         self.send({ type: 'commit.REFRESH_STATUS' })
       }

@@ -34,7 +34,10 @@ export const defaultSettings: SettingsData = {
         modifiers: ['cmd']
       }
     },
-    misc: {}
+    misc: {},
+    workspaces: {
+      workspaces: []
+    }
   },
   plugins: {
     _meta: {
@@ -82,7 +85,11 @@ export const defaultSettings: SettingsData = {
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
       },
       restoreTerminals: true,
-      defaultRootDirectory: null,
+      defaultBaseDirectory: null,
+      lastDirectoryOpened: null,
+      enableShellIntegration: true,
+      confirmTerminalClose: true,
+      closeTerminalOnTabClose: true,
     },
     database: {
       hotkeys: {

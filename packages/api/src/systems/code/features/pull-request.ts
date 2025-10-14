@@ -34,13 +34,13 @@ export type Event =
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
   | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
   | { type: 'pr.GIT_STATUS_CHANGED' }
-  | { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository };
+  | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null }
+    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null }
   },
   actions: {
     getBaseBranch: async ({ context }) => {
@@ -131,9 +131,9 @@ export const pullRequestSystem = setup({
       rootEvents.emitOutgoing(wrapped.event)
     },
 
-    updateRootDirectory: assign({
+    updateBaseDirectory: assign({
       gitRepository: ({ event }) => {
-        const ev = event as { type: 'pr.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository }
+        const ev = event as { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository }
         return ev.gitRepository
       }
     })
@@ -142,7 +142,7 @@ export const pullRequestSystem = setup({
   id: 'pull-request',
   initial: 'idle',
   context: ({ input }) => ({
-    gitRepository: input?.gitRepository || (input?.rootDirectory ? new GitRepository(input.rootDirectory) : null)
+    gitRepository: input?.gitRepository || (input?.baseDirectory ? new GitRepository(input.baseDirectory) : null)
   }),
   states: {
     idle: {
@@ -159,8 +159,8 @@ export const pullRequestSystem = setup({
         'pr.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
         },
-        'pr.UPDATE_ROOT_DIRECTORY': {
-          actions: 'updateRootDirectory'
+        'pr.UPDATE_BASE_DIRECTORY': {
+          actions: 'updateBaseDirectory'
         }
       }
     }

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 actions-header">
       <div class="flex items-center gap-2">
         <Play :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Actions</h3>
@@ -9,7 +9,7 @@
       <div class="flex items-center gap-1">
         <button
           @click="goToCreateAction"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Create new action"
         >
           <Plus :size="16" />
@@ -40,7 +40,7 @@
       <div v-if="actions.length === 0" class="p-4 text-sm text-center text-neutral-400">
         No actions found
       </div>
-      
+
       <div
         v-for="action in actions"
         :key="action.id"
@@ -55,8 +55,8 @@
             <div class="mt-1 space-y-1">
               <!-- Input Parameters -->
               <div v-if="action.input && Object.keys(action.input).length > 0" class="flex flex-wrap gap-1">
-                <span 
-                  v-for="(param, key) in action.input" 
+                <span
+                  v-for="(param, key) in action.input"
                   :key="key"
                   class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400"
                 >
@@ -70,7 +70,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Right side controls -->
           <div class="flex items-center gap-2 ml-3">
             <!-- Category Tag -->
@@ -79,7 +79,7 @@
                 {{ action.category }}
               </span>
             </div>
-            
+
             <!-- External Link Button -->
             <button
               @click.stop="goToAction(action)"
@@ -103,11 +103,11 @@
       >
         Previous
       </button>
-      
+
       <span class="text-xs text-neutral-400">
         Page {{ page }} of {{ totalPages }}
       </span>
-      
+
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages || isLoading"
@@ -148,7 +148,7 @@ const selectAction = (action: ActionEntity) => {
 const goToAction = (action: ActionEntity) => {
   // Switch to actions plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
-  
+
   // Select the action in the actions plugin
   const actionsPluginActor = applicationState.system.get('actions')
   if (actionsPluginActor) {
@@ -159,7 +159,7 @@ const goToAction = (action: ActionEntity) => {
 const goToCreateAction = () => {
   // Switch to actions plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
-  
+
   // Navigate to create view in the actions plugin
   const actionsPluginActor = applicationState.system.get('actions')
   if (actionsPluginActor) {
@@ -192,5 +192,10 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.actions-header > * {
+  -webkit-app-region: no-drag;
 }
 </style>

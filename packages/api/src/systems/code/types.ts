@@ -104,6 +104,7 @@ export interface FileChangeInfo {
 export interface TerminalInfo {
   id: EARS.EntityId
   title: string
+  customTitle?: string // User-defined custom name, takes precedence over default
   pid: number
   shell?: string
   cwd: string
@@ -144,7 +145,7 @@ export interface TerminalClose {
 // Quick Open types
 export interface QuickOpenOptions {
   query: string
-  rootDirectory: string
+  baseDirectory: string
   excludePatterns?: string[]
   maxResults?: number
 }
@@ -167,11 +168,15 @@ export interface CodeSettings {
     [key: string]: KeyboardShortcut | null | undefined;
   };
   restoreTerminals?: boolean;
-  defaultRootDirectory?: string | null;
+  defaultBaseDirectory?: string | null;
+  lastDirectoryOpened?: string | null;
+  enableShellIntegration?: boolean;
+  confirmTerminalClose?: boolean;
+  closeTerminalOnTabClose?: boolean;
 }
 
 export type CodeConnectedData = {
-  rootDirectory: string | null;
-  currentDirectory: string | null;
+  baseDirectory: string | null;
+  activeDirectory: string | null;
   settings?: CodeSettings;
 };

@@ -2,12 +2,13 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Quick Open Palette -->
     <QuickOpenPalette />
-    
+
     <!-- Always use FileEditor which now handles both regular files and diffs -->
     <FileEditor
       :open-files="openFiles"
       :active-file-path="activeFilePath"
-      :root-directory="rootDirectory"
+      :base-directory="baseDirectory"
+      :tab-groups="tabGroups"
       @select-file="selectFile"
       @close-file="closeFile"
       @content-change="handleContentChange"
@@ -15,6 +16,17 @@
       @reveal-in-explorer="revealInExplorer"
       @pin-tab="pinTab"
       @unpin-tab="unpinTab"
+      @create-group="createGroup"
+      @rename-group="renameGroup"
+      @change-group-color="changeGroupColor"
+      @delete-group="deleteGroup"
+      @toggle-group-collapse="toggleGroupCollapse"
+      @add-tab-to-group="addTabToGroup"
+      @remove-tab-from-group="removeTabFromGroup"
+      @ungroup-all="ungroupAll"
+      @close-all-in-group="closeAllInGroup"
+      @pin-group="pinGroup"
+      @unpin-group="unpinGroup"
       class="flex-1 min-h-0"
     />
 
@@ -64,21 +76,34 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
+import { useTerminalActions } from '../composables/useTerminalActions'
 
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
+const terminalActor = actor.system.get('terminal')
 const actionsActor = actor.system.get('codeActions')
 const promptsActor = actor.system.get('codePrompts')
+const settingsActor = applicationState.system.get('settings')
 
 // Terminal outputs are handled through state
 
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
-const rootDirectory = useSelector(actor, (state) => state.context.rootDirectory)
+const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
+const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
+const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
+
+// Terminal actions composable
+const { closeTerminal: closeTerminalProcess } = useTerminalActions(
+  terminalActor,
+  confirmTerminalClose,
+  closeTerminalOnTabClose
+)
 
 // Computed
-const activeFile = computed(() => 
+const activeFile = computed(() =>
   openFiles.value.find(f => f.path === activeFilePath.value)
 )
 
@@ -89,7 +114,7 @@ let refreshTimeout: number | undefined
 // Watch for external file refreshes
 watch(openFiles, (newFiles, oldFiles) => {
   if (!oldFiles || !newFiles) return
-  
+
   // Check if any file was refreshed (externallyModified cleared)
   for (const newFile of newFiles) {
     const oldFile = oldFiles.find(f => f.path === newFile.path)
@@ -113,39 +138,60 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
-  actor.send({ 
-    type: 'UPDATE_STATE', 
-    updates: { activeFilePath: path } 
+  actor.send({
+    type: 'UPDATE_STATE',
+    updates: { activeFilePath: path }
   })
 }
 
 const closeFile = (path: string) => {
+  const file = openFiles.value.find(f => f.path === path)
+  const isTerminal = file && 'isTerminal' in file && file.isTerminal
+
+  // Handle terminal closing with centralized logic
+  if (isTerminal) {
+    const terminalInfo = (file as any).terminalInfo
+    // Use composable for confirmation and process closing
+    // Returns false if user cancelled
+    if (!closeTerminalProcess(terminalInfo)) {
+      return
+    }
+  }
+
+  // Update UI state - remove tab from open files
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const newActiveFilePath = activeFilePath.value === path 
+  const newActiveFilePath = activeFilePath.value === path
     ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
     : activeFilePath.value
-    
-  actor.send({ 
-    type: 'UPDATE_STATE',
-    updates: {
-      openFiles: newOpenFiles,
-      activeFilePath: newActiveFilePath
+
+  // Check if the closed tab was in a group and if the group is now empty
+  const groupId = file && 'groupId' in file ? file.groupId : undefined
+  let newTabGroups = tabGroups.value
+
+  if (groupId) {
+    const remainingTabsInGroup = newOpenFiles.filter(
+      f => 'groupId' in f && f.groupId === groupId
+    )
+    if (remainingTabsInGroup.length === 0) {
+      // Group is now empty, remove it
+      newTabGroups = tabGroups.value.filter(g => g.id !== groupId)
     }
+  }
+
+  actor.send({
+    type: 'UPDATE_STATE',
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
   })
-  
-  // Send event to explorer state machine
-  explorerActor?.send({
-    type: 'explorer.CLOSE_FILE',
-    path
-  })
+
+  explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
 }
 
 const handleContentChange = (path: string, content: string) => {
-  const newOpenFiles = openFiles.value.map(f => 
+  const newOpenFiles = openFiles.value.map(f =>
     f.path === path ? { ...f, content, modified: true } : f
   )
-  
-  actor.send({ 
+
+  actor.send({
     type: 'UPDATE_STATE',
     updates: { openFiles: newOpenFiles }
   })
@@ -153,7 +199,7 @@ const handleContentChange = (path: string, content: string) => {
 
 const handleReorder = (fromIndex: number, toIndex: number) => {
   const reorderedFiles = reorderTabs(openFiles.value, fromIndex, toIndex)
-  
+
   actor.send({
     type: 'UPDATE_STATE',
     updates: { openFiles: reorderedFiles }
@@ -243,14 +289,14 @@ const getStatusText = (file: any) => {
 const revealInExplorer = (path: string) => {
   // Switch to explorer panel
   actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
-  
+
   // Get the directory of the file
   const directory = path.substring(0, path.lastIndexOf('/'))
-  
+
   // Navigate to the file's directory in the explorer
-  explorerActor?.send({ 
-    type: 'explorer.NAVIGATE_TO_DIRECTORY', 
-    path: directory 
+  explorerActor?.send({
+    type: 'explorer.NAVIGATE_TO_DIRECTORY',
+    path: directory
   })
 }
 
@@ -262,6 +308,51 @@ const unpinTab = (path: string) => {
   actor.send({ type: 'UNPIN_TAB', path })
 }
 
+// Tab group handlers
+const createGroup = (name: string, tabPaths: string[]) => {
+  actor.send({ type: 'CREATE_GROUP', name, tabPaths })
+}
+
+const renameGroup = (groupId: string, name: string) => {
+  actor.send({ type: 'RENAME_GROUP', groupId, name })
+}
+
+const changeGroupColor = (groupId: string, color: string) => {
+  actor.send({ type: 'CHANGE_GROUP_COLOR', groupId, color: color as any })
+}
+
+const deleteGroup = (groupId: string) => {
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: false })
+}
+
+const toggleGroupCollapse = (groupId: string) => {
+  actor.send({ type: 'TOGGLE_GROUP_COLLAPSE', groupId })
+}
+
+const addTabToGroup = (path: string, groupId: string) => {
+  actor.send({ type: 'ADD_TAB_TO_GROUP', path, groupId })
+}
+
+const removeTabFromGroup = (path: string) => {
+  actor.send({ type: 'REMOVE_TAB_FROM_GROUP', path })
+}
+
+const ungroupAll = (groupId: string) => {
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: false })
+}
+
+const closeAllInGroup = (groupId: string) => {
+  actor.send({ type: 'DELETE_GROUP', groupId, closeTabsInGroup: true })
+}
+
+const pinGroup = (groupId: string) => {
+  actor.send({ type: 'PIN_GROUP', groupId })
+}
+
+const unpinGroup = (groupId: string) => {
+  actor.send({ type: 'UNPIN_GROUP', groupId })
+}
+
 // Keyboard shortcuts
 const handleKeyDown = (e: KeyboardEvent) => {
   // Quick Open: Cmd/Ctrl + P
@@ -269,7 +360,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
     e.preventDefault()
     actor.send({ type: 'SHOW_QUICK_OPEN' })
   }
-  
+
   // Save file: Cmd/Ctrl + S
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault()
@@ -277,7 +368,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       saveFile()
     }
   }
-  
+
   // Close tab: Cmd/Ctrl + W
   if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
     e.preventDefault()

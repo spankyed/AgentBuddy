@@ -10,7 +10,7 @@
     
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden">
-        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px - 4px)` : 'calc(100% - 4px)' }">
+        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area -->
             <CanvasArea
             data-onboarding-id="canvas-area"
@@ -37,8 +37,9 @@
             </ChatArea>
         </div>
         
-        <!-- Horizontal Resizer (always visible) -->
+        <!-- Horizontal Resizer -->
         <PanelResizer
+            v-if="panelSizes.inspectionWidth > 0"
             orientation="horizontal"
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"

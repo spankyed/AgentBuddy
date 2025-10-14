@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadConnectedData, ThreadEntity, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS } from '@app/api';
+import type { ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS } from '@app/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';

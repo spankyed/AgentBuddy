@@ -5,9 +5,16 @@ import { z } from 'zod';
 export { z } from 'zod';
 import * as ai from 'ai';
 import { CoreMessage } from 'ai';
-import * as _ai_sdk_openai from '@ai-sdk/openai';
-import * as _ai_sdk_anthropic from '@ai-sdk/anthropic';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
+
+interface TextStreamOptions {
+    chunkSize?: number;
+    delayMs?: number;
+}
+declare class TextStreamService {
+    streamText(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
+    streamTextByChars(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
+}
 
 declare namespace EARS {
     export enum Entity {
@@ -42,7 +49,6 @@ declare namespace EARS {
         readonly DEPENDS_ON: "depends_on";
         readonly RELATES_TO: "relates_to";
         readonly DUPLICATES: "duplicates";
-        readonly EVENT_TRACE: "event_trace";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly EMITS: "emits";
         readonly INSTANCE_OF: "instance_of";
@@ -59,7 +65,6 @@ declare namespace EARS {
         readonly DEPENDS_ON: "depends_on";
         readonly RELATES_TO: "relates_to";
         readonly DUPLICATES: "duplicates";
-        readonly EVENT_TRACE: "event_trace";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly EMITS: "emits";
         readonly INSTANCE_OF: "instance_of";
@@ -117,7 +122,21 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
+interface SecretEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Secret;
+    provider: SecretProvider;
+    encryptedValue: string;
+    customName?: string;
+    createdAt: number;
+    updatedAt?: number;
+}
 type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
+interface CreateSecretParams {
+    provider: SecretProvider;
+    value: string;
+    customName?: string;
+}
 interface SecretData {
     id: EARS.EntityId;
     provider: SecretProvider;
@@ -134,33 +153,6 @@ type Simplify<T> = {
 type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
     [K in keyof S]: z.infer<S[K]>;
 }[number];
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
 
 /**
  * Prompt template types and definitions
@@ -247,6 +239,33 @@ interface DatabaseStartupData {
     schema: DatabaseSchemaInfo;
 }
 
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
@@ -260,9 +279,11 @@ interface ThreadEntity extends BaseEntity {
     sideTopics?: string[];
     timestamp: number;
     lastMessageTimestamp?: number;
+    lastVisitedTimestamp?: number;
     shortCode?: string;
     status: string;
     tags?: string[];
+    forcedMode?: 'birth' | 'work' | 'chat' | 'note';
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -304,15 +325,23 @@ type AgentThreadData = {
     timestamp: ThreadEntity['timestamp'];
     messages: ThreadExtendedData['messages'];
     artifacts: ArtifactEntity[];
+    forcedMode?: ThreadEntity['forcedMode'];
 };
 type RecentThreadRefreshData = {
     currentThread: AgentThreadData | null;
     threads: Partial<ThreadEntity>[];
 };
+interface AgentPhase {
+    id: string;
+    name: string;
+    description: string;
+}
 interface AgentMode {
     id: string;
     name: string;
     description: string;
+    phases?: AgentPhase[];
+    hidden?: boolean;
 }
 interface AgentSettings {
     modes: AgentMode[];
@@ -328,6 +357,7 @@ type AgentConnectedData = {
     dashboardArtifacts: Partial<ArtifactEntity>[];
     tabs: Tab[];
     settings?: AgentSettings;
+    hasRequiredApiKeys: boolean;
 };
 interface Tab {
     id: string;
@@ -409,6 +439,7 @@ interface FileChangeInfo {
 interface TerminalInfo {
     id: EARS.EntityId;
     title: string;
+    customTitle?: string;
     pid: number;
     shell?: string;
     cwd: string;
@@ -432,11 +463,14 @@ interface CodeSettings {
         [key: string]: KeyboardShortcut | null | undefined;
     };
     restoreTerminals?: boolean;
-    defaultRootDirectory?: string | null;
+    defaultBaseDirectory?: string | null;
+    enableShellIntegration?: boolean;
+    confirmTerminalClose?: boolean;
+    closeTerminalOnTabClose?: boolean;
 }
 type CodeConnectedData = {
-    rootDirectory: string | null;
-    currentDirectory: string | null;
+    baseDirectory: string | null;
+    activeDirectory: string | null;
     settings?: CodeSettings;
 };
 
@@ -589,6 +623,10 @@ interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;
     tNodeTree: TrackEntity[];
     possibleEvents: EventListenerEntity[];
+    flowHierarchy: Array<{
+        flowTNodeId: EARS.EntityId;
+        label: string;
+    }>;
 }
 interface TNodeUpdate {
     tNodeId: EARS.EntityId;
@@ -603,12 +641,13 @@ interface ExecutionEvent {
     source?: string;
 }
 interface StepRun {
-    id: string;
+    id?: string;
     label: string;
     result: unknown;
     timestamp: TimestampMs;
 }
 interface ExecutionContext {
+    flowTNodeId: EARS.EntityId;
     event: ExecutionEvent;
     steps: StepRun[];
     lastStep?: Omit<StepRun, 'timestamp'>;
@@ -619,31 +658,34 @@ declare const events: {
         type: zod.ZodLiteral<"USER_MSG">;
         systemId: zod.ZodLiteral<"agent">;
         text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodEnum<["plan", "work", "chat", "note"]>>;
+        mode: zod.ZodOptional<zod.ZodString>;
+        phase: zod.ZodOptional<zod.ZodString>;
         threadId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "USER_MSG";
         text: string;
+        type: "USER_MSG";
         systemId: "agent";
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        mode?: string | undefined;
+        phase?: string | undefined;
         threadId?: string | undefined;
     }, {
-        type: "USER_MSG";
         text: string;
+        type: "USER_MSG";
         systemId: "agent";
-        mode?: "plan" | "work" | "chat" | "note" | undefined;
+        mode?: string | undefined;
+        phase?: string | undefined;
         threadId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
         systemId: zod.ZodLiteral<"agent">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_THREAD_CHAT";
         threadId: string;
+        type: "OPEN_THREAD_CHAT";
         systemId: "agent";
     }, {
-        type: "OPEN_THREAD_CHAT";
         threadId: string;
+        type: "OPEN_THREAD_CHAT";
         systemId: "agent";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
@@ -652,13 +694,13 @@ declare const events: {
         label: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
-        type: "OPEN_THREAD_TAB";
         threadId: string;
+        type: "OPEN_THREAD_TAB";
         systemId: "agent";
     }, {
         label: string;
-        type: "OPEN_THREAD_TAB";
         threadId: string;
+        type: "OPEN_THREAD_TAB";
         systemId: "agent";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_DASHBOARD">;
@@ -720,21 +762,27 @@ declare const events: {
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GO_BACK_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
+        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "GO_BACK_TNODE";
         systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
     }, {
         type: "GO_BACK_TNODE";
         systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
         systemId: zod.ZodLiteral<"brain">;
+        flowTNodeId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "REQUEST_PLUGIN_DATA";
         systemId: "brain";
+        flowTNodeId?: string | undefined;
     }, {
         type: "REQUEST_PLUGIN_DATA";
         systemId: "brain";
+        flowTNodeId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
         systemId: zod.ZodLiteral<"brain">;
@@ -783,6 +831,24 @@ declare const events: {
     }, {
         type: "RESTART_BRAIN";
         systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
@@ -795,20 +861,20 @@ declare const events: {
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin"]>;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
         label: zod.ZodString;
         path: zod.ZodArray<zod.ZodString, "many">;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
-        entityType: "general" | "plugin";
+        entityType: "general" | "plugin" | "internal";
         type: "UPDATE_SETTINGS";
         systemId: "settings";
         path: string[];
         value?: any;
     }, {
         label: string;
-        entityType: "general" | "plugin";
+        entityType: "general" | "plugin" | "internal";
         type: "UPDATE_SETTINGS";
         systemId: "settings";
         path: string[];
@@ -821,6 +887,15 @@ declare const events: {
         systemId: "settings";
     }, {
         type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }, {
+        type: "COMPLETE_ONBOARDING";
         systemId: "settings";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
@@ -920,12 +995,12 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "VIEW_THREAD";
         threadId: string;
+        type: "VIEW_THREAD";
         systemId: "threads";
     }, {
-        type: "VIEW_THREAD";
         threadId: string;
+        type: "VIEW_THREAD";
         systemId: "threads";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
@@ -934,13 +1009,13 @@ declare const events: {
         status: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         status: string;
-        type: "UPDATE_THREAD_STATUS";
         threadId: string;
+        type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
     }, {
         status: string;
-        type: "UPDATE_THREAD_STATUS";
         threadId: string;
+        type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
@@ -949,17 +1024,29 @@ declare const events: {
         key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_THREAD_FIELD";
         threadId: string;
+        type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
         key: string;
         value?: any;
     }, {
-        type: "UPDATE_THREAD_FIELD";
         threadId: string;
+        type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
         key: string;
         value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "DELETE_THREAD";
+        systemId: "threads";
+    }, {
+        threadId: string;
+        type: "DELETE_THREAD";
+        systemId: "threads";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -981,6 +1068,18 @@ declare const events: {
     }, {
         type: "CREATE_FLOW";
         systemId: "flows";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_FLOW">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_FLOW";
+        systemId: "flows";
+        flowId: string;
+    }, {
+        type: "DELETE_FLOW";
+        systemId: "flows";
+        flowId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_FLOW_LABEL">;
         systemId: zod.ZodLiteral<"flows">;
@@ -1151,12 +1250,12 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         prompt: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GENERATE_MAGIC_PROMPT";
         prompt: string;
+        type: "GENERATE_MAGIC_PROMPT";
         systemId: "database";
     }, {
-        type: "GENERATE_MAGIC_PROMPT";
         prompt: string;
+        type: "GENERATE_MAGIC_PROMPT";
         systemId: "database";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_SCHEMA">;
@@ -1206,6 +1305,48 @@ declare const events: {
         type: "GET_NODE_DETAILS";
         systemId: "database";
         nodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_DATABASE">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+        name: zod.ZodOptional<zod.ZodString>;
+        databases: zod.ZodArray<zod.ZodEnum<["lmdb", "searchIndices", "volatileLmdb", "secretsLmdb"]>, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_DATABASE";
+        systemId: "database";
+        path: string;
+        databases: ("lmdb" | "searchIndices" | "volatileLmdb" | "secretsLmdb")[];
+        name?: string | undefined;
+    }, {
+        type: "EXPORT_DATABASE";
+        systemId: "database";
+        path: string;
+        databases: ("lmdb" | "searchIndices" | "volatileLmdb" | "secretsLmdb")[];
+        name?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_DATABASE">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_DATABASE";
+        systemId: "database";
+        path: string;
+    }, {
+        type: "IMPORT_DATABASE";
+        systemId: "database";
+        path: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_BACKUP_INFO">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_BACKUP_INFO";
+        systemId: "database";
+        path: string;
+    }, {
+        type: "GET_BACKUP_INFO";
+        systemId: "database";
+        path: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EMPTY">;
         systemId: zod.ZodLiteral<"logs">;
@@ -1463,11 +1604,11 @@ declare const events: {
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            type: "text";
             text: string;
+            type: "text";
         }, {
-            type: "text";
             text: string;
+            type: "text";
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1483,8 +1624,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            type: "text";
             text: string;
+            type: "text";
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1502,8 +1643,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            type: "text";
             text: string;
+            type: "text";
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1551,11 +1692,11 @@ declare const events: {
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
-            type: "text";
             text: string;
+            type: "text";
         }, {
-            type: "text";
             text: string;
+            type: "text";
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1572,8 +1713,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            type: "text";
             text: string;
+            type: "text";
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -1592,8 +1733,8 @@ declare const events: {
             type: "list";
             items: string[];
         } | {
-            type: "text";
             text: string;
+            type: "text";
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -2176,17 +2317,29 @@ declare const events: {
         systemId: "code";
         path: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"explorer.UPDATE_ACTIVE_DIRECTORY">;
+        systemId: zod.ZodLiteral<"code">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "explorer.UPDATE_ACTIVE_DIRECTORY";
+        systemId: "code";
+        path: string;
+    }, {
+        type: "explorer.UPDATE_ACTIVE_DIRECTORY";
+        systemId: "code";
+        path: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
-        rootDirectory: zod.ZodString;
+        baseDirectory: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "explorer.QUICK_OPEN_SEARCH";
         systemId: "code";
-        rootDirectory: string;
+        baseDirectory: string;
     }, {
         type: "explorer.QUICK_OPEN_SEARCH";
         systemId: "code";
-        rootDirectory: string;
+        baseDirectory: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"search.SEARCH_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -2427,13 +2580,13 @@ declare const events: {
         terminalId: zod.ZodString;
         data: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "terminal.TERMINAL_INPUT";
         data: string;
+        type: "terminal.TERMINAL_INPUT";
         systemId: "code";
         terminalId: string;
     }, {
-        type: "terminal.TERMINAL_INPUT";
         data: string;
+        type: "terminal.TERMINAL_INPUT";
         systemId: "code";
         terminalId: string;
     }>, zod.ZodObject<{
@@ -2454,6 +2607,21 @@ declare const events: {
         cols: number;
         rows: number;
         terminalId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"terminal.RENAME_TERMINAL">;
+        systemId: zod.ZodLiteral<"code">;
+        terminalId: zod.ZodString;
+        customTitle: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "terminal.RENAME_TERMINAL";
+        systemId: "code";
+        terminalId: string;
+        customTitle: string;
+    }, {
+        type: "terminal.RENAME_TERMINAL";
+        systemId: "code";
+        terminalId: string;
+        customTitle: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.REFRESH_LIST">;
         systemId: zod.ZodLiteral<"code">;
@@ -2554,17 +2722,26 @@ declare const events: {
         promptId: string;
         templateFn: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SET_ROOT_DIRECTORY">;
+        type: zod.ZodLiteral<"SET_BASE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SET_ROOT_DIRECTORY";
+        type: "SET_BASE_DIRECTORY";
         systemId: "code";
         path: string;
     }, {
-        type: "SET_ROOT_DIRECTORY";
+        type: "SET_BASE_DIRECTORY";
         systemId: "code";
         path: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CLEAR_DIRECTORY_HISTORY">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CLEAR_DIRECTORY_HISTORY";
+        systemId: "code";
+    }, {
+        type: "CLEAR_DIRECTORY_HISTORY";
+        systemId: "code";
     }>];
     readonly outgoing: {
         type: "AGENT_CONNECTED";
@@ -2591,6 +2768,10 @@ declare const events: {
     } | {
         type: "AGENT_SETTINGS_UPDATED";
         settings: AgentSettings;
+        pluginId: "agent";
+    } | {
+        type: "API_KEYS_STATUS";
+        hasRequiredApiKeys: boolean;
         pluginId: "agent";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
@@ -2699,6 +2880,10 @@ declare const events: {
         updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
         pluginId: "threads";
     } | {
+        type: "THREAD_DELETED";
+        threadId: string;
+        pluginId: "threads";
+    } | {
         type: "FLOWS_CONNECTED";
         data: FlowsConnectedData;
         pluginId: "flows";
@@ -2718,6 +2903,10 @@ declare const events: {
             nodes: any[];
             edges: any[];
         };
+        pluginId: "flows";
+    } | {
+        type: "FLOW_DELETED";
+        flowId: EARS.EntityId;
         pluginId: "flows";
     } | {
         type: "NODE_CREATED";
@@ -2750,6 +2939,20 @@ declare const events: {
         newEdgeId: EARS.EntityId;
         newSource: EARS.EntityId;
         newTarget: EARS.EntityId;
+        pluginId: "flows";
+    } | {
+        type: "ACTION_CREATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "flows";
+    } | {
+        type: "ACTION_UPDATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "flows";
+    } | {
+        type: "ACTION_DELETED";
+        actionId: EARS.EntityId;
         pluginId: "flows";
     } | {
         type: "DATABASE_REFRESH";
@@ -2799,6 +3002,30 @@ declare const events: {
         type: "NODE_DETAILS_RESULT";
         nodeId: string;
         details: TNodeEntity | null;
+        pluginId: "database";
+    } | {
+        type: "EXPORT_DATABASE_SUCCESS";
+        path: string;
+        pluginId: "database";
+    } | {
+        type: "EXPORT_DATABASE_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "IMPORT_DATABASE_SUCCESS";
+        message?: string | undefined;
+        pluginId: "database";
+    } | {
+        type: "IMPORT_DATABASE_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "BACKUP_INFO_RESULT";
+        info: {
+            timestamp: number;
+            databases: string[];
+            size: number;
+        } | null;
         pluginId: "database";
     } | {
         type: "LOGS_CONNECTED";
@@ -3065,10 +3292,10 @@ declare const events: {
         data: CodeSystemError;
         pluginId: "code";
     } | {
-        type: "explorer.CURRENT_DIRECTORY";
+        type: "explorer.ACTIVE_DIRECTORY";
         data: {
             path: string;
-            rootDirectory: string;
+            baseDirectory: string;
         };
         pluginId: "code";
     } | {
@@ -3223,6 +3450,21 @@ declare const events: {
         type: "terminal.CLOSED";
         data: {
             terminalId: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "terminal.RENAMED";
+        data: {
+            terminalId: string;
+            customTitle: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "terminal.CWD_CHANGED";
+        data: {
+            terminalId: string;
+            cwd: string;
+            title?: string;
         };
         pluginId: "code";
     } | {
@@ -3430,7 +3672,7 @@ interface SafeLinkOptions {
     /** If specified, prevents cycles within this group of relation kinds */
     acyclicGroup?: readonly EARS.RelKind[];
 }
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate?: boolean): {
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): {
     readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
     readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
     readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
@@ -3469,22 +3711,19 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate?: boolean
     readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
 };
 
-interface SettingsEntity extends BaseEntity {
-    entityType: EARS.Entity.Settings;
-    type: 'general' | 'plugin' | 'internal';
-    label: string;
-    data: any;
-}
+type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
 interface SettingsData {
     general: GeneralSettings;
     plugins: PluginSettings;
     internal: InternalSettings;
+    assistant: AssistantSettings;
 }
 interface GeneralSettings {
     personal: PersonalInfo;
     secrets: Secrets;
     hotkeys: ApplicationHotkeys;
     misc: MiscSettings;
+    workspaces: WorkspacesSettings;
 }
 interface Address {
     street: string;
@@ -3507,6 +3746,7 @@ interface Secrets {
     mistral?: string | null;
     cohere?: string | null;
     custom?: Record<string, string>;
+    required: string[];
 }
 interface KeyboardShortcut {
     key: string;
@@ -3524,6 +3764,21 @@ interface ApplicationHotkeys {
     custom?: CustomHotkey[];
 }
 interface MiscSettings {
+}
+interface WorkspaceProject {
+    name: string;
+    directories: string[];
+    color: string;
+}
+interface Workspace {
+    name: string;
+    description?: string;
+    directory?: string;
+    color: string;
+    projects: WorkspaceProject[];
+}
+interface WorkspacesSettings {
+    workspaces: Workspace[];
 }
 interface PluginVisibilitySettings {
     [pluginId: string]: boolean;
@@ -3558,8 +3813,13 @@ interface PluginSettings {
 }
 interface InternalSettings {
     hasOnboarded: boolean;
+    tourStarted: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
+}
+interface AssistantSettings {
+    name: string;
+    birthdate: string | null;
 }
 
 /**
@@ -3622,7 +3882,7 @@ declare class SettingsService {
      * @param label - The setting label/category
      * @param path - Path to the specific value
      */
-    getSettingValue(type: 'general' | 'plugin' | 'internal', label: string, path: string[]): any;
+    getSettingValue(type: SETTINGS_SCOPE, label: string, path: string[]): any;
 }
 
 interface DirectoryEntity {
@@ -3639,6 +3899,7 @@ interface TerminalEntity {
     id: EARS.EntityId;
     entityType: EARS.Entity.Terminal;
     title: string;
+    customTitle?: string;
     pid: number;
     shell: string;
     cwd: string;
@@ -3684,14 +3945,12 @@ declare class PromptService {
     usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
 }
 
-declare const providers: {
-    readonly anthropic: _ai_sdk_anthropic.AnthropicProvider;
-    readonly openai: _ai_sdk_openai.OpenAIProvider;
-};
-type Provider = keyof typeof providers;
+type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
+type Provider = ProviderName | 'openai.responses' | string;
 type ModelConfig = {
     provider: Provider;
     model: string;
+    apiKey?: string;
 };
 declare function streamText(params: {
     model: ModelConfig;
@@ -3733,6 +3992,7 @@ const llm = /*#__PURE__*/Object.freeze({
   CoreMessage: CoreMessage,
   ModelConfig: ModelConfig,
   Provider: Provider,
+  ProviderName: ProviderName,
   generateObject: generateObject,
   generateText: generateText,
   streamObject: streamObject,
@@ -3762,6 +4022,22 @@ declare function sendToPlugin<T extends OutgoingSystemEvents>(pluginId: string, 
  */
 declare function sendToSystem<T extends IncomingSystemEvents>(systemId: string, event: Omit<T, 'systemId'>): void;
 /**
+ * Emit TRIGGER_BRAIN_EVENT to brain system (internal use only)
+ * Used by node handlers to fire events during flow execution
+ * @param event - The brain event to emit
+ * @example
+ * sendToBrainSystem({
+ *   eventType: 'user.login',
+ *   payload: { userId: '123' },
+ *   targetFlowId: 'TNode-123'
+ * });
+ */
+declare function sendToBrainSystem(event: {
+    eventType: string;
+    payload?: any;
+    targetFlowId?: EARS.EntityId;
+}): void;
+/**
  * Subscribe to outgoing events (events going to frontend)
  * @param callback - Function to call when an outgoing event is emitted
  * @returns Unsubscribe function
@@ -3778,6 +4054,7 @@ const emitter = /*#__PURE__*/Object.freeze({
   __proto__: null,
   onIncoming: onIncoming,
   onOutgoing: onOutgoing,
+  sendToBrainSystem: sendToBrainSystem,
   sendToPlugin: sendToPlugin,
   sendToSystem: sendToSystem
 });
@@ -3887,10 +4164,6 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reduce: <T>(fn: (a: T, i: EARS.EntityId) => T, init: T) => T;
 };
 
-/**
- * Type-safe query helpers to eliminate repetitive type casting
- * These are simple wrappers around EARS query functions
- */
 declare function findById<T>(id: EARS.EntityId): T | undefined;
 declare function findAll<T>(entityType: EARS.Entity): T[];
 declare function findWhere<T>(entityType: EARS.Entity, field: string, value: any): T[];
@@ -4067,6 +4340,7 @@ declare const services: {
             readonly delete: (id: EARS.EntityId) => void;
         };
         readonly agentQueries: {
+            readonly hasRequiredApiKeys: () => boolean;
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
                 id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
                 type: unknown;
@@ -4076,6 +4350,11 @@ declare const services: {
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
             readonly connectedData: () => AgentConnectedData;
+            readonly getAssistantBirthThread: () => {
+                threadId: EARS.EntityId;
+                artifactId: EARS.EntityId;
+                createdAt: number;
+            } | null;
         };
         readonly agentCommands: {
             readonly addMessage: (params: {
@@ -4089,6 +4368,10 @@ declare const services: {
                 sender: string;
                 timestamp: number;
             };
+            readonly createAssistantBirthThread: () => {
+                threadId: EARS.EntityId;
+                artifactId: EARS.EntityId;
+            };
         };
         readonly brainQueries: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
@@ -4098,6 +4381,10 @@ declare const services: {
             readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
             readonly eventTracks: (flowTNodeId: EARS.EntityId) => TrackEntity[];
             readonly possibleEvents: (flowTNodeId: EARS.EntityId) => EventListenerEntity[];
+            readonly buildFlowHierarchy: (flowTNodeId: EARS.EntityId) => Array<{
+                flowTNodeId: EARS.EntityId;
+                label: string;
+            }>;
             readonly extendedTNodeData: (tNodeId: EARS.EntityId) => FlowTNodeData;
             readonly rootData: () => FlowTNodeData;
         };
@@ -4150,6 +4437,7 @@ declare const services: {
             };
             readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
+            readonly deleteFlow: (flowId: EARS.EntityId) => void;
         };
         readonly libraryQueries: {
             readonly getDocuments: (collectionId?: string) => DocumentDTO[];
@@ -4208,16 +4496,27 @@ declare const services: {
             delete: (id: EARS.EntityId) => void;
         };
         readonly settingsQueries: {
-            getAllSettings: () => SettingsEntity[];
             getSettings: () => SettingsData;
-            getGeneralSettings: () => SettingsData["general"];
+            getGeneralSettings: (label?: string) => any;
+            getInternalSettings: () => InternalSettings;
+            getAssistantSettings: () => AssistantSettings;
             getPluginSettings: (pluginId: string) => any;
-            getInternalSettings: () => any;
-            getSettingsByLabel: (type: "general" | "plugin" | "internal", label: string) => SettingsEntity | null;
         };
         readonly settingsCommands: {
-            updateSettings(type: "general" | "plugin" | "internal", label: string, path: string[], value: any): SettingsEntity;
+            updateSettings(type: string, label: string | null, path: string[], value: any): void;
             resetSettings: () => void;
+        };
+        readonly secretsQueries: {
+            getAllSecrets: () => SecretEntity[];
+            getSecret: (id: EARS.EntityId) => SecretEntity | null;
+            getSecretByProvider: (provider: SecretProvider, customName?: string) => SecretEntity | null;
+            getSecretsData: () => SecretData[];
+        };
+        readonly secretsCommands: {
+            createSecret: (params: CreateSecretParams) => EARS.EntityId;
+            updateSecret: (id: EARS.EntityId, value: string) => EARS.EntityId;
+            deleteSecret: (id: EARS.EntityId) => boolean;
+            deleteSecretByProvider: (provider: SecretProvider, customName?: string) => boolean;
         };
         readonly terminalQueries: {
             byId: (id: EARS.EntityId) => TerminalEntity | undefined;
@@ -4230,6 +4529,8 @@ declare const services: {
                 id: EARS.EntityId;
             }) => EARS.EntityId;
             resize: (id: EARS.EntityId, cols: number, rows: number) => void;
+            rename: (id: EARS.EntityId, customTitle: string) => void;
+            updateCwd: (id: EARS.EntityId, cwd: string, title?: string) => void;
             updatePid: (id: EARS.EntityId, pid: number) => void;
             markClosed: (id: EARS.EntityId) => void;
             delete: (id: EARS.EntityId) => void;
@@ -4258,6 +4559,7 @@ declare const services: {
                 id: EARS.EntityId;
                 shortCode: string;
                 timestamp: number;
+                status: string;
             };
             readonly update: (id: EARS.EntityId, updates: {
                 topic?: string;
@@ -4265,10 +4567,15 @@ declare const services: {
                 status?: string;
                 tags?: string[];
                 linkedThreads?: any[];
+                lastMessageTimestamp?: number;
+                lastVisitedTimestamp?: number;
             }) => void;
+            readonly markAsVisited: (id: EARS.EntityId) => void;
+            readonly delete: (id: EARS.EntityId) => void;
         };
     };
     settings: SettingsService;
+    textStream: TextStreamService;
 };
 
 /**

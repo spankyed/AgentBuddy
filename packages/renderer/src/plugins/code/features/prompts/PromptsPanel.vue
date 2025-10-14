@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 prompts-header">
       <div class="flex items-center gap-2">
         <Sparkle :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Prompts</h3>
@@ -9,7 +9,7 @@
       <div class="flex items-center gap-1">
         <button
           @click="goToCreatePrompt"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Create new prompt"
         >
           <Plus :size="16" />
@@ -40,7 +40,7 @@
       <div v-if="prompts.length === 0" class="p-4 text-sm text-center text-neutral-400">
         No prompts found
       </div>
-      
+
       <div
         v-for="prompt in prompts"
         :key="prompt.id"
@@ -55,8 +55,8 @@
             <div class="mt-1 space-y-1">
               <!-- Input Parameters -->
               <div v-if="prompt.inputs && Object.keys(prompt.inputs).length > 0" class="flex flex-wrap gap-1">
-                <span 
-                  v-for="(input, key) in prompt.inputs" 
+                <span
+                  v-for="(input, key) in prompt.inputs"
                   :key="key"
                   class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400"
                 >
@@ -70,7 +70,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Right side controls -->
           <div class="flex items-center gap-2 ml-3">
             <!-- Category Tag -->
@@ -79,7 +79,7 @@
                 {{ prompt.category }}
               </span>
             </div>
-            
+
             <!-- External Link Button -->
             <button
               @click.stop="goToPrompt(prompt)"
@@ -103,11 +103,11 @@
       >
         Previous
       </button>
-      
+
       <span class="text-xs text-neutral-400">
         Page {{ page }} of {{ totalPages }}
       </span>
-      
+
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages || isLoading"
@@ -148,7 +148,7 @@ const selectPrompt = (prompt: PromptEntity) => {
 const goToPrompt = (prompt: PromptEntity) => {
   // Switch to prompts plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
-  
+
   // Select the prompt in the prompts plugin
   const promptsPluginActor = applicationState.system.get('prompts')
   if (promptsPluginActor) {
@@ -159,7 +159,7 @@ const goToPrompt = (prompt: PromptEntity) => {
 const goToCreatePrompt = () => {
   // Switch to prompts plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
-  
+
   // Navigate to create view in the prompts plugin
   const promptsPluginActor = applicationState.system.get('prompts')
   if (promptsPluginActor) {
@@ -192,5 +192,10 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.prompts-header > * {
+  -webkit-app-region: no-drag;
 }
 </style>

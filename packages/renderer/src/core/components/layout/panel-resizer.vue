@@ -39,7 +39,7 @@ const startDrag = (e: MouseEvent) => {
   e.preventDefault()
   isDragging.value = true
   startPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
-  
+
   document.addEventListener('mousemove', handleDrag)
   document.addEventListener('mouseup', stopDrag)
   document.body.style.cursor = props.orientation === 'horizontal' ? 'col-resize' : 'row-resize'
@@ -48,10 +48,10 @@ const startDrag = (e: MouseEvent) => {
 
 const handleDrag = (e: MouseEvent) => {
   if (!isDragging.value) return
-  
+
   const currentPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
   const delta = currentPosition - startPosition
-  
+
   emit('resize', delta)
   startPosition = currentPosition
 }
@@ -83,14 +83,14 @@ onUnmounted(() => {
 }
 
 .panel-resizer--horizontal {
-  width: 4px;
+  width: 3px;
   height: 100%;
   cursor: col-resize;
 }
 
 .panel-resizer--vertical {
   width: 100%;
-  height: 4px;
+  height: 3px;
   cursor: row-resize;
 }
 
@@ -102,15 +102,15 @@ onUnmounted(() => {
 
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
-  left: -8px;
-  right: -2px;
+  left: 0px;
+  right: -4px;
   bottom: 0;
 }
 
 .panel-resizer--vertical .panel-resizer__handle {
   left: 0;
-  top: -5px;
-  bottom: -5px;
+  top: -4px;
+  bottom: 0px;
   right: 0;
 }
 

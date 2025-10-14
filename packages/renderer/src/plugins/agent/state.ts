@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -28,7 +28,7 @@ const defaultThread: AgentThreadData = {
 
 interface AgentContext {
   currentThread: AgentThreadData | null;
-  threads: Partial<ThreadEntity>[];
+  threads: ThreadExtended[];
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
@@ -200,7 +200,7 @@ const agentState = setup({
         return {
           currentThread: {
             ...currentThread!,
-            messages: messages.map(m => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
+            messages: messages.map((m: Partial<MessageEntity>) => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
           }
         };
       }
