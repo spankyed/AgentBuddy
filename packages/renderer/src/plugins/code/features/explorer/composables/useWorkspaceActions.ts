@@ -63,6 +63,32 @@ export function useWorkspaceActions() {
     })
   }
 
+  // Remove directory from project (and delete project if it's the last directory)
+  const removeDirectoryFromProject = (directoryPath: string, wsIndex: number, pIndex: number) => {
+    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
+    const project = updatedWorkspaces[wsIndex].projects[pIndex]
+
+    // Remove directory from project
+    const dirIndex = project.directories.indexOf(directoryPath)
+    if (dirIndex > -1) {
+      project.directories.splice(dirIndex, 1)
+    }
+
+    // If project has no more directories, remove the entire project
+    if (project.directories.length === 0) {
+      updatedWorkspaces[wsIndex].projects.splice(pIndex, 1)
+    }
+
+    // Update settings
+    settingsActor?.send({
+      type: 'SETTINGS.UPDATE',
+      entityType: 'general',
+      label: 'workspaces',
+      path: ['workspaces'],
+      value: updatedWorkspaces
+    })
+  }
+
   // Create new workspace project with directory
   const createWorkspaceProject = (directoryPath: string, wsIndex: number) => {
     const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
@@ -120,6 +146,7 @@ export function useWorkspaceActions() {
     allProjects,
     isDirectoryInProject,
     toggleDirectoryInProject,
+    removeDirectoryFromProject,
     createWorkspaceProject,
     navigateToWorkspaces
   }
