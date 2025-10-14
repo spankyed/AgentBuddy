@@ -28,13 +28,19 @@
         </div>
 
         <!-- Projects list -->
-        <div v-if="workspace.projects.length > 0" class="ml-6">
-          <div v-for="project in workspace.projects" :key="project.name" class="mb-2">
+        <div v-if="workspace.projects.length > 0" class="relative ml-6">
+          <!-- Workspace depth guideline -->
+          <div class="absolute left-0 top-0 bottom-0 w-px bg-neutral-700"></div>
+
+          <div v-for="(project, projectIdx) in workspace.projects" :key="project.name" class="mb-2">
             <!-- Project header -->
             <div
               @click="handleProjectClick(project)"
-              class="flex items-center gap-2 px-4 py-1.5 transition-colors cursor-pointer hover:bg-neutral-800"
+              class="relative flex items-center gap-2 px-4 py-1.5 transition-colors cursor-pointer hover:bg-neutral-800"
             >
+              <!-- Connection line to guideline -->
+              <div class="absolute left-0 top-1/2 w-3 h-px bg-neutral-700"></div>
+
               <div
                 class="flex-shrink-0 w-2 h-2 rounded-full"
                 :style="{ backgroundColor: project.color }"
@@ -44,13 +50,22 @@
             </div>
 
             <!-- Directories list -->
-            <div v-if="project.directories.length > 0" class="ml-4">
+            <div v-if="project.directories.length > 0" class="relative ml-4">
+              <!-- Project depth guideline -->
+              <div
+                class="absolute left-0 top-0 w-px bg-neutral-700"
+                :class="projectIdx === workspace.projects.length - 1 && project.directories.length > 0 ? 'h-6' : 'bottom-0'"
+              ></div>
+
               <div
                 v-for="(dir, idx) in project.directories"
                 :key="dir"
                 @click="handleDirectoryClick(dir)"
-                class="flex items-center gap-2 px-4 py-1 text-xs transition-colors cursor-pointer text-neutral-400 hover:bg-neutral-800"
+                class="relative flex items-center gap-2 px-4 py-1 text-xs transition-colors cursor-pointer text-neutral-400 hover:bg-neutral-800"
               >
+                <!-- Connection line to guideline -->
+                <div class="absolute left-0 top-1/2 w-3 h-px bg-neutral-700"></div>
+
                 <Folder class="flex-shrink-0 w-3 h-3" />
                 <span class="flex-1 truncate" :title="dir">{{ getDirectoryName(dir) }}</span>
                 <span v-if="idx === 0" class="flex-shrink-0 ml-auto text-neutral-600">(primary)</span>
