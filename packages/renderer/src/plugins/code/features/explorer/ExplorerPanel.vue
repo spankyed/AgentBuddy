@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="@container flex flex-col h-full">
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model="showDeleteDialog"
@@ -102,7 +102,8 @@
           class="flex-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
         >
           <Layers class="w-4 h-4" />
-          View Workspaces
+          <span class="@[420px]:hidden">Workspaces</span>
+          <span class="hidden @[420px]:inline">View Workspaces</span>
         </button>
 
         <!-- Change Directory Button -->
@@ -111,7 +112,8 @@
           class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors flex items-center justify-center gap-2"
         >
           <FolderOpen class="w-4 h-4" />
-          Open Directory
+          <span class="@[420px]:hidden">Open</span>
+          <span class="hidden @[420px]:inline">Open Directory</span>
         </button>
       </div>
     </template>
@@ -131,16 +133,18 @@
           class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors flex items-center justify-center gap-2"
         >
           <ArrowLeft class="w-4 h-4" />
-          Back to Files
+          <span class="@[420px]:hidden">Back</span>
+          <span class="hidden @[420px]:inline">Back to Files</span>
         </button>
 
-        <!-- Add Project Button -->
+        <!-- Manage Workspaces Button -->
         <button
           @click="handleAddProject"
-          class="flex-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
+          class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded transition-colors flex items-center justify-center gap-2"
         >
-          <Plus class="w-4 h-4" />
-          Add Workspace
+          <Settings class="w-4 h-4" />
+          <span class="@[420px]:hidden">Manage</span>
+          <span class="hidden @[420px]:inline">Manage Workspaces</span>
         </button>
       </div>
     </template>
@@ -168,7 +172,7 @@ import Dialog from '@/core/components/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
 import WorkspaceView from '@/plugins/code/features/explorer/WorkspaceView.vue'
-import { FolderOpen, FolderPlus, Plus, Layers, ArrowLeft } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, Settings, Layers, ArrowLeft } from 'lucide-vue-next'
 
 interface FileItem {
   path: string
