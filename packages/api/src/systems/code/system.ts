@@ -1,8 +1,18 @@
 /**
  * Directory State Management:
- * - baseDirectory is duplicated across parent and children for independence
+ *
+ * State:
+ * - baseDirectory: Root workspace directory (project root)
+ * - activeDirectory: Currently browsed subdirectory in explorer
+ * - Both are duplicated across parent and children for independence
  * - Parent broadcasts directory changes to all children
- * - Directory is persisted to EARS as "lastOpened"
+ *
+ * Persistence (saved to settings):
+ * - defaultBaseDirectory: User's explicit preferred default (set via settings UI)
+ * - lastDirectoryOpened: Last directory user navigated to (tracked automatically)
+ *
+ * Priority on startup:
+ *   defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
@@ -38,7 +48,7 @@ const IncomingCodeEvents = [
   ...IncomingActionsEvents,
   ...IncomingPromptsEvents,
   // Special root-level events
-  busEvent('SET_BASE_DIRECTORY', { path: z.string() }),
+  busEvent('SET_BASE_DIRECTORY', { path: z.string(), fromUserNavigation: z.boolean().optional() }),
 ] as const
 
 // Union all outgoing events from child systems  
@@ -69,6 +79,35 @@ export interface Context {
 }
 
 const typeOf = safeEvents<ReceivableEvents>()
+
+/**
+ * Resolves the initial base directory on system startup.
+ * Priority chain: defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
+ */
+function resolveInitialDirectory(
+  codeSettings: CodeSettings | undefined,
+  workspaces: any[]
+): string | null {
+  // User's explicit default takes priority
+  if (codeSettings?.defaultBaseDirectory) {
+    return codeSettings.defaultBaseDirectory
+  }
+
+  // Fall back to last directory they were in
+  if (codeSettings?.lastDirectoryOpened) {
+    return codeSettings.lastDirectoryOpened
+  }
+
+  // Fall back to first project directory from workspaces
+  const allProjects = workspaces.flatMap((ws: any) => ws.projects || [])
+  const firstProjectDir = allProjects[0]?.directories?.[0]
+  if (firstProjectDir) {
+    return firstProjectDir
+  }
+
+  // No directory available
+  return null
+}
 
 export const systemMachine = setup({
   types: {
@@ -139,8 +178,11 @@ export const systemMachine = setup({
     updateBaseDirectory: assign({
       baseDirectory: ({ event }) => {
         const ev = typeOf('SET_BASE_DIRECTORY', event)
-        // Save to settings as last opened directory
-        repository.settingsCommands.updateSettings('plugin', 'code', ['lastDirectoryOpened'], ev.path)
+        // Save to navigation history only when triggered by user navigation
+        // (not when applying settings like defaultBaseDirectory)
+        if (ev.fromUserNavigation !== false) {
+          repository.settingsCommands.updateSettings('plugin', 'code', ['lastDirectoryOpened'], ev.path)
+        }
         return ev.path
       },
       activeDirectory: ({ event }) => {
@@ -192,13 +234,15 @@ export const systemMachine = setup({
     updateSettings: ({ event, context, self }) => {
       const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-      // Check if defaultBaseDirectory changed and apply it
+      // Check if defaultBaseDirectory changed and apply it immediately for instant feedback
       if (ev.settings.defaultBaseDirectory &&
           ev.settings.defaultBaseDirectory !== context.baseDirectory) {
         // Apply the new default base directory
+        // Mark as non-navigation so it doesn't overwrite lastDirectoryOpened
         self.send({
           type: 'SET_BASE_DIRECTORY',
-          path: ev.settings.defaultBaseDirectory
+          path: ev.settings.defaultBaseDirectory,
+          fromUserNavigation: false
         })
       }
 
@@ -281,34 +325,12 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: () => {
-    // Get code settings to check for default base directory
-    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
+    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+    const workspacesSettings = repository.settingsQueries.getGeneralSettings('workspaces') as any
+    const workspaces = workspacesSettings?.workspaces || []
 
-    // Get workspaces from general settings
-    const workspacesSettings = repository.settingsQueries.getGeneralSettings('workspaces') as any;
-    const workspaces = workspacesSettings?.workspaces || [];
-
-    // Flatten all projects from all workspaces
-    const allProjects = workspaces.flatMap((ws: any) => ws.projects || []);
-
-    // Priority: defaultBaseDirectory (if valid) > lastOpenedDir > first project > null
-    let baseDir: string | null = null;
-
-    if (codeSettings?.defaultBaseDirectory) {
-      // Validate it exists in any workspace project directories
-      const isValid = allProjects.some((p: any) => p.directories?.includes(codeSettings.defaultBaseDirectory))
-      if (isValid) {
-        baseDir = codeSettings.defaultBaseDirectory;
-      } else {
-        // Clear invalid default
-        repository.settingsCommands.updateSettings('plugin', 'code', ['defaultBaseDirectory'], null)
-      }
-    }
-
-    if (!baseDir) {
-      // Fall back to last opened directory, or first directory of first project
-      baseDir = codeSettings?.lastDirectoryOpened || allProjects[0]?.directories?.[0] || null;
-    }
+    // Resolve initial directory using priority chain
+    const baseDir = resolveInitialDirectory(codeSettings, workspaces)
 
     return {
       activeDirectory: baseDir,
