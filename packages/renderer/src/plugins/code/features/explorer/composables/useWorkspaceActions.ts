@@ -28,6 +28,14 @@ export function useWorkspaceActions() {
     return projectDirectories.includes(directoryPath)
   }
 
+  // Check if directory already exists across all workspaces
+  const checkDuplicateDirectory = (directoryPath: string): boolean => {
+    const allDirectories = workspaces.value.flatMap((ws: Workspace) =>
+      ws.projects.flatMap(p => p.directories || [])
+    )
+    return allDirectories.includes(directoryPath)
+  }
+
   // Helper to get all projects across all workspaces
   const allProjects = computed(() => {
     const projects: Array<{ workspace: Workspace; project: WorkspaceProject; wsIndex: number; pIndex: number }> = []
@@ -78,6 +86,29 @@ export function useWorkspaceActions() {
     if (project.directories.length === 0) {
       updatedWorkspaces[wsIndex].projects.splice(pIndex, 1)
     }
+
+    // Update settings
+    settingsActor?.send({
+      type: 'SETTINGS.UPDATE',
+      entityType: 'general',
+      label: 'workspaces',
+      path: ['workspaces'],
+      value: updatedWorkspaces
+    })
+  }
+
+  // Add directory to existing project
+  const addDirectoryToProject = (directoryPath: string, wsIndex: number, pIndex: number) => {
+    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
+    const project = updatedWorkspaces[wsIndex].projects[pIndex]
+
+    // Ensure directories array exists
+    if (!project.directories) {
+      project.directories = []
+    }
+
+    // Add directory to project
+    project.directories.push(directoryPath)
 
     // Update settings
     settingsActor?.send({
@@ -145,8 +176,10 @@ export function useWorkspaceActions() {
     workspaces,
     allProjects,
     isDirectoryInProject,
+    checkDuplicateDirectory,
     toggleDirectoryInProject,
     removeDirectoryFromProject,
+    addDirectoryToProject,
     createWorkspaceProject,
     navigateToWorkspaces
   }

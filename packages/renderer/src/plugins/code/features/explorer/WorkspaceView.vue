@@ -17,7 +17,7 @@
         >
           <div
             @click="handleWorkspaceClick(workspace)"
-            class="flex items-center gap-2 px-4 py-2 transition-colors"
+            class="group flex items-center gap-2 px-4 py-2 transition-colors"
             :class="workspace.directory ? 'cursor-pointer hover:bg-neutral-800' : 'cursor-default'"
           >
             <div
@@ -34,6 +34,14 @@
                 {{ workspace.directory }}
               </span>
             </div>
+            <!-- Add Project Button -->
+            <button
+              @click="(e) => handleAddProjectToWorkspace(e, wsIndex)"
+              class="flex-shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-500/20 hover:text-blue-400 text-neutral-500"
+              title="Add project to workspace"
+            >
+              <Plus class="w-3.5 h-3.5" />
+            </button>
           </div>
         </TreeItemWithMenu>
 
@@ -50,7 +58,7 @@
             >
               <div
                 @click="handleProjectClick(project)"
-                class="relative flex items-center gap-2 px-4 py-1.5 transition-colors cursor-pointer hover:bg-neutral-800"
+                class="group relative flex items-center gap-2 px-4 py-1.5 transition-colors cursor-pointer hover:bg-neutral-800"
               >
                 <!-- Connection line to guideline -->
                 <div class="absolute left-0 top-1/2 w-3 h-px bg-neutral-700"></div>
@@ -59,7 +67,16 @@
                   class="flex-shrink-0 w-2 h-2 rounded-full"
                   :style="{ backgroundColor: project.color }"
                 ></div>
-                <span class="text-sm truncate text-neutral-200">{{ project.name }}</span>
+                <span class="flex-1 text-sm truncate text-neutral-200">{{ project.name }}</span>
+
+                <!-- Add Directory Button -->
+                <button
+                  @click="(e) => handleAddDirectoryToProject(e, wsIndex, projectIdx)"
+                  class="flex-shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-500/20 hover:text-blue-400 text-neutral-500"
+                  title="Add directory to project"
+                >
+                  <Plus class="w-3 h-3" />
+                </button>
               </div>
             </TreeItemWithMenu>
 
@@ -110,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { Layers, X } from 'lucide-vue-next'
+import { Layers, X, Plus } from 'lucide-vue-next'
 import TreeItemWithMenu from './components/TreeItemWithMenu.vue'
 import { useWorkspaceActions } from './composables/useWorkspaceActions'
 
@@ -137,7 +154,12 @@ const emit = defineEmits<{
   'open-terminal': [path: string]
 }>()
 
-const { removeDirectoryFromProject } = useWorkspaceActions()
+const {
+  removeDirectoryFromProject,
+  addDirectoryToProject,
+  createWorkspaceProject,
+  checkDuplicateDirectory
+} = useWorkspaceActions()
 
 const handleWorkspaceClick = (workspace: Workspace) => {
   if (workspace.directory) {
@@ -164,5 +186,53 @@ const getDirectoryName = (path: string) => {
 const handleRemoveDirectory = (event: Event, dir: string, wsIndex: number, pIndex: number) => {
   event.stopPropagation() // Prevent triggering handleDirectoryClick
   removeDirectoryFromProject(dir, wsIndex, pIndex)
+}
+
+const handleAddProjectToWorkspace = async (event: Event, wsIndex: number) => {
+  event.stopPropagation() // Prevent triggering handleWorkspaceClick
+
+  if (!window.electronAPI?.fileUtils.selectDirectory) {
+    console.error('Directory selection API not available')
+    return
+  }
+
+  try {
+    const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
+    if (!directoryPath) return
+
+    // Check for duplicates
+    if (checkDuplicateDirectory(directoryPath)) {
+      alert('This directory is already added to a project')
+      return
+    }
+
+    createWorkspaceProject(directoryPath, wsIndex)
+  } catch (error) {
+    console.error('Error adding project:', error)
+  }
+}
+
+const handleAddDirectoryToProject = async (event: Event, wsIndex: number, pIndex: number) => {
+  event.stopPropagation() // Prevent triggering handleProjectClick
+
+  if (!window.electronAPI?.fileUtils.selectDirectory) {
+    console.error('Directory selection API not available')
+    return
+  }
+
+  try {
+    const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
+    if (!directoryPath) return
+
+    // Check for duplicates
+    if (checkDuplicateDirectory(directoryPath)) {
+      alert('This directory is already added to a project')
+      return
+    }
+
+    addDirectoryToProject(directoryPath, wsIndex, pIndex)
+  } catch (error) {
+    console.error('Error adding directory:', error)
+  }
 }
 </script>
