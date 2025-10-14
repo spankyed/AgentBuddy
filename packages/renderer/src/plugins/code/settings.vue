@@ -30,20 +30,6 @@
           }}
         </p>
       </div>
-
-      <!-- Clear Directory History -->
-      <div class="mt-6 pt-4 border-t border-neutral-700/50">
-        <button
-          @click="clearDirectoryHistory"
-          class="w-full px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all flex items-center justify-center gap-2"
-        >
-          <X class="w-4 h-4" />
-          Clear Directory History
-        </button>
-        <p class="mt-2 text-xs text-neutral-600">
-          Remove all directory history. Next startup will use the default directory or the first project.
-        </p>
-      </div>
     </CollapsibleSection>
 
     <!-- Terminal Settings Section -->
@@ -289,19 +275,6 @@ const saveDefaultDirectory = () => {
     path: ['defaultBaseDirectory'],
     value: defaultBaseDirectory.value
   })
-}
-
-const clearDirectoryHistory = () => {
-  if (!confirm('Clear all directory history? The app will use the default directory or the first project on next startup.')) {
-    return
-  }
-
-  trpc.bus.send.mutate({
-    systemId: 'code',
-    type: 'CLEAR_DIRECTORY_HISTORY'
-  })
-
-  alert('Directory history cleared! Changes will take effect on next startup.')
 }
 
 const goToWorkspaces = () => {

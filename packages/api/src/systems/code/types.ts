@@ -169,6 +169,7 @@ export interface CodeSettings {
   };
   restoreTerminals?: boolean;
   defaultBaseDirectory?: string | null;
+  lastDirectoryOpened?: string | null;
   enableShellIntegration?: boolean;
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;

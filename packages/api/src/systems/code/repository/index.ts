@@ -5,9 +5,6 @@ import { createEntityWithDefaults, updateEntity, findById, findAll, exists } fro
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'
 
-// Re-export directory queries and commands
-export { directoryQueries, directoryCommands } from './directories'
-
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
   id: EARS.EntityId

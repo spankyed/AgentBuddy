@@ -39,7 +39,6 @@ const IncomingCodeEvents = [
   ...IncomingPromptsEvents,
   // Special root-level events
   busEvent('SET_BASE_DIRECTORY', { path: z.string() }),
-  busEvent('CLEAR_DIRECTORY_HISTORY', {}),
 ] as const
 
 // Union all outgoing events from child systems  
@@ -140,8 +139,8 @@ export const systemMachine = setup({
     updateBaseDirectory: assign({
       baseDirectory: ({ event }) => {
         const ev = typeOf('SET_BASE_DIRECTORY', event)
-        // Save to EARS as last opened directory
-        repository.directoryCommands.markAsLastOpened(ev.path)
+        // Save to settings as last opened directory
+        repository.settingsCommands.updateSettings('plugin', 'code', ['lastDirectoryOpened'], ev.path)
         return ev.path
       },
       activeDirectory: ({ event }) => {
@@ -276,10 +275,6 @@ export const systemMachine = setup({
 
       // Start watching git changes
       await context.gitWatcher.startWatching()
-    },
-
-    clearDirectoryHistory: () => {
-      repository.directoryCommands.clearAll()
     }
   }
 }).createMachine({
@@ -312,8 +307,7 @@ export const systemMachine = setup({
 
     if (!baseDir) {
       // Fall back to last opened directory, or first directory of first project
-      const lastOpenedDir = repository.directoryQueries.getLastOpenedDirectory()
-      baseDir = lastOpenedDir?.path || allProjects[0]?.directories?.[0] || null;
+      baseDir = codeSettings?.lastDirectoryOpened || allProjects[0]?.directories?.[0] || null;
     }
 
     return {
@@ -337,10 +331,6 @@ export const systemMachine = setup({
         // Handle SET_BASE_DIRECTORY specially
         SET_BASE_DIRECTORY: {
           actions: ['updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher']
-        },
-        // Clear directory history
-        CLEAR_DIRECTORY_HISTORY: {
-          actions: 'clearDirectoryHistory'
         },
         // All other events get routed to children
         '*': {
