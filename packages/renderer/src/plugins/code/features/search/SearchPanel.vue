@@ -17,71 +17,67 @@
     <template v-else>
       <!-- Search Input Section -->
       <div class="p-4 border-b border-neutral-800">
-
-
-      <!-- Search Options -->
-      <div class="flex items-center gap-2 mb-3">
-        <button
-          @click="toggleOption('searchInActiveDir')"
-          :class="[
-            'flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors',
-            searchOptions.searchInActiveDir
-              ? 'bg-blue-600 text-white'
-              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-          ]"
-          :title="searchOptions.searchInActiveDir ? 'Searching in active directory' : 'Searching in base directory'"
-        >
-          <FolderOpen class="w-3 h-3" />
-          <span>{{ searchOptions.searchInActiveDir ? 'Active' : 'Base' }}</span>
-        </button>
-                <div class="w-px h-4 mx-1 bg-neutral-700"></div>
-        <button
-          @click="toggleOption('caseSensitive')"
-          :class="optionButtonClass(searchOptions.caseSensitive)"
-          title="Match Case"
-        >
-          Aa
-        </button>
-        <button
-          @click="toggleOption('wholeWord')"
-          :class="optionButtonClass(searchOptions.wholeWord)"
-          title="Match Whole Word"
-        >
-          ab
-        </button>
-        <button
-          @click="toggleOption('useRegex')"
-          :class="optionButtonClass(searchOptions.useRegex)"
-          title="Use Regular Expression"
-        >
-          .*
-        </button>
-
-      </div>
-
-
-      <div class="flex items-center gap-2 mb-3">
+      <!-- Search Input with Inline Filters -->
+      <div class="flex items-stretch mb-3 overflow-hidden border rounded bg-neutral-800 border-neutral-700 focus-within:border-blue-500">
         <input
           v-model="searchQuery"
           @keyup.enter="performSearch"
+          @input="performSearch"
           type="text"
           :placeholder="searchPlaceholder"
-          class="flex-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+          class="flex-1 px-3 py-1.5 text-sm bg-transparent border-none outline-none text-neutral-100 placeholder-neutral-500"
         />
-        <button
-          @click="performSearch"
-          :disabled="!searchQuery || isSearching"
-          class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded text-sm transition-colors"
-        >
-          {{ isSearching ? 'Searching...' : 'Search' }}
-        </button>
-        <button
-          v-if="isSearching"
-          @click="cancelSearch"
-          class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-        >
-          Cancel
-        </button>
+        <div class="flex items-center border-l border-neutral-700">
+          <button
+            @click="toggleOption('searchInActiveDir')"
+            :class="[
+              'flex items-center gap-1 px-2 py-1.5 text-xs transition-colors',
+              searchOptions.searchInActiveDir
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            :title="searchOptions.searchInActiveDir ? 'Searching in active directory' : 'Searching in base directory'"
+          >
+            <FolderOpen class="w-3 h-3" />
+            <span>{{ searchOptions.searchInActiveDir ? 'Active' : 'Base' }}</span>
+          </button>
+          <button
+            @click="toggleOption('caseSensitive')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors border-r border-l border-neutral-700',
+              searchOptions.caseSensitive
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Match Case"
+          >
+            Aa
+          </button>
+          <button
+            @click="toggleOption('wholeWord')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors border-r border-neutral-700',
+              searchOptions.wholeWord
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Match Whole Word"
+          >
+            ab
+          </button>
+          <button
+            @click="toggleOption('useRegex')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors',
+              searchOptions.useRegex
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Use Regular Expression"
+          >
+            .*
+          </button>
+        </div>
       </div>
 
 
