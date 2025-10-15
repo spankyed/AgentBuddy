@@ -112,6 +112,7 @@ export const explorerState = setup({
             ? {
                 ...f,
                 content: ev.data.content,
+                originalContent: ev.data.content,  // Update originalContent baseline
                 modified: false,
                 externallyModified: false,
                 externalModificationTime: undefined,
@@ -130,6 +131,7 @@ export const explorerState = setup({
         const newTab = {
           path: ev.data.path,
           content: ev.data.content,
+          originalContent: ev.data.content,  // Set originalContent baseline
           modified: false
         }
         const result = mergeTabs(
@@ -153,6 +155,7 @@ export const explorerState = setup({
         f.path === ev.data.path
           ? {
               ...f,
+              originalContent: f.content,  // Update originalContent to match saved content
               modified: false,
               pendingSaveConflict: false,
               externallyModified: false,

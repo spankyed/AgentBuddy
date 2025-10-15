@@ -23,6 +23,7 @@ const ALL_PANELS: PanelType[] = ['explorer', 'terminal', 'search', 'commit', 'pr
 export interface OpenFile {
   path: string
   content: string
+  originalContent: string  // Content when file was opened or last saved
   modified: boolean
   isDiff?: boolean
   gitDiff?: GitDiff

@@ -187,9 +187,20 @@ const closeFile = (path: string) => {
 }
 
 const handleContentChange = (path: string, content: string) => {
-  const newOpenFiles = openFiles.value.map(f =>
-    f.path === path ? { ...f, content, modified: true } : f
-  )
+  const newOpenFiles = openFiles.value.map(f => {
+    if (f.path === path) {
+      // Only compare originalContent for regular files (not terminals, actions, or prompts)
+      if ('originalContent' in f) {
+        // Compare content with originalContent to determine if file is truly modified
+        // This handles undo to original state and prevents spurious Monaco events
+        const isModified = content !== f.originalContent
+        return { ...f, content, modified: isModified }
+      }
+      // For other tab types, just update content
+      return { ...f, content, modified: true }
+    }
+    return f
+  })
 
   actor.send({
     type: 'UPDATE_STATE',
