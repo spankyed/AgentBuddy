@@ -1,19 +1,32 @@
 <template>
-  <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
-    <div v-if="!artifact" class="flex items-center justify-center h-full">
-      <p class="text-neutral-500">Select an artifact to view</p>
+  <div class="flex h-full bg-neutral-900">
+    <!-- Artifact List (left side, integrated in tab) -->
+    <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+      <ArtifactList
+        :artifacts="artifacts"
+        :selectedArtifactId="selectedArtifactId"
+        @select-artifact="$emit('select-artifact', $event)"
+      />
     </div>
-    <component
-      v-else
-      :is="getArtifactComponent(artifact.type)"
-      :artifact="artifact"
-    />
+
+    <!-- Artifact Content (right side) -->
+    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
+      <div v-if="!selectedArtifact" class="flex items-center justify-center h-full">
+        <p class="text-neutral-500">Select an artifact to view</p>
+      </div>
+      <component
+        v-else
+        :is="getArtifactComponent(selectedArtifact.type)"
+        :artifact="selectedArtifact"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ArtifactItem } from '@app/api';
+import ArtifactList from './artifacts/artifact-list.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';
 import ReviewArtifact from './artifacts/types/review-artifact.vue';
@@ -23,8 +36,17 @@ import TodoArtifact from './artifacts/types/todo-artifact.vue';
 import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
 
 const props = defineProps<{
-  artifact?: ArtifactItem;
+  artifacts: ArtifactItem[];
+  selectedArtifactId?: string;
 }>();
+
+defineEmits<{
+  'select-artifact': [artifactId: string];
+}>();
+
+const selectedArtifact = computed(() =>
+  props.artifacts.find(a => a.id === props.selectedArtifactId)
+);
 
 function getArtifactComponent(type: string) {
   const components = {
