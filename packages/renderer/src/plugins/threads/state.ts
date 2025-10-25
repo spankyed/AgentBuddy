@@ -29,6 +29,7 @@ type UIEvent =
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
+  | { type: 'VIEW_KANBAN' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD' }
@@ -290,6 +291,7 @@ const threadsState = setup({
   }),
   on: {
     VIEW_LIST: { target: '.list' },
+    VIEW_KANBAN: { target: '.kanban' },
     OPEN_THREAD_CHAT: {
       actions: 'openAgentChat'
     },
@@ -328,6 +330,7 @@ const threadsState = setup({
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([
       ['.list', 'list'],
+      ['.kanban', 'kanban'],
       ['.create', 'create'],
       ['.view', 'view'],
     ]),
@@ -346,6 +349,15 @@ const threadsState = setup({
             create: { ...defaultThread }
           }))
         },
+        UPDATE_THREAD_STATUS: {
+          actions: 'updateThreadStatus',
+        },
+      },
+    },
+
+    'kanban': {
+      meta: { ...breadcrumb('kanban', 'Board') },
+      on: {
         UPDATE_THREAD_STATUS: {
           actions: 'updateThreadStatus',
         },

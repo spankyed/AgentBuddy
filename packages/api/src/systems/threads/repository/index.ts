@@ -72,6 +72,49 @@ export const threadQueries = {
       linkedThreads: want("linkedThreads") ? threadQueries.linkedThreads(threadId) : [],
     };
   },
+
+  kanbanItems: () => {
+    // Get all threads and transform them into kanban work items
+    const allThreads = qx(EARS.Entity.Thread)
+      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode'] as const)
+    
+    // Sort threads by most recent update (fallback to createdAt)
+    const sortedThreads = allThreads.sort((a, b) => {
+      const aTime = (a.updatedAt as number) || (a.createdAt as number) || 0;
+      const bTime = (b.updatedAt as number) || (b.createdAt as number) || 0;  
+      return bTime - aTime;
+    }
+    );
+    
+    // Transform threads into work items
+    const workItems = sortedThreads.map((thread, index) => ({
+      id: thread.id,
+      name: String(thread.topic || `Thread ${thread.shortCode || index + 1}`),
+      time: new Date((thread.updatedAt as number) || (thread.createdAt as number) || Date.now()).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      }),
+      date: new Date((thread.updatedAt as number) || (thread.createdAt as number) || Date.now()).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }),
+      priority: 1, // Default priority
+      tags: [],
+      status: thread.status || 'backlog',
+      type: 'work-item' as const
+    }));
+    
+    return {
+      content: {
+        workItems
+      },
+      metadata: {
+        createdAt: Date.now()
+      }
+    };
+  },
   
   // Get connected data
   connectedData: (): ThreadConnectedData => {
