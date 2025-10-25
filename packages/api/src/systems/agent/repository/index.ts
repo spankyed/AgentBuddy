@@ -388,9 +388,22 @@ export const agentCommands = {
       .put('createdAt', Date.now())
       .id();
 
-    // Link artifact to thread
+    // Link todo artifact to thread
     tx(threadId).link(EARS.RelKind.HAS, artifactId);
     tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+
+    // Create the workspace artifact (content is empty - component reads from settings)
+    const workspaceArtifactId = tx(EARS.Entity.Artifact)
+      .put('entityType', EARS.Entity.Artifact)
+      .put('title', 'My Workspaces')
+      .put('artifactType', 'workspace')
+      .put('content', {})
+      .put('createdAt', Date.now())
+      .id();
+
+    // Link workspace artifact to thread
+    tx(threadId).link(EARS.RelKind.HAS, workspaceArtifactId);
+    tx(workspaceArtifactId).link(EARS.RelKind.RELATES_TO, threadId);
 
     return { threadId, artifactId };
   },

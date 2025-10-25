@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileText, Code, CheckSquare, Image, LayoutDashboard, MessageSquare, ListTodo } from 'lucide-vue-next';
+import { FileText, Code, CheckSquare, Image, LayoutDashboard, MessageSquare, ListTodo, Layers } from 'lucide-vue-next';
 import type { ArtifactItem, ArtifactType } from '@app/api';
 
 defineProps<{
@@ -37,6 +37,7 @@ function getIcon(type: ArtifactType) {
     kanban: LayoutDashboard,
     slack: MessageSquare,
     todo: ListTodo,
+    workspace: Layers,
   };
   return icons[type] || FileText;
 }

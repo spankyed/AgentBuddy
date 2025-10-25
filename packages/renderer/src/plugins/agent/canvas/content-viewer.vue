@@ -21,6 +21,7 @@ import ImageArtifact from './artifacts/types/image-artifact.vue';
 import WorkloadArtifact from './artifacts/types/workload-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
 import TodoArtifact from './artifacts/types/todo-artifact.vue';
+import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
 
 const props = defineProps<{
   artifact?: ArtifactItem;
@@ -35,6 +36,7 @@ function getArtifactComponent(type: string) {
     kanban: WorkloadArtifact,
     slack: SlackArtifact,
     todo: TodoArtifact,
+    workspace: WorkspaceArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }
