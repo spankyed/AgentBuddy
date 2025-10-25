@@ -5,7 +5,6 @@ import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
-import { getDashboardTab } from './dashboard';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import { repository } from '@/repository';
 
@@ -214,20 +213,12 @@ export const agentQueries = {
   connectedData: (): AgentConnectedData => {
     // Get recent threads and current thread data
     const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
-    
-    // Get dashboard tab
-    const { tab: dashboardTab, threadId: dashboardThreadId } = getDashboardTab(createTabFromThread);
-    
+
     // Initialize tabs array
     const tabs: Tab[] = [];
-    
-    // Add dashboard tab if it exists
-    if (dashboardTab) {
-      tabs.push(dashboardTab);
-    }
-    
-    // Add current thread tab if it's not the dashboard thread
-    if (currentThreadData?.id && currentThreadData.id !== dashboardThreadId) {
+
+    // Add current thread tab if it has artifacts
+    if (currentThreadData?.id) {
       const artifacts = qx()
         .relatedTo(currentThreadData.id)
         .ofType(EARS.Entity.Artifact)
@@ -241,17 +232,12 @@ export const agentQueries = {
             createdAt: Date.now()
           }
         })) as ArtifactItem[];
-      
+
       const threadTab = createTabFromThread(currentThreadData, artifacts);
       if (threadTab) {
         tabs.push(threadTab);
       }
     }
-    
-    // Get dashboard artifacts for legacy support
-    const dashboardArtifacts = qx()
-      .withRole('dashboard_artifact')
-      .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[];
 
     // Get agent settings
     const allSettings = settingsQueries.getSettings();
@@ -260,7 +246,6 @@ export const agentQueries = {
     return {
       currentThread: currentThreadData,
       threads,
-      dashboardArtifacts,
       tabs,
       settings: agentSettings,
       hasRequiredApiKeys: agentQueries.hasRequiredApiKeys(),

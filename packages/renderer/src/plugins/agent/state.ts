@@ -62,7 +62,6 @@ type AgentEvent =
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
-  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: ThreadEntity['status'] }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
@@ -402,22 +401,6 @@ const agentState = setup({
       );
       return { tabs };
     }),
-    requestDashboardRefresh: async () => {
-      // Request fresh data from backend
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REFRESH_DASHBOARD'
-      });
-    },
-    updateThreadStatus: async ({ event }) => {
-      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
-      trpc.bus.send.mutate({
-        systemId: 'threads',
-        type: 'UPDATE_THREAD_STATUS',
-        threadId,
-        status,
-      });
-    },
     updateTodoTask: assign(({ context, event }) => {
       const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
       const tabs = context.tabs.map(tab => ({
@@ -529,9 +512,6 @@ const agentState = setup({
     },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'
-    },
-    UPDATE_THREAD_STATUS: {
-      actions: 'updateThreadStatus'
     },
     UPDATE_TODO_TASK: {
       actions: 'updateTodoTask'

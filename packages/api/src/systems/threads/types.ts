@@ -28,7 +28,7 @@ export interface ArtifactEntity extends BaseEntity {
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
   content: string | any;
-  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
+  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
 }
 
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;

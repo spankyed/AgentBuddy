@@ -46,7 +46,6 @@ export interface AgentSettings {
 export type AgentConnectedData = {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
-  dashboardArtifacts: Partial<ArtifactEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
   hasRequiredApiKeys: boolean;
@@ -65,7 +64,6 @@ export type ArtifactType =
   | 'code'
   | 'review'
   | 'image'
-  | 'kanban'
   | 'slack'
   | 'todo'
   | 'workspace';

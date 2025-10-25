@@ -34,7 +34,6 @@ function getIcon(type: ArtifactType) {
     code: Code,
     review: CheckSquare,
     image: Image,
-    kanban: LayoutDashboard,
     slack: MessageSquare,
     todo: ListTodo,
     workspace: Layers,

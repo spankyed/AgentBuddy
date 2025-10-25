@@ -136,18 +136,14 @@ export const threadsSystem = setup({
       const updates = { [key]: value };
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
-      // If status was updated, emit events and refresh dashboard
+      // If status was updated, emit event
       if (key === 'status') {
         // Emit status update event to threads plugin
-        system.get(bus).send(emit(threads, { 
+        system.get(bus).send(emit(threads, {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
         }));
-        
-        // Trigger dashboard refresh in agent system
-        const agentActor = system.get(agent);
-        agentActor.send({ type: 'REFRESH_DASHBOARD' });
       }
     },
     updateThreadStatus: ({ system, event }) => {
@@ -159,15 +155,11 @@ export const threadsSystem = setup({
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
       // Emit status update event to threads plugin
-      system.get(bus).send(emit(threads, { 
+      system.get(bus).send(emit(threads, {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
       }));
-      
-      // Trigger dashboard refresh in agent system
-      const agentActor = system.get(agent);
-      agentActor.send({ type: 'REFRESH_DASHBOARD' });
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
@@ -234,8 +226,6 @@ export const threadsSystem = setup({
           })
         );
       }
-
-      system.get(agent).send({ type: 'REFRESH_DASHBOARD' });
     },
     deleteThread: ({ system, event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
@@ -249,10 +239,9 @@ export const threadsSystem = setup({
         threadId,
       }));
 
-      // Notify agent system to refresh if this was the active thread
+      // Notify agent system if this was the active thread
       const agentActor = system.get(agent);
       agentActor.send({ type: 'THREAD_DELETED', threadId });
-      agentActor.send({ type: 'REFRESH_DASHBOARD' });
     },
   },
 }).createMachine(

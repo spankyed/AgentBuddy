@@ -21,7 +21,6 @@ export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
-  busEvent('REFRESH_DASHBOARD', {}),
   busEvent('CANCEL'),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
@@ -87,16 +86,9 @@ export const agentSystem = setup({
       }));
     },
     sendRefreshThreads: ({ system }) => {
-      system.get(bus).send(emit(agent, { 
+      system.get(bus).send(emit(agent, {
         type: 'REFRESH_RECENT_THREADS',
         data: repository.agentQueries.refreshThreadsData()
-      }));
-    },
-    sendRefreshDashboard: ({ system }) => {
-      // ? Re-send connected data which includes refreshed dashboard
-      system.get(bus).send(emit(agent, {
-        type: 'AGENT_CONNECTED',
-        data: repository.agentQueries.connectedData()
       }));
     },
     sendApiKeyStatus: ({ system }) => {
@@ -180,9 +172,6 @@ export const agentSystem = setup({
       },
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
-      },
-      REFRESH_DASHBOARD: {
-        actions: 'sendRefreshDashboard',
       },
       API_KEYS_CHANGED: {
         actions: 'sendApiKeyStatus',

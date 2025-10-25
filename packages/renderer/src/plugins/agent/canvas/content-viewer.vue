@@ -18,7 +18,6 @@ import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';
 import ReviewArtifact from './artifacts/types/review-artifact.vue';
 import ImageArtifact from './artifacts/types/image-artifact.vue';
-import WorkloadArtifact from './artifacts/types/workload-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
 import TodoArtifact from './artifacts/types/todo-artifact.vue';
 import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
@@ -33,7 +32,6 @@ function getArtifactComponent(type: string) {
     code: CodeArtifact,
     review: ReviewArtifact,
     image: ImageArtifact,
-    kanban: WorkloadArtifact,
     slack: SlackArtifact,
     todo: TodoArtifact,
     workspace: WorkspaceArtifact,
