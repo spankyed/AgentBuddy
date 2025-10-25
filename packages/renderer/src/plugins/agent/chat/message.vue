@@ -1,21 +1,22 @@
 <template>
-  <div 
+  <div
     :class="[
       'flex pb-3 animate-fade-in w-full',
       isUser ? 'justify-end' : 'justify-start'
     ]"
   >
-    <div 
+    <div
       :class="[
         'relative rounded-xl px-4 py-3 transition-all duration-200 group',
-        isUser 
-          ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30' 
-          : 'bg-indigo-950/10 text-indigo-50 border border-indigo-900/20',
+        isUser
+          ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
+          : ' text-indigo-50 border border-indigo-900/80',
+          // : 'bg-indigo-950/10 text-indigo-50 border border-indigo-900/20',
         'hover:shadow-md'
       ]"
     >
       <!-- Floating hover UI -->
-      <div 
+      <div
         class="absolute transition-opacity duration-200 opacity-0 pointer-events-none bottom-2 right-2 group-hover:opacity-100 group-hover:pointer-events-auto"
       >
         <div class="flex items-center overflow-hidden border rounded-lg shadow-lg bg-neutral-800 border-neutral-700">
@@ -23,9 +24,9 @@
           <span v-if="message.createdAt" class="text-xs text-neutral-400 px-3 py-1.5 border-r border-neutral-700 whitespace-nowrap">
             {{ formatTime(new Date(message.createdAt)) }}
           </span>
-          
+
           <!-- Action buttons -->
-          <button 
+          <button
             v-if="isUser"
             @click="$emit('revert', message.id)"
             class="p-1.5 hover:bg-neutral-700 transition-colors"
@@ -35,8 +36,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
           </button>
-          
-          <button 
+
+          <button
             @click="$emit('fork', message.id)"
             class="p-1.5 hover:bg-neutral-700 transition-colors"
             title="Fork conversation"
@@ -45,8 +46,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
           </button>
-          
-          <button 
+
+          <button
             @click="copyMessageText"
             class="p-1.5 hover:bg-neutral-700 transition-colors"
             title="Copy message text"
@@ -57,10 +58,10 @@
           </button>
         </div>
       </div>
-        
+
       <!-- Message content -->
       <div class="leading-relaxed text-[15px]">
-        <p 
+        <p
           v-for="(paragraph, index) in message.text.split('\n')"
           :key="index"
           :class="{ 'mt-2.5': index > 0 }"
@@ -68,11 +69,11 @@
           {{ paragraph }}
         </p>
       </div>
-        
-      
+
+
       <!-- Typing indicator for AI messages -->
-      <div 
-        v-if="!isUser && isTyping" 
+      <div
+        v-if="!isUser && isTyping"
         class="flex gap-1.5 mt-2.5"
       >
         <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse"></span>
@@ -115,7 +116,7 @@ const copyMessageText = async () => {
 
 const formatTime = (date: Date | string | null | undefined) => {
   if (!date) return ''
-  
+
   try {
     const d = typeof date === 'string' ? new Date(date) : date
     // Check if d is a valid Date object
@@ -158,4 +159,4 @@ const formatTime = (date: Date | string | null | undefined) => {
 .animate-bounce {
   animation: bounce 1.4s ease-in-out infinite;
 }
-</style> 
+</style>
