@@ -172,13 +172,13 @@
               >
                 <Minus class="w-3 h-3 text-neutral-400" />
               </button>
-              <div class="flex-1 min-w-0 flex items-center gap-2">
-                <span class="text-sm font-medium text-neutral-200">{{ formatFilePath(file.path).filename }}</span>
-                <span v-if="formatFilePath(file.path).directory" class="text-xs text-neutral-500 truncate">
-                  {{ formatFilePath(file.path).directory }}
+              <div class="flex-1 min-w-0 flex items-center gap-1.5">
+                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
+                <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                  {{ getFileDisplay(file.path).directory }}
                 </span>
               </div>
-              <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
+              <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
               <button
@@ -224,13 +224,13 @@
                   <RotateCcw class="w-3 h-3 text-red-400" />
                 </button>
               </div>
-              <div class="flex-1 min-w-0 flex items-center gap-2">
-                <span class="text-sm font-medium text-neutral-200">{{ formatFilePath(file.path).filename }}</span>
-                <span v-if="formatFilePath(file.path).directory" class="text-xs text-neutral-500 truncate">
-                  {{ formatFilePath(file.path).directory }}
+              <div class="flex-1 min-w-0 flex items-center gap-1.5">
+                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
+                <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                  {{ getFileDisplay(file.path).directory }}
                 </span>
               </div>
-              <span :class="getStatusColor(file.status)" class="w-4 text-xs font-medium">
+              <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
                 {{ getStatusIcon(file.status) }}
               </span>
               <button
@@ -417,7 +417,7 @@ const hideBranchDropdown = () => {
 }
 
 // Helper functions
-const formatFilePath = (path: string) => {
+const getFileDisplay = (path: string) => {
   const lastSlashIndex = path.lastIndexOf('/')
   if (lastSlashIndex === -1) {
     // No directory, just filename
@@ -426,6 +426,7 @@ const formatFilePath = (path: string) => {
 
   const filename = path.substring(lastSlashIndex + 1)
   const directory = path.substring(0, lastSlashIndex)
+
   return { filename, directory }
 }
 
