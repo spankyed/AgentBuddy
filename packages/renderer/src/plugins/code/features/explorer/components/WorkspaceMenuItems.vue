@@ -34,7 +34,7 @@ const {
     <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
       <ChevronLeft class="w-3 h-3" />
       <Folder class="w-4 h-4" />
-      Add Project Directory
+      Add Directory
     </component>
     <component :is="PortalComponent">
       <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS">
@@ -79,7 +79,7 @@ const {
       <div class="flex items-center gap-2">
         <ChevronLeft class="w-3 h-3" />
         <FolderPlus class="w-4 h-4" />
-        Create Workspace Project
+        Create Project
       </div>
     </component>
     <component :is="PortalComponent">
