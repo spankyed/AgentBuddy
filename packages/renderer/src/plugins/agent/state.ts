@@ -6,6 +6,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
+import { createMockBlockMessages } from './mockMsgs';
 
 export const id = 'agent' as const;
 
@@ -65,6 +66,8 @@ type AgentEvent =
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
+  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
@@ -239,6 +242,13 @@ const agentState = setup({
         });
       }
 
+      // MOCK: Add block-based messages for testing (FE only)
+      const mockBlockMessages = createMockBlockMessages();
+
+      // Prepend mock messages to thread messages
+      const messagesWithMocks = [...mockBlockMessages, ...(thread.messages || [])];
+      const threadWithMocks = { ...thread, messages: messagesWithMocks };
+
       // If thread has forcedMode, handle phase properly
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
@@ -247,14 +257,14 @@ const agentState = setup({
           : undefined;
 
         return {
-          currentThread: thread,
+          currentThread: threadWithMocks,
           mode: thread.forcedMode,
           phase: newPhase
         };
       }
 
       return {
-        currentThread: thread
+        currentThread: threadWithMocks
       };
     }),
     setStartupData: assign(({ context, event }) => {
@@ -280,8 +290,16 @@ const agentState = setup({
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
 
+      // MOCK: Add block-based messages for testing (FE only)
+      let currentThreadWithMocks = typedEvent.data.currentThread;
+      if (currentThreadWithMocks) {
+        const mockBlockMessages = createMockBlockMessages();
+        const messagesWithMocks = [...mockBlockMessages, ...(currentThreadWithMocks.messages || [])];
+        currentThreadWithMocks = { ...currentThreadWithMocks, messages: messagesWithMocks };
+      }
+
       // If currentThread has forcedMode, handle phase properly
-      const forcedMode = typedEvent.data.currentThread?.forcedMode;
+      const forcedMode = currentThreadWithMocks?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
         const modeConfig = modes.find(m => m.id === forcedMode);
@@ -296,7 +314,7 @@ const agentState = setup({
       }
 
       return {
-        currentThread: typedEvent.data.currentThread,
+        currentThread: currentThreadWithMocks,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
@@ -455,6 +473,46 @@ const agentState = setup({
       const nextMode = visibleModes[(currentIndex + 1) % visibleModes.length];
       self.send({ type: 'SET_MODE', mode: nextMode.id });
     },
+
+    respondToBlockInteraction: ({ context, event }) => {
+      const { messageId, response } = typeOf('RESPOND_TO_BLOCK_INTERACTION', event);
+
+      if (!context.currentThread?.id) {
+        console.error('Cannot respond to block interaction: no current thread');
+        return;
+      }
+
+      // Send block interaction response to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'INTERACTIVE_MSG_RESPONSE',
+        messageId,
+        threadId: context.currentThread.id,
+        response,
+      });
+    },
+
+    updateMessageState: assign(({ context, event }) => {
+      const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event);
+      const { messageId, responseTimestamp, blockResponse } = typedEvent;
+
+      if (!context.currentThread?.messages) return {};
+
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: context.currentThread.messages.map(msg =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  responseTimestamp,
+                  ...(blockResponse !== undefined && { blockResponse })
+                }
+              : msg
+          )
+        }
+      };
+    }),
   },
   guards: {
     targetIs,
@@ -521,6 +579,12 @@ const agentState = setup({
     },
     REJECT_TODO_LIST: {
       actions: 'rejectTodoList'
+    },
+    RESPOND_TO_BLOCK_INTERACTION: {
+      actions: 'respondToBlockInteraction'
+    },
+    UPDATE_MESSAGE_STATE: {
+      actions: 'updateMessageState'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

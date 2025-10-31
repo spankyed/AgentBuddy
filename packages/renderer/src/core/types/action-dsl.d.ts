@@ -272,11 +272,29 @@ interface ActionsStartupData {
     categories?: Category[];
 }
 
+type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link';
+interface BlockConfig {
+    type: BlockType;
+    props: Record<string, any>;
+}
+interface LinkEvent {
+    target: 'application' | 'external' | string;
+    data: any;
+}
+type LinkIcon = 'external-link' | 'file-text' | 'message-square' | 'settings' | 'link';
+interface LinkConfig {
+    label: string;
+    event: LinkEvent;
+    icon?: LinkIcon;
+}
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
     sender: 'user' | 'assistant' | 'system';
     timestamp: number;
+    responseTimestamp?: number;
+    blocks?: BlockConfig[];
+    blockResponse?: any;
 }
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
@@ -841,6 +859,24 @@ declare const events: {
         type: "REJECT_TODO_LIST";
         systemId: "agent";
         artifactId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"INTERACTIVE_MSG_RESPONSE">;
+        systemId: zod.ZodLiteral<"agent">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+        response: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "agent";
+        threadId: string;
+        messageId: string;
+        response?: any;
+    }, {
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "agent";
+        threadId: string;
+        messageId: string;
+        response?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -2803,6 +2839,12 @@ declare const events: {
         hasRequiredApiKeys: boolean;
         pluginId: "agent";
     } | {
+        type: "UPDATE_MESSAGE_STATE";
+        messageId: string;
+        responseTimestamp: number;
+        blockResponse?: any;
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -4261,6 +4303,108 @@ const browser = /*#__PURE__*/Object.freeze({
   webkit: webkit
 });
 
+/**
+ * Block-based interaction helpers for creating composable messages
+ *
+ * These helpers make it easy to create messages using reusable blocks that can be
+ * mixed and matched to create complex interactions.
+ */
+interface BlockMessageOptions {
+    threadId: EARS.EntityId;
+    text: string;
+    blocks: BlockConfig[];
+}
+/**
+ * Send a message with custom blocks
+ */
+declare function sendBlockMessage(options: BlockMessageOptions): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create a file picker interaction using blocks
+ */
+declare function sendFilePickerBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    fileType?: 'file' | 'directory' | 'both';
+    allowMultiple?: boolean;
+    displayText?: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create a choice interaction using blocks
+ */
+declare function sendChoiceBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    choices: Array<{
+        id: string;
+        label: string;
+        description?: string;
+    }>;
+    multiSelect?: boolean;
+    allowCustom?: boolean;
+    displayText?: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create an approval interaction using blocks
+ */
+declare function sendApprovalBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    context?: string;
+    requireReason?: boolean;
+    allowReason?: boolean;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create a text input interaction using blocks
+ */
+declare function sendTextInputBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    placeholder?: string;
+    multiline?: boolean;
+    required?: boolean;
+    displayText?: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create a link block with navigation actions
+ */
+declare function sendLinkBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt?: string;
+    links: LinkConfig[];
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Update a message with block interaction response data
+ */
+declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: any): void;
+
+const chat = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  sendApprovalBlock: sendApprovalBlock,
+  sendBlockMessage: sendBlockMessage,
+  sendChoiceBlock: sendChoiceBlock,
+  sendFilePickerBlock: sendFilePickerBlock,
+  sendLinkBlock: sendLinkBlock,
+  sendTextInputBlock: sendTextInputBlock,
+  updateMessageBlockResponse: updateMessageBlockResponse
+});
+
 declare const services: {
     logger: {
         source?: string;
@@ -4559,6 +4703,7 @@ declare const services: {
     };
     settings: SettingsService;
     textStream: TextStreamService;
+    chat: typeof chat;
 };
 
 /**

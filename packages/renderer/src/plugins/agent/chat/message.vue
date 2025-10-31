@@ -10,7 +10,7 @@
         'relative rounded-xl px-4 py-3 transition-all duration-200 group',
         isUser
           ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
-          : ' text-indigo-50 border border-indigo-900/80',
+          : ' text-indigo-50 border border-neutral-700/80',
           // : 'bg-indigo-950/10 text-indigo-50 border border-indigo-900/20',
         'hover:shadow-md'
       ]"
@@ -70,6 +70,14 @@
         </p>
       </div>
 
+      <!-- Block-based interactions -->
+      <InteractionContainer
+        v-if="message.blocks && message.blocks.length > 0"
+        :blocks="message.blocks"
+        :message-id="message.id"
+        :is-disabled="!!message.responseTimestamp"
+        :response="message.blockResponse"
+      />
 
       <!-- Typing indicator for AI messages -->
       <div
@@ -87,6 +95,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MessageEntity } from '@app/api'
+import InteractionContainer from './interactions/InteractionContainer.vue'
 
 interface ChatMessageProps {
   message: MessageEntity

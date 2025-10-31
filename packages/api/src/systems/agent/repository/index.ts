@@ -47,7 +47,7 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
       "lastVisitedTimestamp",
       "forcedMode",
     ] as const,
-    messageFields = ["id", "text", "sender", "timestamp"] as const,
+    messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const,
     artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
   } = options;
 
@@ -192,7 +192,7 @@ export const agentQueries = {
       messages: qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],

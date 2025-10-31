@@ -24,6 +24,11 @@ export const IncomingAgentEvents = [
   busEvent('CANCEL'),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
+  busEvent('INTERACTIVE_MSG_RESPONSE', {
+    messageId: z.string(),
+    threadId: z.string(),
+    response: z.any() // Response data for block-based interactions
+  }),
 ] as const
 
 export type AgentInternalEvents =
@@ -39,6 +44,7 @@ export type OutgoingAgentEvents =
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
 
 export interface AgentContext {}
 
@@ -155,6 +161,29 @@ export const agentSystem = setup({
           threadId,
         },
       });
+    },
+    forwardInteractiveMessageResponse: ({ system, event }) => {
+      const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
+
+      // Forward to brain for flow processing
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'interactive.message.response',
+        payload: {
+          messageId,
+          threadId,
+          response,
+        },
+      });
+
+      // Send granular message state update to frontend (optimistic UI)
+      system.get(bus).send(emit(agent, {
+        type: 'UPDATE_MESSAGE_STATE',
+        messageId,
+        responseTimestamp: Date.now(),
+        blockResponse: response
+      }));
     }
   },
 }).createMachine(
@@ -185,6 +214,9 @@ export const agentSystem = setup({
         on: {
           USER_MSG: {
             actions: 'forwardUserMessage',
+          },
+          INTERACTIVE_MSG_RESPONSE: {
+            actions: 'forwardInteractiveMessageResponse',
           },
         },
       },

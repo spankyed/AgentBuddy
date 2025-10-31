@@ -2,11 +2,42 @@ import { BaseEntity } from "@/core/ears";
 import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS } from "@/types";
 
+// Block-based interaction system (composable architecture)
+export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link';
+
+export interface BlockConfig {
+  type: BlockType;
+  props: Record<string, any>;
+}
+
+// Link block types
+export interface LinkEvent {
+  target: 'application' | 'external' | string; // 'application', 'external', or plugin name
+  data: any;
+}
+
+export type LinkIcon =
+  | 'external-link'
+  | 'file-text'
+  | 'message-square'
+  | 'settings'
+  | 'link';
+
+export interface LinkConfig {
+  label: string;
+  event: LinkEvent;
+  icon?: LinkIcon; // Optional lucide icon name
+}
+
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   text: string;
   sender: 'user' | 'assistant' | 'system';
   timestamp: number;
+  // Block-based interaction system
+  responseTimestamp?: number; // Timestamp when the message was responded to
+  blocks?: BlockConfig[];
+  blockResponse?: any; // Response data for block-based interactions
 }
 
 export interface ThreadEntity extends BaseEntity {
