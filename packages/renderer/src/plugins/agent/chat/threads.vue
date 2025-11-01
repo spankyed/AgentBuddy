@@ -1,6 +1,6 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2" ref="containerRef">
-    <div 
+    <div
       v-if="isOpen"
       class="absolute bottom-full mb-2 left-0 right-0 px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-slide-down z-50"
     >
@@ -36,7 +36,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="flex items-center content-between" @click="isOpen = !isOpen">
       <button
         type="button"
@@ -49,9 +49,12 @@
       </button>
 
       <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <span
+        <!-- <span
           @click.stop="handleViewThread(currentThread?.id)"
           class="text-center hover:text-neutral-200">
+          {{ currentThread?.topic }} -->
+        <span
+          class="text-center">
           {{ currentThread?.topic }}
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
             {{ currentThread?.shortCode }}
@@ -70,7 +73,7 @@
             New thread
           </button>
         </ContextMenuTrigger>
-        
+
         <ContextMenuPortal>
           <ContextMenuContent
             class="min-w-[220px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
@@ -82,11 +85,11 @@
               <Plus class="w-4 h-4" />
               Create New Thread
             </ContextMenuItem>
-            
+
             <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
-            
+
             <div class="px-3 py-1 text-xs font-medium text-neutral-500 uppercase">Create as child of</div>
-            
+
             <ContextMenuItem
               v-for="projectThread in recentThreads"
               :key="projectThread.id"
@@ -98,7 +101,7 @@
                 <span class="truncate">{{ projectThread.topic || 'Untitled' }}</span>
               </div>
             </ContextMenuItem>
-            
+
             <div v-if="recentThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
               No project threads available
             </div>
