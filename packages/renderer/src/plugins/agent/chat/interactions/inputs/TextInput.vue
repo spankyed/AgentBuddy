@@ -1,9 +1,14 @@
 <template>
   <div class="text-input space-y-3">
     <!-- Response Display (when disabled/responded) -->
-    <div v-if="disabled && response" class="flex items-center gap-2 text-sm text-neutral-400 italic">
-      <Check class="w-4 h-4 text-green-500" />
-      <span>{{ displayText || 'Response submitted' }}</span>
+    <div v-if="disabled && response" class="space-y-2">
+      <div class="flex items-center gap-2 text-sm text-neutral-400 mb-2">
+        <Check class="w-4 h-4 text-green-500" />
+        <span>{{ displayText || 'Response submitted' }}</span>
+      </div>
+      <div class="px-3 py-2 bg-primary-600/15 rounded-lg border border-primary-600/30">
+        <span class="text-sm text-primary-400">{{ responseText }}</span>
+      </div>
     </div>
 
     <!-- Input Controls (when not disabled/not responded) -->
@@ -130,6 +135,12 @@ watch(inputValue, (newValue) => {
       }
     }, props.debounceMs)
   }
+})
+
+// Response display text
+const responseText = computed(() => {
+  if (!props.response) return ''
+  return String(props.response || '')
 })
 
 // Cleanup timer on unmount
