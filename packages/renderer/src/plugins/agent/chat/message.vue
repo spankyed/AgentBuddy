@@ -10,14 +10,14 @@
         'relative rounded-xl px-4 py-3 transition-all duration-200 group',
         isUser
           ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
-          : ' text-indigo-50 border border-neutral-700/80',
+          : ' text-neutral-50 border border-neutral-700/80',
           // : 'bg-indigo-950/10 text-indigo-50 border border-indigo-900/20',
         'hover:shadow-md'
       ]"
     >
       <!-- Floating hover UI -->
       <div
-        class="absolute transition-opacity duration-200 opacity-0 pointer-events-none bottom-2 right-2 group-hover:opacity-100 group-hover:pointer-events-auto"
+        class="absolute transition-opacity duration-200 opacity-0 pointer-events-none -bottom-3 -right-4 group-hover:opacity-100 group-hover:pointer-events-auto"
       >
         <div class="flex items-center overflow-hidden border rounded-lg shadow-lg bg-neutral-800 border-neutral-700">
           <!-- Timestamp -->
