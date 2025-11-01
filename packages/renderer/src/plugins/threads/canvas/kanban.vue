@@ -203,17 +203,17 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
               class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
-              <div class="flex items-start justify-between gap-2 mb-1">
+              <div class="flex items-start justify-between gap-2 mb-1" :title="`${card.time} • ${card.date}`">
                 <p class="text-sm font-medium leading-snug text-neutral-100">
                   {{ card.topic || 'Untitled Thread' }}
                 </p>
                 <span class="text-xs font-mono text-neutral-500">{{ card.shortCode }}</span>
               </div>
-              <div class="flex items-center gap-2 mt-2">
+              <!-- <div class="flex items-center gap-2 mt-2">
                 <span class="text-xs text-neutral-500">{{ card.date }}</span>
                 <span class="text-xs text-neutral-600">•</span>
                 <span class="text-xs text-neutral-500">{{ card.time }}</span>
-              </div>
+              </div> -->
               <div v-if="card.tags && card.tags.length > 0" class="flex flex-wrap gap-1 mt-2">
                 <span
                   v-for="tag in card.tags"
