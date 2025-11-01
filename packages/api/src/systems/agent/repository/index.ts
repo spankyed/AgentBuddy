@@ -3,7 +3,7 @@ import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
-import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
+import { MessageEntity, ThreadEntity, ArtifactEntity, BlockConfig } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import { threadCommands } from '@/systems/threads/repository';
@@ -280,6 +280,7 @@ export const agentCommands = {
     threadId: EARS.EntityId;
     text: string;
     sender: 'user' | 'assistant' | 'system';
+    blocks?: BlockConfig[];
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -287,14 +288,14 @@ export const agentCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender } = params;
-    
+    const { threadId, text, sender, blocks } = params;
+
     // Validate thread exists
     const thread = qx(threadId).id();
     if (!thread) {
       throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     // Validate sender
     const validSenders = ['user', 'assistant', 'system'];
     if (!validSenders.includes(sender)) {
@@ -303,24 +304,31 @@ export const agentCommands = {
         RepositoryErrorCode.VALIDATION_ERROR
       );
     }
-    
+
     // Create the message
     const timestamp = Date.now();
-    const messageId = tx(EARS.Entity.Message)
+    const messageTx = tx(EARS.Entity.Message)
       .put('text', text.trim())
       .put('timestamp', timestamp)
       .put('sender', sender)
       .put('createdAt', timestamp)
-      .put('updatedAt', timestamp)
+      .put('updatedAt', timestamp);
+
+    // Add blocks if provided
+    if (blocks) {
+      messageTx.put('blocks', blocks);
+    }
+
+    const messageId = messageTx
       .link(EARS.RelKind.CONTAINS, threadId)
       .id();
-    
+
     // Link thread to message
     tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
-    
+
     // Update thread's lastMessageTimestamp
     tx(threadId).update('lastMessageTimestamp', timestamp);
-    
+
     return {
       id: messageId,
       threadId,
@@ -342,6 +350,39 @@ export const agentCommands = {
     return {
       threadId: threadData.id,
       threadData
+    };
+  },
+
+  updateMessageBlockResponse: (params: {
+    messageId: EARS.EntityId;
+    response: any;
+  }): {
+    messageId: EARS.EntityId;
+    responseTimestamp: number;
+    updatedAt: number;
+  } => {
+    const { messageId, response } = params;
+
+    // Validate message exists
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(
+        `Message ${messageId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+
+    tx(messageId)
+      .put('blockResponse', response)
+      .put('responseTimestamp', now)
+      .put('updatedAt', now);
+
+    return {
+      messageId,
+      responseTimestamp: now,
+      updatedAt: now
     };
   },
 

@@ -221,6 +221,12 @@ export const agentSystem = setup({
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
+      // Save blockResponse to database
+      const result = repository.agentCommands.updateMessageBlockResponse({
+        messageId: messageId as EARS.EntityId,
+        response
+      });
+
       // Forward to brain for flow processing
       const brainActor = getActor(system, brain);
       brainActor.send({
@@ -233,11 +239,11 @@ export const agentSystem = setup({
         },
       });
 
-      // Send granular message state update to frontend (optimistic UI)
+      // Send granular message state update to frontend
       system.get(bus).send(emit(agent, {
         type: 'UPDATE_MESSAGE_STATE',
         messageId,
-        responseTimestamp: Date.now(),
+        responseTimestamp: result.responseTimestamp,
         blockResponse: response
       }));
     }

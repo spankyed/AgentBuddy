@@ -1,7 +1,6 @@
 import type { EARS } from '@/core/types';
 import { repository } from '@/repository';
 import type { BlockConfig, LinkConfig } from '@/systems/threads/types';
-import { tx } from '@/core/ears/helpers/transaction';
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -26,12 +25,8 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
     threadId,
     text,
     sender: 'assistant',
+    blocks,
   });
-
-  // Update the message to include blocks and set initial state
-  tx(result.id)
-    .put('blocks', blocks)
-    .put('updatedAt', Date.now());
 
   return { messageId: result.id };
 }
@@ -189,8 +184,8 @@ export function updateMessageBlockResponse(
   messageId: EARS.EntityId,
   response: any
 ): void {
-  tx(messageId)
-    .put('blockResponse', response)
-    .put('responseTimestamp', Date.now())
-    .put('updatedAt', Date.now());
+  repository.agentCommands.updateMessageBlockResponse({
+    messageId,
+    response
+  });
 }
