@@ -9,16 +9,11 @@ import type { EARS } from '@/core/types';
  *
  * This action demonstrates all block interaction types available in the system.
  * It's intended as a reference implementation that can be copied into in-app workflows.
+ *
+ * @param params.threadId - The thread ID to send messages to (passed from flow)
  */
 export async function mockBlockMessages(params: any, services: typeof Services) {
-  // Get or create the birth thread
-  let birthThread = services.repository.agentQueries.getAssistantBirthThread();
-
-  if (!birthThread) {
-    birthThread = services.repository.agentCommands.createAssistantBirthThread();
-  }
-
-  const threadId = birthThread.threadId as EARS.EntityId;
+  threadId = params.threadId as EARS.EntityId;
 
   // 1. File picker (directory) - demonstrates directory selection
   services.chat.sendFilePickerBlock({
