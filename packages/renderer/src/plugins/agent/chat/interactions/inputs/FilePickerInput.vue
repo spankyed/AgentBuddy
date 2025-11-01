@@ -29,10 +29,10 @@
           <span class="text-sm text-neutral-200 truncate flex-1">{{ path }}</span>
           <button
             @click="removePath(index)"
-            :disabled="disabled"
+            :disabled="disabled || isLoading"
             :class="[
               'p-1 rounded transition-colors',
-              disabled
+              disabled || isLoading
                 ? 'cursor-not-allowed opacity-50'
                 : 'hover:bg-neutral-600'
             ]"
@@ -47,16 +47,17 @@
       <div class="flex items-center gap-2">
         <button
           @click="openFileDialog"
-          :disabled="disabled"
+          :disabled="disabled || isLoading"
           :class="[
             'px-4 py-2 rounded-lg border border-neutral-600 transition-colors text-sm flex items-center gap-2',
-            disabled
+            disabled || isLoading
               ? 'bg-neutral-700/50 text-neutral-500 cursor-not-allowed opacity-50'
               : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200'
           ]"
         >
-          <FolderOpen class="w-4 h-4" />
-          {{ browseButtonText }}
+          <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
+          <FolderOpen v-else class="w-4 h-4" />
+          {{ isLoading ? 'Processing...' : browseButtonText }}
         </button>
       </div>
     </template>
@@ -64,8 +65,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { FolderOpen, File, Folder, X, Check } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { FolderOpen, File, Folder, X, Check, Loader2 } from 'lucide-vue-next'
 
 interface Props {
   fileType?: 'file' | 'directory' | 'both'
@@ -89,6 +90,9 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+
+// Internal loading state
+const isLoading = ref(false)
 
 // Response display handling
 const fileList = computed(() => {
@@ -126,49 +130,34 @@ const getFileIcon = (path: string) => {
 }
 
 const openFileDialog = async () => {
-  if (props.disabled) return;
+  if (props.disabled || isLoading.value) return;
 
   try {
-    // Use the Electron dialog API to open file/directory picker
-    // This would need to be exposed via a preload script
-    // For now, we'll use the HTML5 file input as a fallback
+    // Use native Electron dialog for file/directory selection
+    const result = await window.electronAPI?.fileUtils.selectPath({
+      type: props.fileType || 'file',
+      allowMultiple: props.allowMultiple
+    });
 
-    const input = document.createElement('input');
-    input.type = 'file';
+    if (!result) return; // User cancelled
 
-    if (props.fileType === 'directory') {
-      input.setAttribute('webkitdirectory', '');
-      input.setAttribute('directory', '');
-    }
+    const newPaths = Array.isArray(result) ? result : [result];
 
     if (props.allowMultiple) {
-      input.multiple = true;
+      selectedPaths.value = [...selectedPaths.value, ...newPaths];
+    } else {
+      selectedPaths.value = newPaths.slice(0, 1);
     }
 
-    input.onchange = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (target.files) {
-        const newPaths = Array.from(target.files).map(f => {
-          // Get the full path if available (Electron), otherwise use name
-          return (f as any).path || f.name;
-        });
+    emitUpdate();
 
-        if (props.allowMultiple) {
-          selectedPaths.value = [...selectedPaths.value, ...newPaths];
-        } else {
-          selectedPaths.value = newPaths.slice(0, 1);
-        }
+    // Set loading state before submitting
+    isLoading.value = true;
 
-        emitUpdate();
-
-        // Auto-submit after file selection (both single and multi-file)
-        if (selectedPaths.value.length > 0) {
-          emit('submit', currentValue.value);
-        }
-      }
-    };
-
-    input.click();
+    // Auto-submit after file selection
+    if (selectedPaths.value.length > 0) {
+      emit('submit', currentValue.value);
+    }
   } catch (error) {
     console.error('Error opening file dialog:', error);
   }
@@ -178,6 +167,13 @@ const removePath = (index: number) => {
   selectedPaths.value.splice(index, 1);
   emitUpdate();
 }
+
+// Clear loading state when disabled (backend responded)
+watch(() => props.disabled, (newDisabled) => {
+  if (newDisabled) {
+    isLoading.value = false;
+  }
+})
 
 const emitUpdate = () => {
   emit('update:modelValue', currentValue.value);

@@ -8,6 +8,10 @@ declare global {
       };
       fileUtils: {
         selectDirectory: () => Promise<string | null>;
+        selectPath: (options?: {
+          allowMultiple?: boolean;
+          type: 'file' | 'directory' | 'both';
+        }) => Promise<string | string[] | null>;
       };
       shell: {
         openExternal: (url: string) => Promise<void>;
