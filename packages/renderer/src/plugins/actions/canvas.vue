@@ -1,13 +1,17 @@
 <template>
   <div class="flex flex-col justify-center h-full">
     <!-- List View -->
-    <ActionsList 
+    <ActionsList
       v-if="state.hasTag('list-actions')"
-      :actions="actions"
+      :actions="filteredActions"
       :categories="categories"
+      :selected-categories="selectedCategories"
+      :has-actions="actions.length > 0"
       @select="handleSelectAction"
       @create="handleCreateAction"
       @delete="handleDeleteAction"
+      @toggle-category="handleToggleCategory"
+      @clear-filters="handleClearFilters"
     />
 
     <!-- Create/Edit View -->
@@ -29,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type ActionsState } from './state';
 import { applicationState } from '@/main';
@@ -42,6 +47,22 @@ const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);
 const formData = useSelector(actor, (state) => state.context.formData);
 const categories = useSelector(actor, (state) => state.context.categories);
+const selectedCategories = useSelector(actor, (state) => state.context.selectedCategories);
+
+// Filter actions based on selected categories
+const filteredActions = computed(() => {
+  // If no categories selected, show all actions
+  if (selectedCategories.value.length === 0) {
+    return actions.value;
+  }
+
+  // Filter actions that match selected categories
+  return actions.value.filter(action => {
+    // If action has no category, don't show it when filters are active
+    if (!action.category) return false;
+    return selectedCategories.value.includes(action.category);
+  });
+});
 
 // List handlers
 function handleSelectAction(actionId: EARS.EntityId) {
@@ -87,5 +108,14 @@ function handleSave() {
 
 function handleGoBack() {
   actor.send({ type: 'VIEW_LIST' });
+}
+
+// Filter handlers
+function handleToggleCategory(categoryName: string) {
+  actor.send({ type: 'FILTER.TOGGLE_CATEGORY', categoryName });
+}
+
+function handleClearFilters() {
+  actor.send({ type: 'FILTER.CLEAR' });
 }
 </script>

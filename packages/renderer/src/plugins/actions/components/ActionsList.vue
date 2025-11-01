@@ -13,13 +13,20 @@
 
     <!-- Actions Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="actions.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="hasActions" class="h-full overflow-y-auto custom-scrollbar">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
-              <th class="px-6 py-3">Category</th>
+              <th class="p-0">
+                <CategoryFilter
+                  :categories="categories"
+                  :selected-categories="selectedCategories"
+                  @toggle-category="$emit('toggle-category', $event)"
+                  @clear-filters="$emit('clear-filters')"
+                />
+              </th>
               <th class="px-6 py-3">Inputs</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
@@ -92,7 +99,8 @@
           </tbody>
         </table>
       </div>
-      <div v-else class="flex items-center justify-center h-full">
+      <!-- Empty State (only when no actions exist at all) -->
+      <div v-if="!hasActions" class="flex items-center justify-center h-full">
         <div class="text-center">
           <Play class="w-12 h-12 mx-auto mb-4 text-neutral-600" />
           <h3 class="mb-2 text-lg font-medium text-neutral-300">No actions yet</h3>
@@ -111,10 +119,13 @@
 import type { ActionEntity, EARS, Category } from '@app/api'
 import { Plus, Play, Trash2 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
+import CategoryFilter from '@/core/components/design/CategoryFilter.vue'
 
 interface Props {
   actions: ActionEntity[]
   categories: Category[]
+  selectedCategories: string[]
+  hasActions: boolean
 }
 
 const props = defineProps<Props>()
@@ -123,6 +134,8 @@ const emit = defineEmits<{
   'select': [actionId: EARS.EntityId]
   'create': []
   'delete': [actionId: EARS.EntityId]
+  'toggle-category': [categoryName: string]
+  'clear-filters': []
 }>()
 
 function handleDelete(actionId: EARS.EntityId) {
