@@ -8,7 +8,7 @@ import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
 import { RecentThreadRefreshData, AgentThreadData, AgentConnectedData, AgentSettings } from './types';
-import type { EARS } from '@/core/types';
+import { EARS } from '@/core/types';
 import { initializeMockData } from './repository/mock-artifacts';
 
 const logger = createLogger('agent');
@@ -149,7 +149,62 @@ export const agentSystem = setup({
       }));
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId } = typeOf('USER_MSG', event);
+      const { text, mode, phase, threadId: providedThreadId } = typeOf('USER_MSG', event);
+
+      // Step 1: Ensure we have a thread (create if needed)
+      let threadId: EARS.EntityId;
+      let threadData: any = null;
+
+      if (!providedThreadId) {
+        const result = repository.agentCommands.createThreadFromMessage(text);
+        threadId = result.threadId;
+        threadData = result.threadData;
+
+        logger.info('Created new thread for user message', {
+          threadId,
+          shortCode: result.threadData.shortCode,
+        });
+      } else {
+        threadId = providedThreadId as EARS.EntityId;
+      }
+
+      // Step 2: Save the user message (also updates thread's lastMessageTimestamp)
+      const messageResult = repository.agentCommands.addMessage({
+        threadId,
+        text,
+        sender: 'user',
+      });
+
+      // Step 3: Notify frontend if new thread was created
+      if (threadData) {
+        const fullThreadData = repository.threadQueries.byId(threadData.id);
+
+        // Notify threads plugin about the new thread
+        system.get(bus).send(emit('threads', {
+          type: 'THREAD_CREATED',
+          id: threadData.id,
+          shortCode: threadData.shortCode,
+          entityType: EARS.Entity.Thread,
+          timestamp: threadData.timestamp,
+          topic: fullThreadData?.topic,
+          instructions: fullThreadData?.instructions,
+          status: fullThreadData?.status
+        } as any));
+
+        // Send updated thread list to agent plugin
+        system.get(bus).send(emit(agent, {
+          type: 'REFRESH_RECENT_THREADS',
+          data: repository.agentQueries.refreshThreadsData()
+        }));
+      }
+
+      // Step 4: Send updated chat thread data to frontend with new message
+      system.get(bus).send(emit(agent, {
+        type: 'LOAD_CHAT_THREAD',
+        data: repository.agentQueries.threadData(threadId),
+      }));
+
+      // Step 5: Forward to brain for flow processing
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
@@ -159,6 +214,7 @@ export const agentSystem = setup({
           mode,
           phase,
           threadId,
+          messageId: messageResult.id,
         },
       });
     },

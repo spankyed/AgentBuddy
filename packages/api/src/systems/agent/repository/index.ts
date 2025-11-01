@@ -6,7 +6,10 @@ import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
-import { repository } from '@/repository';
+import { threadCommands } from '@/systems/threads/repository';
+
+// Constants
+const THREAD_TOPIC_MAX_LENGTH = 40;
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -327,6 +330,21 @@ export const agentCommands = {
     };
   },
 
+  createThreadFromMessage: (text: string): {
+    threadId: EARS.EntityId;
+    threadData: ReturnType<typeof threadCommands.create>;
+  } => {
+    const threadData = threadCommands.create({
+      topic: text.substring(0, THREAD_TOPIC_MAX_LENGTH),
+      instructions: '',
+    });
+
+    return {
+      threadId: threadData.id,
+      threadData
+    };
+  },
+
   createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
     // Check if an assistant birth thread already exists
     const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
@@ -344,8 +362,8 @@ export const agentCommands = {
       };
     }
 
-    // Create the thread using repository
-    const { id: threadId, shortCode, timestamp, status } = repository.threadCommands.create({
+    // Create the thread using threadCommands
+    const { id: threadId, shortCode, timestamp, status } = threadCommands.create({
       topic: 'Assistant Birth',
       instructions: 'Welcome! This thread will help you get started with your new assistant.',
       tags: []
