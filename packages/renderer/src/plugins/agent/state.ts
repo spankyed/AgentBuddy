@@ -6,7 +6,6 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { trpc } from '@/core/trpc';
 import { application } from '@/core/actors/application';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
-import { createMockBlockMessages } from './mockMsgs';
 
 export const id = 'agent' as const;
 
@@ -242,13 +241,6 @@ const agentState = setup({
         });
       }
 
-      // MOCK: Add block-based messages for testing (FE only)
-      const mockBlockMessages = createMockBlockMessages();
-
-      // Prepend mock messages to thread messages
-      const messagesWithMocks = [...mockBlockMessages, ...(thread.messages || [])];
-      const threadWithMocks = { ...thread, messages: messagesWithMocks };
-
       // If thread has forcedMode, handle phase properly
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
@@ -257,14 +249,14 @@ const agentState = setup({
           : undefined;
 
         return {
-          currentThread: threadWithMocks,
+          currentThread: thread,
           mode: thread.forcedMode,
           phase: newPhase
         };
       }
 
       return {
-        currentThread: threadWithMocks
+        currentThread: thread
       };
     }),
     setStartupData: assign(({ context, event }) => {
@@ -290,16 +282,9 @@ const agentState = setup({
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
 
-      // MOCK: Add block-based messages for testing (FE only)
-      let currentThreadWithMocks = typedEvent.data.currentThread;
-      if (currentThreadWithMocks) {
-        const mockBlockMessages = createMockBlockMessages();
-        const messagesWithMocks = [...mockBlockMessages, ...(currentThreadWithMocks.messages || [])];
-        currentThreadWithMocks = { ...currentThreadWithMocks, messages: messagesWithMocks };
-      }
-
       // If currentThread has forcedMode, handle phase properly
-      const forcedMode = currentThreadWithMocks?.forcedMode;
+      const currentThread = typedEvent.data.currentThread;
+      const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
         const modeConfig = modes.find(m => m.id === forcedMode);
@@ -314,7 +299,7 @@ const agentState = setup({
       }
 
       return {
-        currentThread: currentThreadWithMocks,
+        currentThread: currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
