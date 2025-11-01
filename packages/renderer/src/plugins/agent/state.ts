@@ -490,10 +490,10 @@ const agentState = setup({
           messages: context.currentThread.messages.map(msg =>
             msg.id === messageId
               ? {
-                  ...msg,
-                  responseTimestamp,
-                  ...(blockResponse !== undefined && { blockResponse })
-                }
+                ...msg,
+                responseTimestamp,
+                ...(blockResponse !== undefined && { blockResponse })
+              }
               : msg
           )
         }

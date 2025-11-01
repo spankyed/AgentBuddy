@@ -48,7 +48,7 @@ export type OutgoingAgentEvents =
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
 
-export interface AgentContext {}
+export interface AgentContext { }
 
 export const AgentSystemEvents = fromSystem(IncomingAgentEvents)<OutgoingAgentEvents, typeof agent>()
 type ReceivableEvents = MergeReceivable<typeof IncomingAgentEvents, AgentInternalEvents>;
@@ -74,7 +74,7 @@ export const agentSystem = setup({
         // : new Date().toISOString();
 
         const birthdate = new Date().toISOString();
-        
+
         repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
 
