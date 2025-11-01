@@ -1,6 +1,7 @@
-import type { EARS } from '@/core/types';
+import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import type { BlockConfig, LinkConfig } from '@/systems/threads/types';
+import type { BlockConfig, LinkConfig, MessageEntity } from '@/systems/threads/types';
+import { sendToPlugin } from './event-emitter';
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -16,9 +17,14 @@ interface BlockMessageOptions {
 }
 
 /**
- * Send a message with custom blocks
+ * Create a message with custom blocks (pure function)
+ * Returns message data without side effects
  */
-export function sendBlockMessage(options: BlockMessageOptions): { messageId: EARS.EntityId } {
+export function createBlockMessage(options: BlockMessageOptions): {
+  messageId: EARS.EntityId;
+  threadId: EARS.EntityId;
+  message: MessageEntity;
+} {
   const { threadId, text, blocks } = options;
 
   const result = repository.agentCommands.addMessage({
@@ -28,7 +34,36 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
     blocks,
   });
 
-  return { messageId: result.id };
+  // Construct message entity for return
+  const message: MessageEntity = {
+    id: result.id,
+    entityType: EARS.Entity.Message,
+    text: result.text,
+    sender: result.sender as 'user' | 'assistant' | 'system',
+    timestamp: result.timestamp,
+    blocks,
+    createdAt: result.timestamp,
+    updatedAt: result.timestamp,
+  };
+
+  return { messageId: result.id, threadId, message };
+}
+
+/**
+ * Send a message with custom blocks and emit MESSAGE_ADDED event
+ * Use this for flow actions that need automatic frontend updates
+ */
+export function sendBlockMessage(options: BlockMessageOptions): { messageId: EARS.EntityId } {
+  const result = createBlockMessage(options);
+
+  // Emit granular event - only new message data (not entire thread)
+  sendToPlugin('agent', {
+    type: 'MESSAGE_ADDED',
+    threadId: result.threadId,
+    message: result.message
+  } as any);
+
+  return { messageId: result.messageId };
 }
 
 /**

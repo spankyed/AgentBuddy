@@ -166,12 +166,6 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
     ]
   });
 
-  // Notify frontend to load the thread chat with all the mock messages
-  services.emitter.sendToPlugin('agent', {
-    type: 'LOAD_CHAT_THREAD',
-    data: services.repository.agentQueries.threadData(threadId)
-  });
-
   await services.logger.info('Mock block messages created', {
     threadId,
     messageCount: 8

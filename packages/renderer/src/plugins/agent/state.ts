@@ -67,6 +67,7 @@ type AgentEvent =
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
+  | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
@@ -498,6 +499,21 @@ const agentState = setup({
         }
       };
     }),
+
+    addMessageToThread: assign(({ context, event }) => {
+      const typedEvent = typeOf('MESSAGE_ADDED', event);
+      const { threadId, message } = typedEvent;
+
+      // Only update if this is the current thread
+      if (context.currentThread?.id !== threadId) return {};
+
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: [...(context.currentThread.messages ?? []), message]
+        }
+      };
+    }),
   },
   guards: {
     targetIs,
@@ -570,6 +586,9 @@ const agentState = setup({
     },
     UPDATE_MESSAGE_STATE: {
       actions: 'updateMessageState'
+    },
+    MESSAGE_ADDED: {
+      actions: 'addMessageToThread'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

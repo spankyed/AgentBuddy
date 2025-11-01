@@ -10,6 +10,7 @@ import { brain } from '../brain/system';
 import { RecentThreadRefreshData, AgentThreadData, AgentConnectedData, AgentSettings } from './types';
 import { EARS } from '@/core/types';
 import { initializeMockData } from './repository/mock-artifacts';
+import type { MessageEntity } from '@/systems/threads/types';
 
 const logger = createLogger('agent');
 
@@ -45,6 +46,7 @@ export type OutgoingAgentEvents =
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
+  | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
 
 export interface AgentContext {}
 
