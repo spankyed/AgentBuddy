@@ -46,7 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<Emits>()
 
 const submitVariantClasses = {
-  primary: 'bg-indigo-600 hover:bg-indigo-500 text-white',
+  primary: 'bg-primary-600 hover:bg-primary-500 text-white',
   success: 'bg-green-600 hover:bg-green-500 text-white',
   danger: 'bg-red-600 hover:bg-red-500 text-white'
 }

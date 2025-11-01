@@ -6,8 +6,8 @@
         <Check class="w-4 h-4 text-green-500" />
         <span>{{ displayText || 'Selected:' }}</span>
       </div>
-      <div class="px-3 py-2 bg-indigo-900/20 rounded-lg border border-indigo-600/30">
-        <span class="text-sm text-indigo-200">{{ choiceText }}</span>
+      <div class="px-3 py-2 bg-primary-600/15 rounded-lg border border-primary-600/30">
+        <span class="text-sm text-primary-400">{{ choiceText }}</span>
       </div>
     </div>
 
@@ -25,7 +25,7 @@
             ? 'cursor-not-allowed opacity-50'
             : 'cursor-pointer',
           isSelected(choice.id)
-            ? 'bg-indigo-900/30 border-indigo-600 ring-2 ring-indigo-600/50'
+            ? 'bg-primary-600/20 border-primary-600 ring-2 ring-primary-600/50'
             : disabled
               ? 'bg-neutral-700/30 border-neutral-700'
               : 'bg-neutral-700/50 border-neutral-600 hover:border-neutral-500'
@@ -38,7 +38,7 @@
               'flex-shrink-0 w-5 h-5 rounded transition-all',
               multiSelect ? 'rounded-md' : 'rounded-full',
               isSelected(choice.id)
-                ? 'bg-indigo-600 border-2 border-indigo-600'
+                ? 'bg-primary-600 border-2 border-primary-600'
                 : 'bg-neutral-600 border-2 border-neutral-500'
             ]"
           >
@@ -72,7 +72,7 @@
         :disabled="disabled"
         placeholder="Type your custom response..."
         :class="[
-          'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent',
+          'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent',
           disabled
             ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
             : 'bg-neutral-700 border-neutral-600 text-neutral-200'

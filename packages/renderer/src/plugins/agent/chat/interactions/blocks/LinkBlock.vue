@@ -5,7 +5,7 @@
         v-for="(link, index) in links"
         :key="index"
         @click="handleLinkClick(link)"
-        class="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+        class="flex items-center gap-1.5 text-sm text-primary-400 hover:text-primary-400 transition-colors"
       >
         <component :is="getLinkIcon(link)" class="w-4 h-4" />
         <span>{{ link.label }}</span>

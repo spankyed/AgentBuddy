@@ -17,7 +17,7 @@
       :required="required"
       :disabled="disabled"
       :class="[
-        'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent',
+        'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent',
         disabled
           ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
           : 'bg-neutral-700 border-neutral-600 text-neutral-200'
@@ -34,7 +34,7 @@
       :rows="rows"
       :disabled="disabled"
       :class="[
-        'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent resize-y',
+        'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-y',
         disabled
           ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
           : 'bg-neutral-700 border-neutral-600 text-neutral-200'
