@@ -200,10 +200,21 @@ export const agentSystem = setup({
         }));
       }
 
-      // Step 4: Send updated chat thread data to frontend with new message
+      // Step 4: Send MESSAGE_ADDED event for the user message
+      const userMessage: MessageEntity = {
+        id: messageResult.id,
+        entityType: EARS.Entity.Message,
+        text: messageResult.text,
+        sender: messageResult.sender as 'user' | 'assistant' | 'system',
+        timestamp: messageResult.timestamp,
+        createdAt: messageResult.timestamp,
+        updatedAt: messageResult.timestamp,
+      };
+
       system.get(bus).send(emit(agent, {
-        type: 'LOAD_CHAT_THREAD',
-        data: repository.agentQueries.threadData(threadId),
+        type: 'MESSAGE_ADDED',
+        threadId: threadId as string,
+        message: userMessage
       }));
 
       // Step 5: Forward to brain for flow processing

@@ -44,7 +44,7 @@ interface AgentContext {
 }
 
 type Brain_FE_AgentEvents =
-  | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
+  // | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -160,32 +160,6 @@ const agentState = setup({
         threadId: context.currentThread?.id,
       });
     },
-    addMessage: assign(({ context, event }) => ({
-      currentThread: {
-        ...context.currentThread!,
-        messages: [...(context.currentThread?.messages || []), {
-          id: Date.now().toString(),
-          entityType: 'Message' as const,
-          createdAt: Date.now(),
-          text: typeOf('SEND_MESSAGE', event).text,
-          sender: 'user' as const,
-          timestamp: Date.now()
-        } as MessageEntity]
-      }
-    })),
-    addAssistantMessage: assign(({ context, event }) => ({
-      currentThread: {
-        ...context.currentThread!,
-        messages: [...(context.currentThread?.messages || []), {
-          id: Date.now().toString(),
-          entityType: 'Message' as const,
-          createdAt: Date.now(),
-          text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
-          sender: 'assistant' as const,
-          timestamp: Date.now(),
-        } as MessageEntity]
-      }
-    })),
     clearThread: assign(() => ({
       currentThread: {
         ...defaultThread,
@@ -499,7 +473,34 @@ const agentState = setup({
         }
       };
     }),
-
+    // addMessage: assign(({ context, event }) => ({
+    //   currentThread: {
+    //     ...context.currentThread!,
+    //     messages: [...(context.currentThread?.messages || []), {
+    //       id: Date.now().toString(),
+    //       entityType: 'Message' as const,
+    //       createdAt: Date.now(),
+    //       text: typeOf('SEND_MESSAGE', event).text,
+    //       sender: 'user' as const,
+    //       timestamp: Date.now()
+    //     } as MessageEntity]
+    //   }
+    // })),
+    // addAssistantMessage: assign(({ context, event }) => {
+    //   return ({
+    //     currentThread: {
+    //       ...context.currentThread!,
+    //       messages: [...(context.currentThread?.messages || []), {
+    //         id: Date.now().toString(),
+    //         entityType: 'Message' as const,
+    //         createdAt: Date.now(),
+    //         text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
+    //         sender: 'assistant' as const,
+    //         timestamp: Date.now(),
+    //       } as MessageEntity]
+    //     }
+    //   })
+    // }),
     addMessageToThread: assign(({ context, event }) => {
       const typedEvent = typeOf('MESSAGE_ADDED', event);
       const { threadId, message } = typedEvent;
@@ -595,7 +596,6 @@ const agentState = setup({
     ]),
     SEND_MESSAGE: {
       actions: [
-        'addMessage',
         'sendMessage',
         { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
       ],
@@ -615,9 +615,9 @@ const agentState = setup({
     CREATE_CHILD_THREAD: {
       actions: 'createChildThread'
     },
-    ADD_ASSISTANT_MESSAGE: {
-      actions: 'addAssistantMessage'
-    },
+    // ADD_ASSISTANT_MESSAGE: {
+    //   actions: 'addAssistantMessage'
+    // },
     TOKEN_STREAM: {
       actions: 'handleTokenStream'
     },
