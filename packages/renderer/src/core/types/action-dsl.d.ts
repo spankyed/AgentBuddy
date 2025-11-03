@@ -307,7 +307,7 @@ interface ThreadEntity extends BaseEntity {
     shortCode?: string;
     status: string;
     tags?: string[];
-    forcedMode?: 'birth' | 'work' | 'chat' | 'note';
+    forcedMode?: 'birth';
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -962,6 +962,24 @@ declare const events: {
         type: "RESTART_BRAIN";
         systemId: "brain";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
         systemId: zod.ZodLiteral<"brain">;
         eventType: zod.ZodString;
@@ -987,10 +1005,10 @@ declare const events: {
             relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }, {
             id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }>, "many">>;
         parentThreadId: zod.ZodOptional<zod.ZodString>;
         topic: zod.ZodString;
@@ -1001,22 +1019,22 @@ declare const events: {
         instructions: string;
         type: "CREATE_THREAD";
         systemId: "threads";
+        tags?: string[] | undefined;
         linkedThreads?: {
             id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }[] | undefined;
-        tags?: string[] | undefined;
         parentThreadId?: string | undefined;
     }, {
         topic: string;
         instructions: string;
         type: "CREATE_THREAD";
         systemId: "threads";
+        tags?: string[] | undefined;
         linkedThreads?: {
             id: string;
-            relation: "parent_of" | "blocks" | "duplicates" | "blocked_by";
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }[] | undefined;
-        tags?: string[] | undefined;
         parentThreadId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"VIEW_THREAD">;
@@ -2841,8 +2859,15 @@ declare const events: {
     } | {
         type: "UPDATE_MESSAGE_STATE";
         messageId: string;
-        responseTimestamp: number;
+        text?: string | undefined;
+        blocks?: BlockConfig[] | undefined;
+        responseTimestamp?: number | undefined;
         blockResponse?: any;
+        pluginId: "agent";
+    } | {
+        type: "MESSAGE_ADDED";
+        threadId: string;
+        message: MessageEntity;
         pluginId: "agent";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
@@ -4315,7 +4340,17 @@ interface BlockMessageOptions {
     blocks: BlockConfig[];
 }
 /**
- * Send a message with custom blocks
+ * Create a message with custom blocks (pure function)
+ * Returns message data without side effects
+ */
+declare function createBlockMessage(options: BlockMessageOptions): {
+    messageId: EARS.EntityId;
+    threadId: EARS.EntityId;
+    message: MessageEntity;
+};
+/**
+ * Send a message with custom blocks and emit MESSAGE_ADDED event
+ * Use this for flow actions that need automatic frontend updates
  */
 declare function sendBlockMessage(options: BlockMessageOptions): {
     messageId: EARS.EntityId;
@@ -4393,16 +4428,37 @@ declare function sendLinkBlock(options: {
  * Update a message with block interaction response data
  */
 declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: any): void;
+/**
+ * Update message state with any mutable fields
+ * Main interface for ad hoc message state updates (text, blocks, blockResponse, responseTimestamp)
+ * Automatically emits UPDATE_MESSAGE_STATE event to frontend
+ *
+ * @example
+ * // Re-enable interactive blocks by clearing response
+ * updateMessageState(messageId, {
+ *   responseTimestamp: undefined,
+ *   blockResponse: undefined
+ * });
+ *
+ * @example
+ * // Update message text
+ * updateMessageState(messageId, {
+ *   text: 'Updated message content'
+ * });
+ */
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>): void;
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
+  createBlockMessage: createBlockMessage,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
   sendChoiceBlock: sendChoiceBlock,
   sendFilePickerBlock: sendFilePickerBlock,
   sendLinkBlock: sendLinkBlock,
   sendTextInputBlock: sendTextInputBlock,
-  updateMessageBlockResponse: updateMessageBlockResponse
+  updateMessageBlockResponse: updateMessageBlockResponse,
+  updateMessageState: updateMessageState
 });
 
 declare const services: {
@@ -4481,12 +4537,38 @@ declare const services: {
                 threadId: EARS.EntityId;
                 text: string;
                 sender: "user" | "assistant" | "system";
+                blocks?: BlockConfig[];
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
                 text: string;
                 sender: string;
                 timestamp: number;
+            };
+            readonly createThreadFromMessage: (text: string) => {
+                threadId: EARS.EntityId;
+                threadData: ReturnType<(input: ThreadCreateData) => {
+                    id: EARS.EntityId;
+                    shortCode: string;
+                    timestamp: number;
+                    status: string;
+                }>;
+            };
+            readonly updateMessageBlockResponse: (params: {
+                messageId: EARS.EntityId;
+                response: any;
+            }) => {
+                messageId: EARS.EntityId;
+                responseTimestamp: number;
+                updatedAt: number;
+            };
+            readonly updateMessageState: (params: {
+                messageId: EARS.EntityId;
+                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp">>;
+            }) => {
+                messageId: EARS.EntityId;
+                updatedAt: number;
+                updates: typeof params.updates;
             };
             readonly createAssistantBirthThread: () => {
                 threadId: EARS.EntityId;
@@ -4720,7 +4802,7 @@ type Services = typeof services;
 declare const services: Services;
 declare const params: ActionParams;
 
-export { ActionService, LibraryService, PromptService, params, services };
+export { ActionService, LibraryService, PromptService, params as params, services };
 export type { ActionEntity, ActionParams, Services };
 
 }

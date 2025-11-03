@@ -386,6 +386,41 @@ export const agentCommands = {
     };
   },
 
+  updateMessageState: (params: {
+    messageId: EARS.EntityId;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>;
+  }): {
+    messageId: EARS.EntityId;
+    updatedAt: number;
+    updates: typeof params.updates;
+  } => {
+    const { messageId, updates } = params;
+
+    // Validate message exists
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(
+        `Message ${messageId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = {
+      ...updates,
+      updatedAt: now
+    };
+
+    // Apply all updates in a single transaction
+    tx(messageId).updateBatch(updateData);
+
+    return {
+      messageId,
+      updatedAt: now,
+      updates
+    };
+  },
+
   createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
     // Check if an assistant birth thread already exists
     const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');

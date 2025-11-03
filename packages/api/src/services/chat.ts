@@ -224,3 +224,38 @@ export function updateMessageBlockResponse(
     response
   });
 }
+
+/**
+ * Update message state with any mutable fields
+ * Main interface for ad hoc message state updates (text, blocks, blockResponse, responseTimestamp)
+ * Automatically emits UPDATE_MESSAGE_STATE event to frontend
+ *
+ * @example
+ * // Re-enable interactive blocks by clearing response
+ * updateMessageState(messageId, {
+ *   responseTimestamp: undefined,
+ *   blockResponse: undefined
+ * });
+ *
+ * @example
+ * // Update message text
+ * updateMessageState(messageId, {
+ *   text: 'Updated message content'
+ * });
+ */
+export function updateMessageState(
+  messageId: EARS.EntityId,
+  updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>
+): void {
+  const result = repository.agentCommands.updateMessageState({
+    messageId,
+    updates
+  });
+
+  // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
+  sendToPlugin('agent', {
+    type: 'UPDATE_MESSAGE_STATE',
+    messageId: result.messageId,
+    ...result.updates
+  } as any);
+}

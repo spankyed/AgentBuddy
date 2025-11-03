@@ -453,8 +453,8 @@ const agentState = setup({
     },
 
     updateMessageState: assign(({ context, event }) => {
-      const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event);
-      const { messageId, responseTimestamp, blockResponse } = typedEvent;
+      const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event) as any;
+      const { messageId } = typedEvent;
 
       if (!context.currentThread?.messages) return {};
 
@@ -465,8 +465,10 @@ const agentState = setup({
             msg.id === messageId
               ? {
                 ...msg,
-                responseTimestamp,
-                ...(blockResponse !== undefined && { blockResponse })
+                ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
+                ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
+                ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
               }
               : msg
           )
