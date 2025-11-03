@@ -61,20 +61,43 @@ const isDisabled = computed(() => {
 // Check if a specific button is disabled
 const isButtonDisabled = (button: ButtonConfig): boolean => {
   if (isDisabled.value) return true
-  const currentState = button.states[button.state]
-  return currentState?.disabled || false
+
+  if (button.toggleStates) {
+    const stateConfig = button.toggleStates[button.state as 'on' | 'off']
+    return stateConfig?.disabled || false
+  } else if (button.states) {
+    const currentState = button.states[button.state]
+    return currentState?.disabled || false
+  }
+
+  return false
 }
 
 // Get button label based on current state
 const getButtonLabel = (button: ButtonConfig): string => {
-  const currentState = button.states[button.state]
-  return currentState?.label || button.label
+  if (button.toggleStates) {
+    const stateConfig = button.toggleStates[button.state as 'on' | 'off']
+    return stateConfig?.label || button.label
+  } else if (button.states) {
+    const currentState = button.states[button.state]
+    return currentState?.label || button.label
+  }
+
+  return button.label
 }
 
 // Get button CSS classes based on variant and state
 const getButtonClasses = (button: ButtonConfig) => {
-  const currentState = button.states[button.state]
-  const variant: ButtonVariant = currentState?.variant || 'secondary'
+  let variant: ButtonVariant = 'secondary'
+
+  if (button.toggleStates) {
+    const stateConfig = button.toggleStates[button.state as 'on' | 'off']
+    variant = stateConfig?.variant || 'secondary'
+  } else if (button.states) {
+    const currentState = button.states[button.state]
+    variant = currentState?.variant || 'secondary'
+  }
+
   const disabled = isButtonDisabled(button)
 
   const baseClasses = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-800'
@@ -101,6 +124,7 @@ const getButtonClasses = (button: ButtonConfig) => {
 const handleButtonPress = (button: ButtonConfig) => {
   if (isButtonDisabled(button)) return
 
+  // Always send current state - backend will determine new state
   const response: ButtonGroupResponse = {
     buttonId: button.id,
     state: button.state
@@ -116,8 +140,15 @@ const responseText = computed(() => {
   const button = props.buttons.find(b => b.id === props.response?.buttonId)
   if (!button) return props.response.buttonId
 
-  const stateConfig = button.states[props.response.state]
-  return stateConfig?.label || button.label
+  if (button.toggleStates) {
+    const stateConfig = button.toggleStates[props.response.state as 'on' | 'off']
+    return stateConfig?.label || button.label
+  } else if (button.states) {
+    const stateConfig = button.states[props.response.state]
+    return stateConfig?.label || button.label
+  }
+
+  return button.label
 })
 
 const responseMessage = computed(() => {

@@ -271,6 +271,28 @@ export const agentQueries = {
       artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id(),
       createdAt: threadData?.createdAt || Date.now()
     };
+  },
+
+  // Get message by ID
+  messageById: (messageId: EARS.EntityId): MessageEntity | null => {
+    const message = qx(messageId).pickOne([
+      'id',
+      'text',
+      'sender',
+      'timestamp',
+      'blocks',
+      'blockResponse',
+      'responseTimestamp',
+      'createdAt',
+      'updatedAt'
+    ] as const);
+
+    if (!message) return null;
+
+    return {
+      ...message,
+      entityType: EARS.Entity.Message
+    } as MessageEntity;
   }
 } as const;
 
@@ -360,6 +382,7 @@ export const agentCommands = {
     messageId: EARS.EntityId;
     responseTimestamp: number;
     updatedAt: number;
+    blocks?: BlockConfig[];  // Populated if toggleStates button was toggled
   } => {
     const { messageId, response } = params;
 
@@ -374,15 +397,44 @@ export const agentCommands = {
 
     const now = Date.now();
 
+    // Save response
     tx(messageId)
       .put('blockResponse', response)
       .put('responseTimestamp', now)
       .put('updatedAt', now);
 
+    // Auto-toggle if button has toggleStates
+    let updatedBlocks: BlockConfig[] | undefined;
+    const fullMessage = qx(messageId).pickOne(['blocks']);
+
+    if (fullMessage?.blocks && response.buttonId) {
+      let buttonToggled = false;
+      const newBlocks = fullMessage.blocks.map((block: BlockConfig) => {
+        if (block.type === 'button-group') {
+          const updatedButtons = block.props.buttons.map((button: any) => {
+            if (button.toggleStates && button.id === response.buttonId) {
+              buttonToggled = true;
+              return { ...button, state: button.state === 'on' ? 'off' : 'on' };
+            }
+            return button;
+          });
+          return { ...block, props: { ...block.props, buttons: updatedButtons } };
+        }
+        return block;
+      });
+
+      if (buttonToggled) {
+        updatedBlocks = newBlocks;
+        // Persist blocks update
+        tx(messageId).put('blocks', newBlocks).put('updatedAt', now);
+      }
+    }
+
     return {
       messageId,
       responseTimestamp: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(updatedBlocks && { blocks: updatedBlocks })
     };
   },
 

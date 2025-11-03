@@ -34,11 +34,25 @@ export interface ButtonConfig {
   id: string;
   label: string;
   state: string;
-  states: Record<string, {
+  // Option 1: Manual states (backend controlled via UPDATE_MESSAGE_STATE)
+  states?: Record<string, {
     label: string;
     variant?: 'primary' | 'secondary' | 'success' | 'danger';
     disabled?: boolean;
   }>;
+  // Option 2: Auto-toggling between on/off (frontend controlled, optimistic UI)
+  toggleStates?: {
+    on: {
+      label: string;
+      variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      disabled?: boolean;
+    };
+    off: {
+      label: string;
+      variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      disabled?: boolean;
+    };
+  };
 }
 
 export interface ButtonGroupResponse {

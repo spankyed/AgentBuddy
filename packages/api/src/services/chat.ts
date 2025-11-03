@@ -215,40 +215,65 @@ export function sendLinkBlock(options: {
 /**
  * Create a button-group interaction using blocks
  *
- * Button groups allow defining arbitrary buttons with states. The backend controls
- * state transitions by updating the message blocks via updateMessageState().
+ * Button groups support two modes (both backend-controlled):
+ * 1. toggleStates - Auto-cycling on/off buttons (backend automatically flips state)
+ * 2. states - Manual state transitions (flow/brain determines new state with custom logic)
+ *
+ * Both follow the same data flow: Frontend → Backend → Database → UPDATE_MESSAGE_STATE → Frontend
  *
  * @example
- * // Create a toggle button
- * const messageId = sendButtonGroupBlock({
+ * // Auto-toggling buttons (backend auto-cycles)
+ * sendButtonGroupBlock({
  *   threadId,
- *   text: 'Control settings:',
- *   prompt: 'Toggle features',
+ *   text: 'Quick toggles:',
+ *   prompt: 'Configure settings',
  *   buttons: [{
- *     id: 'feature-x',
- *     label: 'Feature X',
+ *     id: 'dark-mode',
+ *     label: 'Dark Mode',
  *     state: 'off',
- *     states: {
- *       off: { label: 'Enable Feature X', variant: 'secondary' },
- *       on: { label: 'Disable Feature X', variant: 'success' }
+ *     toggleStates: {
+ *       off: { label: 'Enable Dark Mode', variant: 'secondary' },
+ *       on: { label: 'Disable Dark Mode', variant: 'success' }
  *     }
  *   }],
  *   keepInteractive: true
  * });
+ * // Flow: User clicks → INTERACTIVE_MSG_RESPONSE → Backend auto-cycles on↔off
+ * //       → Persists to DB → UPDATE_MESSAGE_STATE → Frontend updates
  *
- * // Later, update button state after processing
- * updateMessageState(messageId, {
- *   blocks: [{
- *     type: 'button-group',
- *     props: {
- *       buttons: [{
- *         id: 'feature-x',
- *         label: 'Feature X',
- *         state: 'on', // Changed state
- *         states: { ... }
- *       }]
+ * @example
+ * // Manual state buttons (flow/brain controlled)
+ * const { messageId } = sendButtonGroupBlock({
+ *   threadId,
+ *   text: 'Advanced control:',
+ *   buttons: [{
+ *     id: 'build',
+ *     label: 'Build',
+ *     state: 'idle',
+ *     states: {
+ *       idle: { label: 'Start Build', variant: 'primary' },
+ *       building: { label: 'Building...', variant: 'secondary', disabled: true },
+ *       success: { label: 'Build Complete', variant: 'success' },
+ *       error: { label: 'Build Failed', variant: 'danger' }
  *     }
  *   }]
+ * });
+ * // Flow: User clicks → INTERACTIVE_MSG_RESPONSE → Forwarded to brain/flow
+ * //       → Flow determines new state → Calls updateMessageState with new blocks
+ * //       → Backend sends UPDATE_MESSAGE_STATE → Frontend updates
+ *
+ * @example
+ * // Mixed button group (both types)
+ * sendButtonGroupBlock({
+ *   threadId,
+ *   text: 'Control panel:',
+ *   buttons: [
+ *     // Auto-toggle (backend handles)
+ *     { id: 'debug', state: 'off', toggleStates: { ... } },
+ *     // Manual control (flow handles)
+ *     { id: 'deploy', state: 'idle', states: { idle: ..., deploying: ..., deployed: ... } }
+ *   ],
+ *   keepInteractive: true
  * });
  */
 export function sendButtonGroupBlock(options: {

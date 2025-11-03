@@ -161,17 +161,18 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
     ]
   });
 
-  // 9. Button group - demonstrates stateful buttons with backend-controlled state updates
+  // 9. Button group - demonstrates both auto-toggle and manual state buttons
   const { messageId } = services.chat.sendButtonGroupBlock({
     threadId,
-    text: 'Control panel - these buttons remain interactive and can be toggled multiple times:',
+    text: 'Control panel - mix of auto-toggling and manually-controlled buttons:',
     prompt: 'Configure project settings',
     buttons: [
+      // Auto-toggle buttons (frontend controlled, optimistic UI)
       {
         id: 'debug-mode',
         label: 'Debug Mode',
         state: 'off',
-        states: {
+        toggleStates: {
           off: { label: 'Enable Debug Mode', variant: 'secondary' },
           on: { label: 'Disable Debug Mode', variant: 'success' }
         }
@@ -180,27 +181,31 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
         id: 'auto-save',
         label: 'Auto Save',
         state: 'on',
-        states: {
+        toggleStates: {
           on: { label: 'Auto Save: ON', variant: 'success' },
           off: { label: 'Auto Save: OFF', variant: 'danger' }
         }
       },
+      // Manual state button (backend controlled, complex state machine)
       {
-        id: 'notifications',
-        label: 'Notifications',
-        state: 'enabled',
+        id: 'deployment',
+        label: 'Deployment',
+        state: 'ready',
         states: {
-          enabled: { label: 'Notifications Enabled', variant: 'primary' },
-          disabled: { label: 'Notifications Disabled', variant: 'secondary', disabled: false }
+          ready: { label: 'Deploy to Production', variant: 'primary' },
+          deploying: { label: 'Deploying...', variant: 'secondary', disabled: true },
+          deployed: { label: 'Deployed Successfully', variant: 'success' },
+          failed: { label: 'Deployment Failed', variant: 'danger' }
         }
       }
     ],
     keepInteractive: true, // Buttons stay interactive after responses
-    displayText: 'Setting updated:'
+    displayText: 'Action completed:'
   });
 
-  // Note: In a real flow, you would listen for the button press response and update state:
-  // When user clicks button -> receive INTERACTIVE_MSG_RESPONSE with { buttonId, state }
+  // Note: toggleStates buttons (debug-mode, auto-save) automatically cycle on/off when clicked
+  // Manual states buttons (deployment) require backend to update state:
+  // When user clicks -> receive INTERACTIVE_MSG_RESPONSE with { buttonId, state }
   // Process the action -> update message blocks with new state using:
   // services.chat.updateMessageState(messageId, { blocks: [...] })
 
