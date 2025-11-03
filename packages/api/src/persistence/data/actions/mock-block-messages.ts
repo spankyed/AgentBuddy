@@ -161,14 +161,57 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
     ]
   });
 
+  // 9. Button group - demonstrates stateful buttons with backend-controlled state updates
+  const { messageId } = services.chat.sendButtonGroupBlock({
+    threadId,
+    text: 'Control panel - these buttons remain interactive and can be toggled multiple times:',
+    prompt: 'Configure project settings',
+    buttons: [
+      {
+        id: 'debug-mode',
+        label: 'Debug Mode',
+        state: 'off',
+        states: {
+          off: { label: 'Enable Debug Mode', variant: 'secondary' },
+          on: { label: 'Disable Debug Mode', variant: 'success' }
+        }
+      },
+      {
+        id: 'auto-save',
+        label: 'Auto Save',
+        state: 'on',
+        states: {
+          on: { label: 'Auto Save: ON', variant: 'success' },
+          off: { label: 'Auto Save: OFF', variant: 'danger' }
+        }
+      },
+      {
+        id: 'notifications',
+        label: 'Notifications',
+        state: 'enabled',
+        states: {
+          enabled: { label: 'Notifications Enabled', variant: 'primary' },
+          disabled: { label: 'Notifications Disabled', variant: 'secondary', disabled: false }
+        }
+      }
+    ],
+    keepInteractive: true, // Buttons stay interactive after responses
+    displayText: 'Setting updated:'
+  });
+
+  // Note: In a real flow, you would listen for the button press response and update state:
+  // When user clicks button -> receive INTERACTIVE_MSG_RESPONSE with { buttonId, state }
+  // Process the action -> update message blocks with new state using:
+  // services.chat.updateMessageState(messageId, { blocks: [...] })
+
   await services.logger.info('Mock block messages created', {
     threadId,
-    messageCount: 8
+    messageCount: 9
   });
 
   return {
     threadId,
     success: true,
-    messageCount: 8
+    messageCount: 9
   };
 }

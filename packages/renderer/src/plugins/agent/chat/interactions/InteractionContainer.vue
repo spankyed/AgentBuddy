@@ -85,12 +85,23 @@
         :links="(block.props as any).links"
         @navigate="handleNavigate"
       />
+
+      <!-- Button Group Input -->
+      <ButtonGroupInput
+        v-else-if="block.type === 'button-group'"
+        :buttons="(block.props as any).buttons"
+        :keep-interactive="(block.props as any).keepInteractive"
+        :disabled="isDisabled"
+        :response="response"
+        :display-text="(block.props as any).displayText"
+        @submit="handleSubmit"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import type { BlockConfig } from '@app/api'
 import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
@@ -99,14 +110,9 @@ import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
 import TextInput from './inputs/TextInput.vue'
 import ApprovalButtons from './inputs/ApprovalButtons.vue'
+import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
 import { applicationState } from '@/main'
 import { id as agentId } from '@/plugins/agent/state'
-import { application } from '@/core/actors/application'
-
-interface BlockConfig {
-  type: 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link'
-  props: Record<string, any>
-}
 
 interface Props {
   blocks: BlockConfig[]

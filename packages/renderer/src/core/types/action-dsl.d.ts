@@ -272,7 +272,7 @@ interface ActionsStartupData {
     categories?: Category[];
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link';
+type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -286,6 +286,16 @@ interface LinkConfig {
     label: string;
     event: LinkEvent;
     icon?: LinkIcon;
+}
+interface ButtonConfig {
+    id: string;
+    label: string;
+    state: string;
+    states: Record<string, {
+        label: string;
+        variant?: 'primary' | 'secondary' | 'success' | 'danger';
+        disabled?: boolean;
+    }>;
 }
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
@@ -4425,6 +4435,55 @@ declare function sendLinkBlock(options: {
     messageId: EARS.EntityId;
 };
 /**
+ * Create a button-group interaction using blocks
+ *
+ * Button groups allow defining arbitrary buttons with states. The backend controls
+ * state transitions by updating the message blocks via updateMessageState().
+ *
+ * @example
+ * // Create a toggle button
+ * const messageId = sendButtonGroupBlock({
+ *   threadId,
+ *   text: 'Control settings:',
+ *   prompt: 'Toggle features',
+ *   buttons: [{
+ *     id: 'feature-x',
+ *     label: 'Feature X',
+ *     state: 'off',
+ *     states: {
+ *       off: { label: 'Enable Feature X', variant: 'secondary' },
+ *       on: { label: 'Disable Feature X', variant: 'success' }
+ *     }
+ *   }],
+ *   keepInteractive: true
+ * });
+ *
+ * // Later, update button state after processing
+ * updateMessageState(messageId, {
+ *   blocks: [{
+ *     type: 'button-group',
+ *     props: {
+ *       buttons: [{
+ *         id: 'feature-x',
+ *         label: 'Feature X',
+ *         state: 'on', // Changed state
+ *         states: { ... }
+ *       }]
+ *     }
+ *   }]
+ * });
+ */
+declare function sendButtonGroupBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt?: string;
+    buttons: ButtonConfig[];
+    keepInteractive?: boolean;
+    displayText?: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
  * Update a message with block interaction response data
  */
 declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: any): void;
@@ -4453,6 +4512,7 @@ const chat = /*#__PURE__*/Object.freeze({
   createBlockMessage: createBlockMessage,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
+  sendButtonGroupBlock: sendButtonGroupBlock,
   sendChoiceBlock: sendChoiceBlock,
   sendFilePickerBlock: sendFilePickerBlock,
   sendLinkBlock: sendLinkBlock,

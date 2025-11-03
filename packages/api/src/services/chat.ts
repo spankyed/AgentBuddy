@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import type { BlockConfig, LinkConfig, MessageEntity } from '@/systems/threads/types';
+import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig } from '@/systems/threads/types';
 import { sendToPlugin } from './event-emitter';
 
 /**
@@ -207,6 +207,72 @@ export function sendLinkBlock(options: {
   blocks.push({
     type: 'link',
     props: { links }
+  });
+
+  return sendBlockMessage({ threadId, text, blocks });
+}
+
+/**
+ * Create a button-group interaction using blocks
+ *
+ * Button groups allow defining arbitrary buttons with states. The backend controls
+ * state transitions by updating the message blocks via updateMessageState().
+ *
+ * @example
+ * // Create a toggle button
+ * const messageId = sendButtonGroupBlock({
+ *   threadId,
+ *   text: 'Control settings:',
+ *   prompt: 'Toggle features',
+ *   buttons: [{
+ *     id: 'feature-x',
+ *     label: 'Feature X',
+ *     state: 'off',
+ *     states: {
+ *       off: { label: 'Enable Feature X', variant: 'secondary' },
+ *       on: { label: 'Disable Feature X', variant: 'success' }
+ *     }
+ *   }],
+ *   keepInteractive: true
+ * });
+ *
+ * // Later, update button state after processing
+ * updateMessageState(messageId, {
+ *   blocks: [{
+ *     type: 'button-group',
+ *     props: {
+ *       buttons: [{
+ *         id: 'feature-x',
+ *         label: 'Feature X',
+ *         state: 'on', // Changed state
+ *         states: { ... }
+ *       }]
+ *     }
+ *   }]
+ * });
+ */
+export function sendButtonGroupBlock(options: {
+  threadId: EARS.EntityId;
+  text: string;
+  prompt?: string;
+  buttons: ButtonConfig[];
+  keepInteractive?: boolean;
+  displayText?: string;
+}): { messageId: EARS.EntityId } {
+  const { threadId, text, prompt, buttons, keepInteractive = false, displayText } = options;
+
+  const blocks: BlockConfig[] = [];
+
+  if (prompt) {
+    blocks.push({
+      type: 'prompt',
+      props: { content: prompt }
+    });
+  }
+
+  blocks.push({
+    type: 'button-group',
+    props: { buttons, keepInteractive, displayText }
   });
 
   return sendBlockMessage({ threadId, text, blocks });

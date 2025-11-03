@@ -3,7 +3,7 @@ import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS } from "@/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link';
+export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
 
 export interface BlockConfig {
   type: BlockType;
@@ -27,6 +27,23 @@ export interface LinkConfig {
   label: string;
   event: LinkEvent;
   icon?: LinkIcon; // Optional lucide icon name
+}
+
+// Button-group block types
+export interface ButtonConfig {
+  id: string;
+  label: string;
+  state: string;
+  states: Record<string, {
+    label: string;
+    variant?: 'primary' | 'secondary' | 'success' | 'danger';
+    disabled?: boolean;
+  }>;
+}
+
+export interface ButtonGroupResponse {
+  buttonId: string;
+  state: string;
 }
 
 export interface MessageEntity extends BaseEntity {
