@@ -162,52 +162,80 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
   });
 
   // 9. Button group - demonstrates both auto-toggle and manual state buttons
+  // Helper to build button array with specific deployment state
+  const buildButtonsWithDeploymentState = (deploymentState: string) => [
+    {
+      id: 'debug-mode',
+      label: 'Debug Mode',
+      state: 'off',
+      toggleStates: {
+        off: { label: 'Enable Debug Mode', variant: 'secondary' },
+        on: { label: 'Disable Debug Mode', variant: 'success' }
+      }
+    },
+    {
+      id: 'auto-save',
+      label: 'Auto Save',
+      state: 'on',
+      toggleStates: {
+        on: { label: 'Auto Save: ON', variant: 'success' },
+        off: { label: 'Auto Save: OFF', variant: 'danger' }
+      }
+    },
+    {
+      id: 'deployment',
+      label: 'Deployment',
+      state: deploymentState,
+      states: {
+        ready: { label: 'Deploy to Production', variant: 'primary' },
+        deploying: { label: 'Deploying...', variant: 'secondary', disabled: true },
+        deployed: { label: 'Deployed Successfully', variant: 'success' },
+        failed: { label: 'Deployment Failed', variant: 'danger' }
+      }
+    }
+  ];
+
   const { messageId } = services.chat.sendButtonGroupBlock({
     threadId,
     text: 'Control panel - mix of auto-toggling and manually-controlled buttons:',
     prompt: 'Configure project settings',
-    buttons: [
-      // Auto-toggle buttons (frontend controlled, optimistic UI)
-      {
-        id: 'debug-mode',
-        label: 'Debug Mode',
-        state: 'off',
-        toggleStates: {
-          off: { label: 'Enable Debug Mode', variant: 'secondary' },
-          on: { label: 'Disable Debug Mode', variant: 'success' }
-        }
-      },
-      {
-        id: 'auto-save',
-        label: 'Auto Save',
-        state: 'on',
-        toggleStates: {
-          on: { label: 'Auto Save: ON', variant: 'success' },
-          off: { label: 'Auto Save: OFF', variant: 'danger' }
-        }
-      },
-      // Manual state button (backend controlled, complex state machine)
-      {
-        id: 'deployment',
-        label: 'Deployment',
-        state: 'ready',
-        states: {
-          ready: { label: 'Deploy to Production', variant: 'primary' },
-          deploying: { label: 'Deploying...', variant: 'secondary', disabled: true },
-          deployed: { label: 'Deployed Successfully', variant: 'success' },
-          failed: { label: 'Deployment Failed', variant: 'danger' }
-        }
-      }
-    ],
-    keepInteractive: true, // Buttons stay interactive after responses
+    buttons: buildButtonsWithDeploymentState('ready'),
+    keepInteractive: true,
     displayText: 'Action completed:'
   });
 
   // Note: toggleStates buttons (debug-mode, auto-save) automatically cycle on/off when clicked
-  // Manual states buttons (deployment) require backend to update state:
-  // When user clicks -> receive INTERACTIVE_MSG_RESPONSE with { buttonId, state }
-  // Process the action -> update message blocks with new state using:
-  // services.chat.updateMessageState(messageId, { blocks: [...] })
+  // Manual states buttons (deployment) require backend to update state via updateMessageState
+
+  // Example: Manually transition deployment button through states (simulates flow handling)
+
+  // Simulate deployment: ready → deploying (after 2 seconds)
+  setTimeout(() => {
+    services.chat.updateMessageState(messageId, {
+      blocks: [{
+        type: 'button-group',
+        props: {
+          buttons: buildButtonsWithDeploymentState('deploying'),
+          keepInteractive: true,
+          displayText: 'Action completed:'
+        }
+      }]
+    });
+  }, 2000);
+
+  // Simulate completion: deploying → deployed (after 4 seconds)
+  setTimeout(() => {
+    services.chat.updateMessageState(messageId, {
+      blocks: [{
+        type: 'button-group',
+        props: {
+          buttons: buildButtonsWithDeploymentState('deployed'),
+          keepInteractive: true,
+          displayText: 'Action completed:'
+        }
+      }]
+    });
+  }, 4000);
 
   await services.logger.info('Mock block messages created', {
     threadId,
