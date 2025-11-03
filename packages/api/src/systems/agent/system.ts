@@ -198,38 +198,41 @@ export const agentSystem = setup({
           type: 'REFRESH_RECENT_THREADS',
           data: repository.agentQueries.refreshThreadsData()
         }));
+      } else {
+        // Step 4: Send MESSAGE_ADDED event for the user message
+        const userMessage: MessageEntity = {
+          id: messageResult.id,
+          entityType: EARS.Entity.Message,
+          text: messageResult.text,
+          sender: messageResult.sender as 'user' | 'assistant' | 'system',
+          timestamp: messageResult.timestamp,
+          createdAt: messageResult.timestamp,
+          updatedAt: messageResult.timestamp,
+        };
+  
+        system.get(bus).send(emit(agent, {
+          type: 'MESSAGE_ADDED',
+          threadId: threadId as string,
+          message: userMessage
+        }));
       }
-
-      // Step 4: Send MESSAGE_ADDED event for the user message
-      const userMessage: MessageEntity = {
-        id: messageResult.id,
-        entityType: EARS.Entity.Message,
-        text: messageResult.text,
-        sender: messageResult.sender as 'user' | 'assistant' | 'system',
-        timestamp: messageResult.timestamp,
-        createdAt: messageResult.timestamp,
-        updatedAt: messageResult.timestamp,
-      };
-
-      system.get(bus).send(emit(agent, {
-        type: 'MESSAGE_ADDED',
-        threadId: threadId as string,
-        message: userMessage
-      }));
 
       // Step 5: Forward to brain for flow processing
       const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'user.message',
-        payload: {
-          text,
-          mode,
-          phase,
-          threadId,
-          messageId: messageResult.id,
-        },
-      });
+
+      // setTimeout(() => {
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'user.message',
+          payload: {
+            text,
+            mode,
+            phase,
+            threadId,
+            messageId: messageResult.id,
+          },
+        });
+      // }, 0);
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);

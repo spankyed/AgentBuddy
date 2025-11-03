@@ -1,4 +1,4 @@
-import { assign, setup, enqueueActions } from 'xstate';
+import { assign, setup, enqueueActions, raise } from 'xstate';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
@@ -29,6 +29,11 @@ export const IncomingBrainEvents = [
   busEvent('START_BRAIN', {}),
   busEvent('KILL_BRAIN', {}),
   busEvent('RESTART_BRAIN', {}),
+  busEvent('HANDLE_BRAIN_EVENT', {
+    eventType: z.string(),
+    payload: z.any().optional(),
+    targetFlowId: z.string().optional()
+  }),
   busEvent('TRIGGER_BRAIN_EVENT', {
     eventType: z.string(),
     payload: z.any().optional(),
@@ -345,7 +350,7 @@ export const brainSystem = setup({
       }));
     },
     triggerBrainEvent: ({ system, event, context }) => {
-      const ev = typeOf('TRIGGER_BRAIN_EVENT', event);
+      const ev = typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
       const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
@@ -453,6 +458,12 @@ export const brainSystem = setup({
           //   actions: 'handleEventReceived',
           // },
           TRIGGER_BRAIN_EVENT: {
+            actions: raise(({ event }) => ({
+              ...typeOf('TRIGGER_BRAIN_EVENT', event),
+              type: 'HANDLE_BRAIN_EVENT',
+            }), { delay: 0 }),
+          },
+          HANDLE_BRAIN_EVENT: {
             actions: 'triggerBrainEvent',
           },
           TNODE_SPAWNED: {
