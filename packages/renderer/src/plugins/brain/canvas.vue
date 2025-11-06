@@ -116,8 +116,8 @@ const handleNodeClick = (nodeId: string) => {
   actor.send({ type: 'NODE.CLICK', nodeId });
 };
 
-const handleFlowNavigate = (flowId: string) => {
-  actor.send({ type: 'FLOW.NAVIGATE', flowId });
+const handleFlowNavigate = (tNodeId: string) => {
+  actor.send({ type: 'FLOW.NAVIGATE', tNodeId });
 };
 
 const handleBackClick = () => {

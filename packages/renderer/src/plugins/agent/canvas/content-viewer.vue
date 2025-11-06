@@ -1,30 +1,64 @@
 <template>
-  <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
-    <div v-if="!artifact" class="flex items-center justify-center h-full">
-      <p class="text-neutral-500">Select an artifact to view</p>
+  <div class="flex h-full bg-neutral-900">
+    <!-- Artifact List (left side, integrated in tab) -->
+    <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+      <ArtifactList
+        :artifacts="artifacts"
+        :selectedArtifactId="selectedArtifactId"
+        @select-artifact="$emit('select-artifact', $event)"
+      />
     </div>
-    <component
-      v-else
-      :is="getArtifactComponent(artifact.type)"
-      :artifact="artifact"
-    />
+
+    <!-- Artifact Content (right side) -->
+    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
+      <div v-if="!selectedArtifact" class="flex items-center justify-center h-full">
+        <p class="text-neutral-500">Select an artifact to view</p>
+      </div>
+      <!-- Block-based artifact (new format) -->
+      <ArtifactBlockContainer
+        v-else-if="selectedArtifact.blocks && selectedArtifact.blocks.length > 0"
+        :blocks="selectedArtifact.blocks"
+        :artifact-id="selectedArtifact.id"
+        :thread-id="threadId"
+        :is-disabled="Boolean(selectedArtifact.responseTimestamp)"
+        :response="selectedArtifact.blockResponse"
+      />
+      <!-- Legacy artifact component (old format) -->
+      <component
+        v-else
+        :is="getArtifactComponent(selectedArtifact.type)"
+        :artifact="selectedArtifact"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ArtifactItem } from '@app/api';
+import ArtifactList from './artifacts/artifact-list.vue';
+import ArtifactBlockContainer from './artifacts/ArtifactBlockContainer.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';
 import ReviewArtifact from './artifacts/types/review-artifact.vue';
 import ImageArtifact from './artifacts/types/image-artifact.vue';
-import WorkloadArtifact from './artifacts/types/workload-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
 import TodoArtifact from './artifacts/types/todo-artifact.vue';
+import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
 
 const props = defineProps<{
-  artifact?: ArtifactItem;
+  artifacts: ArtifactItem[];
+  selectedArtifactId?: string;
+  threadId: string;
 }>();
+
+defineEmits<{
+  'select-artifact': [artifactId: string];
+}>();
+
+const selectedArtifact = computed(() =>
+  props.artifacts.find(a => a.id === props.selectedArtifactId)
+);
 
 function getArtifactComponent(type: string) {
   const components = {
@@ -32,9 +66,9 @@ function getArtifactComponent(type: string) {
     code: CodeArtifact,
     review: ReviewArtifact,
     image: ImageArtifact,
-    kanban: WorkloadArtifact,
     slack: SlackArtifact,
     todo: TodoArtifact,
+    workspace: WorkspaceArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }

@@ -44,13 +44,22 @@ export { envs, policy, persistence };
 
 // Graceful shutdown function
 export function closePersistence() {
-  persistence.close?.();
-  closeShardedEnvs(envs);
+  try {
+    persistence.close?.();
+    closeShardedEnvs(envs);
+  } catch (error) {
+    // Log unexpected errors but don't throw
+    if (error instanceof Error &&
+        !error.message?.includes('Dbi is not open') &&
+        !error.message?.includes('already been closed')) {
+      console.warn('[Persistence] Non-critical close error:', error.message);
+    }
+  }
 }
 
 // Reinitialize LMDB after import
 export function reinitializeLmdb() {
-  // Close existing connections
+  // Always try to close (errors are ignored)
   closePersistence();
 
   // Reopen environments
@@ -66,7 +75,7 @@ export function reinitializeLmdb() {
     volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
     secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
   };
-  
+
   // Recreate persistence
   persistence = makeShardedPersistence(policy, sinks);
 }
@@ -208,6 +217,29 @@ export function addRelation(
   tgt: EARS.EntityId,
   info?: unknown,
 ) {
+  // Check for existing relation with same source, kind, and target to prevent duplicates
+  const entry = relationIndex[kind];
+  if (entry?.bySource?.[src] && entry?.byTarget?.[tgt]) {
+    const fromSource = new Set(entry.bySource[src]);
+    const fromTarget = new Set(entry.byTarget[tgt]);
+
+    // Find intersection - relations that match both source and target
+    for (const existingRelId of fromSource) {
+      if (fromTarget.has(existingRelId)) {
+        // Found existing relation - check if info matches
+        const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
+
+        // If no info provided, or info matches existing, return existing relation (idempotent)
+        if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
+          console.warn(`[Relation] Duplicate relation link attempted (${kind}) between ${src} and ${tgt}. Reusing existing relation.`);
+          return existingRelId;
+        }
+        // If info differs, continue to create new relation (allows multi-value with distinct info)
+      }
+    }
+  }
+
+  // No existing relation found (or info differs) - create new one
   const relId = createEntity(EARS.Entity.Relation);
   putAttr(relId, EARS.AttrKind.RelationDetails, {
     sourceEntity: src,

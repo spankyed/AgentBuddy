@@ -1,6 +1,6 @@
 <template>
   <div class="relative max-w-[80%] mx-auto pb-2" ref="containerRef">
-    <div 
+    <div
       v-if="isOpen"
       class="absolute bottom-full mb-2 left-0 right-0 px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-slide-down z-50"
     >
@@ -36,7 +36,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="flex items-center content-between" @click="isOpen = !isOpen">
       <button
         type="button"
@@ -49,9 +49,12 @@
       </button>
 
       <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <span
+        <!-- <span
           @click.stop="handleViewThread(currentThread?.id)"
           class="text-center hover:text-neutral-200">
+          {{ currentThread?.topic }} -->
+        <span
+          class="text-center">
           {{ currentThread?.topic }}
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
             {{ currentThread?.shortCode }}
@@ -64,29 +67,29 @@
           <button
             type="button"
             class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
-            @click.stop="$emit('new-thread')"
+            @click.stop="handleNewThread"
           >
             <Plus :size="16" class="mr-2" />
             New thread
           </button>
         </ContextMenuTrigger>
-        
+
         <ContextMenuPortal>
           <ContextMenuContent
             class="min-w-[220px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
             <ContextMenuItem
-              @select="$emit('new-thread')"
+              @select="handleNewThread"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
               <Plus class="w-4 h-4" />
               Create New Thread
             </ContextMenuItem>
-            
+
             <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
-            
+
             <div class="px-3 py-1 text-xs font-medium text-neutral-500 uppercase">Create as child of</div>
-            
+
             <ContextMenuItem
               v-for="projectThread in recentThreads"
               :key="projectThread.id"
@@ -98,7 +101,7 @@
                 <span class="truncate">{{ projectThread.topic || 'Untitled' }}</span>
               </div>
             </ContextMenuItem>
-            
+
             <div v-if="recentThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
               No project threads available
             </div>
@@ -131,7 +134,7 @@ export interface ThreadsProps {
   threads: ThreadEntity[]
 }
 
-const props = defineProps<ThreadsProps>()
+defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
 
@@ -141,7 +144,7 @@ const allThreads = useSelector(threadsActor, (state) => state.context.threads)
 
 const recentThreads = computed(() => {
   return allThreads.value
-    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    // .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
     .slice(0, 10) // Show up to 10 most recent threads
 })
 

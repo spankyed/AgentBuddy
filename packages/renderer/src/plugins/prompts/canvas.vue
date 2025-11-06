@@ -1,14 +1,18 @@
 <template>
   <div class="flex flex-col justify-center h-full">
     <!-- List View -->
-    <PromptsList 
+    <PromptsList
       v-if="state.hasTag('list-prompts')"
-      :prompts="prompts"
+      :prompts="filteredPrompts"
       :categories="categories"
+      :selected-categories="selectedCategories"
+      :has-prompts="prompts.length > 0"
       @select="handleSelectPrompt"
       @create="handleCreatePrompt"
       @edit="handleEditPrompt"
       @delete="handleDeletePrompt"
+      @toggle-category="handleToggleCategory"
+      @clear-filters="handleClearFilters"
     />
 
     <!-- Create/Edit View -->
@@ -30,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type PromptsState } from './state';
 import { applicationState } from '@/main';
@@ -43,6 +48,22 @@ const prompts = useSelector(actor, (state) => state.context.prompts);
 const selectedPrompt = useSelector(actor, (state) => state.context.selectedPrompt);
 const formData = useSelector(actor, (state) => state.context.formData);
 const categories = useSelector(actor, (state) => state.context.categories);
+const selectedCategories = useSelector(actor, (state) => state.context.selectedCategories);
+
+// Filter prompts based on selected categories
+const filteredPrompts = computed(() => {
+  // If no categories selected, show all prompts
+  if (selectedCategories.value.length === 0) {
+    return prompts.value;
+  }
+
+  // Filter prompts that match selected categories
+  return prompts.value.filter(prompt => {
+    // If prompt has no category, don't show it when filters are active
+    if (!prompt.category) return false;
+    return selectedCategories.value.includes(prompt.category);
+  });
+});
 
 // List handlers
 function handleSelectPrompt(promptId: EARS.EntityId) {
@@ -94,5 +115,14 @@ function handleSave() {
 
 function handleGoBack() {
   actor.send({ type: 'VIEW_LIST' });
+}
+
+// Filter handlers
+function handleToggleCategory(categoryName: string) {
+  actor.send({ type: 'FILTER.TOGGLE_CATEGORY', categoryName });
+}
+
+function handleClearFilters() {
+  actor.send({ type: 'FILTER.CLEAR' });
 }
 </script> 

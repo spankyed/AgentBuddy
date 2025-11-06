@@ -2,11 +2,105 @@ import { BaseEntity } from "@/core/ears";
 import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS } from "@/types";
 
+// Block-based interaction system (composable architecture)
+// Common blocks (used by messages and artifacts)
+export type CommonBlockType = 'prompt' | 'note' | 'button-group' | 'link';
+// Message-specific blocks
+export type MessageBlockType = 'file-picker' | 'choice' | 'text' | 'approval' | 'actions';
+// Artifact-specific blocks (for content display)
+export type ArtifactBlockType = 'code-display' | 'todo-list' | 'slack-channels' | 'workspace-config' | 'image-display' | 'review-display';
+
+export type BlockType = CommonBlockType | MessageBlockType | ArtifactBlockType;
+
+export interface BlockConfig {
+  type: BlockType;
+  props: Record<string, any>;
+}
+
+// Link block types
+export interface LinkEvent {
+  target: 'application' | 'external' | string; // 'application', 'external', or plugin name
+  data: any;
+}
+
+export type LinkIcon =
+  | 'external-link'
+  | 'file-text'
+  | 'message-square'
+  | 'settings'
+  | 'link';
+
+export interface LinkConfig {
+  label: string;
+  event: LinkEvent;
+  icon?: LinkIcon; // Optional lucide icon name
+}
+
+// Button-group block types
+export interface ButtonConfig {
+  id: string;
+  label: string;
+  state: string;
+  // Option 1: Manual states (backend controlled via UPDATE_MESSAGE_STATE)
+  states?: Record<string, {
+    label: string;
+    variant?: 'primary' | 'secondary' | 'success' | 'danger';
+    disabled?: boolean;
+  }>;
+  // Option 2: Auto-toggling between on/off (frontend controlled, optimistic UI)
+  toggleStates?: {
+    on: {
+      label: string;
+      variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      disabled?: boolean;
+    };
+    off: {
+      label: string;
+      variant?: 'primary' | 'secondary' | 'success' | 'danger';
+      disabled?: boolean;
+    };
+  };
+}
+
+export interface ButtonGroupResponse {
+  buttonId: string;
+  state: string;
+}
+
+// Artifact-specific block response types
+export interface TodoListResponse {
+  action: 'approve' | 'reject' | 'toggle-task';
+  taskId?: string;
+  taskCompleted?: boolean;
+}
+
+export interface CodeActionResponse {
+  action: 'copy' | 'run' | 'download';
+}
+
+export interface WorkspaceActionResponse {
+  action: 'configure' | 'reset';
+}
+
+export interface SlackActionResponse {
+  action: 'refresh' | 'view-channel';
+  channelId?: string;
+}
+
+export interface ArtifactActionResponse {
+  action: 'copy' | 'export' | 'refresh' | 'delete';
+  format?: string; // For export actions
+}
+
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   text: string;
   sender: 'user' | 'assistant' | 'system';
   timestamp: number;
+  // Block-based interaction system
+  responseTimestamp?: number; // Timestamp when the message was responded to
+  blocks?: BlockConfig[];
+  blockResponse?: any; // Response data for block-based interactions
 }
 
 export interface ThreadEntity extends BaseEntity {
@@ -16,17 +110,23 @@ export interface ThreadEntity extends BaseEntity {
   sideTopics?: string[];
   timestamp: number;
   lastMessageTimestamp?: number;
+  lastVisitedTimestamp?: number;
   shortCode?: string;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
+  forcedMode?: 'birth'; // Force a specific mode for this thread
 }
 
 export interface ArtifactEntity extends BaseEntity {
   entityType: EARS.Entity.Artifact;
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
-  content: string | any;
-  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'kanban' | 'slack';
+  content: string | any; // Deprecated: Use blocks instead. Kept for backward compatibility during migration.
+  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack' | 'review' | 'todo' | 'workspace';
+  // Block-based interaction system
+  blocks?: BlockConfig[];
+  blockResponse?: any; // Response data for block-based interactions
+  responseTimestamp?: number; // Timestamp when the artifact was responded to
 }
 
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;

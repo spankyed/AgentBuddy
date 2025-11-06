@@ -9,6 +9,7 @@ import { repository } from '@/repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
+import { flows } from '@/systems/flows/system';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -53,6 +54,13 @@ export type OutgoingActionEvents =
 export const ActionsSystemEvents = fromSystem(IncomingActionEvents)<OutgoingActionEvents, typeof actions>()
 type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInternalEvents>;
 
+// Helper to broadcast action events to both actions and flows plugins
+const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
+  const busSvc = system.get(bus);
+  busSvc.send(emit(actions, event));
+  busSvc.send(emit(flows, event));
+};
+
 export const actionsSystem = setup({
   types: {
     context: {} as {},
@@ -85,7 +93,6 @@ export const actionsSystem = setup({
     },
     createAction: ({ system, event }) => {
       const ev = typeOf('CREATE_ACTION', event);
-      
       const action = repository.actionCommands.create({
         label: ev.label,
         input: ev.input,
@@ -95,15 +102,14 @@ export const actionsSystem = setup({
         category: ev.category
       });
 
-      system.get(bus).send(emit(actions, {
+      broadcastActionEvent(system, {
         type: 'ACTION_CREATED',
-        action: action,
+        action,
         actionId: action.id,
-      }));
+      });
     },
     updateAction: ({ system, event }) => {
       const ev = typeOf('UPDATE_ACTION', event);
-      
       repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         input: ev.input,
@@ -114,23 +120,22 @@ export const actionsSystem = setup({
       });
 
       const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
-      
       if (updatedAction) {
-        system.get(bus).send(emit(actions, {
+        broadcastActionEvent(system, {
           type: 'ACTION_UPDATED',
           action: updatedAction,
           actionId: updatedAction.id,
-        }));
+        });
       }
     },
     deleteAction: ({ system, event }) => {
       const ev = typeOf('DELETE_ACTION', event);
       repository.actionCommands.delete(ev.actionId as EARS.EntityId);
-      
-      system.get(bus).send(emit(actions, {
+
+      broadcastActionEvent(system, {
         type: 'ACTION_DELETED',
         actionId: ev.actionId as EARS.EntityId,
-      }));
+      });
     },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
@@ -148,21 +153,19 @@ export const actionsSystem = setup({
       // Fallback to first available category or 'Utility'
       const firstCategoryName = (): string | undefined =>
         repository.settingsQueries.getPluginSettings('actions')?.categories?.[0]?.name || 'Utility';
-      
-      const busSvc = system.get(bus);
-      
+
       for (const a of repository.actionQueries.all()) {
         const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);
-        
+
         if (nextCategory !== a.category) {
           repository.actionCommands.update(a.id, { category: nextCategory });
           const updated = repository.actionQueries.byId(a.id);
           if (updated) {
-            busSvc.send(emit(actions, {
-              type: 'ACTION_UPDATED', 
-              action: updated, 
+            broadcastActionEvent(system, {
+              type: 'ACTION_UPDATED',
+              action: updated,
               actionId: updated.id
-            }));
+            });
           }
         }
       }

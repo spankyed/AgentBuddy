@@ -2,10 +2,10 @@ import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { descendants } from '@/core/ears/helpers/graph';
-import type { 
-  FlowTNodeData, 
-  TNodeEntity, 
-  TrackEntity, 
+import type {
+  FlowTNodeData,
+  TNodeEntity,
+  TrackEntity,
   EventListenerEntity,
   TNodeUpdate,
   ExecutionContext
@@ -13,6 +13,7 @@ import type {
 import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
+import { brainLogger } from '../utils/brain-debug';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context
@@ -79,8 +80,8 @@ export const brainQueries = {
   flowEventNodes: (flowId: EARS.EntityId): ListenNode[] => {
     return qx(flowId)
       .linksPick(
-        EARS.RelKind.EVENT_TRACE,
-        ["id", "nodeType", "label", "eventType", "mode"] as const,
+        EARS.RelKind.CONTAINS,
+        ["id", "nodeType", "label", "eventType", "scope"] as const,
         [EARS.Entity.Node]
       )
       .filter(isListenNode);
@@ -164,38 +165,59 @@ export const brainQueries = {
       nodeId: node.id!,
       eventType: node.eventType,
       label: node.label,
-      mode: node.mode
+      scope: node.scope
     }));
   },
-  
+
+  /**
+   * Builds flow hierarchy from current flow back to root
+   * Returns array ordered from root → current flow
+   */
+  buildFlowHierarchy: (flowTNodeId: EARS.EntityId): Array<{ flowTNodeId: EARS.EntityId; label: string }> => {
+    const hierarchy: Array<{ flowTNodeId: EARS.EntityId; label: string }> = [];
+    let currentId: EARS.EntityId | undefined = flowTNodeId;
+
+    while (currentId) {
+      const node = qx(currentId).pickOne(['label', 'nodeAttributes']) as Pick<TNodeEntity, 'label' | 'nodeAttributes'> | null;
+      if (!node) break;
+
+      hierarchy.unshift({ flowTNodeId: currentId, label: node.label || 'Unknown Flow' });
+      currentId = node.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined;
+    }
+
+    return hierarchy;
+  },
+
   extendedTNodeData: (tNodeId: EARS.EntityId): FlowTNodeData => {
     const tNode = qx(tNodeId).pickOne(["tNodeType"]) as Pick<TNodeEntity, 'tNodeType'> | null;
-    
+
     if (!isFlowTNode(tNode as TNodeEntity)) {
       throw new Error(
         `Cannot get extended data for TNode ${tNodeId}: ` +
         `Expected flow type but found ${tNode?.tNodeType || 'none'}`
       );
     }
-    
+
     return {
       flowTNodeId: tNodeId,
       tNodeTree: brainQueries.eventTracks(tNodeId),
       possibleEvents: brainQueries.possibleEvents(tNodeId),
+      flowHierarchy: brainQueries.buildFlowHierarchy(tNodeId),
     };
   },
   
   rootData: (): FlowTNodeData => {
     const rootFlowTNode = brainQueries.rootFlowTNode();
-    
+
     if (!rootFlowTNode) {
       return {
         flowTNodeId: '' as EARS.EntityId,
         tNodeTree: [],
         possibleEvents: [],
+        flowHierarchy: [],
       };
     }
-    
+
     return brainQueries.extendedTNodeData(rootFlowTNode);
   },
 } as const;
@@ -278,18 +300,16 @@ export const brainCommands = {
 
     const now = Date.now();
 
-    const nodeAttributes = resolveNodeAttributes(
-      flowStepNode,
-      executionContext,
-    );
-
     const flowTNode: Partial<TNodeEntity> = {
       tNodeType: 'flow',
       label: flowStepNode.label || flow.label!,
       status: 'active',
       startedAt: now,
       stepNodeType: 'flow',
-      nodeAttributes,
+      nodeAttributes: {
+        ...resolveNodeAttributes(flowStepNode, executionContext),
+        ...(executionContext?.flowTNodeId && { _parentFlowTNodeId: executionContext.flowTNodeId })
+      },
       ...(parentFlowId && { 
         blueprint: { 
           nodeId: flowStepId, 
@@ -421,12 +441,12 @@ export const brainCommands = {
     const eventNodes = brainQueries.flowEventNodes(rootFlow.id);
 
     // Find the entry event node
-    const entryNode = eventNodes.find(node => node.mode === ENTRY_EVENT_MODE);
+    const entryNode = eventNodes.find(node => node.scope === ENTRY_EVENT_MODE);
 
     if (!entryNode) {
       throw new Error(
         `Cannot create root flow TNode: No entry event node found in root flow. ` +
-        `Found ${eventNodes.length} event nodes but none with mode='entry'`
+        `Found ${eventNodes.length} event nodes but none with scope='entry'`
       );
     }
 
@@ -509,12 +529,12 @@ export const brainCommands = {
   clearVolatileData: (): void => {
     // Get all TNode entities (volatile execution data)
     const allTNodes = qx(EARS.Entity.TNode).ids();
-    
+
     // Destroy each TNode entity without persisting (volatile data)
     allTNodes.forEach(tNodeId => {
       tx(tNodeId).destroy(true); // skip persistence for volatile data
     });
-    
-    console.log(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
+
+    brainLogger.info(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
   },
 } as const;

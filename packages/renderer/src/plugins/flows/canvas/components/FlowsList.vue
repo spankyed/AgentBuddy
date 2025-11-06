@@ -13,6 +13,9 @@
             :is-selected="rootFlow.id === selectedFlowId"
             is-root
             @click="$emit('flow-click', rootFlow)"
+            @dblclick="$emit('flow-dblclick', rootFlow)"
+            @request-delete="$emit('request-delete', $event)"
+            @request-edit-label="$emit('request-edit-label', $event)"
           />
         </div>
 
@@ -28,6 +31,9 @@
               :flow="flow"
               :is-selected="flow.id === selectedFlowId"
               @click="$emit('flow-click', flow)"
+              @dblclick="$emit('flow-dblclick', flow)"
+              @request-delete="$emit('request-delete', $event)"
+              @request-edit-label="$emit('request-edit-label', $event)"
             />
           </div>
         </div>
@@ -114,9 +120,12 @@ interface Props {
 
 const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   'flow-click': [flow: Partial<FlowEntity>]
+  'flow-dblclick': [flow: Partial<FlowEntity>]
   'create-flow': []
+  'request-delete': [flow: Partial<FlowEntity>]
+  'request-edit-label': [flow: Partial<FlowEntity>]
 }>()
 
 // Search state

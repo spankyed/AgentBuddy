@@ -13,7 +13,8 @@ import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
 import { libraryQueries, libraryCommands } from '@/systems/library/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
-import { terminalQueries, terminalCommands, directoryQueries, directoryCommands } from '@/systems/code/repository';
+import { secretsQueries, secretsCommands } from '@/systems/settings/secrets/repository';
+import { terminalQueries, terminalCommands } from '@/systems/code/repository';
 import { threadQueries, threadCommands } from '@/systems/threads/repository';
 
 // Export centralized repository
@@ -45,15 +46,15 @@ export const repository = {
   // Settings system
   settingsQueries,
   settingsCommands,
-  
+
+  // Secrets system
+  secretsQueries,
+  secretsCommands,
+
   // Code/Terminal system
   terminalQueries,
   terminalCommands,
-  
-  // Code/Directory system
-  directoryQueries,
-  directoryCommands,
-  
+
   // Threads system
   threadQueries,
   threadCommands,

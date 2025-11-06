@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ArtifactEntity, ThreadEntity, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -13,7 +13,7 @@ export type AgentState = ActorRefFrom<typeof agentState>;
 
 type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
 
-type AgentMode = 'plan' | 'work' | 'chat' | 'note';
+// Modes and phases are fully configurable through settings
 
 const defaultThread: AgentThreadData = {
   id: undefined,
@@ -28,20 +28,23 @@ const defaultThread: AgentThreadData = {
 
 interface AgentContext {
   currentThread: AgentThreadData | null;
-  threads: Partial<ThreadEntity>[];
+  threads: ThreadExtended[];
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
   tabs: Tab[];
   activeTabId: string;
-  mode: AgentMode;
+  mode: string; // Current mode
+  phase: string; // Current phase (when mode has phases)
+  phaseByMode: Record<string, string | undefined>; // Remember last phase per mode
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   settings: AgentSettings;
+  hasRequiredApiKeys: boolean;
 }
 
 type Brain_FE_AgentEvents =
-  | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
+  // | { type: 'ADD_ASSISTANT_MESSAGE'; text: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -57,14 +60,21 @@ type AgentEvent =
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
-  | { type: 'SET_MODE'; mode: AgentMode }
-  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: ThreadEntity['status'] }
+  | { type: 'SET_MODE'; mode: string }
+  | { type: 'SET_PHASE'; phase: string }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
+  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
+  | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
+  | { type: 'RESPOND_TO_ARTIFACT_BLOCK_INTERACTION'; artifactId: string; threadId: string; response: any }
+  | { type: 'ARTIFACT_STATE_UPDATED'; artifactId: string; blocks?: any[]; responseTimestamp?: number; blockResponse?: any }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
+  | { type: 'NAVIGATE_TO_SECRETS' }
+  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -95,8 +105,52 @@ const agentState = setup({
       }
       return { statusColor: 'bg-zinc-500' as StatusColor };
     }),
-    setMode: assign(({ event }) => ({
-      mode: typeOf('SET_MODE', event).mode
+    setMode: assign(({ context, event }) => {
+      const newMode = typeOf('SET_MODE', event).mode;
+      const modeConfig = context.modes.find(m => m.id === newMode);
+
+      // Save current phase for current mode
+      const updatedPhaseByMode = {
+        ...context.phaseByMode,
+        [context.mode]: context.phase
+      };
+
+      // Restore saved phase for new mode, or use first phase
+      const newPhase = modeConfig?.phases?.length
+        ? (newMode in updatedPhaseByMode ? updatedPhaseByMode[newMode] : modeConfig.phases[0].id)
+        : undefined;
+
+      return {
+        mode: newMode,
+        phase: newPhase,
+        phaseByMode: updatedPhaseByMode
+      };
+    }),
+    setPhase: assign(({ context, event }) => {
+      const newPhase = typeOf('SET_PHASE', event).phase;
+      return {
+        phase: newPhase,
+        phaseByMode: {
+          ...context.phaseByMode,
+          [context.mode]: newPhase
+        }
+      };
+    }),
+    navigateToSecrets: ({ system }) => {
+      // Navigate to settings plugin
+      system.get(application).send({
+        type: 'SELECT_PLUGIN',
+        pluginId: 'settings'
+      });
+      // Navigate to the secrets tab within settings
+      const settingsActor = system.get('settings');
+      if (settingsActor) {
+        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
+        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+      }
+    },
+    updateApiKeyStatus: assign(({ event }) => ({
+      hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
       trpc.bus.send.mutate({
@@ -104,35 +158,10 @@ const agentState = setup({
         type: 'USER_MSG',
         text: typeOf('SEND_MESSAGE', event).text,
         mode: context.mode,
+        phase: context.phase,
         threadId: context.currentThread?.id,
       });
     },
-    addMessage: assign(({ context, event }) => ({
-      currentThread: {
-        ...context.currentThread!,
-        messages: [...(context.currentThread?.messages || []), {
-          id: Date.now().toString(),
-          entityType: 'Message' as const,
-          createdAt: Date.now(),
-          text: typeOf('SEND_MESSAGE', event).text,
-          sender: 'user' as const,
-          timestamp: Date.now()
-        } as MessageEntity]
-      }
-    })),
-    addAssistantMessage: assign(({ context, event }) => ({
-      currentThread: {
-        ...context.currentThread!,
-        messages: [...(context.currentThread?.messages || []), {
-          id: Date.now().toString(),
-          entityType: 'Message' as const,
-          createdAt: Date.now(),
-          text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
-          sender: 'assistant' as const,
-          timestamp: Date.now(),
-        } as MessageEntity]
-      }
-    })),
     clearThread: assign(() => ({
       currentThread: {
         ...defaultThread,
@@ -149,7 +178,7 @@ const agentState = setup({
         return {
           currentThread: {
             ...currentThread!,
-            messages: messages.map(m => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
+            messages: messages.map((m: Partial<MessageEntity>) => m.id === pendingActionId ? { ...m, text: m.text + token } : m),
           }
         };
       }
@@ -176,23 +205,48 @@ const agentState = setup({
     // updateMessageInput: assign(({ event }) => ({
     //   messageInput: typeOf('UPDATE_MESSAGE_INPUT', event).text
     // })),
-    setThreadChatData: assign(({ event }) => {
-      const typedEvent = typeOf('LOAD_CHAT_THREAD', event);
+    setThreadChatData: assign(({ context, event }) => {
+      const thread = typeOf('LOAD_CHAT_THREAD', event).data;
+
+      // Request backend to open tab if thread has artifacts
+      if (thread.artifacts?.length && thread.id) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'OPEN_THREAD_TAB',
+          threadId: thread.id,
+          label: thread.topic || `Thread ${thread.shortCode || ''}`
+        });
+      }
+
+      // If thread has forcedMode, handle phase properly
+      if (thread.forcedMode) {
+        const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
+        const newPhase = modeConfig?.phases?.length
+          ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
+          : undefined;
+
+        return {
+          currentThread: thread,
+          mode: thread.forcedMode,
+          phase: newPhase
+        };
+      }
+
       return {
-        currentThread: typedEvent.data,
+        currentThread: thread
       };
     }),
     setStartupData: assign(({ context, event }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
-      
+
       // Prioritize current thread tab if it exists and has artifacts
-      const currentThreadTab = typedEvent.data.tabs?.find(tab => 
+      const currentThreadTab = typedEvent.data.tabs?.find(tab =>
         tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
       );
-      
+
       const settings = typedEvent.data.settings || { modes: [], hotkeys: {} };
-      
-      // Extract hotkeys from settings - filter out undefined values  
+
+      // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (settings.hotkeys) {
         Object.entries(settings.hotkeys).forEach(([key, value]) => {
@@ -201,26 +255,44 @@ const agentState = setup({
           }
         });
       }
-      
+
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
-      
+
+      // If currentThread has forcedMode, handle phase properly
+      const currentThread = typedEvent.data.currentThread;
+      const forcedMode = currentThread?.forcedMode;
+      let modeUpdate = {};
+      if (forcedMode) {
+        const modeConfig = modes.find(m => m.id === forcedMode);
+        const newPhase = modeConfig?.phases?.length
+          ? (forcedMode in context.phaseByMode ? context.phaseByMode[forcedMode] : modeConfig.phases[0].id)
+          : undefined;
+
+        modeUpdate = {
+          mode: forcedMode,
+          phase: newPhase
+        };
+      }
+
       return {
-        currentThread: typedEvent.data.currentThread,
+        currentThread: currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
         hotkeys,
         modes,
         settings,
+        hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
+        ...modeUpdate
       };
     }),
-    
+
     handleSettingsUpdate: assign(({ event }) => {
       const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
       const settings = typedEvent.settings;
-      
-      // Extract hotkeys from settings - filter out undefined values  
+
+      // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
       if (settings.hotkeys) {
         Object.entries(settings.hotkeys).forEach(([key, value]) => {
@@ -229,10 +301,10 @@ const agentState = setup({
           }
         });
       }
-      
+
       // Extract modes from settings or fallback to empty array
       const modes = settings.modes || [];
-      
+
       return {
         hotkeys,
         modes,
@@ -241,7 +313,7 @@ const agentState = setup({
     }),
     setRefreshThreadsData: assign(({ context, event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
-      
+
       return {
         currentThread: typedEvent.data.currentThread,
         threads: typedEvent.data.threads as ThreadEntity[],
@@ -309,22 +381,6 @@ const agentState = setup({
       );
       return { tabs };
     }),
-    requestDashboardRefresh: async () => {
-      // Request fresh data from backend
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REFRESH_DASHBOARD'
-      });
-    },
-    updateThreadStatus: async ({ event }) => {
-      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
-      trpc.bus.send.mutate({
-        systemId: 'threads',
-        type: 'UPDATE_THREAD_STATUS',
-        threadId,
-        status,
-      });
-    },
     updateTodoTask: assign(({ context, event }) => {
       const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
       const tabs = context.tabs.map(tab => ({
@@ -364,27 +420,142 @@ const agentState = setup({
       textToSpeech: 'TEXT_TO_SPEECH',
       switchMode: 'SWITCH_MODE'
     }),
-    
+
     textToSpeech: () => {
       // Stub implementation for text-to-speech
       console.log('[Agent] Text-to-speech triggered (stub)');
       // Future implementation will convert last agent message to speech
     },
-    
+
     switchMode: ({ context, self }) => {
-      // Use modes from context to determine cycle order
-      const modeIds = context.modes.map(m => m.id) as AgentMode[];
-      const currentIndex = modeIds.indexOf(context.mode);
-      const nextIndex = (currentIndex + 1) % modeIds.length;
-      const nextMode = modeIds[nextIndex];
-      
-      // Send SET_MODE event to update the mode
-      self.send({ type: 'SET_MODE', mode: nextMode });
-      
-      const nextModeName = context.modes.find(m => m.id === nextMode)?.name || nextMode;
-      const currentModeName = context.modes.find(m => m.id === context.mode)?.name || context.mode;
-      console.log(`[Agent] Switched mode from ${currentModeName} to ${nextModeName}`);
+      const visibleModes = context.modes.filter(m => !m.hidden);
+      if (!visibleModes.length) return;
+
+      const currentIndex = visibleModes.findIndex(m => m.id === context.mode);
+      const nextMode = visibleModes[(currentIndex + 1) % visibleModes.length];
+      self.send({ type: 'SET_MODE', mode: nextMode.id });
     },
+
+    respondToBlockInteraction: ({ context, event }) => {
+      const { messageId, response } = typeOf('RESPOND_TO_BLOCK_INTERACTION', event);
+
+      if (!context.currentThread?.id) {
+        console.error('Cannot respond to block interaction: no current thread');
+        return;
+      }
+
+      // Send block interaction response to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'INTERACTIVE_MSG_RESPONSE',
+        messageId,
+        threadId: context.currentThread.id,
+        response,
+      });
+    },
+
+    updateMessageState: assign(({ context, event }) => {
+      const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event) as any;
+      const { messageId } = typedEvent;
+
+      if (!context.currentThread?.messages) return {};
+
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: context.currentThread.messages.map(msg =>
+            msg.id === messageId
+              ? {
+                ...msg,
+                ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
+                ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
+                ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
+              }
+              : msg
+          )
+        }
+      };
+    }),
+
+    respondToArtifactBlockInteraction: ({ event }) => {
+      const { artifactId, threadId, response } = typeOf('RESPOND_TO_ARTIFACT_BLOCK_INTERACTION', event);
+
+      // Send artifact block interaction response to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'ARTIFACT_BLOCK_RESPONSE',
+        artifactId,
+        threadId,
+        response,
+      });
+    },
+
+    updateArtifactState: assign(({ context, event }) => {
+      const typedEvent = typeOf('ARTIFACT_STATE_UPDATED', event) as any;
+      const { artifactId } = typedEvent;
+
+      if (!context.tabs || context.tabs.length === 0) return {};
+
+      return {
+        tabs: context.tabs.map(tab => ({
+          ...tab,
+          artifacts: tab.artifacts?.map((artifact: any) =>
+            artifact.id === artifactId
+              ? {
+                ...artifact,
+                ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
+                ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
+              }
+              : artifact
+          )
+        }))
+      };
+    }),
+
+    // addMessage: assign(({ context, event }) => ({
+    //   currentThread: {
+    //     ...context.currentThread!,
+    //     messages: [...(context.currentThread?.messages || []), {
+    //       id: Date.now().toString(),
+    //       entityType: 'Message' as const,
+    //       createdAt: Date.now(),
+    //       text: typeOf('SEND_MESSAGE', event).text,
+    //       sender: 'user' as const,
+    //       timestamp: Date.now()
+    //     } as MessageEntity]
+    //   }
+    // })),
+    // addAssistantMessage: assign(({ context, event }) => {
+    //   return ({
+    //     currentThread: {
+    //       ...context.currentThread!,
+    //       messages: [...(context.currentThread?.messages || []), {
+    //         id: Date.now().toString(),
+    //         entityType: 'Message' as const,
+    //         createdAt: Date.now(),
+    //         text: typeOf('ADD_ASSISTANT_MESSAGE', event).text,
+    //         sender: 'assistant' as const,
+    //         timestamp: Date.now(),
+    //       } as MessageEntity]
+    //     }
+    //   })
+    // }),
+    addMessageToThread: assign(({ context, event }) => {
+      const typedEvent = typeOf('MESSAGE_ADDED', event);
+      const { threadId, message } = typedEvent;
+
+      // Only update if this is the current thread
+      if (context.currentThread?.id !== threadId) return {};
+
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: [...(context.currentThread.messages ?? []), message]
+        }
+      };
+    }),
   },
   guards: {
     targetIs,
@@ -400,10 +571,13 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
     tabs: [],
     activeTabId: 'dashboard',
-    mode: 'chat' as AgentMode,
+    mode: 'work', // Default mode
+    phase: 'plan', // Default phase
+    phaseByMode: {}, // Track last phase per mode
     modes: [],
     hotkeys: {}, // Will be loaded from settings
     settings: { modes: [], hotkeys: {} }, // Will be loaded from settings
+    hasRequiredApiKeys: true, // Default to true, will be updated on AGENT_CONNECTED
   }),
   on: {
     // Hotkey handling
@@ -431,11 +605,14 @@ const agentState = setup({
     AGENT_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
     },
+    NAVIGATE_TO_SECRETS: {
+      actions: 'navigateToSecrets'
+    },
+    API_KEYS_STATUS: {
+      actions: 'updateApiKeyStatus'
+    },
     REFRESH_RECENT_THREADS: {
       actions: 'setRefreshThreadsData'
-    },
-    UPDATE_THREAD_STATUS: {
-      actions: 'updateThreadStatus'
     },
     UPDATE_TODO_TASK: {
       actions: 'updateTodoTask'
@@ -446,12 +623,26 @@ const agentState = setup({
     REJECT_TODO_LIST: {
       actions: 'rejectTodoList'
     },
+    RESPOND_TO_BLOCK_INTERACTION: {
+      actions: 'respondToBlockInteraction'
+    },
+    UPDATE_MESSAGE_STATE: {
+      actions: 'updateMessageState'
+    },
+    MESSAGE_ADDED: {
+      actions: 'addMessageToThread'
+    },
+    RESPOND_TO_ARTIFACT_BLOCK_INTERACTION: {
+      actions: 'respondToArtifactBlockInteraction'
+    },
+    ARTIFACT_STATE_UPDATED: {
+      actions: 'updateArtifactState'
+    },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],
     ]),
     SEND_MESSAGE: {
       actions: [
-        'addMessage',
         'sendMessage',
         { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
       ],
@@ -462,15 +653,18 @@ const agentState = setup({
     SET_MODE: {
       actions: 'setMode',
     },
+    SET_PHASE: {
+      actions: 'setPhase',
+    },
     CLEAR_THREAD: {
       actions: 'clearThread'
     },
     CREATE_CHILD_THREAD: {
       actions: 'createChildThread'
     },
-    ADD_ASSISTANT_MESSAGE: {
-      actions: 'addAssistantMessage'
-    },
+    // ADD_ASSISTANT_MESSAGE: {
+    //   actions: 'addAssistantMessage'
+    // },
     TOKEN_STREAM: {
       actions: 'handleTokenStream'
     },

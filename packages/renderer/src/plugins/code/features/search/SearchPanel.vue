@@ -1,87 +1,83 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 search-header">
       <div class="flex items-center gap-2">
         <Search :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Search</h3>
       </div>
     </div>
-    
+
     <!-- Show only error if no directory selected -->
     <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ searchError }}</div>
     </div>
-    
+
     <!-- Show normal UI only when directory is selected -->
     <template v-else>
       <!-- Search Input Section -->
       <div class="p-4 border-b border-neutral-800">
-
-
-      <!-- Search Options -->
-      <div class="flex items-center gap-2 mb-3">
-        <button
-          @click="toggleOption('searchInCurrentDir')"
-          :class="[
-            'flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors',
-            searchOptions.searchInCurrentDir 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-          ]"
-          :title="searchOptions.searchInCurrentDir ? 'Searching in current directory' : 'Searching in root directory'"
-        >
-          <FolderOpen class="w-3 h-3" />
-          <span>{{ searchOptions.searchInCurrentDir ? 'Current' : 'Root' }}</span>
-        </button>
-                <div class="w-px h-4 mx-1 bg-neutral-700"></div>
-        <button
-          @click="toggleOption('caseSensitive')"
-          :class="optionButtonClass(searchOptions.caseSensitive)"
-          title="Match Case"
-        >
-          Aa
-        </button>
-        <button
-          @click="toggleOption('wholeWord')"
-          :class="optionButtonClass(searchOptions.wholeWord)"
-          title="Match Whole Word"
-        >
-          ab
-        </button>
-        <button
-          @click="toggleOption('useRegex')"
-          :class="optionButtonClass(searchOptions.useRegex)"
-          title="Use Regular Expression"
-        >
-          .*
-        </button>
-
-      </div>
-
-
-      <div class="flex items-center gap-2 mb-3">
+      <!-- Search Input with Inline Filters -->
+      <div class="flex items-stretch mb-3 overflow-hidden border rounded bg-neutral-800 border-neutral-700 focus-within:border-blue-500">
         <input
           v-model="searchQuery"
           @keyup.enter="performSearch"
+          @input="performSearch"
           type="text"
           :placeholder="searchPlaceholder"
-          class="flex-1 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+          class="flex-1 px-3 py-1.5 text-sm bg-transparent border-none outline-none text-neutral-100 placeholder-neutral-500"
         />
-        <button
-          @click="performSearch"
-          :disabled="!searchQuery || isSearching"
-          class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white rounded text-sm transition-colors"
-        >
-          {{ isSearching ? 'Searching...' : 'Search' }}
-        </button>
-        <button
-          v-if="isSearching"
-          @click="cancelSearch"
-          class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-        >
-          Cancel
-        </button>
+        <div class="flex items-stretch border-l border-neutral-700">
+          <button
+            @click="toggleOption('searchInActiveDir')"
+            :class="[
+              'flex items-center gap-1 px-2 py-1.5 text-xs transition-colors',
+              searchOptions.searchInActiveDir
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            :title="searchOptions.searchInActiveDir ? 'Searching in active directory' : 'Searching in base directory'"
+          >
+            <FolderOpen class="w-3 h-3" />
+            <span>{{ searchOptions.searchInActiveDir ? 'Active' : 'Base' }}</span>
+          </button>
+          <button
+            @click="toggleOption('caseSensitive')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors border-r border-l border-neutral-700',
+              searchOptions.caseSensitive
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Match Case"
+          >
+            Aa
+          </button>
+          <button
+            @click="toggleOption('wholeWord')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors border-r border-neutral-700',
+              searchOptions.wholeWord
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Match Whole Word"
+          >
+            ab
+          </button>
+          <button
+            @click="toggleOption('useRegex')"
+            :class="[
+              'px-2 py-1.5 text-xs transition-colors',
+              searchOptions.useRegex
+                ? 'bg-blue-600 text-white'
+                : 'text-neutral-400 hover:bg-neutral-700'
+            ]"
+            title="Use Regular Expression"
+          >
+            .*
+          </button>
+        </div>
       </div>
 
 
@@ -147,12 +143,12 @@
               <span class="text-xs text-neutral-500">({{ result.matches.length }} matches)</span>
             </div>
           </div>
-          
+
           <div v-if="expandedResults.has(result.path)" class="ml-6">
             <div
               v-for="(match, index) in result.matches"
               :key="`${result.path}-${index}`"
-              @click="openMatch(result, index)"
+              @click="openMatch(result)"
               class="px-4 py-1 cursor-pointer hover:bg-neutral-800"
             >
               <div class="flex items-baseline gap-2">
@@ -205,8 +201,8 @@ const isSearching = useSelector(searchActor, (state: any) => state.context.isSea
 const searchError = useSelector(searchActor, (state: any) => state.context.searchError)
 const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
 const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
-const rootDirectory = useSelector(codeActor, (state) => state.context.rootDirectory)
-const currentDirectory = useSelector(codeActor, (state) => state.context.currentDirectory)
+const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
+const activeDirectory = useSelector(codeActor, (state) => state.context.activeDirectory)
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)
@@ -223,32 +219,32 @@ const isNoDirectoryError = computed(() => {
 })
 
 const searchPlaceholder = computed(() => {
-  if (searchOptions.value.searchInCurrentDir) {
-    const path = currentDirectory.value
-    if (!path) return 'Search in current directory'
-    
-    // Get relative path from root
-    const relativePath = rootDirectory.value && path.startsWith(rootDirectory.value) 
-      ? path.slice(rootDirectory.value.length + 1) || `~/${rootDirectory.value?.split('/').pop() || 'root'}`
+  if (searchOptions.value.searchInActiveDir) {
+    const path = activeDirectory.value
+    if (!path) return 'Search in active directory'
+
+    // Get relative path from base
+    const relativePath = baseDirectory.value && path.startsWith(baseDirectory.value)
+      ? path.slice(baseDirectory.value.length + 1) || `~/${baseDirectory.value?.split('/').pop() || 'base'}`
       : path
-    
+
     // Truncate long paths in the middle
     const maxLength = 35
     if (relativePath.length > maxLength) {
       const parts = relativePath.split('/')
       if (parts.length > 2) {
         // Build path from both ends until we exceed maxLength
-        let leftParts: string[] = []
-        let rightParts: string[] = []
+        const leftParts: string[] = []
+        const rightParts: string[] = []
         let leftIndex = 0
         let rightIndex = parts.length - 1
         let currentLength = 3 // for "..."
-        
+
         // Always include first and last
         leftParts.push(parts[leftIndex++])
         rightParts.unshift(parts[rightIndex--])
         currentLength += leftParts[0].length + rightParts[0].length + 2 // +2 for slashes
-        
+
         // Add parts from both sides while we have space
         while (leftIndex <= rightIndex && currentLength < maxLength) {
           // Try adding from left
@@ -262,7 +258,7 @@ const searchPlaceholder = computed(() => {
               break
             }
           }
-          
+
           // Try adding from right
           if (leftIndex <= rightIndex) {
             const nextRight = parts[rightIndex]
@@ -275,18 +271,18 @@ const searchPlaceholder = computed(() => {
             }
           }
         }
-        
+
         // Only show ellipsis if we actually skipped parts
         if (leftIndex <= rightIndex) {
           return `Search in ${leftParts.join('/')}/.../${rightParts.join('/')}`
         }
       }
     }
-    
+
     return `Search in ${relativePath}`
   } else {
-    return rootDirectory.value 
-      ? `Search in ~/${rootDirectory.value.split('/').pop()}`
+    return baseDirectory.value
+      ? `Search in ~/${baseDirectory.value.split('/').pop()}`
       : 'Search in project'
   }
 })
@@ -294,13 +290,13 @@ const searchPlaceholder = computed(() => {
 // Methods
 const performSearch = () => {
   if (!searchQuery.value || isSearching.value) return
-  
+
   // Clear previous results
   expandedResults.value.clear()
-  
-  searchActor?.send({ 
-    type: 'search.START', 
-    query: searchQuery.value 
+
+  searchActor?.send({
+    type: 'search.START',
+    query: searchQuery.value
   })
 }
 
@@ -308,7 +304,7 @@ const cancelSearch = () => {
   searchActor?.send({ type: 'search.CANCEL' })
 }
 
-const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'searchInCurrentDir') => {
+const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'searchInActiveDir') => {
   searchActor?.send({
     type: 'search.UPDATE_OPTIONS',
     options: {
@@ -335,25 +331,25 @@ const toggleResultExpanded = (path: string) => {
   }
 }
 
-const openMatch = (result: typeof searchResults.value[0], matchIndex: number) => {
+const openMatch = (result: typeof searchResults.value[0]) => {
   // Open file through explorer
   const explorerActor = codeActor.system.get('explorer')
   explorerActor?.send({
     type: 'explorer.OPEN_FILE',
     path: result.path
   })
-  
+
   // TODO: Handle scrolling to specific match index in the editor
 }
 
 const getRelativePath = (path: string) => {
-  // If searching in current directory, show paths relative to current directory
-  if (searchOptions.value.searchInCurrentDir && currentDirectory.value && path.startsWith(currentDirectory.value)) {
-    return path.slice(currentDirectory.value.length + 1)
+  // If searching in active directory, show paths relative to active directory
+  if (searchOptions.value.searchInActiveDir && activeDirectory.value && path.startsWith(activeDirectory.value)) {
+    return path.slice(activeDirectory.value.length + 1)
   }
-  // Otherwise show paths relative to root directory
-  if (rootDirectory.value && path.startsWith(rootDirectory.value)) {
-    return path.slice(rootDirectory.value.length + 1)
+  // Otherwise show paths relative to base directory
+  if (baseDirectory.value && path.startsWith(baseDirectory.value)) {
+    return path.slice(baseDirectory.value.length + 1)
   }
   return path
 }
@@ -361,8 +357,8 @@ const getRelativePath = (path: string) => {
 const optionButtonClass = (active: boolean) => {
   return [
     'px-2 py-1 text-xs rounded transition-colors',
-    active 
-      ? 'bg-blue-600 text-white' 
+    active
+      ? 'bg-blue-600 text-white'
       : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
   ]
 }
@@ -381,3 +377,10 @@ watch(searchResults, (results) => {
   })
 })
 </script>
+
+<style scoped>
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.search-header > * {
+  -webkit-app-region: no-drag;
+}
+</style>

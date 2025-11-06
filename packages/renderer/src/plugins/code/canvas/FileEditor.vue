@@ -4,13 +4,25 @@
     <Tabs
       :tabs="openFiles"
       :active-tab-path="activeFilePath"
-      :root-directory="rootDirectory"
+      :base-directory="baseDirectory"
+      :tab-groups="tabGroups"
       @select="selectFile"
       @close="closeFile"
       @reorder="(fromIndex, toIndex) => $emit('reorder', fromIndex, toIndex)"
       @reveal-in-explorer="(path) => $emit('reveal-in-explorer', path)"
       @pin-tab="(path) => $emit('pin-tab', path)"
       @unpin-tab="(path) => $emit('unpin-tab', path)"
+      @create-group="(name, tabPaths) => $emit('create-group', name, tabPaths)"
+      @rename-group="(groupId, name) => $emit('rename-group', groupId, name)"
+      @change-group-color="(groupId, color) => $emit('change-group-color', groupId, color)"
+      @delete-group="(groupId) => $emit('delete-group', groupId)"
+      @toggle-group-collapse="(groupId) => $emit('toggle-group-collapse', groupId)"
+      @add-tab-to-group="(tabPath, groupId) => $emit('add-tab-to-group', tabPath, groupId)"
+      @remove-tab-from-group="(path) => $emit('remove-tab-from-group', path)"
+      @ungroup-all="(groupId) => $emit('ungroup-all', groupId)"
+      @close-all-in-group="(groupId) => $emit('close-all-in-group', groupId)"
+      @pin-group="(groupId) => $emit('pin-group', groupId)"
+      @unpin-group="(groupId) => $emit('unpin-group', groupId)"
     />
 
     <!-- Editor -->
@@ -21,7 +33,7 @@
           <p class="text-neutral-400">Open a file from the explorer to start editing</p>
         </div>
       </div>
-      
+
       <div v-else-if="activeFile" class="absolute inset-0 overflow-hidden">
         <!-- Terminal view -->
         <div v-show="isTerminal(activeFile)" class="h-full overflow-hidden">
@@ -32,7 +44,7 @@
             class="h-full"
           />
         </div>
-        
+
         <!-- Monaco editor for both regular files and diffs -->
         <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
           <MonacoEditor
@@ -68,7 +80,8 @@ import type { GitDiff } from '@/plugins/code/features/commit/state'
 const props = defineProps<{
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
-  rootDirectory?: string
+  baseDirectory?: string
+  tabGroups: any[] // Will be typed properly
 }>()
 
 // Emits
@@ -80,6 +93,17 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
+  'create-group': [name: string, tabPaths: string[]]
+  'rename-group': [groupId: string, name: string]
+  'change-group-color': [groupId: string, color: string]
+  'delete-group': [groupId: string]
+  'toggle-group-collapse': [groupId: string]
+  'add-tab-to-group': [tabPath: string, groupId: string]
+  'remove-tab-from-group': [path: string]
+  'ungroup-all': [groupId: string]
+  'close-all-in-group': [groupId: string]
+  'pin-group': [groupId: string]
+  'unpin-group': [groupId: string]
 }>()
 
 // Helper to check if a file is a terminal
@@ -98,7 +122,7 @@ const getDiffContent = (file: any): GitDiff | null => {
 }
 
 // Computed
-const activeFile = computed(() => 
+const activeFile = computed(() =>
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
 

@@ -10,7 +10,7 @@ npx tsc -p dsl/tsconfig.json
 
 # Run rollup to bundle the declarations into modules
 echo "🎯 Bundling declarations with Rollup..."
-npx rollup -c ../../scripts/rollup-dsl.config.mjs
+npx rollup -c rollup-dsl.config.mjs
 
 # Check if rollup succeeded
 if [ $? -eq 0 ]; then

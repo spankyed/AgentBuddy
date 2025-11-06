@@ -27,7 +27,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Flow Entry",
-      mode: "entry",
+      scope: "entry",
       eventType: "flow.entry",
     },
     {
@@ -36,7 +36,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      mode: "internal",
+      scope: "local",
       eventType: "user.message",
       // Expected event structure: { type: "user.message", payload: "message text", userId?: "123", context?: "additional info" }
     },
@@ -46,7 +46,7 @@ export const runAgentBrainFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Database Query Prompt",
-      mode: "internal",
+      scope: "local",
       eventType: "database.query.prompt",
     },
     /* First Steps (connected via TRANSITIONS_TO) */
@@ -164,10 +164,6 @@ export const runAgentBrainFlow: Rows = {
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a7s", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-a8s", info: {} },
     { source: "Flow-a", kind: EARS.RelKind.CONTAINS, target: "Node-loa8s", info: {} },
-
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a1", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a2", info: {} },
-    { source: "Flow-a", kind: EARS.RelKind.EVENT_TRACE, target: "Node-a3", info: {} },
 
     { source: "Node-a1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a4s", info: {} },
     { source: "Node-a2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-a7s", info: {} },

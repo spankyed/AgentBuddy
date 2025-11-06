@@ -2,6 +2,7 @@ import type { Plugin } from "@/core/types/index.ts";
 import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
+import kanban from './canvas/kanban.vue';
 import create from './canvas/create.vue';
 import view from './canvas/view.vue';
 import settings from './settings.vue';
@@ -13,6 +14,7 @@ const threadsPlugin: Plugin = {
   state,
   canvas: {
     list,
+    kanban,
     create,
     view,
   },

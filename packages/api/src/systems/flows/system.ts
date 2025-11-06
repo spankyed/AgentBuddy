@@ -10,6 +10,7 @@ import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
+import type { ActionEntity } from '@/systems/actions/types';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -21,19 +22,20 @@ const busEvent = systemBus(flows);
 export const IncomingFlowsEvents = [
   busEvent('FLOW_SELECT', { flowId: z.string() }),
   busEvent('CREATE_FLOW', {}),
+  busEvent('DELETE_FLOW', { flowId: z.string() }),
   busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('DELETE_NODE', { flowId: z.string(), nodeId: z.string() }),
   busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
   busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
-  busEvent('UPDATE_EDGE', { 
-    flowId: z.string(), 
-    edgeId: z.string(), 
-    oldSource: z.string(), 
-    oldTarget: z.string(), 
-    newSource: z.string(), 
-    newTarget: z.string() 
+  busEvent('UPDATE_EDGE', {
+    flowId: z.string(),
+    edgeId: z.string(),
+    oldSource: z.string(),
+    oldTarget: z.string(),
+    newSource: z.string(),
+    newTarget: z.string()
   }),
 ] as const
 
@@ -45,12 +47,16 @@ export type OutgoingFlowsEvents =
   | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
+  | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_DELETED'; nodeId: string }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
   | { type: 'EDGE_DELETED'; edgeId: string }
   | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
+  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -113,10 +119,31 @@ export const flowsSystem = setup({
     
     updateFlowLabel: ({ system, event }) => {
       const { flowId, label } = typeOf('UPDATE_FLOW_LABEL', event);
-      
+
       logger.info('Updating flow label', { flowId, label });
-      
+
       repository.flowsCommands.updateFlowLabel(flowId as EARS.EntityId, label);
+    },
+
+    deleteFlow: ({ system, event }) => {
+      const { flowId } = typeOf('DELETE_FLOW', event);
+      const pluginId = flows;
+
+      logger.info('Deleting flow', { flowId });
+
+      try {
+        repository.flowsCommands.deleteFlow(flowId as EARS.EntityId);
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'FLOW_DELETED',
+          flowId: flowId as EARS.EntityId,
+        }));
+
+        logger.info('Flow deleted successfully', { flowId });
+      } catch (error) {
+        logger.error('Failed to delete flow', { flowId, error });
+        throw error;
+      }
     },
     
     createNode: ({ system, event }) => {
@@ -277,6 +304,9 @@ export const flowsSystem = setup({
         },
         CREATE_FLOW: {
           actions: 'createFlow',
+        },
+        DELETE_FLOW: {
+          actions: 'deleteFlow',
         },
         UPDATE_FLOW_LABEL: {
           actions: 'updateFlowLabel',

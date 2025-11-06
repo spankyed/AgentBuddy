@@ -1,7 +1,7 @@
 <template>
   <div class="min-w-full">
     <table class="min-w-full divide-y divide-neutral-800">
-      <thead class="sticky top-0">
+      <thead class="sticky top-0 z-10 bg-neutral-900">
         <tr>
           <th
             v-for="header in headers"

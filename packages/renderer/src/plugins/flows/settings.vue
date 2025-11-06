@@ -5,7 +5,7 @@
       <p class="text-sm text-neutral-500 mb-4">
         Select which flow should be the root flow for dialog execution
       </p>
-      
+
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <label class="text-sm font-medium text-neutral-300 min-w-[120px]">
@@ -18,8 +18,8 @@
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           >
             <option value="">None</option>
-            <option 
-              v-for="flow in flows" 
+            <option
+              v-for="flow in flows"
               :key="flow.id"
               :value="flow.id"
             >
@@ -39,7 +39,7 @@
               <p class="text-sm text-neutral-400 mb-3">
                 The root flow has been updated. Please restart the application from Brain settings to apply the changes.
               </p>
-              <button 
+              <button
                 @click="goToBrainSettings"
                 class="px-3 py-1.5 bg-amber-600/20 text-amber-400 border border-amber-600/30 rounded-lg hover:bg-amber-600/30 hover:border-amber-600/50 transition-colors flex items-center gap-2 text-sm font-medium"
               >
@@ -49,6 +49,32 @@
             </div>
           </div>
         </div>
+      </div>
+    </CollapsibleSection>
+
+    <!-- Flow Preview Section -->
+    <CollapsibleSection label="Flow Preview" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Configure how flows are opened when clicking from the list
+      </p>
+
+      <div class="space-y-4">
+        <label class="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            v-model="enableFlowPreview"
+            @change="handleFlowPreviewChange"
+            class="w-4 h-4 mt-0.5 rounded border-neutral-700 bg-neutral-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 transition-all cursor-pointer"
+          />
+          <div class="flex-1">
+            <div class="text-sm font-medium text-neutral-300 group-hover:text-neutral-100 transition-colors">
+              Enable flow preview on single click
+            </div>
+            <div class="text-xs text-neutral-500 mt-0.5">
+              When enabled, single-click previews a flow with overlay. Double-click or click overlay to edit. When disabled, single-click opens the editor directly.
+            </div>
+          </div>
+        </label>
       </div>
     </CollapsibleSection>
   </div>
@@ -82,6 +108,7 @@ const emit = defineEmits<{
 
 // State
 const selectedRootFlowId = ref<string>(props.settings?.rootFlowId || '')
+const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
 // Get flows list from flows plugin state for flows settings
 const flowsActor: FlowsState = applicationState.system.get(id)
@@ -94,7 +121,7 @@ const settingsActor = applicationState.system.get('settings')
 const needsRestart = computed(() => {
   const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
   const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
-  
+
   // Need restart if:
   // 1. Brain is running (not dead/undefined) AND
   // 2. Flows has a root ID AND
@@ -114,7 +141,20 @@ watch(() => props.settings?.rootFlowId, (newValue) => {
   }
 })
 
+watch(() => props.settings?.enableFlowPreview, (newValue) => {
+  if (newValue !== undefined) {
+    enableFlowPreview.value = newValue ?? true
+  }
+})
+
 // Methods
+const handleFlowPreviewChange = () => {
+  emit('update-setting', {
+    path: ['enableFlowPreview'],
+    value: enableFlowPreview.value
+  })
+}
+
 const handleRootFlowChange = () => {
   emit('update-setting', {
     path: ['rootFlowId'],

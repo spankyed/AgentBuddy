@@ -25,7 +25,7 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "User Message",
-      mode: "entry",
+      scope: "global",
       eventType: "chat.message",
     },
     {
@@ -34,7 +34,7 @@ export const chatFlow: Rows = {
       createdAt: nowMs - 890,
       nodeType: "listen",
       label: "System Events",
-      mode: "internal",
+      scope: "local",
       eventType: "system.*",
     },
 
@@ -156,9 +156,6 @@ export const chatFlow: Rows = {
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b9", info: {} },
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b10", info: {} },
     { source: "Flow-b", kind: EARS.RelKind.CONTAINS, target: "Node-b11", info: {} },
-
-    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b1", info: {} },
-    { source: "Flow-b", kind: EARS.RelKind.EVENT_TRACE, target: "Node-b2", info: {} },
 
     /* Listen node outputs */
     { source: "Node-b1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b3", info: {} },

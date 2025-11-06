@@ -1,6 +1,6 @@
 import { BaseEntity } from "@/core/ears";
 import type { EARS, ThreadExtendedData } from "@/types";
-import { ThreadEntity, ArtifactEntity } from "../threads/types";
+import { ThreadEntity, ArtifactEntity, BlockConfig } from "../threads/types";
 import type { KeyboardShortcut } from "../settings/types";
 
 export type AgentThreadData = {
@@ -12,6 +12,7 @@ export type AgentThreadData = {
   timestamp: ThreadEntity['timestamp'];
   messages: ThreadExtendedData['messages'];
   artifacts: ArtifactEntity[];
+  forcedMode?: ThreadEntity['forcedMode'];
 }
 
 export type RecentThreadRefreshData = {
@@ -19,10 +20,18 @@ export type RecentThreadRefreshData = {
   threads: Partial<ThreadEntity>[];
 };
 
+export interface AgentPhase {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface AgentMode {
   id: string;
   name: string;
   description: string;
+  phases?: AgentPhase[];
+  hidden?: boolean; // For modes that shouldn't appear in selector (e.g., birth)
 }
 
 export interface AgentSettings {
@@ -37,9 +46,9 @@ export interface AgentSettings {
 export type AgentConnectedData = {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
-  dashboardArtifacts: Partial<ArtifactEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
+  hasRequiredApiKeys: boolean;
 };
 
 // UI types for agent canvas
@@ -55,15 +64,18 @@ export type ArtifactType =
   | 'code'
   | 'review'
   | 'image'
-  | 'kanban'
   | 'slack'
-  | 'todo';
+  | 'todo'
+  | 'workspace';
 
 export interface ArtifactItem {
   id: string;
   type: ArtifactType;
   title: string;
-  content: any;
+  content: any; // Deprecated: Use blocks instead. Kept for backward compatibility.
+  blocks?: BlockConfig[];
+  blockResponse?: any;
+  responseTimestamp?: number;
   metadata?: {
     createdAt: number;
     updatedAt?: number;

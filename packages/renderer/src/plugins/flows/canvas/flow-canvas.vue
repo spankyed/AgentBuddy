@@ -8,15 +8,17 @@
         :flows="flows"
         :root-flow="rootFlow"
         :selected-flow-id="selectedFlowId"
-        @flow-click="handleFlowClick"
+        @flow-click="handleFlowPreview"
+        @flow-dblclick="handleFlowClick"
         @create-flow="handleCreateFlow"
+        @request-delete="openDeleteDialog"
+        @request-edit-label="openEditDialog"
       />
 
       <!-- Steps palette view -->
       <NodePalette
         v-if="inViewState"
         @palette-click="handlePaletteClick"
-        @drag-start="handleDragStart"
       />
     </aside>
 
@@ -35,7 +37,8 @@
       @drop="handleDrop"
       @go-back="handleGoBack"
       @action-layout="handleLayout"
-      @action-edit-label="openLabelDialog"
+      @action-edit-label="openEditDialog"
+      @request-delete-flow="() => currentFlow && openDeleteDialog(currentFlow)"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
@@ -62,18 +65,30 @@
     <FlowLabelDialog
       v-model="labelDialogOpen"
       :flow-label="currentFlowLabel"
-      @cancel="labelDialogOpen = false"
-      @save="handleUpdateFlowLabel"
+      @cancel="() => { labelDialogOpen = false; targetFlow = null }"
+      @save="handleUpdateLabel"
+    />
+
+    <!-- Centralized Delete Confirmation Dialog -->
+    <ConfirmationDialog
+      v-model="deleteDialogOpen"
+      title="Delete Flow"
+      :description="`Are you sure you want to delete '${targetFlow?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`"
+      confirm-text="Delete Flow"
+      cancel-text="Cancel"
+      variant="danger"
+      @confirm="handleConfirmDelete"
+      @cancel="handleCancelDelete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref, watch, nextTick } from 'vue'
+import { computed, type Ref, ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
-import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
+// import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
 import type { FlowEntity, NodeEntity } from '@app/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -92,12 +107,15 @@ import NodePalette from './components/NodePalette.vue'
 import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
+import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 
 const { layout } = useLayout()
 const { project } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
+const deleteDialogOpen = ref(false)
+const targetFlow = ref<Partial<FlowEntity> | null>(null)
 
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
@@ -108,15 +126,16 @@ const inListState = useSelector(actor, (s) => s.hasTag('list-flows'))
 const inViewState = useSelector(actor, (s) => s.hasTag('view-flow'))
 const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
-// const settings = useSelector(actor, (s) => s.context.settings)
+const settings = useSelector(actor, (s) => s.context.settings)
+const allFlows = useSelector(actor, (s) => s.context.flows)
 const flows   = useSelector(actor, (s) => s.context.flows.filter((n) => n.id !== s.context.settings?.rootFlowId))
 const rootFlow = useSelector(actor, (s) => s.context.flows.find((f) => f.id === s.context.settings?.rootFlowId))
 const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
-const selected = useSelector(actor, (s) => 
+const selected = useSelector(actor, (s) =>
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
-const editingNode = useSelector(actor, (s) => 
+const editingNode = useSelector(actor, (s) =>
   s.context.graph.nodes.find(node => node.id === s.context.editingNodeId)
 ) as Ref<NodeEntity | undefined>
 const actions = useSelector(actor, (s) => s.context.actions)
@@ -128,9 +147,9 @@ const plainNodes = computed(() => {
     .map((n) => ({
       id       : n.id!,
       type     : n.nodeType,
-      position : { 
+      position : {
         x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
-        y: positions.value[n.id]?.y ?? 0 
+        y: positions.value[n.id]?.y ?? 0
       },
       data     : n,  // Let VueFlow handle selection state
     })) as VueFlowNode[]
@@ -139,11 +158,11 @@ const plainNodes = computed(() => {
 })
 
 const plainEdges = computed(() =>
-  Object.values(edges.value).map((e, idx) => {
+  Object.values(edges.value).map((e) => {
     // Find the source node to check if it's an event node
     const sourceNode = nodes.value.find(n => n.id === e.source)
     const isFromEventNode = sourceNode?.nodeType === 'listen'
-    
+
     return {
       id     : e.id,
       source : e.source,
@@ -154,36 +173,32 @@ const plainEdges = computed(() =>
   }),
 )
 
-const currentFlowLabel = computed(() => {
-  const currentFlow = rootFlow.value?.id === selectedFlowId.value 
-    ? rootFlow.value 
-    : flows.value.find(f => f.id === selectedFlowId.value)
-  
-  return currentFlow?.label || ''
-})
+const currentFlow = computed(() =>
+  allFlows.value.find(f => f.id === selectedFlowId.value)
+)
+
+const currentFlowLabel = computed(() =>
+  currentFlow.value?.label || (currentFlow.value?.id === rootFlow.value?.id ? 'Main Flow' : '')
+)
 
 /* ------------------------------------------------------------ */
 /*  Event handlers                                              */
 /* ------------------------------------------------------------ */
 
-function handleDragStart(e: DragEvent, nodeType: string) {
-  // Data is already set in the NodePalette component
-}
-
 function handleDrop(e: DragEvent) {
   const nodeType = e.dataTransfer?.getData('application/vueflow')
   if (!nodeType) return
-  
+
   // Get the bounding rect of the target element
   const target = e.target as HTMLElement
   const rect = target.getBoundingClientRect()
-  
+
   // Calculate position relative to the flow container
   const position = project({
     x: e.clientX - rect.left,
     y: e.clientY - rect.top,
   })
-  
+
   actor.send({
     type: 'NODE.CREATE',
     nodeType,
@@ -222,46 +237,66 @@ function handleConnect(params: Connection) {
   actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
 }
 
+function handleFlowPreview(flow: Partial<FlowEntity>) {
+  if (!flow.id) return
+
+  const enablePreview = settings.value?.enableFlowPreview ?? true
+  const isAlreadySelected = selectedFlowId.value === flow.id
+  const shouldOpenEditor = !enablePreview || isAlreadySelected
+
+  actor.send({
+    type: shouldOpenEditor ? 'FLOW.SELECT' : 'FLOW.PREVIEW',
+    flowId: flow.id
+  })
+}
+
 function handleFlowClick(flow: Partial<FlowEntity>) {
-  if (flow.id) {
-    actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
-  }
+  if (flow.id) actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
 }
 
 function handleCreateFlow() {
   actor.send({ type: 'FLOW.CREATE' })
 }
 
-function openLabelDialog() {
-  labelDialogOpen.value = true
+// Unified dialog handlers
+function openEditDialog(flow?: Partial<FlowEntity>) {
+  targetFlow.value = flow || currentFlow.value || null
+  if (targetFlow.value) labelDialogOpen.value = true
 }
 
-function handleUpdateFlowLabel(label: string) {
-  if (selectedFlowId.value && label) {
-    actor.send({
-      type: 'FLOW.UPDATE_LABEL',
-      flowId: selectedFlowId.value,
-      label: label
-    })
-    labelDialogOpen.value = false
-  }
+function openDeleteDialog(flow: Partial<FlowEntity>) {
+  if (flow.id === rootFlow.value?.id) return
+  targetFlow.value = flow
+  deleteDialogOpen.value = true
 }
+
+const handleUpdateLabel = (label: string) => {
+  if (!targetFlow.value?.id || !label) return
+
+  actor.send({ type: 'FLOW.UPDATE_LABEL', flowId: targetFlow.value.id, label })
+  labelDialogOpen.value = false
+  targetFlow.value = null
+}
+
+const handleConfirmDelete = () => {
+  if (!targetFlow.value?.id) return
+
+  actor.send({ type: 'FLOW.DELETE', flowId: targetFlow.value.id })
+  targetFlow.value = null
+}
+
+const handleCancelDelete = () => targetFlow.value = null
 
 function handleOverlayClick() {
-  if (selectedFlowId.value) {
-    actor.send({ type: 'FLOW.SELECT', flowId: selectedFlowId.value })
-  }
+  if (selectedFlowId.value) actor.send({ type: 'FLOW.SELECT', flowId: selectedFlowId.value })
 }
 
 function handleGoBack() {
   actor.send({ type: 'GO.BACK' })
 }
 
-async function handleLayout(direction?: Direction) {
-  const laidOutNodes = await layout(direction)
-  
-  // Update node positions in frontend state
-  laidOutNodes.forEach(node => {
+function updateNodePositions(laidOutNodes: VueFlowNode[]) {
+  for (const node of laidOutNodes) {
     if (node.id && node.position) {
       actor.send({
         type: 'NODE.UPDATE_POSITION',
@@ -269,31 +304,23 @@ async function handleLayout(direction?: Direction) {
         position: { x: node.position.x, y: node.position.y }
       })
     }
-  })
+  }
+}
+
+async function handleLayout(direction?: Direction) {
+  const laidOutNodes = await layout(direction)
+  updateNodePositions(laidOutNodes)
 }
 
 async function handleNodesInitialized() {
-  // Check if all nodes already have positions defined
-  const allNodesHavePositions = nodes.value.every(node => 
-    positions.value[node.id] && 
-    positions.value[node.id].x !== undefined && 
-    positions.value[node.id].y !== undefined
+  const allNodesHavePositions = nodes.value.every(node =>
+    positions.value[node.id]?.x !== undefined &&
+    positions.value[node.id]?.y !== undefined
   )
-  
-  // Only run auto-layout if some nodes don't have positions
+
   if (!allNodesHavePositions) {
     const laidOutNodes = await layout()
-    
-    // Update node positions in frontend state
-    laidOutNodes.forEach(node => {
-      if (node.id && node.position) {
-        actor.send({
-          type: 'NODE.UPDATE_POSITION',
-          nodeId: node.id,
-          position: { x: node.position.x, y: node.position.y }
-        })
-      }
-    })
+    updateNodePositions(laidOutNodes)
   }
 }
 
@@ -313,52 +340,31 @@ function handleNodeDragStop(event: NodeMouseEvent) {
 }
 
 function handleNodesRemove(nodes: { id: string }[]) {
-  nodes.forEach(node => {
-    actor.send({ 
-      type: 'NODE.DELETE', 
-      nodeId: node.id 
-    })
-  })
+  for (const node of nodes) {
+    actor.send({ type: 'NODE.DELETE', nodeId: node.id })
+  }
 }
 
 function handleSelectionChange(changes: { id: string; selected: boolean }[]) {
-  // Find the first selected node (VueFlow supports multi-selection, but we only track one)
-  const selectedChange = changes.find(change => change.selected);
-  
+  const selectedChange = changes.find(change => change.selected)
+  const deselectedChange = changes.find(change => !change.selected)
+
   if (selectedChange) {
-    // A node was selected
-    actor.send({ 
-      type: 'NODE.SELECTION_CHANGE', 
-      nodeId: selectedChange.id,
-      selected: true
-    })
-  } else {
-    // All nodes were deselected
-    const deselectedChange = changes.find(change => !change.selected);
-    if (deselectedChange) {
-      actor.send({ 
-        type: 'NODE.SELECTION_CHANGE', 
-        nodeId: '',
-        selected: false
-      })
-    }
+    actor.send({ type: 'NODE.SELECTION_CHANGE', nodeId: selectedChange.id, selected: true })
+  } else if (deselectedChange) {
+    actor.send({ type: 'NODE.SELECTION_CHANGE', nodeId: '', selected: false })
   }
 }
 
 function handleEdgesRemove(edges: { id: string }[]) {
-  edges.forEach(edge => {
-    actor.send({ 
-      type: 'EDGE.DISCONNECT', 
-      edgeId: edge.id 
-    })
-  })
+  for (const edge of edges) {
+    actor.send({ type: 'EDGE.DISCONNECT', edgeId: edge.id })
+  }
 }
 
 function handleEdgeUpdate(event: EdgeUpdateEvent) {
-  // Edge update event fires when an edge is successfully reconnected
   const { edge, connection } = event
-  
-  // Only send update if the connection actually changed
+
   if (edge.source !== connection.source || edge.target !== connection.target) {
     actor.send({
       type: 'EDGE.RECONNECT',
@@ -372,7 +378,6 @@ function handleEdgeUpdate(event: EdgeUpdateEvent) {
 }
 
 function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
-  // This event fires when edge dragging ends, whether successful or not
   // Vue Flow handles the visual state automatically
 }
 </script>

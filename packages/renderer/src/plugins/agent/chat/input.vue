@@ -4,7 +4,10 @@
       @submit.prevent="handleSubmit"
       class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
-      <div class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible" :class="$style.input"  data-onboarding-id="agent-chat-input">
+      <div
+        class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
+        :class="[$style.input, { 'opacity-50': disabled }]"
+        data-onboarding-id="agent-chat-input">
         <StatusIndicator/>
 
         <!-- Editor container -->
@@ -12,12 +15,13 @@
           <!-- Contenteditable div -->
           <div
             ref="editorRef"
-            contenteditable="true"
+            :contenteditable="!disabled"
             translate="no"
             class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
+            :class="{ 'cursor-not-allowed': disabled }"
             @input="handleInput"
             @keydown="handleKeydown"
-            data-placeholder="Message Agent"
+            :data-placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
           ></div>
         </div>
 
@@ -29,8 +33,10 @@
               v-for="btn in leftButtons"
               :key="btn.action"
               type="button"
-              class="p-2 transition-colors text-neutral-500 hover:text-neutral-200"
+              class="p-2 transition-colors text-neutral-500"
+              :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
               :aria-label="btn.label"
+              :disabled="disabled"
               @click="handleButtonClick(btn.action)"
             >
               <component :is="btn.icon" :size="20" />
@@ -40,10 +46,10 @@
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
             <!-- Stop button -->
-            <Button 
+            <Button
               title="Stop agent work"
               type="submit"
-              :disabled="!messageContent"
+              :disabled="!messageContent || disabled"
               variant="secondary"
             >
               Stop Agent
@@ -51,7 +57,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="!messageContent"
+              :disabled="!messageContent || disabled"
             >
               Send
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -59,22 +65,18 @@
 
           </div>
 
-          <!-- Mode select -->
-          <select
-            :value="currentMode"
-            @change="handleModeChange"
-            class="absolute bottom-0 px-2 py-1 mb-2 text-center transform -translate-x-1/2 rounded-lg cursor-pointer text-neutral-500 focus:outline-none left-1/2 bg-neutral-800"
-            :title="modes.find(m => m.id === currentMode)?.description"
-          >
-            <option 
-              v-for="mode in modes" 
-              :key="mode.id" 
-              :value="mode.id"
-              :title="mode.description"
-            >
-              {{ mode.name }}
-            </option>
-          </select>
+          <!-- Mode/Phase Selector -->
+          <div class="absolute bottom-0 mb-2 transform -translate-x-1/2 left-1/2">
+            <ModePhaseSelector
+              :modes="modes"
+              :current-mode="currentMode"
+              :current-phase="currentPhase"
+              :forced-mode="currentThread?.forcedMode"
+              :disabled="disabled"
+              @mode-change="handleModeChange"
+              @phase-change="handlePhaseChange"
+            />
+          </div>
         </div>
       </div>
     </form>
@@ -93,26 +95,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Square from './square-svg.vue'
 import Threads from './threads.vue'
+import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, ThreadEntity } from '@app/api'
+import type { AgentThreadData, ThreadEntity, AgentMode } from '@app/api'
 
-interface ModeConfig {
-  id: string
-  name: string
-  description: string
-}
-
-defineProps<{
+const props = defineProps<{
   currentThread: AgentThreadData
   threads: ThreadEntity[]
-  currentMode: 'plan' | 'work' | 'chat' | 'note'
-  modes: ModeConfig[]
+  currentMode: string
+  currentPhase?: string
+  modes: AgentMode[]
+  disabled?: boolean
 }>()
 
 // Define emits including new button actions
@@ -127,6 +126,7 @@ const emit = defineEmits<{
   (e: 'new-thread-as-child', parentThreadId: string): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
+  (e: 'phase-change', phase: string): void
 }>()
 
 
@@ -164,6 +164,20 @@ const leftButtons: ActionButton[] = [
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
 
+// Computed properties for cleaner template
+const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
+const currentModePhases = computed(() => {
+  const mode = props.modes.find(m => m.id === props.currentMode)
+  return mode?.phases || []
+})
+
+// Reset to first visible mode when switching from forced-mode thread
+watch(() => props.currentThread?.id, () => {
+  if (props.currentMode && !props.currentThread?.forcedMode && !visibleModes.value.some(m => m.id === props.currentMode)) {
+    emit('mode-change', visibleModes.value[0].id)
+  }
+})
+
 onMounted(() => {
   // Set up placeholder behavior
   const editor = editorRef.value
@@ -173,24 +187,26 @@ onMounted(() => {
         editor.classList.remove('empty')
       }
     })
-    
+
     editor.addEventListener('blur', () => {
       if (editor.textContent === '') {
         editor.classList.add('empty')
       }
     })
-    
+
     // Initialize as empty
     editor.classList.add('empty')
   }
 })
 
 const handleInput = (e: Event) => {
+  if (props.disabled) return
   const target = e.target as HTMLDivElement
   messageContent.value = target.textContent || ''
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
+  if (props.disabled) return
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleSubmit()
@@ -199,16 +215,23 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 
 const handleButtonClick = (action: string) => {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  emit(action as any)
+  if (props.disabled) return
+  // @ts-expect-error - dynamic event emission
+  emit(action)
 }
 
-const handleModeChange = (e: Event) => {
-  const target = e.target as HTMLSelectElement
-  emit('mode-change', target.value)
+const handleModeChange = (newMode: string) => {
+  if (props.disabled) return
+  emit('mode-change', newMode)
+}
+
+const handlePhaseChange = (newPhase: string) => {
+  if (props.disabled) return
+  emit('phase-change', newPhase)
 }
 
 const handleSubmit = () => {
+  if (props.disabled) return
   if (messageContent.value.trim()) {
     emit('send-message', messageContent.value)
     if (editorRef.value) {

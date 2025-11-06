@@ -58,7 +58,7 @@ export type Event =
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
-  | { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+  | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
 
@@ -66,7 +66,7 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { rootDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
+    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
     // Git watcher is now managed by parent code system
@@ -416,13 +416,13 @@ export const commitSystem = setup({
       }
     },
 
-    updateRootDirectory: assign({
+    updateBaseDirectory: assign({
       gitRepository: ({ event }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        const ev = event as { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
         return ev.gitRepository
       },
       gitWatcher: ({ event }) => {
-        const ev = event as { type: 'commit.UPDATE_ROOT_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
+        const ev = event as { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
         return ev.gitWatcher
       }
     })
@@ -431,10 +431,10 @@ export const commitSystem = setup({
   id: 'commit',
   initial: 'idle',
   context: ({ input }) => {
-    const rootDir = input?.rootDirectory
+    const baseDir = input?.baseDirectory
     return {
-      gitRepository: input?.gitRepository || (rootDir ? new GitRepository(rootDir) : null),
-      gitWatcher: input?.gitWatcher || (rootDir ? new GitWatcherService(rootDir) : null)
+      gitRepository: input?.gitRepository || (baseDir ? new GitRepository(baseDir) : null),
+      gitWatcher: input?.gitWatcher || (baseDir ? new GitWatcherService(baseDir) : null)
     }
   },
   states: {
@@ -476,8 +476,8 @@ export const commitSystem = setup({
         'commit.PULL_BRANCH': {
           actions: 'pullBranch'
         },
-        'commit.UPDATE_ROOT_DIRECTORY': {
-          actions: 'updateRootDirectory'
+        'commit.UPDATE_BASE_DIRECTORY': {
+          actions: 'updateBaseDirectory'
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'

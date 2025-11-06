@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800">
+    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
       <button
         v-for="item in navItems"
         :key="item.id"
@@ -45,11 +45,12 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { User, Key, Keyboard, Settings, CheckCircle } from 'lucide-vue-next'
+import { User, Key, Keyboard, Settings, CheckCircle, Briefcase } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
 import Secrets from '../components/GeneralSettings/Secrets.vue'
 import Hotkeys from '../components/GeneralSettings/Hotkeys.vue'
 import Misc from '../components/GeneralSettings/Misc.vue'
+import Workspaces from '../components/GeneralSettings/Workspaces.vue'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 
 const actor = applicationState.system.get('settings')
@@ -63,14 +64,15 @@ const { saveStatus, updateSettings } = useSettingsSaveStatus()
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {
   if (!settings.value?.general) return null
-  
+
   const settingsMap = {
     personal: settings.value.general.personal,
     secrets: settings.value.general.secrets,
     hotkeys: settings.value.general.hotkeys,
+    workspaces: settings.value.general.workspaces,
     misc: settings.value.general.misc
   }
-  
+
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]
 })
 
@@ -79,6 +81,7 @@ const componentMap: Record<string, any> = {
   personal: PersonalInfo,
   secrets: Secrets,
   hotkeys: Hotkeys,
+  workspaces: Workspaces,
   misc: Misc
 }
 
@@ -86,11 +89,12 @@ const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
   { id: 'secrets', label: 'Secrets', icon: Key },
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
+  { id: 'workspaces', label: 'Workspaces', icon: Briefcase },
   { id: 'misc', label: 'Misc', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'misc' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'workspaces' | 'misc' })
 }
 
 // Handle update events from child components
@@ -100,6 +104,7 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
     personal: 'personal',
     secrets: 'secrets',
     hotkeys: 'hotkeys',
+    workspaces: 'workspaces',
     misc: 'misc'
   } as const
   

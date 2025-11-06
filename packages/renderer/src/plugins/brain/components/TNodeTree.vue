@@ -42,6 +42,6 @@ interface Props {
 defineProps<Props>();
 
 defineEmits<{
-  'flow-navigate': [flowId: string];
+  'flow-navigate': [tNodeId: string];
 }>();
 </script> 

@@ -3,7 +3,7 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route
 import { safeEvents } from '@/core/types/safe-events';
 import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
-import type { ThreadConnectedData, ThreadEntity, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings } from '@app/api';
+import type { ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS } from '@app/api';
 import { trpc } from '@/core/trpc';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -23,15 +23,18 @@ type SystemEvent =
   | OutgoingThreadsEvents
   | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
+  | { type: 'THREAD_DELETED'; threadId: string }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
+  | { type: 'VIEW_KANBAN' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
+  | { type: 'DELETE_THREAD'; threadId: string }
   | {
     type: 'UPDATE_THREAD_FIELD';
     key: keyof ThreadEditFields;
@@ -200,21 +203,6 @@ const threadsState = setup({
         threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
       };
     }),
-    addChildThread: assign(({ context }) => {
-      return {
-        view: {
-          ...context.view,
-        }
-      };
-    }),
-    removeChildThread: assign(({ event, context }) => {
-      const typedEvent = typeOf('REMOVE_LINK', event);
-      return {
-        view: {
-          ...context.view,
-        }
-      };
-    }),
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
@@ -263,6 +251,23 @@ const threadsState = setup({
         availableTags: ev.settings?.tags || []
       };
     }),
+    deleteThread: ({ event }) => {
+      const { threadId } = typeOf('DELETE_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_THREAD',
+        threadId,
+      });
+    },
+    removeThreadFromList: assign(({ event, context }) => {
+      const { threadId } = typeOf('THREAD_DELETED', event);
+      return {
+        threads: context.threads.filter(t => t.id !== threadId),
+        // Clear view if it was the deleted thread
+        view: context.view.id === threadId ? { ...defaultThread, id: '' as EARS.EntityId, shortCode: '', status: '', timestamp: 0 } as ThreadViewData : context.view,
+        selectedThreadCode: context.view.id === threadId ? undefined : context.selectedThreadCode,
+      };
+    }),
   },
   guards: {
     targetIs
@@ -286,6 +291,7 @@ const threadsState = setup({
   }),
   on: {
     VIEW_LIST: { target: '.list' },
+    VIEW_KANBAN: { target: '.kanban' },
     OPEN_THREAD_CHAT: {
       actions: 'openAgentChat'
     },
@@ -315,9 +321,16 @@ const threadsState = setup({
     THREADS_SETTINGS_UPDATED: {
       actions: 'setThreadsSettings',
     },
+    DELETE_THREAD: {
+      actions: 'deleteThread',
+    },
+    THREAD_DELETED: {
+      actions: 'removeThreadFromList',
+    },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([
       ['.list', 'list'],
+      ['.kanban', 'kanban'],
       ['.create', 'create'],
       ['.view', 'view'],
     ]),
@@ -336,6 +349,15 @@ const threadsState = setup({
             create: { ...defaultThread }
           }))
         },
+        UPDATE_THREAD_STATUS: {
+          actions: 'updateThreadStatus',
+        },
+      },
+    },
+
+    'kanban': {
+      meta: { ...breadcrumb('kanban', 'Board') },
+      on: {
         UPDATE_THREAD_STATUS: {
           actions: 'updateThreadStatus',
         },

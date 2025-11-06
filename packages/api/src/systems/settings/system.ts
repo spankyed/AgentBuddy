@@ -9,6 +9,7 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
+import { agent } from '@/systems/agent/system';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -231,15 +232,37 @@ export const settingsSystem = setup({
         
         // Update settings
         settingsCommands.updateSettings('general', 'secrets', [], newSecrets);
-        
+
         // Send updated settings to frontend
         const updatedSettings = settingsQueries.getSettings();
         system.get(bus).send(emit(settings, {
           type: 'SETTINGS_UPDATED',
           data: updatedSettings
         }));
+
+        // Check if we should trigger birth flow
+        const assistantSettings = settingsQueries.getAssistantSettings();
+
+        // Check if we have required API keys now
+        const hasRequiredKeys = (secretsData: any[]): boolean => {
+          const requiredProviders = updatedSettings.general.secrets.required || ['openai', 'anthropic'];
+          return requiredProviders.some((provider: string) =>
+            secretsData.some((secret: any) => secret.provider === provider)
+          );
+        };
+
+        // Notify agent system about API key changes
+        const agentActor = system.get(agent);
+        if (agentActor) {
+          agentActor.send({ type: 'API_KEYS_CHANGED' });
+
+          // If we now have required API keys and no birth has occurred, trigger birth flow
+          if (!assistantSettings.birthdate && hasRequiredKeys(secretsData)) {
+            agentActor.send({ type: 'BIRTH_FLOW_START' });
+          }
+        }
       }
-      
+
       // Forward to frontend
       system.get(bus).send(emit(settings, event as SecretsOutputEvents));
     },

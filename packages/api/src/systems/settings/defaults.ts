@@ -17,7 +17,8 @@ export const defaultSettings: SettingsData = {
       groq: null,
       mistral: null,
       cohere: null,
-      custom: {}
+      custom: {},
+      required: ['openai', 'anthropic'],
     },
     hotkeys: {
       switchPluginUp: {
@@ -33,7 +34,10 @@ export const defaultSettings: SettingsData = {
         modifiers: ['cmd']
       }
     },
-    misc: {}
+    misc: {},
+    workspaces: {
+      workspaces: []
+    }
   },
   plugins: {
     _meta: {
@@ -55,8 +59,17 @@ export const defaultSettings: SettingsData = {
     },
     agent: {
       modes: [
-        { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown mode' },
-        { id: 'work', name: 'Work', description: 'Implementation and coding mode' },
+        { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
+        {
+          id: 'work',
+          name: 'Work',
+          description: 'Implementation and coding mode',
+          phases: [
+            { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
+            { id: 'edit', name: 'Edit', description: 'Implementation and development' },
+            { id: 'review', name: 'Review', description: 'Code review and refinement' }
+          ]
+        },
         { id: 'chat', name: 'Chat', description: 'General conversation mode' },
         { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
       ],
@@ -72,7 +85,11 @@ export const defaultSettings: SettingsData = {
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] }
       },
       restoreTerminals: true,
-      defaultRootDirectory: null,
+      defaultBaseDirectory: null,
+      lastDirectoryOpened: null,
+      enableShellIntegration: true,
+      confirmTerminalClose: true,
+      closeTerminalOnTabClose: true,
     },
     database: {
       hotkeys: {
@@ -126,7 +143,8 @@ export const defaultSettings: SettingsData = {
       ]
     },
     flows: {
-      rootFlowId: undefined // Will be set to first available flow or selected by user
+      rootFlowId: undefined, // Will be set to first available flow or selected by user
+      enableFlowPreview: true // Enable flow preview on single click
     },
     brain: {
       runningRootFlowId: undefined // No flow running initially
@@ -140,6 +158,10 @@ export const defaultSettings: SettingsData = {
     hasOnboarded: false,
     tourStarted: false,
     lastInteractionTimestamp: null,
-    version: '1.0.0'
+    version: '0.1.0'
+  },
+  assistant: {
+    name: '',
+    birthdate: null
   }
 };

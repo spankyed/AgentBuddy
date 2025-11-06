@@ -1,4 +1,4 @@
-import { assign, setup, enqueueActions } from 'xstate';
+import { assign, setup, enqueueActions, raise } from 'xstate';
 import type { MergeReceivable } from '@/core/utils/event-helpers';
 import { fromSystem, systemBus } from '@/core/utils/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
-import { createFlowNodeSystem } from './flow-system';
+import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
 
@@ -22,19 +22,28 @@ const busEvent = systemBus(brain);
 
 export const IncomingBrainEvents = [
   busEvent('OPEN_TNODE', { tNodeId: z.string() }),
-  busEvent('GO_BACK_TNODE', {}),
-  busEvent('REQUEST_PLUGIN_DATA', {}),
+  busEvent('GO_BACK_TNODE', { currentFlowTNodeId: z.string().optional() }),
+  busEvent('REQUEST_PLUGIN_DATA', { flowTNodeId: z.string().optional() }),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
   busEvent('TOGGLE_DEBUG', {}),
   busEvent('START_BRAIN', {}),
   busEvent('KILL_BRAIN', {}),
   busEvent('RESTART_BRAIN', {}),
+  busEvent('HANDLE_BRAIN_EVENT', {
+    eventType: z.string(),
+    payload: z.any().optional(),
+    targetFlowId: z.string().optional()
+  }),
+  busEvent('TRIGGER_BRAIN_EVENT', {
+    eventType: z.string(),
+    payload: z.any().optional(),
+    targetFlowId: z.string().optional()
+  }),
 ] as const
 
-export type BrainInternalEvents = 
+export type BrainInternalEvents =
   | SystemEvents
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
-  | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
@@ -174,12 +183,13 @@ export const brainSystem = setup({
         
         // Send empty data to clear the UI
 
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'RECEIVE_PLUGIN_DATA',
           data: {
             flowTNodeId: '' as EARS.EntityId,
             tNodeTree: [],
             possibleEvents: [],
+            flowHierarchy: [],
           }
         }));
         
@@ -210,6 +220,7 @@ export const brainSystem = setup({
           flowTNodeId: '' as EARS.EntityId,
           tNodeTree: [],
           possibleEvents: [],
+          flowHierarchy: [],
         }
       }));
       
@@ -254,21 +265,28 @@ export const brainSystem = setup({
         };
       });
     }),
-    sendPluginData: ({ system, context }) => {
-      const data = repository.brainQueries.rootData();
-      
-      system.get(bus).send(emit(brain, { 
+    sendPluginData: ({ system, context, event }) => {
+      // Use provided flowTNodeId or fall back to root
+      const flowId = event.type === 'REQUEST_PLUGIN_DATA' && event.flowTNodeId
+        ? event.flowTNodeId as EARS.EntityId
+        : undefined;
+
+      const data = flowId
+        ? repository.brainQueries.extendedTNodeData(flowId)
+        : repository.brainQueries.rootData();
+
+      system.get(bus).send(emit(brain, {
         type: 'RECEIVE_PLUGIN_DATA',
         data
       }));
-      
+
       // Send current brain state
       if (context.brainActor) {
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'BRAIN_STARTED'
         }));
       } else {
-        system.get(bus).send(emit(brain, { 
+        system.get(bus).send(emit(brain, {
           type: 'BRAIN_KILLED'
         }));
       }
@@ -276,25 +294,32 @@ export const brainSystem = setup({
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
-      
+
       // Check if this is a flow TNode before trying to get extended data
       const tNode = repository.brainQueries.tNodeById(tNodeId);
       if (!tNode || tNode.tNodeType !== 'flow') {
         // Silently ignore non-flow TNodes
         return;
       }
-      
+
       const data = repository.brainQueries.extendedTNodeData(tNodeId);
-      
+
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
         tNodeId,
         data
       }));
     },
-    goBackTNode: ({ system, context }) => {
-      const data = repository.brainQueries.rootData();
-      
+    goBackTNode: ({ system, event }) => {
+      const currentFlowTNodeId = typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId | undefined;
+      const parentFlowTNodeId = currentFlowTNodeId
+        ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined
+        : undefined;
+
+      const data = parentFlowTNodeId
+        ? repository.brainQueries.extendedTNodeData(parentFlowTNodeId)
+        : repository.brainQueries.rootData();
+
       system.get(bus).send(emit(brain, {
         type: 'TNODE_OPENED',
         tNodeId: data.flowTNodeId,
@@ -325,10 +350,8 @@ export const brainSystem = setup({
       }));
     },
     triggerBrainEvent: ({ system, event, context }) => {
-      const ev = typeOf('TRIGGER_BRAIN_EVENT', event);
-      const { eventType, payload } = ev;
-      // const brainActor = getActor(system, brainBus);
-      const brainActor = system.get(brainBus);
+      const ev = typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
+      const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
       system.get(bus).send(emit(brain, {
@@ -336,30 +359,48 @@ export const brainSystem = setup({
         eventType: eventType
       }));
 
-      if (brainActor && brainActor.send) {
-        brainActor.send({
-          type: eventType,
-          payload
-        });
+      // Handle local vs global events
+      if (targetFlowId) {
+        // LOCAL EVENT: Send to specific flow only
+        const targetActor = getFlowActor(targetFlowId as EARS.EntityId);
+
+        if (targetActor?.send) {
+          targetActor.send({
+            type: eventType,
+            payload,
+            targetFlowId
+          });
+        } else {
+          logger.error(`Target flow actor not found: ${eventType}`, { targetFlowId });
+        }
       } else {
-        console.error(`Brain actor is not available or has terminated. Cannot send event: ${eventType}`);
+        // GLOBAL EVENT: Broadcast to ALL registered flow actors
+        const allFlowActors = getAllFlowActors();
+        const allFlowActorIds = getAllFlowActorIds();
+
+        if (allFlowActors.length === 0) {
+          logger.warn(`No flow actors registered to receive global event: ${eventType}`);
+          return;
+        }
+
+        logger.info(`Broadcasting global event "${eventType}" to ${allFlowActors.length} flow actors`, {
+          eventType,
+          actorCount: allFlowActors.length,
+          flowActorIds: allFlowActorIds
+        });
+
+        // Send to all flow actors (including root and all children)
+        allFlowActors.forEach(actor => {
+          if (actor?.send) {
+            actor.send({
+              type: eventType,
+              payload,
+              // No targetFlowId for global events
+            });
+          }
+        });
       }
     },
-    // handleEventReceived: ({ system, event, context }) => {
-    //   if (event.type === 'TRACE_EVENT_RECEIVED') {
-    //     // Pulse the event in UI
-    //     system.get(bus).send(emit(brain, {
-    //       type: 'EVENT_PULSE',
-    //       eventType: event.data.eventType
-    //     }));
-
-    //     // Forward event to brain runner
-    //     system.get(brainBus).send({
-    //       type: event.data.eventType,
-    //       payload: event.data.payload
-    //     });
-    //   }
-    // },
   },
 }).createMachine(
   {
@@ -417,6 +458,12 @@ export const brainSystem = setup({
           //   actions: 'handleEventReceived',
           // },
           TRIGGER_BRAIN_EVENT: {
+            actions: raise(({ event }) => ({
+              ...typeOf('TRIGGER_BRAIN_EVENT', event),
+              type: 'HANDLE_BRAIN_EVENT',
+            }), { delay: 0 }),
+          },
+          HANDLE_BRAIN_EVENT: {
             actions: 'triggerBrainEvent',
           },
           TNODE_SPAWNED: {

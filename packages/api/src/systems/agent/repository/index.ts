@@ -3,10 +3,13 @@ import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
-import { MessageEntity, ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
+import { MessageEntity, ThreadEntity, ArtifactEntity, BlockConfig } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';
-import { getDashboardTab } from './dashboard';
-import { settingsQueries } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { threadCommands } from '@/systems/threads/repository';
+
+// Constants
+const THREAD_TOPIC_MAX_LENGTH = 40;
 
 // type Row = Rows['entity'][number]
 type Row = any // Temporary fix until Rows type is available
@@ -24,22 +27,18 @@ export function byEntityType<
 // Helper function to get threads with optional current thread data
 interface ThreadsQueryOptions {
   limit?: number;
-  orderBy?: keyof ThreadEntity;
-  orderDirection?: 'asc' | 'desc';
   includeCurrentThreadData?: boolean;
   threadFields?: readonly (keyof ThreadEntity)[];
   messageFields?: readonly (keyof MessageEntity)[];
   artifactFields?: readonly (keyof ArtifactEntity)[];
 }
 
-function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): { 
-  threads: Partial<ThreadEntity>[]; 
-  currentThreadData: AgentThreadData | null 
+function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
+  threads: Partial<ThreadEntity>[];
+  currentThreadData: AgentThreadData | null
 } {
   const {
     limit = 4,
-    orderBy = 'lastMessageTimestamp',
-    orderDirection = 'desc',
     includeCurrentThreadData = true,
     threadFields = [
       "shortCode",
@@ -48,15 +47,25 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
       "status",
       "timestamp",
       "lastMessageTimestamp",
+      "lastVisitedTimestamp",
+      "forcedMode",
     ] as const,
-    messageFields = ["id", "text", "sender", "timestamp"] as const,
+    messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const,
     artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
   } = options;
 
-  const threads = qx(EARS.Entity.Thread)
-    .orderBy(orderBy, orderDirection)
-    .limit(limit)
+  // Get threads and sort with priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
+  // We need to sort manually since threads may not have lastVisitedTimestamp set
+  const allThreads = qx(EARS.Entity.Thread)
     .pick(threadFields) as Partial<ThreadEntity>[];
+
+  const threads = allThreads
+    .sort((a, b) => {
+      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp || 0;
+      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp || 0;
+      return bTime - aTime; // Descending order
+    })
+    .slice(0, limit);
   
   if (threads.length === 0 || !includeCurrentThreadData) {
     return {
@@ -74,7 +83,8 @@ function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
     instructions: currentThread.instructions || '',
     status: currentThread.status || 'backlog',
     timestamp: currentThread.timestamp || Date.now(),
-    messages: currentThread.id 
+    forcedMode: currentThread.forcedMode,
+    messages: currentThread.id
       ? (qx(currentThread.id)
           .linksPick(
             EARS.RelKind.CONTAINS,
@@ -96,19 +106,22 @@ function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKi
   const artifacts = qx(entityId)
     .linksPick(
       relationKind,
-      ['id', 'title', 'content', 'artifactType'] as const,
+      ['id', 'title', 'content', 'artifactType', 'blocks', 'blockResponse', 'responseTimestamp'] as const,
       EARS.Entity.Artifact,
     );
-  
+
   if (!artifacts || artifacts.length === 0) {
     return [];
   }
-  
+
   return artifacts.map(artifact => ({
     id: artifact.id,
     type: (artifact.artifactType || 'text') as ArtifactType,
     title: String(artifact.title || ''),
     content: artifact.content,
+    blocks: artifact.blocks,
+    blockResponse: artifact.blockResponse,
+    responseTimestamp: artifact.responseTimestamp,
     metadata: {
       createdAt: Date.now()
     }
@@ -135,17 +148,32 @@ function createTabFromThread(
 
 // Queries - read-only operations that compose data
 export const agentQueries = {
+  // Check if required API keys are configured
+  hasRequiredApiKeys: (): boolean => {
+    const secrets = settingsQueries.getGeneralSettings().secrets;
+    const required = ['openai', 'anthropic']; // Could also read from defaults if needed
+
+    // Check if at least one required key is configured
+    return required.some(provider => {
+      const secretId = secrets[provider as keyof typeof secrets];
+      return secretId !== null && secretId !== undefined && secretId !== '';
+    });
+  },
+
   // Get thread artifacts
   threadArtifacts: (threadId: EARS.EntityId) => {
     return qx()
       .relatedTo(threadId)
       .ofType(EARS.Entity.Artifact)
-      .pick(['id', 'title', 'content', 'artifactType'] as const)
+      .pick(['id', 'title', 'content', 'artifactType', 'blocks', 'blockResponse', 'responseTimestamp'] as const)
       .map(artifact => ({
         id: artifact.id,
         type: artifact.artifactType,
         title: artifact.title,
-        content: artifact.content
+        content: artifact.content,
+        blocks: artifact.blocks,
+        blockResponse: artifact.blockResponse,
+        responseTimestamp: artifact.responseTimestamp
       }));
   },
   // Get thread data with messages and context
@@ -159,17 +187,24 @@ export const agentQueries = {
         "instructions",
         "status",
         "timestamp",
+        "forcedMode",
       ] as const);
-    
+
+    // Get thread-specific artifacts (not all artifacts)
+    const threadArtifacts = qx()
+      .relatedTo(threadId)
+      .ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const) ?? [];
+
     return {
       ...thread[0] as AgentThreadData,
       messages: qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
-      artifacts: (qx(EARS.Entity.Artifact).pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[],
+      artifacts: threadArtifacts as any as ArtifactEntity[],
     };
   },
   
@@ -187,20 +222,12 @@ export const agentQueries = {
   connectedData: (): AgentConnectedData => {
     // Get recent threads and current thread data
     const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
-    
-    // Get dashboard tab
-    const { tab: dashboardTab, threadId: dashboardThreadId } = getDashboardTab(createTabFromThread);
-    
+
     // Initialize tabs array
     const tabs: Tab[] = [];
-    
-    // Add dashboard tab if it exists
-    if (dashboardTab) {
-      tabs.push(dashboardTab);
-    }
-    
-    // Add current thread tab if it's not the dashboard thread
-    if (currentThreadData?.id && currentThreadData.id !== dashboardThreadId) {
+
+    // Add current thread tab if it has artifacts
+    if (currentThreadData?.id) {
       const artifacts = qx()
         .relatedTo(currentThreadData.id)
         .ofType(EARS.Entity.Artifact)
@@ -214,17 +241,12 @@ export const agentQueries = {
             createdAt: Date.now()
           }
         })) as ArtifactItem[];
-      
+
       const threadTab = createTabFromThread(currentThreadData, artifacts);
       if (threadTab) {
         tabs.push(threadTab);
       }
     }
-    
-    // Get dashboard artifacts for legacy support
-    const dashboardArtifacts = qx()
-      .withRole('dashboard_artifact')
-      .pick(['id', 'title', 'content', 'artifactType'] as const) as any as Partial<ArtifactEntity>[];
 
     // Get agent settings
     const allSettings = settingsQueries.getSettings();
@@ -233,11 +255,73 @@ export const agentQueries = {
     return {
       currentThread: currentThreadData,
       threads,
-      dashboardArtifacts,
       tabs,
       settings: agentSettings,
+      hasRequiredApiKeys: agentQueries.hasRequiredApiKeys(),
     };
   },
+
+  // Get existing assistant birth thread if it exists
+  getAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId; createdAt: number } | null => {
+    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
+    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+
+    if (!existingBirthThreadId) return null;
+
+    const threadData = qx(existingBirthThreadId).pickOne(['createdAt']);
+    const existingArtifact = qx(existingBirthThreadId)
+      .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)?.[0];
+
+    return {
+      threadId: existingBirthThreadId,
+      artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id(),
+      createdAt: threadData?.createdAt || Date.now()
+    };
+  },
+
+  // Get message by ID
+  messageById: (messageId: EARS.EntityId): MessageEntity | null => {
+    const message = qx(messageId).pickOne([
+      'id',
+      'text',
+      'sender',
+      'timestamp',
+      'blocks',
+      'blockResponse',
+      'responseTimestamp',
+      'createdAt',
+      'updatedAt'
+    ] as const);
+
+    if (!message) return null;
+
+    return {
+      ...message,
+      entityType: EARS.Entity.Message
+    } as MessageEntity;
+  },
+
+  // Get artifact by ID
+  artifactById: (artifactId: EARS.EntityId): ArtifactEntity | null => {
+    const artifact = qx(artifactId).pickOne([
+      'id',
+      'title',
+      'content',
+      'artifactType',
+      'blocks',
+      'blockResponse',
+      'responseTimestamp',
+      'createdAt',
+      'updatedAt'
+    ] as const);
+
+    if (!artifact) return null;
+
+    return {
+      ...artifact,
+      entityType: EARS.Entity.Artifact
+    } as ArtifactEntity;
+  }
 } as const;
 
 // Commands - write operations that modify data
@@ -246,6 +330,7 @@ export const agentCommands = {
     threadId: EARS.EntityId;
     text: string;
     sender: 'user' | 'assistant' | 'system';
+    blocks?: BlockConfig[];
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -253,14 +338,14 @@ export const agentCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender } = params;
-    
+    const { threadId, text, sender, blocks } = params;
+
     // Validate thread exists
     const thread = qx(threadId).id();
     if (!thread) {
       throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     // Validate sender
     const validSenders = ['user', 'assistant', 'system'];
     if (!validSenders.includes(sender)) {
@@ -269,24 +354,31 @@ export const agentCommands = {
         RepositoryErrorCode.VALIDATION_ERROR
       );
     }
-    
+
     // Create the message
     const timestamp = Date.now();
-    const messageId = tx(EARS.Entity.Message)
+    const messageTx = tx(EARS.Entity.Message)
       .put('text', text.trim())
       .put('timestamp', timestamp)
       .put('sender', sender)
       .put('createdAt', timestamp)
-      .put('updatedAt', timestamp)
+      .put('updatedAt', timestamp);
+
+    // Add blocks if provided
+    if (blocks) {
+      messageTx.put('blocks', blocks);
+    }
+
+    const messageId = messageTx
       .link(EARS.RelKind.CONTAINS, threadId)
       .id();
-    
+
     // Link thread to message
     tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
-    
+
     // Update thread's lastMessageTimestamp
     tx(threadId).update('lastMessageTimestamp', timestamp);
-    
+
     return {
       id: messageId,
       threadId,
@@ -294,5 +386,282 @@ export const agentCommands = {
       sender,
       timestamp
     };
+  },
+
+  createThreadFromMessage: (text: string): {
+    threadId: EARS.EntityId;
+    threadData: ReturnType<typeof threadCommands.create>;
+  } => {
+    const threadData = threadCommands.create({
+      topic: text.substring(0, THREAD_TOPIC_MAX_LENGTH),
+      instructions: '',
+    });
+
+    return {
+      threadId: threadData.id,
+      threadData
+    };
+  },
+
+  updateMessageBlockResponse: (params: {
+    messageId: EARS.EntityId;
+    response: any;
+  }): {
+    messageId: EARS.EntityId;
+    responseTimestamp: number;
+    updatedAt: number;
+    blocks?: BlockConfig[];  // Populated if toggleStates button was toggled
+  } => {
+    const { messageId, response } = params;
+
+    // Validate message exists
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(
+        `Message ${messageId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+
+    // Save response
+    tx(messageId)
+      .put('blockResponse', response)
+      .put('responseTimestamp', now)
+      .put('updatedAt', now);
+
+    // Auto-toggle if button has toggleStates
+    let updatedBlocks: BlockConfig[] | undefined;
+    const fullMessage = qx(messageId).pickOne(['blocks']);
+
+    if (fullMessage?.blocks && response.buttonId) {
+      let buttonToggled = false;
+      const newBlocks = fullMessage.blocks.map((block: BlockConfig) => {
+        if (block.type === 'button-group') {
+          const updatedButtons = block.props.buttons.map((button: any) => {
+            if (button.toggleStates && button.id === response.buttonId) {
+              buttonToggled = true;
+              return { ...button, state: button.state === 'on' ? 'off' : 'on' };
+            }
+            return button;
+          });
+          return { ...block, props: { ...block.props, buttons: updatedButtons } };
+        }
+        return block;
+      });
+
+      if (buttonToggled) {
+        updatedBlocks = newBlocks;
+        // Persist blocks update
+        tx(messageId).put('blocks', newBlocks).put('updatedAt', now);
+      }
+    }
+
+    return {
+      messageId,
+      responseTimestamp: now,
+      updatedAt: now,
+      ...(updatedBlocks && { blocks: updatedBlocks })
+    };
+  },
+
+  updateMessageState: (params: {
+    messageId: EARS.EntityId;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>;
+  }): {
+    messageId: EARS.EntityId;
+    updatedAt: number;
+    updates: typeof params.updates;
+  } => {
+    const { messageId, updates } = params;
+
+    // Validate message exists
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(
+        `Message ${messageId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = {
+      ...updates,
+      updatedAt: now
+    };
+
+    // Apply all updates in a single transaction
+    tx(messageId).updateBatch(updateData);
+
+    return {
+      messageId,
+      updatedAt: now,
+      updates
+    };
+  },
+
+  updateArtifactBlockResponse: (params: {
+    artifactId: EARS.EntityId;
+    response: any;
+  }): {
+    artifactId: EARS.EntityId;
+    responseTimestamp: number;
+    updatedAt: number;
+    blocks?: BlockConfig[];  // Populated if toggleStates button was toggled
+  } => {
+    const { artifactId, response } = params;
+
+    // Validate artifact exists
+    const artifact = qx(artifactId).id();
+    if (!artifact) {
+      throw new RepositoryError(
+        `Artifact ${artifactId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+
+    // Save response
+    tx(artifactId)
+      .put('blockResponse', response)
+      .put('responseTimestamp', now)
+      .put('updatedAt', now);
+
+    // Auto-toggle if button has toggleStates
+    let updatedBlocks: BlockConfig[] | undefined;
+    const fullArtifact = qx(artifactId).pickOne(['blocks']);
+
+    if (fullArtifact?.blocks && response.buttonId) {
+      let buttonToggled = false;
+      const newBlocks = fullArtifact.blocks.map((block: BlockConfig) => {
+        if (block.type === 'button-group') {
+          const updatedButtons = block.props.buttons.map((button: any) => {
+            if (button.toggleStates && button.id === response.buttonId) {
+              buttonToggled = true;
+              return { ...button, state: button.state === 'on' ? 'off' : 'on' };
+            }
+            return button;
+          });
+          return { ...block, props: { ...block.props, buttons: updatedButtons } };
+        }
+        return block;
+      });
+
+      if (buttonToggled) {
+        updatedBlocks = newBlocks;
+        // Persist blocks update
+        tx(artifactId).put('blocks', newBlocks).put('updatedAt', now);
+      }
+    }
+
+    return {
+      artifactId,
+      responseTimestamp: now,
+      updatedAt: now,
+      ...(updatedBlocks && { blocks: updatedBlocks })
+    };
+  },
+
+  updateArtifactState: (params: {
+    artifactId: EARS.EntityId;
+    updates: Partial<Pick<ArtifactEntity, 'title' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'content'>>;
+  }): {
+    artifactId: EARS.EntityId;
+    updatedAt: number;
+    updates: typeof params.updates;
+  } => {
+    const { artifactId, updates } = params;
+
+    // Validate artifact exists
+    const artifact = qx(artifactId).id();
+    if (!artifact) {
+      throw new RepositoryError(
+        `Artifact ${artifactId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = {
+      ...updates,
+      updatedAt: now
+    };
+
+    // Apply all updates in a single transaction
+    tx(artifactId).updateBatch(updateData);
+
+    return {
+      artifactId,
+      updatedAt: now,
+      updates
+    };
+  },
+
+  createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
+    // Check if an assistant birth thread already exists
+    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
+    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+
+    if (existingBirthThreadId) {
+      // Return existing birth thread and its artifact
+      const existingArtifact = qx(existingBirthThreadId)
+        .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)
+        ?.[0];
+
+      return {
+        threadId: existingBirthThreadId,
+        artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id()
+      };
+    }
+
+    // Create the thread using threadCommands
+    const { id: threadId, shortCode, timestamp, status } = threadCommands.create({
+      topic: 'Assistant Birth',
+      instructions: 'Welcome! This thread will help you get started with your new assistant.',
+      tags: []
+    });
+
+    // Set the forced mode to 'birth' for this special thread
+    tx(threadId).put('forcedMode', 'birth');
+
+    // Grant the assistant_birth role to prevent duplicates
+    tx(threadId).grant(ASSISTANT_BIRTH_ROLE);
+
+    // Create the todo artifact
+    const artifactId = tx(EARS.Entity.Artifact)
+      .put('entityType', EARS.Entity.Artifact)
+      .put('title', 'Getting Started Tasks')
+      .put('artifactType', 'todo')
+      .put('content', {
+        tasks: [
+          { id: '1', description: 'Give your assistant a name', completed: false },
+          { id: '2', description: 'Share your technical skill level', completed: false },
+          { id: '3', description: 'Discuss projects you\'re working on', completed: false }
+        ],
+        status: 'pending'
+      })
+      .put('createdAt', Date.now())
+      .id();
+
+    // Link todo artifact to thread
+    tx(threadId).link(EARS.RelKind.HAS, artifactId);
+    tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+
+    // Create the workspace artifact (content is empty - component reads from settings)
+    const workspaceArtifactId = tx(EARS.Entity.Artifact)
+      .put('entityType', EARS.Entity.Artifact)
+      .put('title', 'My Workspaces')
+      .put('artifactType', 'workspace')
+      .put('content', {})
+      .put('createdAt', Date.now())
+      .id();
+
+    // Link workspace artifact to thread
+    tx(threadId).link(EARS.RelKind.HAS, workspaceArtifactId);
+    tx(workspaceArtifactId).link(EARS.RelKind.RELATES_TO, threadId);
+
+    return { threadId, artifactId };
   },
 } as const;

@@ -5,30 +5,35 @@
         v-for="item in paletteItems"
         :key="item.type"
         class="palette-item w-full group relative overflow-hidden"
-        :class="getPaletteItemClasses(item.type)"
-        draggable="true"
-        @dragstart="(e) => handleDragStart(e, item.type)"
-        @click="$emit('palette-click', item.type)"
+        :class="[
+          getPaletteItemClasses(item.type),
+          !item.isImplemented && 'opacity-50 cursor-not-allowed'
+        ]"
+        :draggable="item.isImplemented"
+        @dragstart="(e) => item.isImplemented && handleDragStart(e, item.type)"
+        @click="item.isImplemented && $emit('palette-click', item.type)"
       >
         <!-- Glow effect on hover -->
-        <div 
+        <div
+          v-if="item.isImplemented"
           class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
           :class="getPaletteGlowClasses(item.type)"
         />
-        
+
         <!-- Main content -->
         <div class="relative z-10 flex items-center gap-2.5 px-3 py-2">
           <!-- Icon dot with enhanced styling -->
-          <div 
+          <div
             class="w-1.5 h-1.5 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-neutral-900/50 transition-all duration-200"
             :class="getPaletteIconClasses(item.type)"
           />
-          
+
           <!-- Label -->
-          <span class="text-xs font-medium tracking-tight text-white/90 transition-colors duration-200 group-hover:text-white">
+          <span class="text-xs font-medium tracking-tight transition-colors duration-200"
+            :class="item.isImplemented ? 'text-white/90 group-hover:text-white' : 'text-neutral-500'">
             {{ item.label }}
           </span>
-          
+
           <!-- Icon with enhanced styling -->
           <component
             :is="item.icon"
@@ -61,6 +66,7 @@ interface PaletteItem {
   type: string
   label: string
   icon: any
+  isImplemented?: boolean
 }
 
 const props = withDefaults(defineProps<{

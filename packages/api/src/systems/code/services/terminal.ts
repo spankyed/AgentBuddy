@@ -51,16 +51,19 @@ class TerminalService {
     
     // Validate cwd exists and is accessible
     const cwd = this.validateCwd(options.cwd)
-    
+
     // Validate terminal dimensions
     const cols = Math.max(1, Math.min(options.cols || 80, 500))
     const rows = Math.max(1, Math.min(options.rows || 24, 200))
-    const title = this.sanitizeTitle(options.title || `Terminal ${this.terminals.size + 1}`)
+
+    // Generate default title from cwd (use directory name)
+    const defaultTitle = cwd.split('/').filter(Boolean).pop() || 'root'
+    const title = this.sanitizeTitle(options.title || defaultTitle)
 
     try {
       // Sanitize environment variables
       const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
-      
+
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols,
@@ -68,6 +71,12 @@ class TerminalService {
         cwd,
         env: sanitizedEnv
       })
+
+      // Send shell integration setup commands based on shell type (if enabled)
+      const codeSettings = repository.settingsQueries.getPluginSettings('code')
+      if (codeSettings?.enableShellIntegration !== false) {
+        this.injectShellIntegration(ptyProcess, shell)
+      }
 
       const info: TerminalInfo = {
         id,
@@ -128,11 +137,43 @@ class TerminalService {
     terminal.pty.resize(cols, rows)
     terminal.info.cols = cols
     terminal.info.rows = rows
-    
+
     // Update in EARS storage
     repository.terminalCommands.resize(id as EARS.EntityId, cols, rows)
-    
+
     return true
+  }
+
+  rename(id: string, customTitle: string): boolean {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return false
+
+    const sanitizedTitle = this.sanitizeTitle(customTitle)
+    terminal.info.customTitle = sanitizedTitle
+
+    // Update in EARS storage
+    repository.terminalCommands.rename(id as EARS.EntityId, sanitizedTitle)
+
+    return true
+  }
+
+  updateCwd(id: string, newCwd: string): { cwd: string; title?: string } | null {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return null
+
+    terminal.info.cwd = newCwd
+
+    // Auto-update title only if no customTitle is set
+    let newTitle: string | undefined
+    if (!terminal.info.customTitle) {
+      newTitle = newCwd.split('/').filter(Boolean).pop() || 'root'
+      terminal.info.title = this.sanitizeTitle(newTitle)
+    }
+
+    // Update in EARS storage
+    repository.terminalCommands.updateCwd(id as EARS.EntityId, newCwd, newTitle)
+
+    return { cwd: newCwd, title: newTitle }
   }
 
   kill(id: string): boolean {
@@ -249,37 +290,63 @@ class TerminalService {
 
   private sanitizeEnvironment(env: { [key: string]: string }): { [key: string]: string } {
     const sanitized = { ...env }
-    
+
     // Remove dangerous environment variables
     for (const blocked of this.BLOCKED_ENV_VARS) {
       delete sanitized[blocked]
     }
-    
+
     // Add security-related environment variables
     sanitized['NODE_ENV'] = 'production'
-    
+
     return sanitized
+  }
+
+  private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
+    const shellName = shell.split('/').pop()?.toLowerCase() || ''
+
+    const comment = '# AgentBuddy listener'
+
+    if (shellName.includes('bash')) {
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; PROMPT_COMMAND="__ab_osc7\${PROMPT_COMMAND:+;$PROMPT_COMMAND}" ${comment}\n`)
+    } else if (shellName.includes('zsh')) {
+      ptyProcess.write(`__ab_osc7(){ printf "\\033]7;file://%s%s\\007" "$(hostname)" "$PWD"; }; precmd_functions+=(__ab_osc7) ${comment}\n`)
+    } else if (shellName.includes('fish')) {
+      ptyProcess.write(`function __ab_osc7 --on-event fish_prompt; printf "\\033]7;file://%s%s\\007" (hostname) $PWD; end ${comment}\n`)
+    }
   }
 
   async restoreAll(setupHandlers: (terminalInfo: TerminalInfo) => void): Promise<void> {
     // Get all active terminals from EARS
     const persistedTerminals = repository.terminalQueries.active()
-    
+
+    // Check if shell integration is enabled
+    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const shellIntegrationEnabled = codeSettings?.enableShellIntegration !== false
+
     for (const persistedTerminal of persistedTerminals) {
       try {
         // Skip if already in memory
         if (this.terminals.has(persistedTerminal.id)) {
           continue
         }
-        
+
+        // Sanitize environment variables
+        const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
+
         // Spawn new pty process for the terminal
         const ptyProcess = pty.spawn(persistedTerminal.shell, [], {
           name: 'xterm-color',
           cols: persistedTerminal.cols,
           rows: persistedTerminal.rows,
           cwd: persistedTerminal.cwd,
-          env: this.sanitizeEnvironment(process.env as { [key: string]: string })
+          env: sanitizedEnv
         })
+
+        // Inject shell integration (if enabled)
+        if (shellIntegrationEnabled) {
+          this.injectShellIntegration(ptyProcess, persistedTerminal.shell)
+        }
         
         const terminalInfo: TerminalInfo = {
           id: persistedTerminal.id,

@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     class="flow-node group"
     :class="[
       nodeClasses,
@@ -10,26 +10,26 @@
     ]"
   >
     <!-- Remove glow effect for cleaner look -->
-    
+
     <!-- Main content -->
     <div class="relative z-10">
       <!-- Header -->
       <div class="flex items-center gap-2">
-        <div 
+        <div
           class="w-2 h-2 rounded-full flex-shrink-0"
           :class="iconClasses"
         />
         <span class="text-sm font-medium text-neutral-100">{{ data.label }}</span>
       </div>
-      
+
       <!-- Custom content slot -->
       <div v-if="$slots.default" class="mt-2 space-y-1">
         <slot />
       </div>
-      
+
       <!-- Node type badge at bottom -->
       <div class="mt-1.5 flex items-center gap-1.5" v-if="data.nodeType || $slots.badge">
-        <span 
+        <span
           v-if="data.nodeType"
           class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase"
           :class="badgeClasses"
@@ -39,22 +39,22 @@
         <slot name="badge" />
       </div>
     </div>
-    
+
     <!-- Status indicator (if provided) -->
     <div v-if="showStatusIndicator && data.status" class="absolute -top-1.5 -right-1.5">
       <div class="relative">
-        <div 
+        <div
           class="w-2.5 h-2.5 rounded-full"
           :class="statusClasses"
         />
-        <div 
+        <div
           v-if="data.status === 'active'"
           class="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping"
           :class="statusClasses"
         />
       </div>
     </div>
-    
+
     <!-- Connection handles with better visibility -->
     <Handle
       v-if="showTargetHandle"
@@ -96,6 +96,7 @@ interface Props extends NodeProps<BaseNodeData> {
   showTargetHandle?: boolean
   showSourceHandle?: boolean
   showStatusIndicator?: boolean
+  isImplemented?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {

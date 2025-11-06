@@ -11,6 +11,7 @@ interface PersistedTab {
   promptId?: string
   order: number // Track original position
   isPinned?: boolean // Track pinned state
+  groupId?: string // Track group membership
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
@@ -30,7 +31,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             type: 'terminal' as const,
             terminalId: tab.terminalInfo.id,
             order: index,
-            isPinned: tab.isPinned
+            isPinned: tab.isPinned,
+            groupId: tab.groupId
           }
         }
         if ('isAction' in tab && tab.isAction) {
@@ -39,7 +41,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             type: 'action' as const,
             actionId: tab.path.replace('action:', ''),
             order: index,
-            isPinned: tab.isPinned
+            isPinned: tab.isPinned,
+            groupId: tab.groupId
           }
         }
         if ('isPrompt' in tab && tab.isPrompt) {
@@ -48,17 +51,19 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             type: 'prompt' as const,
             promptId: tab.path.replace('prompt:', ''),
             order: index,
-            isPinned: tab.isPinned
+            isPinned: tab.isPinned,
+            groupId: tab.groupId
           }
         }
         return {
           path: tab.path,
           type: 'file' as const,
           order: index,
-          isPinned: tab.isPinned
+          isPinned: tab.isPinned,
+          groupId: tab.groupId
         }
       })
-    
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
   } catch (error) {
     console.error('Failed to save open tabs:', error)

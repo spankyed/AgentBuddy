@@ -42,8 +42,6 @@ export namespace EARS {
     RELATES_TO : 'relates_to',
     DUPLICATES: 'duplicates',
 
-
-    EVENT_TRACE: 'event_trace',
     TRANSITIONS_TO: 'transitions_to',
     // RESPONDER: 'responder', // Deprecated - use TRANSITIONS_TO from event nodes instead
     EMITS: 'emits',

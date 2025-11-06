@@ -1,10 +1,11 @@
 import { EARS } from '@/core/types';
-import { 
-  findById, 
+import {
+  findById,
+  findByIdRaw,
   findAll,
+  findWhere,
   createEntityWithDefaults,
   updateEntity,
-  findWhere,
   RepositoryError,
   RepositoryErrorCode
 } from '@/core/utils/repository';
@@ -16,12 +17,12 @@ import type { PromptEntity } from '../types';
 
 // Queries
 export const promptQueries = {
-  byId: (id: EARS.EntityId) => 
+  byId: (id: EARS.EntityId) =>
     findById<PromptEntity>(id),
-  
-  all: () => 
+
+  all: () =>
     findAll<PromptEntity>(EARS.Entity.Prompt),
-    
+
   byLabel: (label: string): PromptEntity | undefined => {
     return findWhere<PromptEntity>(
       EARS.Entity.Prompt,
@@ -29,12 +30,12 @@ export const promptQueries = {
       label
     )[0];
   },
-    
+
   connectedData: (page = 1, pageSize = 20) => {
-    const all = findAll<PromptEntity>(EARS.Entity.Prompt);
+    const all = promptQueries.all();
     const start = (page - 1) * pageSize;
     const items = all.slice(start, start + pageSize);
-    
+
     return {
       prompts: items,
       page,
@@ -86,10 +87,12 @@ export const promptCommands = {
   },
   
   delete: (id: EARS.EntityId): void => {
-    if (!promptQueries.byId(id)) {
+    // Use findByIdRaw to check existence (including already deleted entities)
+    const existing = findByIdRaw<PromptEntity>(id);
+    if (!existing) {
       throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 };

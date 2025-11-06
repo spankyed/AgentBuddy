@@ -13,13 +13,20 @@
 
     <!-- Prompts Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="prompts.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="hasPrompts" class="h-full overflow-y-auto custom-scrollbar">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
               <th class="px-6 py-3">Name</th>
               <th class="px-6 py-3">Description</th>
-              <th class="px-6 py-3">Category</th>
+              <th class="p-0">
+                <CategoryFilter
+                  :categories="categories"
+                  :selected-categories="selectedCategories"
+                  @toggle-category="$emit('toggle-category', $event)"
+                  @clear-filters="$emit('clear-filters')"
+                />
+              </th>
               <th class="px-6 py-3">Inputs</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
@@ -92,9 +99,9 @@
         </table>
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty State (only when no prompts exist at all) -->
       <div
-        v-else
+        v-if="!hasPrompts"
         class="flex flex-col items-center justify-center h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
@@ -116,19 +123,25 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Plus, Trash2, Sparkle } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
+import CategoryFilter from '@/core/components/design/CategoryFilter.vue';
 import type { PromptEntity, EARS, Category } from '@app/api';
 
-const props = defineProps<{ 
+const props = defineProps<{
   prompts: PromptEntity[];
   categories: Category[];
+  selectedCategories: string[];
+  hasPrompts: boolean;
 }>();
 const emit = defineEmits<{
   select: [promptId: EARS.EntityId];
   create: [];
   edit: [promptId: EARS.EntityId];
   delete: [promptId: EARS.EntityId];
+  'toggle-category': [categoryName: string];
+  'clear-filters': [];
 }>();
 
 function confirmDelete(prompt: PromptEntity) {

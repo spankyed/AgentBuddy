@@ -20,6 +20,7 @@ import type {
   OutgoingBrainEvents,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
+import { getNodeConfig } from './config/node-config'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -52,6 +53,10 @@ export interface FlowsContext {
 }
 
 type SystemEvent = OutgoingFlowsEvents
+  | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
+  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
+  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -66,10 +71,12 @@ type UIEvent =
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
+  | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'SELECT_ROOT_FLOW' }
   | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
   | { type: 'FLOW.CREATE'; }
+  | { type: 'FLOW.DELETE'; flowId: EARS.EntityId }
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
@@ -111,7 +118,7 @@ const flowsState = setup({
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {
-      const ev = typeOf(['FLOW.SELECT', 'FLOW_CREATED'], event);
+      const ev = typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'FLOW_CREATED'], event);
       if (context.selectedFlowId === ev.flowId) {
         return
       }
@@ -182,7 +189,7 @@ const flowsState = setup({
 
     addCreatedFlow: assign(({ context, event }) => {
       const ev = typeOf('FLOW_CREATED', event);
-      
+
       return {
         flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
@@ -193,6 +200,49 @@ const flowsState = setup({
         },
       };
     }),
+
+    sendDeleteFlow: ({ event }) => {
+      const ev = event as { type: 'FLOW.DELETE'; flowId: EARS.EntityId };
+      if (ev.type !== 'FLOW.DELETE') return;
+
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_FLOW',
+        flowId: ev.flowId as string
+      });
+    },
+
+    handleFlowDeleted: assign(({ context, event }) => {
+      const ev = typeOf('FLOW_DELETED', event);
+
+      // Remove the deleted flow from the flows list
+      const updatedFlows = context.flows.filter(flow => flow.id !== ev.flowId);
+
+      // If the deleted flow was selected, clear selection and go back to list
+      const wasSelected = context.selectedFlowId === ev.flowId;
+
+      return {
+        flows: updatedFlows,
+        selectedFlowId: wasSelected ? undefined : context.selectedFlowId,
+        graph: wasSelected ? { nodes: [], edges: [], positions: {} } : context.graph,
+      };
+    }),
+
+    /* ── action interactions ──────────────────────────────── */
+    addCreatedAction: assign(({ context, event }) => ({
+      actions: [...context.actions, typeOf('ACTION_CREATED', event).action],
+    })),
+
+    updateActionInList: assign(({ context, event }) => {
+      const ev = typeOf('ACTION_UPDATED', event);
+      return {
+        actions: context.actions.map(a => a.id === ev.actionId ? ev.action : a),
+      };
+    }),
+
+    removeDeletedAction: assign(({ context, event }) => ({
+      actions: context.actions.filter(a => a.id !== typeOf('ACTION_DELETED', event).actionId),
+    })),
 
     /* ── graph interactions ───────────────────────────────── */
     selectNode: assign({ selectedNodeId: ({ event }) => typeOf('NODE.CLICK', event).nodeId as EARS.EntityId }),
@@ -363,12 +413,16 @@ const flowsState = setup({
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE', event)
-      
+
+      // Get the default label from node config
+      const nodeConfig = getNodeConfig(ev.nodeType)
+      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+
       // Create a partial node that will be completed by the backend
       const newNode = {
         id: tempId,
         nodeType: ev.nodeType,
-        label: `New ${ev.nodeType}`,
+        label: defaultLabel,
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node
@@ -412,10 +466,15 @@ const flowsState = setup({
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE_CONNECTED', event)
+
+      // Get the default label from node config
+      const nodeConfig = getNodeConfig(ev.nodeType)
+      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+
       const newNode = {
         id: tempId,
         nodeType: ev.nodeType,
-        label: `New ${ev.nodeType}`,
+        label: defaultLabel,
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node
@@ -649,7 +708,13 @@ const flowsState = setup({
       };
     }),
   },
-  guards: { targetIs },
+  guards: {
+    targetIs,
+    isDeletedFlowSelected: ({ context, event }) => {
+      const ev = typeOf('FLOW_DELETED', event);
+      return context.selectedFlowId === ev.flowId;
+    },
+  },
 }).createMachine({
   id,
   initial: 'list',
@@ -669,7 +734,7 @@ const flowsState = setup({
     tempIdMap: {},
   },
   on: {
-    FLOWS_CONNECTED: { 
+    FLOWS_CONNECTED: {
       actions: 'setPluginData',
       // target: '.view' // Go directly to view since we have the selected flow's data
     },
@@ -677,11 +742,21 @@ const flowsState = setup({
       actions: 'handleSettingsUpdate'
     },
     FLOW_SELECTED: { actions: 'loadFlowData' },
-    FLOW_CREATED: { 
+    FLOW_CREATED: {
       actions: 'addCreatedFlow',
       target: '.view'
     },
-    NODE_CREATED: { 
+    FLOW_DELETED: [
+      {
+        guard: 'isDeletedFlowSelected',
+        target: '.list',
+        actions: 'handleFlowDeleted',
+      },
+      {
+        actions: 'handleFlowDeleted',
+      }
+    ],
+    NODE_CREATED: {
       actions: 'reconcileNodeId'
     },
     EDGE_CREATED: {
@@ -696,6 +771,15 @@ const flowsState = setup({
     NODE_DELETED: {
       // Backend confirmation - node already removed locally
     },
+    ACTION_CREATED: {
+      actions: 'addCreatedAction'
+    },
+    ACTION_UPDATED: {
+      actions: 'updateActionInList'
+    },
+    ACTION_DELETED: {
+      actions: 'removeDeletedAction'
+    },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.view', 'view'],
@@ -706,6 +790,10 @@ const flowsState = setup({
       tags: ['list-flows'],
       meta: { ...breadcrumb('list', 'Flows', true) },
       on: {
+        'FLOW.PREVIEW': {
+          actions: 'selectFlow',
+          // Stay in list state - just load the flow data
+        },
         'FLOW.SELECT': {
           actions: 'selectFlow',
           target: 'view',
@@ -716,6 +804,9 @@ const flowsState = setup({
         },
         'FLOW.CREATE': {
           actions: 'sendCreateFlow',
+        },
+        'FLOW.DELETE': {
+          actions: 'sendDeleteFlow',
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
@@ -766,6 +857,9 @@ const flowsState = setup({
         },
         'NODE.UPDATE_POSITION': {
           actions: 'updateNodePosition',
+        },
+        'FLOW.DELETE': {
+          actions: 'sendDeleteFlow',
         },
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],

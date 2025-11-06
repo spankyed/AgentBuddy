@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createActor } from 'xstate';
-import { createBrowserInspector } from '@statelyai/inspect';
+// import { createBrowserInspector } from '@statelyai/inspect';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
@@ -8,11 +8,11 @@ import logErrors from '@/core/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
 
-const { inspect } = createBrowserInspector();
+// const { inspect } = createBrowserInspector();
 
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
-  inspect,
+  // inspect,
   input: {
     defaultPlugin,
     plugins,
