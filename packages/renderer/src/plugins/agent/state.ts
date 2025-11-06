@@ -68,6 +68,8 @@ type AgentEvent =
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
+  | { type: 'RESPOND_TO_ARTIFACT_BLOCK_INTERACTION'; artifactId: string; threadId: string; response: any }
+  | { type: 'ARTIFACT_STATE_UPDATED'; artifactId: string; blocks?: any[]; responseTimestamp?: number; blockResponse?: any }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
@@ -475,6 +477,43 @@ const agentState = setup({
         }
       };
     }),
+
+    respondToArtifactBlockInteraction: ({ event }) => {
+      const { artifactId, threadId, response } = typeOf('RESPOND_TO_ARTIFACT_BLOCK_INTERACTION', event);
+
+      // Send artifact block interaction response to backend
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'ARTIFACT_BLOCK_RESPONSE',
+        artifactId,
+        threadId,
+        response,
+      });
+    },
+
+    updateArtifactState: assign(({ context, event }) => {
+      const typedEvent = typeOf('ARTIFACT_STATE_UPDATED', event) as any;
+      const { artifactId } = typedEvent;
+
+      if (!context.tabs || context.tabs.length === 0) return {};
+
+      return {
+        tabs: context.tabs.map(tab => ({
+          ...tab,
+          artifacts: tab.artifacts?.map((artifact: any) =>
+            artifact.id === artifactId
+              ? {
+                ...artifact,
+                ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
+                ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
+              }
+              : artifact
+          )
+        }))
+      };
+    }),
+
     // addMessage: assign(({ context, event }) => ({
     //   currentThread: {
     //     ...context.currentThread!,
@@ -592,6 +631,12 @@ const agentState = setup({
     },
     MESSAGE_ADDED: {
       actions: 'addMessageToThread'
+    },
+    RESPOND_TO_ARTIFACT_BLOCK_INTERACTION: {
+      actions: 'respondToArtifactBlockInteraction'
+    },
+    ARTIFACT_STATE_UPDATED: {
+      actions: 'updateArtifactState'
     },
     ...TRAIL_CLICK([
       ['.canvas', 'canvas'],

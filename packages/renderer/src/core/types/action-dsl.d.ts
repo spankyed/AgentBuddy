@@ -272,7 +272,10 @@ interface ActionsStartupData {
     categories?: Category[];
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+type CommonBlockType = 'prompt' | 'note' | 'button-group' | 'link';
+type MessageBlockType = 'file-picker' | 'choice' | 'text' | 'approval' | 'actions';
+type ArtifactBlockType = 'code-display' | 'todo-list' | 'slack-channels' | 'workspace-config' | 'image-display' | 'review-display';
+type BlockType = CommonBlockType | MessageBlockType | ArtifactBlockType;
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -335,7 +338,10 @@ interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
     title?: string;
     content: string | any;
-    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
+    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack' | 'review' | 'todo' | 'workspace';
+    blocks?: BlockConfig[];
+    blockResponse?: any;
+    responseTimestamp?: number;
 }
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 type ThreadLinkRelation = typeof ThreadRelations[number];
@@ -416,6 +422,9 @@ interface ArtifactItem {
     type: ArtifactType;
     title: string;
     content: any;
+    blocks?: BlockConfig[];
+    blockResponse?: any;
+    responseTimestamp?: number;
     metadata?: {
         createdAt: number;
         updatedAt?: number;
@@ -898,6 +907,24 @@ declare const events: {
         systemId: "agent";
         threadId: string;
         messageId: string;
+        response?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"ARTIFACT_BLOCK_RESPONSE">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+        threadId: zod.ZodString;
+        response: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "ARTIFACT_BLOCK_RESPONSE";
+        systemId: "agent";
+        threadId: string;
+        artifactId: string;
+        response?: any;
+    }, {
+        type: "ARTIFACT_BLOCK_RESPONSE";
+        systemId: "agent";
+        threadId: string;
+        artifactId: string;
         response?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
@@ -1770,7 +1797,6 @@ declare const events: {
         collectionId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         tags: string[];
-        id: string;
         content: ({
             type: "field";
             fields: {
@@ -1784,13 +1810,13 @@ declare const events: {
             text: string;
             type: "text";
         })[];
+        id: string;
         type: "UPDATE_DOCUMENT";
         systemId: "library";
         name: string;
         collectionId?: string | undefined;
     }, {
         tags: string[];
-        id: string;
         content: ({
             type: "field";
             fields: {
@@ -1804,6 +1830,7 @@ declare const events: {
             text: string;
             type: "text";
         })[];
+        id: string;
         type: "UPDATE_DOCUMENT";
         systemId: "library";
         name: string;
@@ -2890,6 +2917,15 @@ declare const events: {
         type: "MESSAGE_ADDED";
         threadId: string;
         message: MessageEntity;
+        pluginId: "agent";
+    } | {
+        type: "ARTIFACT_STATE_UPDATED";
+        artifactId: string;
+        title?: string | undefined;
+        blocks?: BlockConfig[] | undefined;
+        responseTimestamp?: number | undefined;
+        blockResponse?: any;
+        content?: any;
         pluginId: "agent";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
@@ -4558,6 +4594,141 @@ const chat = /*#__PURE__*/Object.freeze({
   updateMessageState: updateMessageState
 });
 
+/**
+ * Block-based artifact helpers for creating composable artifacts
+ *
+ * These helpers make it easy to create artifacts using reusable blocks that can be
+ * mixed and matched to create complex interactions.
+ */
+interface CreateArtifactOptions {
+    threadId: EARS.EntityId;
+    title: string;
+    artifactType: ArtifactEntity['artifactType'];
+    blocks: BlockConfig[];
+}
+/**
+ * Create an artifact with custom blocks (pure function)
+ * Returns artifact data without side effects
+ */
+declare function createArtifactWithBlocks(options: CreateArtifactOptions): {
+    artifactId: EARS.EntityId;
+    threadId: EARS.EntityId;
+    artifact: Partial<ArtifactEntity>;
+};
+/**
+ * Send an artifact with custom blocks and emit ARTIFACT_ADDED event
+ * Use this for flow actions that need automatic frontend updates
+ */
+declare function sendArtifactWithBlocks(options: CreateArtifactOptions): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Update artifact state with any mutable fields
+ * Main interface for ad hoc artifact state updates (title, blocks, blockResponse, responseTimestamp, content)
+ * Automatically emits ARTIFACT_STATE_UPDATED event to frontend
+ *
+ * @example
+ * // Re-enable interactive blocks by clearing response
+ * updateArtifactState(artifactId, {
+ *   responseTimestamp: undefined,
+ *   blockResponse: undefined
+ * });
+ *
+ * @example
+ * // Update artifact title and blocks
+ * updateArtifactState(artifactId, {
+ *   title: 'Updated Title',
+ *   blocks: [...]
+ * });
+ */
+declare function updateArtifactState(artifactId: EARS.EntityId, updates: Partial<Pick<ArtifactEntity, 'title' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'content'>>): void;
+/**
+ * Create a code artifact with syntax highlighting and action buttons
+ */
+declare function createCodeArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    code: string;
+    language: string;
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Create a todo list artifact with approve/reject buttons
+ */
+declare function createTodoArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    tasks: Array<{
+        id: string;
+        description: string;
+        completed: boolean;
+    }>;
+    status?: 'pending' | 'approved' | 'rejected';
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Create a workspace configuration artifact
+ */
+declare function createWorkspaceArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    config: any;
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Create a Slack channels artifact
+ */
+declare function createSlackArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    channels: any[];
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Create an image display artifact
+ */
+declare function createImageArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    imageUrl: string;
+    alt?: string;
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+/**
+ * Create a review/feedback artifact
+ */
+declare function createReviewArtifact(options: {
+    threadId: EARS.EntityId;
+    title: string;
+    reviewContent: any;
+    actions?: ButtonConfig[];
+}): {
+    artifactId: EARS.EntityId;
+};
+
+const artifact = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  createArtifactWithBlocks: createArtifactWithBlocks,
+  createCodeArtifact: createCodeArtifact,
+  createImageArtifact: createImageArtifact,
+  createReviewArtifact: createReviewArtifact,
+  createSlackArtifact: createSlackArtifact,
+  createTodoArtifact: createTodoArtifact,
+  createWorkspaceArtifact: createWorkspaceArtifact,
+  sendArtifactWithBlocks: sendArtifactWithBlocks,
+  updateArtifactState: updateArtifactState
+});
+
 declare const services: {
     logger: {
         source?: string;
@@ -4619,6 +4790,9 @@ declare const services: {
                 type: unknown;
                 title: unknown;
                 content: unknown;
+                blocks: unknown;
+                blockResponse: unknown;
+                responseTimestamp: unknown;
             }[];
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
@@ -4629,6 +4803,7 @@ declare const services: {
                 createdAt: number;
             } | null;
             readonly messageById: (messageId: EARS.EntityId) => MessageEntity | null;
+            readonly artifactById: (artifactId: EARS.EntityId) => ArtifactEntity | null;
         };
         readonly agentCommands: {
             readonly addMessage: (params: {
@@ -4659,12 +4834,30 @@ declare const services: {
                 messageId: EARS.EntityId;
                 responseTimestamp: number;
                 updatedAt: number;
+                blocks?: BlockConfig[];
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
                 updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp">>;
             }) => {
                 messageId: EARS.EntityId;
+                updatedAt: number;
+                updates: typeof params.updates;
+            };
+            readonly updateArtifactBlockResponse: (params: {
+                artifactId: EARS.EntityId;
+                response: any;
+            }) => {
+                artifactId: EARS.EntityId;
+                responseTimestamp: number;
+                updatedAt: number;
+                blocks?: BlockConfig[];
+            };
+            readonly updateArtifactState: (params: {
+                artifactId: EARS.EntityId;
+                updates: Partial<Pick<ArtifactEntity, "title" | "blocks" | "blockResponse" | "responseTimestamp" | "content">>;
+            }) => {
+                artifactId: EARS.EntityId;
                 updatedAt: number;
                 updates: typeof params.updates;
             };
@@ -4884,6 +5077,7 @@ declare const services: {
     settings: SettingsService;
     textStream: TextStreamService;
     chat: typeof chat;
+    artifact: typeof artifact;
 };
 
 /**

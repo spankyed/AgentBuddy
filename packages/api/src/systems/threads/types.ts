@@ -3,7 +3,14 @@ import type { Simplify } from "@/core/utils/type-helpers";
 import type { EARS } from "@/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+// Common blocks (used by messages and artifacts)
+export type CommonBlockType = 'prompt' | 'note' | 'button-group' | 'link';
+// Message-specific blocks
+export type MessageBlockType = 'file-picker' | 'choice' | 'text' | 'approval' | 'actions';
+// Artifact-specific blocks (for content display)
+export type ArtifactBlockType = 'code-display' | 'todo-list' | 'slack-channels' | 'workspace-config' | 'image-display' | 'review-display';
+
+export type BlockType = CommonBlockType | MessageBlockType | ArtifactBlockType;
 
 export interface BlockConfig {
   type: BlockType;
@@ -60,6 +67,31 @@ export interface ButtonGroupResponse {
   state: string;
 }
 
+// Artifact-specific block response types
+export interface TodoListResponse {
+  action: 'approve' | 'reject' | 'toggle-task';
+  taskId?: string;
+  taskCompleted?: boolean;
+}
+
+export interface CodeActionResponse {
+  action: 'copy' | 'run' | 'download';
+}
+
+export interface WorkspaceActionResponse {
+  action: 'configure' | 'reset';
+}
+
+export interface SlackActionResponse {
+  action: 'refresh' | 'view-channel';
+  channelId?: string;
+}
+
+export interface ArtifactActionResponse {
+  action: 'copy' | 'export' | 'refresh' | 'delete';
+  format?: string; // For export actions
+}
+
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   text: string;
@@ -89,8 +121,12 @@ export interface ArtifactEntity extends BaseEntity {
   entityType: EARS.Entity.Artifact;
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
-  content: string | any;
-  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
+  content: string | any; // Deprecated: Use blocks instead. Kept for backward compatibility during migration.
+  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack' | 'review' | 'todo' | 'workspace';
+  // Block-based interaction system
+  blocks?: BlockConfig[];
+  blockResponse?: any; // Response data for block-based interactions
+  responseTimestamp?: number; // Timestamp when the artifact was responded to
 }
 
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;

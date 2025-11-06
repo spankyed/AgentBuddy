@@ -106,19 +106,22 @@ function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKi
   const artifacts = qx(entityId)
     .linksPick(
       relationKind,
-      ['id', 'title', 'content', 'artifactType'] as const,
+      ['id', 'title', 'content', 'artifactType', 'blocks', 'blockResponse', 'responseTimestamp'] as const,
       EARS.Entity.Artifact,
     );
-  
+
   if (!artifacts || artifacts.length === 0) {
     return [];
   }
-  
+
   return artifacts.map(artifact => ({
     id: artifact.id,
     type: (artifact.artifactType || 'text') as ArtifactType,
     title: String(artifact.title || ''),
     content: artifact.content,
+    blocks: artifact.blocks,
+    blockResponse: artifact.blockResponse,
+    responseTimestamp: artifact.responseTimestamp,
     metadata: {
       createdAt: Date.now()
     }
@@ -162,12 +165,15 @@ export const agentQueries = {
     return qx()
       .relatedTo(threadId)
       .ofType(EARS.Entity.Artifact)
-      .pick(['id', 'title', 'content', 'artifactType'] as const)
+      .pick(['id', 'title', 'content', 'artifactType', 'blocks', 'blockResponse', 'responseTimestamp'] as const)
       .map(artifact => ({
         id: artifact.id,
         type: artifact.artifactType,
         title: artifact.title,
-        content: artifact.content
+        content: artifact.content,
+        blocks: artifact.blocks,
+        blockResponse: artifact.blockResponse,
+        responseTimestamp: artifact.responseTimestamp
       }));
   },
   // Get thread data with messages and context
@@ -293,6 +299,28 @@ export const agentQueries = {
       ...message,
       entityType: EARS.Entity.Message
     } as MessageEntity;
+  },
+
+  // Get artifact by ID
+  artifactById: (artifactId: EARS.EntityId): ArtifactEntity | null => {
+    const artifact = qx(artifactId).pickOne([
+      'id',
+      'title',
+      'content',
+      'artifactType',
+      'blocks',
+      'blockResponse',
+      'responseTimestamp',
+      'createdAt',
+      'updatedAt'
+    ] as const);
+
+    if (!artifact) return null;
+
+    return {
+      ...artifact,
+      entityType: EARS.Entity.Artifact
+    } as ArtifactEntity;
   }
 } as const;
 
@@ -468,6 +496,104 @@ export const agentCommands = {
 
     return {
       messageId,
+      updatedAt: now,
+      updates
+    };
+  },
+
+  updateArtifactBlockResponse: (params: {
+    artifactId: EARS.EntityId;
+    response: any;
+  }): {
+    artifactId: EARS.EntityId;
+    responseTimestamp: number;
+    updatedAt: number;
+    blocks?: BlockConfig[];  // Populated if toggleStates button was toggled
+  } => {
+    const { artifactId, response } = params;
+
+    // Validate artifact exists
+    const artifact = qx(artifactId).id();
+    if (!artifact) {
+      throw new RepositoryError(
+        `Artifact ${artifactId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+
+    // Save response
+    tx(artifactId)
+      .put('blockResponse', response)
+      .put('responseTimestamp', now)
+      .put('updatedAt', now);
+
+    // Auto-toggle if button has toggleStates
+    let updatedBlocks: BlockConfig[] | undefined;
+    const fullArtifact = qx(artifactId).pickOne(['blocks']);
+
+    if (fullArtifact?.blocks && response.buttonId) {
+      let buttonToggled = false;
+      const newBlocks = fullArtifact.blocks.map((block: BlockConfig) => {
+        if (block.type === 'button-group') {
+          const updatedButtons = block.props.buttons.map((button: any) => {
+            if (button.toggleStates && button.id === response.buttonId) {
+              buttonToggled = true;
+              return { ...button, state: button.state === 'on' ? 'off' : 'on' };
+            }
+            return button;
+          });
+          return { ...block, props: { ...block.props, buttons: updatedButtons } };
+        }
+        return block;
+      });
+
+      if (buttonToggled) {
+        updatedBlocks = newBlocks;
+        // Persist blocks update
+        tx(artifactId).put('blocks', newBlocks).put('updatedAt', now);
+      }
+    }
+
+    return {
+      artifactId,
+      responseTimestamp: now,
+      updatedAt: now,
+      ...(updatedBlocks && { blocks: updatedBlocks })
+    };
+  },
+
+  updateArtifactState: (params: {
+    artifactId: EARS.EntityId;
+    updates: Partial<Pick<ArtifactEntity, 'title' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'content'>>;
+  }): {
+    artifactId: EARS.EntityId;
+    updatedAt: number;
+    updates: typeof params.updates;
+  } => {
+    const { artifactId, updates } = params;
+
+    // Validate artifact exists
+    const artifact = qx(artifactId).id();
+    if (!artifact) {
+      throw new RepositoryError(
+        `Artifact ${artifactId} not found`,
+        RepositoryErrorCode.NOT_FOUND
+      );
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = {
+      ...updates,
+      updatedAt: now
+    };
+
+    // Apply all updates in a single transaction
+    tx(artifactId).updateBatch(updateData);
+
+    return {
+      artifactId,
       updatedAt: now,
       updates
     };

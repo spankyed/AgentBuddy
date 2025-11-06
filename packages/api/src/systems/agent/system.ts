@@ -30,6 +30,11 @@ export const IncomingAgentEvents = [
     threadId: z.string(),
     response: z.any() // Response data for block-based interactions
   }),
+  busEvent('ARTIFACT_BLOCK_RESPONSE', {
+    artifactId: z.string(),
+    threadId: z.string(),
+    response: z.any() // Response data for artifact block-based interactions
+  }),
 ] as const
 
 export type AgentInternalEvents =
@@ -47,6 +52,7 @@ export type OutgoingAgentEvents =
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
+  | { type: 'ARTIFACT_STATE_UPDATED'; artifactId: string; title?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any; content?: any }
 
 export interface AgentContext { }
 
@@ -258,6 +264,31 @@ export const agentSystem = setup({
         blockResponse: response,
         ...(result.blocks && { blocks: result.blocks })
       }));
+    },
+    forwardArtifactBlockResponse: ({ system, event }) => {
+      const { artifactId, threadId, response } = typeOf('ARTIFACT_BLOCK_RESPONSE', event);
+
+      // Save response and auto-toggle if needed (single operation)
+      const result = repository.agentCommands.updateArtifactBlockResponse({
+        artifactId: artifactId as EARS.EntityId,
+        response
+      });
+
+      // Forward to brain for flow processing
+      getActor(system, brain).send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'artifact.block.response',
+        payload: { artifactId, threadId, response }
+      });
+
+      // Send single ARTIFACT_STATE_UPDATED with all updates
+      system.get(bus).send(emit(agent, {
+        type: 'ARTIFACT_STATE_UPDATED',
+        artifactId,
+        responseTimestamp: result.responseTimestamp,
+        blockResponse: response,
+        ...(result.blocks && { blocks: result.blocks })
+      }));
     }
   },
 }).createMachine(
@@ -291,6 +322,9 @@ export const agentSystem = setup({
           },
           INTERACTIVE_MSG_RESPONSE: {
             actions: 'forwardInteractiveMessageResponse',
+          },
+          ARTIFACT_BLOCK_RESPONSE: {
+            actions: 'forwardArtifactBlockResponse',
           },
         },
       },

@@ -1,6 +1,6 @@
 import { BaseEntity } from "@/core/ears";
 import type { EARS, ThreadExtendedData } from "@/types";
-import { ThreadEntity, ArtifactEntity } from "../threads/types";
+import { ThreadEntity, ArtifactEntity, BlockConfig } from "../threads/types";
 import type { KeyboardShortcut } from "../settings/types";
 
 export type AgentThreadData = {
@@ -72,7 +72,10 @@ export interface ArtifactItem {
   id: string;
   type: ArtifactType;
   title: string;
-  content: any;
+  content: any; // Deprecated: Use blocks instead. Kept for backward compatibility.
+  blocks?: BlockConfig[];
+  blockResponse?: any;
+  responseTimestamp?: number;
   metadata?: {
     createdAt: number;
     updatedAt?: number;

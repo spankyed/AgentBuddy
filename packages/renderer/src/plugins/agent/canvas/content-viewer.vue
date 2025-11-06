@@ -14,6 +14,16 @@
       <div v-if="!selectedArtifact" class="flex items-center justify-center h-full">
         <p class="text-neutral-500">Select an artifact to view</p>
       </div>
+      <!-- Block-based artifact (new format) -->
+      <ArtifactBlockContainer
+        v-else-if="selectedArtifact.blocks && selectedArtifact.blocks.length > 0"
+        :blocks="selectedArtifact.blocks"
+        :artifact-id="selectedArtifact.id"
+        :thread-id="threadId"
+        :is-disabled="Boolean(selectedArtifact.responseTimestamp)"
+        :response="selectedArtifact.blockResponse"
+      />
+      <!-- Legacy artifact component (old format) -->
       <component
         v-else
         :is="getArtifactComponent(selectedArtifact.type)"
@@ -27,6 +37,7 @@
 import { computed } from 'vue';
 import type { ArtifactItem } from '@app/api';
 import ArtifactList from './artifacts/artifact-list.vue';
+import ArtifactBlockContainer from './artifacts/ArtifactBlockContainer.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';
 import CodeArtifact from './artifacts/types/code-artifact.vue';
 import ReviewArtifact from './artifacts/types/review-artifact.vue';
@@ -38,6 +49,7 @@ import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
 const props = defineProps<{
   artifacts: ArtifactItem[];
   selectedArtifactId?: string;
+  threadId: string;
 }>();
 
 defineEmits<{

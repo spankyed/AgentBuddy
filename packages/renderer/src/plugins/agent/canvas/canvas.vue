@@ -14,6 +14,7 @@
     <ContentViewer
       :artifacts="currentTab?.artifacts || []"
       :selectedArtifactId="currentTab?.selectedArtifactId"
+      :thread-id="currentTab?.id || ''"
       @select-artifact="selectArtifact"
     />
   </div>
