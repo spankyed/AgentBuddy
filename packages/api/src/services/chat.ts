@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig } from '@/systems/threads/types';
+import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData } from '@/systems/threads/types';
 import { sendToPlugin } from './event-emitter';
 
 /**
@@ -349,4 +349,39 @@ export function updateMessageState(
     messageId: result.messageId,
     ...result.updates
   } as any);
+}
+
+/**
+ * Create a new thread and notify the frontend
+ * Use this in flow actions that need automatic frontend updates
+ *
+ * @param options - Thread creation options
+ * @returns Object with thread id, shortCode, timestamp, and status
+ *
+ * @example
+ * const { id: threadId, shortCode, timestamp, status } = createThreadAndNotify({
+ *   topic: 'Assistant Birth',
+ *   instructions: 'Welcome!',
+ *   role: EARS.RoleKind.Custom('assistant_birth'),
+ *   forcedMode: 'birth'
+ * });
+ */
+export function createThreadAndNotify(
+  options: ThreadCreateData
+): { id: EARS.EntityId; shortCode: string; timestamp: number; status: string } {
+  const result = repository.threadCommands.create(options);
+
+  // Notify threads plugin about new thread
+  sendToPlugin('threads', {
+    type: 'THREAD_CREATED',
+    id: result.id,
+    shortCode: result.shortCode,
+    entityType: EARS.Entity.Thread,
+    timestamp: result.timestamp,
+    topic: options.topic,
+    instructions: options.instructions,
+    status: result.status
+  } as any);
+
+  return result;
 }

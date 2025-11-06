@@ -255,24 +255,6 @@ export const agentQueries = {
     };
   },
 
-  // Get existing assistant birth thread if it exists
-  getAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId; createdAt: number } | null => {
-    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
-    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
-
-    if (!existingBirthThreadId) return null;
-
-    const threadData = qx(existingBirthThreadId).pickOne(['createdAt']);
-    const existingArtifact = qx(existingBirthThreadId)
-      .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)?.[0];
-
-    return {
-      threadId: existingBirthThreadId,
-      artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id(),
-      createdAt: threadData?.createdAt || Date.now()
-    };
-  },
-
   // Get message by ID
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = qx(messageId).pickOne([
@@ -473,69 +455,30 @@ export const agentCommands = {
     };
   },
 
-  createAssistantBirthThread: (): { threadId: EARS.EntityId; artifactId: EARS.EntityId } => {
-    // Check if an assistant birth thread already exists
-    const ASSISTANT_BIRTH_ROLE = EARS.RoleKind.Custom('assistant_birth');
-    const existingBirthThreadId = qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+  createArtifact: (params: {
+    artifactType: ArtifactType;
+    title: string;
+    content: any;
+    threadId?: EARS.EntityId;
+  }): { artifactId: EARS.EntityId } => {
+    const { artifactType, title, content, threadId } = params;
 
-    if (existingBirthThreadId) {
-      // Return existing birth thread and its artifact
-      const existingArtifact = qx(existingBirthThreadId)
-        .linksPick(EARS.RelKind.HAS, ['id'] as const, EARS.Entity.Artifact)
-        ?.[0];
-
-      return {
-        threadId: existingBirthThreadId,
-        artifactId: existingArtifact?.id || tx(EARS.Entity.Artifact).id()
-      };
-    }
-
-    // Create the thread using threadCommands
-    const { id: threadId, shortCode, timestamp, status } = threadCommands.create({
-      topic: 'Assistant Birth',
-      instructions: 'Welcome! This thread will help you get started with your new assistant.',
-      tags: []
-    });
-
-    // Set the forced mode to 'birth' for this special thread
-    tx(threadId).put('forcedMode', 'birth');
-
-    // Grant the assistant_birth role to prevent duplicates
-    tx(threadId).grant(ASSISTANT_BIRTH_ROLE);
-
-    // Create the todo artifact
+    // Create the artifact entity
     const artifactId = tx(EARS.Entity.Artifact)
       .put('entityType', EARS.Entity.Artifact)
-      .put('title', 'Getting Started Tasks')
-      .put('artifactType', 'todo')
-      .put('content', {
-        tasks: [
-          { id: '1', description: 'Give your assistant a name', completed: false },
-          { id: '2', description: 'Share your technical skill level', completed: false },
-          { id: '3', description: 'Discuss projects you\'re working on', completed: false }
-        ],
-        status: 'pending'
-      })
+      .put('title', title)
+      .put('artifactType', artifactType)
+      .put('content', content)
       .put('createdAt', Date.now())
       .id();
 
-    // Link todo artifact to thread
-    tx(threadId).link(EARS.RelKind.HAS, artifactId);
-    tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+    // Link to thread if provided
+    if (threadId) {
+      tx(threadId).link(EARS.RelKind.HAS, artifactId);
+      tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+    }
 
-    // Create the workspace artifact (content is empty - component reads from settings)
-    const workspaceArtifactId = tx(EARS.Entity.Artifact)
-      .put('entityType', EARS.Entity.Artifact)
-      .put('title', 'My Workspaces')
-      .put('artifactType', 'workspace')
-      .put('content', {})
-      .put('createdAt', Date.now())
-      .id();
-
-    // Link workspace artifact to thread
-    tx(threadId).link(EARS.RelKind.HAS, workspaceArtifactId);
-    tx(workspaceArtifactId).link(EARS.RelKind.RELATES_TO, threadId);
-
-    return { threadId, artifactId };
+    return { artifactId };
   },
+
 } as const;

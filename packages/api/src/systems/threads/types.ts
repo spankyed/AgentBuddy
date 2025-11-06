@@ -110,7 +110,13 @@ export type ThreadLinkedFields = {
   linkedThreads?: ThreadLinkItem[];
 }
 
-export type ThreadCreateData = Simplify<ThreadEditFields>;
+export type ThreadCreateData = Simplify<
+  ThreadEditFields
+  & {
+    role?: EARS.RoleKind;  // Optional role to grant (e.g., for special threads like birth)
+    forcedMode?: 'birth';  // Optional forced mode for special threads
+  }
+>;
 export type ThreadViewData = Simplify<
   ThreadCreateData
   & {

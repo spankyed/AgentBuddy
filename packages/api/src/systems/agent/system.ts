@@ -65,14 +65,6 @@ export const agentSystem = setup({
       const assistantSettings = repository.settingsQueries.getAssistantSettings();
 
       if (!assistantSettings.birthdate) {
-        // Check if birth thread exists and get its creation date
-        // const existingBirthThread = repository.agentQueries.getAssistantBirthThread();
-
-        // // Set birthdate based on existing thread or current time
-        // const birthdate = existingBirthThread
-        // ? new Date(existingBirthThread.createdAt).toISOString()
-        // : new Date().toISOString();
-
         const birthdate = new Date().toISOString();
 
         repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);

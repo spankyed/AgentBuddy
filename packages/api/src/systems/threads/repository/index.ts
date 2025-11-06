@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
-import { 
-  findById, 
+import {
+  findById,
   findAll,
   createEntityWithDefaults,
   updateEntity,
@@ -12,8 +12,8 @@ import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type {
   ThreadEntity, MessageEntity,
-  ThreadCreateData, 
-  ThreadExtendedData, 
+  ThreadCreateData,
+  ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
   ThreadTagOption
@@ -141,7 +141,7 @@ export const threadCommands = {
     if (!input.topic?.trim()) {
       throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
-    
+
     const ts = Date.now();
     const count = qx(EARS.Entity.Thread).count() + 1;
     const shortCode = `T-${count}` as ThreadTypeShortCode;
@@ -158,8 +158,14 @@ export const threadCommands = {
       updatedAt: ts,
       topic: input.topic,
       instructions: input.instructions,
-      tags: input.tags || []  // Store tags as array of names
+      tags: input.tags || [],  // Store tags as array of names
+      ...(input.forcedMode && { forcedMode: input.forcedMode })  // Set forced mode if provided
     });
+
+    // Grant role if provided
+    if (input.role) {
+      tx(id).grant(input.role);
+    }
 
     // Create relationships for linked threads only
     for (const rel of input.linkedThreads ?? []) {
