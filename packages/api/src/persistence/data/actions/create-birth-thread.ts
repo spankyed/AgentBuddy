@@ -61,16 +61,8 @@ export async function createBirthThread(params: any, services: typeof Services) 
     threadId
   });
 
-  // Get full thread data for agent
-  const threadData = services.repository.agentQueries.threadData(threadId);
-
-  // Refresh agent thread list
-  services.emitter.sendToPlugin('agent', {
-    type: 'REFRESH_RECENT_THREADS',
-    data: services.repository.agentQueries.refreshThreadsData()
-  } as any);
-
   // Open the birth thread in chat
+  const threadData = services.repository.agentQueries.threadData(threadId);
   services.emitter.sendToPlugin('agent', {
     type: 'LOAD_CHAT_THREAD',
     data: threadData

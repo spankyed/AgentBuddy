@@ -383,5 +383,73 @@ export function createThreadAndNotify(
     status: result.status
   } as any);
 
+  // Refresh recent threads list (thread creation affects ordering)
+  sendRecentThreadsRefresh();
+
   return result;
+}
+
+/**
+ * Open thread chat and refresh recent threads list
+ *
+ * Bundles:
+ * - Mark thread as visited
+ * - Load thread data for chat
+ * - Refresh recent threads list
+ */
+export function openThreadChatAndRefresh(threadId: EARS.EntityId) {
+  // Mark thread as visited when opening chat
+  repository.threadCommands.markAsVisited(threadId);
+
+  // Send thread data to load in chat
+  sendToPlugin('agent', {
+    type: 'LOAD_CHAT_THREAD',
+    data: repository.agentQueries.threadData(threadId),
+  } as any);
+
+  // Send updated recent threads list
+  sendRecentThreadsRefresh();
+}
+
+/**
+ * Open thread tab and refresh recent threads list
+ *
+ * Bundles:
+ * - Mark thread as visited
+ * - Load thread tab data with artifacts
+ * - Refresh recent threads list
+ */
+export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
+  // Mark thread as visited when opening tab
+  repository.threadCommands.markAsVisited(threadId);
+
+  // Query thread data and artifacts from repository
+  const thread = repository.threadQueries.byId(threadId);
+  const artifacts = repository.agentQueries.threadArtifacts(threadId);
+
+  // Send thread tab data
+  sendToPlugin('agent', {
+    type: 'THREAD_TAB_REQUESTED',
+    threadId,
+    topic: thread?.topic || `Thread ${threadId}`,
+    artifacts
+  } as any);
+
+  // Send updated recent threads list
+  sendRecentThreadsRefresh();
+}
+
+/**
+ * Send recent threads refresh to frontend
+ *
+ * Use this helper after any operation that affects thread ordering:
+ * - Thread creation
+ * - Message creation (updates lastMessageTimestamp)
+ * - Thread visits (updates lastVisitedTimestamp)
+ */
+export function sendRecentThreadsRefresh() {
+  sendToPlugin('agent', {
+    type: 'REFRESH_RECENT_THREADS',
+    data: repository.agentQueries.refreshThreadsData()
+  } as any);
 }

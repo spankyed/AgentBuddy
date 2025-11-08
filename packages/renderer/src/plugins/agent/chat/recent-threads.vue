@@ -6,7 +6,7 @@
     >
 
 
-      <div v-if="threads.length === 0" class="py-2 text-center">
+      <div v-if="recentThreads.length === 0" class="py-2 text-center">
         <div class="flex flex-col items-center space-y-2">
           <!-- <History :size="32" class="text-neutral-600" /> -->
           <p class="text-sm text-neutral-500">No threads yet</p>
@@ -15,7 +15,7 @@
       </div>
       <div v-else>
         <div
-          v-for="thread in threads"
+          v-for="thread in recentThreads"
           :key="thread.id"
           class="flex items-center w-full p-3 px-4 text-left transition-colors rounded-lg group hover:bg-neutral-800 hover:cursor-pointer"
           @click="handleSelectThread(thread.id)"
@@ -131,10 +131,10 @@ import { id as threadsId, type ThreadsState } from '@/plugins/threads/state'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;
-  threads: ThreadEntity[]
+  recentThreads: ThreadEntity[]
 }
 
-defineProps<ThreadsProps>()
+const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
 

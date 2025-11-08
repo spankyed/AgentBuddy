@@ -28,7 +28,7 @@ const defaultThread: AgentThreadData = {
 
 interface AgentContext {
   currentThread: AgentThreadData | null;
-  threads: ThreadExtended[];
+  recentThreads: ThreadEntity[]; // Recent threads (max 4, sorted by priority)
   messageInput: string;
   pendingActionId?: string;
   statusColor: StatusColor;
@@ -234,6 +234,14 @@ const agentState = setup({
         currentThread: thread
       };
     }),
+    setRefreshThreadsData: assign(({ context, event }) => {
+      const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
+
+      return {
+        currentThread: typedEvent.data.currentThread,
+        recentThreads: typedEvent.data.recentThreads as ThreadEntity[],
+      };
+    }),
     setStartupData: assign(({ context, event }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
 
@@ -275,7 +283,6 @@ const agentState = setup({
 
       return {
         currentThread: currentThread,
-        threads: typedEvent.data.threads as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
         hotkeys,
@@ -307,14 +314,6 @@ const agentState = setup({
         hotkeys,
         modes,
         settings,
-      };
-    }),
-    setRefreshThreadsData: assign(({ context, event }) => {
-      const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
-
-      return {
-        currentThread: typedEvent.data.currentThread,
-        threads: typedEvent.data.threads as ThreadEntity[],
       };
     }),
     sendOpenThreadView: ({ system, event }) => {
@@ -526,7 +525,7 @@ const agentState = setup({
   initial: 'canvas',
   context: ({ input }) => ({
     currentThread: defaultThread,
-    threads: [],
+    recentThreads: [], // Recent threads (updated via REFRESH_RECENT_THREADS)
     messageInput: "",
     pendingActionId: undefined,
     statusColor: 'bg-zinc-500' as StatusColor,
@@ -557,6 +556,9 @@ const agentState = setup({
     LOAD_CHAT_THREAD: {
       actions: 'setThreadChatData'
     },
+    REFRESH_RECENT_THREADS: {
+      actions: 'setRefreshThreadsData'
+    },
     OPEN_THREAD_CHAT: {
       actions: 'requestThreadChatData'
     },
@@ -571,9 +573,6 @@ const agentState = setup({
     },
     API_KEYS_STATUS: {
       actions: 'updateApiKeyStatus'
-    },
-    REFRESH_RECENT_THREADS: {
-      actions: 'setRefreshThreadsData'
     },
     UPDATE_TODO_TASK: {
       actions: 'updateTodoTask'
@@ -647,11 +646,10 @@ const agentState = setup({
     },
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
-        const { threadId, artifacts } = typeOf('THREAD_TAB_REQUESTED', event);
+        const { threadId, topic, artifacts } = typeOf('THREAD_TAB_REQUESTED', event);
 
-        // Find thread to get label
-        const thread = context.threads.find(t => t.id === threadId);
-        const label = thread?.topic || `Thread ${threadId}`;
+        // Use topic from event (sent from backend)
+        const label = topic;
 
         // Check if tab already exists
         const existingTab = context.tabs.find(t => t.id === threadId);

@@ -82,9 +82,9 @@
     </form>
 
     <div class="flex-shrink-0">
-      <Threads
+      <RecentThreads
         :current-thread="currentThread"
-        :threads="threads"
+        :recent-threads="recentThreads"
         @view-thread="(threadId: string) => emit('view-thread', threadId)"
         @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
         @new-thread="emit('new-thread')"
@@ -98,7 +98,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Square from './square-svg.vue'
-import Threads from './threads.vue'
+import RecentThreads from './recent-threads.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
@@ -107,7 +107,7 @@ import type { AgentThreadData, ThreadEntity, AgentMode } from '@app/api'
 
 const props = defineProps<{
   currentThread: AgentThreadData
-  threads: ThreadEntity[]
+  recentThreads: ThreadEntity[]
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]

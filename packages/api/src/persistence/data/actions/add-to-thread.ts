@@ -79,20 +79,13 @@ export async function addMessageToThread(params: any, services: typeof Services)
       status: fullThreadData?.status
     } as any);
 
-    // Get updated thread list for agent plugin
-    const refreshThreadsData = services.repository.agentQueries.refreshThreadsData();
-
-    // Send updated thread list to agent plugin
-    services.emitter.sendToPlugin('agent', {
-      type: 'REFRESH_RECENT_THREADS',
-      data: refreshThreadsData
-    } as any);
-
     await services.logger.info('Notified frontend plugins about new thread', {
-      threadId: threadResult.id,
-      threadCount: refreshThreadsData.threads.length
+      threadId: threadResult.id
     });
   }
+
+  // Refresh recent threads list (thread creation or message affects ordering)
+  services.chat.sendRecentThreadsRefresh();
 
   return {
     ...result,

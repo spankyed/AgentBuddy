@@ -38,7 +38,7 @@
     <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
       <ChatInput
         :current-thread="currentThread"
-        :threads="threads"
+        :recent-threads="recentThreads"
         :current-mode="currentMode"
         :current-phase="currentPhase"
         :modes="modes"
@@ -68,7 +68,7 @@ import type { AgentThreadData, MessageEntity, ThreadEntity } from '@app/api'
 const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
-const threads = useSelector(actor, (state) => (state.context.threads || []) as ThreadEntity[])
+const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)

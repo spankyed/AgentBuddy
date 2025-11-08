@@ -350,7 +350,10 @@ type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'instructions'> & 
 type ThreadLinkedFields = {
     linkedThreads?: ThreadLinkItem[];
 };
-type ThreadCreateData = Simplify<ThreadEditFields>;
+type ThreadCreateData = Simplify<ThreadEditFields & {
+    role?: EARS.RoleKind;
+    forcedMode?: 'birth';
+}>;
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 type ThreadExtendedData = ThreadLinkedFields & {
     messages?: Partial<MessageEntity>[];
@@ -375,7 +378,7 @@ type AgentThreadData = {
 };
 type RecentThreadRefreshData = {
     currentThread: AgentThreadData | null;
-    threads: Partial<ThreadEntity>[];
+    recentThreads: Partial<ThreadEntity>[];
 };
 interface AgentPhase {
     id: string;
@@ -1279,25 +1282,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         code: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        code: string;
         type: "EXECUTE_QUERY";
         systemId: "database";
-        code: string;
     }, {
+        code: string;
         type: "EXECUTE_QUERY";
         systemId: "database";
-        code: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_TRANSACTION">;
         systemId: zod.ZodLiteral<"database">;
         code: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        code: string;
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
-        code: string;
     }, {
+        code: string;
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
-        code: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_SNAPSHOT">;
         systemId: zod.ZodLiteral<"database">;
@@ -2853,12 +2856,12 @@ declare const events: {
         data: AgentConnectedData;
         pluginId: "agent";
     } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "agent";
-    } | {
         type: "LOAD_CHAT_THREAD";
         data: AgentThreadData;
+        pluginId: "agent";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
         pluginId: "agent";
     } | {
         type: "ARTIFACT_ADDED";
@@ -2868,6 +2871,7 @@ declare const events: {
     } | {
         type: "THREAD_TAB_REQUESTED";
         threadId: string;
+        topic: string;
         artifacts: any[];
         pluginId: "agent";
     } | {
@@ -4543,19 +4547,114 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  * });
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>): void;
+/**
+ * Create a new thread and notify the frontend
+ * Use this in flow actions that need automatic frontend updates
+ *
+ * @param options - Thread creation options
+ * @returns Object with thread id, shortCode, timestamp, and status
+ *
+ * @example
+ * const { id: threadId, shortCode, timestamp, status } = createThreadAndNotify({
+ *   topic: 'Assistant Birth',
+ *   instructions: 'Welcome!',
+ *   role: EARS.RoleKind.Custom('assistant_birth'),
+ *   forcedMode: 'birth'
+ * });
+ */
+declare function createThreadAndNotify(options: ThreadCreateData): {
+    id: EARS.EntityId;
+    shortCode: string;
+    timestamp: number;
+    status: string;
+};
+/**
+ * Open thread chat and refresh recent threads list
+ *
+ * Bundles:
+ * - Mark thread as visited
+ * - Load thread data for chat
+ * - Refresh recent threads list
+ */
+declare function openThreadChatAndRefresh(threadId: EARS.EntityId): void;
+/**
+ * Open thread tab and refresh recent threads list
+ *
+ * Bundles:
+ * - Mark thread as visited
+ * - Load thread tab data with artifacts
+ * - Refresh recent threads list
+ */
+declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
+/**
+ * Send recent threads refresh to frontend
+ *
+ * Use this helper after any operation that affects thread ordering:
+ * - Thread creation
+ * - Message creation (updates lastMessageTimestamp)
+ * - Thread visits (updates lastVisitedTimestamp)
+ */
+declare function sendRecentThreadsRefresh(): void;
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
   createBlockMessage: createBlockMessage,
+  createThreadAndNotify: createThreadAndNotify,
+  openThreadChatAndRefresh: openThreadChatAndRefresh,
+  openThreadTabAndRefresh: openThreadTabAndRefresh,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
   sendButtonGroupBlock: sendButtonGroupBlock,
   sendChoiceBlock: sendChoiceBlock,
   sendFilePickerBlock: sendFilePickerBlock,
   sendLinkBlock: sendLinkBlock,
+  sendRecentThreadsRefresh: sendRecentThreadsRefresh,
   sendTextInputBlock: sendTextInputBlock,
   updateMessageBlockResponse: updateMessageBlockResponse,
   updateMessageState: updateMessageState
+});
+
+/**
+ * Artifact Service
+ *
+ * Provides primitives for creating and managing artifacts across the application.
+ * Follows a pure vs side-effect pattern similar to chat service.
+ */
+
+interface CreateArtifactOptions {
+    artifactType: ArtifactType;
+    title: string;
+    content: any;
+    threadId?: EARS.EntityId;
+}
+/**
+ * Create a new artifact and notify the frontend (with side effects)
+ *
+ * This function creates an artifact and automatically sends ARTIFACT_ADDED event
+ * to the frontend when a threadId is provided. Use this in flow actions where
+ * you want immediate UI updates.
+ *
+ * @param options - Options for creating the artifact
+ * @returns Object containing the created artifact ID
+ *
+ * @example
+ * // Create artifact with automatic FE notification
+ * const { artifactId } = createAndNotify({
+ *   artifactType: 'todo',
+ *   title: 'Tasks',
+ *   content: { tasks: [...] },
+ *   threadId: 'thread-123'
+ * });
+ * // Frontend automatically receives ARTIFACT_ADDED event
+ */
+declare function createAndNotify(options: CreateArtifactOptions): {
+    artifactId: EARS.EntityId;
+};
+
+const artifact = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  CreateArtifactOptions: CreateArtifactOptions,
+  createAndNotify: createAndNotify
 });
 
 declare const services: {
@@ -4623,11 +4722,6 @@ declare const services: {
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
             readonly connectedData: () => AgentConnectedData;
-            readonly getAssistantBirthThread: () => {
-                threadId: EARS.EntityId;
-                artifactId: EARS.EntityId;
-                createdAt: number;
-            } | null;
             readonly messageById: (messageId: EARS.EntityId) => MessageEntity | null;
         };
         readonly agentCommands: {
@@ -4659,6 +4753,7 @@ declare const services: {
                 messageId: EARS.EntityId;
                 responseTimestamp: number;
                 updatedAt: number;
+                blocks?: BlockConfig[];
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
@@ -4668,8 +4763,12 @@ declare const services: {
                 updatedAt: number;
                 updates: typeof params.updates;
             };
-            readonly createAssistantBirthThread: () => {
-                threadId: EARS.EntityId;
+            readonly createArtifact: (params: {
+                artifactType: ArtifactType;
+                title: string;
+                content: any;
+                threadId?: EARS.EntityId;
+            }) => {
                 artifactId: EARS.EntityId;
             };
         };
@@ -4884,6 +4983,7 @@ declare const services: {
     settings: SettingsService;
     textStream: TextStreamService;
     chat: typeof chat;
+    artifact: typeof artifact;
 };
 
 /**

@@ -205,10 +205,10 @@ export const agentQueries = {
   // Get refresh threads data (without tabs)
   refreshThreadsData: (): RecentThreadRefreshData => {
     const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
-    
+
     return {
       currentThread: currentThreadData,
-      threads,
+      recentThreads: threads,
     };
   },
   

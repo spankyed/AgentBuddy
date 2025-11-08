@@ -7,7 +7,8 @@ import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { brain } from '../brain/system';
-import { RecentThreadRefreshData, AgentThreadData, AgentConnectedData, AgentSettings } from './types';
+import services from '@/services';
+import { AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData } from './types';
 import { EARS } from '@/core/types';
 import { initializeMockData } from './repository/mock-artifacts';
 import type { MessageEntity, BlockConfig } from '@/systems/threads/types';
@@ -39,10 +40,10 @@ export type AgentInternalEvents =
 
 export type OutgoingAgentEvents =
   | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
-  | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
+  | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
-  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; artifacts: any[] }
+  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[] }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any }
@@ -85,12 +86,6 @@ export const agentSystem = setup({
         data: repository.agentQueries.connectedData()
       }));
     },
-    sendRefreshThreads: ({ system }) => {
-      system.get(bus).send(emit(agent, {
-        type: 'REFRESH_RECENT_THREADS',
-        data: repository.agentQueries.refreshThreadsData()
-      }));
-    },
     sendApiKeyStatus: ({ system }) => {
       const hasRequiredApiKeys = repository.agentQueries.hasRequiredApiKeys();
       system.get(bus).send(emit(agent, {
@@ -101,46 +96,14 @@ export const agentSystem = setup({
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
-      // Mark thread as visited when opening chat
-      repository.threadCommands.markAsVisited(threadId);
-
-      const busSvc = system.get(bus);
-
-      // Send thread data
-      busSvc.send(emit(agent, {
-        type: 'LOAD_CHAT_THREAD',
-        data: repository.agentQueries.threadData(threadId),
-      }));
-
-      // Refresh recent threads list to reflect new ordering
-      busSvc.send(emit(agent, {
-        type: 'REFRESH_RECENT_THREADS',
-        data: repository.agentQueries.refreshThreadsData()
-      }));
+      // Use chat service for automatic refresh
+      services.chat.openThreadChatAndRefresh(threadId);
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = typeOf('OPEN_THREAD_TAB', event);
 
-      // Mark thread as visited when opening tab
-      repository.threadCommands.markAsVisited(threadId as EARS.EntityId);
-
-      // Query the artifacts from repository
-      const artifacts = repository.agentQueries.threadArtifacts(threadId as EARS.EntityId);
-
-      const busSvc = system.get(bus);
-
-      // Send thread tab data
-      busSvc.send(emit(agent, {
-        type: 'THREAD_TAB_REQUESTED',
-        threadId,
-        artifacts
-      }));
-
-      // Refresh recent threads list to reflect new ordering
-      busSvc.send(emit(agent, {
-        type: 'REFRESH_RECENT_THREADS',
-        data: repository.agentQueries.refreshThreadsData()
-      }));
+      // Use chat service for automatic refresh
+      services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
     },
     forwardUserMessage: ({ system, event }) => {
       const { text, mode, phase, threadId: providedThreadId } = typeOf('USER_MSG', event);
@@ -184,12 +147,6 @@ export const agentSystem = setup({
           instructions: fullThreadData?.instructions,
           status: fullThreadData?.status
         } as any));
-
-        // Send updated thread list to agent plugin
-        system.get(bus).send(emit(agent, {
-          type: 'REFRESH_RECENT_THREADS',
-          data: repository.agentQueries.refreshThreadsData()
-        }));
       } else {
         // Step 4: Send MESSAGE_ADDED event for the user message
         const userMessage: MessageEntity = {
@@ -208,6 +165,9 @@ export const agentSystem = setup({
           message: userMessage
         }));
       }
+
+      // Refresh recent threads list (affects ordering when message added or thread created)
+      services.chat.sendRecentThreadsRefresh();
 
       // Step 5: Forward to brain for flow processing
       const brainActor = getActor(system, brain);
