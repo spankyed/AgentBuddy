@@ -61,19 +61,14 @@ export async function createBirthThread(params: any, services: typeof Services) 
     threadId
   });
 
-  // Open the birth thread in chat
-  const threadData = services.repository.agentQueries.threadData(threadId);
-  services.emitter.sendToPlugin('agent', {
-    type: 'LOAD_CHAT_THREAD',
-    data: threadData
-  } as any);
+  // Open the birth thread in chat (handles markAsVisited + LOAD_CHAT_THREAD + refresh)
+  services.chat.openThreadChatAndRefresh(threadId);
 
   await services.logger.info('Birth thread created and activated', {
     threadId,
     shortCode,
     todoArtifactId,
-    workspaceArtifactId,
-    artifactCount: threadData.artifacts?.length || 0
+    workspaceArtifactId
   });
 
   return {

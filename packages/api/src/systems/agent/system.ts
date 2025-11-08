@@ -121,6 +121,9 @@ export const agentSystem = setup({
           threadId,
           shortCode: result.threadData.shortCode,
         });
+
+        // Mark newly created thread as visited since we're loading it into chat view
+        repository.threadCommands.markAsVisited(threadId);
       } else {
         threadId = providedThreadId as EARS.EntityId;
       }
