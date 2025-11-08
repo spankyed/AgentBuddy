@@ -62,7 +62,7 @@ export async function createBirthThread(params: any, services: typeof Services) 
   });
 
   // Open the birth thread in chat (handles markAsVisited + LOAD_CHAT_THREAD + refresh)
-  services.chat.openThreadChatAndRefresh(threadId);
+  services.chat.openThreadChatAndRefreshRecent(threadId);
 
   await services.logger.info('Birth thread created and activated', {
     threadId,

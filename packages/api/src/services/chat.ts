@@ -397,7 +397,7 @@ export function createThreadAndNotify(
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-export function openThreadChatAndRefresh(threadId: EARS.EntityId) {
+export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
   // Mark thread as visited when opening chat
   repository.threadCommands.markAsVisited(threadId);
 

@@ -97,7 +97,7 @@ export const agentSystem = setup({
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
 
       // Use chat service for automatic refresh
-      services.chat.openThreadChatAndRefresh(threadId);
+      services.chat.openThreadChatAndRefreshRecent(threadId);
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = typeOf('OPEN_THREAD_TAB', event);

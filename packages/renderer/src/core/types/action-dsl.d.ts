@@ -4575,7 +4575,7 @@ declare function createThreadAndNotify(options: ThreadCreateData): {
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-declare function openThreadChatAndRefresh(threadId: EARS.EntityId): void;
+declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId): void;
 /**
  * Open thread tab and refresh recent threads list
  *
@@ -4599,7 +4599,7 @@ const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
   createBlockMessage: createBlockMessage,
   createThreadAndNotify: createThreadAndNotify,
-  openThreadChatAndRefresh: openThreadChatAndRefresh,
+  openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
   openThreadTabAndRefresh: openThreadTabAndRefresh,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
