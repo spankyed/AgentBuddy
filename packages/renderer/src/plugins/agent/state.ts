@@ -238,7 +238,6 @@ const agentState = setup({
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
 
       return {
-        currentThread: typedEvent.data.currentThread,
         recentThreads: typedEvent.data.recentThreads as ThreadEntity[],
       };
     }),

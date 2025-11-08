@@ -377,7 +377,6 @@ type AgentThreadData = {
     forcedMode?: ThreadEntity['forcedMode'];
 };
 type RecentThreadRefreshData = {
-    currentThread: AgentThreadData | null;
     recentThreads: Partial<ThreadEntity>[];
 };
 interface AgentPhase {

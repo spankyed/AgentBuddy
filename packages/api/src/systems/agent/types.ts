@@ -16,7 +16,6 @@ export type AgentThreadData = {
 }
 
 export type RecentThreadRefreshData = {
-  currentThread: AgentThreadData | null;
   recentThreads: Partial<ThreadEntity>[];
 };
 

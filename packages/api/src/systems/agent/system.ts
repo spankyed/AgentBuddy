@@ -147,6 +147,12 @@ export const agentSystem = setup({
           instructions: fullThreadData?.instructions,
           status: fullThreadData?.status
         } as any));
+
+        // Explicitly load the newly created thread into chat view
+        system.get(bus).send(emit(agent, {
+          type: 'LOAD_CHAT_THREAD',
+          data: threadData
+        }));
       } else {
         // Step 4: Send MESSAGE_ADDED event for the user message
         const userMessage: MessageEntity = {

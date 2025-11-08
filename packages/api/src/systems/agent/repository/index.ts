@@ -24,81 +24,77 @@ export function byEntityType<
  * Agent Repository - Aggregates data from threads, messages, and other entities
  */
 
-// Helper function to get threads with optional current thread data
-interface ThreadsQueryOptions {
-  limit?: number;
-  includeCurrentThreadData?: boolean;
-  threadFields?: readonly (keyof ThreadEntity)[];
-  messageFields?: readonly (keyof MessageEntity)[];
-  artifactFields?: readonly (keyof ArtifactEntity)[];
-}
+/**
+ * Get recent threads sorted by priority
+ * Priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp (descending)
+ */
+function getRecentThreads(limit: number = 4): Partial<ThreadEntity>[] {
+  const threadFields = [
+    "shortCode",
+    "topic",
+    "instructions",
+    "status",
+    "timestamp",
+    "lastMessageTimestamp",
+    "lastVisitedTimestamp",
+    "forcedMode",
+  ] as const;
 
-function getThreadsWithOptionalCurrent(options: ThreadsQueryOptions = {}): {
-  threads: Partial<ThreadEntity>[];
-  currentThreadData: AgentThreadData | null
-} {
-  const {
-    limit = 4,
-    includeCurrentThreadData = true,
-    threadFields = [
-      "shortCode",
-      "topic",
-      "instructions",
-      "status",
-      "timestamp",
-      "lastMessageTimestamp",
-      "lastVisitedTimestamp",
-      "forcedMode",
-    ] as const,
-    messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const,
-    artifactFields = ['id', 'title', 'content', 'artifactType'] as const,
-  } = options;
-
-  // Get threads and sort with priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
-  // We need to sort manually since threads may not have lastVisitedTimestamp set
   const allThreads = qx(EARS.Entity.Thread)
     .pick(threadFields) as Partial<ThreadEntity>[];
 
-  const threads = allThreads
+  return allThreads
     .sort((a, b) => {
       const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp || 0;
       const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp || 0;
       return bTime - aTime; // Descending order
     })
     .slice(0, limit);
-  
-  if (threads.length === 0 || !includeCurrentThreadData) {
-    return {
-      threads,
-      currentThreadData: null
-    };
+}
+
+/**
+ * Get recent threads with full current thread data (messages and artifacts)
+ * Current thread is the most recent thread by priority
+ */
+function getThreadsWithCurrent(limit: number = 4): {
+  threads: Partial<ThreadEntity>[];
+  currentThread: AgentThreadData | null;
+} {
+  const threads = getRecentThreads(limit);
+
+  if (threads.length === 0) {
+    return { threads, currentThread: null };
   }
-  
-  const currentThread = threads[0];
-  
-  const currentThreadData: AgentThreadData = {
-    id: currentThread.id,
-    shortCode: currentThread.shortCode,
-    topic: currentThread.topic || '',
-    instructions: currentThread.instructions || '',
-    status: currentThread.status || 'backlog',
-    timestamp: currentThread.timestamp || Date.now(),
-    forcedMode: currentThread.forcedMode,
-    messages: currentThread.id
-      ? (qx(currentThread.id)
+
+  const mostRecentThread = threads[0];
+
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp"] as const;
+
+  const currentThread: AgentThreadData = {
+    id: mostRecentThread.id,
+    shortCode: mostRecentThread.shortCode,
+    topic: mostRecentThread.topic || '',
+    instructions: mostRecentThread.instructions || '',
+    status: mostRecentThread.status || 'backlog',
+    timestamp: mostRecentThread.timestamp || Date.now(),
+    forcedMode: mostRecentThread.forcedMode,
+    messages: mostRecentThread.id
+      ? (qx(mostRecentThread.id)
           .linksPick(
             EARS.RelKind.CONTAINS,
             messageFields,
             EARS.Entity.Message,
           ) ?? []) as Partial<MessageEntity>[]
       : [],
-    artifacts: (qx(EARS.Entity.Artifact).pick(artifactFields) ?? []) as any as ArtifactEntity[],
+    artifacts: mostRecentThread.id
+      ? (qx()
+          .relatedTo(mostRecentThread.id)
+          .ofType(EARS.Entity.Artifact)
+          .pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[]
+      : [],
   };
-  
-  return {
-    threads,
-    currentThreadData
-  };
+
+  return { threads, currentThread };
 }
 
 // Helper function to get artifacts for a thread/entity
@@ -204,26 +200,23 @@ export const agentQueries = {
   
   // Get refresh threads data (without tabs)
   refreshThreadsData: (): RecentThreadRefreshData => {
-    const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
-
     return {
-      currentThread: currentThreadData,
-      recentThreads: threads,
+      recentThreads: getRecentThreads(),
     };
   },
   
   // Get startup data with recent threads and tabs
   connectedData: (): AgentConnectedData => {
     // Get recent threads and current thread data
-    const { threads, currentThreadData } = getThreadsWithOptionalCurrent();
+    const { threads, currentThread } = getThreadsWithCurrent();
 
     // Initialize tabs array
     const tabs: Tab[] = [];
 
     // Add current thread tab if it has artifacts
-    if (currentThreadData?.id) {
+    if (currentThread?.id) {
       const artifacts = qx()
-        .relatedTo(currentThreadData.id)
+        .relatedTo(currentThread.id)
         .ofType(EARS.Entity.Artifact)
         .pick(['id', 'title', 'content', 'artifactType'] as const)
         .map(artifact => ({
@@ -236,7 +229,7 @@ export const agentQueries = {
           }
         })) as ArtifactItem[];
 
-      const threadTab = createTabFromThread(currentThreadData, artifacts);
+      const threadTab = createTabFromThread(currentThread, artifacts);
       if (threadTab) {
         tabs.push(threadTab);
       }
@@ -247,7 +240,7 @@ export const agentQueries = {
     const agentSettings = allSettings?.plugins?.agent;
 
     return {
-      currentThread: currentThreadData,
+      currentThread,
       threads,
       tabs,
       settings: agentSettings,
