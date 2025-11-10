@@ -19,12 +19,12 @@
         >
           Back
         </Button>
-        <Button 
+        <Button
           @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
           variant="primary"
         >
-          <MessageCircleMore class="w-4 h-4" />
-          <span>Open Chat</span>
+          <BotMessageSquare class="w-4 h-4" />
+          <span>View Chat</span>
         </Button>
       </div>
     </div>
@@ -63,9 +63,9 @@
                 @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option 
-                  v-for="statusOption in (settings?.statuses || [])" 
-                  :key="statusOption.label" 
+                <option
+                  v-for="statusOption in (settings?.statuses || [])"
+                  :key="statusOption.label"
                   :value="statusOption.label"
                 >
                   {{ statusOption.label }}
@@ -103,8 +103,8 @@
                 <div v-if="tags && tags.length > 0" class="flex items-center gap-1">
                   <span class="text-neutral-500 mr-1">•</span>
                   <div class="flex flex-wrap gap-1">
-                    <span 
-                      v-for="(tag, index) in tags.slice(0, 5)" 
+                    <span
+                      v-for="(tag, index) in tags.slice(0, 5)"
                       :key="tag"
                       :style="getTagStyles(tag)"
                       class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
@@ -118,7 +118,7 @@
                 </div>
               </div>
             </template>
-            <TagInput 
+            <TagInput
               :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
@@ -178,7 +178,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { MessageCircleMore, Plus } from 'lucide-vue-next'
+import { BotMessageSquare, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';

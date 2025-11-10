@@ -4,12 +4,12 @@ import canvas from '@/plugins/agent/canvas/canvas.vue';
 import panel from '@/plugins/agent/panel/panel.vue';
 import chat from '@/plugins/agent/chat/chat.vue';
 import settings from '@/plugins/agent/settings.vue';
-import { Inbox } from "lucide-vue-next";
+import { BotMessageSquare } from "lucide-vue-next";
 
 const agentPlugin: Plugin = {
   id,
   label: 'Agent',
-  icon: Inbox,
+  icon: BotMessageSquare,
   state,
   canvas,
   panel,
