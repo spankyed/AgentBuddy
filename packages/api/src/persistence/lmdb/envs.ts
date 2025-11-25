@@ -60,3 +60,16 @@ export function closeEnv(dbs: LmdbDbs): void {
     }
   }
 }
+
+/** Delete all LMDB database directories. Must be called after connections are closed. */
+export function deleteLmdbDirectories(paths: {
+  primary: string;
+  volatileBackup: string;
+  secrets: string;
+}): void {
+  for (const dbPath of [paths.primary, paths.volatileBackup, paths.secrets]) {
+    if (fs.existsSync(dbPath)) {
+      fs.rmSync(dbPath, { recursive: true, force: true });
+    }
+  }
+}

@@ -519,17 +519,17 @@ export const flowsCommands = {
   },
   
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    // Grant the root_flow role to the specified flow
-    tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
+    // Revoke from existing root flow if any
+    const currentRoot = qx().withRole(FLOW_ROLES.ROOT_FLOW).first();
+    if (currentRoot && currentRoot !== flowId) {
+      tx(currentRoot).revoke(FLOW_ROLES.ROOT_FLOW);
+    }
 
-    logger.info('Granted root_flow role to flow', { flowId });
+    tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
-    // Revoke the root_flow role from the specified flow
     tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
-
-    logger.info('Revoked root_flow role from flow', { flowId });
   },
 
   deleteFlow: (flowId: EARS.EntityId): void => {

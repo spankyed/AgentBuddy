@@ -16,8 +16,9 @@ import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
-import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
+import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
+import { flowsCommands } from '@/systems/flows/repository';
 
 const logger = createLogger('database');
 
@@ -60,6 +61,7 @@ export const IncomingDatabaseEvents = [
   busEvent('GET_BACKUP_INFO', {
     path: z.string(),
   }),
+  busEvent('RESET_DATABASE', {}),
 ] as const;
 
 export type DatabaseInternalEvents = 
@@ -82,7 +84,9 @@ export type OutgoingDatabaseEvents =
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }
   | { type: 'IMPORT_DATABASE_ERROR'; error: string }
-  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null };
+  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
+  | { type: 'RESET_DATABASE_SUCCESS'; message: string }
+  | { type: 'RESET_DATABASE_ERROR'; error: string };
 
 export interface DatabaseContext { }
 
@@ -319,19 +323,55 @@ export const databaseSystem = setup({
     },
     getBackupInfo: async ({ system, event }) => {
       const { path } = typeOf('GET_BACKUP_INFO', event);
-      
+
       try {
         const info = await getBackupInfo(path);
-        system.get(bus).send(emit(database, { 
+        system.get(bus).send(emit(database, {
           type: 'BACKUP_INFO_RESULT',
           info
         }));
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Failed to get backup info:', { error: errorMessage });
-        system.get(bus).send(emit(database, { 
+        system.get(bus).send(emit(database, {
           type: 'BACKUP_INFO_RESULT',
           info: null
+        }));
+      }
+    },
+    resetDatabase: async ({ system }) => {
+      try {
+        logger.info('Starting database reset...');
+
+        // Delete and recreate all LMDB files
+        await resetLmdbFiles();
+
+        // Create new root flow
+        const { flow, entryNode } = flowsCommands.createFlowWithEntryNode({
+          label: 'Root Flow',
+          description: 'The root flow of the application',
+        });
+        flowsCommands.grantRootFlowRole(flow.id);
+
+        logger.info('Database reset completed', { flowId: flow.id, entryNodeId: entryNode.id });
+
+        // Send success response and refresh
+        system.get(bus).send(emit(database, {
+          type: 'RESET_DATABASE_SUCCESS',
+          message: 'Database reset successfully. New root flow created.'
+        }));
+
+        system.get(bus).send(emit(database, {
+          type: 'DATABASE_REFRESH',
+          data: { schema: generateSchemaInfo() }
+        }));
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Database reset failed:', { error: errorMessage });
+
+        system.get(bus).send(emit(database, {
+          type: 'RESET_DATABASE_ERROR',
+          error: errorMessage
         }));
       }
     },
@@ -380,6 +420,9 @@ export const databaseSystem = setup({
         },
         GET_BACKUP_INFO: {
           actions: 'getBackupInfo',
+        },
+        RESET_DATABASE: {
+          actions: 'resetDatabase',
         },
       },
     },

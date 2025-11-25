@@ -24,6 +24,26 @@
       </div>
     </CollapsibleSection>
 
+    <!-- Danger Zone Section -->
+    <CollapsibleSection label="Danger Zone" :default-open="false" class="mb-8">
+      <div class="space-y-4">
+        <div class="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-red-900 dark:text-red-200 mb-2">
+            Reset Database
+          </h3>
+          <p class="text-xs text-red-700 dark:text-red-300 mb-4">
+            This will permanently delete all data from the database and create a new root flow. This action cannot be undone.
+          </p>
+          <button
+            @click="handleResetDatabase"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+          >
+            Reset Database
+          </button>
+        </div>
+      </div>
+    </CollapsibleSection>
+
     <!-- Save status will be managed by parent -->
   </div>
 </template>
@@ -33,6 +53,7 @@ import { reactive } from 'vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import type { DatabaseSettings } from '@app/api'
+import { applicationState } from '@/main'
 
 interface Props {
   settings?: DatabaseSettings
@@ -60,5 +81,17 @@ const saveHotkeys = () => {
     path: ['hotkeys'],
     value: hotkeys
   })
+}
+
+// Reset database function
+const handleResetDatabase = () => {
+  const confirmed = window.confirm(
+    'Are you sure you want to reset the database? This will permanently delete all data and create a new root flow. This action cannot be undone.'
+  )
+
+  if (confirmed) {
+    const databaseActor = applicationState.system.get('database')
+    databaseActor.send({ type: 'DATABASE.RESET' })
+  }
 }
 </script>

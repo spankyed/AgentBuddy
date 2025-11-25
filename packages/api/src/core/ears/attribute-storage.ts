@@ -7,7 +7,7 @@ import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationI
 import { EARS } from "../types";
 import { randomId } from "../utils/random-id";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/utils/paths";
-import { openShardedEnvs, closeShardedEnvs } from "@/persistence/lmdb/envs";
+import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
 import { makePolicy } from "@/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
@@ -57,27 +57,57 @@ export function closePersistence() {
   }
 }
 
-// Reinitialize LMDB after import
+// Reinitialize LMDB (close if needed, then reopen)
 export function reinitializeLmdb() {
-  // Always try to close (errors are ignored)
-  closePersistence();
+  if (envs !== null) {
+    closePersistence();
+  }
 
-  // Reopen environments
   envs = openShardedEnvs({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
     secrets: getSecretsLmdbPath(),
   });
 
-  // Recreate sinks
   sinks = {
     primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
     volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
     secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
   };
 
-  // Recreate persistence
   persistence = makeShardedPersistence(policy, sinks);
+}
+
+/**
+ * Reset LMDB by deleting and recreating all database directories.
+ * Follows pattern: null → close → delete → recreate
+ */
+export async function resetLmdbFiles() {
+  // Clear memory and null out envs to prevent new operations
+  clearMemory();
+  const currentEnvs = envs;
+  envs = null as any;
+
+  // Close connections
+  try {
+    persistence.close?.();
+    closeShardedEnvs(currentEnvs);
+  } catch (error) {
+    // Expected if already closed
+  }
+
+  // Wait for OS to release file handles
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Delete directories
+  deleteLmdbDirectories({
+    primary: getLmdbPath(),
+    volatileBackup: getVolatileLmdbPath(),
+    secrets: getSecretsLmdbPath(),
+  });
+
+  // Recreate fresh databases
+  reinitializeLmdb();
 }
 
 export const createEntity = (t: EARS.Entity) =>

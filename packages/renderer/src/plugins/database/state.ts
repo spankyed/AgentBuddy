@@ -51,7 +51,7 @@ export interface DatabaseContext {
   backupInfo: { timestamp: number; databases: string[]; size: number } | null;
 }
 
-type SystemEvent = OutgoingDatabaseEvents | 
+type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string } |
@@ -61,7 +61,9 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
   { type: 'IMPORT_DATABASE_ERROR'; error: string } |
-  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
+  { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null } |
+  { type: 'RESET_DATABASE_SUCCESS'; message: string } |
+  { type: 'RESET_DATABASE_ERROR'; error: string }
 
 type UIEvent =
   | { type: 'QUERY.EXECUTE'; code: string }
@@ -70,6 +72,7 @@ type UIEvent =
   | { type: 'QUERY.UPDATE'; code: string }
   | { type: 'DATABASE.SAVE_SNAPSHOT' }
   | { type: 'DATABASE.REFRESH_SCHEMA' }
+  | { type: 'DATABASE.RESET' }
   | { type: 'MODE.TOGGLE' }
   | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
   | { type: 'VIEW_MODE.TOGGLE' }
@@ -470,6 +473,25 @@ const databaseState = setup({
         backupInfo: ev.info,
       };
     }),
+
+    /* ── reset database actions ─────────────────────────── */
+    resetDatabase: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'RESET_DATABASE',
+      });
+    },
+
+    handleResetSuccess: () => {
+      window.location.reload();
+    },
+
+    handleResetError: assign(({ event }) => {
+      const ev = typeOf('RESET_DATABASE_ERROR', event);
+      return {
+        error: `Reset failed: ${ev.error}`,
+      };
+    }),
   },
 }).createMachine({
   id,
@@ -523,6 +545,9 @@ const databaseState = setup({
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
+    // Reset database events
+    RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
+    RESET_DATABASE_ERROR: { actions: 'handleResetError' },
   },
   states: {
     explorer: {
@@ -555,6 +580,9 @@ const databaseState = setup({
         },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],
+        },
+        'DATABASE.RESET': {
+          actions: 'resetDatabase',
         },
         'VIEW_MODE.TOGGLE': {
           actions: ['toggleViewMode', 'requestTraceFlows'],
