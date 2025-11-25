@@ -42,23 +42,11 @@ export async function dbQuery(params: any, services: typeof Services) {
       model: { provider: 'openai', model: 'gpt-5-nano-2025-08-07' },
       schema: MessageClassificationSchema,
       "reasoning_effort": "minimal",
-      prompt: `Analyze the following message and determine if it's a query (read operation) or transaction (mutation/write operation):
-
-      A query is any operation that reads or retrieves data without modifying it.
-      A transaction is any operation that creates, updates, or deletes data.
-
-      <queryExamples>
-  ${queryExamples}
-      </queryExamples>
-      
-      <transactionExamples>
-  ${transactionExamples}
-      </transactionExamples>
-
-  Message: "${dbPrompt}"
-
-  Please classify the message as either a query or a transaction.
-`,
+      prompt: services.prompt.usePrompt('db-query-classification')({
+        queryExamples,
+        transactionExamples,
+        dbPrompt
+      }),
       temperature: 0.3,
     });
 
@@ -83,13 +71,9 @@ export async function dbQuery(params: any, services: typeof Services) {
       },
       "reasoning_effort": "minimal",
       prompt: dbPrompt,
-      system: `
-        <examples>
-        ${selectedDoc}
-        </examples>
-
-        Use the provided examples to write the code to satisfy the user message. Only respond with code (no codeblock backticks).
-      `,
+      system: services.prompt.usePrompt('db-query-examples')({
+        selectedDoc
+      }),
       temperature: 0.7,
       maxTokens: 1000,
     });

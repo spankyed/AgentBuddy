@@ -4,7 +4,7 @@ import { repository } from '@/repository';
 import type { PromptEntity } from '@/systems/prompts/types';
 
 export class PromptService {
-  async getByLabel(label: string): Promise<PromptEntity | undefined> {
+  getByLabel(label: string) {
     return repository.promptQueries.byLabel(label);
   }
 
@@ -26,11 +26,11 @@ export class PromptService {
    * @param label - The prompt label
    * @param templateParams - Parameters to pass to the template
    */
-  async usePrompt(
+  usePrompt(
     label: string, 
     templateParams: Record<string, any>
-  ): Promise<string | undefined> {
-    const prompt = await this.getByLabel(label);
+  ) {
+    const prompt = this.getByLabel(label);
     if (!prompt) {
       return undefined;
     }

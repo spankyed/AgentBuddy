@@ -8,16 +8,16 @@ function getServices() {
 }
 
 export class ActionService {
-  async getById(id: EARS.EntityId): Promise<ActionEntity | undefined> {
+  getById(id: EARS.EntityId) {
     return repository.actionQueries.byId(id);
   }
 
-  async getByLabel(label: string): Promise<ActionEntity | undefined> {
+  getByLabel(label: string) {
     const allActions = repository.actionQueries.all();
     return allActions.find(action => action.label === label);
   }
 
-  async getByCategory(category: string): Promise<ActionEntity[]> {
+  getByCategory(category: string) {
     return repository.actionQueries.byCategory(category);
   }
 
@@ -33,7 +33,7 @@ export class ActionService {
   }
 
   async getAndExecute(label: string, params: Record<string, any> = {}): Promise<any | undefined> {
-    const action = await this.getByLabel(label);
+    const action = this.getByLabel(label);
     if (!action) {
       return undefined;
     }
