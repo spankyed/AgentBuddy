@@ -18,6 +18,7 @@ import type {
 import { availableModels } from '../config/available-models';
 import { createNodeDefaults } from '../config/node-config';
 import { repository } from '@/repository';
+import { settingsCommands } from '@/systems/settings/repository';
 
 const logger = createLogger('flows-repository');
 
@@ -526,6 +527,7 @@ export const flowsCommands = {
     }
 
     tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
+    settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
