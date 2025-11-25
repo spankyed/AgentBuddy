@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div class="flex flex-col h-full bg-neutral-900" @keydown="handleKeydown">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div>
@@ -202,6 +202,13 @@ const isValid = computed(() => {
 function handleSave() {
   if (isValid.value) {
     emit('save');
+  }
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault();
+    handleSave();
   }
 }
 
