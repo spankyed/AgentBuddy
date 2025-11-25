@@ -353,6 +353,9 @@ export const databaseSystem = setup({
         });
         flowsCommands.grantRootFlowRole(flow.id);
 
+        // Restart the brain with the new root flow
+        getActor(system, brain).send({ type: 'RESTART_BRAIN' });
+
         logger.info('Database reset completed', { flowId: flow.id, entryNodeId: entryNode.id });
 
         // Send success response and refresh
