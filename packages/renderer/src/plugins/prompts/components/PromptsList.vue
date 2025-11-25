@@ -69,7 +69,7 @@
                       class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800/50 text-neutral-400 border border-neutral-700 whitespace-nowrap flex-shrink-0"
                       :title="input[1].description || ''"
                     >
-                      {{ input[0] }}
+                      {{ input[1].name || input[0] }}
                     </span>
                     <span
                       v-if="Object.keys(prompt.inputs || {}).length > 2"

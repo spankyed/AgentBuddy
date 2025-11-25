@@ -1,81 +1,22 @@
 <template>
-  <div class="space-y-4">
+  <div class="space-y-2">
     <!-- Existing Parameters -->
-    <div v-if="parameterEntries.length > 0" class="space-y-3">
-      <div
+    <div v-if="parameterEntries.length > 0" class="space-y-2">
+      <ParameterRow
         v-for="(entry, index) in parameterEntries"
         :key="`param-${index}-${entry.stableId}`"
-        class="p-4 transition-all duration-200 border rounded-md bg-neutral-800/50 border-neutral-700 hover:border-neutral-600"
-      >
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex-1 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block mb-1 text-xs font-medium text-neutral-400">Key</label>
-                <input
-                  :value="entry.key"
-                  @input="updateParameterKey(entry.key, ($event.target as HTMLInputElement).value)"
-                  type="text"
-                  class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                  placeholder="Parameter key"
-                />
-              </div>
-              <div>
-                <label class="block mb-1 text-xs font-medium text-neutral-400">Type</label>
-                <select
-                  :value="entry.param.type"
-                  @change="updateParameter(entry.key, { ...entry.param, type: ($event.target as HTMLSelectElement).value as any })"
-                  class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="string">String</option>
-                  <option value="number">Number</option>
-                  <option value="boolean">Boolean</option>
-                  <option value="object">Object</option>
-                  <option value="array">Array</option>
-                  <option value="any">Any</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="block mb-1 text-xs font-medium text-neutral-400">Description</label>
-              <input
-                :value="entry.param.description || ''"
-                @input="updateParameter(entry.key, { ...entry.param, description: ($event.target as HTMLInputElement).value })"
-                type="text"
-                class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                placeholder="Parameter description"
-              />
-            </div>
-            <div class="flex items-center gap-4">
-              <label class="flex items-center gap-2 text-sm text-neutral-400">
-                <input
-                  type="checkbox"
-                  :checked="entry.param.required !== false"
-                  @change="updateParameter(entry.key, { ...entry.param, required: ($event.target as HTMLInputElement).checked })"
-                  class="rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
-                />
-                Required
-              </label>
-              <div v-if="entry.param.type !== 'boolean' && !entry.param.required" class="flex-1">
-                <input
-                  :value="entry.param.default || ''"
-                  @input="updateParameter(entry.key, { ...entry.param, default: ($event.target as HTMLInputElement).value })"
-                  type="text"
-                  class="w-full px-3 py-2 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                  placeholder="Default value"
-                />
-              </div>
-            </div>
-          </div>
-          <button
-            @click="removeParameter(entry.key)"
-            class="p-2 transition-colors rounded-md hover:bg-neutral-700"
-            title="Remove parameter"
-          >
-            <X class="w-4 h-4 text-neutral-400" />
-          </button>
-        </div>
-      </div>
+        :param-key="entry.key"
+        :type="entry.param.type"
+        :required="entry.param.required === true"
+        :description="entry.param.description"
+        :expanded="expandedParams.has(entry.key)"
+        @update:key="updateParameterKey(entry.key, $event)"
+        @update:type="updateParameter(entry.key, { ...entry.param, type: $event as any })"
+        @update:required="updateParameter(entry.key, { ...entry.param, required: $event })"
+        @update:description="updateParameter(entry.key, { ...entry.param, description: $event })"
+        @update:expanded="toggleExpanded(entry.key)"
+        @remove="removeParameter(entry.key)"
+      />
     </div>
 
     <!-- Add Parameter Button -->
@@ -98,9 +39,10 @@
 </template>
 
 <script setup lang="ts">
-import { Plus, X, Code } from 'lucide-vue-next';
+import { Plus, Code } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import type { ActionParameter } from '@app/api';
+import ParameterRow from '@/core/components/design/ParameterRow.vue';
 
 const props = defineProps<{
   parameters: Record<string, ActionParameter>;
@@ -112,6 +54,17 @@ const emit = defineEmits<{
 
 // Create stable IDs for each parameter to prevent focus loss
 const parameterIdMap = ref<Map<string, string>>(new Map());
+
+// Track which parameters are expanded
+const expandedParams = ref<Set<string>>(new Set());
+
+function toggleExpanded(key: string) {
+  if (expandedParams.value.has(key)) {
+    expandedParams.value.delete(key);
+  } else {
+    expandedParams.value.add(key);
+  }
+}
 
 const parameterEntries = computed(() => {
   return Object.entries(props.parameters).map(([key, param]) => {
@@ -176,8 +129,8 @@ function addParameter() {
   const updated = {
     ...props.parameters,
     [newKey]: {
-      type: 'string' as const,
-      required: true,
+      type: 'any' as const,
+      required: false,
       description: ''
     }
   };
