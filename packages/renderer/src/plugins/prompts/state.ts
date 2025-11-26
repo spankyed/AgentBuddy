@@ -54,6 +54,8 @@ type UIEvent =
   | { type: 'PROMPT.SAVE' }
   | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
   | { type: 'PROMPT.UPDATE_INPUTS'; promptId: string; inputs: Record<string, any> }
+  | { type: 'PROMPT.CREATE_INLINE'; label: string; templateFn: string; inputs: Record<string, any> }
+  | { type: 'PROMPT.UPDATE_LABEL'; promptId: string; label: string }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
@@ -171,6 +173,27 @@ const promptsState = setup({
         type: 'UPDATE_PROMPT',
         promptId: ev.promptId,
         inputs: ev.inputs,
+      });
+    },
+
+    createPromptInline: ({ event }) => {
+      const ev = typeOf('PROMPT.CREATE_INLINE', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_PROMPT',
+        label: ev.label,
+        templateFn: ev.templateFn,
+        inputs: ev.inputs,
+      });
+    },
+
+    updatePromptLabel: ({ event }) => {
+      const ev = typeOf('PROMPT.UPDATE_LABEL', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_PROMPT',
+        promptId: ev.promptId,
+        label: ev.label,
       });
     },
 
@@ -362,6 +385,8 @@ const promptsState = setup({
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
     'PROMPT.UPDATE_INPUTS': { actions: 'updatePromptInputs' },
+    'PROMPT.CREATE_INLINE': { actions: 'createPromptInline' },
+    'PROMPT.UPDATE_LABEL': { actions: 'updatePromptLabel' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],

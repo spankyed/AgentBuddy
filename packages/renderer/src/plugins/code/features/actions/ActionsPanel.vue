@@ -8,7 +8,7 @@
       </div>
       <div class="flex items-center gap-1">
         <button
-          @click="goToCreateAction"
+          @click="createActionInline"
           class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Create new action"
         >
@@ -49,9 +49,22 @@
           >
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium truncate text-neutral-200" :title="action.description">
-                  {{ action.label }}
-                </div>
+                <template v-if="editingNameForAction === action.id">
+                  <input
+                    v-model="editedName"
+                    :data-edit-name="action.id"
+                    @keydown.enter.stop="confirmEditName(action)"
+                    @keydown.escape.stop="cancelEditName"
+                    @blur="confirmEditName(action)"
+                    @click.stop
+                    class="text-sm font-medium bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200 w-full"
+                  />
+                </template>
+                <template v-else>
+                  <div class="text-sm font-medium truncate text-neutral-200" :title="action.description">
+                    {{ action.label }}
+                  </div>
+                </template>
                 <div class="mt-1 space-y-1">
                   <!-- Input Parameters -->
                   <div v-if="action.input && Object.keys(action.input).length > 0" class="flex flex-wrap gap-1">
@@ -148,6 +161,10 @@
 
         <ContextMenuPortal>
           <ContextMenuContent :class="MENU_CONTENT_CLASS">
+            <ContextMenuItem @select="startEditName(action)" :class="MENU_ITEM_CLASS">
+              <Pencil :size="16" />
+              Edit Name
+            </ContextMenuItem>
             <ContextMenuItem @select="startAddParameter(action)" :class="MENU_ITEM_CLASS">
               <Plus :size="16" />
               Add Parameter
@@ -190,7 +207,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
-import { RefreshCw, Play, ExternalLink, Plus, X } from 'lucide-vue-next'
+import { RefreshCw, Play, ExternalLink, Plus, X, Pencil } from 'lucide-vue-next'
 import type { ActionEntity, ActionParameter } from '@app/api'
 import {
   ContextMenuRoot,
@@ -219,6 +236,10 @@ const addingParameterForAction = ref<string | null>(null)
 const newParameterName = ref('')
 const editingParameter = ref<{ actionId: string, key: string } | null>(null)
 const editedParameterName = ref('')
+
+// State for editing name
+const editingNameForAction = ref<string | null>(null)
+const editedName = ref('')
 
 function startAddParameter(action: ActionEntity) {
   addingParameterForAction.value = action.id
@@ -305,6 +326,36 @@ function removeParameter(action: ActionEntity, key: string) {
   }
 }
 
+function startEditName(action: ActionEntity) {
+  editingNameForAction.value = action.id
+  editedName.value = action.label
+  nextTick(() => {
+    const input = document.querySelector(`[data-edit-name="${action.id}"]`) as HTMLInputElement
+    input?.focus()
+    input?.select()
+  })
+}
+
+function confirmEditName(action: ActionEntity) {
+  if (editingNameForAction.value && editedName.value.trim()) {
+    const newName = editedName.value.trim()
+    if (newName !== action.label) {
+      actionsPluginActor.send({
+        type: 'ACTION.UPDATE_LABEL',
+        actionId: action.id,
+        label: newName
+      })
+    }
+  }
+  editingNameForAction.value = null
+  editedName.value = ''
+}
+
+function cancelEditName() {
+  editingNameForAction.value = null
+  editedName.value = ''
+}
+
 // Event handlers
 const selectAction = (action: ActionEntity) => {
   codeActionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: action.id })
@@ -321,15 +372,14 @@ const goToAction = (action: ActionEntity) => {
   }
 }
 
-const goToCreateAction = () => {
-  // Switch to actions plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' })
-
-  // Navigate to create view in the actions plugin
-  const actionsPluginActor = applicationState.system.get('actions')
-  if (actionsPluginActor) {
-    actionsPluginActor.send({ type: 'ACTION.CREATE' })
-  }
+const createActionInline = () => {
+  const defaultLabel = `New Action ${actions.value.length + 1}`
+  actionsPluginActor.send({
+    type: 'ACTION.CREATE_INLINE',
+    label: defaultLabel,
+    actionFn: '// Your action function body here\nreturn { success: true };',
+    input: {},
+  })
 }
 
 const refreshActions = () => {

@@ -8,7 +8,7 @@
       </div>
       <div class="flex items-center gap-1">
         <button
-          @click="goToCreatePrompt"
+          @click="createPromptInline"
           class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Create new prompt"
         >
@@ -49,9 +49,22 @@
           >
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium truncate text-neutral-200" :title="prompt.description">
-                  {{ prompt.label }}
-                </div>
+                <template v-if="editingNameForPrompt === prompt.id">
+                  <input
+                    v-model="editedName"
+                    :data-edit-name="prompt.id"
+                    @keydown.enter.stop="confirmEditName(prompt)"
+                    @keydown.escape.stop="cancelEditName"
+                    @blur="confirmEditName(prompt)"
+                    @click.stop
+                    class="text-sm font-medium bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200 w-full"
+                  />
+                </template>
+                <template v-else>
+                  <div class="text-sm font-medium truncate text-neutral-200" :title="prompt.description">
+                    {{ prompt.label }}
+                  </div>
+                </template>
                 <div class="mt-1 space-y-1">
                   <!-- Input Parameters -->
                   <div v-if="prompt.inputs && Object.keys(prompt.inputs).length > 0" class="flex flex-wrap gap-1">
@@ -148,6 +161,10 @@
 
         <ContextMenuPortal>
           <ContextMenuContent :class="MENU_CONTENT_CLASS">
+            <ContextMenuItem @select="startEditName(prompt)" :class="MENU_ITEM_CLASS">
+              <Pencil :size="16" />
+              Edit Name
+            </ContextMenuItem>
             <ContextMenuItem @select="startAddParameter(prompt)" :class="MENU_ITEM_CLASS">
               <Plus :size="16" />
               Add Parameter
@@ -190,7 +207,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
-import { RefreshCw, Sparkle, ExternalLink, Plus, X } from 'lucide-vue-next'
+import { RefreshCw, Sparkle, ExternalLink, Plus, X, Pencil } from 'lucide-vue-next'
 import type { PromptEntity, TemplateInput } from '@app/api'
 import {
   ContextMenuRoot,
@@ -219,6 +236,10 @@ const addingParameterForPrompt = ref<string | null>(null)
 const newParameterName = ref('')
 const editingParameter = ref<{ promptId: string, key: string } | null>(null)
 const editedParameterName = ref('')
+
+// State for editing name
+const editingNameForPrompt = ref<string | null>(null)
+const editedName = ref('')
 
 function startAddParameter(prompt: PromptEntity) {
   addingParameterForPrompt.value = prompt.id
@@ -312,6 +333,36 @@ function removeParameter(prompt: PromptEntity, key: string) {
   }
 }
 
+function startEditName(prompt: PromptEntity) {
+  editingNameForPrompt.value = prompt.id
+  editedName.value = prompt.label
+  nextTick(() => {
+    const input = document.querySelector(`[data-edit-name="${prompt.id}"]`) as HTMLInputElement
+    input?.focus()
+    input?.select()
+  })
+}
+
+function confirmEditName(prompt: PromptEntity) {
+  if (editingNameForPrompt.value && editedName.value.trim()) {
+    const newName = editedName.value.trim()
+    if (newName !== prompt.label) {
+      promptsPluginActor.send({
+        type: 'PROMPT.UPDATE_LABEL',
+        promptId: prompt.id,
+        label: newName
+      })
+    }
+  }
+  editingNameForPrompt.value = null
+  editedName.value = ''
+}
+
+function cancelEditName() {
+  editingNameForPrompt.value = null
+  editedName.value = ''
+}
+
 // Event handlers
 const selectPrompt = (prompt: PromptEntity) => {
   codePromptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: prompt.id })
@@ -328,15 +379,14 @@ const goToPrompt = (prompt: PromptEntity) => {
   }
 }
 
-const goToCreatePrompt = () => {
-  // Switch to prompts plugin
-  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'prompts' })
-
-  // Navigate to create view in the prompts plugin
-  const promptsPluginActor = applicationState.system.get('prompts')
-  if (promptsPluginActor) {
-    promptsPluginActor.send({ type: 'PROMPT.CREATE' })
-  }
+const createPromptInline = () => {
+  const defaultLabel = `New Prompt ${prompts.value.length + 1}`
+  promptsPluginActor.send({
+    type: 'PROMPT.CREATE_INLINE',
+    label: defaultLabel,
+    templateFn: '// Your template function body here\nreturn `Your prompt template`;',
+    inputs: {},
+  })
 }
 
 const refreshPrompts = () => {

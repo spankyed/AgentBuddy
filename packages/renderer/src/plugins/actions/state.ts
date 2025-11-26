@@ -54,6 +54,8 @@ type UIEvent =
   | { type: 'ACTION.SAVE' }
   | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
   | { type: 'ACTION.UPDATE_INPUT'; actionId: string; input: Record<string, any> }
+  | { type: 'ACTION.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, any> }
+  | { type: 'ACTION.UPDATE_LABEL'; actionId: string; label: string }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
@@ -171,6 +173,27 @@ const actionsState = setup({
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         input: ev.input,
+      });
+    },
+
+    createActionInline: ({ event }) => {
+      const ev = typeOf('ACTION.CREATE_INLINE', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_ACTION',
+        label: ev.label,
+        actionFn: ev.actionFn,
+        input: ev.input,
+      });
+    },
+
+    updateActionLabel: ({ event }) => {
+      const ev = typeOf('ACTION.UPDATE_LABEL', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_ACTION',
+        actionId: ev.actionId,
+        label: ev.label,
       });
     },
 
@@ -362,6 +385,8 @@ const actionsState = setup({
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
     'ACTION.UPDATE_INPUT': { actions: 'updateActionInput' },
+    'ACTION.CREATE_INLINE': { actions: 'createActionInline' },
+    'ACTION.UPDATE_LABEL': { actions: 'updateActionLabel' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],
