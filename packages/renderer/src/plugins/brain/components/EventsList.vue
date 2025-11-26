@@ -30,7 +30,7 @@
             <div class="flex items-center gap-2 text-xs text-neutral-500">
               <span class="font-mono">{{ event.eventType }}</span>
               <span class="text-neutral-600">•</span>
-              <span class="capitalize">{{ event.mode }}</span>
+              <span class="capitalize">{{ event.scope }}</span>
             </div>
           </div>
           <div class="relative flex items-center justify-center flex-shrink-0 w-5 h-5 transition-all duration-300 rounded"

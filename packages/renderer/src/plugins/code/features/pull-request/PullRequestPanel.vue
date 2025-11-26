@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 pr-header">
       <div class="flex items-center gap-2">
         <GitPullRequest :size="16" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
@@ -10,14 +10,14 @@
         <template v-if="prFiles.length > 0">
           <button
             @click="expandAll"
-            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Expand all folders"
           >
             <UnfoldVertical :size="16" />
           </button>
           <button
             @click="collapseAll"
-            class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Collapse all folders"
           >
             <FoldVertical :size="16" />
@@ -26,7 +26,7 @@
         <button
           @click="refreshStatus"
           :disabled="isPrLoading"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Refresh PR changes"
         >
           <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
@@ -34,14 +34,33 @@
       </div>
     </div>
 
-    <!-- Show only error if no directory selected -->
-    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
+    <!-- Show friendly empty state if no git repository -->
+    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+      <GitPullRequest :size="48" class="mb-4 text-neutral-600" />
+      <h3 class="mb-2 text-base font-medium text-neutral-300">No Git Repository</h3>
+      <p class="max-w-xs text-sm text-neutral-500">
+        Open a folder with a git repository to create and view pull requests
+      </p>
+    </div>
+
+    <!-- Show error if no directory selected -->
+    <div v-else-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
       <div class="text-sm text-red-400">{{ prError }}</div>
     </div>
 
-    <!-- Show normal UI only when directory is selected -->
+    <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
-      <div v-if="prError" class="error-state">
+      <!-- Show friendly empty state if cannot determine base branch -->
+      <div v-if="isNoBaseBranchError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+        <GitBranch :size="48" class="mb-4 text-neutral-600" />
+        <h3 class="mb-2 text-base font-medium text-neutral-300">Cannot Determine Base Branch</h3>
+        <p class="max-w-sm text-sm text-neutral-500">
+          Unable to determine the base branch for comparison. This usually happens when the repository doesn't have a default branch configured or you're on an orphaned branch.
+        </p>
+      </div>
+
+      <!-- Generic error state for other errors -->
+      <div v-else-if="prError" class="error-state">
         <AlertCircle class="w-4 h-4 text-red-500" />
         <span class="text-sm text-red-500">{{ prError }}</span>
       </div>
@@ -67,7 +86,7 @@
           </span>
         </div>
 
-        <FileTree 
+        <FileTree
           :files="prFiles"
           :all-collapsed="allCollapsed"
           :all-expanded="allExpanded"
@@ -102,8 +121,17 @@ const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 
 // Computed
-const isNoDirectoryError = computed(() => 
+const isNoDirectoryError = computed(() =>
   prError.value?.includes('No directory selected')
+)
+
+const isNoGitRepoError = computed(() =>
+  prError.value?.includes('not a git repository') ||
+  prError.value?.includes('Not a git repository')
+)
+
+const isNoBaseBranchError = computed(() =>
+  prError.value?.includes('Could not determine PR base branch')
 )
 
 // Actions
@@ -135,13 +163,13 @@ interface TreeNode {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-  
+
   const gitFile: GitStatusFile = {
     path: file.path,
     status: file.status,
     staged: false
   }
-  
+
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
@@ -177,5 +205,10 @@ const handleFileSelect = (file: TreeNode) => {
   padding: 0.5rem 1rem;
   background-color: #0a0a0a;
   border-bottom: 1px solid #27272a;
+}
+
+/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
+.pr-header > * {
+  -webkit-app-region: no-drag;
 }
 </style>

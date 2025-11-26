@@ -64,10 +64,9 @@ export interface FireNode extends NodeBase {
 
 export interface ListenNode extends NodeBase {
   nodeType: 'listen';
-  mode: 'entry' | 'internal';
+  scope: 'global' | 'local' | 'entry'; // global=anywhere, local=current flow, entry=flow entry point
   eventType: string;
-  debounceMs?: number;                // entry only
-  scope?: 'local' | 'global';         // internal only
+  debounceMs?: number;                // optional debounce for global and local scopes
 }
 
 export interface TransformNode extends NodeBase {

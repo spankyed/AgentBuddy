@@ -9,6 +9,8 @@ import * as browser from './browser';
 import { repositoryService } from './repository';
 import { settingsService } from './settings';
 import { createTextStreamService } from './text-stream';
+import * as chat from './chat';
+import * as artifact from './artifact';
 
 const services = {
   logger: loggerService,
@@ -22,6 +24,8 @@ const services = {
   repository: repositoryService,
   settings: settingsService,
   textStream: createTextStreamService(),
+  chat,
+  artifact,
 }
 
 export default services;

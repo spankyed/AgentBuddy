@@ -48,6 +48,7 @@ export const IncomingThreadsEvents = [
     key: z.string(),
     value: z.any(),
   }),
+  busEvent('DELETE_THREAD', { threadId: z.string() }),
 ] as const
 
 export type ThreadsInternalEvents = 
@@ -56,11 +57,12 @@ export type ThreadsInternalEvents =
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   
 
-export type OutgoingThreadsEvents = 
+export type OutgoingThreadsEvents =
   | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
   | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
+  | { type: 'THREAD_DELETED', threadId: string }
 
 export interface ThreadsContext {}
 
@@ -120,7 +122,10 @@ export const threadsSystem = setup({
     sendViewData: ({ system, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
-      system.get(bus).send(emit(threads, { 
+      // Mark thread as visited
+      repository.threadCommands.markAsVisited(threadId);
+
+      system.get(bus).send(emit(threads, {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),
@@ -131,18 +136,14 @@ export const threadsSystem = setup({
       const updates = { [key]: value };
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
-      // If status was updated, emit events and refresh dashboard
+      // If status was updated, emit event
       if (key === 'status') {
         // Emit status update event to threads plugin
-        system.get(bus).send(emit(threads, { 
+        system.get(bus).send(emit(threads, {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
         }));
-        
-        // Trigger dashboard refresh in agent system
-        const agentActor = system.get(agent);
-        agentActor.send({ type: 'REFRESH_DASHBOARD' });
       }
     },
     updateThreadStatus: ({ system, event }) => {
@@ -154,15 +155,11 @@ export const threadsSystem = setup({
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
       
       // Emit status update event to threads plugin
-      system.get(bus).send(emit(threads, { 
+      system.get(bus).send(emit(threads, {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
       }));
-      
-      // Trigger dashboard refresh in agent system
-      const agentActor = system.get(agent);
-      agentActor.send({ type: 'REFRESH_DASHBOARD' });
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
@@ -229,8 +226,22 @@ export const threadsSystem = setup({
           })
         );
       }
+    },
+    deleteThread: ({ system, event }) => {
+      const { threadId } = typeOf('DELETE_THREAD', event);
 
-      system.get(agent).send({ type: 'REFRESH_DASHBOARD' });
+      // Delete the thread and all its related data
+      repository.threadCommands.delete(threadId as EARS.EntityId);
+
+      // Emit thread deleted event to threads plugin
+      system.get(bus).send(emit(threads, {
+        type: 'THREAD_DELETED',
+        threadId,
+      }));
+
+      // Notify agent system if this was the active thread
+      const agentActor = system.get(agent);
+      agentActor.send({ type: 'THREAD_DELETED', threadId });
     },
   },
 }).createMachine(
@@ -260,6 +271,9 @@ export const threadsSystem = setup({
           },
           UPDATE_THREAD_STATUS: {
             actions: 'updateThreadStatus',
+          },
+          DELETE_THREAD: {
+            actions: 'deleteThread',
           },
         },
       },

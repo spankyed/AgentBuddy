@@ -447,9 +447,9 @@ const cancelNewCustom = () => {
 }
 
 const openProviderUrl = (url: string) => {
-  if (window.electron) {
+  if (window.electronAPI?.shell) {
     // Use Electron's shell API to open external links
-    window.electron.shell.openExternal(url)
+    window.electronAPI.shell.openExternal(url)
   } else {
     // Fallback for web environment
     window.open(url, '_blank')

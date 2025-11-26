@@ -30,7 +30,8 @@ export interface PromptsContext {
   totalPages: number;
   totalCount: number;
   categories: Category[]; // Categories from settings
-  
+  selectedCategories: string[]; // Filter state
+
   // Form data for create/edit
   formData: {
     label: string;
@@ -52,6 +53,7 @@ type UIEvent =
   | { type: 'PROMPT.CREATE' }
   | { type: 'PROMPT.SAVE' }
   | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
+  | { type: 'PROMPT.UPDATE_INPUTS'; promptId: string; inputs: Record<string, any> }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
@@ -64,6 +66,8 @@ type UIEvent =
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
+  | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
+  | { type: 'FILTER.CLEAR' }
 
 export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<PromptsEvents>()
@@ -157,6 +161,16 @@ const promptsState = setup({
         systemId: id,
         type: 'DELETE_PROMPT',
         promptId: ev.promptId,
+      });
+    },
+
+    updatePromptInputs: ({ event }) => {
+      const ev = typeOf('PROMPT.UPDATE_INPUTS', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_PROMPT',
+        promptId: ev.promptId,
+        inputs: ev.inputs,
       });
     },
 
@@ -285,6 +299,23 @@ const promptsState = setup({
         },
       };
     }),
+
+    /* ── filter actions ──────────────────────────────────── */
+    toggleCategoryFilter: assign(({ event, context }) => {
+      const ev = typeOf('FILTER.TOGGLE_CATEGORY', event);
+      const categoryName = ev.categoryName;
+      const isSelected = context.selectedCategories.includes(categoryName);
+
+      return {
+        selectedCategories: isSelected
+          ? context.selectedCategories.filter(c => c !== categoryName)
+          : [...context.selectedCategories, categoryName]
+      };
+    }),
+
+    clearCategoryFilters: assign({
+      selectedCategories: []
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -298,6 +329,7 @@ const promptsState = setup({
     totalPages: 1,
     totalCount: 0,
     categories: [], // Will be populated from settings
+    selectedCategories: [], // Filter state
     formData: {
       label: '',
       description: '',
@@ -314,19 +346,22 @@ const promptsState = setup({
     PROMPTS_CONNECTED: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
     PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
-    PROMPT_CREATED: { 
+    PROMPT_CREATED: {
       actions: 'addCreatedPrompt'
     },
-    PROMPT_UPDATED: { 
+    PROMPT_UPDATED: {
       actions: 'updatePromptInList'
     },
-    PROMPT_DELETED: { 
+    PROMPT_DELETED: {
       actions: 'removeDeletedPrompt',
       target: '.list'
     },
     TOGGLE_INPUTS_SECTION: { actions: 'toggleInputsSection' },
     TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
+    'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
+    'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
+    'PROMPT.UPDATE_INPUTS': { actions: 'updatePromptInputs' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],

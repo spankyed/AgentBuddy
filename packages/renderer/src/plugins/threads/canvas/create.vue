@@ -2,12 +2,15 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">Create Thread</h2>
-        <p class="text-xs text-neutral-400">
-          <span v-if="parentThread">Creating as child of {{ parentThread.shortCode }} - {{ parentThread.topic || 'Untitled' }}</span>
-          <span v-else>Add a new work thread for the agent</span>
-        </p>
+      <div class="flex items-center gap-3">
+        <BackButton @click="actor.send({ type: 'CANCEL_CREATE' })" />
+        <div>
+          <h2 class="text-base font-semibold text-neutral-100">Create Thread</h2>
+          <p class="text-xs text-neutral-400">
+            <span v-if="parentThread">Creating as child of {{ parentThread.shortCode }} - {{ parentThread.topic || 'Untitled' }}</span>
+            <span v-else>Add a new work thread for the agent</span>
+          </p>
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <Button
@@ -139,6 +142,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEditFields } from '@app/api'
 import Button from '@/core/components/design/button.vue';
+import BackButton from '@/core/components/design/back-button.vue';
 import TagInput from '@/core/components/design/tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';

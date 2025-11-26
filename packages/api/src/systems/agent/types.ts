@@ -12,17 +12,25 @@ export type AgentThreadData = {
   timestamp: ThreadEntity['timestamp'];
   messages: ThreadExtendedData['messages'];
   artifacts: ArtifactEntity[];
+  forcedMode?: ThreadEntity['forcedMode'];
 }
 
 export type RecentThreadRefreshData = {
-  currentThread: AgentThreadData | null;
-  threads: Partial<ThreadEntity>[];
+  recentThreads: Partial<ThreadEntity>[];
 };
+
+export interface AgentPhase {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export interface AgentMode {
   id: string;
   name: string;
   description: string;
+  phases?: AgentPhase[];
+  hidden?: boolean; // For modes that shouldn't appear in selector (e.g., birth)
 }
 
 export interface AgentSettings {
@@ -37,9 +45,9 @@ export interface AgentSettings {
 export type AgentConnectedData = {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
-  dashboardArtifacts: Partial<ArtifactEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
+  hasRequiredApiKeys: boolean;
 };
 
 // UI types for agent canvas
@@ -55,9 +63,9 @@ export type ArtifactType =
   | 'code'
   | 'review'
   | 'image'
-  | 'kanban'
   | 'slack'
-  | 'todo';
+  | 'todo'
+  | 'workspace';
 
 export interface ArtifactItem {
   id: string;

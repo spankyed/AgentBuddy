@@ -23,7 +23,7 @@ defineEmits<{
 }>();
 
 const props = defineProps<{
-  variant?: 'primary' | 'secondary' | 'transparent'
+  variant?: 'primary' | 'secondary' | 'transparent' | 'ghost' | 'danger'
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
   class?: string
@@ -39,6 +39,10 @@ const variantClasses = computed(() => {
         return 'bg-gray-500 text-gray-800 cursor-not-allowed'
       case 'transparent':
         return 'bg-transparent text-neutral-500 cursor-not-allowed'
+      case 'ghost':
+        return 'bg-transparent text-neutral-500 cursor-not-allowed'
+      case 'danger':
+        return 'bg-red-900 text-red-300 cursor-not-allowed'
       default:
         return 'bg-gray-600 text-gray-300 cursor-not-allowed'
     }
@@ -48,6 +52,10 @@ const variantClasses = computed(() => {
       return 'bg-gray-300 text-gray-800 hover:bg-gray-200 active:bg-primary-400'
     case 'transparent':
       return 'bg-transparent text-neutral-200 hover:bg-neutral-700 hover:text-white'
+    case 'ghost':
+      return 'bg-transparent text-neutral-300 hover:bg-neutral-700 hover:text-white'
+    case 'danger':
+      return 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800'
     default:
       return 'bg-blue-600 hover:bg-blue-700 text-white active:bg-primary-600'
   }

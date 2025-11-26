@@ -21,7 +21,7 @@ export interface Context {
   prDiff: GitDiff | null
 }
 
-export type Event = 
+export type Event =
   | { type: 'pr.REFRESH_STATUS' }
   | { type: 'pr.SELECT_FILE'; file: GitStatusFile }
   | { type: 'pr.VIEW_DIFF'; path: string }
@@ -41,36 +41,36 @@ export const pullRequestState = setup({
     refreshPrStatus: ({ self }) => {
       // Check if we have a directory from parent context
       const parentContext = getParentContext(self)
-      if (!parentContext?.rootDirectory) {
+      if (!parentContext?.baseDirectory) {
         // Send error event directly if no directory
-        self.send({ 
-          type: 'pr.ERROR', 
-          message: 'No directory selected. Please select a directory first.' 
+        self.send({
+          type: 'pr.ERROR',
+          message: 'No directory selected. Please select a directory first.'
         })
         return
       }
       sendToBackend('pr.GET_BASE_BRANCH', {})
       sendToBackend('pr.GET_BRANCH_DIFF', {})
     },
-    
-    
-    
+
+
+
     selectPrFile: assign({
       selectedPrFile: ({ event }) => {
         const ev = event as { type: 'pr.SELECT_FILE'; file: GitStatusFile }
         return ev.file
       }
     }),
-    
+
     viewPrDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.VIEW_DIFF'; path: string }
-      sendToBackend('pr.GET_BRANCH_FILE_DIFF', { 
-        path: ev.path, 
-        baseBranch: context.prBaseBranch 
+      sendToBackend('pr.GET_BRANCH_FILE_DIFF', {
+        path: ev.path,
+        baseBranch: context.prBaseBranch
       })
     },
-    
-    
+
+
     assignPrError: assign({
       prError: ({ event }) => {
         const ev = event as { type: 'pr.ERROR'; message: string }
@@ -78,9 +78,9 @@ export const pullRequestState = setup({
       },
       isPrLoading: false
     }),
-    
+
     setPrLoading: assign({ isPrLoading: true }),
-    
+
     handleBaseBranchReceived: assign({
       prBaseBranch: ({ event }) => {
         const ev = event as { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
@@ -89,7 +89,7 @@ export const pullRequestState = setup({
       isPrLoading: false,
       prError: null
     }),
-    
+
     handleBranchDiffReceived: assign({
       prFiles: ({ event }) => {
         const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
@@ -101,8 +101,8 @@ export const pullRequestState = setup({
       },
       isPrLoading: false
     }),
-    
-    
+
+
     handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
       const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
       enqueue.assign({
@@ -112,7 +112,7 @@ export const pullRequestState = setup({
         if (context.selectedPrFile) {
           const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-          
+
           // Create diff tab
           const diffTab = {
             path: diffTabId,
@@ -122,29 +122,29 @@ export const pullRequestState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedPrFile
           }
-          
+
           const result = mergeTabs(
             parentContext?.openFiles || [],
             [diffTab],
             diffTabId // Set as active
           )
-          
+
           updateParentState(self, result)
         }
       })
     }),
-    
+
     handleCodeStartup: ({ self }) => {
       // Check if we have a directory from parent context
       const parentContext = getParentContext(self)
-      if (parentContext?.rootDirectory) {
+      if (parentContext?.baseDirectory) {
         // Refresh PR status when directory is available
         self.send({ type: 'pr.REFRESH_STATUS' })
       } else {
         // Show error if no directory
-        self.send({ 
-          type: 'pr.ERROR', 
-          message: 'No directory selected. Please select a directory first.' 
+        self.send({
+          type: 'pr.ERROR',
+          message: 'No directory selected. Please select a directory first.'
         })
       }
     }

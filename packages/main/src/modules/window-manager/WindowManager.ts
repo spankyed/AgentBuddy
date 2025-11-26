@@ -138,6 +138,42 @@ class WindowManager implements AppModule {
 
       return result.filePaths[0];
     });
+
+    // Handle file/directory selection dialog
+    ipcMain.handle('dialog:select-path', async (event, options?: {
+      allowMultiple?: boolean;
+      type: 'file' | 'directory' | 'both';
+    }) => {
+      const window = BrowserWindow.getFocusedWindow();
+      if (!window) return null;
+
+      const type = options?.type || 'file';
+      const properties: any[] = [];
+
+      if (type === 'directory') {
+        properties.push('openDirectory');
+      } else if (type === 'file') {
+        properties.push('openFile');
+      } else {
+        // 'both' - works on macOS, shows directory picker on Windows/Linux
+        properties.push('openFile', 'openDirectory');
+      }
+
+      if (options?.allowMultiple) {
+        properties.push('multiSelections');
+      }
+
+      const result = await dialog.showOpenDialog(window, {
+        properties,
+        title: type === 'directory' ? 'Select Directory' : 'Select File'
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      return options?.allowMultiple ? result.filePaths : result.filePaths[0];
+    });
   }
 
   async createWindow(): Promise<BrowserWindow> {

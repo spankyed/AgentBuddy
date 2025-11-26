@@ -26,7 +26,7 @@ export const actionDemoFlow: Rows = {
       createdAt: nowMs - 900,
       nodeType: "listen",
       label: "Start Demo",
-      mode: "entry",
+      scope: "global",
       eventType: "demo.start",
     },
 

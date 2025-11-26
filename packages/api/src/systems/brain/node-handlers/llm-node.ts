@@ -5,6 +5,7 @@ import { repository } from '@/repository';
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
 import { createPromptContext } from '@/systems/brain/utils/prompt-context';
 import { EARS } from '@/core/types';
+import { generateText } from '@/services/llm';
 
 interface LLMNodeConfig {
   // Core LLM settings
@@ -82,67 +83,55 @@ function generatePrompt(
 /**
  * Handle execution of an LLM node
  */
-export function llmNodeHandler(
+export async function llmNodeHandler(
   tNode: TNodeEntity,
   node: NodeEntity,
-  executionContext: ExecutionContext, // ? wonder if may no longer need here
+  executionContext: ExecutionContext,
   actor: any
 ) {
-  const llmNode = node as LLMNode;
   const nodeData = tNode.nodeAttributes || {};
-  
-  brainDebug(`Executing LLM node: ${node.label}`, {
-    nodeData,
-    tNode,
-    nodeAttributeKeys: Object.keys(nodeData),
-  });
-  
+
+  brainDebug(`Executing LLM node: ${node.label}`, { nodeData });
+
   try {
     // Generate the prompt using pre-mapped params
-    const prompt = generatePrompt(tNode, llmNode);
-    
-    brainDebug(`Generated prompt:`, {
-      nodeLabel: node.label,
-      promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
+    const prompt = generatePrompt(tNode, node as LLMNode);
+
+    brainDebug(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
+
+    // Extract LLM configuration from nodeData
+    const modelString = nodeData.model as string || 'anthropic:claude-3-haiku-20240307';
+    const [provider, model] = modelString.split(':');
+
+    const response = await generateText({
+      model: {
+        provider: provider as any,
+        model: model,
+      },
+      prompt,
+      system: nodeData.systemPrompt as string | undefined,
+      temperature: nodeData.temperature as number | undefined,
+      maxTokens: nodeData.maxTokens as number | undefined,
     });
-    
-    // TODO: Implement actual LLM call
-    // For now, simulate async execution with mock response
-    setTimeout(() => {
-      // Simulate different responses based on the node
-      let mockResponse: any;
-      
-      if (node.label === 'Process User Message') {
-        mockResponse = {
-          summary: 'User is asking for help with debugging',
-          intent: 'technical_support',
-          entities: ['debugging', 'help'],
-          category: 'programming_help',
-          urgency: 'medium'
-        };
-      } else if (node.label === 'Format Response') {
-        mockResponse = {
-          formattedMessage: 'I understand you need help with debugging. Let me assist you with that.',
-          responseType: 'helpful',
-          suggestedActions: ['provide_debugging_tips', 'ask_for_code_snippet']
-        };
-      } else {
-        mockResponse = {
-          result: `Processed prompt for ${node.label}`,
-          prompt: prompt.substring(0, 100) + '...',
-          timestamp: Date.now()
-        };
+
+    brainDebug(`LLM response received for node: ${node.label}`, {
+      usage: response.usage,
+      finishReason: response.finishReason,
+    });
+
+    // Send completion with the LLM response
+    actor.send({
+      type: 'COMPLETE',
+      result: {
+        text: response.text,
+        usage: response.usage,
+        finishReason: response.finishReason,
       }
-      
-      actor.send({ 
-        type: 'COMPLETE', 
-        result: mockResponse
-      });
-    }, 1000);
+    });
   } catch (error) {
     brainLogger.error('Failed to handle LLM node:', { error, nodeLabel: node.label });
-    actor.send({ 
-      type: 'ERROR', 
+    actor.send({
+      type: 'ERROR',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

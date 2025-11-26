@@ -60,29 +60,29 @@ export async function importDatabase(backupPath: string) {
   try {
     // Close LMDB connections before modifying files
     closePersistence();
-    
+
     // Import databases
     for (const dbName of metadata.databases) {
       const backupDbPath = path.join(backupPath, dbName);
       const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
-      
+
       if (await fs.pathExists(backupDbPath)) {
         await fs.remove(targetPath);
         await fs.copy(backupDbPath, targetPath);
         logger.info(`Imported ${dbName}`);
       }
     }
-    
+
     // Reopen LMDB connections with new files
     reinitializeLmdb();
-    
+
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
     return { databases: metadata.databases as string[] };
   } catch (error) {
     // Restore on failure
     closePersistence();
-    
+
     for (const dbName of metadata.databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
       const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS];
@@ -91,9 +91,9 @@ export async function importDatabase(backupPath: string) {
         await fs.copy(tempDbPath, targetPath);
       }
     }
-    
+
     reinitializeLmdb();
-    
+
     await fs.remove(tempBackupPath);
     throw error;
   }

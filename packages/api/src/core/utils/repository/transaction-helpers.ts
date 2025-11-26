@@ -78,8 +78,8 @@ export function updateEntity(
       transaction.drop(EARS.AttrKind.Custom(key));
       transaction.put(key, value);
     } else {
-      // Merge other values
-      transaction.merge(key as any, value);
+      // Replace other values (use update for full replacement instead of merge)
+      transaction.update(EARS.AttrKind.Custom(key), value);
     }
   });
 }

@@ -56,88 +56,6 @@ export const slackArtifactData = {
   artifactType: 'slack' as const,
 };
 
-// Dashboard artifacts mock data
-const dashboardArtifactsData = [
-  {
-    id: 'Artifact-dashboard-1' as EARS.EntityId,
-    title: 'Work Overview',
-    content: {
-      workItems: [
-        {
-          id: 1,
-          name: 'Implement user authentication flow',
-          time: '09:30',
-          date: '2024-01-15',
-          priority: 1,
-          tags: ['backend', 'security'],
-          status: 'in-progress',
-          type: 'work-item',
-        },
-        {
-          id: 2,
-          name: 'Design new landing page',
-          time: '14:45',
-          date: '2024-01-14',
-          priority: 2,
-          tags: ['frontend', 'design'],
-          status: 'backlog',
-          type: 'work-item',
-        },
-        {
-          id: 3,
-          name: 'Fix database connection pooling',
-          time: '11:20',
-          date: '2024-01-15',
-          priority: 1,
-          tags: ['backend', 'bug'],
-          status: 'in-review',
-          type: 'work-item',
-        },
-        {
-          id: 4,
-          name: 'Write API documentation',
-          time: '16:00',
-          date: '2024-01-13',
-          priority: 3,
-          tags: ['documentation'],
-          status: 'done',
-          type: 'work-item',
-        },
-        {
-          id: 5,
-          name: 'Optimize image loading performance',
-          time: '10:15',
-          date: '2024-01-15',
-          priority: 2,
-          tags: ['frontend', 'performance'],
-          status: 'open',
-          type: 'work-item',
-        }
-      ]
-    },
-    artifactType: 'kanban' as const,
-  },
-  {
-    id: 'Artifact-dashboard-2' as EARS.EntityId,
-    ...slackArtifactData,
-  }
-];
-
-// Load dashboard artifacts into EARS storage
-export function loadDashboardArtifacts(): void {
-  const timestamp = Date.now();
-  
-  dashboardArtifactsData.forEach(artifact => {
-    const id = tx(artifact.id)
-      .put('entityType', EARS.Entity.Artifact)
-      .put('title', artifact.title)
-      .put('content', artifact.content)
-      .put('artifactType', artifact.artifactType)
-      .put('createdAt', timestamp)
-      .grant('dashboard_artifact')
-      .id();
-  });
-}
 
 // Mock thread with artifacts
 const mockThreadArtifacts = [
@@ -200,30 +118,9 @@ export function loadMockThreadWithArtifacts(mockThreadId: EARS.EntityId): void {
   });
 }
 
-// Create dashboard tab and link artifacts
-export function loadDashboardTab(): void {
-  const timestamp = Date.now();
-  
-  // Create dashboard tab (using Thread entity with dashboard role)
-  const dashboardTabId = 'Thread-dashboard' as EARS.EntityId;
-  
-  const tabId = tx(dashboardTabId)
-    .put('topic', 'Dashboard')
-    .put('createdAt', timestamp)
-    .put('entityType', EARS.Entity.Thread)
-    .grant('catchup_thread')
-    .id();
-
-  // Link dashboard artifacts to the dashboard tab
-  dashboardArtifactsData.forEach(artifact => {
-    tx(dashboardTabId).link(EARS.RelKind.HAS, artifact.id);
-  });
-}
 
 // Export a function to initialize mock data after snapshot is loaded
 export function initializeMockData(): void {
   console.log('=== Initializing mock artifacts data ===');
-  loadDashboardArtifacts();
-  loadDashboardTab();
   loadMockThreadWithArtifacts('Thread-mock-1' as EARS.EntityId);
 }

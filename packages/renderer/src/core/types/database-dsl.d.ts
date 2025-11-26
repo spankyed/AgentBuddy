@@ -35,7 +35,6 @@ declare namespace EARS {
         readonly DEPENDS_ON: "depends_on";
         readonly RELATES_TO: "relates_to";
         readonly DUPLICATES: "duplicates";
-        readonly EVENT_TRACE: "event_trace";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly EMITS: "emits";
         readonly INSTANCE_OF: "instance_of";
@@ -52,7 +51,6 @@ declare namespace EARS {
         readonly DEPENDS_ON: "depends_on";
         readonly RELATES_TO: "relates_to";
         readonly DUPLICATES: "duplicates";
-        readonly EVENT_TRACE: "event_trace";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly EMITS: "emits";
         readonly INSTANCE_OF: "instance_of";
@@ -243,13 +241,13 @@ type LmdbDbs = {
     root: RootDatabase;
 };
 
-declare const envs: {
+declare let envs: {
     primary: LmdbDbs;
     volatileBackup: LmdbDbs;
     secrets: LmdbDbs;
 };
 declare const policy: PartitionPolicy;
-declare const persistence: PersistenceSink & {
+declare let persistence: PersistenceSink & {
     seedRelationMetadata(relId: string, kind: string, src: string, tgt: string): void;
     getRelMeta(): Map<string, {
         kind: string;
@@ -259,7 +257,14 @@ declare const persistence: PersistenceSink & {
 };
 
 declare function closePersistence(): void;
+declare function reinitializeLmdb(): void;
+/**
+ * Reset LMDB by deleting and recreating all database directories.
+ * Follows pattern: null → close → delete → recreate
+ */
+declare function resetLmdbFiles(): Promise<void>;
 declare const createEntity: (t: EARS.Entity) => EARS.EntityId;
+declare function clearMemory(): void;
 declare const putAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void;
 declare const addAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void;
 declare const mergeAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx?: number) => void;
@@ -310,7 +315,7 @@ interface SafeLinkOptions {
     /** If specified, prevents cycles within this group of relation kinds */
     acyclicGroup?: readonly EARS.RelKind[];
 }
-declare function tx(typeOrId: EARS.Entity | EARS.EntityId, forceCreate?: boolean): {
+declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): {
     readonly put: (k: EARS.AttrKind | string, v: unknown, allowMultiple?: boolean) => /*elided*/ any;
     readonly add: (k: EARS.AttrKind | string, v: unknown) => /*elided*/ any;
     readonly batchPut: (attrs: Record<string, unknown>) => /*elided*/ any;
@@ -420,7 +425,7 @@ type Entity = EARS.Entity;
 type RelKind = EARS.RelKind;
 type AttrKind = EARS.AttrKind;
 
-export { AtomicTransaction, AttrKind, EARS, Entity, RelKind, addAttr, addRelation, ancestors, bp, closePersistence, createEntity, descendants, destroyEntity, dropAttr, dropIf, envs, getAll, getAllAttributeKinds, getAllEntities, getAllEntityTypes, getAllRelationKinds, getAttr, getAttributeStats, getAttrs, getEntitiesOfType, getRoles, getSchemaStats, grantRole, isEntity, leaves, linkSymmetric, lowestCommonAncestor, mergeAttr, persistence, policy, putAttr, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesByRole, queryEntitiesInRelationTo, qx, removeRelation, revokeRole, rootParent, shortestPath, spawn, topoSort, tx, updateAttr, updateRelation, wouldCreateCycle };
+export { AtomicTransaction, AttrKind, EARS, Entity, RelKind, addAttr, addRelation, ancestors, bp, clearMemory, closePersistence, createEntity, descendants, destroyEntity, dropAttr, dropIf, envs, getAll, getAllAttributeKinds, getAllEntities, getAllEntityTypes, getAllRelationKinds, getAttr, getAttributeStats, getAttrs, getEntitiesOfType, getRoles, getSchemaStats, grantRole, isEntity, leaves, linkSymmetric, lowestCommonAncestor, mergeAttr, persistence, policy, putAttr, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesByRole, queryEntitiesInRelationTo, qx, reinitializeLmdb, removeRelation, resetLmdbFiles, revokeRole, rootParent, shortestPath, spawn, topoSort, tx, updateAttr, updateRelation, wouldCreateCycle };
 export type { BaseEntity, EntityId, QueryBuilder };
 
 }

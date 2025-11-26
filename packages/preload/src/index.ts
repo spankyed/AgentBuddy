@@ -27,6 +27,10 @@ const windowControls = {
 // File utilities
 const fileUtils = {
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
+  selectPath: (options?: {
+    allowMultiple?: boolean;
+    type: 'file' | 'directory' | 'both';
+  }) => ipcRenderer.invoke('dialog:select-path', options),
 };
 
 // Get the API port

@@ -19,7 +19,7 @@
     </div>
 
     <!-- Tab Content -->
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-hidden">
       <GeneralTab v-if="activeTab === 'general'" />
       <PluginsTab v-if="activeTab === 'plugins'" />
       <HelpTab v-if="activeTab === 'help'" />

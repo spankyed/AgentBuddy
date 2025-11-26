@@ -39,8 +39,8 @@
         @change="(e) => $emit('status-change', thread.id, (e.target as HTMLSelectElement).value)"
         class="px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600 transition-all duration-200 appearance-none"
       >
-        <option 
-          v-for="status in (settings?.statuses || [])" 
+        <option
+          v-for="status in (settings?.statuses || [])"
           :key="status.label"
           :value="status.label"
           class="bg-neutral-800 text-neutral-300"
@@ -55,11 +55,22 @@
           data-onboarding-id="thread-actions"
           @click.stop="$emit('chat-click', thread.id)"
           type="button"
-          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
-          aria-label="Open chat"
-          title="Open chat"
+          class="p-1.5 flex items-center text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+          aria-label="View chat"
+          title="View chat"
         >
-          <MessageCircleMore class="w-4 h-4"/>
+          View Chat
+          <!-- <MessageCircleMore class="ml-2 w-4 h-4"/> -->
+        </button>
+        <div class="w-px h-4 bg-neutral-700"></div>
+        <button
+          @click.stop="$emit('delete-click', thread.id)"
+          type="button"
+          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
+          aria-label="Delete thread"
+          title="Delete thread"
+        >
+          <Trash2 class="w-4 h-4"/>
         </button>
       </div>
     </td>
@@ -67,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessageCircleMore } from 'lucide-vue-next'
+import { MessageCircleMore, Trash2 } from 'lucide-vue-next'
 import type { ThreadListItem } from '@/plugins/threads/state';
 import type { ThreadTagOption, ThreadsSettings } from '@app/api';
 
@@ -81,6 +92,7 @@ defineEmits<{
   select: [id: string]
   'status-change': [id: string, status: string]
   'chat-click': [id: string]
+  'delete-click': [id: string]
 }>();
 
 const getTagStyles = (tagName: string) => {

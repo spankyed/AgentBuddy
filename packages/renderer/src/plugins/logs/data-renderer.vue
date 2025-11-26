@@ -1,20 +1,34 @@
 <template>
   <div class="relative">
-    <!-- Copy button with better styling from logs canvas -->
-    <button 
-      v-if="depth === 0"
-      @click.stop="copyToClipboard"
-      class="absolute top-0 right-0 flex items-center gap-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 z-10"
-      :class="compact ? 'p-1' : 'px-2 py-1'"
-      :title="copied ? 'Copied!' : 'Copy to clipboard'"
-    >
-      <component 
-        :is="copied ? Check : Copy" 
-        :size="12" 
-        :class="copied ? 'text-green-400' : ''"
-      />
-      <span v-if="!compact">{{ copied ? 'Copied' : 'Copy' }}</span>
-    </button>
+    <!-- Action buttons container -->
+    <div v-if="depth === 0" class="absolute top-0 right-0 flex items-center gap-1 z-10">
+      <!-- Expand button for objects and arrays -->
+      <button
+        v-if="!isPrimitive(data) && !hideExpand"
+        @click.stop="openJsonViewer"
+        class="flex items-center gap-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
+        :class="compact ? 'p-1' : 'px-2 py-1'"
+        title="View in modal"
+      >
+        <Maximize2 :size="12" />
+        <span v-if="!compact">Expand</span>
+      </button>
+
+      <!-- Copy button with better styling from logs canvas -->
+      <button
+        @click.stop="copyToClipboard"
+        class="flex items-center gap-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
+        :class="compact ? 'p-1' : 'px-2 py-1'"
+        :title="copied ? 'Copied!' : 'Copy to clipboard'"
+      >
+        <component
+          :is="copied ? Check : Copy"
+          :size="12"
+          :class="copied ? 'text-green-400' : ''"
+        />
+        <span v-if="!compact">{{ copied ? 'Copied' : 'Copy' }}</span>
+      </button>
+    </div>
     
     <!-- Scrollable container that respects parent width but allows content to expand -->
     <div class="overflow-x-auto max-w-full">
@@ -72,21 +86,32 @@
         </div>
       </div>
     </div>
+
+    <!-- JSON Viewer Dialog -->
+    <JsonViewerDialog
+      v-if="depth === 0 && !isPrimitive(data) && !hideExpand"
+      v-model="showJsonViewer"
+      :data="data"
+      :title="getViewerTitle()"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, withDefaults } from 'vue';
-import { ChevronRight, Copy, Check } from 'lucide-vue-next';
+import { ChevronRight, Copy, Check, Maximize2 } from 'lucide-vue-next';
+import JsonViewerDialog from './components/json-viewer-dialog.vue';
 
 const props = withDefaults(defineProps<{
   data: any;
   defaultExpanded?: boolean;
   depth?: number;
   compact?: boolean;
+  hideExpand?: boolean;
 }>(), {
   depth: 0,
-  compact: false
+  compact: false,
+  hideExpand: false
 });
 
 // Initialize expanded state
@@ -101,6 +126,9 @@ const expanded = ref(true);
 
 // Track copied state
 const copied = ref(false);
+
+// Track JSON viewer dialog state
+const showJsonViewer = ref(false);
 
 const toggleExpanded = () => {
   expanded.value = !expanded.value;
@@ -145,10 +173,10 @@ const copyToClipboard = async () => {
   try {
     const jsonString = JSON.stringify(props.data, null, 2);
     await navigator.clipboard.writeText(jsonString);
-    
+
     // Set copied state
     copied.value = true;
-    
+
     // Reset after 2 seconds
     setTimeout(() => {
       copied.value = false;
@@ -162,13 +190,27 @@ const copyToClipboard = async () => {
     textArea.select();
     document.execCommand('copy');
     document.body.removeChild(textArea);
-    
+
     // Still show copied state
     copied.value = true;
     setTimeout(() => {
       copied.value = false;
     }, 2000);
   }
+};
+
+const openJsonViewer = () => {
+  showJsonViewer.value = true;
+};
+
+const getViewerTitle = () => {
+  if (Array.isArray(props.data)) {
+    return `Array [${props.data.length}]`;
+  } else if (isObject(props.data)) {
+    const keys = Object.keys(props.data).length;
+    return `Object (${keys} ${keys === 1 ? 'property' : 'properties'})`;
+  }
+  return 'JSON Viewer';
 };
 </script>
 

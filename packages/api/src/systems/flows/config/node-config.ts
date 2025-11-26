@@ -23,11 +23,10 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
     description: 'Listen for events to trigger flows',
     category: 'trigger',
     validation: {
-      requiredFields: ['eventType', 'mode'],
+      requiredFields: ['eventType', 'scope'],
     },
     defaults: {
-      mode: 'entry',
-      scope: 'local',
+      scope: 'global',
     } as any,
   },
   fire: {

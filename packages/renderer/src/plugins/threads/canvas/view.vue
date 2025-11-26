@@ -2,12 +2,15 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-900">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
-        <p class="text-xs text-neutral-400">
-          <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
-          {{ topic || 'Untitled thread' }}
-        </p>
+      <div class="flex items-center gap-3">
+        <BackButton @click="actor.send({ type: 'VIEW_LIST' })" />
+        <div>
+          <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
+          <p class="text-xs text-neutral-400">
+            <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
+            {{ topic || 'Untitled thread' }}
+          </p>
+        </div>
       </div>
       <div class="flex items-center gap-2">
         <Button
@@ -16,12 +19,12 @@
         >
           Back
         </Button>
-        <Button 
+        <Button
           @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
           variant="primary"
         >
-          <MessageCircleMore class="w-4 h-4" />
-          <span>Open Chat</span>
+          <BotMessageSquare class="w-4 h-4" />
+          <span>View Chat</span>
         </Button>
       </div>
     </div>
@@ -60,9 +63,9 @@
                 @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
                 class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
               >
-                <option 
-                  v-for="statusOption in (settings?.statuses || [])" 
-                  :key="statusOption.label" 
+                <option
+                  v-for="statusOption in (settings?.statuses || [])"
+                  :key="statusOption.label"
                   :value="statusOption.label"
                 >
                   {{ statusOption.label }}
@@ -100,8 +103,8 @@
                 <div v-if="tags && tags.length > 0" class="flex items-center gap-1">
                   <span class="text-neutral-500 mr-1">•</span>
                   <div class="flex flex-wrap gap-1">
-                    <span 
-                      v-for="(tag, index) in tags.slice(0, 5)" 
+                    <span
+                      v-for="(tag, index) in tags.slice(0, 5)"
                       :key="tag"
                       :style="getTagStyles(tag)"
                       class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
@@ -115,7 +118,7 @@
                 </div>
               </div>
             </template>
-            <TagInput 
+            <TagInput
               :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
@@ -175,12 +178,13 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { MessageCircleMore, Plus } from 'lucide-vue-next'
+import { BotMessageSquare, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
+import BackButton from '@/core/components/design/back-button.vue'
 import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'

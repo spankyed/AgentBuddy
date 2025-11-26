@@ -16,7 +16,9 @@ import type {
   FlowsConnectedData 
 } from '../config/types';
 import { availableModels } from '../config/available-models';
+import { createNodeDefaults } from '../config/node-config';
 import { repository } from '@/repository';
+import { settingsCommands } from '@/systems/settings/repository';
 
 const logger = createLogger('flows-repository');
 
@@ -44,7 +46,7 @@ export const FLOW_ENTRY_NODE = {
   TYPE: 'listen' as const,
   LABEL: 'Flow Entry',
   COLOR: '#1E88E5',
-  MODE: 'entry' as const,
+  SCOPE: 'entry' as const,
   EVENT_TYPE: 'flow.entry',
 } as const;
 
@@ -287,37 +289,43 @@ export const flowsCommands = {
       nodeType: FLOW_ENTRY_NODE.TYPE,
       label: FLOW_ENTRY_NODE.LABEL,
       color: FLOW_ENTRY_NODE.COLOR,
-      mode: FLOW_ENTRY_NODE.MODE,
+      scope: FLOW_ENTRY_NODE.SCOPE,
       eventType: FLOW_ENTRY_NODE.EVENT_TYPE,
     } as Partial<NodeEntity>);
     
     // Establish entry node role
     tx(entryNode.id).grant(FLOW_ROLES.ENTRY_EVENT).id();
-    
-    // Create EVENT_TRACE relationship from flow to entry node
-    tx(newFlow.id).link(EARS.RelKind.EVENT_TRACE, entryNode.id);
-    
+
     return { flow: newFlow, entryNode };
   },
   
   createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity => {
     const ts = getTimestamp();
-    
+
     // Determine node type (default to 'action' if not specified)
     const nodeType = nodeData.nodeType || NODE_DEFAULTS.TYPE;
-    
+
+    // Get default values for this node type
+    const defaults = createNodeDefaults(nodeType);
+
     // Extract relations and attributes based on node type
     const { relations, attributes } = extractNodeRelations(nodeType, nodeData);
-    
+
+    // Merge defaults with provided attributes (provided attributes take precedence)
+    const mergedAttributes = {
+      ...defaults,
+      ...attributes,
+      label: attributes.label || defaults.label || NODE_DEFAULTS.LABEL,
+      description: attributes.description || defaults.description || NODE_DEFAULTS.DESCRIPTION,
+    };
+
     // Ensure the node has the required fields
     const newNode: Omit<NodeEntity, 'id'> = {
+      ...mergedAttributes,
       entityType: EARS.Entity.Node,
       nodeType,
-      label: attributes.label || NODE_DEFAULTS.LABEL,
-      description: attributes.description || NODE_DEFAULTS.DESCRIPTION,
       createdAt: ts,
       updatedAt: ts,
-      ...attributes,
     } as Omit<NodeEntity, 'id'>;
 
     // Create the node
@@ -330,11 +338,6 @@ export const flowsCommands = {
     
     // Create node-specific relationships
     createNodeRelations(nodeType, nodeId, relations);
-    
-    // If this is a 'listen' node, create EVENT_TRACE relation from flow to node
-    if (nodeType === 'listen') {
-      tx(flowId).link(EARS.RelKind.EVENT_TRACE, nodeId);
-    }
     
     return { id: nodeId, ...newNode } as NodeEntity;
   },
@@ -465,18 +468,7 @@ export const flowsCommands = {
         targetEntity: nodeId,
       });
       containsRelIds.forEach(relId => removeRelation(relId));
-      
-      // Remove EVENT_TRACE relationship if it exists (for listen nodes)
-      const currentNode = flowsQueries.node(nodeId);
-      if (currentNode?.nodeType === 'listen') {
-        const eventTraceRelIds = edgeStore.relIds({
-          sourceEntity: flowId,
-          relationType: EARS.RelKind.EVENT_TRACE,
-          targetEntity: nodeId,
-        });
-        eventTraceRelIds.forEach(relId => removeRelation(relId));
-      }
-      
+
       // Remove INSTANCE_OF relationships (for action/llm nodes)
       const instanceOfTargets = qx(nodeId)
         .links(EARS.RelKind.INSTANCE_OF)
@@ -528,16 +520,56 @@ export const flowsCommands = {
   },
   
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    // Grant the root_flow role to the specified flow
+    // Revoke from existing root flow if any
+    const currentRoot = qx().withRole(FLOW_ROLES.ROOT_FLOW).first();
+    if (currentRoot && currentRoot !== flowId) {
+      tx(currentRoot).revoke(FLOW_ROLES.ROOT_FLOW);
+    }
+
     tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
-    
-    logger.info('Granted root_flow role to flow', { flowId });
+    settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
   },
-  
+
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
-    // Revoke the root_flow role from the specified flow
     tx(flowId).revoke(FLOW_ROLES.ROOT_FLOW);
-    
-    logger.info('Revoked root_flow role from flow', { flowId });
+  },
+
+  deleteFlow: (flowId: EARS.EntityId): void => {
+    // Check if this is the root flow
+    const isRootFlow = qx(flowId).withRole(FLOW_ROLES.ROOT_FLOW).first();
+    if (isRootFlow) {
+      throw new RepositoryError('Cannot delete the root flow', RepositoryErrorCode.OPERATION_FAILED);
+    }
+
+    // Get all nodes in the flow
+    const nodeIds = qx(flowId)
+      .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
+      .map(({ id }) => id);
+
+    // Delete all nodes (which will also delete their edges)
+    nodeIds.forEach(nodeId => {
+      try {
+        flowsCommands.deleteNode(nodeId);
+      } catch (error) {
+        logger.warn('Error deleting node during flow deletion', { nodeId, error });
+      }
+    });
+
+    // Remove any remaining relationships
+    const remainingRelations = edgeStore.relIds({
+      sourceEntity: flowId,
+    });
+    remainingRelations.forEach(relId => {
+      try {
+        removeRelation(relId);
+      } catch (error) {
+        logger.warn('Error removing relation during flow deletion', { relId, error });
+      }
+    });
+
+    // Finally, delete the flow entity
+    tx(flowId).destroy();
+
+    logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
 } as const;

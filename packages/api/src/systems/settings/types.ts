@@ -14,6 +14,7 @@ export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
   internal: InternalSettings;
+  assistant: AssistantSettings;
 }
 
 export interface GeneralSettings {
@@ -21,6 +22,7 @@ export interface GeneralSettings {
   secrets: Secrets;
   hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
+  workspaces: WorkspacesSettings;
 }
 
 export interface Address {
@@ -46,6 +48,7 @@ export interface Secrets {
   mistral?: string | null; // Secret ID reference
   cohere?: string | null; // Secret ID reference
   custom?: Record<string, string>; // Custom provider name -> Secret ID
+  required: string[]; // List of required providers, e.g., ['openai']
 }
 
 // Base keyboard shortcut configuration
@@ -69,6 +72,26 @@ export interface ApplicationHotkeys {
 
 export interface MiscSettings {
   // Empty for now, to be extended later
+}
+
+// Workspace project definition
+export interface WorkspaceProject {
+  name: string
+  directories: string[]  // First directory is the primary/root directory
+  color: string
+}
+
+// Workspace definition - can contain multiple projects
+export interface Workspace {
+  name: string
+  description?: string
+  directory?: string
+  color: string
+  projects: WorkspaceProject[]
+}
+
+export interface WorkspacesSettings {
+  workspaces: Workspace[]
 }
 
 // Plugin visibility settings
@@ -121,6 +144,7 @@ export interface ActionsSettings {
 // Flows plugin settings
 export interface FlowsSettings {
   rootFlowId?: string; // ID of the flow with the root_flow role
+  enableFlowPreview?: boolean; // Enable flow preview on single click
 }
 
 // Brain plugin settings
@@ -147,4 +171,9 @@ export interface InternalSettings {
   tourStarted: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
+}
+
+export interface AssistantSettings {
+  name: string;
+  birthdate: string | null;
 }

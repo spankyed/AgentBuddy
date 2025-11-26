@@ -1,14 +1,13 @@
 <template>
-  <div 
-    class="flow-item"
-    :class="{ 'has-description': flow.description }"
-  >
-    <button
-      class="relative w-full overflow-hidden flow-button group"
-      :class="[isSelected ? 'selected' : '', isRoot ? 'root-flow' : 'sub-flow']"
-      :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
-      @click="$emit('click')"
-    >
+  <ContextMenuRoot>
+    <ContextMenuTrigger as-child>
+      <button
+        class="relative w-full overflow-hidden flow-button group"
+        :class="[isSelected ? 'selected' : '', isRoot ? 'root-flow' : 'sub-flow', { 'has-description': flow.description }]"
+        :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
+        @click="$emit('click')"
+        @dblclick="$emit('dblclick')"
+      >
       <!-- Glow effect on hover -->
       <div 
         class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
@@ -43,18 +42,51 @@
         />
       </div>
       
-      <!-- Subtle gradient overlay -->
-      <div 
-        class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
-        :class="isRoot ? 'from-purple-500/20 to-transparent' : 'from-blue-500/20 to-transparent'"
-      />
-    </button>
-  </div>
+        <!-- Subtle gradient overlay -->
+        <div
+          class="absolute inset-0 transition-opacity duration-200 opacity-0 pointer-events-none bg-gradient-to-r group-hover:opacity-10"
+          :class="isRoot ? 'from-purple-500/20 to-transparent' : 'from-blue-500/20 to-transparent'"
+        />
+      </button>
+    </ContextMenuTrigger>
+
+    <!-- Context Menu - Only show for non-root flows -->
+    <ContextMenuPortal v-if="!isRoot">
+      <ContextMenuContent
+        class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[160px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
+        :side-offset="2"
+      >
+        <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="handleRequestEditLabel"
+        >
+          <Edit :size="14" class="text-primary-400" />
+          Edit Label
+        </ContextMenuItem>
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+        <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+          @select="handleRequestDelete"
+        >
+          <Trash2 :size="14" />
+          Delete Flow
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenuPortal>
+  </ContextMenuRoot>
 </template>
 
 <script setup lang="ts">
-import { Brain, Workflow } from 'lucide-vue-next'
+import { Brain, Workflow, Trash2, Edit } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
+import {
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from 'reka-ui'
 
 interface Props {
   flow: Partial<FlowEntity>
@@ -62,20 +94,25 @@ interface Props {
   isRoot?: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   click: []
+  dblclick: []
+  'request-delete': [flow: Partial<FlowEntity>]
+  'request-edit-label': [flow: Partial<FlowEntity>]
 }>()
+
+const handleRequestDelete = () => {
+  emit('request-delete', props.flow)
+}
+
+const handleRequestEditLabel = () => {
+  emit('request-edit-label', props.flow)
+}
 </script>
 
 <style scoped>
-.flow-item {
-  user-select: none;
-  margin-bottom: 0.25rem;
-  width: 100%;
-}
-
 .flow-button {
   border-radius: 0.375rem;
   border: 1px solid transparent;
@@ -87,6 +124,8 @@ defineEmits<{
   width: 100%;
   cursor: pointer;
   padding: 0;
+  user-select: none;
+  margin-bottom: 0.25rem;
 }
 
 .flow-button:hover {

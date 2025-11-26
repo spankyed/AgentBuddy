@@ -163,7 +163,7 @@ export function getTraceFlows(limit = 100): TNodeEntity[] {
 
 /**
  * Get paginated event tracks for a specific flow
- * Uses EVENT_TRACE relations to find child events
+ * Uses TRACKED relations to find child events
  */
 export function getFlowEvents(
   flowId: string, 

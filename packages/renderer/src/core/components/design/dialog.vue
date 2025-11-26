@@ -2,7 +2,7 @@
   <DialogRoot v-model:open="isOpen">
     <DialogPortal>
       <DialogOverlay class="dialog-overlay" />
-      <DialogContent class="dialog-content">
+      <DialogContent :class="['dialog-content', props.contentClass]">
         <DialogTitle v-if="props.title" class="dialog-title">
           {{ props.title }}
         </DialogTitle>
@@ -64,6 +64,7 @@ const props = defineProps<{
   cancelText?: string
   confirmText?: string
   showCloseButton?: boolean
+  contentClass?: string
 }>()
 
 const emit = defineEmits<{

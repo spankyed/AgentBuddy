@@ -15,13 +15,13 @@ export function openEnvAt(basePath: string): LmdbDbs {
   if (!fs.existsSync(parentDir)) {
     fs.mkdirSync(parentDir, { recursive: true });
   }
-  
+
   const root = open({
     path: basePath,
     maxDbs: 8,
     compression: true,
   });
-  
+
   return {
     entities: root.openDB({ name: 'entities', encoding: 'json' }),
     attrs: root.openDB({ name: 'attrs', encoding: 'json' }),
@@ -45,12 +45,31 @@ export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbD
 
 export function closeEnv(dbs: LmdbDbs): void {
   try {
-    dbs.entities.close();
-    dbs.attrs.close();
-    dbs.relations.close();
-    dbs.root.close();
+    // Close child databases first, then root
+    // This ensures clean shutdown even if root close fails
+    dbs.entities?.close();
+    dbs.attrs?.close();
+    dbs.relations?.close();
+    dbs.root?.close();
     console.log('[LMDB] Environment closed successfully');
-  } catch (error) {
-    console.error('[LMDB] Error closing environment:', error);
+  } catch (error: any) {
+    // Only log unexpected errors (not "already closed" errors)
+    if (!error?.message?.includes('Dbi is not open') &&
+        !error?.message?.includes('already been closed')) {
+      console.error('[LMDB] Error closing environment:', error);
+    }
+  }
+}
+
+/** Delete all LMDB database directories. Must be called after connections are closed. */
+export function deleteLmdbDirectories(paths: {
+  primary: string;
+  volatileBackup: string;
+  secrets: string;
+}): void {
+  for (const dbPath of [paths.primary, paths.volatileBackup, paths.secrets]) {
+    if (fs.existsSync(dbPath)) {
+      fs.rmSync(dbPath, { recursive: true, force: true });
+    }
   }
 }

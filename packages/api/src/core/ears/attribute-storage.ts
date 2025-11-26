@@ -7,7 +7,7 @@ import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationI
 import { EARS } from "../types";
 import { randomId } from "../utils/random-id";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/utils/paths";
-import { openShardedEnvs, closeShardedEnvs } from "@/persistence/lmdb/envs";
+import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
 import { makePolicy } from "@/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
@@ -44,31 +44,70 @@ export { envs, policy, persistence };
 
 // Graceful shutdown function
 export function closePersistence() {
-  persistence.close?.();
-  closeShardedEnvs(envs);
+  try {
+    persistence.close?.();
+    closeShardedEnvs(envs);
+  } catch (error) {
+    // Log unexpected errors but don't throw
+    if (error instanceof Error &&
+        !error.message?.includes('Dbi is not open') &&
+        !error.message?.includes('already been closed')) {
+      console.warn('[Persistence] Non-critical close error:', error.message);
+    }
+  }
 }
 
-// Reinitialize LMDB after import
+// Reinitialize LMDB (close if needed, then reopen)
 export function reinitializeLmdb() {
-  // Close existing connections
-  closePersistence();
+  if (envs !== null) {
+    closePersistence();
+  }
 
-  // Reopen environments
   envs = openShardedEnvs({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
     secrets: getSecretsLmdbPath(),
   });
 
-  // Recreate sinks
   sinks = {
     primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
     volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
     secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
   };
-  
-  // Recreate persistence
+
   persistence = makeShardedPersistence(policy, sinks);
+}
+
+/**
+ * Reset LMDB by deleting and recreating all database directories.
+ * Follows pattern: null → close → delete → recreate
+ */
+export async function resetLmdbFiles() {
+  // Clear memory and null out envs to prevent new operations
+  clearMemory();
+  const currentEnvs = envs;
+  envs = null as any;
+
+  // Close connections
+  try {
+    persistence.close?.();
+    closeShardedEnvs(currentEnvs);
+  } catch (error) {
+    // Expected if already closed
+  }
+
+  // Wait for OS to release file handles
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Delete directories
+  deleteLmdbDirectories({
+    primary: getLmdbPath(),
+    volatileBackup: getVolatileLmdbPath(),
+    secrets: getSecretsLmdbPath(),
+  });
+
+  // Recreate fresh databases
+  reinitializeLmdb();
 }
 
 export const createEntity = (t: EARS.Entity) =>
@@ -208,6 +247,29 @@ export function addRelation(
   tgt: EARS.EntityId,
   info?: unknown,
 ) {
+  // Check for existing relation with same source, kind, and target to prevent duplicates
+  const entry = relationIndex[kind];
+  if (entry?.bySource?.[src] && entry?.byTarget?.[tgt]) {
+    const fromSource = new Set(entry.bySource[src]);
+    const fromTarget = new Set(entry.byTarget[tgt]);
+
+    // Find intersection - relations that match both source and target
+    for (const existingRelId of fromSource) {
+      if (fromTarget.has(existingRelId)) {
+        // Found existing relation - check if info matches
+        const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
+
+        // If no info provided, or info matches existing, return existing relation (idempotent)
+        if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
+          console.warn(`[Relation] Duplicate relation link attempted (${kind}) between ${src} and ${tgt}. Reusing existing relation.`);
+          return existingRelId;
+        }
+        // If info differs, continue to create new relation (allows multi-value with distinct info)
+      }
+    }
+  }
+
+  // No existing relation found (or info differs) - create new one
   const relId = createEntity(EARS.Entity.Relation);
   putAttr(relId, EARS.AttrKind.RelationDetails, {
     sourceEntity: src,

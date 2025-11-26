@@ -5,14 +5,12 @@ import { createEntityWithDefaults, updateEntity, findById, findAll, exists } fro
 import type { TerminalInfo } from '../types'
 import { terminalService } from '../services/terminal'
 
-// Re-export directory queries and commands
-export { directoryQueries, directoryCommands } from './directories'
-
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
   id: EARS.EntityId
   entityType: EARS.Entity.Terminal
   title: string
+  customTitle?: string
   pid: number
   shell: string
   cwd: string
@@ -32,15 +30,15 @@ export const terminalQueries = {
   byId: (id: EARS.EntityId): TerminalEntity | undefined => {
     return findById<TerminalEntity>(id)
   },
-  
+
   all: (): TerminalEntity[] => {
     return findAll<TerminalEntity>(EARS.Entity.Terminal)
   },
-  
+
   active: (): TerminalEntity[] => {
-    return qx(EARS.Entity.Terminal)
-      .where('active', true)
-      .pickAll() as unknown as TerminalEntity[]
+    // findAll already filters soft-deleted, just filter for active=true
+    const all = findAll<TerminalEntity>(EARS.Entity.Terminal)
+    return all.filter(t => t.active === true)
   },
   
 
@@ -81,12 +79,43 @@ export const terminalCommands = {
       console.error(`Terminal ${id} not found`)
       return
     }
-    
+
     tx(id).updateBatch({
       cols,
       rows,
       updatedAt: Date.now()
     })
+  },
+
+  rename: (id: EARS.EntityId, customTitle: string): void => {
+    if (!exists(id)) {
+      console.error(`Terminal ${id} not found`)
+      return
+    }
+
+    tx(id).updateBatch({
+      customTitle,
+      updatedAt: Date.now()
+    })
+  },
+
+  updateCwd: (id: EARS.EntityId, cwd: string, title?: string): void => {
+    if (!exists(id)) {
+      console.error(`Terminal ${id} not found`)
+      return
+    }
+
+    const updates: any = {
+      cwd,
+      updatedAt: Date.now()
+    }
+
+    // Update title if provided (when no customTitle is set)
+    if (title) {
+      updates.title = title
+    }
+
+    tx(id).updateBatch(updates)
   },
   
   updatePid: (id: EARS.EntityId, pid: number): void => {

@@ -11,9 +11,9 @@ import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
 import Code from './code/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
-import { 
-  Code as CodeIcon, 
-  AtSign, 
+import {
+  Code as CodeIcon,
+  AtSign,
   Sparkle,
   Workflow,
   Bird,

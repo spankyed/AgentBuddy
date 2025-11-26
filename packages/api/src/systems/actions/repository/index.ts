@@ -1,7 +1,8 @@
 import { EARS } from '@/core/types';
-import { 
-  findById, 
-  findAll, 
+import {
+  findById,
+  findByIdRaw,
+  findAll,
   findWhere,
   createEntityWithDefaults,
   updateEntity,
@@ -9,7 +10,6 @@ import {
   RepositoryErrorCode
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
-import { tx } from '@/core/ears/helpers/transaction';
 
 /**
  * Action Repository - Dead simple CRUD operations
@@ -17,18 +17,18 @@ import { tx } from '@/core/ears/helpers/transaction';
 
 // Queries
 export const actionQueries = {
-  byId: (id: EARS.EntityId) => 
+  byId: (id: EARS.EntityId) =>
     findById<ActionEntity>(id),
-  
-  all: () => 
+
+  all: () =>
     findAll<ActionEntity>(EARS.Entity.Action),
-  
-  byCategory: (category: string) => 
+
+  byCategory: (category: string) =>
     findWhere<ActionEntity>(EARS.Entity.Action, 'category', category),
-  
+
   // Simple pagination
   paginated: (page = 1, pageSize = 20) => {
-    const all = findAll<ActionEntity>(EARS.Entity.Action);
+    const all = actionQueries.all();
     const start = (page - 1) * pageSize;
     return {
       items: all.slice(start, start + pageSize),
@@ -38,7 +38,7 @@ export const actionQueries = {
       totalPages: Math.ceil(all.length / pageSize),
     };
   },
-  
+
   connectedData: (page = 1) => {
     const result = actionQueries.paginated(page, 20);
     return {
@@ -90,31 +90,17 @@ export const actionCommands = {
     if (!actionQueries.byId(id)) {
       throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
-    const { input, ...rest } = updates;
-    
-    // If input is provided, use updateBatch to replace the entire input object
-    if (input !== undefined) {
-      tx(id).updateBatch({
-        input: input,
-        updatedAt: Date.now()
-      });
-      
-      // Update other fields normally
-      if (Object.keys(rest).length > 0) {
-        updateEntity(id, rest);
-      }
-    } else {
-      // No input update, just update other fields
-      updateEntity(id, rest);
-    }
+
+    updateEntity(id, updates);
   },
   
   delete: (id: EARS.EntityId): void => {
-    if (!actionQueries.byId(id)) {
+    // Use findByIdRaw to check existence (including already deleted entities)
+    const existing = findByIdRaw<ActionEntity>(id);
+    if (!existing) {
       throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 } as const;

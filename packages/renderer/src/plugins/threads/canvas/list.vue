@@ -11,6 +11,27 @@
       
       <!-- Right section: Search and New Thread button -->
       <div class="flex items-center gap-3">
+        <!-- View toggle buttons -->
+        <div class="flex gap-1 pr-3 border-r border-neutral-700">
+          <Button
+            @click="actor.send({ type: 'VIEW_LIST' })"
+            type="button"
+            :variant="isListView ? 'secondary' : 'transparent'"
+            class="!text-sm !px-2.5 !py-1.5"
+            title="List View"
+          >
+            <LayoutList :size="16" />
+          </Button>
+          <Button
+            @click="actor.send({ type: 'VIEW_KANBAN' })"
+            type="button"
+            :variant="isKanbanView ? 'secondary' : 'transparent'"
+            class="!text-sm !px-2.5 !py-1.5"
+            title="Kanban Board"
+          >
+            <LayoutGrid :size="16" />
+          </Button>
+        </div>
         <!-- Filter buttons -->
         <div class="flex gap-2">
           <Button
@@ -77,6 +98,7 @@
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+              @delete-click="handleDeleteThread"
             />
           </tbody>
         </table>
@@ -116,7 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Search, Plus, Filter, MessageCircleMore } from 'lucide-vue-next'
+import { Search, Plus, Filter, MessageCircleMore, LayoutList, LayoutGrid } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
@@ -128,6 +150,9 @@ const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
 const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
+const currentState = useSelector(actor, s => s.value)
+const isListView = computed(() => currentState.value === 'list')
+const isKanbanView = computed(() => currentState.value === 'kanban')
 const threadsPerPage = 6
 const currentPage = ref(1)
 
@@ -137,4 +162,15 @@ const paginatedThreads = computed(() => {
 })
 
 const searchKeyword = ref('');
+
+const handleDeleteThread = (threadId: string) => {
+  const thread = threads.value.find(t => t.id === threadId);
+  if (!thread) return;
+
+  const confirmed = confirm(`Are you sure you want to delete thread "${thread.topic || 'Untitled'}"? This will permanently delete all messages and other data associated .`);
+
+  if (confirmed) {
+    actor.send({ type: 'DELETE_THREAD', threadId });
+  }
+};
 </script>

@@ -1,5 +1,7 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
+import breadcrumb, { breadcrumbList } from '@/core/breadcrumb';
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type {
   OutgoingBrainEvents,
 } from '@app/api'
@@ -21,6 +23,7 @@ export interface BrainContext {
   tNodeTree?: TrackEntity[];
   normalizedTree?: NormalizedTNodeTree;
   possibleEvents: EventListenerEntity[];
+  flowHierarchy: Array<{ flowTNodeId: string; label: string }>;
   pulsingEventType?: string;
   // UI state
   showLeftPanel: boolean;
@@ -43,7 +46,7 @@ type SystemEvent = OutgoingBrainEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'SELECT_AND_SHOW_FIRST_NODE' }
-  | { type: 'FLOW.NAVIGATE'; flowId: string }
+  | { type: 'FLOW.NAVIGATE'; tNodeId: string }
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
   | { type: 'TOGGLE_LEFT_PANEL' }
@@ -56,7 +59,7 @@ type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'PLUGIN_DEACTIVATED' }
 
-export type BrainEvents = UIEvent | SystemEvent | PluginEvent
+export type BrainEvents = UIEvent | SystemEvent | PluginEvent | TrailClickEvent
 const typeOf = safeEvents<BrainEvents>()
 
 // Helper functions for tree normalization
@@ -118,6 +121,7 @@ const brainState = setup({
         tNodeTree: typedEv.data.tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
+        flowHierarchy: typedEv.data.flowHierarchy || [],
       };
     }),
     setTNodeData: assign(({ event }) => {
@@ -128,18 +132,20 @@ const brainState = setup({
         tNodeTree: typedEv.data.tNodeTree,
         normalizedTree,
         possibleEvents: typedEv.data.possibleEvents,
+        flowHierarchy: typedEv.data.flowHierarchy || [],
       };
     }),
     addTNodeToTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_SPAWNED') return {};
-      
+
       const { tNode, parentId, eventTNodeId, flowTNodeId } = event;
-      
-      // Only add nodes that belong to the currently viewed flow
+
+      // Filter: Only accept TNode spawns for the currently viewed flow
+      // This prevents subflow internal events from appearing in parent flow view
       if (flowTNodeId !== context.flowTNodeId) {
-        return {}; // Ignore events from other flows
+        return {};
       }
-      
+
       if (!context.normalizedTree) {
         // Initialize if not present
         return {
@@ -239,23 +245,25 @@ const brainState = setup({
     }),
     navigateToFlow: ({ event }) => {
       if (event.type !== 'FLOW.NAVIGATE') return;
-      
+
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_TNODE',
-        tNodeId: event.flowId
+        tNodeId: event.tNodeId
       });
     },
-    goBack: () => {
+    goBack: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'GO_BACK_TNODE'
+        type: 'GO_BACK_TNODE',
+        currentFlowTNodeId: context.flowTNodeId
       });
     },
-    requestPluginData: () => {
+    requestPluginData: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'REQUEST_PLUGIN_DATA'
+        type: 'REQUEST_PLUGIN_DATA',
+        ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
       });
     },
     toggleLeftPanel: assign({
@@ -349,16 +357,30 @@ const brainState = setup({
     setBrainStarted: assign({
       brainIsDead: false
     }),
+    handleBreadcrumbClick: ({ event, context }) => {
+      const target = (event as TrailClickEvent).target;
+
+      if (target === 'root') {
+        trpc.bus.send.mutate({ systemId: id, type: 'GO_BACK_TNODE' });
+      } else if (target.startsWith('flow:')) {
+        const flowTNodeId = target.substring(5);
+        if (flowTNodeId !== context.flowTNodeId) {
+          trpc.bus.send.mutate({ systemId: id, type: 'OPEN_TNODE', tNodeId: flowTNodeId });
+        }
+      }
+    },
   },
   guards: {
     canGoBack: ({ context }) => {
       return true;
-    }
+    },
+    targetIs,
   },
 }).createMachine({
   id,
   context: {
     possibleEvents: [],
+    flowHierarchy: [],
     showLeftPanel: false,
     showRightPanel: false,
     debugEnabled: false,
@@ -377,6 +399,16 @@ const brainState = setup({
       }
     },
     ready: {
+      meta: {
+        ...breadcrumbList<BrainContext>((ctx) =>
+          !ctx.flowHierarchy?.length
+            ? [{ label: 'Brain', target: 'root' }]
+            : ctx.flowHierarchy.map((flow, i) => ({
+                label: i === 0 ? 'Brain' : flow.label,
+                target: `flow:${flow.flowTNodeId}`
+              }))
+        )
+      },
       on: {
         RECEIVE_PLUGIN_DATA: {
           actions: 'setBrainData'
@@ -433,16 +465,18 @@ const brainState = setup({
           actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
-          actions: ['pulseEvent', ({ system }) => {
+          actions: ['pulseEvent', ({ system, context }) => {
             // Clear pulse after animation
             setTimeout(() => {
               system.get(id).send({ type: 'CLEAR_PULSE' });
             }, 400);
-            // Also request fresh data to show the new event
+            // Request fresh data for the current flow to show new events
+            // Pass the current flowTNodeId to maintain the current view
             setTimeout(() => {
               trpc.bus.send.mutate({
                 systemId: id,
-                type: 'REQUEST_PLUGIN_DATA'
+                type: 'REQUEST_PLUGIN_DATA',
+                ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
               });
             }, 100);
           }]
@@ -458,6 +492,9 @@ const brainState = setup({
         },
         BRAIN_STARTED: {
           actions: 'setBrainStarted'
+        },
+        TRAIL_CLICK: {
+          actions: 'handleBreadcrumbClick'
         }
       }
     }

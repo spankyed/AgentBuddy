@@ -17,8 +17,8 @@
       @view-trace="handleViewTrace"
       @view-backup="handleViewBackup"
     />
-    
-    <div class="flex-1 overflow-hidden">
+
+    <div class="flex-1 overflow-hidden relative">
       <SimpleMonacoEditor
         v-if="activeMode === 'query'"
         v-model="editorQuery"
@@ -30,14 +30,35 @@
         @execute="handleExecute"
         class="h-full"
       />
-      
+
       <QueryEditorExamples
         v-else
         @select="handleExampleSelect"
       />
+
+      <!-- Loading overlay for magic prompt generation -->
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isMagicPromptLoading && activeMode === 'query'"
+          class="absolute inset-0 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm z-10"
+        >
+          <div class="flex flex-col items-center space-y-3">
+            <!-- Loading spinner -->
+            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div class="text-sm text-neutral-300">
+              Generating query from prompt...
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
-    
-    
+
+
     <MagicPromptDialog
       v-model="showMagicPrompt"
       @generate="handleMagicPrompt"
@@ -63,6 +84,7 @@ const error = useSelector(actor, (state) => state.context.error);
 const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMessage);
 const mode = useSelector(actor, (state) => state.context.mode);
 const settings = useSelector(actor, (state) => state.context.settings);
+const isMagicPromptLoading = useSelector(actor, (state) => state.context.isMagicPromptLoading);
 
 // Props and emits
 defineProps<{

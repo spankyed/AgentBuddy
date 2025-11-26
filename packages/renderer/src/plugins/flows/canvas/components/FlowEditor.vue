@@ -65,9 +65,10 @@
       <!-- Menu and Auto Layout buttons (bottom left) -->
       <div class="absolute z-10 bottom-4 left-4 flex gap-2">
         <!-- Menu -->
-        <FlowActionsMenu 
+        <FlowActionsMenu
           :selected-flow-id="selectedFlowId"
           @edit-label="$emit('action-edit-label')"
+          @request-delete="$emit('request-delete-flow')"
         />
         
         <!-- Auto Layout Button -->
@@ -89,10 +90,10 @@
     >
       <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-20 left-1/2">
         <div class="px-4 py-2 text-center border rounded-lg bg-neutral-900/90 border-neutral-700">
-          <div class="text-sm text-neutral-300">Click anywhere to view</div>
-          <div v-if="props.selectedFlowLabel" class="mt-1 font-medium text-neutral-100">
+          <div v-if="props.selectedFlowLabel" class="text-base font-semibold text-neutral-100 mb-1">
             {{ props.selectedFlowLabel }}
           </div>
+          <div class="text-sm text-neutral-400">Double-click flow or click here to edit</div>
         </div>
       </div>
     </div>
@@ -142,6 +143,7 @@ const emit = defineEmits<{
   'go-back': []
   'action-layout': [direction?: Direction]
   'action-edit-label': []
+  'request-delete-flow': []
   'overlay-click': []
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]

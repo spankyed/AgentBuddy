@@ -12,17 +12,15 @@ const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
 export const IncomingActionsEvents = [
-  busEvent('codeActions.LIST', { page: z.number().optional() }),
   busEvent('codeActions.OPEN_ACTION', { actionId: z.string() }),
-  busEvent('codeActions.SAVE_ACTION', { 
+  busEvent('codeActions.SAVE_ACTION', {
     actionId: z.string(),
     actionFn: z.string()
   }),
 ] as const
 
 // Outgoing events to frontend
-export type OutgoingActionsEvents = 
-  | { type: 'codeActions.ACTIONS_LISTED'; data: { actions: ActionEntity[]; page: number; totalPages: number; totalCount: number } }
+export type OutgoingActionsEvents =
   | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
   | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
   | { type: 'codeActions.CODE_ERROR'; data: { message: string } }
@@ -31,11 +29,9 @@ export interface Context {
   // No local state needed for actions feature
 }
 
-export type Event = 
-  | { type: 'codeActions.LIST'; page?: number }
+export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
-  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
-  | { type: 'CODE_CONNECTED' };
+  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string };
 
 export const actionsSystem = setup({
   types: {
@@ -43,28 +39,17 @@ export const actionsSystem = setup({
     events: {} as Event,
   },
   actions: {
-    listActions: ({ event }) => {
-      const ev = event as { type: 'codeActions.LIST'; page?: number }
-      const data = repository.actionQueries.connectedData(ev.page || 1)
-      
-      const wrapped = emit(pluginId, {
-        type: 'codeActions.ACTIONS_LISTED',
-        data
-      })
-      rootEvents.emitOutgoing(wrapped.event)
-    },
-
     openAction: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_ACTION'; actionId: string }
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
-      
+
       if (action) {
         // Include the actionFn content directly
         const actionWithContent: ActionEntity & { actionFnContent?: string } = {
           ...action,
           actionFnContent: action.actionFn
         }
-        
+
         const wrapped = emit(pluginId, {
           type: 'codeActions.ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
@@ -84,12 +69,12 @@ export const actionsSystem = setup({
 
     saveAction: ({ event }) => {
       const ev = event as { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
-      
+
       // Update the action with new actionFn
       repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         actionFn: ev.actionFn
       })
-      
+
       const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
       if (updatedAction) {
         const wrapped = emit(pluginId, {
@@ -99,17 +84,6 @@ export const actionsSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
-    },
-
-    sendConnectedData: () => {
-      // Send initial actions list on startup
-      const data = repository.actionQueries.connectedData(1)
-      
-      const wrapped = emit(pluginId, {
-        type: 'codeActions.ACTIONS_LISTED',
-        data
-      })
-      rootEvents.emitOutgoing(wrapped.event)
     }
   }
 }).createMachine({
@@ -119,17 +93,11 @@ export const actionsSystem = setup({
   states: {
     idle: {
       on: {
-        'codeActions.LIST': {
-          actions: 'listActions'
-        },
         'codeActions.OPEN_ACTION': {
           actions: 'openAction'
         },
         'codeActions.SAVE_ACTION': {
           actions: 'saveAction'
-        },
-        'CODE_CONNECTED': {
-          actions: 'sendConnectedData'
         }
       }
     }

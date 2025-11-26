@@ -1,5 +1,6 @@
 import { rootEvents } from '@/core/router/bus-emitter';
 import type { OutgoingSystemEvents, IncomingSystemEvents } from '@/core/router/events';
+import type { EARS } from '@/core/types';
 
 /**
  * Emit an event to a frontend plugin
@@ -35,6 +36,29 @@ export function sendToSystem<T extends IncomingSystemEvents>(
 ): void {
   const fullEvent = { ...event, systemId } as IncomingSystemEvents;
   rootEvents.emitIncoming(fullEvent);
+}
+
+/**
+ * Emit TRIGGER_BRAIN_EVENT to brain system (internal use only)
+ * Used by node handlers to fire events during flow execution
+ * @param event - The brain event to emit
+ * @example
+ * sendToBrainSystem({
+ *   eventType: 'user.login',
+ *   payload: { userId: '123' },
+ *   targetFlowId: 'TNode-123'
+ * });
+ */
+export function sendToBrainSystem(event: {
+  eventType: string;
+  payload?: any;
+  targetFlowId?: EARS.EntityId;
+}): void {
+  rootEvents.emitIncoming({
+    ...event,
+    type: 'TRIGGER_BRAIN_EVENT',
+    systemId: 'brain'
+  } as any);
 }
 
 /**
