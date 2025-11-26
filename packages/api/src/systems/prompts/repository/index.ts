@@ -62,16 +62,16 @@ export const promptCommands = {
     if (!input.templateFn?.trim()) {
       throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
-    
+
     const prompt = createEntityWithDefaults<PromptEntity>(
       EARS.Entity.Prompt,
       input as any,
       'PROMPT'
     );
-    
+
     return prompt;
   },
-  
+
   update: (id: EARS.EntityId, updates: {
     label?: string;
     description?: string;
@@ -82,7 +82,7 @@ export const promptCommands = {
     if (!promptQueries.byId(id)) {
       throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
+
     updateEntity(id, updates);
   },
   

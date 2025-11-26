@@ -138,7 +138,7 @@ interface PromptEntity extends BaseEntity {
 }
 
 declare class PromptService {
-    getByLabel(label: string): Promise<PromptEntity | undefined>;
+    getByLabel(label: string): PromptEntity | undefined;
     /**
      * Execute a template with prompt context for accessing other prompts
      * @param templateFn - The template function body
@@ -150,7 +150,7 @@ declare class PromptService {
      * @param label - The prompt label
      * @param templateParams - Parameters to pass to the template
      */
-    usePrompt(label: string, templateParams: Record<string, any>): Promise<string | undefined>;
+    usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
 /**

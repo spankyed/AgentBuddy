@@ -120,12 +120,12 @@ function addParameter() {
   const existingKeys = Object.keys(props.parameters);
   let newKey = 'param1';
   let counter = 1;
-  
+
   while (existingKeys.includes(newKey)) {
     counter++;
     newKey = `param${counter}`;
   }
-  
+
   const updated = {
     ...props.parameters,
     [newKey]: {
@@ -134,7 +134,7 @@ function addParameter() {
       description: ''
     }
   };
-  
+
   emit('update', updated);
 }
 </script>

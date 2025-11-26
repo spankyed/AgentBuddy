@@ -10,7 +10,6 @@ import {
   RepositoryErrorCode
 } from '@/core/utils/repository';
 import type { ActionEntity } from '../types';
-import { tx } from '@/core/ears/helpers/transaction';
 
 /**
  * Action Repository - Dead simple CRUD operations
@@ -91,24 +90,8 @@ export const actionCommands = {
     if (!actionQueries.byId(id)) {
       throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
-    
-    const { input, ...rest } = updates;
-    
-    // If input is provided, use updateBatch to replace the entire input object
-    if (input !== undefined) {
-      tx(id).updateBatch({
-        input: input,
-        updatedAt: Date.now()
-      });
-      
-      // Update other fields normally
-      if (Object.keys(rest).length > 0) {
-        updateEntity(id, rest);
-      }
-    } else {
-      // No input update, just update other fields
-      updateEntity(id, rest);
-    }
+
+    updateEntity(id, updates);
   },
   
   delete: (id: EARS.EntityId): void => {

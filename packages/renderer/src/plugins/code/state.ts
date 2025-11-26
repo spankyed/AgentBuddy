@@ -273,8 +273,7 @@ const codeState = setup({
       // Always initialize all child machines
       system.get('explorer')?.send({ type: 'explorer.INITIALIZE', baseDirectory: context.baseDirectory });
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
-      system.get('codeActions')?.send({ type: 'codeActions.REFRESH_LIST' });
-      system.get('codePrompts')?.send({ type: 'codePrompts.REFRESH_LIST' });
+      // Actions and prompts are loaded by their respective main plugin actors
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
@@ -400,11 +399,8 @@ const codeState = setup({
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
       } else if (ev.panel === 'terminal') {
         system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
-      } else if (ev.panel === 'actions') {
-        system.get('codeActions')?.send({ type: 'codeActions.LIST' });
-      } else if (ev.panel === 'prompts') {
-        system.get('codePrompts')?.send({ type: 'codePrompts.LIST' });
       }
+      // Actions and prompts are loaded by their respective main plugin actors
       return {
         ...context,
         selectedPanel: ev.panel

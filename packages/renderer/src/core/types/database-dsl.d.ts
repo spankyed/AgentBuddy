@@ -258,6 +258,11 @@ declare let persistence: PersistenceSink & {
 
 declare function closePersistence(): void;
 declare function reinitializeLmdb(): void;
+/**
+ * Reset LMDB by deleting and recreating all database directories.
+ * Follows pattern: null → close → delete → recreate
+ */
+declare function resetLmdbFiles(): Promise<void>;
 declare const createEntity: (t: EARS.Entity) => EARS.EntityId;
 declare function clearMemory(): void;
 declare const putAttr: (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => void;
@@ -420,7 +425,7 @@ type Entity = EARS.Entity;
 type RelKind = EARS.RelKind;
 type AttrKind = EARS.AttrKind;
 
-export { AtomicTransaction, AttrKind, EARS, Entity, RelKind, addAttr, addRelation, ancestors, bp, clearMemory, closePersistence, createEntity, descendants, destroyEntity, dropAttr, dropIf, envs, getAll, getAllAttributeKinds, getAllEntities, getAllEntityTypes, getAllRelationKinds, getAttr, getAttributeStats, getAttrs, getEntitiesOfType, getRoles, getSchemaStats, grantRole, isEntity, leaves, linkSymmetric, lowestCommonAncestor, mergeAttr, persistence, policy, putAttr, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesByRole, queryEntitiesInRelationTo, qx, reinitializeLmdb, removeRelation, revokeRole, rootParent, shortestPath, spawn, topoSort, tx, updateAttr, updateRelation, wouldCreateCycle };
+export { AtomicTransaction, AttrKind, EARS, Entity, RelKind, addAttr, addRelation, ancestors, bp, clearMemory, closePersistence, createEntity, descendants, destroyEntity, dropAttr, dropIf, envs, getAll, getAllAttributeKinds, getAllEntities, getAllEntityTypes, getAllRelationKinds, getAttr, getAttributeStats, getAttrs, getEntitiesOfType, getRoles, getSchemaStats, grantRole, isEntity, leaves, linkSymmetric, lowestCommonAncestor, mergeAttr, persistence, policy, putAttr, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesByRole, queryEntitiesInRelationTo, qx, reinitializeLmdb, removeRelation, resetLmdbFiles, revokeRole, rootParent, shortestPath, spawn, topoSort, tx, updateAttr, updateRelation, wouldCreateCycle };
 export type { BaseEntity, EntityId, QueryBuilder };
 
 }

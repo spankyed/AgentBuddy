@@ -12,17 +12,19 @@ const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
 export const IncomingPromptsEvents = [
-  busEvent('codePrompts.LIST', { page: z.number().optional() }),
   busEvent('codePrompts.OPEN_PROMPT', { promptId: z.string() }),
-  busEvent('codePrompts.SAVE_PROMPT', { 
+  busEvent('codePrompts.SAVE_PROMPT', {
     promptId: z.string(),
     templateFn: z.string()
+  }),
+  busEvent('codePrompts.UPDATE_PROMPT_INPUTS', {
+    promptId: z.string(),
+    inputs: z.record(z.any())
   }),
 ] as const
 
 // Outgoing events to frontend
-export type OutgoingPromptsEvents = 
-  | { type: 'codePrompts.PROMPTS_LISTED'; data: { prompts: PromptEntity[]; page: number; totalPages: number; totalCount: number } }
+export type OutgoingPromptsEvents =
   | { type: 'codePrompts.PROMPT_SELECTED'; promptId: string; data: PromptEntity & { templateFnContent?: string } }
   | { type: 'codePrompts.PROMPT_UPDATED'; prompt: PromptEntity; promptId: string }
   | { type: 'codePrompts.CODE_ERROR'; data: { message: string } }
@@ -31,11 +33,10 @@ export interface Context {
   // No local state needed for prompts feature
 }
 
-export type Event = 
-  | { type: 'codePrompts.LIST'; page?: number }
+export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
-  | { type: 'CODE_CONNECTED' };
+  | { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> };
 
 
 export const promptsSystem = setup({
@@ -44,28 +45,17 @@ export const promptsSystem = setup({
     events: {} as Event,
   },
   actions: {
-    listPrompts: ({ event }) => {
-      const ev = event as { type: 'codePrompts.LIST'; page?: number }
-      const data = repository.promptQueries.connectedData(ev.page || 1)
-      
-      const wrapped = emit(pluginId, {
-        type: 'codePrompts.PROMPTS_LISTED',
-        data
-      } as any)
-      rootEvents.emitOutgoing(wrapped.event as any)
-    },
-
     openPrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
-      
+
       if (prompt) {
         // Include the templateFn content directly
         const promptWithContent: PromptEntity & { templateFnContent?: string } = {
           ...prompt,
           templateFnContent: prompt.templateFn
         }
-        
+
         const wrapped = emit(pluginId, {
           type: 'codePrompts.PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
@@ -85,12 +75,12 @@ export const promptsSystem = setup({
 
     savePrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
-      
+
       // Update the prompt with new templateFn
       repository.promptCommands.update(ev.promptId as EARS.EntityId, {
         templateFn: ev.templateFn
       })
-      
+
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       if (updatedPrompt) {
         const wrapped = emit(pluginId, {
@@ -102,15 +92,23 @@ export const promptsSystem = setup({
       }
     },
 
-    sendConnectedData: () => {
-      // Send initial prompts list on connection
-      const data = repository.promptQueries.connectedData(1)
-      
-      const wrapped = emit(pluginId, {
-        type: 'codePrompts.PROMPTS_LISTED',
-        data
-      } as any)
-      rootEvents.emitOutgoing(wrapped.event as any)
+    updatePromptInputs: ({ event }) => {
+      const ev = event as { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> }
+
+      // Update the prompt with new inputs
+      repository.promptCommands.update(ev.promptId as EARS.EntityId, {
+        inputs: ev.inputs
+      })
+
+      const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
+      if (updatedPrompt) {
+        const wrapped = emit(pluginId, {
+          type: 'codePrompts.PROMPT_UPDATED',
+          prompt: updatedPrompt,
+          promptId: updatedPrompt.id
+        } as any)
+        rootEvents.emitOutgoing(wrapped.event as any)
+      }
     }
   }
 }).createMachine({
@@ -120,17 +118,14 @@ export const promptsSystem = setup({
   states: {
     idle: {
       on: {
-        'codePrompts.LIST': {
-          actions: 'listPrompts'
-        },
         'codePrompts.OPEN_PROMPT': {
           actions: 'openPrompt'
         },
         'codePrompts.SAVE_PROMPT': {
           actions: 'savePrompt'
         },
-        'CODE_CONNECTED': {
-          actions: 'sendConnectedData'
+        'codePrompts.UPDATE_PROMPT_INPUTS': {
+          actions: 'updatePromptInputs'
         }
       }
     }
