@@ -58,8 +58,7 @@
                     <span
                       v-for="(param, key) in action.input"
                       :key="key"
-                      @click.stop="startEditParameter(action.id, String(key))"
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 cursor-pointer hover:bg-neutral-700 transition-colors"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 transition-colors"
                     >
                       <template v-if="editingParameter?.actionId === action.id && editingParameter?.key === String(key)">
                         <input
@@ -71,11 +70,30 @@
                           @click.stop
                           class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
                         />
+                        <button
+                          @click.stop="cancelEditParameter"
+                          class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
+                          title="Cancel edit"
+                        >
+                          <X :size="10" />
+                        </button>
                       </template>
                       <template v-else>
-                        <span class="font-medium">{{ key }}</span>
-                        <span class="text-neutral-500">({{ param.type }})</span>
-                        <span v-if="param.required" class="text-red-400">*</span>
+                        <span
+                          @click.stop="startEditParameter(action.id, String(key))"
+                          class="cursor-pointer hover:text-neutral-200"
+                        >
+                          <span class="font-medium">{{ key }}</span>
+                          <span class="text-neutral-500">({{ param.type }})</span>
+                          <span v-if="param.required" class="text-red-400">*</span>
+                        </span>
+                        <button
+                          @click.stop="removeParameter(action, String(key))"
+                          class="ml-0.5 p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
+                          title="Remove parameter"
+                        >
+                          <X :size="10" />
+                        </button>
                       </template>
                     </span>
                   </div>
@@ -84,7 +102,7 @@
                   </div>
 
                   <!-- Add Parameter Input -->
-                  <div v-if="addingParameterForAction === action.id" class="mt-1">
+                  <div v-if="addingParameterForAction === action.id" class="mt-1 relative">
                     <input
                       v-model="newParameterName"
                       :data-add-param="action.id"
@@ -92,9 +110,16 @@
                       @keydown.escape.stop="cancelAddParameter"
                       @blur="confirmAddParameter(action)"
                       @click.stop
-                      class="w-full px-2 py-1 text-xs rounded bg-neutral-800 border border-blue-500 text-neutral-200 focus:outline-none"
+                      class="w-full pl-2 pr-6 py-1 text-xs rounded bg-neutral-800 border border-blue-500 text-neutral-200 focus:outline-none"
                       placeholder="Parameter name"
                     />
+                    <button
+                      @click.stop="cancelAddParameter"
+                      class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Cancel"
+                    >
+                      <X :size="12" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -165,7 +190,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
-import { RefreshCw, Play, ExternalLink, Plus } from 'lucide-vue-next'
+import { RefreshCw, Play, ExternalLink, Plus, X } from 'lucide-vue-next'
 import type { ActionEntity, ActionParameter } from '@app/api'
 import {
   ContextMenuRoot,
@@ -266,6 +291,18 @@ function confirmEditParameter(action: ActionEntity) {
 function cancelEditParameter() {
   editingParameter.value = null
   editedParameterName.value = ''
+}
+
+function removeParameter(action: ActionEntity, key: string) {
+  if (action.input) {
+    const updatedInput = { ...action.input }
+    delete updatedInput[key]
+    actionsPluginActor.send({
+      type: 'ACTION.UPDATE_INPUT',
+      actionId: action.id,
+      input: updatedInput
+    })
+  }
 }
 
 // Event handlers
