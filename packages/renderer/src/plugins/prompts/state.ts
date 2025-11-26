@@ -53,6 +53,7 @@ type UIEvent =
   | { type: 'PROMPT.CREATE' }
   | { type: 'PROMPT.SAVE' }
   | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
+  | { type: 'PROMPT.UPDATE_INPUTS'; promptId: string; inputs: Record<string, any> }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
@@ -160,6 +161,16 @@ const promptsState = setup({
         systemId: id,
         type: 'DELETE_PROMPT',
         promptId: ev.promptId,
+      });
+    },
+
+    updatePromptInputs: ({ event }) => {
+      const ev = typeOf('PROMPT.UPDATE_INPUTS', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_PROMPT',
+        promptId: ev.promptId,
+        inputs: ev.inputs,
       });
     },
 
@@ -350,6 +361,7 @@ const promptsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
+    'PROMPT.UPDATE_INPUTS': { actions: 'updatePromptInputs' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],

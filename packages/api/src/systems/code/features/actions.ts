@@ -17,10 +17,6 @@ export const IncomingActionsEvents = [
     actionId: z.string(),
     actionFn: z.string()
   }),
-  busEvent('codeActions.UPDATE_ACTION_INPUT', {
-    actionId: z.string(),
-    input: z.record(z.any())
-  }),
 ] as const
 
 // Outgoing events to frontend
@@ -35,8 +31,7 @@ export interface Context {
 
 export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
-  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
-  | { type: 'codeActions.UPDATE_ACTION_INPUT'; actionId: string; input: Record<string, any> };
+  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string };
 
 export const actionsSystem = setup({
   types: {
@@ -89,25 +84,6 @@ export const actionsSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
-    },
-
-    updateActionInput: ({ event }) => {
-      const ev = event as { type: 'codeActions.UPDATE_ACTION_INPUT'; actionId: string; input: Record<string, any> }
-
-      // Update the action with new input
-      repository.actionCommands.update(ev.actionId as EARS.EntityId, {
-        input: ev.input
-      })
-
-      const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
-      if (updatedAction) {
-        const wrapped = emit(pluginId, {
-          type: 'codeActions.ACTION_UPDATED',
-          action: updatedAction,
-          actionId: updatedAction.id
-        })
-        rootEvents.emitOutgoing(wrapped.event)
-      }
     }
   }
 }).createMachine({
@@ -122,9 +98,6 @@ export const actionsSystem = setup({
         },
         'codeActions.SAVE_ACTION': {
           actions: 'saveAction'
-        },
-        'codeActions.UPDATE_ACTION_INPUT': {
-          actions: 'updateActionInput'
         }
       }
     }

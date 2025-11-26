@@ -30,7 +30,6 @@ export interface PromptTab {
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; content: string }
-  | { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> }
   // Backend events
   | { type: 'codePrompts.PROMPT_SELECTED'; promptId: string; data: PromptEntity & { templateFnContent?: string } }
   | { type: 'codePrompts.PROMPT_UPDATED'; prompt: PromptEntity; promptId: string }
@@ -54,11 +53,6 @@ export const promptsState = setup({
         promptId: ev.promptId,
         templateFn: ev.content
       })
-    },
-
-    updatePromptInputs: ({ event }) => {
-      const ev = event as { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> }
-      sendToBackend('codePrompts.UPDATE_PROMPT_INPUTS', { promptId: ev.promptId, inputs: ev.inputs })
     },
 
     handlePromptSelected: ({ event, self }) => {
@@ -134,9 +128,6 @@ export const promptsState = setup({
     },
     'codePrompts.SAVE_PROMPT': {
       actions: 'savePrompt'
-    },
-    'codePrompts.UPDATE_PROMPT_INPUTS': {
-      actions: 'updatePromptInputs'
     },
     'codePrompts.OPEN_TABS': {
       actions: 'openPromptTabs'

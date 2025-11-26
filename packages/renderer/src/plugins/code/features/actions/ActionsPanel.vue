@@ -211,9 +211,9 @@ function confirmAddParameter(action: ActionEntity) {
       ...action.input,
       [paramKey]: { type: 'any' as const, required: false }
     }
-    // Send through state machine
-    codeActionsActor.send({
-      type: 'codeActions.UPDATE_ACTION_INPUT',
+    // Send through main actions plugin state machine
+    actionsPluginActor.send({
+      type: 'ACTION.UPDATE_INPUT',
       actionId: action.id,
       input: updatedInput
     })
@@ -251,9 +251,9 @@ function confirmEditParameter(action: ActionEntity) {
         ...updatedInput[oldKey]
       }
       delete updatedInput[oldKey]
-      // Send through state machine
-      codeActionsActor.send({
-        type: 'codeActions.UPDATE_ACTION_INPUT',
+      // Send through main actions plugin state machine
+      actionsPluginActor.send({
+        type: 'ACTION.UPDATE_INPUT',
         actionId: action.id,
         input: updatedInput
       })

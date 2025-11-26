@@ -211,9 +211,9 @@ function confirmAddParameter(prompt: PromptEntity) {
       ...prompt.inputs,
       [paramKey]: { name: paramKey, type: 'any' as const, required: false }
     }
-    // Send through state machine
-    codePromptsActor.send({
-      type: 'codePrompts.UPDATE_PROMPT_INPUTS',
+    // Send through main prompts plugin state machine
+    promptsPluginActor.send({
+      type: 'PROMPT.UPDATE_INPUTS',
       promptId: prompt.id,
       inputs: updatedInputs
     })
@@ -258,9 +258,9 @@ function confirmEditParameter(prompt: PromptEntity) {
         name: newName
       }
       delete updatedInputs[oldKey]
-      // Send through state machine
-      codePromptsActor.send({
-        type: 'codePrompts.UPDATE_PROMPT_INPUTS',
+      // Send through main prompts plugin state machine
+      promptsPluginActor.send({
+        type: 'PROMPT.UPDATE_INPUTS',
         promptId: prompt.id,
         inputs: updatedInputs
       })

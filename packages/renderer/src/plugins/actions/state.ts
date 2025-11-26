@@ -53,6 +53,7 @@ type UIEvent =
   | { type: 'ACTION.CREATE' }
   | { type: 'ACTION.SAVE' }
   | { type: 'ACTION.DELETE'; actionId: EARS.EntityId }
+  | { type: 'ACTION.UPDATE_INPUT'; actionId: string; input: Record<string, any> }
   | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
@@ -160,6 +161,16 @@ const actionsState = setup({
         systemId: id,
         type: 'DELETE_ACTION',
         actionId: ev.actionId,
+      });
+    },
+
+    updateActionInput: ({ event }) => {
+      const ev = typeOf('ACTION.UPDATE_INPUT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_ACTION',
+        actionId: ev.actionId,
+        input: ev.input,
       });
     },
 
@@ -350,6 +361,7 @@ const actionsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
+    'ACTION.UPDATE_INPUT': { actions: 'updateActionInput' },
     ...TRAIL_CLICK([
       ['.list', 'list'],
       ['.create', 'create'],

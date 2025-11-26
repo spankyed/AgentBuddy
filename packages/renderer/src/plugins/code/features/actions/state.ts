@@ -30,7 +30,6 @@ export interface ActionTab {
 export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; content: string }
-  | { type: 'codeActions.UPDATE_ACTION_INPUT'; actionId: string; input: Record<string, any> }
   // Backend events
   | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
   | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
@@ -54,11 +53,6 @@ export const actionsState = setup({
         actionId: ev.actionId,
         actionFn: ev.content
       })
-    },
-
-    updateActionInput: ({ event }) => {
-      const ev = event as { type: 'codeActions.UPDATE_ACTION_INPUT'; actionId: string; input: Record<string, any> }
-      sendToBackend('codeActions.UPDATE_ACTION_INPUT', { actionId: ev.actionId, input: ev.input })
     },
 
     handleActionSelected: ({ event, self }) => {
@@ -134,9 +128,6 @@ export const actionsState = setup({
     },
     'codeActions.SAVE_ACTION': {
       actions: 'saveAction'
-    },
-    'codeActions.UPDATE_ACTION_INPUT': {
-      actions: 'updateActionInput'
     },
     'codeActions.OPEN_TABS': {
       actions: 'openActionTabs'

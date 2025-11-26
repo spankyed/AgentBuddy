@@ -17,10 +17,6 @@ export const IncomingPromptsEvents = [
     promptId: z.string(),
     templateFn: z.string()
   }),
-  busEvent('codePrompts.UPDATE_PROMPT_INPUTS', {
-    promptId: z.string(),
-    inputs: z.record(z.any())
-  }),
 ] as const
 
 // Outgoing events to frontend
@@ -35,8 +31,7 @@ export interface Context {
 
 export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-  | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
-  | { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> };
+  | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
 
 
 export const promptsSystem = setup({
@@ -90,25 +85,6 @@ export const promptsSystem = setup({
         } as any)
         rootEvents.emitOutgoing(wrapped.event as any)
       }
-    },
-
-    updatePromptInputs: ({ event }) => {
-      const ev = event as { type: 'codePrompts.UPDATE_PROMPT_INPUTS'; promptId: string; inputs: Record<string, any> }
-
-      // Update the prompt with new inputs
-      repository.promptCommands.update(ev.promptId as EARS.EntityId, {
-        inputs: ev.inputs
-      })
-
-      const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
-      if (updatedPrompt) {
-        const wrapped = emit(pluginId, {
-          type: 'codePrompts.PROMPT_UPDATED',
-          prompt: updatedPrompt,
-          promptId: updatedPrompt.id
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
-      }
     }
   }
 }).createMachine({
@@ -123,9 +99,6 @@ export const promptsSystem = setup({
         },
         'codePrompts.SAVE_PROMPT': {
           actions: 'savePrompt'
-        },
-        'codePrompts.UPDATE_PROMPT_INPUTS': {
-          actions: 'updatePromptInputs'
         }
       }
     }
