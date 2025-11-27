@@ -50,15 +50,24 @@
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
                 <template v-if="editingNameForPrompt === prompt.id">
-                  <input
-                    v-model="editedName"
-                    :data-edit-name="prompt.id"
-                    @keydown.enter.stop="confirmEditName(prompt)"
-                    @keydown.escape.stop="cancelEditName"
-                    @blur="confirmEditName(prompt)"
-                    @click.stop
-                    class="text-sm font-medium bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200 w-full"
-                  />
+                  <div class="relative w-full" @click.stop>
+                    <input
+                      v-model="editedName"
+                      :data-edit-name="prompt.id"
+                      @keydown.enter.stop="confirmEditName(prompt)"
+                      @keydown.escape.stop="cancelEditName"
+                      @blur="confirmEditName(prompt)"
+                      @click.stop
+                      class="text-sm font-medium bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200 w-full pr-5"
+                    />
+                    <button
+                      @mousedown.prevent.stop="cancelEditName"
+                      class="absolute right-0 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Cancel"
+                    >
+                      <X :size="12" />
+                    </button>
+                  </div>
                 </template>
                 <template v-else>
                   <div class="text-sm font-medium truncate text-neutral-200" :title="prompt.description">
@@ -84,7 +93,7 @@
                           class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
                         />
                         <button
-                          @click.stop="cancelEditParameter"
+                          @mousedown.prevent.stop="cancelEditParameter"
                           class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
                           title="Cancel edit"
                         >
@@ -127,7 +136,7 @@
                       placeholder="Parameter name"
                     />
                     <button
-                      @click.stop="cancelAddParameter"
+                      @mousedown.prevent.stop="cancelAddParameter"
                       class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-colors"
                       title="Cancel"
                     >
@@ -336,11 +345,11 @@ function removeParameter(prompt: PromptEntity, key: string) {
 function startEditName(prompt: PromptEntity) {
   editingNameForPrompt.value = prompt.id
   editedName.value = prompt.label
-  nextTick(() => {
+  setTimeout(() => {
     const input = document.querySelector(`[data-edit-name="${prompt.id}"]`) as HTMLInputElement
     input?.focus()
     input?.select()
-  })
+  }, 0)
 }
 
 function confirmEditName(prompt: PromptEntity) {
