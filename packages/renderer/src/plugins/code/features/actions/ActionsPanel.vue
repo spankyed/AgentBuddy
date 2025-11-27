@@ -178,6 +178,10 @@
               <Plus :size="16" />
               Add Parameter
             </ContextMenuItem>
+            <ContextMenuItem @select="deleteAction(action)" :class="MENU_ITEM_CLASS">
+              <Trash2 :size="16" />
+              Delete
+            </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenuPortal>
       </ContextMenuRoot>
@@ -216,8 +220,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
-import { RefreshCw, Play, ExternalLink, Plus, X, Pencil } from 'lucide-vue-next'
-import type { ActionEntity, ActionParameter } from '@app/api'
+import { Play, ExternalLink, Plus, X, Pencil, Trash2 } from 'lucide-vue-next'
+import type { ActionEntity } from '@app/api'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -236,7 +240,7 @@ const actionsPluginActor = applicationState.system.get(actionsPluginId)!
 const actions = useSelector(actionsPluginActor, (state: any) => state.context.actions)
 const page = useSelector(actionsPluginActor, (state: any) => state.context.page)
 const totalPages = useSelector(actionsPluginActor, (state: any) => state.context.totalPages)
-const totalCount = useSelector(actionsPluginActor, (state: any) => state.context.totalCount)
+// const totalCount = useSelector(actionsPluginActor, (state: any) => state.context.totalCount)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -363,6 +367,13 @@ function confirmEditName(action: ActionEntity) {
 function cancelEditName() {
   editingNameForAction.value = null
   editedName.value = ''
+}
+
+function deleteAction(action: ActionEntity) {
+  actionsPluginActor.send({
+    type: 'ACTION.DELETE',
+    actionId: action.id
+  })
 }
 
 // Event handlers

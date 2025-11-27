@@ -178,6 +178,10 @@
               <Plus :size="16" />
               Add Parameter
             </ContextMenuItem>
+            <ContextMenuItem @select="deletePrompt(prompt)" :class="MENU_ITEM_CLASS">
+              <Trash2 :size="16" />
+              Delete
+            </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenuPortal>
       </ContextMenuRoot>
@@ -216,8 +220,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
-import { RefreshCw, Sparkle, ExternalLink, Plus, X, Pencil } from 'lucide-vue-next'
-import type { PromptEntity, TemplateInput } from '@app/api'
+import { Sparkle, ExternalLink, Plus, X, Pencil, Trash2 } from 'lucide-vue-next'
+import type { PromptEntity } from '@app/api'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -236,7 +240,7 @@ const promptsPluginActor = applicationState.system.get(promptsPluginId)!
 const prompts = useSelector(promptsPluginActor, (state: any) => state.context.prompts)
 const page = useSelector(promptsPluginActor, (state: any) => state.context.page)
 const totalPages = useSelector(promptsPluginActor, (state: any) => state.context.totalPages)
-const totalCount = useSelector(promptsPluginActor, (state: any) => state.context.totalCount)
+// const totalCount = useSelector(promptsPluginActor, (state: any) => state.context.totalCount)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -370,6 +374,13 @@ function confirmEditName(prompt: PromptEntity) {
 function cancelEditName() {
   editingNameForPrompt.value = null
   editedName.value = ''
+}
+
+function deletePrompt(prompt: PromptEntity) {
+  promptsPluginActor.send({
+    type: 'PROMPT.DELETE',
+    promptId: prompt.id
+  })
 }
 
 // Event handlers
