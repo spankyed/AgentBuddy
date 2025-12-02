@@ -48,16 +48,16 @@ export type StatusVariant = 'simple' | 'detailed'
 
 // Color scheme classes for each node type (static for Tailwind)
 const NODE_STYLE_CLASSES = {
-  // Slightly brighter, harmonious backgrounds
+  // Clean, minimal node backgrounds with left accent
   gradient: {
-    purple: 'bg-purple-500/[0.15] backdrop-blur-sm border-purple-500/25 hover:bg-purple-500/[0.20] hover:border-purple-500/35 shadow-sm',
-    blue: 'bg-blue-500/[0.15] backdrop-blur-sm border-blue-500/25 hover:bg-blue-500/[0.20] hover:border-blue-500/35 shadow-sm',
-    amber: 'bg-amber-500/[0.15] backdrop-blur-sm border-amber-500/25 hover:bg-amber-500/[0.20] hover:border-amber-500/35 shadow-sm',
-    cyan: 'bg-cyan-500/[0.15] backdrop-blur-sm border-cyan-500/25 hover:bg-cyan-500/[0.20] hover:border-cyan-500/35 shadow-sm',
-    orange: 'bg-orange-500/[0.15] backdrop-blur-sm border-orange-500/25 hover:bg-orange-500/[0.20] hover:border-orange-500/35 shadow-sm',
-    emerald: 'bg-emerald-500/[0.15] backdrop-blur-sm border-emerald-500/25 hover:bg-emerald-500/[0.20] hover:border-emerald-500/35 shadow-sm',
-    indigo: 'bg-indigo-500/[0.15] backdrop-blur-sm border-indigo-500/25 hover:bg-indigo-500/[0.20] hover:border-indigo-500/35 shadow-sm',
-    neutral: 'bg-neutral-500/[0.15] backdrop-blur-sm border-neutral-500/25 hover:bg-neutral-500/[0.20] hover:border-neutral-500/35 shadow-sm'
+    purple: 'bg-neutral-800/90 border-l-2 border-l-purple-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    blue: 'bg-neutral-800/90 border-l-2 border-l-blue-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    amber: 'bg-neutral-800/90 border-l-2 border-l-amber-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    cyan: 'bg-neutral-800/90 border-l-2 border-l-cyan-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    orange: 'bg-neutral-800/90 border-l-2 border-l-orange-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    emerald: 'bg-neutral-800/90 border-l-2 border-l-emerald-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    indigo: 'bg-neutral-800/90 border-l-2 border-l-indigo-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
+    neutral: 'bg-neutral-800/90 border-l-2 border-l-neutral-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20'
   },
   // Solid accent colors for meaningful indicators
   solid: {
@@ -327,7 +327,7 @@ const getNodeColorKey = (nodeType: string): keyof typeof NODE_STYLE_CLASSES.grad
  * Returns complete node styling classes including gradients, borders, and hover effects
  */
 export const getNodeClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
-  const baseClasses = 'px-4 py-3 rounded-lg border backdrop-blur-sm transition-all duration-200'
+  const baseClasses = 'px-3 py-2 rounded-lg border backdrop-blur-sm transition-all duration-200'
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
 
