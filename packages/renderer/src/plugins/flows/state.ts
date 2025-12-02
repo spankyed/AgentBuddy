@@ -21,6 +21,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from '@/components/flow-nodes'
+import { calculateLayout, allNodesHavePositions } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -73,7 +74,7 @@ type UIEvent =
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
-  | { type: 'EDGE.CONNECT'; src: string; tgt: string }
+  | { type: 'EDGE.CONNECT'; src: string; tgt: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
   | { type: 'NODE.CREATE'; nodeType: string; position?: { x: number; y: number } }
@@ -105,6 +106,17 @@ const flowsState = setup({
     /* ── bootstrap ─────────────────────────────────────── */
     setPluginData: assign(({ context, event }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
+
+      // Calculate layout for initial load if positions missing
+      const existingPositions = context.graph?.positions || {};
+      const graphNodes = ev.data.graph?.nodes || [];
+      const graphEdges = ev.data.graph?.edges || [];
+      const needsLayout = graphNodes.length > 0 && !allNodesHavePositions(graphNodes, existingPositions);
+
+      const positions = needsLayout
+        ? calculateLayout({ nodes: graphNodes, edges: graphEdges })
+        : existingPositions;
+
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
         prompts: ev.data.prompts || [],
@@ -112,8 +124,9 @@ const flowsState = setup({
         actions: ev.data.actions || [],
         selectedFlowId: ev.data.selectedFlowId,
         graph: {
-          ...ev.data.graph,
-          positions: context.graph?.positions || {}, // Preserve existing positions
+          nodes: graphNodes,
+          edges: graphEdges,
+          positions,
         },
         settings: ev.data.settings || {},
       }
@@ -162,13 +175,21 @@ const flowsState = setup({
     loadFlowData: assign(({ context, event }) => {
       const ev = typeOf('FLOW_SELECTED', event);
 
+      // Preserve existing positions or calculate layout if missing
+      const existingPositions = context.graph?.positions || {};
+      const needsLayout = !allNodesHavePositions(ev.data.nodes, existingPositions);
+
+      const positions = needsLayout
+        ? calculateLayout({ nodes: ev.data.nodes, edges: ev.data.edges })
+        : existingPositions;
+
       return {
         selectedFlowId: ev.flowId,
         selectedNodeId: undefined,
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions: context.graph?.positions || {}, // Preserve existing positions
+          positions,
         },
       };
     }),
@@ -202,13 +223,19 @@ const flowsState = setup({
     addCreatedFlow: assign(({ context, event }) => {
       const ev = typeOf('FLOW_CREATED', event);
 
+      // Calculate layout immediately for new flow
+      const positions = calculateLayout({
+        nodes: ev.data.nodes,
+        edges: ev.data.edges,
+      });
+
       return {
         flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions: {}, // Start with empty positions, will be set by layout
+          positions,
         },
       };
     }),
@@ -286,9 +313,17 @@ const flowsState = setup({
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
-      const newEdge = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' } as EdgeEntity
-      
-      return { 
+      const newEdge = {
+        id,
+        source: ev.src,
+        target: ev.tgt,
+        kind: 'transitions_to',
+        // Store handle info for switch nodes with multiple outputs
+        sourceHandle: ev.sourceHandle,
+        targetHandle: ev.targetHandle,
+      } as EdgeEntity
+
+      return {
         graph: {
           ...context.graph,
           edges: [...context.graph.edges, newEdge],
@@ -299,7 +334,7 @@ const flowsState = setup({
     sendEdgeConnected: ({ context, event }) => {
       const ev = typeOf('EDGE.CONNECT', event);
       if (!context.selectedFlowId) return;
-      
+
       // Only send if both IDs are permanent (not temporary)
       if (!ev.src.startsWith('temp-') && !ev.tgt.startsWith('temp-')) {
         trpc.bus.send.mutate({
@@ -308,6 +343,8 @@ const flowsState = setup({
           flowId: context.selectedFlowId,
           sourceId: ev.src,
           targetId: ev.tgt,
+          sourceHandle: ev.sourceHandle,
+          targetHandle: ev.targetHandle,
         });
       } else {
         console.log('Cannot create edge yet - nodes still pending:', { src: ev.src, tgt: ev.tgt });
@@ -661,17 +698,23 @@ const flowsState = setup({
     /* ── Edge ID reconciliation ────────────────────────────── */
     reconcileEdgeId: assign(({ context, event }) => {
       const ev = typeOf('EDGE_CREATED', event);
-      const { sourceId, targetId, relId } = ev;
-      
-      // Find the edge with matching source and target
+      const { sourceId, targetId, relId, sourceHandle, targetHandle } = ev;
+
+      // Find the edge with matching source, target, and handles
       const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.source === sourceId && edge.target === targetId) {
+        const sourceMatches = edge.source === sourceId;
+        const targetMatches = edge.target === targetId;
+        // For switch nodes, also match by handle to differentiate branches
+        const sourceHandleMatches = sourceHandle ? edge.sourceHandle === sourceHandle : !edge.sourceHandle;
+        const targetHandleMatches = targetHandle ? edge.targetHandle === targetHandle : !edge.targetHandle;
+
+        if (sourceMatches && targetMatches && sourceHandleMatches && targetHandleMatches) {
           // Update the edge ID to the real relation ID
           return { ...edge, id: relId as EARS.EntityId };
         }
         return edge;
       });
-      
+
       return {
         graph: {
           ...context.graph,

@@ -84,11 +84,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref } from 'vue'
+import { computed, type Ref, ref, nextTick } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
-import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
-// import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
+import { calculateLayout, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import type { FlowEntity, NodeEntity } from '@app/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -109,8 +108,7 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 
-const { layout } = useLayout()
-const { project } = useVueFlow()
+const { project, fitView } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -167,6 +165,8 @@ const plainEdges = computed(() =>
       id     : e.id,
       source : e.source,
       target : e.target,
+      sourceHandle: e.sourceHandle,  // For switch nodes with multiple outputs
+      targetHandle: e.targetHandle,  // For nodes with multiple inputs
       data: { kind: e.kind },
       animated: e.kind === 'transitions_to' && isFromEventNode,
     }
@@ -234,7 +234,13 @@ function handleCloseNodeEditor() {
 }
 
 function handleConnect(params: Connection) {
-  actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
+  actor.send({
+    type: 'EDGE.CONNECT',
+    src: params.source,
+    tgt: params.target,
+    sourceHandle: params.sourceHandle || undefined,
+    targetHandle: params.targetHandle || undefined,
+  })
 }
 
 function handleFlowPreview(flow: Partial<FlowEntity>) {
@@ -295,33 +301,31 @@ function handleGoBack() {
   actor.send({ type: 'GO.BACK' })
 }
 
-function updateNodePositions(laidOutNodes: VueFlowNode[]) {
-  for (const node of laidOutNodes) {
-    if (node.id && node.position) {
-      actor.send({
-        type: 'NODE.UPDATE_POSITION',
-        nodeId: node.id,
-        position: { x: node.position.x, y: node.position.y }
-      })
-    }
-  }
-}
+async function handleLayout(direction?: LayoutDirection) {
+  // Calculate new positions using pure layout function
+  const newPositions = calculateLayout(
+    { nodes: nodes.value, edges: edges.value },
+    { direction }
+  )
 
-async function handleLayout(direction?: Direction) {
-  const laidOutNodes = await layout(direction)
-  updateNodePositions(laidOutNodes)
+  // Save all positions to state
+  for (const [nodeId, pos] of Object.entries(newPositions)) {
+    actor.send({
+      type: 'NODE.UPDATE_POSITION',
+      nodeId,
+      position: pos
+    })
+  }
+
+  await nextTick()
+  fitView()
 }
 
 async function handleNodesInitialized() {
-  const allNodesHavePositions = nodes.value.every(node =>
-    positions.value[node.id]?.x !== undefined &&
-    positions.value[node.id]?.y !== undefined
-  )
-
-  if (!allNodesHavePositions) {
-    const laidOutNodes = await layout()
-    updateNodePositions(laidOutNodes)
-  }
+  // Layout is calculated BEFORE render in XState actions (loadFlowData, addCreatedFlow)
+  // This handler only needs to center the view
+  await nextTick()
+  fitView()
 }
 
 function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {

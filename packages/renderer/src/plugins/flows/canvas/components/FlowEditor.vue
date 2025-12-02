@@ -118,7 +118,7 @@ import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
-import type { Direction } from '@/plugins/flows/canvas/useLayout'
+import type { LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import FlowActionsMenu from './FlowActionsMenu.vue'
 
 interface Props {
@@ -141,7 +141,7 @@ const emit = defineEmits<{
   'connect': [params: Connection]
   'drop': [event: DragEvent]
   'go-back': []
-  'action-layout': [direction?: Direction]
+  'action-layout': [direction?: LayoutDirection]
   'action-edit-label': []
   'request-delete-flow': []
   'overlay-click': []
