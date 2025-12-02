@@ -42,7 +42,7 @@
           "label": "handle birth mode"
         }
       ],
-      "label": "on entry"
+      "label": "on entry 2"
     },
     {
       "event": "flow.entry",
@@ -53,7 +53,7 @@
           "label": "handle work mode"
         }
       ],
-      "label": "on entry"
+      "label": "on entry 3"
     },
     {
       "event": "chat.mode.message",
@@ -176,8 +176,7 @@
           "label": "handle db queries"
         }
       ],
-      "label": "on entry"
+      "label": "on entry 2"
     }
-  ],
-  "Command": []
+  ]
 }
