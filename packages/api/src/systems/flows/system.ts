@@ -11,10 +11,54 @@ import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { ActionEntity } from '@/systems/actions/types';
-import { compile, validate, type FlowDSL } from './dsl';
+import { compile, validate, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
+
+/**
+ * Format validation errors into a cleaner, deduplicated format.
+ * Groups missing actions/prompts and shows "Available" list only once.
+ */
+function formatValidationErrors(
+  errors: ValidationError[],
+  available: { actions: string[]; prompts: string[] }
+): string[] {
+  const missingActions = new Set<string>();
+  const missingPrompts = new Set<string>();
+  const otherErrors: string[] = [];
+
+  for (const error of errors) {
+    // Extract missing action/prompt names from error messages
+    const actionMatch = error.message.match(/Action "([^"]+)" not found/);
+    const promptMatch = error.message.match(/Prompt "([^"]+)" not found/);
+
+    if (actionMatch) {
+      missingActions.add(actionMatch[1]);
+    } else if (promptMatch) {
+      missingPrompts.add(promptMatch[1]);
+    } else {
+      // Non-reference errors: show path and message
+      otherErrors.push(`${error.path}: ${error.message}`);
+    }
+  }
+
+  const result: string[] = [];
+
+  if (missingActions.size > 0) {
+    result.push(`${missingActions.size} action(s) not found: ${Array.from(missingActions).join(', ')}`);
+    result.push(`Available actions: ${available.actions.join(', ') || '(none)'}`);
+  }
+
+  if (missingPrompts.size > 0) {
+    result.push(`${missingPrompts.size} prompt(s) not found: ${Array.from(missingPrompts).join(', ')}`);
+    result.push(`Available prompts: ${available.prompts.join(', ') || '(none)'}`);
+  }
+
+  result.push(...otherErrors);
+
+  return result;
+}
 
 export const flows = 'flows' as const;
 
@@ -308,7 +352,10 @@ export const flowsSystem = setup({
       });
 
       if (!validation.valid) {
-        const errors = validation.errors.map(e => `${e.path}: ${e.message}`);
+        const errors = formatValidationErrors(validation.errors, {
+          actions: actions.map(a => a.label),
+          prompts: prompts.map(p => p.label),
+        });
         logger.warn('DSL validation failed', { errors });
 
         system.get(bus).send(emit(pluginId, {

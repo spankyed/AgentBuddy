@@ -372,6 +372,9 @@ function buildTracksFromGraph(
   const tracks: Track[] = [];
   const listenNodeIds = new Set(listenNodes.map(n => n.id as string));
 
+  // Track used labels to ensure uniqueness
+  const usedLabels = new Set<string>();
+
   for (const listenNode of listenNodes) {
     const steps: NodeEntity[] = [];
     const visited = new Set<string>();
@@ -409,10 +412,20 @@ function buildTracksFromGraph(
       steps: dslSteps,
     };
 
-    // Add label only if different from event
-    if (listenNode.label && listenNode.label !== listenNode.eventType) {
-      track.label = listenNode.label;
+    // Determine the label - use node label if set, otherwise derive from event
+    let label = listenNode.label || listenNode.eventType;
+
+    // Ensure label uniqueness by appending suffix if needed
+    let uniqueLabel = label;
+    let counter = 2;
+    while (usedLabels.has(uniqueLabel)) {
+      uniqueLabel = `${label} ${counter}`;
+      counter++;
     }
+    usedLabels.add(uniqueLabel);
+
+    // Always set an explicit label to avoid validator deriving duplicates
+    track.label = uniqueLabel;
 
     if (listenNode.description) {
       track.description = listenNode.description;
@@ -485,11 +498,24 @@ async function exportAllFlows() {
 
   // Decompile each flow to track-based DSL
   const dsl: FlowDSL = {};
+  let skipped = 0;
 
   for (const flow of flows) {
     console.log(`  Processing: ${flow.label}`);
     const { name, tracks } = decompileFlow(flow, actionMap, promptMap, flowMap);
+
+    // Skip empty flows (no tracks)
+    if (tracks.length === 0) {
+      console.log(`    ⚠️  Skipping empty flow: ${flow.label}`);
+      skipped++;
+      continue;
+    }
+
     dsl[name] = tracks;
+  }
+
+  if (skipped > 0) {
+    console.log(`\n⚠️  Skipped ${skipped} empty flow(s)`);
   }
 
   // Write output
