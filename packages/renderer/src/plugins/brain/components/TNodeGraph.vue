@@ -21,7 +21,11 @@
       :max-zoom="2"
     >
       <template #node-tnode="nodeProps">
-        <TNodeGraphNode v-bind="nodeProps" />
+        <BaseNode
+          v-bind="nodeProps"
+          :show-status-indicator="true"
+          :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step'"
+        />
       </template>
       <Background variant="dots" />
       <Controls />
@@ -93,7 +97,7 @@ import {
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
-import TNodeGraphNode from './TNodeGraphNode.vue';
+import { BaseNode } from '@/components/flow-nodes';
 import BrainMenu from './BrainMenu.vue';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
@@ -161,11 +165,10 @@ const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number 
   position,
   data: {
     label: tnode.label,
-    tNodeType: tnode.tNodeType,
-    stepNodeType: tnode.stepNodeType,
+    nodeType: tnode.stepNodeType || tnode.tNodeType,
+    tNodeType: tnode.tNodeType, // Keep for click handling logic
     status: tnode.status,
-    hasChildren: tnode.children.length > 0,
-    isSelected: props.selectedNodeId === tnode.id,
+    eventType: tnode.eventType, // For listen/event nodes
   },
 });
 

@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import type { NodeProps } from '@vue-flow/core'
 import type { ListenNode } from '@app/api'
-import BaseNode from './BaseNode.vue'
+import { BaseNode } from '@/components/flow-nodes'
 
 interface NodeData extends Partial<ListenNode> {
   label: string

@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import type { NodeProps } from '@vue-flow/core'
 import type { ActionNode } from '@app/api'
-import BaseNode from './BaseNode.vue'
+import { BaseNode } from '@/components/flow-nodes'
 
 interface NodeData extends Partial<ActionNode> {
   label: string

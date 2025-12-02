@@ -25,8 +25,17 @@
         </div>
       </div>
 
-      <!-- Custom content slot -->
-      <slot />
+      <!-- Custom content slot or auto-rendered content -->
+      <slot>
+        <!-- Auto-render eventType if present -->
+        <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+          <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
+        </div>
+        <!-- Auto-render params count if present -->
+        <div v-else-if="data.params && Object.keys(data.params).length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+          <span class="text-[10px] text-neutral-400 uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
+        </div>
+      </slot>
 
     </div>
 
@@ -70,7 +79,7 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeClasses, getNodeGlowClasses, getNodeStatusClasses, getNodeAccentBarClasses, getNodeIconTextColor, getNodeConfig } from '../../config/node-config'
+import { getNodeClasses, getNodeGlowClasses, getNodeStatusClasses, getNodeAccentBarClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
 import type { NodeKind } from '@app/api'
 
 interface BaseNodeData {

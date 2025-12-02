@@ -138,7 +138,7 @@
 import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import type { TrackEntity, TNodeEntity } from '@app/api';
-import { 
+import {
   getInspectionItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
@@ -147,7 +147,7 @@ import {
   getNodeStatusClasses,
   getNodeConfig,
   nodeConfigs
-} from '@/plugins/flows/config/node-config';
+} from '@/components/flow-nodes';
 import type { NodeKind } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
 

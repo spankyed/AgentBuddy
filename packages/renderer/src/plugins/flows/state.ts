@@ -20,7 +20,7 @@ import type {
   OutgoingBrainEvents,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
-import { getNodeConfig } from './config/node-config'
+import { getNodeConfig } from '@/components/flow-nodes'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
