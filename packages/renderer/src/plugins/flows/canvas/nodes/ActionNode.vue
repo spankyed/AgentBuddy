@@ -7,8 +7,8 @@
       <span class="text-[10px] text-neutral-300 font-mono truncate">{{ data.actionId }}</span>
     </div> -->
     
-    <div v-if="data.params && Object.keys(data.params).length > 0" class="mt-1 text-[9px] text-neutral-500">
-      <span class="uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
+    <div v-if="data.params && Object.keys(data.params).length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+      <span class="text-[10px] text-neutral-400 uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
     </div>
   </BaseNode>
 </template>

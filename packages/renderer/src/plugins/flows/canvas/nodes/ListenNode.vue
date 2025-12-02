@@ -1,6 +1,6 @@
 <template>
   <BaseNode v-bind="props" :show-target-handle="false">
-    <div v-if="data.eventType" class="flex items-center justify-center">
+    <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
       <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
     </div>
   </BaseNode>

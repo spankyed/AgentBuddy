@@ -1,6 +1,6 @@
 <template>
   <BaseNode v-bind="props">
-    <div v-if="data.conditions && data.conditions.length > 0" class="space-y-1">
+    <div v-if="data.conditions && data.conditions.length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 space-y-1">
       <div class="flex items-center gap-1.5 text-[9px] text-neutral-500 uppercase tracking-wide">
         <svg class="w-2.5 h-2.5 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />

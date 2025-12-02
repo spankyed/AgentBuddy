@@ -26,9 +26,7 @@
       </div>
 
       <!-- Custom content slot -->
-      <div v-if="$slots.default" class="mt-1.5 pt-1.5 border-t border-neutral-700/50">
-        <slot />
-      </div>
+      <slot />
 
     </div>
 
