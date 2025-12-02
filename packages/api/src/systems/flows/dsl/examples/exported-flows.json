@@ -1,0 +1,183 @@
+{
+  "User message": [
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "keep_alive",
+          "label": "keep listening"
+        }
+      ],
+      "label": "on entry"
+    },
+    {
+      "event": "user.message",
+      "steps": [
+        {
+          "type": "action",
+          "action": "send mock interactive msgs",
+          "map": {
+            "threadId": "$.lastStep.result",
+            "result": "$.event.data.payload",
+            "message": "$.event.data.payload"
+          }
+        },
+        {
+          "type": "action",
+          "action": "Route to mode",
+          "label": "route to mode-flow",
+          "map": {
+            "message": "$.event.data.payload"
+          }
+        }
+      ],
+      "label": "on user message"
+    },
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "flow",
+          "flow": "birth mode",
+          "label": "handle birth mode"
+        }
+      ],
+      "label": "on entry"
+    },
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "flow",
+          "flow": "work mode",
+          "label": "handle work mode"
+        }
+      ],
+      "label": "on entry"
+    },
+    {
+      "event": "chat.mode.message",
+      "steps": [
+        {
+          "type": "action",
+          "action": "logger",
+          "label": "do action"
+        }
+      ],
+      "label": "on chat message"
+    }
+  ],
+  "DB query": [
+    {
+      "event": "database.query.prompt",
+      "steps": [
+        {
+          "type": "action",
+          "action": "Generate db query",
+          "label": "generate db query",
+          "map": {
+            "dbPrompt": "$.event.data.payload"
+          }
+        }
+      ],
+      "label": "on db query"
+    },
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ],
+      "label": "on entry"
+    }
+  ],
+  "birth mode": [
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ],
+      "label": "mode entry"
+    },
+    {
+      "event": "llm.now.available",
+      "steps": [
+        {
+          "type": "action",
+          "action": "create-birth-thread",
+          "label": "create birth thread",
+          "map": {
+            "message": "$.event.data.payload"
+          }
+        }
+      ],
+      "label": "on event"
+    },
+    {
+      "event": "birth.mode.message",
+      "steps": [
+        {
+          "type": "action",
+          "action": "logger",
+          "label": "log ohh!",
+          "map": {
+            "text": "ohhhh"
+          }
+        }
+      ],
+      "label": "on birth message"
+    }
+  ],
+  "work mode": [
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ],
+      "label": "Flow Entry"
+    }
+  ],
+  "Run Agent Brain": [
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ],
+      "label": " start brain (on entry)"
+    },
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "flow",
+          "flow": "User message",
+          "label": "handle user msgs"
+        }
+      ],
+      "label": "on entry"
+    },
+    {
+      "event": "flow.entry",
+      "steps": [
+        {
+          "type": "flow",
+          "flow": "DB query",
+          "label": "handle db queries"
+        }
+      ],
+      "label": "on entry"
+    }
+  ],
+  "Command": []
+}

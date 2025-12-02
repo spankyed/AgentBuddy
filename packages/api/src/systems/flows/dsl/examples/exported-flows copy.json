@@ -1,0 +1,183 @@
+{
+  "flows": {
+    "User message": {
+      "steps": [
+        {
+          "type": "listen",
+          "event": "chat.mode.message",
+          "label": "on chat message"
+        },
+        {
+          "type": "action",
+          "action": "logger",
+          "label": "do action"
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "flow",
+          "flow": "work mode",
+          "label": "handle work mode"
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "flow",
+          "flow": "birth mode",
+          "label": "handle birth mode"
+        },
+        {
+          "type": "listen",
+          "event": "user.message",
+          "label": "on user message"
+        },
+        {
+          "type": "action",
+          "action": "send mock interactive msgs",
+          "map": {
+            "threadId": "$.lastStep.result",
+            "result": "$.event.data.payload",
+            "message": "$.event.data.payload"
+          }
+        },
+        {
+          "type": "action",
+          "action": "Route to mode",
+          "label": "route to mode-flow",
+          "map": {
+            "message": "$.event.data.payload"
+          }
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "keep_alive",
+          "label": "keep listening"
+        }
+      ]
+    },
+    "DB query": {
+      "steps": [
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        },
+        {
+          "type": "listen",
+          "event": "database.query.prompt",
+          "label": "on db query"
+        },
+        {
+          "type": "action",
+          "action": "Generate db query",
+          "label": "generate db query",
+          "map": {
+            "dbPrompt": "$.event.data.payload"
+          }
+        }
+      ]
+    },
+    "birth mode": {
+      "steps": [
+        {
+          "type": "listen",
+          "event": "birth.mode.message",
+          "label": "on birth message"
+        },
+        {
+          "type": "action",
+          "action": "logger",
+          "label": "log ohh!",
+          "map": {
+            "text": "ohhhh"
+          }
+        },
+        {
+          "type": "listen",
+          "event": "llm.now.available",
+          "label": "on event"
+        },
+        {
+          "type": "action",
+          "action": "create-birth-thread",
+          "label": "create birth thread",
+          "map": {
+            "message": "$.event.data.payload"
+          }
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "mode entry"
+        },
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ]
+    },
+    "work mode": {
+      "steps": [
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "Flow Entry"
+        },
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ]
+    },
+    "Run Agent Brain": {
+      "steps": [
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "flow",
+          "flow": "DB query",
+          "label": "handle db queries"
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": "on entry"
+        },
+        {
+          "type": "flow",
+          "flow": "User message",
+          "label": "handle user msgs"
+        },
+        {
+          "type": "listen",
+          "event": "flow.entry",
+          "label": " start brain (on entry)"
+        },
+        {
+          "type": "keep_alive",
+          "label": "keep alive"
+        }
+      ]
+    },
+    "Command": {
+      "steps": []
+    }
+  }
+}

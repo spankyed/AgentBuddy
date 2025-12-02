@@ -11,6 +11,7 @@ import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { ActionEntity } from '@/systems/actions/types';
+import { compile, validate, type FlowDSL } from './dsl';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -37,6 +38,7 @@ export const IncomingFlowsEvents = [
     newSource: z.string(),
     newTarget: z.string()
   }),
+  busEvent('IMPORT_DSL', { dsl: z.any() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -57,6 +59,8 @@ export type OutgoingFlowsEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  | { type: 'DSL_IMPORTED'; flowIds: EARS.EntityId[]; errors?: string[] }
+  | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -250,33 +254,33 @@ export const flowsSystem = setup({
     handleSettingsUpdate: ({ system, event }) => {
       const { settings, changes } = typeOf('FLOWS_SETTINGS_UPDATED', event);
       const pluginId = flows;
-      
+
       // Get the current root flow (the one with the root_flow role)
       const currentRootFlowId = repository.flowsQueries.rootFlow();
-      
+
       // Check if rootFlowId changed by comparing with current
       const newRootFlowId = settings.rootFlowId;
-      
+
       if (currentRootFlowId !== newRootFlowId) {
-        logger.info('Updating root flow', { 
-          previousRootFlowId: currentRootFlowId, 
-          newRootFlowId 
+        logger.info('Updating root flow', {
+          previousRootFlowId: currentRootFlowId,
+          newRootFlowId
         });
-        
+
         // Revoke root_flow role from previous flow if it exists
         if (currentRootFlowId) {
           repository.flowsCommands.revokeRootFlowRole(currentRootFlowId);
         }
-        
+
         // Grant root_flow role to new flow if specified
         if (newRootFlowId) {
           repository.flowsCommands.grantRootFlowRole(newRootFlowId as EARS.EntityId);
         }
-        
+
         // Send updated connected data to reflect the change
         const data = repository.flowsQueries.connectedData();
         const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
-        
+
         system.get(bus).send(emit(pluginId, {
           type: 'FLOWS_CONNECTED',
           data: {
@@ -285,6 +289,67 @@ export const flowsSystem = setup({
           },
         }));
       }
+    },
+
+    importDSL: ({ system, event }) => {
+      const { dsl } = typeOf('IMPORT_DSL', event);
+      const pluginId = flows;
+
+      logger.info('Importing DSL flows', { flowCount: Object.keys(dsl?.flows || {}).length });
+
+      // Get available actions and prompts for reference resolution
+      const actions = repository.actionQueries.all();
+      const prompts = repository.promptQueries.all();
+
+      // Validate DSL
+      const validation = validate(dsl, {
+        actions: actions.map(a => a.label),
+        prompts: prompts.map(p => p.label),
+      });
+
+      if (!validation.valid) {
+        const errors = validation.errors.map(e => `${e.path}: ${e.message}`);
+        logger.warn('DSL validation failed', { errors });
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'DSL_IMPORT_FAILED',
+          errors,
+        }));
+        return;
+      }
+
+      // Build lookup maps for compiler
+      const actionMap = new Map(actions.map(a => [a.label, a.id]));
+      const promptMap = new Map(prompts.map(p => [p.label, p.id]));
+
+      // Compile DSL
+      const compiled = compile(dsl as FlowDSL, {
+        actions: actionMap,
+        prompts: promptMap,
+      });
+
+      // Import into EARS
+      const { flowIds } = repository.flowsCommands.importFromDSL(compiled);
+
+      // Send success response with updated flows data
+      const data = repository.flowsQueries.connectedData();
+      const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
+
+      system.get(bus).send(emit(pluginId, {
+        type: 'DSL_IMPORTED',
+        flowIds,
+      }));
+
+      // Also send updated connected data
+      system.get(bus).send(emit(pluginId, {
+        type: 'FLOWS_CONNECTED',
+        data: {
+          ...data,
+          settings: flowsSettings || {}
+        },
+      }));
+
+      logger.info('DSL import complete', { flowIds });
     },
   },
   guards: {},
@@ -331,6 +396,9 @@ export const flowsSystem = setup({
         },
         FLOWS_SETTINGS_UPDATED: {
           actions: 'handleSettingsUpdate',
+        },
+        IMPORT_DSL: {
+          actions: 'importDSL',
         },
       }
     },

@@ -50,6 +50,12 @@ export interface FlowsContext {
   tempIdMap: Record<string, string>; // tempId -> permanentId
   // Settings
   settings?: any; // FlowsSettings
+  // DSL Import state
+  dslImport: {
+    status: 'idle' | 'importing' | 'success' | 'error';
+    errors: string[];
+    importedFlowNames: string[];
+  };
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -57,6 +63,9 @@ type SystemEvent = OutgoingFlowsEvents
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  // DSL Import backend responses
+  | { type: 'DSL_IMPORTED'; flowIds: string[] }
+  | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -80,6 +89,9 @@ type UIEvent =
   | { type: 'FLOW.UPDATE_LABEL'; flowId: EARS.EntityId; label: string }
   | { type: 'GO.BACK' }
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
+  // DSL Import events
+  | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
+  | { type: 'DSL.RESET_STATUS' }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -696,16 +708,69 @@ const flowsState = setup({
     removeDeletedEdge: assign(({ context, event }) => {
       const ev = typeOf('EDGE_DELETED', event);
       const { edgeId } = ev;
-      
+
       // Remove the edge from the graph
       const updatedEdges = context.graph.edges.filter(edge => edge.id !== edgeId);
-      
+
       return {
         graph: {
           ...context.graph,
           edges: updatedEdges,
         },
       };
+    }),
+
+    /* ── DSL Import actions ────────────────────────────────── */
+    setImporting: assign(({ context }) => ({
+      dslImport: {
+        ...context.dslImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportDSL: ({ event }) => {
+      const ev = typeOf('DSL.IMPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'IMPORT_DSL',
+        dsl: ev.dsl,
+      } as any);
+    },
+
+    handleDSLImported: assign(({ context, event }) => {
+      const ev = typeOf('DSL_IMPORTED', event);
+      return {
+        dslImport: {
+          status: 'success' as const,
+          errors: [],
+          importedFlowNames: context.dslImport.importedFlowNames, // Keep the names we parsed from file
+        },
+      };
+    }),
+
+    handleDSLImportFailed: assign(({ event }) => {
+      const ev = typeOf('DSL_IMPORT_FAILED', event);
+      return {
+        dslImport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          importedFlowNames: [],
+        },
+      };
+    }),
+
+    setFlowNamesFromDSL: assign(({ context, event }) => {
+      const ev = typeOf('DSL.IMPORT', event);
+      return {
+        dslImport: {
+          ...context.dslImport,
+          importedFlowNames: ev.flowNames,
+        },
+      };
+    }),
+
+    resetImportStatus: assign({
+      dslImport: { status: 'idle' as const, errors: [], importedFlowNames: [] },
     }),
   },
   guards: {
@@ -732,6 +797,11 @@ const flowsState = setup({
     models: [],
     actions: [],
     tempIdMap: {},
+    dslImport: {
+      status: 'idle',
+      errors: [],
+      importedFlowNames: [],
+    },
   },
   on: {
     FLOWS_CONNECTED: {
@@ -779,6 +849,19 @@ const flowsState = setup({
     },
     ACTION_DELETED: {
       actions: 'removeDeletedAction'
+    },
+    // DSL Import events
+    'DSL.IMPORT': {
+      actions: ['setFlowNamesFromDSL', 'setImporting', 'sendImportDSL']
+    },
+    'DSL.RESET_STATUS': {
+      actions: 'resetImportStatus'
+    },
+    DSL_IMPORTED: {
+      actions: 'handleDSLImported'
+    },
+    DSL_IMPORT_FAILED: {
+      actions: 'handleDSLImportFailed'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],

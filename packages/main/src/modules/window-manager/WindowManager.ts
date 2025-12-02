@@ -7,6 +7,7 @@ import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
 import {join} from 'node:path';
 import {WINDOW_CONFIG} from './constants.js';
 import {SPLASH_CONFIG} from '../splash-screen/constants.js';
+import fs from 'node:fs/promises';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -173,6 +174,11 @@ class WindowManager implements AppModule {
       }
 
       return options?.allowMultiple ? result.filePaths : result.filePaths[0];
+    });
+
+    // Handle file reading
+    ipcMain.handle('file:read', async (event, filePath: string) => {
+      return fs.readFile(filePath, 'utf-8');
     });
   }
 

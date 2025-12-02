@@ -77,13 +77,61 @@
         </label>
       </div>
     </CollapsibleSection>
+
+    <!-- Import Flows Section -->
+    <CollapsibleSection label="Import Flows" :default-open="false" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Import flows from an exported DSL JSON file
+      </p>
+
+      <div class="space-y-4">
+        <button
+          @click="selectAndImportDSL"
+          :disabled="isImporting"
+          class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Upload class="w-4 h-4" />
+          {{ isImporting ? 'Importing...' : 'Select DSL File...' }}
+        </button>
+
+        <!-- Success message -->
+        <div v-if="importStatus === 'success'" class="p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <CheckCircle class="w-5 h-5 text-emerald-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-emerald-400 mb-1">
+                Successfully imported {{ importedFlowNames.length }} flow{{ importedFlowNames.length !== 1 ? 's' : '' }}
+              </h4>
+              <ul v-if="importedFlowNames.length > 0" class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="name in importedFlowNames" :key="name">{{ name }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div v-if="importStatus === 'error'" class="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <XCircle class="w-5 h-5 text-red-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-red-400 mb-1">
+                Import failed
+              </h4>
+              <ul class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
-import { AlertTriangle, Brain } from 'lucide-vue-next'
+import { AlertTriangle, Brain, Upload, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@app/api'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -110,9 +158,13 @@ const emit = defineEmits<{
 const selectedRootFlowId = ref<string>(props.settings?.rootFlowId || '')
 const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
-// Get flows list from flows plugin state for flows settings
+// Get flows actor and state via selectors
 const flowsActor: FlowsState = applicationState.system.get(id)
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
+const isImporting = useSelector(flowsActor, (state) => state.context.dslImport.status === 'importing')
+const importStatus = useSelector(flowsActor, (state) => state.context.dslImport.status)
+const importErrors = useSelector(flowsActor, (state) => state.context.dslImport.errors)
+const importedFlowNames = useSelector(flowsActor, (state) => state.context.dslImport.importedFlowNames)
 
 // Get settings actor for navigation only
 const settingsActor = applicationState.system.get('settings')
@@ -165,5 +217,50 @@ const handleRootFlowChange = () => {
 const goToBrainSettings = () => {
   // Navigate to brain settings
   settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'brain' })
+}
+
+// DSL Import - file picker and emit to state machine
+const selectAndImportDSL = async () => {
+  // Reset status first
+  flowsActor.send({ type: 'DSL.RESET_STATUS' })
+
+  // Open file picker (Electron API is OK in component)
+  const filePath = await window.electronAPI?.fileUtils.selectPath({
+    type: 'file'
+  })
+
+  if (!filePath || Array.isArray(filePath)) return
+
+  // Only accept .json files
+  if (!filePath.endsWith('.json')) {
+    // For simple validation errors, we can't send to state machine
+    // because this happens before we have DSL. Just return silently.
+    return
+  }
+
+  try {
+    // Read file content (Electron API is OK in component)
+    const content = await window.electronAPI?.fileUtils.readFile(filePath)
+    if (!content) {
+      return
+    }
+
+    // Parse JSON (simple transform is OK in component)
+    let dsl: any
+    try {
+      dsl = JSON.parse(content)
+    } catch {
+      return
+    }
+
+    // Extract flow names and emit to state machine - state machine handles the rest
+    flowsActor.send({
+      type: 'DSL.IMPORT',
+      dsl,
+      flowNames: Object.keys(dsl)
+    })
+  } catch {
+    // Silently fail for file reading errors - no state to update
+  }
 }
 </script>

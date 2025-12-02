@@ -12,6 +12,7 @@ declare global {
           allowMultiple?: boolean;
           type: 'file' | 'directory' | 'both';
         }) => Promise<string | string[] | null>;
+        readFile: (filePath: string) => Promise<string>;
       };
       shell: {
         openExternal: (url: string) => Promise<void>;

@@ -1,0 +1,12 @@
+{
+  "flows": {
+    "Chat Handler": {
+      "description": "Handles incoming chat messages with intent routing",
+      "steps": [
+        { "type": "listen", "event": "chat.message" },
+        { "type": "action", "action": "do action", "map": { "message": "$.event.data.text" } },
+        { "type": "fire", "event": "chat.response", "scope": "global", "final": true }
+      ]
+    }
+  }
+}

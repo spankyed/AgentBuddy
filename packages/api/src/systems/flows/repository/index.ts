@@ -6,19 +6,20 @@ import { removeRelation } from '@/core/ears/attribute-storage';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from '@/core/ears/helpers/entity-utils';
 import { createLogger } from '@/core/utils/debug/logger';
-import type { 
-  FlowEntity, 
-  NodeEntity, 
-  EdgeEntity, 
-  FlowExtendedData, 
-  NodeCreateInput, 
+import type {
+  FlowEntity,
+  NodeEntity,
+  EdgeEntity,
+  FlowExtendedData,
+  NodeCreateInput,
   NodeKind,
-  FlowsConnectedData 
+  FlowsConnectedData
 } from '../config/types';
 import { availableModels } from '../config/available-models';
 import { createNodeDefaults } from '../config/node-config';
 import { repository } from '@/repository';
 import { settingsCommands } from '@/systems/settings/repository';
+import type { CompiledRows } from '../dsl/compiler';
 
 const logger = createLogger('flows-repository');
 
@@ -571,5 +572,48 @@ export const flowsCommands = {
     tx(flowId).destroy();
 
     logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
+  },
+
+  /**
+   * Import flows from compiled DSL data
+   */
+  importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => {
+    const flowIds: EARS.EntityId[] = [];
+
+    // 1. Create all entities
+    for (const entity of compiled.entity) {
+      const { id, ...attributes } = entity as { id: string; [key: string]: any };
+
+      // Create entity with specific ID
+      tx(id as EARS.EntityId, true).batchPut(attributes);
+
+      // Track flow IDs
+      if (attributes.entityType === EARS.Entity.Flow) {
+        flowIds.push(id as EARS.EntityId);
+      }
+    }
+
+    // 2. Create all relations
+    for (const relation of compiled.relation) {
+      tx(relation.source as EARS.EntityId).link(
+        relation.kind,
+        relation.target as EARS.EntityId,
+        relation.info
+      );
+    }
+
+    // 3. Grant roles
+    for (const role of compiled.role) {
+      tx(role.entityId as EARS.EntityId).grant(role.role);
+    }
+
+    logger.info('Imported DSL flows', {
+      entityCount: compiled.entity.length,
+      relationCount: compiled.relation.length,
+      roleCount: compiled.role.length,
+      flowIds,
+    });
+
+    return { flowIds };
   },
 } as const;

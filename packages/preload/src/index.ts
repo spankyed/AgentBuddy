@@ -31,6 +31,7 @@ const fileUtils = {
     allowMultiple?: boolean;
     type: 'file' | 'directory' | 'both';
   }) => ipcRenderer.invoke('dialog:select-path', options),
+  readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
 };
 
 // Get the API port

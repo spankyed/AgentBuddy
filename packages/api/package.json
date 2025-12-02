@@ -19,7 +19,8 @@
     "db:script": "tsx src/cli/run-db-cli.ts --script",
     "db:clearSettings": "tsx ./scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh",
-    "db:import": "tsx scripts/db/import-backup.ts"
+    "db:import": "tsx scripts/db/import-backup.ts",
+    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts"
   },
   "keywords": [],
   "author": "angel santiago",
