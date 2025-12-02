@@ -48,16 +48,16 @@ export type StatusVariant = 'simple' | 'detailed'
 
 // Color scheme classes for each node type (static for Tailwind)
 const NODE_STYLE_CLASSES = {
-  // Clean, minimal node backgrounds with left accent
+  // Subtle colored backgrounds with refined borders
   gradient: {
-    purple: 'bg-neutral-800/90 border-l-2 border-l-purple-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    blue: 'bg-neutral-800/90 border-l-2 border-l-blue-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    amber: 'bg-neutral-800/90 border-l-2 border-l-amber-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    cyan: 'bg-neutral-800/90 border-l-2 border-l-cyan-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    orange: 'bg-neutral-800/90 border-l-2 border-l-orange-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    emerald: 'bg-neutral-800/90 border-l-2 border-l-emerald-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    indigo: 'bg-neutral-800/90 border-l-2 border-l-indigo-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20',
-    neutral: 'bg-neutral-800/90 border-l-2 border-l-neutral-500 border-y border-r border-neutral-700/50 hover:bg-neutral-750/95 shadow-md shadow-black/20'
+    purple: 'bg-purple-900/60 border border-purple-400/25 hover:border-purple-400/40 shadow-sm',
+    blue: 'bg-blue-900/60 border border-blue-400/25 hover:border-blue-400/40 shadow-sm',
+    amber: 'bg-amber-900/60 border border-amber-400/25 hover:border-amber-400/40 shadow-sm',
+    cyan: 'bg-cyan-900/60 border border-cyan-400/25 hover:border-cyan-400/40 shadow-sm',
+    orange: 'bg-orange-900/60 border border-orange-400/25 hover:border-orange-400/40 shadow-sm',
+    emerald: 'bg-emerald-900/60 border border-emerald-400/25 hover:border-emerald-400/40 shadow-sm',
+    indigo: 'bg-indigo-900/60 border border-indigo-400/25 hover:border-indigo-400/40 shadow-sm',
+    neutral: 'bg-neutral-700/60 border border-neutral-500/30 hover:border-neutral-400/40 shadow-sm'
   },
   // Solid accent colors for meaningful indicators
   solid: {
