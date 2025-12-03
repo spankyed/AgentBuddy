@@ -78,7 +78,7 @@ export const brainRows: Rows = {
       tNodeType: 'step',
       label: 'Message Type',
       stepNodeId: 'Node-b3',
-      stepNodeType: 'decision',
+      stepNodeType: 'switch',
       status: 'completed',
       createdAt: nowMs - 29000,
       startedAt: nowMs - 29000,

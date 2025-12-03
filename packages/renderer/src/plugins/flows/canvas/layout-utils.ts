@@ -72,7 +72,7 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
 
   const elkNodes: ElkNode[] = input.nodes.map((node) => {
     const ports: ElkPort[] = []
-    const isSwitch = node.nodeType === 'decision'
+    const isSwitch = node.nodeType === 'switch'
     const branchCount = node.conditions?.length ?? 0
 
     // Calculate height for switch nodes based on branch count

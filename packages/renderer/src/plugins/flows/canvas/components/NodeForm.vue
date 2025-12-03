@@ -86,7 +86,7 @@ import CreateForm from '../forms/CreateForm.vue'
 import LLMForm from '../forms/LLMForm.vue'
 import ActionForm from '../forms/ActionForm.vue'
 import FlowForm from '../forms/FlowForm.vue'
-import DecisionForm from '../forms/DecisionForm.vue'
+import SwitchForm from '../forms/SwitchForm.vue'
 
 interface Props {
   selectedNode?: NodeEntity | null
@@ -118,7 +118,7 @@ function getFormComponent(nodeType: string) {
     'llm': LLMForm,
     'action': ActionForm,
     'flow': FlowForm,
-    'decision': DecisionForm,
+    'switch': SwitchForm,
   }
   return formMap[nodeType] || BaseForm
 }

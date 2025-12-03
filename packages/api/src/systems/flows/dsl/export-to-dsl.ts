@@ -21,7 +21,7 @@ import type {
   DSLStepNode,
   DSLActionNode,
   DSLLLMNode,
-  DSLDecisionNode,
+  DSLSwitchNode,
   DSLFireNode,
   DSLTransformNode,
   DSLQueryNode,
@@ -37,7 +37,7 @@ import type {
   ListenNode,
   ActionNode,
   LLMNode,
-  DecisionNode,
+  SwitchNode,
   FireNode,
   TransformNode,
   QueryNode,
@@ -197,14 +197,23 @@ function decompileStepNode(
       return dsl;
     }
 
-    case 'decision': {
-      const decisionNode = node as DecisionNode;
-      const dsl: DSLDecisionNode = {
-        type: 'decision',
-        conditions: decisionNode.conditions.map(c => ({
-          if: c.expr,
-          then: c.label || '',
-        })),
+    case 'switch': {
+      const switchNode = node as SwitchNode;
+      const dsl: DSLSwitchNode = {
+        type: 'switch',
+        conditions: switchNode.conditions.map(c => {
+          // Support both new predicate format and legacy expr format
+          let ifExpr = '';
+          if (c.predicate) {
+            ifExpr = `${c.predicate.key} ${c.predicate.operator} ${c.predicate.value}`;
+          } else if (c.expr) {
+            ifExpr = c.expr;
+          }
+          return {
+            if: ifExpr,
+            then: c.label || '',
+          };
+        }),
       };
 
       // Add optional base fields
@@ -212,7 +221,7 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
-      if (decisionNode.elseLabel) dsl.else = decisionNode.elseLabel;
+      if (switchNode.elseLabel) dsl.else = switchNode.elseLabel;
       return dsl;
     }
 

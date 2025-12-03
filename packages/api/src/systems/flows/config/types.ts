@@ -49,9 +49,39 @@ export interface UpdateNode extends NodeBase {
 }
 
 
-export interface DecisionNode extends NodeBase {
-  nodeType: 'decision';
-  conditions: Array<{ expr: string; label?: string }>;
+/*─────────────────────────────────────────────────────────────────
+ * Switch Node Types
+ *─────────────────────────────────────────────────────────────────*/
+export enum BinaryOperator {
+  EQUALS = 'equals',
+  NOT_EQUALS = 'not_equals',
+  GREATER_THAN = 'greater_than',
+  LESS_THAN = 'less_than',
+  GREATER_THAN_OR_EQUALS = 'greater_than_or_equals',
+  LESS_THAN_OR_EQUALS = 'less_than_or_equals',
+  CONTAINS = 'contains',
+  STARTS_WITH = 'starts_with',
+  ENDS_WITH = 'ends_with',
+  MATCHES = 'matches',
+  IS_EMPTY = 'is_empty',
+  IS_NULL = 'is_null',
+}
+
+export type Predicate = {
+  key: string;
+  operator: BinaryOperator;
+  value?: any;
+};
+
+export type Condition = {
+  predicate?: Predicate;
+  expr?: string;  // Legacy format - to be deprecated
+  label?: string;
+};
+
+export interface SwitchNode extends NodeBase {
+  nodeType: 'switch';
+  conditions: Array<Condition>;
   elseLabel?: string;
 }
 
@@ -129,7 +159,7 @@ export type NodeEntity =
   | CreateNode
   | UpdateNode
   | ActionNode
-  | DecisionNode
+  | SwitchNode
   | FireNode
   | ListenNode
   | TransformNode

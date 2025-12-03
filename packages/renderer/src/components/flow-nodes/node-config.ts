@@ -157,7 +157,7 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   query: 'cyan',
   create: 'purple',
   update: 'purple',
-  decision: 'orange',
+  switch: 'orange',
   transform: 'emerald',
   llm: 'indigo',
   event: 'blue',
@@ -275,8 +275,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     component: 'VariableNode',
     isImplemented: false
   },
-  decision: {
-    type: 'decision',
+  switch: {
+    type: 'switch',
     label: 'Switch',
     defaultLabel: 'choose path',
     icon: Split,

@@ -104,7 +104,7 @@
 import { computed } from 'vue'
 import { Plus, Trash2, ChevronRight } from 'lucide-vue-next'
 import BaseForm from './BaseForm.vue'
-import type { NodeEntity, DecisionNode } from '@app/api'
+import type { NodeEntity, SwitchNode } from '@app/api'
 
 const props = defineProps<{
   node: NodeEntity
@@ -117,8 +117,8 @@ const emit = defineEmits<{
 
 // Get conditions array from node
 const conditions = computed(() => {
-  const decisionNode = props.node as DecisionNode
-  return decisionNode.conditions || []
+  const switchNode = props.node as SwitchNode
+  return switchNode.conditions || []
 })
 
 // Add a new branch

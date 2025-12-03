@@ -14,7 +14,7 @@ export type {
   DSLStepNodeType,
   DSLActionNode,
   DSLLLMNode,
-  DSLDecisionNode,
+  DSLSwitchNode,
   DSLFireNode,
   DSLTransformNode,
   DSLQueryNode,

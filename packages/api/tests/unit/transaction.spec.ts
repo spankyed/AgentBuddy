@@ -131,13 +131,13 @@ describe('tx – fluent mutation DSL', () => {
     it('batchPut() adds multiple attributes at once', () => {
       const result = testNode.batchPut({
         label: 'Batch Test',
-        nodeType: 'decision',
+        nodeType: 'switch',
         x: 100
       });
 
       expect(result).toBe(testNode); // chainable
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('label'))).toBe('Batch Test');
-      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('nodeType'))).toBe('decision');
+      expect(getAttr(testNode.id(), EARS.AttrKind.Custom('nodeType'))).toBe('switch');
       expect(getAttr(testNode.id(), EARS.AttrKind.Custom('x'))).toBe(100);
     });
   });

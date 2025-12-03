@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import type { DecisionNode } from '@app/api'
+import type { SwitchNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 
 interface Branch {
@@ -35,7 +35,7 @@ interface Branch {
   expression?: string
 }
 
-interface NodeData extends Partial<DecisionNode> {
+interface NodeData extends Partial<SwitchNode> {
   label: string
   branches?: Branch[]
   // Legacy support for conditions

@@ -12,7 +12,7 @@ import type {
   DSLStepNode,
   DSLActionNode,
   DSLLLMNode,
-  DSLDecisionNode,
+  DSLSwitchNode,
   DSLFireNode,
   DSLTransformNode,
   DSLQueryNode,
@@ -114,13 +114,13 @@ function compileLLMNode(node: DSLLLMNode, nodeId: string, ts: number, ctx: Compi
   };
 }
 
-function compileDecisionNode(node: DSLDecisionNode, nodeId: string, ts: number): object {
+function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): object {
   return {
     id: nodeId,
     entityType: EARS.Entity.Node,
     createdAt: ts,
-    nodeType: 'decision',
-    label: node.label || 'Decision',
+    nodeType: 'switch',
+    label: node.label || 'Switch',
     description: node.description,
     conditions: node.conditions.map(c => ({
       expr: c.if,
@@ -445,13 +445,13 @@ function compileTrack(
     });
   }
 
-  // step[n] → step[n+1] (with decision/next override handling)
+  // step[n] → step[n+1] (with switch/next override handling)
   for (let i = 0; i < track.steps.length; i++) {
     const step = track.steps[i];
     const stepId = stepIds[i];
 
-    // Handle decision nodes
-    if (step.type === 'decision') {
+    // Handle switch nodes
+    if (step.type === 'switch') {
       for (const condition of step.conditions) {
         const targetId = globalLabelMap.get(condition.then);
         if (targetId) {
@@ -511,7 +511,7 @@ function getStepLabel(step: DSLStepNode, index: number): string {
     case 'llm': return step.prompt;
     case 'fire': return step.event;
     case 'flow': return step.flow;
-    case 'decision': return `Decision ${index}`;
+    case 'switch': return `Switch ${index}`;
     case 'transform': return `Transform ${index}`;
     case 'query': return `Query ${index}`;
     case 'create': return `Create ${step.entity}`;
@@ -532,8 +532,8 @@ function compileStep(
       return compileActionNode(step, stepId, ts, ctx);
     case 'llm':
       return compileLLMNode(step, stepId, ts, ctx);
-    case 'decision':
-      return compileDecisionNode(step, stepId, ts);
+    case 'switch':
+      return compileSwitchNode(step, stepId, ts);
     case 'fire':
       return compileFireNode(step, stepId, ts);
     case 'transform':
