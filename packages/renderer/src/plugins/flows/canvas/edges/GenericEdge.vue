@@ -26,28 +26,34 @@ const edgePath = computed(() => {
   const { sourceX, sourceY, targetX, targetY } = props
   const { edge } = LAYOUT_CONFIG
 
-  // Calculate vertical distance from source to target
+  // Calculate distances
   const verticalDist = Math.abs(targetY - sourceY)
+  const horizontalDist = targetX - sourceX
 
-  // Invert the logic: edges going to CLOSER nodes bend FURTHER out
-  // This creates a cleaner fan pattern where outer edges are straighter
-  const distanceFactor = Math.min(verticalDist / edge.distanceNormalization, 1)
-  const bendX = sourceX + edge.maxBendOffset - (distanceFactor * (edge.maxBendOffset - edge.minBendOffset))
-
-  // Radius for rounded corners
-  const radius = edge.cornerRadius
-
-  // Determine direction
-  const goingDown = targetY > sourceY
-  const straight = Math.abs(targetY - sourceY) < edge.straightThreshold
+  // Determine if edge is essentially straight
+  const straight = verticalDist < edge.straightThreshold
 
   if (straight) {
     // Straight horizontal line
     return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
   }
 
-  // Create smooth step path with rounded corners
-  // Path: source -> horizontal to bendX -> vertical to targetY -> horizontal to target
+  // Calculate bend position
+  const distanceFactor = Math.min(verticalDist / edge.distanceNormalization, 1)
+  const rawBendX = sourceX + edge.maxBendOffset - (distanceFactor * (edge.maxBendOffset - edge.minBendOffset))
+
+  // Dynamically adjust radius based on available space
+  // Need room for: first curve + vertical line + second curve (vertically)
+  // And: horizontal line to bend + bend + horizontal line to target (horizontally)
+  const maxVerticalRadius = verticalDist / 2.5
+  const maxHorizontalRadius = Math.min(rawBendX - sourceX, horizontalDist - (rawBendX - sourceX)) / 2
+  const radius = Math.min(edge.cornerRadius, maxVerticalRadius, Math.max(4, maxHorizontalRadius))
+
+  // Cap bendX to leave room for final horizontal segment
+  const bendX = Math.min(rawBendX, targetX - radius - 5)
+
+  // Determine direction
+  const goingDown = targetY > sourceY
   const midY = targetY
 
   if (goingDown) {
