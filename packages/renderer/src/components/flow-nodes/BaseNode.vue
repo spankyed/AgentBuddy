@@ -67,7 +67,7 @@
         type="target"
         :position="Position.Left"
         :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%' }"
-        class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1"
+        class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1.5"
       />
     </template>
     <!-- Default single target handle -->
@@ -75,7 +75,7 @@
       v-else-if="showTargetHandle"
       type="target"
       :position="Position.Left"
-      class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1"
+      class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1.5"
     />
 
     <!-- Dynamic source handles -->
@@ -87,7 +87,7 @@
         type="source"
         :position="Position.Right"
         :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%', transform: 'translateY(-50%)' }"
-        class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1"
+        class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1.5"
       />
     </template>
     <!-- Default single source handle -->
@@ -95,7 +95,7 @@
       v-else-if="showSourceHandle"
       type="source"
       :position="Position.Right"
-      class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1"
+      class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1.5"
     />
   </div>
 </template>
@@ -183,6 +183,18 @@ const statusClasses = computed(() => {
 
 :deep(.vue-flow__handle) {
   transition: all 0.15s ease;
+}
+
+/* Larger invisible hitbox for easier clicking */
+:deep(.handle-hitbox)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
 }
 
 /* Override VueFlow's default handle positioning for custom positioned handles */
