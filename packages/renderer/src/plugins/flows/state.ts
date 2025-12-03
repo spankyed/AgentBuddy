@@ -36,6 +36,11 @@ export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   editingNodeId?: EARS.EntityId; // Node currently being edited
   selectedFlowId?: EARS.EntityId;
+  // Handle selection for click-to-connect workflow
+  selectedHandle?: {
+    nodeId: string;
+    handleId?: string;
+  };
   graph: {
     nodes: NodeEntity[];
     edges: EdgeEntity[];
@@ -71,6 +76,8 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
+  | { type: 'HANDLE.SELECT'; nodeId: string; handleId?: string }
+  | { type: 'HANDLE.DESELECT' }
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
@@ -78,7 +85,7 @@ type UIEvent =
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
   | { type: 'NODE.CREATE'; nodeType: string; position?: { x: number; y: number } }
-  | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
+  | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string; sourceHandle?: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
@@ -426,6 +433,65 @@ const flowsState = setup({
     
     deselectNode: assign({ selectedNodeId: undefined, editingNodeId: undefined }),
 
+    // Handle selection for click-to-connect
+    selectHandle: assign(({ event }) => {
+      const ev = typeOf('HANDLE.SELECT', event);
+      return {
+        selectedHandle: {
+          nodeId: ev.nodeId,
+          handleId: ev.handleId,
+        },
+      };
+    }),
+
+    deselectHandle: assign({ selectedHandle: undefined }),
+
+    // Connect from selected handle to clicked node
+    connectFromHandle: assign(({ context, event }) => {
+      const ev = typeOf('NODE.CLICK', event);
+      const handle = context.selectedHandle;
+      if (!handle) return {};
+
+      // Don't connect to self
+      if (handle.nodeId === ev.nodeId) return {};
+
+      const edgeId = `Edge-${randId()}`;
+      const newEdge = {
+        id: edgeId,
+        source: handle.nodeId,
+        target: ev.nodeId,
+        kind: 'transitions_to',
+        sourceHandle: handle.handleId,
+      } as EdgeEntity;
+
+      return {
+        graph: {
+          ...context.graph,
+          edges: [...context.graph.edges, newEdge],
+        },
+        selectedHandle: undefined, // Clear selection after connecting
+      };
+    }),
+
+    sendEdgeFromHandle: ({ context, event }) => {
+      const ev = typeOf('NODE.CLICK', event);
+      const handle = context.selectedHandle;
+      if (!handle || !context.selectedFlowId) return;
+      if (handle.nodeId === ev.nodeId) return; // Don't connect to self
+
+      // Only send if both IDs are permanent
+      if (!handle.nodeId.startsWith('temp-') && !ev.nodeId.startsWith('temp-')) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_EDGE',
+          flowId: context.selectedFlowId,
+          sourceId: handle.nodeId,
+          targetId: ev.nodeId,
+          sourceHandle: handle.handleId,
+        });
+      }
+    },
+
     deleteNode: assign(({ context, event }) => {
       const ev = typeOf('NODE.DELETE', event);
       const nodeId = ev.nodeId;
@@ -527,7 +593,8 @@ const flowsState = setup({
         id: tempEdgeId,
         source: ev.sourceNodeId,
         target: tempId,
-        kind: 'transitions_to'
+        kind: 'transitions_to',
+        sourceHandle: ev.sourceHandle,
       } as EdgeEntity
       
       // Send create to backend
@@ -814,6 +881,7 @@ const flowsState = setup({
       const ev = typeOf('FLOW_DELETED', event);
       return context.selectedFlowId === ev.flowId;
     },
+    hasSelectedHandle: ({ context }) => !!context.selectedHandle,
   },
 }).createMachine({
   id,
@@ -967,10 +1035,22 @@ const flowsState = setup({
         'FLOW.SELECT': { actions: 'selectFlow'},
         'SELECT_ROOT_FLOW': { actions: 'selectRootFlow' },
         'SELECT_AND_EDIT_FIRST_NODE': { actions: 'selectAndEditFirstNode' },
-        'NODE.CLICK': { actions: 'selectNode' },
+        'NODE.CLICK': [
+          // If handle is selected, connect to clicked node
+          {
+            guard: 'hasSelectedHandle',
+            actions: ['connectFromHandle', 'sendEdgeFromHandle'],
+          },
+          // Otherwise, just select the node
+          {
+            actions: 'selectNode',
+          },
+        ],
         'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
+        'HANDLE.SELECT': { actions: 'selectHandle' },
+        'HANDLE.DESELECT': { actions: 'deselectHandle' },
         'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },

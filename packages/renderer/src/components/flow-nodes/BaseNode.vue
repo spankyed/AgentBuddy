@@ -67,7 +67,7 @@
         type="target"
         :position="Position.Left"
         :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%' }"
-        class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1.5"
+        class="!w-1 !h-1 !bg-transparent !border-none !left-0"
       />
     </template>
     <!-- Default single target handle -->
@@ -75,27 +75,34 @@
       v-else-if="showTargetHandle"
       type="target"
       :position="Position.Left"
-      class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1.5"
+      class="!w-1 !h-1 !bg-transparent !border-none !left-0"
     />
 
-    <!-- Dynamic source handles -->
+    <!-- Dynamic source handles (AddHandle with + icon) -->
     <template v-if="sourceHandles && sourceHandles.length > 0">
-      <Handle
+      <AddHandle
         v-for="handle in sourceHandles"
         :key="handle.id"
-        :id="handle.id"
-        type="source"
-        :position="Position.Right"
-        :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%', transform: 'translateY(-50%)' }"
-        class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1.5"
+        :node-id="id"
+        :handle-id="handle.id"
+        :offset-y="handle.offsetY"
+        :source-handle="handle.id"
+        :is-selected="isHandleSelected(handle.id)"
+        :is-connected="isHandleConnected(handle.id)"
+        @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
+        @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+        @delete-connection="(nodeId, handleId) => $emit('delete-connection', nodeId, handleId)"
       />
     </template>
-    <!-- Default single source handle -->
-    <Handle
+    <!-- Default single source handle (AddHandle with + icon) -->
+    <AddHandle
       v-else-if="showSourceHandle"
-      type="source"
-      :position="Position.Right"
-      class="handle-hitbox !w-2.5 !h-2.5 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1.5"
+      :node-id="id"
+      :is-selected="isHandleSelected()"
+      :is-connected="isHandleConnected()"
+      @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
+      @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+      @delete-connection="(nodeId, handleId) => $emit('delete-connection', nodeId, handleId)"
     />
   </div>
 </template>
@@ -110,6 +117,7 @@ export default {
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
 import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
+import AddHandle from './AddHandle.vue'
 import type { NodeKind } from '@app/api'
 
 export interface HandleConfig {
@@ -134,6 +142,10 @@ interface Props extends NodeProps<BaseNodeData> {
   showStatusIndicator?: boolean
   sourceHandles?: HandleConfig[]
   targetHandles?: HandleConfig[]
+  // Handle selection for click-to-connect
+  selectedHandle?: { nodeId: string; handleId?: string }
+  // Set of connected handles: "nodeId" or "nodeId:handleId"
+  connectedHandles?: Set<string>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -144,8 +156,34 @@ const props = withDefaults(defineProps<Props>(), {
   showSourceHandle: true,
   showStatusIndicator: false,
   sourceHandles: undefined,
-  targetHandles: undefined
+  targetHandles: undefined,
+  selectedHandle: undefined,
+  connectedHandles: undefined,
 })
+
+defineEmits<{
+  'create-connected': [nodeType: string, sourceHandle?: string]
+  'handle-select': [nodeId: string, handleId?: string]
+  'delete-connection': [nodeId: string, handleId?: string]
+}>()
+
+// Check if a specific handle is selected
+function isHandleSelected(handleId?: string): boolean {
+  if (!props.selectedHandle) return false
+  if (props.selectedHandle.nodeId !== props.id) return false
+  // If no handleId specified on the handle, check if selection has no handleId
+  if (!handleId) return !props.selectedHandle.handleId
+  return props.selectedHandle.handleId === handleId
+}
+
+// Check if a specific handle is connected to an edge
+function isHandleConnected(handleId?: string): boolean {
+  if (!props.connectedHandles) return false
+  if (handleId) {
+    return props.connectedHandles.has(`${props.id}:${handleId}`)
+  }
+  return props.connectedHandles.has(props.id)
+}
 
 const nodeClasses = computed(() => {
   const type = props.data.nodeType || 'action'

@@ -31,6 +31,7 @@
       :selected-node-id="selected?.id"
       :editing-node-id="editingNode?.id"
       :show-overlay="inListState"
+      :selected-handle="selectedHandle"
       @node-click="handleNodeClick"
       @node-double-click="handleNodeDoubleClick"
       @connect="handleConnect"
@@ -47,6 +48,10 @@
       @edges-remove="handleEdgesRemove"
       @edge-update="handleEdgeUpdate"
       @edge-update-end="handleEdgeUpdateEnd"
+      @create-connected="handleCreateConnectedNode"
+      @handle-select="handleHandleSelect"
+      @handle-deselect="handleHandleDeselect"
+      @delete-connection="handleDeleteConnection"
     />
 
     <!-- ▸ Node form overlay -->
@@ -139,6 +144,7 @@ const editingNode = useSelector(actor, (s) =>
 const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
+const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
 
 // Watch for flow changes and re-center view after layout is computed
 watch(selectedFlowId, () => {
@@ -222,12 +228,34 @@ function handlePaletteClick(nodeType: string) {
   })
 }
 
-function handleCreateConnectedNode(nodeType: string, sourceNodeId: string) {
+function handleCreateConnectedNode(nodeType: string, sourceNodeId: string, sourceHandle?: string) {
   actor.send({
     type: 'NODE.CREATE_CONNECTED',
     nodeType,
     sourceNodeId,
+    sourceHandle,
   })
+}
+
+function handleHandleSelect(nodeId: string, handleId?: string) {
+  actor.send({ type: 'HANDLE.SELECT', nodeId, handleId })
+}
+
+function handleHandleDeselect() {
+  actor.send({ type: 'HANDLE.DESELECT' })
+}
+
+function handleDeleteConnection(nodeId: string, handleId?: string) {
+  // Find edge by source node and handle
+  const edge = edges.value.find(e => {
+    if (handleId) {
+      return e.source === nodeId && e.sourceHandle === handleId
+    }
+    return e.source === nodeId && !e.sourceHandle
+  })
+  if (edge) {
+    actor.send({ type: 'EDGE.DISCONNECT', edgeId: edge.id })
+  }
 }
 
 function handleNodeClick(e: NodeMouseEvent) {
