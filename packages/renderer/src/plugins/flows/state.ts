@@ -21,7 +21,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from '@/components/flow-nodes'
-import { calculateLayout, calculateLayoutAsync, allNodesHavePositions } from './canvas/layout-utils'
+import { calculateLayoutAsync, allNodesHavePositions } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 

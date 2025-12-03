@@ -1,29 +1,23 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
 
-/**
- * Centralized layout configuration.
- * Used by both ELK layout calculation and edge rendering.
- */
 export const LAYOUT_CONFIG = {
-  // Node dimensions
   nodeWidth: 200,
   nodeHeight: 50,
-
-  // Node spacing (used by ELK)
-  nodeSep: 60,       // Vertical spacing between nodes in same layer
-  rankSep: 50,       // Horizontal spacing between layers
-
-  // Edge rendering (used by GenericEdge)
+  // ELK spacing
+  layerGap: 20,      // Horizontal space between layers (edge length)
+  nodeGap: 40,       // Vertical space between nodes in same layer
+  chainGap: 10,      // Vertical space between disconnected chains
   edge: {
-    maxBendOffset: 50,    // Bend distance for close nodes
-    minBendOffset: 20,    // Bend distance for far nodes
-    cornerRadius: 8,      // Rounded corner radius
-    straightThreshold: 5, // Below this vertical distance, edge is straight
-    distanceNormalization: 200, // Divisor for normalizing vertical distance
+    maxBendOffset: 50,
+    minBendOffset: 20,
+    cornerRadius: 8,
+    straightThreshold: 5,
+    distanceNormalization: 200,
   }
 } as const
 
 export type LayoutDirection = 'LR' | 'TB'
+export type LayoutPositions = Record<string, { x: number; y: number }>
 
 interface LayoutNode {
   id: string
@@ -39,150 +33,72 @@ interface LayoutEdge {
   targetHandle?: string
 }
 
-interface LayoutInput {
-  nodes: LayoutNode[]
-  edges: LayoutEdge[]
-}
-
-interface LayoutOptions {
-  direction?: LayoutDirection
-  nodeWidth?: number
-  nodeHeight?: number
-  nodeSep?: number
-  rankSep?: number
-}
-
-export type LayoutPositions = Record<string, { x: number; y: number }>
-
-// Create ELK instance (reusable singleton)
 const elk = new ELK()
 
-/**
- * Builds ELK-compatible graph structure from nodes and edges.
- * Handles port creation for switch nodes with multiple outputs.
- */
-function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
-  const {
-    direction = 'LR',
-    nodeWidth = LAYOUT_CONFIG.nodeWidth,
-    nodeHeight = LAYOUT_CONFIG.nodeHeight,
-    nodeSep = LAYOUT_CONFIG.nodeSep,
-    rankSep = LAYOUT_CONFIG.rankSep,
-  } = options
+const getBranchIndex = (handle?: string): number => {
+  const match = handle?.match(/branch-(\d+)/)
+  return match ? parseInt(match[1], 10) : 0
+}
 
-  const elkNodes: ElkNode[] = input.nodes.map((node) => {
+function buildElkGraph(
+  nodes: LayoutNode[],
+  edges: LayoutEdge[],
+  direction: LayoutDirection = 'LR'
+): ElkNode {
+  const { nodeWidth, nodeHeight, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
+
+  const elkNodes: ElkNode[] = nodes.map((node) => {
     const ports: ElkPort[] = []
     const isSwitch = node.nodeType === 'switch'
     const branchCount = node.conditions?.length ?? 0
 
-    // Calculate height for switch nodes based on branch count
-    const calculatedHeight = isSwitch
+    const height = isSwitch
       ? Math.max(nodeHeight, 48 + (branchCount + 1) * 22 + 10)
       : nodeHeight
 
-    // Input port (except entry/listen nodes)
     if (node.nodeType !== 'listen') {
-      ports.push({
-        id: `${node.id}-in`,
-        layoutOptions: { 'port.side': 'WEST' }
-      })
+      ports.push({ id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } })
     }
 
-    // Output ports
     if (isSwitch) {
-      // Switch nodes: one port per branch
       for (let i = 0; i < branchCount; i++) {
         ports.push({
           id: `${node.id}-out-branch-${i}`,
-          layoutOptions: {
-            'port.side': 'EAST',
-            'port.index': String(i)
-          }
+          layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
         })
       }
     } else if (node.nodeType !== 'fire') {
-      // Regular nodes: single output (fire/terminal nodes have no output)
-      ports.push({
-        id: `${node.id}-out`,
-        layoutOptions: { 'port.side': 'EAST' }
-      })
+      ports.push({ id: `${node.id}-out`, layoutOptions: { 'port.side': 'EAST' } })
     }
 
-    return {
-      id: node.id,
-      width: nodeWidth,
-      height: calculatedHeight,
-      ports
-    }
+    return { id: node.id, width: nodeWidth, height, ports }
   })
 
-  // Build ELK edges with port references
-  // Sort edges by source port index to help ELK order targets correctly
-  const sortedEdges = [...input.edges].sort((a, b) => {
-    const getPortIndex = (handle?: string): number => {
-      if (!handle) return 0
-      const match = handle.match(/branch-(\d+)/)
-      return match ? parseInt(match[1], 10) : 0
-    }
-    return getPortIndex(a.sourceHandle) - getPortIndex(b.sourceHandle)
-  })
+  const sortedEdges = [...edges].sort((a, b) =>
+    getBranchIndex(a.sourceHandle) - getBranchIndex(b.sourceHandle)
+  )
 
-  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => {
-    // Determine source port
-    const sourcePort = edge.sourceHandle
-      ? `${edge.source}-out-${edge.sourceHandle}`
-      : `${edge.source}-out`
+  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => ({
+    id: edge.id || `e${idx}`,
+    sources: [edge.sourceHandle ? `${edge.source}-out-${edge.sourceHandle}` : `${edge.source}-out`],
+    targets: [`${edge.target}-in`],
+    layoutOptions: { 'elk.priority': String(getBranchIndex(edge.sourceHandle)) }
+  }))
 
-    // Determine target port
-    const targetPort = `${edge.target}-in`
-
-    // Calculate priority based on port index (lower = higher priority = positioned earlier/higher)
-    const getPortPriority = (handle?: string): number => {
-      if (!handle) return 0
-      const match = handle.match(/branch-(\d+)/)
-      return match ? parseInt(match[1], 10) : 0
-    }
-
-    return {
-      id: edge.id || `e${idx}`,
-      sources: [sourcePort],
-      targets: [targetPort],
-      layoutOptions: {
-        // Priority affects node ordering - lower priority edges have their targets placed first (higher up)
-        'elk.priority': String(getPortPriority(edge.sourceHandle))
-      }
-    }
-  })
-
-  // Root graph with layout options
   return {
     id: 'root',
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
-      // Node spacing - controls visual separation between nodes
-      'elk.spacing.nodeNode': String(nodeSep),
-      'elk.layered.spacing.nodeNodeBetweenLayers': String(rankSep),
-
-      // Separate disconnected components (chains) - stacks them vertically
+      'elk.layered.spacing.nodeNodeBetweenLayers': String(layerGap),
+      'elk.spacing.nodeNode': String(nodeGap),
       'elk.separateConnectedComponents': 'true',
-      'elk.spacing.componentComponent': '80',
-
-      // Port constraints - respect port order on switch nodes
+      'elk.spacing.componentComponent': String(chainGap),
       'elk.portConstraints': 'FIXED_ORDER',
-
-      // Critical: Force target nodes to be ordered by their source port order
-      // This prevents edges from crossing by aligning targets with their source ports
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
-
-      // Consider model order for nodes and edges - align targets with source ports
       'elk.layered.considerModelOrder.strategy': 'PREFER_EDGES',
-
-      // Node placement - use linear segments to minimize edge bends
       'elk.layered.nodePlacement.strategy': 'LINEAR_SEGMENTS',
-
-      // Edge routing for bezier-compatible paths
       'elk.edgeRouting': 'SPLINES',
     },
     children: elkNodes,
@@ -190,77 +106,31 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
   }
 }
 
-/**
- * Async layout calculation using ELK.
- * Returns positions for each node.
- */
 export async function calculateLayoutAsync(
-  input: LayoutInput,
-  options: LayoutOptions = {}
+  input: { nodes: LayoutNode[]; edges: LayoutEdge[] },
+  options: { direction?: LayoutDirection } = {}
 ): Promise<LayoutPositions> {
-  // Handle empty input
-  if (input.nodes.length === 0) {
-    return {}
-  }
-
-  // Handle single node
-  if (input.nodes.length === 1) {
-    return { [input.nodes[0].id]: { x: 0, y: 0 } }
-  }
-
-  try {
-    const elkGraph = buildElkGraph(input, options)
-    const layoutedGraph = await elk.layout(elkGraph)
-
-    // Extract positions from layouted graph
-    const positions: LayoutPositions = {}
-    for (const child of layoutedGraph.children ?? []) {
-      if (child.id && child.x !== undefined && child.y !== undefined) {
-        positions[child.id] = {
-          x: child.x,
-          y: child.y
-        }
-      }
-    }
-
-    return positions
-  } catch (error) {
-    console.error('ELK layout failed:', error)
-    // Fallback: return simple horizontal layout
-    return input.nodes.reduce((acc, node, index) => {
-      acc[node.id] = { x: index * 200, y: 0 }
-      return acc
-    }, {} as LayoutPositions)
-  }
-}
-
-/**
- * Synchronous layout calculation - returns placeholder positions.
- * Actual layout should use calculateLayoutAsync.
- * Kept for backward compatibility during migration.
- */
-export function calculateLayout(
-  input: LayoutInput,
-  options: LayoutOptions = {}
-): LayoutPositions {
   if (input.nodes.length === 0) return {}
   if (input.nodes.length === 1) return { [input.nodes[0].id]: { x: 0, y: 0 } }
 
-  // Return placeholder positions - actual layout happens async
-  return input.nodes.reduce((acc, node, i) => {
-    acc[node.id] = { x: i * 200, y: 0 }
-    return acc
-  }, {} as LayoutPositions)
+  try {
+    const graph = await elk.layout(buildElkGraph(input.nodes, input.edges, options.direction))
+    const positions: LayoutPositions = {}
+    for (const child of graph.children ?? []) {
+      if (child.id && child.x !== undefined && child.y !== undefined) {
+        positions[child.id] = { x: child.x, y: child.y }
+      }
+    }
+    return positions
+  } catch (error) {
+    console.error('ELK layout failed:', error)
+    return Object.fromEntries(input.nodes.map((n, i) => [n.id, { x: i * 200, y: 0 }]))
+  }
 }
 
-/**
- * Check if all nodes have valid positions
- */
 export function allNodesHavePositions(
   nodes: { id: string }[],
   positions: LayoutPositions
 ): boolean {
-  return nodes.every(
-    node => positions[node.id]?.x !== undefined && positions[node.id]?.y !== undefined
-  )
+  return nodes.every(n => positions[n.id]?.x !== undefined && positions[n.id]?.y !== undefined)
 }
