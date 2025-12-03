@@ -6,13 +6,15 @@ export const LAYOUT_CONFIG = {
   // ELK spacing
   layerGap: 20,      // Horizontal space between layers (edge length)
   nodeGap: 40,       // Vertical space between nodes in same layer
-  chainGap: 10,      // Vertical space between disconnected chains
+  chainGap: 20,      // Vertical space between disconnected chains
   edge: {
     maxBendOffset: 50,
     minBendOffset: 20,
     cornerRadius: 8,
     straightThreshold: 5,
     distanceNormalization: 200,
+    anchorOffset: 10,     // Distance before target for anchor point
+    spreadSpacing: 25,    // Vertical spacing between converging edges
   }
 } as const
 
