@@ -21,7 +21,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from '@/components/flow-nodes'
-import { calculateLayout, allNodesHavePositions } from './canvas/layout-utils'
+import { calculateLayout, calculateLayoutAsync, allNodesHavePositions } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -93,6 +93,8 @@ type UIEvent =
   // DSL Import events
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
   | { type: 'DSL.RESET_STATUS' }
+  // Layout events
+  | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -104,18 +106,21 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ context, event }) => {
+    setPluginData: assign(({ context, event, self }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
 
-      // Calculate layout for initial load if positions missing
       const existingPositions = context.graph?.positions || {};
       const graphNodes = ev.data.graph?.nodes || [];
       const graphEdges = ev.data.graph?.edges || [];
       const needsLayout = graphNodes.length > 0 && !allNodesHavePositions(graphNodes, existingPositions);
 
-      const positions = needsLayout
-        ? calculateLayout({ nodes: graphNodes, edges: graphEdges })
-        : existingPositions;
+      // Trigger async layout calculation if needed
+      if (needsLayout) {
+        calculateLayoutAsync({ nodes: graphNodes, edges: graphEdges })
+          .then((positions) => {
+            self.send({ type: 'LAYOUT_COMPUTED', positions })
+          })
+      }
 
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
@@ -126,7 +131,7 @@ const flowsState = setup({
         graph: {
           nodes: graphNodes,
           edges: graphEdges,
-          positions,
+          positions: needsLayout ? {} : existingPositions,
         },
         settings: ev.data.settings || {},
       }
@@ -172,16 +177,19 @@ const flowsState = setup({
       });
     },
 
-    loadFlowData: assign(({ context, event }) => {
+    loadFlowData: assign(({ context, event, self }) => {
       const ev = typeOf('FLOW_SELECTED', event);
 
-      // Preserve existing positions or calculate layout if missing
       const existingPositions = context.graph?.positions || {};
       const needsLayout = !allNodesHavePositions(ev.data.nodes, existingPositions);
 
-      const positions = needsLayout
-        ? calculateLayout({ nodes: ev.data.nodes, edges: ev.data.edges })
-        : existingPositions;
+      // Trigger async layout calculation if needed
+      if (needsLayout) {
+        calculateLayoutAsync({ nodes: ev.data.nodes, edges: ev.data.edges })
+          .then((positions) => {
+            self.send({ type: 'LAYOUT_COMPUTED', positions })
+          })
+      }
 
       return {
         selectedFlowId: ev.flowId,
@@ -189,7 +197,7 @@ const flowsState = setup({
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions,
+          positions: needsLayout ? {} : existingPositions,
         },
       };
     }),
@@ -220,14 +228,16 @@ const flowsState = setup({
       };
     }),
 
-    addCreatedFlow: assign(({ context, event }) => {
+    addCreatedFlow: assign(({ context, event, self }) => {
       const ev = typeOf('FLOW_CREATED', event);
 
-      // Calculate layout immediately for new flow
-      const positions = calculateLayout({
+      // Trigger async layout calculation for new flow
+      calculateLayoutAsync({
         nodes: ev.data.nodes,
         edges: ev.data.edges,
-      });
+      }).then((positions) => {
+        self.send({ type: 'LAYOUT_COMPUTED', positions })
+      })
 
       return {
         flows: [...context.flows, ev.flow],
@@ -235,7 +245,7 @@ const flowsState = setup({
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions,
+          positions: {},
         },
       };
     }),
@@ -855,6 +865,17 @@ const flowsState = setup({
       actions: 'handleSettingsUpdate'
     },
     FLOW_SELECTED: { actions: 'loadFlowData' },
+    LAYOUT_COMPUTED: {
+      actions: assign(({ context, event }) => {
+        const ev = event as { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
+        return {
+          graph: {
+            ...context.graph,
+            positions: ev.positions,
+          },
+        }
+      }),
+    },
     FLOW_CREATED: {
       actions: 'addCreatedFlow',
       target: '.view'

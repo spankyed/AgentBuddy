@@ -84,10 +84,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref, nextTick } from 'vue'
+import { computed, type Ref, ref, nextTick, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
-import { calculateLayout, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
+import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import type { FlowEntity, NodeEntity } from '@app/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -139,6 +139,13 @@ const editingNode = useSelector(actor, (s) =>
 const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
+
+// Watch for position changes and re-center view after layout is computed
+watch(positions, (newPositions) => {
+  if (Object.keys(newPositions).length > 0) {
+    nextTick(() => fitView())
+  }
+}, { once: true })
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
@@ -302,8 +309,8 @@ function handleGoBack() {
 }
 
 async function handleLayout(direction?: LayoutDirection) {
-  // Calculate new positions using pure layout function
-  const newPositions = calculateLayout(
+  // Calculate new positions using async ELK layout
+  const newPositions = await calculateLayoutAsync(
     { nodes: nodes.value, edges: edges.value },
     { direction }
   )
