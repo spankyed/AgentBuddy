@@ -1,9 +1,23 @@
 <template>
-  <path
-    :d="edgePath"
-    :style="{ strokeWidth: selected ? 2 : 1.5, stroke: '#888', fill: 'none' }"
-    :marker-end="`url(#${MarkerType.Arrow})`"
-  />
+  <g>
+    <!-- Invisible wider path for easier selection -->
+    <path
+      :d="edgePath"
+      :style="{ strokeWidth: 20, stroke: 'transparent', fill: 'none' }"
+    />
+    <!-- Selection highlight -->
+    <path
+      v-if="props.selected"
+      :d="edgePath"
+      :style="{ strokeWidth: 6, stroke: '#3b82f6', fill: 'none', opacity: 0.4 }"
+    />
+    <!-- Visible edge -->
+    <path
+      :d="edgePath"
+      :style="{ strokeWidth: props.selected ? 2 : 1.5, stroke: props.selected ? '#3b82f6' : '#888', fill: 'none' }"
+      :marker-end="`url(#${MarkerType.Arrow})`"
+    />
+  </g>
 </template>
 
 <script setup lang="ts">
@@ -12,7 +26,6 @@ import { MarkerType, type EdgeProps, useVueFlow } from '@vue-flow/core'
 import { LAYOUT_CONFIG } from '@/plugins/flows/canvas/layout-utils'
 
 const props = defineProps<EdgeProps>()
-const { selected = false } = props
 const { getEdges } = useVueFlow()
 
 const edgePath = computed(() => {
