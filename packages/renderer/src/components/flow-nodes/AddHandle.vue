@@ -15,6 +15,7 @@
     class="add-handle-overlay"
     :class="{ 'is-selected': isSelected, 'is-connected': isConnected }"
     :style="overlayStyle"
+    @mousedown.stop
     @click.stop="handleClick"
     @dblclick.stop="!isConnected && handleDoubleClick()"
     @keydown.delete.stop="isConnected && handleDelete()"
@@ -113,6 +114,11 @@ const overlayStyle = computed(() => {
 })
 
 function handleClick() {
+  // If already selected and not connected, open dropdown (act as double-click)
+  if (props.isSelected && !props.isConnected) {
+    showDropdown.value = true
+    return
+  }
   // Single click selects the handle for click-to-connect
   emit('handle-select', props.nodeId, props.sourceHandle || props.handleId)
 }
@@ -167,7 +173,8 @@ function handleDelete() {
   pointer-events: auto;
 }
 
-.add-handle-overlay:hover {
+/* Hover state - only when not selected */
+.add-handle-overlay:not(.is-selected):hover {
   background: #525252;
   border-color: #737373;
 }
@@ -178,12 +185,7 @@ function handleDelete() {
   height: 10px;
 }
 
-.add-handle-overlay.is-connected:hover {
-  background: #525252;
-  border-color: #737373;
-}
-
-/* Selected state - ring indicator */
+/* Selected state - ring indicator (takes priority over hover) */
 .add-handle-overlay.is-selected {
   background: #3b82f6;
   border-color: #60a5fa;
@@ -202,7 +204,7 @@ function handleDelete() {
   pointer-events: none;
 }
 
-.add-handle-overlay:hover .plus-icon {
+.add-handle-overlay:not(.is-selected):hover .plus-icon {
   color: #e5e5e5;
 }
 

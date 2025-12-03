@@ -32,6 +32,7 @@
       @edge-update-start="handleEdgeUpdateStart"
       @edge-update="handleEdgeUpdate"
       @edge-update-end="handleEdgeUpdateEnd"
+      @edge-click="handleEdgeClick"
       :min-zoom="0.2"
       :max-zoom="2"
     >
@@ -49,7 +50,10 @@
         />
       </template>
       <template #edge-generic="edgeProps">
-        <GenericEdge v-bind="edgeProps" />
+        <GenericEdge
+          v-bind="edgeProps"
+          :is-handle-selected="isEdgeHandleSelected(edgeProps)"
+        />
       </template>
       <Background variant="dots" />
       <Controls />
@@ -182,6 +186,7 @@ const emit = defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
   'handle-deselect': []
   'delete-connection': [nodeId: string, handleId?: string]
+  'edge-select': [source: string, sourceHandle?: string]
 }>()
 
 // Watch for editing node changes and center the node
@@ -260,6 +265,22 @@ function handleEdgeUpdate(event: EdgeUpdateEvent) {
 function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
   // Edge update end - Vue Flow handles cleanup
   emit('edge-update-end', event)
+}
+
+function handleEdgeClick(event: EdgeMouseEvent) {
+  // Select the source handle when an edge is clicked
+  const edge = event.edge
+  emit('edge-select', edge.source, edge.sourceHandle || undefined)
+}
+
+// Check if edge's source handle is currently selected
+function isEdgeHandleSelected(edgeProps: any): boolean {
+  if (!props.selectedHandle) return false
+  const matchesNode = edgeProps.source === props.selectedHandle.nodeId
+  if (props.selectedHandle.handleId) {
+    return matchesNode && edgeProps.sourceHandle === props.selectedHandle.handleId
+  }
+  return matchesNode && !edgeProps.sourceHandle
 }
 
 // Validation function to prevent multiple connections per handle
