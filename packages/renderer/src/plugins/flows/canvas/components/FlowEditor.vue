@@ -35,7 +35,7 @@
       :max-zoom="2"
     >
       <template v-for="(_, type) in nodeTypes" #[`node-${type}`]="nodeProps">
-        <component :is="nodeTypes[type]" v-bind="nodeProps" :key="type" />
+        <component :is="nodeTypes[type]" v-bind="nodeProps" :is-editing="nodeProps.id === editingNodeId" :key="type" />
       </template>
       <template #edge-generic="edgeProps">
         <GenericEdge v-bind="edgeProps" />
@@ -198,7 +198,12 @@ function handleEdgesChange(changes: any[]) {
 }
 
 async function handleNodeClick(event: NodeMouseEvent) {
-  emit('node-click', event)
+  const target = event.event.target as HTMLElement
+  if (target.closest('[data-action="open-form"]')) {
+    emit('node-double-click', event) // Icon click opens form like double-click
+  } else {
+    emit('node-click', event)
+  }
 }
 
 async function handleNodeDoubleClick(event: NodeMouseEvent) {

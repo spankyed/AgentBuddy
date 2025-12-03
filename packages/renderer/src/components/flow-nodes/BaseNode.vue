@@ -4,7 +4,8 @@
     :class="[
       nodeClasses,
       {
-        'ring-1 ring-white/30': isActive || selected,
+        'ring-2 ring-blue-400/70 shadow-lg shadow-blue-500/20': isEditing,
+        'ring-1 ring-white/30': !isEditing && (isActive || selected),
         'cursor-pointer': selectable,
       }
     ]"
@@ -20,8 +21,11 @@
           class="w-3.5 h-3.5 flex-shrink-0 opacity-80"
           :class="iconTextColor"
         />
-        <div class="flex-1 flex justify-center pr-3.5">
-          <span class="text-[13px] font-medium text-neutral-200">{{ data.label }}</span>
+        <div class="flex-1 flex justify-center pr-1 hover:underline" data-action="open-form">
+          <span
+            class="text-[13px] font-medium text-neutral-200 cursor-pointer"
+
+          >{{ data.label }}</span>
         </div>
       </div>
 
@@ -124,6 +128,7 @@ interface BaseNodeData {
 
 interface Props extends NodeProps<BaseNodeData> {
   isActive?: boolean
+  isEditing?: boolean
   selectable?: boolean
   showTargetHandle?: boolean
   showSourceHandle?: boolean
@@ -135,6 +140,7 @@ interface Props extends NodeProps<BaseNodeData> {
 
 const props = withDefaults(defineProps<Props>(), {
   isActive: false,
+  isEditing: false,
   selectable: true,
   showTargetHandle: true,
   showSourceHandle: true,
