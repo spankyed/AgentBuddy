@@ -90,7 +90,7 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
 
     // Output ports
     if (isSwitch) {
-      // Switch nodes: one port per branch + otherwise
+      // Switch nodes: one port per branch
       for (let i = 0; i < branchCount; i++) {
         ports.push({
           id: `${node.id}-out-branch-${i}`,
@@ -100,14 +100,6 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
           }
         })
       }
-      // Always add 'otherwise' port last
-      ports.push({
-        id: `${node.id}-out-otherwise`,
-        layoutOptions: {
-          'port.side': 'EAST',
-          'port.index': String(branchCount)
-        }
-      })
     } else if (node.nodeType !== 'fire') {
       // Regular nodes: single output (fire/terminal nodes have no output)
       ports.push({
@@ -129,7 +121,6 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
   const sortedEdges = [...input.edges].sort((a, b) => {
     const getPortIndex = (handle?: string): number => {
       if (!handle) return 0
-      if (handle === 'otherwise') return 999 // Last
       const match = handle.match(/branch-(\d+)/)
       return match ? parseInt(match[1], 10) : 0
     }
@@ -148,7 +139,6 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
     // Calculate priority based on port index (lower = higher priority = positioned earlier/higher)
     const getPortPriority = (handle?: string): number => {
       if (!handle) return 0
-      if (handle === 'otherwise') return 100
       const match = handle.match(/branch-(\d+)/)
       return match ? parseInt(match[1], 10) : 0
     }

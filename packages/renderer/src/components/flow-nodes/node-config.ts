@@ -283,7 +283,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
-    connectionRules: { inputs: 1, outputs: -1 },  // Multiple outputs (one per branch + otherwise)
+    connectionRules: { inputs: 1, outputs: -1 },  // Multiple outputs (one per branch)
     component: 'SwitchNode',
     isImplemented: true
   },

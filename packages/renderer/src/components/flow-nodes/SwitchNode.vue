@@ -19,14 +19,6 @@
           {{ branch.label || branch.expression || `Branch ${i + 1}` }}
         </span>
       </div>
-
-      <!-- Otherwise (default) row -->
-      <div class="branch-row flex items-center gap-2 mt-1 pt-1 border-t border-neutral-700/30 pr-1">
-        <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center text-[9px] font-medium rounded bg-neutral-600/30 text-neutral-500">
-          *
-        </span>
-        <span class="text-[11px] text-neutral-400 italic truncate flex-1">otherwise</span>
-      </div>
     </div>
   </BaseNode>
 </template>
@@ -73,29 +65,13 @@ const ROW_HEIGHT = 22
 // Header offset: node padding (8px) + header height (~24px) + border-t margin (8px)
 const HEADER_OFFSET = 48
 
-// Compute source handles for each branch + otherwise
+// Compute source handles for each branch
 const branchHandles = computed<HandleConfig[]>(() => {
-  const handles: HandleConfig[] = []
-
-  // Add handle for each branch
-  branches.value.forEach((branch, i) => {
-    handles.push({
-      id: `branch-${i}`,
-      label: branch.label || `Branch ${i + 1}`,
-      offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
-    })
-  })
-
-  // Always add "otherwise" handle at the end
-  // +6 for the mt-1 pt-1 spacing on otherwise row
-  const otherwiseOffset = HEADER_OFFSET + (branches.value.length * ROW_HEIGHT) + 6 + (ROW_HEIGHT / 2)
-  handles.push({
-    id: 'otherwise',
-    label: 'otherwise',
-    offsetY: otherwiseOffset
-  })
-
-  return handles
+  return branches.value.map((branch, i) => ({
+    id: `branch-${i}`,
+    label: branch.label || `Branch ${i + 1}`,
+    offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
+  }))
 })
 </script>
 

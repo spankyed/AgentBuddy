@@ -140,12 +140,16 @@ const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
 
-// Watch for position changes and re-center view after layout is computed
-watch(positions, (newPositions) => {
-  if (Object.keys(newPositions).length > 0) {
-    nextTick(() => fitView())
-  }
-}, { once: true })
+// Watch for flow changes and re-center view after layout is computed
+watch(selectedFlowId, () => {
+  // When flow changes, watch for next position update then fitView
+  const unwatch = watch(positions, (newPositions) => {
+    if (Object.keys(newPositions).length > 0) {
+      nextTick(() => fitView())
+      unwatch()
+    }
+  })
+}, { immediate: true })
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value

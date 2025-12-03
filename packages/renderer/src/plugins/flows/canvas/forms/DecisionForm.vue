@@ -81,23 +81,6 @@
         </div>
       </div>
 
-      <!-- Otherwise Label -->
-      <div class="pt-4 border-t border-neutral-800">
-        <label class="block mb-2 text-xs font-semibold tracking-wider uppercase text-neutral-500">
-          Otherwise Label <span class="text-neutral-600 normal-case">(optional)</span>
-        </label>
-        <input
-          :value="elseLabel"
-          @input="updateElseLabel(($event.target as HTMLInputElement).value)"
-          type="text"
-          placeholder="default"
-          class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-        />
-        <p class="mt-1.5 text-xs text-neutral-600">
-          The "otherwise" branch handles all cases that don't match any condition.
-        </p>
-      </div>
-
       <!-- Expression Tips -->
       <div class="pt-4 border-t border-neutral-800">
         <details class="group">
@@ -138,12 +121,6 @@ const conditions = computed(() => {
   return decisionNode.conditions || []
 })
 
-// Get else label
-const elseLabel = computed(() => {
-  const decisionNode = props.node as DecisionNode
-  return decisionNode.elseLabel || ''
-})
-
 // Add a new branch
 function addBranch() {
   const newConditions = [...conditions.value, { expr: '', label: '' }]
@@ -165,10 +142,5 @@ function updateBranch(index: number, field: 'expr' | 'label', value: string) {
     return cond
   })
   emit('update-node', { conditions: newConditions })
-}
-
-// Update the else label
-function updateElseLabel(value: string) {
-  emit('update-node', { elseLabel: value || undefined })
 }
 </script>
