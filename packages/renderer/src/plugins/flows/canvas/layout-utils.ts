@@ -28,7 +28,7 @@ export type LayoutDirection = 'LR' | 'TB'
 interface LayoutNode {
   id: string
   nodeType?: string
-  conditions?: Array<{ expr: string; label?: string }>
+  conditions?: Array<{ predicate?: unknown; expr?: string; label?: string }>
 }
 
 interface LayoutEdge {
