@@ -15,13 +15,14 @@
     <!-- Main content -->
     <div class="relative z-10">
       <!-- Header -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center">
         <component
           :is="nodeIcon"
-          class="w-3.5 h-3.5 flex-shrink-0 opacity-80"
+          class="w-3.5 h-3.5 mr-1 flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
           :class="iconTextColor"
+          data-action="open-form"
         />
-        <div class="flex-1 flex justify-center pr-1 hover:underline" data-action="open-form">
+        <div class="flex-1 flex justify-center pr-1">
           <span
             class="text-[13px] font-medium text-neutral-200 cursor-pointer"
 
