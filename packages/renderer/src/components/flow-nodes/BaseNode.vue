@@ -60,7 +60,7 @@
     </div>
 
     <!-- Connection handles -->
-    <!-- Dynamic target handles -->
+    <!-- Dynamic target handles (explicit override only) -->
     <template v-if="targetHandles && targetHandles.length > 0">
       <Handle
         v-for="handle in targetHandles"

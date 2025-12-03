@@ -157,10 +157,10 @@ const plainNodes = computed(() => {
       id       : n.id!,
       type     : n.nodeType,
       position : {
-        x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
+        x: positions.value[n.id]?.x ?? 0,
         y: positions.value[n.id]?.y ?? 0
       },
-      data     : n,  // Let VueFlow handle selection state
+      data     : n,
     })) as VueFlowNode[]
 
   return mappedNodes
@@ -168,7 +168,6 @@ const plainNodes = computed(() => {
 
 const plainEdges = computed(() =>
   Object.values(edges.value).map((e) => {
-    // Find the source node to check if it's an event node
     const sourceNode = nodes.value.find(n => n.id === e.source)
     const isFromEventNode = sourceNode?.nodeType === 'listen'
 
@@ -176,12 +175,11 @@ const plainEdges = computed(() =>
       id     : e.id,
       source : e.source,
       target : e.target,
-      sourceHandle: e.sourceHandle,  // For switch nodes with multiple outputs
-      targetHandle: e.targetHandle,  // For nodes with multiple inputs
+      sourceHandle: e.sourceHandle,
       data: { kind: e.kind },
       animated: e.kind === 'transitions_to' && isFromEventNode,
     }
-  }),
+  })
 )
 
 const currentFlow = computed(() =>

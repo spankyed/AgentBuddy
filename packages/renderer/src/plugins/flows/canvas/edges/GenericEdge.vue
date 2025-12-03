@@ -32,62 +32,64 @@ const edgePath = computed(() => {
   const { sourceX, sourceY, targetX, targetY, id, target } = props
   const { edge } = LAYOUT_CONFIG
 
-  // For converging edges, spread them vertically before the target
-  // Only apply when there's enough horizontal space to avoid wrapping
-  const siblings = getEdges.value.filter(e => e.target === target)
-  const hasEnoughSpace = targetX - sourceX > edge.anchorOffset * 2
-  let anchorY = targetY
+  // Find sibling edges - sort by ID for consistent ordering across page refreshes
+  const siblings = getEdges.value
+    .filter(e => e.target === target)
+    .sort((a, b) => a.id.localeCompare(b.id))
+  const hasSiblings = siblings.length >= 2
 
-  if (siblings.length >= 2 && hasEnoughSpace) {
+  // Anchor X position - just before the target
+  const anchorX = targetX - 25
+
+  // Calculate spread Y for this edge at the anchor point
+  let anchorY = targetY
+  if (hasSiblings) {
     const idx = siblings.findIndex(e => e.id === id)
-    const spread = (siblings.length - 1) * edge.spreadSpacing
-    anchorY = targetY - spread / 2 + idx * edge.spreadSpacing
+    const totalSpread = (siblings.length - 1) * edge.anchorSpread
+    anchorY = targetY - totalSpread / 2 + idx * edge.anchorSpread
   }
 
-  return buildPath(sourceX, sourceY, targetX, anchorY, targetY, edge)
-})
+  const vDist = Math.abs(anchorY - sourceY)
 
-function buildPath(
-  sourceX: number, sourceY: number,
-  targetX: number, anchorY: number, targetY: number,
-  cfg: typeof LAYOUT_CONFIG.edge
-): string {
-  const vDistToAnchor = Math.abs(anchorY - sourceY)
-  const vDistToTarget = Math.abs(targetY - anchorY)
-
-  // Straight line if minimal vertical distance
-  if (vDistToAnchor < cfg.straightThreshold && vDistToTarget < cfg.straightThreshold) {
+  // Straight line if no vertical distance and no siblings
+  if (vDist < edge.straightThreshold && !hasSiblings) {
     return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
   }
 
-  const radius = cfg.cornerRadius
-  const factor = Math.min(vDistToAnchor / cfg.distanceNormalization, 1)
+  // Calculate first bend point
+  const factor = Math.min(vDist / edge.distanceNormalization, 1)
   const bendX = Math.min(
-    sourceX + cfg.maxBendOffset - factor * (cfg.maxBendOffset - cfg.minBendOffset),
-    targetX - cfg.anchorOffset
+    sourceX + edge.maxBendOffset - factor * (edge.maxBendOffset - edge.minBendOffset),
+    (sourceX + anchorX) / 2
   )
-  const bendRadius = Math.min(radius, vDistToAnchor / 2.5, Math.max(4, (targetX - sourceX) / 4))
-  const bendDir = anchorY > sourceY ? 1 : -1
+
+  const radius = Math.min(edge.cornerRadius, Math.max(vDist / 2.5, 2), Math.max(4, (anchorX - sourceX) / 4))
+  const dir = anchorY > sourceY ? 1 : -1
 
   let path = `M ${sourceX} ${sourceY}`
-  path += ` L ${bendX - bendRadius} ${sourceY}`
-  path += ` Q ${bendX} ${sourceY} ${bendX} ${sourceY + bendDir * bendRadius}`
-  path += ` L ${bendX} ${anchorY - bendDir * bendRadius}`
-  path += ` Q ${bendX} ${anchorY} ${bendX + bendRadius} ${anchorY}`
 
-  if (vDistToTarget < cfg.straightThreshold) {
-    path += ` L ${targetX} ${targetY}`
-  } else {
-    const anchorRadius = Math.min(radius, vDistToTarget / 2.5)
+  // First segment: source to anchor Y
+  if (vDist >= edge.straightThreshold) {
+    path += ` L ${bendX - radius} ${sourceY}`
+    path += ` Q ${bendX} ${sourceY} ${bendX} ${sourceY + dir * radius}`
+    path += ` L ${bendX} ${anchorY - dir * radius}`
+    path += ` Q ${bendX} ${anchorY} ${bendX + radius} ${anchorY}`
+  }
+
+  // Second segment: anchor point to target (converge back to handle)
+  if (hasSiblings && Math.abs(targetY - anchorY) >= edge.straightThreshold) {
     const anchorDir = targetY > anchorY ? 1 : -1
-    const anchorX = targetX - cfg.anchorOffset
+    const anchorRadius = Math.min(edge.cornerRadius, Math.abs(targetY - anchorY) / 2.5)
     path += ` L ${anchorX - anchorRadius} ${anchorY}`
     path += ` Q ${anchorX} ${anchorY} ${anchorX} ${anchorY + anchorDir * anchorRadius}`
     path += ` L ${anchorX} ${targetY - anchorDir * anchorRadius}`
     path += ` Q ${anchorX} ${targetY} ${anchorX + anchorRadius} ${targetY}`
     path += ` L ${targetX} ${targetY}`
+  } else {
+    // Straight to target
+    path += ` L ${targetX} ${anchorY !== targetY ? targetY : anchorY}`
   }
 
   return path
-}
+})
 </script>

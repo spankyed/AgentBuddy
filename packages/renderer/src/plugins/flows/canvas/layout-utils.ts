@@ -3,18 +3,16 @@ import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib
 export const LAYOUT_CONFIG = {
   nodeWidth: 200,
   nodeHeight: 50,
-  // ELK spacing
-  layerGap: 20,      // Horizontal space between layers (edge length)
-  nodeGap: 40,       // Vertical space between nodes in same layer
-  chainGap: 20,      // Vertical space between disconnected chains
+  layerGap: 20,
+  nodeGap: 40,
+  chainGap: 20,
   edge: {
     maxBendOffset: 50,
     minBendOffset: 20,
     cornerRadius: 8,
     straightThreshold: 5,
     distanceNormalization: 200,
-    anchorOffset: 10,     // Distance before target for anchor point
-    spreadSpacing: 25,    // Vertical spacing between converging edges
+    anchorSpread: 15,  // Vertical spacing between anchor points for converging edges
   }
 } as const
 
@@ -54,14 +52,18 @@ function buildElkGraph(
     const isSwitch = node.nodeType === 'switch'
     const branchCount = node.conditions?.length ?? 0
 
-    const height = isSwitch
-      ? Math.max(nodeHeight, 48 + (branchCount + 1) * 22 + 10)
-      : nodeHeight
+    // Calculate height (switch nodes need more height for branches)
+    let height: number = nodeHeight
+    if (isSwitch) {
+      height = Math.max(nodeHeight, 48 + (branchCount + 1) * 22 + 10)
+    }
 
+    // Single input port (except for listen nodes)
     if (node.nodeType !== 'listen') {
       ports.push({ id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } })
     }
 
+    // Output ports - multiple for switch, single for others
     if (isSwitch) {
       for (let i = 0; i < branchCount; i++) {
         ports.push({
@@ -80,12 +82,18 @@ function buildElkGraph(
     getBranchIndex(a.sourceHandle) - getBranchIndex(b.sourceHandle)
   )
 
-  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => ({
-    id: edge.id || `e${idx}`,
-    sources: [edge.sourceHandle ? `${edge.source}-out-${edge.sourceHandle}` : `${edge.source}-out`],
-    targets: [`${edge.target}-in`],
-    layoutOptions: { 'elk.priority': String(getBranchIndex(edge.sourceHandle)) }
-  }))
+  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => {
+    const sourcePort = edge.sourceHandle
+      ? `${edge.source}-out-${edge.sourceHandle}`
+      : `${edge.source}-out`
+
+    return {
+      id: edge.id || `e${idx}`,
+      sources: [sourcePort],
+      targets: [`${edge.target}-in`],
+      layoutOptions: { 'elk.priority': String(getBranchIndex(edge.sourceHandle)) }
+    }
+  })
 
   return {
     id: 'root',
