@@ -30,7 +30,6 @@ interface LayoutEdge {
   source: string
   target: string
   sourceHandle?: string
-  targetHandle?: string
 }
 
 const elk = new ELK()

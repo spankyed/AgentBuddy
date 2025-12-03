@@ -10,8 +10,6 @@
       }
     ]"
   >
-    <!-- Remove glow effect for cleaner look -->
-
     <!-- Main content -->
     <div class="relative z-10">
       <!-- Header -->
@@ -111,7 +109,7 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeClasses, getNodeGlowClasses, getNodeStatusClasses, getNodeAccentBarClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
+import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
 import type { NodeKind } from '@app/api'
 
 export interface HandleConfig {
@@ -134,7 +132,6 @@ interface Props extends NodeProps<BaseNodeData> {
   showTargetHandle?: boolean
   showSourceHandle?: boolean
   showStatusIndicator?: boolean
-  isImplemented?: boolean
   sourceHandles?: HandleConfig[]
   targetHandles?: HandleConfig[]
 }
@@ -166,19 +163,9 @@ const iconTextColor = computed(() => {
   return getNodeIconTextColor(type)
 })
 
-const glowClasses = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeGlowClasses(type)
-})
-
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
   return getNodeStatusClasses(props.data.status, 'simple') as string
-})
-
-const accentBarClasses = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeAccentBarClasses(type)
 })
 </script>
 

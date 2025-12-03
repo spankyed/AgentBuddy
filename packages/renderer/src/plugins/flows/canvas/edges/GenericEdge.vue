@@ -86,8 +86,7 @@ const edgePath = computed(() => {
     path += ` Q ${anchorX} ${targetY} ${anchorX + anchorRadius} ${targetY}`
     path += ` L ${targetX} ${targetY}`
   } else {
-    // Straight to target
-    path += ` L ${targetX} ${anchorY !== targetY ? targetY : anchorY}`
+    path += ` L ${targetX} ${targetY}`
   }
 
   return path
