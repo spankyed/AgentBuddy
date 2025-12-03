@@ -161,9 +161,12 @@ function buildElkGraph(input: LayoutInput, options: LayoutOptions): ElkNode {
       'elk.algorithm': 'layered',
       'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
       // Node spacing - controls visual separation between nodes
-      // (VueFlow renders edges between nodes, so node spacing = edge separation)
       'elk.spacing.nodeNode': String(nodeSep),
       'elk.layered.spacing.nodeNodeBetweenLayers': String(rankSep),
+
+      // Separate disconnected components (chains) - stacks them vertically
+      'elk.separateConnectedComponents': 'true',
+      'elk.spacing.componentComponent': '80',
 
       // Port constraints - respect port order on switch nodes
       'elk.portConstraints': 'FIXED_ORDER',
