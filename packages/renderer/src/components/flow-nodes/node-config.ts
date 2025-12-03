@@ -187,7 +187,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
     hoverBgColor: 'group-hover:bg-neutral-700/30',
-    connectionRules: { inputs: 1, outputs: 1 },
+    connectionRules: { inputs: -1, outputs: -1 },  // Allow multiple inputs (converging) and outputs (parallel)
     component: 'ActionNode',
     isImplemented: true
   },
@@ -277,15 +277,15 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   },
   decision: {
     type: 'decision',
-    label: 'Decision',
+    label: 'Switch',
     defaultLabel: 'choose path',
     icon: Split,
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
-    connectionRules: { inputs: 1, outputs: -1 },
-    component: 'DecisionNode',
-    isImplemented: false
+    connectionRules: { inputs: 1, outputs: -1 },  // Multiple outputs (one per branch + otherwise)
+    component: 'SwitchNode',
+    isImplemented: true
   },
   fire: {
     type: 'fire',

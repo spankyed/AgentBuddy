@@ -176,7 +176,7 @@ export const flowsQueries = {
     // Get all nodes in the flow
     const nodes = flowsQueries.flowNodes(flowId);
     const nodeIds = nodes.map(n => n.id).filter(Boolean) as EARS.EntityId[];
-    
+
     const seen = new Set<string>();
     const edges: EdgeEntity[] = [];
 
@@ -186,6 +186,15 @@ export const flowsQueries = {
         // Only include edges where target is also in this flow - might not be necessary if all nodes are in the flow
         .filter(({ id: targetId }) => nodeIds.includes(targetId))
         .forEach(({ relation, id: target }) => {
+          // Get full relation details including info (for handle data)
+          const relDetails = edgeStore.find({
+            sourceEntity: source,
+            relationType: relation,
+            targetEntity: target,
+          })[0];
+
+          if (!relDetails) return;
+
           const relId = edgeStore.relIds({
             sourceEntity: source,
             relationType: relation,
@@ -194,17 +203,22 @@ export const flowsQueries = {
 
           if (seen.has(relId)) return;
           seen.add(relId);
-          
+
+          // Extract handle info from relation details
+          const info = relDetails.info as { sourceHandle?: string; targetHandle?: string } | undefined;
+
           edges.push({
             id: relId,
             kind: relation,
             source,
             target,
+            sourceHandle: info?.sourceHandle,
+            targetHandle: info?.targetHandle,
             info: {},
           });
         });
     }
-    
+
     return edges;
   },
   
@@ -343,22 +357,30 @@ export const flowsCommands = {
     return { id: nodeId, ...newNode } as NodeEntity;
   },
   
-  createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId): { relId: EARS.EntityId } => {
+  createEdge: (
+    sourceId: EARS.EntityId,
+    targetId: EARS.EntityId,
+    options?: { sourceHandle?: string; targetHandle?: string }
+  ): { relId: EARS.EntityId } => {
     // In EARS, edges are relationships, not entities
-    // We just create the relationship between the nodes
-    tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId);
-    
+    // Store handle info for switch nodes with multiple outputs
+    const info = options?.sourceHandle || options?.targetHandle
+      ? { sourceHandle: options.sourceHandle, targetHandle: options.targetHandle }
+      : undefined;
+
+    tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, info);
+
     // Get the relation ID that was just created
     const relIds = edgeStore.relIds({
       sourceEntity: sourceId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
       targetEntity: targetId,
     });
-    
+
     if (relIds.length === 0) {
       throw new RepositoryError('Failed to retrieve created edge ID', RepositoryErrorCode.OPERATION_FAILED);
     }
-    
+
     return { relId: relIds[0] };
   },
   

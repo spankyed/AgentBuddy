@@ -1222,18 +1222,24 @@ declare const events: {
         flowId: zod.ZodString;
         sourceId: zod.ZodString;
         targetId: zod.ZodString;
+        sourceHandle: zod.ZodOptional<zod.ZodString>;
+        targetHandle: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "CREATE_EDGE";
         systemId: "flows";
         flowId: string;
         sourceId: string;
         targetId: string;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
     }, {
         type: "CREATE_EDGE";
         systemId: "flows";
         flowId: string;
         sourceId: string;
         targetId: string;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_EDGE">;
         systemId: zod.ZodLiteral<"flows">;
@@ -1276,6 +1282,18 @@ declare const events: {
         oldTarget: string;
         newSource: string;
         newTarget: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_DSL">;
+        systemId: zod.ZodLiteral<"flows">;
+        dsl: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_DSL";
+        systemId: "flows";
+        dsl?: any;
+    }, {
+        type: "IMPORT_DSL";
+        systemId: "flows";
+        dsl?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
@@ -2750,21 +2768,6 @@ declare const events: {
         actionId: string;
         actionFn: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"codeActions.UPDATE_ACTION_INPUT">;
-        systemId: zod.ZodLiteral<"code">;
-        actionId: zod.ZodString;
-        input: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "codeActions.UPDATE_ACTION_INPUT";
-        systemId: "code";
-        input: Record<string, any>;
-        actionId: string;
-    }, {
-        type: "codeActions.UPDATE_ACTION_INPUT";
-        systemId: "code";
-        input: Record<string, any>;
-        actionId: string;
-    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"codePrompts.OPEN_PROMPT">;
         systemId: zod.ZodLiteral<"code">;
         promptId: zod.ZodString;
@@ -2791,21 +2794,6 @@ declare const events: {
         systemId: "code";
         promptId: string;
         templateFn: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"codePrompts.UPDATE_PROMPT_INPUTS">;
-        systemId: zod.ZodLiteral<"code">;
-        promptId: zod.ZodString;
-        inputs: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "codePrompts.UPDATE_PROMPT_INPUTS";
-        systemId: "code";
-        promptId: string;
-        inputs: Record<string, any>;
-    }, {
-        type: "codePrompts.UPDATE_PROMPT_INPUTS";
-        systemId: "code";
-        promptId: string;
-        inputs: Record<string, any>;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SET_BASE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
@@ -3021,6 +3009,8 @@ declare const events: {
         sourceId: EARS.EntityId;
         targetId: EARS.EntityId;
         relId: EARS.EntityId;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
         pluginId: "flows";
     } | {
         type: "EDGE_DELETED";
@@ -3046,6 +3036,15 @@ declare const events: {
     } | {
         type: "ACTION_DELETED";
         actionId: EARS.EntityId;
+        pluginId: "flows";
+    } | {
+        type: "DSL_IMPORTED";
+        flowIds: EARS.EntityId[];
+        errors?: string[] | undefined;
+        pluginId: "flows";
+    } | {
+        type: "DSL_IMPORT_FAILED";
+        errors: string[];
         pluginId: "flows";
     } | {
         type: "DATABASE_REFRESH";
@@ -3723,6 +3722,8 @@ type EdgeEntity = {
     kind: EARS.RelKind;
     source: EARS.EntityId;
     target: EARS.EntityId;
+    sourceHandle?: string;
+    targetHandle?: string;
     info?: {
         [key: string]: any;
     };
@@ -3994,6 +3995,27 @@ interface TerminalEntity {
 }
 interface StartupData {
     terminals: TerminalInfo[];
+}
+
+/**
+ * Flow DSL Compiler
+ *
+ * Transforms track-based DSL format into EARS database format.
+ * Each track creates a listen node + sequential step nodes.
+ */
+
+interface CompiledRows {
+    entity: object[];
+    relation: Array<{
+        source: string;
+        kind: EARS.RelKind;
+        target: string;
+        info?: object;
+    }>;
+    role: Array<{
+        entityId: string;
+        role: string;
+    }>;
 }
 
 declare class LibraryService {
@@ -4837,7 +4859,10 @@ declare const services: {
                 entryNode: NodeEntity;
             };
             readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => NodeEntity;
-            readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId) => {
+            readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: {
+                sourceHandle?: string;
+                targetHandle?: string;
+            }) => {
                 relId: EARS.EntityId;
             };
             readonly updateFlowLabel: (flowId: EARS.EntityId, label: string) => void;
@@ -4850,6 +4875,9 @@ declare const services: {
             readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly deleteFlow: (flowId: EARS.EntityId) => void;
+            readonly importFromDSL: (compiled: CompiledRows) => {
+                flowIds: EARS.EntityId[];
+            };
         };
         readonly libraryQueries: {
             readonly getDocuments: (collectionId?: string) => DocumentDTO[];

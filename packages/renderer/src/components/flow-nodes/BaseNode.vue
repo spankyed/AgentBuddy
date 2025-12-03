@@ -55,14 +55,41 @@
     </div>
 
     <!-- Connection handles -->
+    <!-- Dynamic target handles -->
+    <template v-if="targetHandles && targetHandles.length > 0">
+      <Handle
+        v-for="handle in targetHandles"
+        :key="handle.id"
+        :id="handle.id"
+        type="target"
+        :position="Position.Left"
+        :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%' }"
+        class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1"
+      />
+    </template>
+    <!-- Default single target handle -->
     <Handle
-      v-if="showTargetHandle"
+      v-else-if="showTargetHandle"
       type="target"
       :position="Position.Left"
       class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1"
     />
+
+    <!-- Dynamic source handles -->
+    <template v-if="sourceHandles && sourceHandles.length > 0">
+      <Handle
+        v-for="handle in sourceHandles"
+        :key="handle.id"
+        :id="handle.id"
+        type="source"
+        :position="Position.Right"
+        :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%', transform: 'translateY(-50%)' }"
+        class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1"
+      />
+    </template>
+    <!-- Default single source handle -->
     <Handle
-      v-if="showSourceHandle"
+      v-else-if="showSourceHandle"
       type="source"
       :position="Position.Right"
       class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1"
@@ -82,6 +109,12 @@ import { Handle, Position, type NodeProps } from '@vue-flow/core'
 import { getNodeClasses, getNodeGlowClasses, getNodeStatusClasses, getNodeAccentBarClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
 import type { NodeKind } from '@app/api'
 
+export interface HandleConfig {
+  id: string
+  label?: string
+  offsetY?: number  // Vertical offset in pixels from top of node
+}
+
 interface BaseNodeData {
   label: string
   nodeType?: NodeKind
@@ -96,6 +129,8 @@ interface Props extends NodeProps<BaseNodeData> {
   showSourceHandle?: boolean
   showStatusIndicator?: boolean
   isImplemented?: boolean
+  sourceHandles?: HandleConfig[]
+  targetHandles?: HandleConfig[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -103,7 +138,9 @@ const props = withDefaults(defineProps<Props>(), {
   selectable: true,
   showTargetHandle: true,
   showSourceHandle: true,
-  showStatusIndicator: false
+  showStatusIndicator: false,
+  sourceHandles: undefined,
+  targetHandles: undefined
 })
 
 const nodeClasses = computed(() => {
@@ -140,6 +177,7 @@ const accentBarClasses = computed(() => {
 
 <style scoped>
 .flow-node {
+  position: relative; /* Required for handle positioning */
   min-width: 120px;
   max-width: 200px;
   transition: all 0.15s ease;
@@ -151,5 +189,10 @@ const accentBarClasses = computed(() => {
 
 :deep(.vue-flow__handle) {
   transition: all 0.15s ease;
+}
+
+/* Override VueFlow's default handle positioning for custom positioned handles */
+:deep(.vue-flow__handle[style*="top"]) {
+  transform: translateY(-50%) !important;
 }
 </style>

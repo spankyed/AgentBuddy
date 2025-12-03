@@ -162,7 +162,9 @@ export type EdgeEntity = {
   kind: EARS.RelKind;
   source: EARS.EntityId;
   target: EARS.EntityId;
-  info?: { [key: string]: any; } 
+  sourceHandle?: string;  // For switch nodes with multiple outputs
+  targetHandle?: string;  // For nodes with multiple inputs
+  info?: { [key: string]: any; }
 };
 export interface FlowsConnectedData {
   selectedFlowId: EARS.EntityId;

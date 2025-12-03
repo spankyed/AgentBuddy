@@ -1,11 +1,10 @@
 import type { NodeProps } from '@vue-flow/core'
 import ListenNode from './ListenNode.vue'
 import FireNode from './FireNode.vue'
-import DecisionNode from './DecisionNode.vue'
 import VariableNode from './VariableNode.vue'
 import ActionNode from './ActionNode.vue'
 import type { NodeKind } from '@app/api'
-import { BaseNode, nodeConfigs } from '@/components/flow-nodes'
+import { BaseNode, SwitchNode, nodeConfigs } from '@/components/flow-nodes'
 
 export { BaseNode }
 
@@ -13,7 +12,7 @@ export { BaseNode }
 const componentMap = {
   ListenNode,
   FireNode,
-  DecisionNode,
+  SwitchNode,
   VariableNode,
   ActionNode,
 }
