@@ -32,10 +32,10 @@ const edgePath = computed(() => {
   const { sourceX, sourceY, targetX, targetY, id, target } = props
   const { edge } = LAYOUT_CONFIG
 
-  // Find sibling edges - sort by ID for consistent ordering across page refreshes
+  // Find sibling edges - sort by sourceY for geometric consistency (prevents crossing)
   const siblings = getEdges.value
     .filter(e => e.target === target)
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => (a.sourceY ?? 0) - (b.sourceY ?? 0))
   const hasSiblings = siblings.length >= 2
 
   // Anchor X position - just before the target
