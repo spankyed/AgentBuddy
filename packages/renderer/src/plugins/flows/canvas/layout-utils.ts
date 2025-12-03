@@ -11,7 +11,7 @@ export const LAYOUT_CONFIG = {
 
   // Node spacing (used by ELK)
   nodeSep: 60,       // Vertical spacing between nodes in same layer
-  rankSep: 80,       // Horizontal spacing between layers
+  rankSep: 50,       // Horizontal spacing between layers
 
   // Edge rendering (used by GenericEdge)
   edge: {
