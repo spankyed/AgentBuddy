@@ -466,55 +466,39 @@ const flowsState = setup({
     },
 
     createNode: assign(({ context, event }) => {
-      if (!context.selectedFlowId) {
-        return { selectedNodeId: undefined } // Deselect any node before creating a new one
-      }
+      if (!context.selectedFlowId) return { selectedNodeId: undefined }
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE', event)
-
-      // Get the default label from node config
       const nodeConfig = getNodeConfig(ev.nodeType)
-      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+      const label = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
 
-      // Create a partial node that will be completed by the backend
-      const newNode = {
-        id: tempId,
-        nodeType: ev.nodeType,
-        label: defaultLabel,
-        flowId: context.selectedFlowId,
-        configuration: {},
-      } as any // Will be properly typed when backend returns complete node
-      
-      // Send create to backend if we have a flow selected
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
-        tempId: tempId,
-        nodeData: {
-          nodeType: ev.nodeType,
-          label: newNode.label,
-        },
+        tempId,
+        nodeData: { nodeType: ev.nodeType, label },
       });
 
-      // Use provided position if available, otherwise it will be set by layout
-      const updatedPositions = ev.position 
-        ? { ...context.graph.positions, [tempId]: ev.position }
-        : context.graph.positions;
+      // Calculate position: use provided, or right of selected node, or right of rightmost node
+      const positions = context.graph.positions
+      const selectedPos = context.selectedNodeId ? positions[context.selectedNodeId] : null
+      const allPos = Object.values(positions)
+      const newPosition = ev.position
+        || (selectedPos && { x: selectedPos.x + 250, y: selectedPos.y })
+        || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + 250, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
+        || { x: 0, y: 0 }
 
       return {
         graph: {
           ...context.graph,
-          nodes: [...context.graph.nodes, newNode],
-          positions: updatedPositions,
+          nodes: [...context.graph.nodes, { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} } as any],
+          positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
-        editingNodeId: tempId as EARS.EntityId, // Also open editor for new nodes
-        tempIdMap: {
-          ...context.tempIdMap,
-          [tempId]: tempId, // Will be updated when we get permanent ID
-        }
+        editingNodeId: tempId as EARS.EntityId,
+        tempIdMap: { ...context.tempIdMap, [tempId]: tempId }
       }
     }),
 
