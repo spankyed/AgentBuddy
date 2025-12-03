@@ -33,10 +33,12 @@ const edgePath = computed(() => {
   const { edge } = LAYOUT_CONFIG
 
   // For converging edges, spread them vertically before the target
+  // Only apply when there's enough horizontal space to avoid wrapping
   const siblings = getEdges.value.filter(e => e.target === target)
+  const hasEnoughSpace = targetX - sourceX > edge.anchorOffset * 2
   let anchorY = targetY
 
-  if (siblings.length >= 2) {
+  if (siblings.length >= 2 && hasEnoughSpace) {
     const idx = siblings.findIndex(e => e.id === id)
     const spread = (siblings.length - 1) * edge.spreadSpacing
     anchorY = targetY - spread / 2 + idx * edge.spreadSpacing
