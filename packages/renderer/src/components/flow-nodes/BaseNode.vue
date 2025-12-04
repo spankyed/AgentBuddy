@@ -91,7 +91,6 @@
         :is-connected="isHandleConnected(handle.id)"
         @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
         @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
-        @delete-connection="(nodeId, handleId) => $emit('delete-connection', nodeId, handleId)"
       />
     </template>
     <!-- Default single source handle (AddHandle with + icon) -->
@@ -102,7 +101,6 @@
       :is-connected="isHandleConnected()"
       @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
       @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
-      @delete-connection="(nodeId, handleId) => $emit('delete-connection', nodeId, handleId)"
     />
   </div>
 </template>
@@ -164,7 +162,6 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
-  'delete-connection': [nodeId: string, handleId?: string]
 }>()
 
 // Check if a specific handle is selected

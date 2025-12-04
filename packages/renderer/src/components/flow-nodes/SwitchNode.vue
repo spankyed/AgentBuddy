@@ -5,7 +5,6 @@
     :show-source-handle="false"
     @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
     @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
-    @delete-connection="(nodeId, handleId) => $emit('delete-connection', nodeId, handleId)"
   >
     <!-- Branch conditions list -->
     <div class="switch-branches mt-2 pt-2 border-t border-neutral-700/50">
@@ -50,7 +49,6 @@ const props = defineProps<NodeProps<NodeData>>()
 defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
-  'delete-connection': [nodeId: string, handleId?: string]
 }>()
 
 // Normalize branches from either new format or legacy conditions

@@ -51,8 +51,6 @@
       @create-connected="handleCreateConnectedNode"
       @handle-select="handleHandleSelect"
       @handle-deselect="handleHandleDeselect"
-      @delete-connection="handleDeleteConnection"
-      @edge-select="handleEdgeSelect"
     />
 
     <!-- ▸ Node form overlay -->
@@ -244,24 +242,6 @@ function handleHandleSelect(nodeId: string, handleId?: string) {
 
 function handleHandleDeselect() {
   actor.send({ type: 'HANDLE.DESELECT' })
-}
-
-function handleDeleteConnection(nodeId: string, handleId?: string) {
-  // Find edge by source node and handle
-  const edge = edges.value.find(e => {
-    if (handleId) {
-      return e.source === nodeId && e.sourceHandle === handleId
-    }
-    return e.source === nodeId && !e.sourceHandle
-  })
-  if (edge) {
-    actor.send({ type: 'EDGE.DISCONNECT', edgeId: edge.id })
-  }
-}
-
-function handleEdgeSelect(source: string, sourceHandle?: string) {
-  // When edge is clicked, select its source handle
-  actor.send({ type: 'HANDLE.SELECT', nodeId: source, handleId: sourceHandle })
 }
 
 function handleNodeClick(e: NodeMouseEvent) {
