@@ -161,6 +161,18 @@ function handleSelectNode(nodeType: string) {
   pointer-events: auto;
 }
 
+/* Larger invisible hitbox for easier clicking */
+.add-handle-overlay::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
 .add-handle-overlay:hover {
   background: #525252;
   border-color: #737373;
