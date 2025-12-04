@@ -129,7 +129,12 @@ const connectedDotStyle = computed(() => {
 })
 
 function handleClick() {
-  // Single click selects the handle for click-to-connect
+  // If already selected, open dropdown (like double-click)
+  if (props.isSelected) {
+    showDropdown.value = true
+    return
+  }
+  // Otherwise, single click selects the handle for click-to-connect
   emit('handle-select', props.nodeId, props.sourceHandle || props.handleId)
 }
 
