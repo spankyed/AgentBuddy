@@ -16,6 +16,7 @@
     class="add-handle-overlay"
     :class="{ 'is-selected': isSelected }"
     :style="overlayStyle"
+    @pointerdown.stop
     @click.stop="handleClick"
     @dblclick.stop="handleDoubleClick"
     tabindex="0"
@@ -131,7 +132,12 @@ const connectedDotStyle = computed(() => {
 })
 
 function handleClick() {
-  // If already selected, open dropdown (like double-click)
+  // If dropdown is open, close it
+  if (showDropdown.value) {
+    showDropdown.value = false
+    return
+  }
+  // If already selected, open dropdown
   if (props.isSelected) {
     showDropdown.value = true
     return
