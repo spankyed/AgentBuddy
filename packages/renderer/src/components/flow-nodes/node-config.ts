@@ -374,6 +374,27 @@ export const getNodeBadgeClasses = (nodeType: NodeKind | string, options?: NodeS
 }
 
 /**
+ * Returns divider border class matching node's color scheme
+ */
+export const getNodeDividerClass = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
+  const effectiveType = resolveNodeType(nodeType, options)
+  const colorKey = getNodeColorKey(effectiveType)
+
+  const dividerMap: Record<string, string> = {
+    purple: 'border-purple-500/40',
+    blue: 'border-blue-500/40',
+    amber: 'border-amber-500/40',
+    cyan: 'border-cyan-500/40',
+    orange: 'border-orange-500/40',
+    emerald: 'border-emerald-500/40',
+    indigo: 'border-indigo-500/40',
+    neutral: 'border-neutral-500/45'
+  }
+
+  return dividerMap[colorKey] || dividerMap.neutral
+}
+
+/**
  * Returns icon dot classes with optional ring styling
  */
 export const getNodeIconDotClasses = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {

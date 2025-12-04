@@ -7,17 +7,17 @@
     @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
   >
     <!-- Branch conditions list -->
-    <div class="switch-branches mt-2 pt-2 border-t border-neutral-700/50">
+    <div :class="['switch-branches mt-2 pt-2 border-t', dividerClass]">
       <!-- Branch rows with aligned handles -->
       <div
         v-for="(branch, i) in branches"
         :key="branch.id"
-        class="branch-row flex items-center gap-2 pr-1"
+        class="branch-row flex items-center gap-2.5 pr-1"
       >
-        <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center text-[9px] font-medium rounded bg-neutral-700/50 text-neutral-400">
+        <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-neutral-600/60 text-neutral-300">
           {{ i + 1 }}
         </span>
-        <span class="text-[11px] text-neutral-300 truncate flex-1">
+        <span class="text-[11px] text-neutral-200 truncate flex-1">
           {{ branch.label || branch.expression || `Branch ${i + 1}` }}
         </span>
       </div>
@@ -30,6 +30,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { SwitchNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
+import { getNodeDividerClass } from './node-config'
 
 interface Branch {
   id: string
@@ -68,9 +69,9 @@ const branches = computed<Branch[]>(() => {
 })
 
 // Row height for handle positioning (matches .branch-row height)
-const ROW_HEIGHT = 22
-// Header offset: node padding (8px) + header height (~24px) + border-t margin (8px)
-const HEADER_OFFSET = 48
+const ROW_HEIGHT = 26
+// Header offset: node padding (8px) + header height (~24px) + divider margin (8px)
+const HEADER_OFFSET = 43
 
 // Compute source handles for each branch
 const branchHandles = computed<HandleConfig[]>(() => {
@@ -80,11 +81,13 @@ const branchHandles = computed<HandleConfig[]>(() => {
     offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
   }))
 })
+
+const dividerClass = computed(() => getNodeDividerClass('switch'))
 </script>
 
 <style scoped>
 .branch-row {
-  height: 22px;
-  min-height: 22px;
+  height: 26px;
+  min-height: 26px;
 }
 </style>

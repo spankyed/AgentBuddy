@@ -14,7 +14,7 @@
     <!-- Visible edge -->
     <path
       :d="edgePath"
-      :style="{ strokeWidth: props.selected ? 2 : 1.5, stroke: props.selected ? '#3b82f6' : '#888', fill: 'none' }"
+      :style="{ strokeWidth: props.selected ? 2.5 : 2, stroke: props.selected ? '#3b82f6' : '#666', fill: 'none' }"
       :marker-end="`url(#${MarkerType.Arrow})`"
     />
   </g>

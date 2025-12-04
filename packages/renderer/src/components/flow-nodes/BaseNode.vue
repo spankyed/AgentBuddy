@@ -14,11 +14,11 @@
     <div class="relative z-10">
       <!-- Header -->
       <div class="flex items-center">
+        <!-- data-action="open-form" -->
         <component
           :is="nodeIcon"
-          class="w-3.5 h-3.5 mr-1 flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+          class="w-3.5 h-3.5 mr-1 flex-shrink-0 opacity-80"
           :class="iconTextColor"
-          data-action="open-form"
         />
         <div class="flex-1 flex justify-center pr-1">
           <span
@@ -31,11 +31,11 @@
       <!-- Custom content slot or auto-rendered content -->
       <slot>
         <!-- Auto-render eventType if present -->
-        <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+        <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
           <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
         </div>
         <!-- Auto-render params count if present -->
-        <div v-else-if="data.params && Object.keys(data.params).length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+        <div v-else-if="data.params && Object.keys(data.params).length > 0" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
           <span class="text-[10px] text-neutral-400 uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
         </div>
       </slot>
@@ -46,12 +46,12 @@
     <div v-if="showStatusIndicator && data.status" class="absolute -top-1.5 -right-1.5">
       <div class="relative">
         <div
-          class="w-2.5 h-2.5 rounded-full"
+          class="w-3.5 h-3.5 rounded-full border border-neutral-800/50"
           :class="statusClasses"
         />
         <div
           v-if="data.status === 'active'"
-          class="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping"
+          class="absolute inset-0 w-3.5 h-3.5 rounded-full animate-ping"
           :class="statusClasses"
         />
       </div>
@@ -114,7 +114,7 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
+import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-config'
 import AddHandle from './AddHandle.vue'
 import type { NodeKind } from '@app/api'
 
@@ -201,6 +201,11 @@ const iconTextColor = computed(() => {
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
   return getNodeStatusClasses(props.data.status, 'simple') as string
+})
+
+const dividerClass = computed(() => {
+  const type = props.data.nodeType || 'action'
+  return getNodeDividerClass(type)
 })
 </script>
 

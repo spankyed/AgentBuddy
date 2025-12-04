@@ -446,8 +446,9 @@ const flowsState = setup({
 
     deselectHandle: assign({ selectedHandle: undefined }),
 
-    // Connect from selected handle to clicked node
-    connectFromHandle: assign(({ context, event }) => {
+    // Connect from selected handle to clicked node and send to backend
+    // Combined into single action to ensure handle is captured before being cleared
+    connectFromHandleAndSend: assign(({ context, event }) => {
       const ev = typeOf('NODE.CLICK', event);
       const handle = context.selectedHandle;
       if (!handle) return {};
@@ -464,23 +465,10 @@ const flowsState = setup({
         sourceHandle: handle.handleId,
       } as EdgeEntity;
 
-      return {
-        graph: {
-          ...context.graph,
-          edges: [...context.graph.edges, newEdge],
-        },
-        selectedHandle: undefined, // Clear selection after connecting
-      };
-    }),
-
-    sendEdgeFromHandle: ({ context, event }) => {
-      const ev = typeOf('NODE.CLICK', event);
-      const handle = context.selectedHandle;
-      if (!handle || !context.selectedFlowId) return;
-      if (handle.nodeId === ev.nodeId) return; // Don't connect to self
-
-      // Only send if both IDs are permanent
-      if (!handle.nodeId.startsWith('temp-') && !ev.nodeId.startsWith('temp-')) {
+      // Send to backend (handle is still available here, before we clear it)
+      if (context.selectedFlowId &&
+          !handle.nodeId.startsWith('temp-') &&
+          !ev.nodeId.startsWith('temp-')) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'CREATE_EDGE',
@@ -490,7 +478,15 @@ const flowsState = setup({
           sourceHandle: handle.handleId,
         });
       }
-    },
+
+      return {
+        graph: {
+          ...context.graph,
+          edges: [...context.graph.edges, newEdge],
+        },
+        selectedHandle: undefined, // Clear selection after connecting
+      };
+    }),
 
     deleteNode: assign(({ context, event }) => {
       const ev = typeOf('NODE.DELETE', event);
@@ -737,6 +733,8 @@ const flowsState = setup({
               flowId: context.selectedFlowId!,
               sourceId: edge.source,
               targetId: edge.target,
+              sourceHandle: edge.sourceHandle,
+              targetHandle: edge.targetHandle,
             });
           }
         });
@@ -1039,7 +1037,7 @@ const flowsState = setup({
           // If handle is selected, connect to clicked node
           {
             guard: 'hasSelectedHandle',
-            actions: ['connectFromHandle', 'sendEdgeFromHandle'],
+            actions: 'connectFromHandleAndSend',
           },
           // Otherwise, just select the node
           {

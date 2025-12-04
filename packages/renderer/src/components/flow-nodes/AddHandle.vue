@@ -10,7 +10,7 @@
     :style="offsetY !== undefined ? { top: `${offsetY}px` } : {}"
   />
 
-  <!-- Clickable overlay for our custom click-to-connect behavior (hidden when connected) -->
+  <!-- Clickable overlay for our custom click-to-connect behavior -->
   <div
     v-if="!isConnected"
     class="add-handle-overlay"
@@ -22,6 +22,13 @@
   >
     <Plus class="plus-icon" />
   </div>
+
+  <!-- Presentational dot for connected handles -->
+  <div
+    v-else
+    class="connected-handle-dot"
+    :style="connectedDotStyle"
+  />
 
   <!-- Dropdown for quick node creation (opens on dblclick) -->
   <DropdownMenuRoot
@@ -110,6 +117,17 @@ const overlayStyle = computed(() => {
   return {}
 })
 
+// Connected dot needs rotation included in transform
+const connectedDotStyle = computed(() => {
+  if (props.offsetY !== undefined) {
+    return {
+      top: `${props.offsetY}px`,
+      transform: 'translateY(-50%) rotate(45deg)'
+    }
+  }
+  return {}
+})
+
 function handleClick() {
   // Single click selects the handle for click-to-connect
   emit('handle-select', props.nodeId, props.sourceHandle || props.handleId)
@@ -178,6 +196,20 @@ function handleSelectNode(nodeType: string) {
   border-color: #737373;
 }
 
+/* Presentational dot for connected handles */
+.connected-handle-dot {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #666666;
+  border: 1.5px solid #888888;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
 /* Selected state - ring indicator */
 .add-handle-overlay.is-selected {
   background: #3b82f6;
@@ -193,7 +225,7 @@ function handleSelectNode(nodeType: string) {
 .plus-icon {
   width: 12px;
   height: 12px;
-  color: #a3a3a3;
+  color: #d4d4d4;
   pointer-events: none;
 }
 
