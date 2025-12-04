@@ -78,8 +78,8 @@
       class="!w-1 !h-1 !bg-transparent !border-none !left-0"
     />
 
-    <!-- Dynamic source handles (AddHandle with + icon) -->
-    <template v-if="sourceHandles && sourceHandles.length > 0">
+    <!-- Dynamic source handles (AddHandle with + icon) - only in edit mode -->
+    <template v-if="editable && sourceHandles && sourceHandles.length > 0">
       <AddHandle
         v-for="handle in sourceHandles"
         :key="handle.id"
@@ -93,14 +93,21 @@
         @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
       />
     </template>
-    <!-- Default single source handle (AddHandle with + icon) -->
+    <!-- Default single source handle (AddHandle with + icon) - only in edit mode -->
     <AddHandle
-      v-else-if="showSourceHandle"
+      v-else-if="editable && showSourceHandle"
       :node-id="id"
       :is-selected="isHandleSelected()"
       :is-connected="isHandleConnected()"
       @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
       @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+    />
+    <!-- Plain invisible source handle for edge anchoring (view mode) -->
+    <Handle
+      v-else-if="!editable && showSourceHandle"
+      type="source"
+      :position="Position.Right"
+      class="!w-1 !h-1 !bg-transparent !border-none !right-0"
     />
   </div>
 </template>
@@ -138,6 +145,8 @@ interface Props extends NodeProps<BaseNodeData> {
   showTargetHandle?: boolean
   showSourceHandle?: boolean
   showStatusIndicator?: boolean
+  // When false, shows plain invisible handles instead of interactive AddHandle
+  editable?: boolean
   sourceHandles?: HandleConfig[]
   targetHandles?: HandleConfig[]
   // Handle selection for click-to-connect
@@ -153,6 +162,7 @@ const props = withDefaults(defineProps<Props>(), {
   showTargetHandle: true,
   showSourceHandle: true,
   showStatusIndicator: false,
+  editable: true,
   sourceHandles: undefined,
   targetHandles: undefined,
   selectedHandle: undefined,
