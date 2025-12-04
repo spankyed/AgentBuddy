@@ -51,6 +51,7 @@
       @create-connected="handleCreateConnectedNode"
       @handle-select="handleHandleSelect"
       @handle-deselect="handleHandleDeselect"
+      @edge-select="handleEdgeSelect"
     />
 
     <!-- ▸ Node form overlay -->
@@ -112,7 +113,7 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 
-const { project, fitView } = useVueFlow()
+const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -242,6 +243,17 @@ function handleHandleSelect(nodeId: string, handleId?: string) {
 
 function handleHandleDeselect() {
   actor.send({ type: 'HANDLE.DESELECT' })
+}
+
+function handleEdgeSelect(nodeId: string, handleId?: string) {
+  // Find the edge from VueFlow's internal state (has full GraphEdge type)
+  const edge = getEdges.value.find(e =>
+    e.source === nodeId &&
+    (handleId ? e.sourceHandle === handleId : !e.sourceHandle)
+  )
+  if (edge) {
+    addSelectedEdges([edge])
+  }
 }
 
 function handleNodeClick(e: NodeMouseEvent) {

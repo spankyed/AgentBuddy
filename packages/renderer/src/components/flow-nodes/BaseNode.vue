@@ -91,6 +91,7 @@
         :is-connected="isHandleConnected(handle.id)"
         @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
         @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+        @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
       />
     </template>
     <!-- Default single source handle (AddHandle with + icon) - only in edit mode -->
@@ -101,6 +102,7 @@
       :is-connected="isHandleConnected()"
       @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
       @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+      @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
     />
     <!-- Plain invisible source handle for edge anchoring (view mode) -->
     <Handle
@@ -172,6 +174,7 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
+  'edge-select': [nodeId: string, handleId?: string]
 }>()
 
 // Check if a specific handle is selected

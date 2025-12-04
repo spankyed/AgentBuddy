@@ -45,6 +45,7 @@
           :key="type"
           @create-connected="(nodeType: string, sourceHandle?: string) => $emit('create-connected', nodeType, nodeProps.id, sourceHandle)"
           @handle-select="(nodeId: string, handleId?: string) => $emit('handle-select', nodeId, handleId)"
+          @edge-select="(nodeId: string, handleId?: string) => $emit('edge-select', nodeId, handleId)"
         />
       </template>
       <template #edge-generic="edgeProps">
@@ -180,6 +181,7 @@ const emit = defineEmits<{
   'create-connected': [nodeType: string, sourceNodeId: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
   'handle-deselect': []
+  'edge-select': [nodeId: string, handleId?: string]
 }>()
 
 // Watch for editing node changes and center the node

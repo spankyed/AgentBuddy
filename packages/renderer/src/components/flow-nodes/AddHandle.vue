@@ -23,11 +23,12 @@
     <Plus class="plus-icon" />
   </div>
 
-  <!-- Presentational dot for connected handles -->
+  <!-- Clickable dot for connected handles - selects the edge -->
   <div
     v-else
     class="connected-handle-dot"
     :style="connectedDotStyle"
+    @click.stop="handleConnectedClick"
   />
 
   <!-- Dropdown for quick node creation (opens on dblclick) -->
@@ -96,6 +97,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
   'create-connected': [nodeType: string, sourceHandle?: string]
+  'edge-select': [nodeId: string, handleId?: string]
 }>()
 
 // Filter out nodes that can't receive inputs (like listen nodes which are entry points)
@@ -146,6 +148,11 @@ function handleDoubleClick() {
 function handleSelectNode(nodeType: string) {
   emit('create-connected', nodeType, props.sourceHandle)
   showDropdown.value = false
+}
+
+function handleConnectedClick() {
+  // Click on connected handle selects the edge
+  emit('edge-select', props.nodeId, props.sourceHandle || props.handleId)
 }
 </script>
 
@@ -201,7 +208,7 @@ function handleSelectNode(nodeType: string) {
   border-color: #737373;
 }
 
-/* Presentational dot for connected handles */
+/* Clickable dot for connected handles */
 .connected-handle-dot {
   position: absolute;
   right: -5px;
@@ -212,7 +219,12 @@ function handleSelectNode(nodeType: string) {
   background: #666666;
   border: 1.5px solid #888888;
   border-radius: 1px;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.connected-handle-dot:hover {
+  background: #777777;
+  border-color: #999999;
 }
 
 /* Selected state - ring indicator */
