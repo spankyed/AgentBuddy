@@ -14,7 +14,8 @@
     <!-- Visible edge -->
     <path
       :d="edgePath"
-      :style="{ strokeWidth: props.selected ? 2.5 : 2, stroke: props.selected ? '#3b82f6' : '#666', fill: 'none' }"
+      :class="{ 'animated-edge': isAnimated }"
+      :style="edgeStyle"
       :marker-end="`url(#${MarkerType.Arrow})`"
     />
   </g>
@@ -27,6 +28,15 @@ import { LAYOUT_CONFIG } from '@/plugins/flows/canvas/layout-utils'
 
 const props = defineProps<EdgeProps>()
 const { getEdges } = useVueFlow()
+
+const isAnimated = computed(() => props.data?.animated === true)
+
+const edgeStyle = computed(() => ({
+  strokeWidth: props.selected ? 2.5 : 2,
+  stroke: props.selected ? '#3b82f6' : '#666',
+  fill: 'none',
+  strokeDasharray: isAnimated.value ? '5 5' : 'none',
+}))
 
 const edgePath = computed(() => {
   const { sourceX, sourceY, targetX, targetY, id, target } = props
@@ -65,3 +75,15 @@ const edgePath = computed(() => {
   return path
 })
 </script>
+
+<style scoped>
+.animated-edge {
+  animation: dash-flow 0.5s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+</style>

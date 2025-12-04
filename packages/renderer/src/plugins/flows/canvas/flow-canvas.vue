@@ -176,14 +176,14 @@ const plainEdges = computed(() =>
   Object.values(edges.value).map((e) => {
     const sourceNode = nodes.value.find(n => n.id === e.source)
     const isFromEventNode = sourceNode?.nodeType === 'listen'
+    const isAnimated = e.kind === 'transitions_to' && isFromEventNode
 
     return {
       id     : e.id,
       source : e.source,
       target : e.target,
       sourceHandle: e.sourceHandle,
-      data: { kind: e.kind },
-      animated: e.kind === 'transitions_to' && isFromEventNode,
+      data: { kind: e.kind, animated: isAnimated },
     }
   })
 )
