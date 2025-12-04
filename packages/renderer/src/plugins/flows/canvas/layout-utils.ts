@@ -6,6 +6,15 @@ export const LAYOUT_CONFIG = {
   layerGap: 20,
   nodeGap: 40,
   chainGap: 20,
+  // Offset for positioning new nodes relative to source/selected node
+  newNode: {
+    xOffset: 200,
+    yOffset: 0,
+    defaultX: 0,
+    defaultY: 0,
+    fallbackX: 200,  // When source position not found
+    fallbackY: 100,
+  },
   edge: {
     maxBendOffset: 50,
     minBendOffset: 20,

@@ -21,7 +21,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from '@/components/flow-nodes'
-import { calculateLayoutAsync, allNodesHavePositions } from './canvas/layout-utils'
+import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -544,13 +544,14 @@ const flowsState = setup({
       });
 
       // Calculate position: use provided, or right of selected node, or right of rightmost node
+      const { newNode } = LAYOUT_CONFIG
       const positions = context.graph.positions
       const selectedPos = context.selectedNodeId ? positions[context.selectedNodeId] : null
       const allPos = Object.values(positions)
       const newPosition = ev.position
-        || (selectedPos && { x: selectedPos.x + 250, y: selectedPos.y })
-        || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + 250, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
-        || { x: 0, y: 0 }
+        || (selectedPos && { x: selectedPos.x + newNode.xOffset, y: selectedPos.y + newNode.yOffset })
+        || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + newNode.xOffset, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
+        || { x: newNode.defaultX, y: newNode.defaultY }
 
       return {
         graph: {
@@ -582,7 +583,15 @@ const flowsState = setup({
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node
-      
+
+      // Calculate position: to the right of the source node
+      const { newNode: nodeOffset } = LAYOUT_CONFIG
+      const positions = context.graph.positions
+      const sourcePos = positions[ev.sourceNodeId]
+      const newPosition = sourcePos
+        ? { x: sourcePos.x + nodeOffset.xOffset, y: sourcePos.y + nodeOffset.yOffset }
+        : { x: nodeOffset.fallbackX, y: nodeOffset.fallbackY }
+
       // Create temporary edge
       const tempEdgeId = `Edge-${randId()}`
       const tempEdge: EdgeEntity = {
@@ -592,7 +601,7 @@ const flowsState = setup({
         kind: 'transitions_to',
         sourceHandle: ev.sourceHandle,
       } as EdgeEntity
-      
+
       // Send create to backend
       trpc.bus.send.mutate({
         systemId: id,
@@ -610,6 +619,7 @@ const flowsState = setup({
           ...context.graph,
           nodes: [...context.graph.nodes, newNode],
           edges: [...context.graph.edges, tempEdge],
+          positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
         tempIdMap: {
