@@ -65,8 +65,8 @@ export interface DSLLLMNode extends DSLNodeBase {
 }
 
 /** Branch flow based on conditions */
-export interface DSLDecisionNode extends DSLNodeBase {
-  type: 'decision';
+export interface DSLSwitchNode extends DSLNodeBase {
+  type: 'switch';
   conditions: Array<{
     if: string;    // Expression to evaluate
     then: string;  // Label of node to transition to
@@ -128,7 +128,7 @@ export interface DSLKeepAliveNode extends DSLNodeBase {
 export type DSLStepNode =
   | DSLActionNode
   | DSLLLMNode
-  | DSLDecisionNode
+  | DSLSwitchNode
   | DSLFireNode
   | DSLTransformNode
   | DSLQueryNode

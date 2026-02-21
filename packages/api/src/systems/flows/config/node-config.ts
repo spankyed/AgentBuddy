@@ -83,16 +83,16 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
       requiredFields: ['prompt'],
     },
   },
-  decision: {
-    nodeType: 'decision',
-    label: 'Decision',
+  switch: {
+    nodeType: 'switch',
+    label: 'Switch',
     description: 'Branch flow based on conditions',
     category: 'logic',
     validation: {
       requiredFields: ['conditions'],
       customValidator: (node) => {
-        const decisionNode = node as any;
-        return Array.isArray(decisionNode.conditions) && decisionNode.conditions.length > 0;
+        const switchNode = node as any;
+        return Array.isArray(switchNode.conditions) && switchNode.conditions.length > 0;
       },
     },
   },

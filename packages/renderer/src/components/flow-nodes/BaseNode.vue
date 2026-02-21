@@ -4,35 +4,38 @@
     :class="[
       nodeClasses,
       {
-        'ring-1 ring-white/30': isActive || selected,
+        'ring-2 ring-blue-400/70 shadow-lg shadow-blue-500/20': isEditing,
+        'ring-1 ring-white/30': !isEditing && (isActive || selected),
         'cursor-pointer': selectable,
       }
     ]"
   >
-    <!-- Remove glow effect for cleaner look -->
-
     <!-- Main content -->
     <div class="relative z-10">
       <!-- Header -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center">
+        <!-- data-action="open-form" -->
         <component
           :is="nodeIcon"
-          class="w-3.5 h-3.5 flex-shrink-0 opacity-80"
+          class="w-3.5 h-3.5 mr-1 flex-shrink-0 opacity-80"
           :class="iconTextColor"
         />
-        <div class="flex-1 flex justify-center pr-3.5">
-          <span class="text-[13px] font-medium text-neutral-200">{{ data.label }}</span>
+        <div class="flex-1 flex justify-center pr-1">
+          <span
+            class="text-[13px] font-medium text-neutral-200 cursor-pointer"
+
+          >{{ data.label }}</span>
         </div>
       </div>
 
       <!-- Custom content slot or auto-rendered content -->
       <slot>
         <!-- Auto-render eventType if present -->
-        <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+        <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
           <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
         </div>
         <!-- Auto-render params count if present -->
-        <div v-else-if="data.params && Object.keys(data.params).length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+        <div v-else-if="data.params && Object.keys(data.params).length > 0" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
           <span class="text-[10px] text-neutral-400 uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
         </div>
       </slot>
@@ -43,29 +46,70 @@
     <div v-if="showStatusIndicator && data.status" class="absolute -top-1.5 -right-1.5">
       <div class="relative">
         <div
-          class="w-2.5 h-2.5 rounded-full"
+          class="w-3.5 h-3.5 rounded-full border border-neutral-800/50"
           :class="statusClasses"
         />
         <div
           v-if="data.status === 'active'"
-          class="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping"
+          class="absolute inset-0 w-3.5 h-3.5 rounded-full animate-ping"
           :class="statusClasses"
         />
       </div>
     </div>
 
     <!-- Connection handles -->
+    <!-- Dynamic target handles (explicit override only) -->
+    <template v-if="targetHandles && targetHandles.length > 0">
+      <Handle
+        v-for="handle in targetHandles"
+        :key="handle.id"
+        :id="handle.id"
+        type="target"
+        :position="Position.Left"
+        :style="{ top: handle.offsetY ? `${handle.offsetY}px` : '50%' }"
+        class="!w-1 !h-1 !bg-transparent !border-none !left-0"
+      />
+    </template>
+    <!-- Default single target handle -->
     <Handle
-      v-if="showTargetHandle"
+      v-else-if="showTargetHandle"
       type="target"
       :position="Position.Left"
-      class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-left-1"
+      class="!w-1 !h-1 !bg-transparent !border-none !left-0"
     />
+
+    <!-- Dynamic source handles (AddHandle with + icon) - only in edit mode -->
+    <template v-if="editable && sourceHandles && sourceHandles.length > 0">
+      <AddHandle
+        v-for="handle in sourceHandles"
+        :key="handle.id"
+        :node-id="id"
+        :handle-id="handle.id"
+        :offset-y="handle.offsetY"
+        :source-handle="handle.id"
+        :is-selected="isHandleSelected(handle.id)"
+        :is-connected="isHandleConnected(handle.id)"
+        @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
+        @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+        @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
+      />
+    </template>
+    <!-- Default single source handle (AddHandle with + icon) - only in edit mode -->
+    <AddHandle
+      v-else-if="editable && showSourceHandle"
+      :node-id="id"
+      :is-selected="isHandleSelected()"
+      :is-connected="isHandleConnected()"
+      @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
+      @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+      @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
+    />
+    <!-- Plain invisible source handle for edge anchoring (view mode) -->
     <Handle
-      v-if="showSourceHandle"
+      v-else-if="!editable && showSourceHandle"
       type="source"
       :position="Position.Right"
-      class="!w-2 !h-2 !bg-neutral-600 !border !border-neutral-500 hover:!bg-neutral-400 transition-all !-right-1"
+      class="!w-1 !h-1 !bg-transparent !border-none !right-0"
     />
   </div>
 </template>
@@ -79,8 +123,15 @@ export default {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Handle, Position, type NodeProps } from '@vue-flow/core'
-import { getNodeClasses, getNodeGlowClasses, getNodeStatusClasses, getNodeAccentBarClasses, getNodeIconTextColor, getNodeConfig } from './node-config'
+import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-config'
+import AddHandle from './AddHandle.vue'
 import type { NodeKind } from '@app/api'
+
+export interface HandleConfig {
+  id: string
+  label?: string
+  offsetY?: number  // Vertical offset in pixels from top of node
+}
 
 interface BaseNodeData {
   label: string
@@ -91,20 +142,58 @@ interface BaseNodeData {
 
 interface Props extends NodeProps<BaseNodeData> {
   isActive?: boolean
+  isEditing?: boolean
   selectable?: boolean
   showTargetHandle?: boolean
   showSourceHandle?: boolean
   showStatusIndicator?: boolean
-  isImplemented?: boolean
+  // When false, shows plain invisible handles instead of interactive AddHandle
+  editable?: boolean
+  sourceHandles?: HandleConfig[]
+  targetHandles?: HandleConfig[]
+  // Handle selection for click-to-connect
+  selectedHandle?: { nodeId: string; handleId?: string }
+  // Set of connected handles: "nodeId" or "nodeId:handleId"
+  connectedHandles?: Set<string>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isActive: false,
+  isEditing: false,
   selectable: true,
   showTargetHandle: true,
   showSourceHandle: true,
-  showStatusIndicator: false
+  showStatusIndicator: false,
+  editable: true,
+  sourceHandles: undefined,
+  targetHandles: undefined,
+  selectedHandle: undefined,
+  connectedHandles: undefined,
 })
+
+defineEmits<{
+  'create-connected': [nodeType: string, sourceHandle?: string]
+  'handle-select': [nodeId: string, handleId?: string]
+  'edge-select': [nodeId: string, handleId?: string]
+}>()
+
+// Check if a specific handle is selected
+function isHandleSelected(handleId?: string): boolean {
+  if (!props.selectedHandle) return false
+  if (props.selectedHandle.nodeId !== props.id) return false
+  // If no handleId specified on the handle, check if selection has no handleId
+  if (!handleId) return !props.selectedHandle.handleId
+  return props.selectedHandle.handleId === handleId
+}
+
+// Check if a specific handle is connected to an edge
+function isHandleConnected(handleId?: string): boolean {
+  if (!props.connectedHandles) return false
+  if (handleId) {
+    return props.connectedHandles.has(`${props.id}:${handleId}`)
+  }
+  return props.connectedHandles.has(props.id)
+}
 
 const nodeClasses = computed(() => {
   const type = props.data.nodeType || 'action'
@@ -122,24 +211,20 @@ const iconTextColor = computed(() => {
   return getNodeIconTextColor(type)
 })
 
-const glowClasses = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeGlowClasses(type)
-})
-
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
   return getNodeStatusClasses(props.data.status, 'simple') as string
 })
 
-const accentBarClasses = computed(() => {
+const dividerClass = computed(() => {
   const type = props.data.nodeType || 'action'
-  return getNodeAccentBarClasses(type)
+  return getNodeDividerClass(type)
 })
 </script>
 
 <style scoped>
 .flow-node {
+  position: relative; /* Required for handle positioning */
   min-width: 120px;
   max-width: 200px;
   transition: all 0.15s ease;
@@ -151,5 +236,22 @@ const accentBarClasses = computed(() => {
 
 :deep(.vue-flow__handle) {
   transition: all 0.15s ease;
+}
+
+/* Larger invisible hitbox for easier clicking */
+:deep(.handle-hitbox)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+/* Override VueFlow's default handle positioning for custom positioned handles */
+:deep(.vue-flow__handle[style*="top"]) {
+  transform: translateY(-50%) !important;
 }
 </style>

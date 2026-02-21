@@ -23,6 +23,7 @@
       <template #node-tnode="nodeProps">
         <BaseNode
           v-bind="nodeProps"
+          :editable="false"
           :show-status-indicator="true"
           :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step'"
         />

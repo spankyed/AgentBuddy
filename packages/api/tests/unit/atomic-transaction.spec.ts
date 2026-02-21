@@ -47,13 +47,13 @@ describe('AtomicTransaction', () => {
 
     it('put() replaces attributes on commit', () => {
       tx.put(nodeId, 'label', 'Test')
-        .put(nodeId, EARS.AttrKind.Custom('type'), 'decision');
-      
+        .put(nodeId, EARS.AttrKind.Custom('type'), 'switch');
+
       tx.commit();
-      
+
       // Attributes visible after commit
       expect(getAttr(nodeId, EARS.AttrKind.Custom('label'))).toBe('Test');
-      expect(getAttr(nodeId, EARS.AttrKind.Custom('type'))).toBe('decision');
+      expect(getAttr(nodeId, EARS.AttrKind.Custom('type'))).toBe('switch');
       
       // Test that put replaces the value
       const tx2 = atomicTx();

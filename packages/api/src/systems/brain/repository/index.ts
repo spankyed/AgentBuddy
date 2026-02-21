@@ -2,6 +2,7 @@ import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import { descendants } from '@/core/ears/helpers/graph';
+import { edgeStore } from '@/core/ears/helpers/edge-store';
 import type {
   FlowTNodeData,
   TNodeEntity,
@@ -103,11 +104,36 @@ export const brainQueries = {
   nextNodeInFlowTrack: (nodeId: EARS.EntityId): NodeEntity => {
     const nextLinks = qx(nodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-    
+
     return nextLinks.map(link => {
       const result = qx(link.id).pickAll();
       return result[0] as unknown as NodeEntity;
     }).filter(node => node && node.id)[0];
+  },
+
+  // Get next node for a specific branch (used by switch nodes)
+  nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string): NodeEntity | undefined => {
+    // Get all TRANSITIONS_TO edges from this node
+    const edges = edgeStore.find({
+      sourceEntity: nodeId,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+    });
+
+    // Find edge matching sourceHandle
+    type EdgeInfo = { sourceHandle?: string; targetHandle?: string };
+    let edge;
+    if (sourceHandle) {
+      edge = edges.find(e => (e.info as EdgeInfo)?.sourceHandle === sourceHandle);
+    } else {
+      brainLogger.warn(`nextNodeForBranch called without sourceHandle for node ${nodeId}, falling back to first edge`);
+      edge = edges[0];
+    }
+
+    if (!edge) return undefined;
+
+    // Get the target node
+    const result = qx(edge.targetEntity).pickAll();
+    return result[0] as unknown as NodeEntity | undefined;
   },
   
   eventTracks: (flowTNodeId: EARS.EntityId): TrackEntity[] => {

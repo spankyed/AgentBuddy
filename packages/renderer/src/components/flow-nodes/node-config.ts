@@ -157,7 +157,7 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   query: 'cyan',
   create: 'purple',
   update: 'purple',
-  decision: 'orange',
+  switch: 'orange',
   transform: 'emerald',
   llm: 'indigo',
   event: 'blue',
@@ -187,7 +187,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
     hoverBgColor: 'group-hover:bg-neutral-700/30',
-    connectionRules: { inputs: 1, outputs: 1 },
+    connectionRules: { inputs: -1, outputs: -1 },  // Allow multiple inputs (converging) and outputs (parallel)
     component: 'ActionNode',
     isImplemented: true
   },
@@ -275,17 +275,17 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     component: 'VariableNode',
     isImplemented: false
   },
-  decision: {
-    type: 'decision',
-    label: 'Decision',
+  switch: {
+    type: 'switch',
+    label: 'Switch',
     defaultLabel: 'choose path',
     icon: Split,
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
-    connectionRules: { inputs: 1, outputs: -1 },
-    component: 'DecisionNode',
-    isImplemented: false
+    connectionRules: { inputs: 1, outputs: -1 },  // Multiple outputs (one per branch)
+    component: 'SwitchNode',
+    isImplemented: true
   },
   fire: {
     type: 'fire',
@@ -371,6 +371,27 @@ export const getNodeBadgeClasses = (nodeType: NodeKind | string, options?: NodeS
   const effectiveType = resolveNodeType(nodeType, options)
   const colorKey = getNodeColorKey(effectiveType)
   return NODE_STYLE_CLASSES.badge[colorKey]
+}
+
+/**
+ * Returns divider border class matching node's color scheme
+ */
+export const getNodeDividerClass = (nodeType: NodeKind | string, options?: NodeStyleOptions): string => {
+  const effectiveType = resolveNodeType(nodeType, options)
+  const colorKey = getNodeColorKey(effectiveType)
+
+  const dividerMap: Record<string, string> = {
+    purple: 'border-purple-500/40',
+    blue: 'border-blue-500/40',
+    amber: 'border-amber-500/40',
+    cyan: 'border-cyan-500/40',
+    orange: 'border-orange-500/40',
+    emerald: 'border-emerald-500/40',
+    indigo: 'border-indigo-500/40',
+    neutral: 'border-neutral-500/45'
+  }
+
+  return dividerMap[colorKey] || dividerMap.neutral
 }
 
 /**

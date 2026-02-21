@@ -34,7 +34,7 @@ function extractValue(
   return source;
 }
 
-function extractValueByPath(source: any, path: string): any {
+export function extractValueByPath(source: any, path: string): any {
   if (!path || path === '$') return source;
   const cleanPath = path.startsWith('$.') ? path.slice(2) : path;
   const segments = cleanPath.split('.');

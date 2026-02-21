@@ -21,6 +21,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from '@/components/flow-nodes'
+import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -35,6 +36,11 @@ export interface FlowsContext {
   selectedNodeId?: EARS.EntityId;
   editingNodeId?: EARS.EntityId; // Node currently being edited
   selectedFlowId?: EARS.EntityId;
+  // Handle selection for click-to-connect workflow
+  selectedHandle?: {
+    nodeId: string;
+    handleId?: string;
+  };
   graph: {
     nodes: NodeEntity[];
     edges: EdgeEntity[];
@@ -70,14 +76,16 @@ type SystemEvent = OutgoingFlowsEvents
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
+  | { type: 'HANDLE.SELECT'; nodeId: string; handleId?: string }
+  | { type: 'HANDLE.DESELECT' }
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
-  | { type: 'EDGE.CONNECT'; src: string; tgt: string }
+  | { type: 'EDGE.CONNECT'; src: string; tgt: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
   | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
   | { type: 'NODE.CREATE'; nodeType: string; position?: { x: number; y: number } }
-  | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string }
+  | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string; sourceHandle?: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
   | { type: 'NODE.UPDATE_POSITION'; nodeId: string; position: { x: number; y: number } }
   | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
@@ -92,6 +100,8 @@ type UIEvent =
   // DSL Import events
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
   | { type: 'DSL.RESET_STATUS' }
+  // Layout events
+  | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
 export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
@@ -103,8 +113,22 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ context, event }) => {
+    setPluginData: assign(({ context, event, self }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
+
+      const existingPositions = context.graph?.positions || {};
+      const graphNodes = ev.data.graph?.nodes || [];
+      const graphEdges = ev.data.graph?.edges || [];
+      const needsLayout = graphNodes.length > 0 && !allNodesHavePositions(graphNodes, existingPositions);
+
+      // Trigger async layout calculation if needed
+      if (needsLayout) {
+        calculateLayoutAsync({ nodes: graphNodes, edges: graphEdges })
+          .then((positions) => {
+            self.send({ type: 'LAYOUT_COMPUTED', positions })
+          })
+      }
+
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
         prompts: ev.data.prompts || [],
@@ -112,8 +136,9 @@ const flowsState = setup({
         actions: ev.data.actions || [],
         selectedFlowId: ev.data.selectedFlowId,
         graph: {
-          ...ev.data.graph,
-          positions: context.graph?.positions || {}, // Preserve existing positions
+          nodes: graphNodes,
+          edges: graphEdges,
+          positions: needsLayout ? {} : existingPositions,
         },
         settings: ev.data.settings || {},
       }
@@ -159,8 +184,19 @@ const flowsState = setup({
       });
     },
 
-    loadFlowData: assign(({ context, event }) => {
+    loadFlowData: assign(({ context, event, self }) => {
       const ev = typeOf('FLOW_SELECTED', event);
+
+      const existingPositions = context.graph?.positions || {};
+      const needsLayout = !allNodesHavePositions(ev.data.nodes, existingPositions);
+
+      // Trigger async layout calculation if needed
+      if (needsLayout) {
+        calculateLayoutAsync({ nodes: ev.data.nodes, edges: ev.data.edges })
+          .then((positions) => {
+            self.send({ type: 'LAYOUT_COMPUTED', positions })
+          })
+      }
 
       return {
         selectedFlowId: ev.flowId,
@@ -168,7 +204,7 @@ const flowsState = setup({
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions: context.graph?.positions || {}, // Preserve existing positions
+          positions: needsLayout ? {} : existingPositions,
         },
       };
     }),
@@ -199,8 +235,16 @@ const flowsState = setup({
       };
     }),
 
-    addCreatedFlow: assign(({ context, event }) => {
+    addCreatedFlow: assign(({ context, event, self }) => {
       const ev = typeOf('FLOW_CREATED', event);
+
+      // Trigger async layout calculation for new flow
+      calculateLayoutAsync({
+        nodes: ev.data.nodes,
+        edges: ev.data.edges,
+      }).then((positions) => {
+        self.send({ type: 'LAYOUT_COMPUTED', positions })
+      })
 
       return {
         flows: [...context.flows, ev.flow],
@@ -208,7 +252,7 @@ const flowsState = setup({
         graph: {
           nodes: ev.data.nodes,
           edges: ev.data.edges,
-          positions: {}, // Start with empty positions, will be set by layout
+          positions: {},
         },
       };
     }),
@@ -286,9 +330,17 @@ const flowsState = setup({
     connectEdge: assign(({ context, event }) => {
       const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
-      const newEdge = { id, source: ev.src, target: ev.tgt, kind: 'transitions_to' } as EdgeEntity
-      
-      return { 
+      const newEdge = {
+        id,
+        source: ev.src,
+        target: ev.tgt,
+        kind: 'transitions_to',
+        // Store handle info for switch nodes with multiple outputs
+        sourceHandle: ev.sourceHandle,
+        targetHandle: ev.targetHandle,
+      } as EdgeEntity
+
+      return {
         graph: {
           ...context.graph,
           edges: [...context.graph.edges, newEdge],
@@ -299,7 +351,7 @@ const flowsState = setup({
     sendEdgeConnected: ({ context, event }) => {
       const ev = typeOf('EDGE.CONNECT', event);
       if (!context.selectedFlowId) return;
-      
+
       // Only send if both IDs are permanent (not temporary)
       if (!ev.src.startsWith('temp-') && !ev.tgt.startsWith('temp-')) {
         trpc.bus.send.mutate({
@@ -308,6 +360,8 @@ const flowsState = setup({
           flowId: context.selectedFlowId,
           sourceId: ev.src,
           targetId: ev.tgt,
+          sourceHandle: ev.sourceHandle,
+          targetHandle: ev.targetHandle,
         });
       } else {
         console.log('Cannot create edge yet - nodes still pending:', { src: ev.src, tgt: ev.tgt });
@@ -379,6 +433,61 @@ const flowsState = setup({
     
     deselectNode: assign({ selectedNodeId: undefined, editingNodeId: undefined }),
 
+    // Handle selection for click-to-connect
+    selectHandle: assign(({ event }) => {
+      const ev = typeOf('HANDLE.SELECT', event);
+      return {
+        selectedHandle: {
+          nodeId: ev.nodeId,
+          handleId: ev.handleId,
+        },
+      };
+    }),
+
+    deselectHandle: assign({ selectedHandle: undefined }),
+
+    // Connect from selected handle to clicked node and send to backend
+    // Combined into single action to ensure handle is captured before being cleared
+    connectFromHandleAndSend: assign(({ context, event }) => {
+      const ev = typeOf('NODE.CLICK', event);
+      const handle = context.selectedHandle;
+      if (!handle) return {};
+
+      // Don't connect to self
+      if (handle.nodeId === ev.nodeId) return {};
+
+      const edgeId = `Edge-${randId()}`;
+      const newEdge = {
+        id: edgeId,
+        source: handle.nodeId,
+        target: ev.nodeId,
+        kind: 'transitions_to',
+        sourceHandle: handle.handleId,
+      } as EdgeEntity;
+
+      // Send to backend (handle is still available here, before we clear it)
+      if (context.selectedFlowId &&
+          !handle.nodeId.startsWith('temp-') &&
+          !ev.nodeId.startsWith('temp-')) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_EDGE',
+          flowId: context.selectedFlowId,
+          sourceId: handle.nodeId,
+          targetId: ev.nodeId,
+          sourceHandle: handle.handleId,
+        });
+      }
+
+      return {
+        graph: {
+          ...context.graph,
+          edges: [...context.graph.edges, newEdge],
+        },
+        selectedHandle: undefined, // Clear selection after connecting
+      };
+    }),
+
     deleteNode: assign(({ context, event }) => {
       const ev = typeOf('NODE.DELETE', event);
       const nodeId = ev.nodeId;
@@ -419,55 +528,39 @@ const flowsState = setup({
     },
 
     createNode: assign(({ context, event }) => {
-      if (!context.selectedFlowId) {
-        return { selectedNodeId: undefined } // Deselect any node before creating a new one
-      }
+      if (!context.selectedFlowId) return { selectedNodeId: undefined }
 
       const tempId = `temp-${randId()}`
       const ev = typeOf('NODE.CREATE', event)
-
-      // Get the default label from node config
       const nodeConfig = getNodeConfig(ev.nodeType)
-      const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
+      const label = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
 
-      // Create a partial node that will be completed by the backend
-      const newNode = {
-        id: tempId,
-        nodeType: ev.nodeType,
-        label: defaultLabel,
-        flowId: context.selectedFlowId,
-        configuration: {},
-      } as any // Will be properly typed when backend returns complete node
-      
-      // Send create to backend if we have a flow selected
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
-        tempId: tempId,
-        nodeData: {
-          nodeType: ev.nodeType,
-          label: newNode.label,
-        },
+        tempId,
+        nodeData: { nodeType: ev.nodeType, label },
       });
 
-      // Use provided position if available, otherwise it will be set by layout
-      const updatedPositions = ev.position 
-        ? { ...context.graph.positions, [tempId]: ev.position }
-        : context.graph.positions;
+      // Calculate position: use provided, or right of selected node, or right of rightmost node
+      const { newNode } = LAYOUT_CONFIG
+      const positions = context.graph.positions
+      const selectedPos = context.selectedNodeId ? positions[context.selectedNodeId] : null
+      const allPos = Object.values(positions)
+      const newPosition = ev.position
+        || (selectedPos && { x: selectedPos.x + newNode.xOffset, y: selectedPos.y + newNode.yOffset })
+        || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + newNode.xOffset, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
+        || { x: newNode.defaultX, y: newNode.defaultY }
 
       return {
         graph: {
           ...context.graph,
-          nodes: [...context.graph.nodes, newNode],
-          positions: updatedPositions,
+          nodes: [...context.graph.nodes, { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} } as any],
+          positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
-        editingNodeId: tempId as EARS.EntityId, // Also open editor for new nodes
-        tempIdMap: {
-          ...context.tempIdMap,
-          [tempId]: tempId, // Will be updated when we get permanent ID
-        }
+        tempIdMap: { ...context.tempIdMap, [tempId]: tempId }
       }
     }),
 
@@ -490,16 +583,25 @@ const flowsState = setup({
         flowId: context.selectedFlowId,
         configuration: {},
       } as any // Will be properly typed when backend returns complete node
-      
+
+      // Calculate position: to the right of the source node
+      const { newNode: nodeOffset } = LAYOUT_CONFIG
+      const positions = context.graph.positions
+      const sourcePos = positions[ev.sourceNodeId]
+      const newPosition = sourcePos
+        ? { x: sourcePos.x + nodeOffset.xOffset, y: sourcePos.y + nodeOffset.yOffset }
+        : { x: nodeOffset.fallbackX, y: nodeOffset.fallbackY }
+
       // Create temporary edge
       const tempEdgeId = `Edge-${randId()}`
       const tempEdge: EdgeEntity = {
         id: tempEdgeId,
         source: ev.sourceNodeId,
         target: tempId,
-        kind: 'transitions_to'
+        kind: 'transitions_to',
+        sourceHandle: ev.sourceHandle,
       } as EdgeEntity
-      
+
       // Send create to backend
       trpc.bus.send.mutate({
         systemId: id,
@@ -517,9 +619,9 @@ const flowsState = setup({
           ...context.graph,
           nodes: [...context.graph.nodes, newNode],
           edges: [...context.graph.edges, tempEdge],
+          positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
-        editingNodeId: tempId as EARS.EntityId, // Also open editor for new connected nodes
         tempIdMap: {
           ...context.tempIdMap,
           [tempId]: tempId,
@@ -641,6 +743,8 @@ const flowsState = setup({
               flowId: context.selectedFlowId!,
               sourceId: edge.source,
               targetId: edge.target,
+              sourceHandle: edge.sourceHandle,
+              targetHandle: edge.targetHandle,
             });
           }
         });
@@ -661,17 +765,23 @@ const flowsState = setup({
     /* ── Edge ID reconciliation ────────────────────────────── */
     reconcileEdgeId: assign(({ context, event }) => {
       const ev = typeOf('EDGE_CREATED', event);
-      const { sourceId, targetId, relId } = ev;
-      
-      // Find the edge with matching source and target
+      const { sourceId, targetId, relId, sourceHandle, targetHandle } = ev;
+
+      // Find the edge with matching source, target, and handles
       const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.source === sourceId && edge.target === targetId) {
+        const sourceMatches = edge.source === sourceId;
+        const targetMatches = edge.target === targetId;
+        // For switch nodes, also match by handle to differentiate branches
+        const sourceHandleMatches = sourceHandle ? edge.sourceHandle === sourceHandle : !edge.sourceHandle;
+        const targetHandleMatches = targetHandle ? edge.targetHandle === targetHandle : !edge.targetHandle;
+
+        if (sourceMatches && targetMatches && sourceHandleMatches && targetHandleMatches) {
           // Update the edge ID to the real relation ID
           return { ...edge, id: relId as EARS.EntityId };
         }
         return edge;
       });
-      
+
       return {
         graph: {
           ...context.graph,
@@ -779,6 +889,7 @@ const flowsState = setup({
       const ev = typeOf('FLOW_DELETED', event);
       return context.selectedFlowId === ev.flowId;
     },
+    hasSelectedHandle: ({ context }) => !!context.selectedHandle,
   },
 }).createMachine({
   id,
@@ -812,6 +923,17 @@ const flowsState = setup({
       actions: 'handleSettingsUpdate'
     },
     FLOW_SELECTED: { actions: 'loadFlowData' },
+    LAYOUT_COMPUTED: {
+      actions: assign(({ context, event }) => {
+        const ev = event as { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
+        return {
+          graph: {
+            ...context.graph,
+            positions: ev.positions,
+          },
+        }
+      }),
+    },
     FLOW_CREATED: {
       actions: 'addCreatedFlow',
       target: '.view'
@@ -921,10 +1043,22 @@ const flowsState = setup({
         'FLOW.SELECT': { actions: 'selectFlow'},
         'SELECT_ROOT_FLOW': { actions: 'selectRootFlow' },
         'SELECT_AND_EDIT_FIRST_NODE': { actions: 'selectAndEditFirstNode' },
-        'NODE.CLICK': { actions: 'selectNode' },
+        'NODE.CLICK': [
+          // If handle is selected, connect to clicked node
+          {
+            guard: 'hasSelectedHandle',
+            actions: 'connectFromHandleAndSend',
+          },
+          // Otherwise, just select the node
+          {
+            actions: 'selectNode',
+          },
+        ],
         'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
         'NODE.DOUBLE_CLICK': { actions: 'editNode' },
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
+        'HANDLE.SELECT': { actions: 'selectHandle' },
+        'HANDLE.DESELECT': { actions: 'deselectHandle' },
         'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },

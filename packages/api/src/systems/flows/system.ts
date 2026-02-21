@@ -72,7 +72,7 @@ export const IncomingFlowsEvents = [
   busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
   busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
   busEvent('DELETE_NODE', { flowId: z.string(), nodeId: z.string() }),
-  busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string() }),
+  busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string(), sourceHandle: z.string().optional(), targetHandle: z.string().optional() }),
   busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
   busEvent('UPDATE_EDGE', {
     flowId: z.string(),
@@ -97,7 +97,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_DELETED'; nodeId: string }
-  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId }
+  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE_DELETED'; edgeId: string }
   | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
@@ -243,18 +243,24 @@ export const flowsSystem = setup({
     },
     
     createEdge: ({ system, event }) => {
-      const { flowId, sourceId, targetId } = typeOf('CREATE_EDGE', event);
+      const { flowId, sourceId, targetId, sourceHandle, targetHandle } = typeOf('CREATE_EDGE', event);
       const pluginId = flows;
-      
-      logger.info('Creating edge', { flowId, sourceId, targetId });
-      
-      const { relId } = repository.flowsCommands.createEdge(sourceId as EARS.EntityId, targetId as EARS.EntityId);
-      
+
+      logger.info('Creating edge', { flowId, sourceId, targetId, sourceHandle, targetHandle });
+
+      const { relId } = repository.flowsCommands.createEdge(
+        sourceId as EARS.EntityId,
+        targetId as EARS.EntityId,
+        { sourceHandle, targetHandle }
+      );
+
       system.get(bus).send(emit(pluginId, {
         type: 'EDGE_CREATED',
         sourceId: sourceId as EARS.EntityId,
         targetId: targetId as EARS.EntityId,
         relId,
+        sourceHandle,
+        targetHandle,
       }));
     },
     

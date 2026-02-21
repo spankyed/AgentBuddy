@@ -21,7 +21,7 @@ import type {
   DSLStepNode,
   DSLActionNode,
   DSLLLMNode,
-  DSLDecisionNode,
+  DSLSwitchNode,
   DSLFireNode,
   DSLTransformNode,
   DSLQueryNode,
@@ -37,7 +37,7 @@ import type {
   ListenNode,
   ActionNode,
   LLMNode,
-  DecisionNode,
+  SwitchNode,
   FireNode,
   TransformNode,
   QueryNode,
@@ -197,14 +197,46 @@ function decompileStepNode(
       return dsl;
     }
 
-    case 'decision': {
-      const decisionNode = node as DecisionNode;
-      const dsl: DSLDecisionNode = {
-        type: 'decision',
-        conditions: decisionNode.conditions.map(c => ({
-          if: c.expr,
-          then: c.label || '',
-        })),
+    case 'switch': {
+      const switchNode = node as SwitchNode;
+
+      // Map BinaryOperator enum values back to DSL symbols
+      const operatorToDsl: Record<string, string> = {
+        equals: '==',
+        not_equals: '!=',
+        greater_than: '>',
+        less_than: '<',
+        greater_than_or_equals: '>=',
+        less_than_or_equals: '<=',
+        contains: 'contains',
+        starts_with: 'starts_with',
+        ends_with: 'ends_with',
+        matches: 'matches',
+        is_empty: 'is_empty',
+        is_null: 'is_null',
+      };
+
+      const dsl: DSLSwitchNode = {
+        type: 'switch',
+        conditions: switchNode.conditions.map(c => {
+          let ifExpr = '';
+          if (c.predicate && typeof c.predicate !== 'function') {
+            // Decompile structured predicate back to DSL expression string
+            const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
+            // Unary operators don't need a value
+            if (c.predicate.operator === 'is_empty' || c.predicate.operator === 'is_null') {
+              ifExpr = `${c.predicate.key} ${opSymbol}`;
+            } else {
+              ifExpr = `${c.predicate.key} ${opSymbol} ${c.predicate.value ?? ''}`;
+            }
+          } else if (typeof c.predicate === 'function') {
+            ifExpr = '[custom function]';
+          }
+          return {
+            if: ifExpr,
+            then: c.label || '',
+          };
+        }),
       };
 
       // Add optional base fields
@@ -212,7 +244,7 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
-      if (decisionNode.elseLabel) dsl.else = decisionNode.elseLabel;
+      if (switchNode.elseLabel) dsl.else = switchNode.elseLabel;
       return dsl;
     }
 

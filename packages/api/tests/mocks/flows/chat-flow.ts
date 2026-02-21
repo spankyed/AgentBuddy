@@ -38,12 +38,12 @@ export const chatFlow: Rows = {
       eventType: "system.*",
     },
 
-    /* Decision Nodes */
+    /* Switch Nodes */
     {
       id: "Node-b3",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 880,
-      nodeType: "decision",
+      nodeType: "switch",
       label: "Message Type",
       conditions: [
         { expr: "type === 'question'", label: "Question" },
@@ -162,7 +162,7 @@ export const chatFlow: Rows = {
     // { source: "Node-b1", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: {} },
     { source: "Node-b2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b8", info: {} },
 
-    /* Decision node outputs */
+    /* Switch node outputs */
     { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: { condition: "Question" } },
     { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b11", info: { condition: "Command" } },
     

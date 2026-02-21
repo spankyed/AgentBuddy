@@ -1,9 +1,10 @@
-import type { NodeEntity } from '@/systems/flows/config/types';
+import type { NodeEntity, SwitchNode } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
+import { switchNodeHandler } from './switch-node';
 import { createLogger } from '@/core/utils/debug/logger';
 
 const logger = createLogger('node-executor');
@@ -34,7 +35,11 @@ export function executeNode(
     case 'action':
       actionNodeHandler(tNode, node, executionContext, actor);
       break;
-      
+
+    case 'switch':
+      switchNodeHandler(tNode, node as SwitchNode, executionContext, actor);
+      break;
+
     default:
       // For unknown node types, complete immediately
       logger.warn(`Unknown node type: ${node.nodeType}`);

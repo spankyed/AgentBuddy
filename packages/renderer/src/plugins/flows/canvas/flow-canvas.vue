@@ -31,6 +31,7 @@
       :selected-node-id="selected?.id"
       :editing-node-id="editingNode?.id"
       :show-overlay="inListState"
+      :selected-handle="selectedHandle"
       @node-click="handleNodeClick"
       @node-double-click="handleNodeDoubleClick"
       @connect="handleConnect"
@@ -47,6 +48,10 @@
       @edges-remove="handleEdgesRemove"
       @edge-update="handleEdgeUpdate"
       @edge-update-end="handleEdgeUpdateEnd"
+      @create-connected="handleCreateConnectedNode"
+      @handle-select="handleHandleSelect"
+      @handle-deselect="handleHandleDeselect"
+      @edge-select="handleEdgeSelect"
     />
 
     <!-- ▸ Node form overlay -->
@@ -84,11 +89,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref } from 'vue'
+import { computed, type Ref, ref, nextTick, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
-import { useLayout, type Direction } from '@/plugins/flows/canvas/useLayout'
-// import { useNodeViewport } from '@/plugins/flows/canvas/useNodeViewport'
+import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import type { FlowEntity, NodeEntity } from '@app/api'
 
 import '@vue-flow/core/dist/style.css'
@@ -109,8 +113,7 @@ import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 
-const { layout } = useLayout()
-const { project } = useVueFlow()
+const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 
 // Dialog state
 const labelDialogOpen = ref(false)
@@ -141,6 +144,18 @@ const editingNode = useSelector(actor, (s) =>
 const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
+const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
+
+// Watch for flow changes and re-center view after layout is computed
+watch(selectedFlowId, () => {
+  // When flow changes, watch for next position update then fitView
+  const unwatch = watch(positions, (newPositions) => {
+    if (Object.keys(newPositions).length > 0) {
+      nextTick(() => fitView())
+      unwatch()
+    }
+  })
+}, { immediate: true })
 
 const plainNodes = computed(() => {
   const mappedNodes = nodes.value
@@ -148,10 +163,10 @@ const plainNodes = computed(() => {
       id       : n.id!,
       type     : n.nodeType,
       position : {
-        x: positions.value[n.id]?.x ?? 0,  // Use position from positions object
+        x: positions.value[n.id]?.x ?? 0,
         y: positions.value[n.id]?.y ?? 0
       },
-      data     : n,  // Let VueFlow handle selection state
+      data     : n,
     })) as VueFlowNode[]
 
   return mappedNodes
@@ -159,18 +174,18 @@ const plainNodes = computed(() => {
 
 const plainEdges = computed(() =>
   Object.values(edges.value).map((e) => {
-    // Find the source node to check if it's an event node
     const sourceNode = nodes.value.find(n => n.id === e.source)
     const isFromEventNode = sourceNode?.nodeType === 'listen'
+    const isAnimated = e.kind === 'transitions_to' && isFromEventNode
 
     return {
       id     : e.id,
       source : e.source,
       target : e.target,
-      data: { kind: e.kind },
-      animated: e.kind === 'transitions_to' && isFromEventNode,
+      sourceHandle: e.sourceHandle,
+      data: { kind: e.kind, animated: isAnimated },
     }
-  }),
+  })
 )
 
 const currentFlow = computed(() =>
@@ -213,12 +228,32 @@ function handlePaletteClick(nodeType: string) {
   })
 }
 
-function handleCreateConnectedNode(nodeType: string, sourceNodeId: string) {
+function handleCreateConnectedNode(nodeType: string, sourceNodeId: string, sourceHandle?: string) {
   actor.send({
     type: 'NODE.CREATE_CONNECTED',
     nodeType,
     sourceNodeId,
+    sourceHandle,
   })
+}
+
+function handleHandleSelect(nodeId: string, handleId?: string) {
+  actor.send({ type: 'HANDLE.SELECT', nodeId, handleId })
+}
+
+function handleHandleDeselect() {
+  actor.send({ type: 'HANDLE.DESELECT' })
+}
+
+function handleEdgeSelect(nodeId: string, handleId?: string) {
+  // Find the edge from VueFlow's internal state (has full GraphEdge type)
+  const edge = getEdges.value.find(e =>
+    e.source === nodeId &&
+    (handleId ? e.sourceHandle === handleId : !e.sourceHandle)
+  )
+  if (edge) {
+    addSelectedEdges([edge])
+  }
 }
 
 function handleNodeClick(e: NodeMouseEvent) {
@@ -234,7 +269,13 @@ function handleCloseNodeEditor() {
 }
 
 function handleConnect(params: Connection) {
-  actor.send({ type: 'EDGE.CONNECT', src: params.source, tgt: params.target })
+  actor.send({
+    type: 'EDGE.CONNECT',
+    src: params.source,
+    tgt: params.target,
+    sourceHandle: params.sourceHandle || undefined,
+    targetHandle: params.targetHandle || undefined,
+  })
 }
 
 function handleFlowPreview(flow: Partial<FlowEntity>) {
@@ -295,33 +336,31 @@ function handleGoBack() {
   actor.send({ type: 'GO.BACK' })
 }
 
-function updateNodePositions(laidOutNodes: VueFlowNode[]) {
-  for (const node of laidOutNodes) {
-    if (node.id && node.position) {
-      actor.send({
-        type: 'NODE.UPDATE_POSITION',
-        nodeId: node.id,
-        position: { x: node.position.x, y: node.position.y }
-      })
-    }
-  }
-}
+async function handleLayout(direction?: LayoutDirection) {
+  // Calculate new positions using async ELK layout
+  const newPositions = await calculateLayoutAsync(
+    { nodes: nodes.value, edges: edges.value },
+    { direction }
+  )
 
-async function handleLayout(direction?: Direction) {
-  const laidOutNodes = await layout(direction)
-  updateNodePositions(laidOutNodes)
+  // Save all positions to state
+  for (const [nodeId, pos] of Object.entries(newPositions)) {
+    actor.send({
+      type: 'NODE.UPDATE_POSITION',
+      nodeId,
+      position: pos
+    })
+  }
+
+  await nextTick()
+  fitView()
 }
 
 async function handleNodesInitialized() {
-  const allNodesHavePositions = nodes.value.every(node =>
-    positions.value[node.id]?.x !== undefined &&
-    positions.value[node.id]?.y !== undefined
-  )
-
-  if (!allNodesHavePositions) {
-    const laidOutNodes = await layout()
-    updateNodePositions(laidOutNodes)
-  }
+  // Layout is calculated BEFORE render in XState actions (loadFlowData, addCreatedFlow)
+  // This handler only needs to center the view
+  await nextTick()
+  fitView()
 }
 
 function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {

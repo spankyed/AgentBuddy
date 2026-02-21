@@ -21,6 +21,7 @@
       :is-valid-connection="isValidConnection"
       @node-click="handleNodeClick"
       @node-double-click="handleNodeDoubleClick"
+      @pane-click="handlePaneClick"
       @connect="$emit('connect', $event)"
       @drop="$emit('drop', $event)"
       @dragover.prevent
@@ -35,7 +36,17 @@
       :max-zoom="2"
     >
       <template v-for="(_, type) in nodeTypes" #[`node-${type}`]="nodeProps">
-        <component :is="nodeTypes[type]" v-bind="nodeProps" :key="type" />
+        <component
+          :is="nodeTypes[type]"
+          v-bind="nodeProps"
+          :is-editing="nodeProps.id === editingNodeId"
+          :selected-handle="props.selectedHandle"
+          :connected-handles="connectedHandles"
+          :key="type"
+          @create-connected="(nodeType: string, sourceHandle?: string) => $emit('create-connected', nodeType, nodeProps.id, sourceHandle)"
+          @handle-select="(nodeId: string, handleId?: string) => $emit('handle-select', nodeId, handleId)"
+          @edge-select="(nodeId: string, handleId?: string) => $emit('edge-select', nodeId, handleId)"
+        />
       </template>
       <template #edge-generic="edgeProps">
         <GenericEdge v-bind="edgeProps" />
@@ -101,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, computed } from 'vue'
 import {
   VueFlow,
   ConnectionLineType,
@@ -118,7 +129,7 @@ import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
-import type { Direction } from '@/plugins/flows/canvas/useLayout'
+import type { LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import FlowActionsMenu from './FlowActionsMenu.vue'
 
 interface Props {
@@ -129,11 +140,26 @@ interface Props {
   selectedNodeId?: string
   editingNodeId?: string
   showOverlay?: boolean
+  // Handle selection for click-to-connect
+  selectedHandle?: { nodeId: string; handleId?: string }
 }
 
 const props = defineProps<Props>()
 const { centerNodeInView } = useNodeViewport()
 const { getConnectedEdges, getNodes } = useVueFlow()
+
+// Build a set of connected source handles: "nodeId" or "nodeId:handleId"
+const connectedHandles = computed(() => {
+  const connected = new Set<string>()
+  for (const edge of props.edges) {
+    if (edge.sourceHandle) {
+      connected.add(`${edge.source}:${edge.sourceHandle}`)
+    } else {
+      connected.add(edge.source)
+    }
+  }
+  return connected
+})
 
 const emit = defineEmits<{
   'node-click': [event: NodeMouseEvent]
@@ -141,7 +167,7 @@ const emit = defineEmits<{
   'connect': [params: Connection]
   'drop': [event: DragEvent]
   'go-back': []
-  'action-layout': [direction?: Direction]
+  'action-layout': [direction?: LayoutDirection]
   'action-edit-label': []
   'request-delete-flow': []
   'overlay-click': []
@@ -152,6 +178,10 @@ const emit = defineEmits<{
   'edges-remove': [edges: { id: string }[]]
   'edge-update': [event: EdgeUpdateEvent]
   'edge-update-end': [event: EdgeMouseEvent]
+  'create-connected': [nodeType: string, sourceNodeId: string, sourceHandle?: string]
+  'handle-select': [nodeId: string, handleId?: string]
+  'handle-deselect': []
+  'edge-select': [nodeId: string, handleId?: string]
 }>()
 
 // Watch for editing node changes and center the node
@@ -198,11 +228,23 @@ function handleEdgesChange(changes: any[]) {
 }
 
 async function handleNodeClick(event: NodeMouseEvent) {
-  emit('node-click', event)
+  const target = event.event.target as HTMLElement
+  if (target.closest('[data-action="open-form"]')) {
+    emit('node-double-click', event) // Icon click opens form like double-click
+  } else {
+    emit('node-click', event)
+  }
 }
 
 async function handleNodeDoubleClick(event: NodeMouseEvent) {
   emit('node-double-click', event)
+}
+
+function handlePaneClick() {
+  // Deselect handle when clicking on canvas background
+  if (props.selectedHandle) {
+    emit('handle-deselect')
+  }
 }
 
 // Edge reconnection handlers

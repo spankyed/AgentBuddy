@@ -16,7 +16,7 @@ import type {
 const STEP_TYPES = [
   'action',
   'llm',
-  'decision',
+  'switch',
   'fire',
   'transform',
   'query',
@@ -272,8 +272,8 @@ function validateStep(
     case 'llm':
       errors.push(...validateLLMStep(s, path, ctx, options));
       break;
-    case 'decision':
-      errors.push(...validateDecisionStep(s, path, ctx));
+    case 'switch':
+      errors.push(...validateSwitchStep(s, path, ctx));
       break;
     case 'fire':
       errors.push(...validateFireStep(s, path));
@@ -349,7 +349,7 @@ function validateLLMStep(
   return errors;
 }
 
-function validateDecisionStep(
+function validateSwitchStep(
   s: Record<string, unknown>,
   path: string,
   ctx: ValidationContext
@@ -357,12 +357,12 @@ function validateDecisionStep(
   const errors: ValidationError[] = [];
 
   if (!Array.isArray(s.conditions)) {
-    errors.push({ path, message: 'Decision step must have a "conditions" array' });
+    errors.push({ path, message: 'Switch step must have a "conditions" array' });
     return errors;
   }
 
   if (s.conditions.length === 0) {
-    errors.push({ path: `${path}.conditions`, message: 'Decision must have at least one condition' });
+    errors.push({ path: `${path}.conditions`, message: 'Switch must have at least one condition' });
   }
 
   for (let i = 0; i < s.conditions.length; i++) {
@@ -501,7 +501,7 @@ function getStepLabel(step: Record<string, unknown>, index: number): string {
     case 'llm': return step.prompt as string || `LLM ${index}`;
     case 'fire': return step.event as string || `Fire ${index}`;
     case 'flow': return step.flow as string || `Flow ${index}`;
-    case 'decision': return `Decision ${index}`;
+    case 'switch': return `Switch ${index}`;
     case 'transform': return `Transform ${index}`;
     case 'query': return `Query ${index}`;
     case 'create': return `Create ${step.entity || index}`;
