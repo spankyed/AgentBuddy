@@ -94,7 +94,7 @@
                 :value="getPredicateObject(condition.predicate)?.value ?? ''"
                 @change="updatePredicate(index, 'value', ($event.target as HTMLInputElement).value)"
                 type="text"
-                placeholder="e.g. admin, 10, true"
+                placeholder="e.g. admin, 10, true, or $.path.to.value"
                 class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
               />
             </div>
@@ -216,7 +216,7 @@ function updatePredicate(index: number, field: 'key' | 'operator' | 'value', val
 
       // Parse value for type detection
       let parsedValue: any = value
-      if (field === 'value') {
+      if (field === 'value' && !value.startsWith('$.')) {
         if (value === 'true') parsedValue = true
         else if (value === 'false') parsedValue = false
         else if (!isNaN(Number(value)) && value !== '') parsedValue = Number(value)

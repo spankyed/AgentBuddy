@@ -111,15 +111,20 @@ function evaluatePredicate(predicate: Predicate | undefined, context: ExecutionC
   // Object predicate with key, operator, value
   const { key, operator, value } = predicate;
   const actualValue = resolveValue(key, context);
+  // Resolve value dynamically if it's a $. path reference
+  const expectedValue = (typeof value === 'string' && value.startsWith('$.'))
+    ? extractValueByPath(context, value)
+    : value;
 
   brainDebug(`Evaluating predicate:`, {
     key,
     operator,
     expectedValue: value,
+    resolvedExpectedValue: expectedValue,
     actualValue,
   });
 
-  return evaluateOperator(operator, actualValue, value);
+  return evaluateOperator(operator, actualValue, expectedValue);
 }
 
 /**

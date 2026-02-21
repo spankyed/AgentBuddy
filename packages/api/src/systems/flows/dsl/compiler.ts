@@ -159,14 +159,16 @@ function parseExpressionToPredicate(expr: string): { key: string; operator: Bina
         };
       }
 
-      // Parse value - try to detect type
+      // Parse value - try to detect type (skip for dynamic $. path references)
       let parsedValue: any = value.trim();
-      if (parsedValue === 'true') parsedValue = true;
-      else if (parsedValue === 'false') parsedValue = false;
-      else if (!isNaN(Number(parsedValue)) && parsedValue !== '') parsedValue = Number(parsedValue);
-      else if ((parsedValue.startsWith("'") && parsedValue.endsWith("'")) ||
-               (parsedValue.startsWith('"') && parsedValue.endsWith('"'))) {
-        parsedValue = parsedValue.slice(1, -1);
+      if (!parsedValue.startsWith('$.')) {
+        if (parsedValue === 'true') parsedValue = true;
+        else if (parsedValue === 'false') parsedValue = false;
+        else if (!isNaN(Number(parsedValue)) && parsedValue !== '') parsedValue = Number(parsedValue);
+        else if ((parsedValue.startsWith("'") && parsedValue.endsWith("'")) ||
+                 (parsedValue.startsWith('"') && parsedValue.endsWith('"'))) {
+          parsedValue = parsedValue.slice(1, -1);
+        }
       }
 
       return {
