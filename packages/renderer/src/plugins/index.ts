@@ -45,8 +45,8 @@ const mockPlugins: Plugin[] = [
 ];
 
 export default [
-  Agent,
   Threads,
+  Agent,
   Code,
   Library,
   Actions,
