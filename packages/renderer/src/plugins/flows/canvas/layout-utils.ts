@@ -31,7 +31,7 @@ export type LayoutPositions = Record<string, { x: number; y: number }>
 interface LayoutNode {
   id: string
   nodeType?: string
-  conditions?: Array<{ predicate?: unknown; expr?: string; label?: string }>
+  conditions?: Array<{ predicate?: unknown; label?: string }>
 }
 
 interface LayoutEdge {

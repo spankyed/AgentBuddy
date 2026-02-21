@@ -287,8 +287,12 @@ export function createFlowNodeSystem(
           }
 
           // Only check for next node if we have a blueprint stepId (flows with no blueprint have no next step)
-          const hasNextNode = typedEv.stepId
-            ? repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
+          // If the result includes a sourceHandle, use branch routing (e.g. switch nodes)
+          const sourceHandle = typedEv.result?.sourceHandle;
+          const nextNode = typedEv.stepId
+            ? sourceHandle
+              ? repository.brainQueries.nextNodeForBranch(typedEv.stepId, sourceHandle)
+              : repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
             : null;
 
           let trackExecutionContext = context.eventTrackContexts[typedEv.eventTNodeId];
@@ -317,7 +321,7 @@ export function createFlowNodeSystem(
 
           // Check if flow should complete (do this AFTER state update)
           const shouldComplete = typedEv.final ||
-            (decremented === 0 && !hasNextNode);
+            (decremented === 0 && !nextNode);
 
           // For flow results: if completing, use the result from the completing step
           // If no result from this step, keep any existing finalResult
@@ -326,7 +330,7 @@ export function createFlowNodeSystem(
             : context.finalResult;
 
           enqueue.assign({
-            activeChildrenCount: hasNextNode ? decremented + 1 : decremented,
+            activeChildrenCount: nextNode ? decremented + 1 : decremented,
             eventTrackContexts: updatedEventTrackContexts,
             finalResult: flowResult,
           });
@@ -334,10 +338,8 @@ export function createFlowNodeSystem(
 
           if (shouldComplete) {
             enqueue.raise({ type: 'FLOW_COMPLETE' });
-          } else if (hasNextNode) {
-            // Spawn next node if there is one (stepId guaranteed to exist here due to hasNextNode check)
-            const nextNode = repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId!);
-
+          } else if (nextNode) {
+            // Spawn next node - already computed above, no duplicate query needed
             const [nextMachine, nextSystemId, nextTNode] = createChildNode(
               nextNode,
               typedEv.eventTNodeId,

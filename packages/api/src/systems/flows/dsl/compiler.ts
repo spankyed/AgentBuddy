@@ -22,6 +22,7 @@ import type {
   DSLKeepAliveNode,
   CompilerContext,
 } from './types';
+import { BinaryOperator } from '../config/types';
 
 /*─────────────────────────────────────────────────────────────────
  * ID Generation
@@ -114,6 +115,76 @@ function compileLLMNode(node: DSLLLMNode, nodeId: string, ts: number, ctx: Compi
   };
 }
 
+/**
+ * Parse a DSL expression string into a structured predicate
+ * Supports formats like: "$.key == value", "$.count > 10", "$.name contains foo"
+ */
+function parseExpressionToPredicate(expr: string): { key: string; operator: BinaryOperator; value?: any } | undefined {
+  if (!expr || expr.trim() === '') return undefined;  // else/default branch
+
+  const trimmed = expr.trim();
+
+  // Map DSL operators to BinaryOperator enum values
+  const operatorMap: Record<string, BinaryOperator> = {
+    '==': BinaryOperator.EQUALS,
+    '!=': BinaryOperator.NOT_EQUALS,
+    '>=': BinaryOperator.GREATER_THAN_OR_EQUALS,
+    '<=': BinaryOperator.LESS_THAN_OR_EQUALS,
+    '>': BinaryOperator.GREATER_THAN,
+    '<': BinaryOperator.LESS_THAN,
+    'contains': BinaryOperator.CONTAINS,
+    'starts_with': BinaryOperator.STARTS_WITH,
+    'ends_with': BinaryOperator.ENDS_WITH,
+    'matches': BinaryOperator.MATCHES,
+    'is_empty': BinaryOperator.IS_EMPTY,
+    'is_null': BinaryOperator.IS_NULL,
+  };
+
+  // Try to match operators (longer ones first to avoid partial matches)
+  const operatorPatterns = ['>=', '<=', '!=', '==', '>', '<', 'contains', 'starts_with', 'ends_with', 'matches', 'is_empty', 'is_null'];
+
+  for (const op of operatorPatterns) {
+    const regex = new RegExp(`^(.+?)\\s*${op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(.*)$`, 'i');
+    const match = trimmed.match(regex);
+
+    if (match) {
+      const [, key, value] = match;
+      const mappedOperator = operatorMap[op.toLowerCase()] || op;
+
+      // For unary operators like is_empty, is_null - no value needed
+      if (op === 'is_empty' || op === 'is_null') {
+        return {
+          key: key.trim(),
+          operator: mappedOperator,
+        };
+      }
+
+      // Parse value - try to detect type
+      let parsedValue: any = value.trim();
+      if (parsedValue === 'true') parsedValue = true;
+      else if (parsedValue === 'false') parsedValue = false;
+      else if (!isNaN(Number(parsedValue)) && parsedValue !== '') parsedValue = Number(parsedValue);
+      else if ((parsedValue.startsWith("'") && parsedValue.endsWith("'")) ||
+               (parsedValue.startsWith('"') && parsedValue.endsWith('"'))) {
+        parsedValue = parsedValue.slice(1, -1);
+      }
+
+      return {
+        key: key.trim(),
+        operator: mappedOperator,
+        value: parsedValue,
+      };
+    }
+  }
+
+  // Fallback: couldn't parse, return as-is with equals operator
+  return {
+    key: trimmed,
+    operator: BinaryOperator.EQUALS,
+    value: true,
+  };
+}
+
 function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): object {
   return {
     id: nodeId,
@@ -123,7 +194,7 @@ function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): obj
     label: node.label || 'Switch',
     description: node.description,
     conditions: node.conditions.map(c => ({
-      expr: c.if,
+      predicate: parseExpressionToPredicate(c.if),
       label: c.then,
     })),
     elseLabel: node.else,

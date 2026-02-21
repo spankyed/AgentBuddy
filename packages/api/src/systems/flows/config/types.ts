@@ -71,11 +71,10 @@ export type Predicate = {
   key: string;
   operator: BinaryOperator;
   value?: any;
-};
+} | ((context: any) => boolean);
 
 export type Condition = {
   predicate?: Predicate;
-  expr?: string;  // Legacy format - to be deprecated
   label?: string;
 };
 

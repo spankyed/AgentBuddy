@@ -3648,12 +3648,32 @@ interface UpdateNode extends NodeBase {
     entityId: string;
     onMissing?: 'fail' | 'ignore' | 'create';
 }
-interface DecisionNode extends NodeBase {
-    nodeType: 'decision';
-    conditions: Array<{
-        expr: string;
-        label?: string;
-    }>;
+declare enum BinaryOperator {
+    EQUALS = "equals",
+    NOT_EQUALS = "not_equals",
+    GREATER_THAN = "greater_than",
+    LESS_THAN = "less_than",
+    GREATER_THAN_OR_EQUALS = "greater_than_or_equals",
+    LESS_THAN_OR_EQUALS = "less_than_or_equals",
+    CONTAINS = "contains",
+    STARTS_WITH = "starts_with",
+    ENDS_WITH = "ends_with",
+    MATCHES = "matches",
+    IS_EMPTY = "is_empty",
+    IS_NULL = "is_null"
+}
+type Predicate = {
+    key: string;
+    operator: BinaryOperator;
+    value?: any;
+} | ((context: any) => boolean);
+type Condition = {
+    predicate?: Predicate;
+    label?: string;
+};
+interface SwitchNode extends NodeBase {
+    nodeType: 'switch';
+    conditions: Array<Condition>;
     elseLabel?: string;
 }
 interface FireNode extends NodeBase {
@@ -3710,7 +3730,7 @@ interface ActionNode extends NodeBase {
         default?: any;
     }>;
 }
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | DecisionNode | FireNode | ListenNode | TransformNode | FlowNode | KeepAliveNode | LLMNode;
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenNode | TransformNode | FlowNode | KeepAliveNode | LLMNode;
 /** Literal union of all nodeType strings (keeps Base clean) */
 type NodeKind = NodeEntity['nodeType'];
 type NodeCreateInput = Partial<NodeEntity> & {
@@ -4813,6 +4833,7 @@ declare const services: {
             readonly flowEventNodes: (flowId: EARS.EntityId) => ListenNode[];
             readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
             readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
+            readonly nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string) => NodeEntity | undefined;
             readonly eventTracks: (flowTNodeId: EARS.EntityId) => TrackEntity[];
             readonly possibleEvents: (flowTNodeId: EARS.EntityId) => EventListenerEntity[];
             readonly buildFlowHierarchy: (flowTNodeId: EARS.EntityId) => Array<{

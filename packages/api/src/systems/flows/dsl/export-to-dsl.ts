@@ -199,15 +199,38 @@ function decompileStepNode(
 
     case 'switch': {
       const switchNode = node as SwitchNode;
+
+      // Map BinaryOperator enum values back to DSL symbols
+      const operatorToDsl: Record<string, string> = {
+        equals: '==',
+        not_equals: '!=',
+        greater_than: '>',
+        less_than: '<',
+        greater_than_or_equals: '>=',
+        less_than_or_equals: '<=',
+        contains: 'contains',
+        starts_with: 'starts_with',
+        ends_with: 'ends_with',
+        matches: 'matches',
+        is_empty: 'is_empty',
+        is_null: 'is_null',
+      };
+
       const dsl: DSLSwitchNode = {
         type: 'switch',
         conditions: switchNode.conditions.map(c => {
-          // Support both new predicate format and legacy expr format
           let ifExpr = '';
-          if (c.predicate) {
-            ifExpr = `${c.predicate.key} ${c.predicate.operator} ${c.predicate.value}`;
-          } else if (c.expr) {
-            ifExpr = c.expr;
+          if (c.predicate && typeof c.predicate !== 'function') {
+            // Decompile structured predicate back to DSL expression string
+            const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
+            // Unary operators don't need a value
+            if (c.predicate.operator === 'is_empty' || c.predicate.operator === 'is_null') {
+              ifExpr = `${c.predicate.key} ${opSymbol}`;
+            } else {
+              ifExpr = `${c.predicate.key} ${opSymbol} ${c.predicate.value ?? ''}`;
+            }
+          } else if (typeof c.predicate === 'function') {
+            ifExpr = '[custom function]';
           }
           return {
             if: ifExpr,
