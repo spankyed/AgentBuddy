@@ -56,8 +56,9 @@ const edgePath = computed(() => {
   }
 
   // Single bend point - halfway between source and target horizontally
-  const bendX = sourceX + Math.min(edge.maxBendOffset, (targetX - sourceX) / 2)
-  const radius = Math.min(edge.cornerRadius, vDist / 2.5, (targetX - sourceX) / 4)
+  const hDist = Math.max(0, targetX - sourceX)
+  const bendX = sourceX + Math.min(edge.maxBendOffset, hDist / 2)
+  const radius = Math.min(edge.cornerRadius, vDist / 2.5, Math.max(1, hDist / 4))
   const dir = targetY > sourceY ? 1 : -1
 
   let path = `M ${sourceX} ${sourceY}`

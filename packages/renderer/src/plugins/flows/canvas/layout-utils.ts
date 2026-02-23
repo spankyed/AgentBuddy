@@ -61,9 +61,10 @@ function buildElkGraph(
     const branchCount = node.conditions?.length ?? 0
 
     // Calculate height (switch nodes need more height for branches)
+    // Constants must match SwitchNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=26, bottom padding=10
     let height: number = nodeHeight
     if (isSwitch) {
-      height = Math.max(nodeHeight, 48 + (branchCount + 1) * 22 + 10)
+      height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
     }
 
     // Single input port (except for listen nodes)

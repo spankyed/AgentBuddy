@@ -451,10 +451,10 @@ const flowsState = setup({
     connectFromHandleAndSend: assign(({ context, event }) => {
       const ev = typeOf('NODE.CLICK', event);
       const handle = context.selectedHandle;
-      if (!handle) return {};
+      if (!handle) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
 
-      // Don't connect to self
-      if (handle.nodeId === ev.nodeId) return {};
+      // Don't connect to self — select the node and clear handle instead
+      if (handle.nodeId === ev.nodeId) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
 
       const edgeId = `Edge-${randId()}`;
       const newEdge = {
@@ -772,8 +772,9 @@ const flowsState = setup({
         const sourceMatches = edge.source === sourceId;
         const targetMatches = edge.target === targetId;
         // For switch nodes, also match by handle to differentiate branches
-        const sourceHandleMatches = sourceHandle ? edge.sourceHandle === sourceHandle : !edge.sourceHandle;
-        const targetHandleMatches = targetHandle ? edge.targetHandle === targetHandle : !edge.targetHandle;
+        // Normalize null/undefined to avoid mismatches
+        const sourceHandleMatches = (sourceHandle || null) === (edge.sourceHandle || null);
+        const targetHandleMatches = (targetHandle || null) === (edge.targetHandle || null);
 
         if (sourceMatches && targetMatches && sourceHandleMatches && targetHandleMatches) {
           // Update the edge ID to the real relation ID
@@ -1019,7 +1020,7 @@ const flowsState = setup({
       }
     },
     view: {
-      exit: 'deselectNode',
+      exit: ['deselectNode', 'deselectHandle'],
       tags: ['view-flow'],
       meta: {
         ...breadcrumbWithParams<FlowsContext>({

@@ -262,10 +262,8 @@ function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
   emit('edge-update-end', event)
 }
 
-// Validation function to prevent multiple connections per handle
+// Validation function to prevent self-connections
 function isValidConnection(connection: Connection): boolean {
-  // Always return true - let Vue Flow handle validation during edge updates
-  // We'll validate connections in the state machine instead
-  return true
+  return connection.source !== connection.target
 }
 </script> 

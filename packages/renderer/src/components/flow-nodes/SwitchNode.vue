@@ -17,7 +17,7 @@
         <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-neutral-600/60 text-neutral-300">
           {{ i + 1 }}
         </span>
-        <span class="text-[11px] text-neutral-200 truncate flex-1">
+        <span class="text-[11px] text-neutral-200 truncate flex-1" :title="branch.label || branch.expression || `Branch ${i + 1}`">
           {{ branch.label || branch.expression || `Branch ${i + 1}` }}
         </span>
       </div>

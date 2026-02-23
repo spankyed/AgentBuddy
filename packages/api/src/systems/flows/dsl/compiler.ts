@@ -525,14 +525,15 @@ function compileTrack(
 
     // Handle switch nodes
     if (step.type === 'switch') {
-      for (const condition of step.conditions) {
+      for (let ci = 0; ci < step.conditions.length; ci++) {
+        const condition = step.conditions[ci];
         const targetId = globalLabelMap.get(condition.then);
         if (targetId) {
           trackRelations.push({
             source: stepId,
             kind: EARS.RelKind.TRANSITIONS_TO,
             target: targetId,
-            info: { condition: condition.then },
+            info: { sourceHandle: `branch-${ci}`, condition: condition.then },
           });
         }
       }
@@ -543,7 +544,7 @@ function compileTrack(
             source: stepId,
             kind: EARS.RelKind.TRANSITIONS_TO,
             target: elseTargetId,
-            info: { condition: 'else' },
+            info: { sourceHandle: `branch-${step.conditions.length}`, condition: 'else' },
           });
         }
       }

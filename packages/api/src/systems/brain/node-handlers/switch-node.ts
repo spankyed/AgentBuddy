@@ -46,16 +46,19 @@ function evaluateOperator(operator: BinaryOperator, actual: any, expected: any):
       return actual != expected;
 
     case Op.GREATER_THAN:
-      return Number(actual) > Number(expected);
-
     case Op.LESS_THAN:
-      return Number(actual) < Number(expected);
-
     case Op.GREATER_THAN_OR_EQUALS:
-      return Number(actual) >= Number(expected);
-
-    case Op.LESS_THAN_OR_EQUALS:
-      return Number(actual) <= Number(expected);
+    case Op.LESS_THAN_OR_EQUALS: {
+      const numActual = Number(actual);
+      const numExpected = Number(expected);
+      if (isNaN(numActual) || isNaN(numExpected)) {
+        brainLogger.warn(`Numeric comparison with NaN: operator=${operator}, actual=${actual}, expected=${expected}`);
+      }
+      if (operator === Op.GREATER_THAN) return numActual > numExpected;
+      if (operator === Op.LESS_THAN) return numActual < numExpected;
+      if (operator === Op.GREATER_THAN_OR_EQUALS) return numActual >= numExpected;
+      return numActual <= numExpected;
+    }
 
     case Op.CONTAINS:
       return String(actual).includes(String(expected));
@@ -167,6 +170,15 @@ export function switchNodeHandler(
       hasPredicate: !!c.predicate,
     })),
   });
+
+  if (node.conditions.length === 0) {
+    brainLogger.error('Switch node has no conditions:', { nodeLabel: node.label });
+    actor.send({
+      type: 'ERROR',
+      error: 'Switch node has no conditions to evaluate',
+    });
+    return;
+  }
 
   try {
     // Evaluate conditions and get the matching branch index
