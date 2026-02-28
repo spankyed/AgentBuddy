@@ -46,9 +46,9 @@ export const chatFlow: Rows = {
       nodeType: "switch",
       label: "Message Type",
       conditions: [
-        { expr: "type === 'question'", label: "Question" },
-        { expr: "type === 'command'", label: "Command" },
-        { expr: "type === 'chat'", label: "Chat" }
+        { predicate: { key: '$.type', operator: 'equals', value: 'question' }, label: "Question" },
+        { predicate: { key: '$.type', operator: 'equals', value: 'command' }, label: "Command" },
+        { predicate: { key: '$.type', operator: 'equals', value: 'chat' }, label: "Chat" },
       ],
       elseLabel: "Unknown"
     },
@@ -163,8 +163,8 @@ export const chatFlow: Rows = {
     { source: "Node-b2", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b8", info: {} },
 
     /* Switch node outputs */
-    { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: { condition: "Question" } },
-    { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b11", info: { condition: "Command" } },
+    { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b4", info: { sourceHandle: "branch-0" } },
+    { source: "Node-b3", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b11", info: { sourceHandle: "branch-1" } },
     
     /* Flow node */
     { source: "Node-b11", kind: EARS.RelKind.TRANSITIONS_TO, target: "Node-b5", info: {} },

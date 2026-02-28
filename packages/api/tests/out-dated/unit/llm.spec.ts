@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import * as llmService from '../../src/services/llm.js';
+import * as llmService from '../../../src/services/llm.js';
 
 // Mock the ai library
 vi.mock('ai', () => ({

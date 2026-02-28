@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { describe, expect, it, beforeAll } from 'vitest';
-import * as llmService from '../../src/services/llm.js';
+import * as llmService from '../../../src/services/llm.js';
 
 describe('LLM Service - Smoke Tests', () => {
   const hasApiKey = !!process.env.OPENAI_API_KEY;
