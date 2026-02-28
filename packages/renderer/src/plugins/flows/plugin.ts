@@ -6,7 +6,7 @@ import settings from './settings.vue';
 
 const flowsPlugin: Plugin = {
   id,
-  label: 'Dialog Flows',
+  label: 'Flows',
   icon: Network,
   state,
   canvas,
