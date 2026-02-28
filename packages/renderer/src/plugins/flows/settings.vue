@@ -79,7 +79,7 @@
     </CollapsibleSection>
 
     <!-- Import Flows Section -->
-    <CollapsibleSection label="Import Flows" :default-open="false" class="mb-8">
+    <CollapsibleSection label="Import Flows" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
         Import flows from an exported DSL JSON file
       </p>
@@ -136,6 +136,7 @@ import type { FlowsSettings } from '@app/api'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
+import { T } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js'
 
 interface Props {
   settings?: FlowsSettings
