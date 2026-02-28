@@ -24,6 +24,20 @@
       </div>
     </CollapsibleSection>
 
+    <!-- Backup & Restore Section -->
+    <CollapsibleSection label="Backup & Restore" :default-open="false" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Export and import database backups.
+      </p>
+      <button
+        @click="openBackupRestore"
+        class="px-4 py-2 bg-neutral-800 text-neutral-300 rounded-lg hover:bg-neutral-700 transition-colors flex items-center gap-2 text-sm font-medium border border-neutral-700/50"
+      >
+        <HardDriveDownload class="w-4 h-4" />
+        Open Backup & Restore
+      </button>
+    </CollapsibleSection>
+
     <!-- Danger Zone Section -->
     <CollapsibleSection label="Danger Zone" :default-open="false" class="mb-8">
       <div class="space-y-4">
@@ -52,6 +66,7 @@
 import { reactive } from 'vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@app/api'
 import { applicationState } from '@/main'
 
@@ -81,6 +96,13 @@ const saveHotkeys = () => {
     path: ['hotkeys'],
     value: hotkeys
   })
+}
+
+// Open backup & restore page
+const openBackupRestore = () => {
+  const databaseActor = applicationState.system.get('database')
+  databaseActor.send({ type: 'VIEW_BACKUP' })
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'database' })
 }
 
 // Reset database function
