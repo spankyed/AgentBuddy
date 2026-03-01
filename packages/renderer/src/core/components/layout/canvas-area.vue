@@ -4,7 +4,7 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800 canvas-header" :class="headerClass">
+    <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800" :class="[headerClass, menuOpen ? '' : 'canvas-header']">
       <!-- ▸ Breadcrumbs with inline ⋮ menu trigger -->
       <nav
         v-if="breadcrumbs?.length"
