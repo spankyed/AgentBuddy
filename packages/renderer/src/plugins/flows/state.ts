@@ -62,6 +62,13 @@ export interface FlowsContext {
     errors: string[];
     importedFlowNames: string[];
   };
+  // DSL Export state
+  dslExport: {
+    status: 'idle' | 'exporting' | 'success' | 'error';
+    errors: string[];
+    filePath: string;
+    flowCount: number;
+  };
 }
 
 type SystemEvent = OutgoingFlowsEvents
@@ -72,6 +79,9 @@ type SystemEvent = OutgoingFlowsEvents
   // DSL Import backend responses
   | { type: 'DSL_IMPORTED'; flowIds: string[] }
   | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
+  // DSL Export backend responses
+  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
+  | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -100,6 +110,9 @@ type UIEvent =
   // DSL Import events
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
   | { type: 'DSL.RESET_STATUS' }
+  // DSL Export events
+  | { type: 'DSL.EXPORT'; directory: string }
+  | { type: 'DSL.RESET_EXPORT_STATUS' }
   // Layout events
   | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
@@ -883,6 +896,51 @@ const flowsState = setup({
     resetImportStatus: assign({
       dslImport: { status: 'idle' as const, errors: [], importedFlowNames: [] },
     }),
+
+    /* ── DSL Export actions ────────────────────────────────── */
+    setExporting: assign(({ context }) => ({
+      dslExport: {
+        ...context.dslExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportDSL: ({ event }) => {
+      const ev = typeOf('DSL.EXPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXPORT_DSL',
+        directory: ev.directory,
+      } as any);
+    },
+
+    handleDSLExported: assign(({ event }) => {
+      const ev = typeOf('DSL_EXPORTED', event);
+      return {
+        dslExport: {
+          status: 'success' as const,
+          errors: [],
+          filePath: ev.filePath,
+          flowCount: ev.flowCount,
+        },
+      };
+    }),
+
+    handleDSLExportFailed: assign(({ event }) => {
+      const ev = typeOf('DSL_EXPORT_FAILED', event);
+      return {
+        dslExport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          filePath: '',
+          flowCount: 0,
+        },
+      };
+    }),
+
+    resetExportStatus: assign({
+      dslExport: { status: 'idle' as const, errors: [], filePath: '', flowCount: 0 },
+    }),
   },
   guards: {
     targetIs,
@@ -913,6 +971,12 @@ const flowsState = setup({
       status: 'idle',
       errors: [],
       importedFlowNames: [],
+    },
+    dslExport: {
+      status: 'idle',
+      errors: [],
+      filePath: '',
+      flowCount: 0,
     },
   },
   on: {
@@ -985,6 +1049,19 @@ const flowsState = setup({
     },
     DSL_IMPORT_FAILED: {
       actions: 'handleDSLImportFailed'
+    },
+    // DSL Export events
+    'DSL.EXPORT': {
+      actions: ['setExporting', 'sendExportDSL']
+    },
+    'DSL.RESET_EXPORT_STATUS': {
+      actions: 'resetExportStatus'
+    },
+    DSL_EXPORTED: {
+      actions: 'handleDSLExported'
+    },
+    DSL_EXPORT_FAILED: {
+      actions: 'handleDSLExportFailed'
     },
     ...TRAIL_CLICK([
       ['.list', 'list'],

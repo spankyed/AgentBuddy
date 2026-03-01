@@ -11,7 +11,7 @@ import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import type { ActionEntity } from '@/systems/actions/types';
-import { compile, validate, type FlowDSL, type ValidationError } from './dsl';
+import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -83,6 +83,7 @@ export const IncomingFlowsEvents = [
     newTarget: z.string()
   }),
   busEvent('IMPORT_DSL', { dsl: z.any() }),
+  busEvent('EXPORT_DSL', { directory: z.string() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -105,6 +106,8 @@ export type OutgoingFlowsEvents =
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
   | { type: 'DSL_IMPORTED'; flowIds: EARS.EntityId[]; errors?: string[] }
   | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
+  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
+  | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
 type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
 
@@ -404,6 +407,33 @@ export const flowsSystem = setup({
 
       logger.info('DSL import complete', { flowIds });
     },
+
+    exportDSL: ({ system, event }) => {
+      const { directory } = typeOf('EXPORT_DSL', event);
+      const pluginId = flows;
+
+      logger.info('Exporting flows to DSL', { directory });
+
+      try {
+        const { filePath, flowCount } = exportFlowsDSL(directory);
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'DSL_EXPORTED',
+          filePath,
+          flowCount,
+        }));
+
+        logger.info('DSL export complete', { filePath, flowCount });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('DSL export failed', { error: message });
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'DSL_EXPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
   },
   guards: {},
   delays: {}
@@ -452,6 +482,9 @@ export const flowsSystem = setup({
         },
         IMPORT_DSL: {
           actions: 'importDSL',
+        },
+        EXPORT_DSL: {
+          actions: 'exportDSL',
         },
       }
     },
