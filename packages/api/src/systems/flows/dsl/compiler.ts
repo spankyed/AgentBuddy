@@ -213,9 +213,11 @@ function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): Ste
       description: node.description,
       conditions: node.conditions.map((c, ci) => ({
         predicate: parseExpressionToPredicate(c.if),
-        label: c.then ?? (c.steps ? getStepLabel(c.steps[0], ci) : `branch-${ci}`),
+        label: c.steps.length > 0 ? getStepLabel(c.steps[0], ci) : `branch-${ci}`,
       })),
-      elseLabel: typeof node.else === 'string' ? node.else : undefined,
+      elseLabel: node.else && node.else.length > 0
+        ? getStepLabel(node.else[0], node.conditions.length)
+        : undefined,
       final: node.final,
     },
     relations: [],
@@ -392,9 +394,8 @@ function registerInlineSwitchStepIds(
     }
   }
 
-  const elseObj = switchStep.else;
-  if (elseObj && typeof elseObj === 'object' && 'steps' in elseObj) {
-    registerInlineSteps(elseObj.steps, flowName, `${pathPrefix}-else`, globalLabelMap, inlineStepIds);
+  if (Array.isArray(switchStep.else) && switchStep.else.length > 0) {
+    registerInlineSteps(switchStep.else, flowName, `${pathPrefix}-else`, globalLabelMap, inlineStepIds);
   }
 }
 
@@ -415,6 +416,7 @@ function compileStepList(
   stepKeys: string[],
   fCtx: FlowCompileCtx,
   out: { entities: object[]; relations: Relation[] },
+  continuationId?: string,
 ): void {
   // Compile each step
   for (let si = 0; si < steps.length; si++) {
@@ -438,7 +440,8 @@ function compileStepList(
     const stepId = stepIds[si];
 
     if (step.type === 'switch') {
-      wireSwitchEdges(step, stepId, stepKeys[si], fCtx, out);
+      const switchContinuation = si < stepIds.length - 1 ? stepIds[si + 1] : continuationId;
+      wireSwitchEdges(step, stepId, stepKeys[si], fCtx, out, switchContinuation);
       continue;
     }
 
@@ -460,13 +463,19 @@ function compileStepList(
         kind: EARS.RelKind.TRANSITIONS_TO,
         target: stepIds[si + 1],
       });
+    } else if (continuationId) {
+      out.relations.push({
+        source: stepId,
+        kind: EARS.RelKind.TRANSITIONS_TO,
+        target: continuationId,
+      });
     }
   }
 }
 
 /**
- * Wire TRANSITIONS_TO edges from a switch node to its branch targets.
- * Handles both label references (then) and inline branches (steps).
+ * Wire TRANSITIONS_TO edges from a switch node to its inline branch targets.
+ * Each branch's last step wires to the continuationId (implicit convergence).
  */
 function wireSwitchEdges(
   step: DSLSwitchNode,
@@ -474,21 +483,12 @@ function wireSwitchEdges(
   switchKey: string,
   fCtx: FlowCompileCtx,
   out: { entities: object[]; relations: Relation[] },
+  continuationId?: string,
 ): void {
   for (let ci = 0; ci < step.conditions.length; ci++) {
     const condition = step.conditions[ci];
 
-    if (condition.then) {
-      const targetId = fCtx.globalLabelMap.get(condition.then);
-      if (targetId) {
-        out.relations.push({
-          source: stepId,
-          kind: EARS.RelKind.TRANSITIONS_TO,
-          target: targetId,
-          info: { sourceHandle: `branch-${ci}`, condition: condition.then },
-        });
-      }
-    } else if (condition.steps && condition.steps.length > 0) {
+    if (condition.steps && condition.steps.length > 0) {
       const branchPrefix = `${switchKey}-c${ci}`;
       const firstInlineId = fCtx.inlineStepIds.get(`${branchPrefix}-i0`)!;
 
@@ -501,36 +501,24 @@ function wireSwitchEdges(
 
       const inlineIds = condition.steps.map((_, si) => fCtx.inlineStepIds.get(`${branchPrefix}-i${si}`)!);
       const inlineKeys = condition.steps.map((_, si) => `${branchPrefix}-i${si}`);
-      compileStepList(condition.steps, inlineIds, inlineKeys, fCtx, out);
+      compileStepList(condition.steps, inlineIds, inlineKeys, fCtx, out, continuationId);
     }
   }
 
-  if (step.else) {
-    if (typeof step.else === 'string') {
-      const elseTargetId = fCtx.globalLabelMap.get(step.else);
-      if (elseTargetId) {
-        out.relations.push({
-          source: stepId,
-          kind: EARS.RelKind.TRANSITIONS_TO,
-          target: elseTargetId,
-          info: { sourceHandle: `branch-${step.conditions.length}`, condition: 'else' },
-        });
-      }
-    } else if (step.else.steps && step.else.steps.length > 0) {
-      const elsePrefix = `${switchKey}-else`;
-      const firstElseId = fCtx.inlineStepIds.get(`${elsePrefix}-i0`)!;
+  if (step.else && step.else.length > 0) {
+    const elsePrefix = `${switchKey}-else`;
+    const firstElseId = fCtx.inlineStepIds.get(`${elsePrefix}-i0`)!;
 
-      out.relations.push({
-        source: stepId,
-        kind: EARS.RelKind.TRANSITIONS_TO,
-        target: firstElseId,
-        info: { sourceHandle: `branch-${step.conditions.length}`, condition: 'else' },
-      });
+    out.relations.push({
+      source: stepId,
+      kind: EARS.RelKind.TRANSITIONS_TO,
+      target: firstElseId,
+      info: { sourceHandle: `branch-${step.conditions.length}`, condition: 'else' },
+    });
 
-      const elseIds = step.else.steps.map((_, si) => fCtx.inlineStepIds.get(`${elsePrefix}-i${si}`)!);
-      const elseKeys = step.else.steps.map((_, si) => `${elsePrefix}-i${si}`);
-      compileStepList(step.else.steps, elseIds, elseKeys, fCtx, out);
-    }
+    const elseIds = step.else.map((_, si) => fCtx.inlineStepIds.get(`${elsePrefix}-i${si}`)!);
+    const elseKeys = step.else.map((_, si) => `${elsePrefix}-i${si}`);
+    compileStepList(step.else, elseIds, elseKeys, fCtx, out, continuationId);
   }
 }
 

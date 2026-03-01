@@ -362,56 +362,26 @@ function validateSwitchStep(
       errors.push({ path: condPath, message: 'Condition must have an "if" expression string' });
     }
 
-    const hasThen = cond.then !== undefined;
-    const hasSteps = cond.steps !== undefined;
-
-    if (hasThen && hasSteps) {
-      errors.push({ path: condPath, message: 'Condition cannot have both "then" and "steps" (mutually exclusive)' });
-    } else if (!hasThen && !hasSteps) {
-      errors.push({ path: condPath, message: 'Condition must have either a "then" label or "steps" array' });
-    } else if (hasThen) {
-      if (typeof cond.then !== 'string') {
-        errors.push({ path: condPath, message: '"then" must be a string (target label)' });
-      } else if (!ctx.nodeLabels.has(cond.then)) {
-        errors.push({
-          path: `${condPath}.then`,
-          message: `Referenced node "${cond.then}" not found in this flow`,
-        });
-      }
-    } else if (hasSteps) {
-      if (!Array.isArray(cond.steps)) {
-        errors.push({ path: `${condPath}.steps`, message: '"steps" must be an array' });
-      } else if (cond.steps.length === 0) {
-        errors.push({ path: `${condPath}.steps`, message: 'Inline steps array must not be empty' });
-      } else {
-        for (let si = 0; si < cond.steps.length; si++) {
-          errors.push(...validateStep(cond.steps[si], `${condPath}.steps[${si}]`, ctx, options));
-        }
+    if (!Array.isArray(cond.steps)) {
+      errors.push({ path: `${condPath}.steps`, message: 'Condition must have a "steps" array' });
+    } else if (cond.steps.length === 0) {
+      errors.push({ path: `${condPath}.steps`, message: 'Steps array must not be empty' });
+    } else {
+      for (let si = 0; si < cond.steps.length; si++) {
+        errors.push(...validateStep(cond.steps[si], `${condPath}.steps[${si}]`, ctx, options));
       }
     }
   }
 
   if (s.else !== undefined) {
-    if (typeof s.else === 'string') {
-      if (!ctx.nodeLabels.has(s.else)) {
-        errors.push({
-          path: `${path}.else`,
-          message: `Referenced node "${s.else}" not found in this flow`,
-        });
-      }
-    } else if (typeof s.else === 'object' && s.else !== null && !Array.isArray(s.else)) {
-      const elseObj = s.else as Record<string, unknown>;
-      if (!Array.isArray(elseObj.steps)) {
-        errors.push({ path: `${path}.else`, message: 'Else object must have a "steps" array' });
-      } else if (elseObj.steps.length === 0) {
-        errors.push({ path: `${path}.else.steps`, message: 'Else steps array must not be empty' });
-      } else {
-        for (let si = 0; si < elseObj.steps.length; si++) {
-          errors.push(...validateStep(elseObj.steps[si], `${path}.else.steps[${si}]`, ctx, options));
-        }
-      }
+    if (!Array.isArray(s.else)) {
+      errors.push({ path: `${path}.else`, message: '"else" must be an array of steps' });
+    } else if (s.else.length === 0) {
+      errors.push({ path: `${path}.else`, message: 'Else steps array must not be empty' });
     } else {
-      errors.push({ path: `${path}.else`, message: '"else" must be a string (target label) or an object with "steps"' });
+      for (let si = 0; si < s.else.length; si++) {
+        errors.push(...validateStep(s.else[si], `${path}.else[${si}]`, ctx, options));
+      }
     }
   }
 
@@ -541,14 +511,11 @@ function collectStepLabels(
           );
         }
       }
-      if (step.else && typeof step.else === 'object' && !Array.isArray(step.else)) {
-        const elseObj = step.else as Record<string, unknown>;
-        if (Array.isArray(elseObj.steps)) {
-          collectStepLabels(
-            elseObj.steps as unknown[], nodeLabels, errors,
-            `${basePath}[${stepIdx}].else.steps`
-          );
-        }
+      if (Array.isArray(step.else)) {
+        collectStepLabels(
+          step.else as unknown[], nodeLabels, errors,
+          `${basePath}[${stepIdx}].else`
+        );
       }
     }
   }

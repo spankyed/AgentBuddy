@@ -119,15 +119,21 @@ function getFlowEdges(flowId: EARS.EntityId): EdgeEntity[] {
           targetEntity: target,
         })[0];
 
-        if (seen.has(relId)) return;
+        if (!relId || seen.has(relId)) return;
         seen.add(relId);
+
+        const relDetail = edgeStore.find({
+          sourceEntity: source,
+          relationType: relation,
+          targetEntity: target,
+        })[0];
 
         edges.push({
           id: relId,
           kind: relation,
           source,
           target,
-          info: {},
+          info: (relDetail?.info as Record<string, unknown>) || {},
         });
       });
   }
@@ -291,9 +297,18 @@ function decompileStepNode(
       // Find outgoing edges from this switch node (for inline branch detection)
       const switchEdges = graphCtx.edges.filter(e => e.source === node.id);
 
+      // Filter out incomplete conditions (empty predicate key = unfilled UI defaults)
+      const validConditions = switchNode.conditions.filter(c => {
+        if (!c.predicate || typeof c.predicate === 'function') return !!c.predicate;
+        return c.predicate.key && c.predicate.key.trim() !== '';
+      });
+
       const dsl: DSLSwitchNode = {
         type: 'switch',
-        conditions: switchNode.conditions.map((c, ci) => {
+        conditions: validConditions.map((c) => {
+          // Use original index for sourceHandle matching
+          const ci = switchNode.conditions.indexOf(c);
+
           let ifExpr = '';
           if (c.predicate && typeof c.predicate !== 'function') {
             const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
@@ -318,9 +333,16 @@ function decompileStepNode(
             if (exclusive && chain.length > 0) {
               return { if: ifExpr, steps: decompileChain(chain, graphCtx) };
             }
+            // Non-exclusive: inline just the direct target
+            const targetNode = graphCtx.nodes.find(n => n.id === branchEdge.target);
+            if (targetNode) {
+              graphCtx.inlinedNodeIds.add(targetNode.id as string);
+              return { if: ifExpr, steps: [decompileStepNode(targetNode, graphCtx)] };
+            }
           }
 
-          return { if: ifExpr, then: c.label || '' };
+          // No edge: empty steps
+          return { if: ifExpr, steps: [] };
         }),
       };
 
@@ -329,7 +351,7 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
-      // Handle else branch
+      // Handle else branch (uses original conditions.length for sourceHandle index)
       const elseEdge = switchEdges.find(
         e => (e.info as any)?.sourceHandle === `branch-${switchNode.conditions.length}`
       );
@@ -339,12 +361,14 @@ function decompileStepNode(
           elseEdge.target, node.id as string, graphCtx
         );
         if (exclusive && chain.length > 0) {
-          dsl.else = { steps: decompileChain(chain, graphCtx) };
-        } else if (switchNode.elseLabel) {
-          dsl.else = switchNode.elseLabel;
+          dsl.else = decompileChain(chain, graphCtx);
+        } else {
+          const targetNode = graphCtx.nodes.find(n => n.id === elseEdge.target);
+          if (targetNode) {
+            graphCtx.inlinedNodeIds.add(targetNode.id as string);
+            dsl.else = [decompileStepNode(targetNode, graphCtx)];
+          }
         }
-      } else if (switchNode.elseLabel) {
-        dsl.else = switchNode.elseLabel;
       }
 
       return dsl;

@@ -64,24 +64,14 @@ export interface DSLLLMNode extends DSLNodeBase {
   systemPrompt?: string;
 }
 
-/** Switch condition that references an existing node by label */
-interface DSLSwitchConditionRef {
-  if: string;       // Expression to evaluate
-  then: string;     // Label of node to transition to
-  steps?: never;    // Mutually exclusive with 'then'
-}
-
 /** Switch condition with inline branch steps */
-interface DSLSwitchConditionInline {
-  if: string;       // Expression to evaluate
-  then?: never;     // Mutually exclusive with 'steps'
+export interface DSLSwitchCondition {
+  if: string;            // Expression to evaluate
   steps: DSLStepNode[];  // Inline steps for this branch
 }
 
-export type DSLSwitchCondition = DSLSwitchConditionRef | DSLSwitchConditionInline;
-
-/** Else branch: label reference or inline steps */
-export type DSLSwitchElse = string | { steps: DSLStepNode[] };
+/** Else branch: inline steps */
+export type DSLSwitchElse = DSLStepNode[];
 
 /** Branch flow based on conditions */
 export interface DSLSwitchNode extends DSLNodeBase {
