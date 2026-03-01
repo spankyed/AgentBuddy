@@ -142,22 +142,10 @@ function validateFlow(
     }
     nodeLabels.add(trackLabel);
 
-    // Step labels
+    // Step labels (including inline switch branch steps)
     const steps = track.steps as unknown[];
     if (Array.isArray(steps)) {
-      for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
-        const step = steps[stepIdx] as Record<string, unknown>;
-        if (!step || typeof step !== 'object') continue;
-
-        const stepLabel = getStepLabel(step, stepIdx);
-        if (nodeLabels.has(stepLabel)) {
-          errors.push({
-            path: `${ctx.path}[${trackIdx}].steps[${stepIdx}]`,
-            message: `Duplicate label: "${stepLabel}"`,
-          });
-        }
-        nodeLabels.add(stepLabel);
-      }
+      collectStepLabels(steps, nodeLabels, errors, `${ctx.path}[${trackIdx}].steps`);
     }
   }
   ctx.nodeLabels = nodeLabels;
@@ -273,7 +261,7 @@ function validateStep(
       errors.push(...validateLLMStep(s, path, ctx, options));
       break;
     case 'switch':
-      errors.push(...validateSwitchStep(s, path, ctx));
+      errors.push(...validateSwitchStep(s, path, ctx, options));
       break;
     case 'fire':
       errors.push(...validateFireStep(s, path));
@@ -352,7 +340,8 @@ function validateLLMStep(
 function validateSwitchStep(
   s: Record<string, unknown>,
   path: string,
-  ctx: ValidationContext
+  ctx: ValidationContext,
+  options: ValidateOptions
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -373,24 +362,56 @@ function validateSwitchStep(
       errors.push({ path: condPath, message: 'Condition must have an "if" expression string' });
     }
 
-    if (!cond.then || typeof cond.then !== 'string') {
-      errors.push({ path: condPath, message: 'Condition must have a "then" target label string' });
-    } else if (!ctx.nodeLabels.has(cond.then)) {
-      errors.push({
-        path: `${condPath}.then`,
-        message: `Referenced node "${cond.then}" not found in this flow`,
-      });
+    const hasThen = cond.then !== undefined;
+    const hasSteps = cond.steps !== undefined;
+
+    if (hasThen && hasSteps) {
+      errors.push({ path: condPath, message: 'Condition cannot have both "then" and "steps" (mutually exclusive)' });
+    } else if (!hasThen && !hasSteps) {
+      errors.push({ path: condPath, message: 'Condition must have either a "then" label or "steps" array' });
+    } else if (hasThen) {
+      if (typeof cond.then !== 'string') {
+        errors.push({ path: condPath, message: '"then" must be a string (target label)' });
+      } else if (!ctx.nodeLabels.has(cond.then)) {
+        errors.push({
+          path: `${condPath}.then`,
+          message: `Referenced node "${cond.then}" not found in this flow`,
+        });
+      }
+    } else if (hasSteps) {
+      if (!Array.isArray(cond.steps)) {
+        errors.push({ path: `${condPath}.steps`, message: '"steps" must be an array' });
+      } else if (cond.steps.length === 0) {
+        errors.push({ path: `${condPath}.steps`, message: 'Inline steps array must not be empty' });
+      } else {
+        for (let si = 0; si < cond.steps.length; si++) {
+          errors.push(...validateStep(cond.steps[si], `${condPath}.steps[${si}]`, ctx, options));
+        }
+      }
     }
   }
 
   if (s.else !== undefined) {
-    if (typeof s.else !== 'string') {
-      errors.push({ path: `${path}.else`, message: '"else" must be a string (target label)' });
-    } else if (!ctx.nodeLabels.has(s.else)) {
-      errors.push({
-        path: `${path}.else`,
-        message: `Referenced node "${s.else}" not found in this flow`,
-      });
+    if (typeof s.else === 'string') {
+      if (!ctx.nodeLabels.has(s.else)) {
+        errors.push({
+          path: `${path}.else`,
+          message: `Referenced node "${s.else}" not found in this flow`,
+        });
+      }
+    } else if (typeof s.else === 'object' && s.else !== null && !Array.isArray(s.else)) {
+      const elseObj = s.else as Record<string, unknown>;
+      if (!Array.isArray(elseObj.steps)) {
+        errors.push({ path: `${path}.else`, message: 'Else object must have a "steps" array' });
+      } else if (elseObj.steps.length === 0) {
+        errors.push({ path: `${path}.else.steps`, message: 'Else steps array must not be empty' });
+      } else {
+        for (let si = 0; si < elseObj.steps.length; si++) {
+          errors.push(...validateStep(elseObj.steps[si], `${path}.else.steps[${si}]`, ctx, options));
+        }
+      }
+    } else {
+      errors.push({ path: `${path}.else`, message: '"else" must be a string (target label) or an object with "steps"' });
     }
   }
 
@@ -486,6 +507,52 @@ function validateUpdateStep(
 /*─────────────────────────────────────────────────────────────────
  * Helpers
  *─────────────────────────────────────────────────────────────────*/
+
+/**
+ * Recursively collect step labels, including inline steps inside switch conditions.
+ */
+function collectStepLabels(
+  steps: unknown[],
+  nodeLabels: Set<string>,
+  errors: ValidationError[],
+  basePath: string,
+): void {
+  for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
+    const step = steps[stepIdx] as Record<string, unknown>;
+    if (!step || typeof step !== 'object') continue;
+
+    const stepLabel = getStepLabel(step, stepIdx);
+    if (nodeLabels.has(stepLabel)) {
+      errors.push({
+        path: `${basePath}[${stepIdx}]`,
+        message: `Duplicate label: "${stepLabel}"`,
+      });
+    }
+    nodeLabels.add(stepLabel);
+
+    // Recurse into inline switch branch steps
+    if (step.type === 'switch' && Array.isArray(step.conditions)) {
+      for (let ci = 0; ci < (step.conditions as any[]).length; ci++) {
+        const cond = (step.conditions as any[])[ci];
+        if (cond && Array.isArray(cond.steps)) {
+          collectStepLabels(
+            cond.steps, nodeLabels, errors,
+            `${basePath}[${stepIdx}].conditions[${ci}].steps`
+          );
+        }
+      }
+      if (step.else && typeof step.else === 'object' && !Array.isArray(step.else)) {
+        const elseObj = step.else as Record<string, unknown>;
+        if (Array.isArray(elseObj.steps)) {
+          collectStepLabels(
+            elseObj.steps as unknown[], nodeLabels, errors,
+            `${basePath}[${stepIdx}].else.steps`
+          );
+        }
+      }
+    }
+  }
+}
 
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;

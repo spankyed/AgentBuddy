@@ -44,7 +44,7 @@ import type {
   FlowNode,
   CreateNode,
   UpdateNode,
-  KeepAliveNode
+  // KeepAliveNode
 } from '../config/types';
 import type { ActionEntity } from '@/systems/actions/types';
 import type { PromptEntity } from '@/systems/prompts/types';
@@ -136,15 +136,103 @@ function getFlowEdges(flowId: EARS.EntityId): EdgeEntity[] {
 }
 
 /*─────────────────────────────────────────────────────────────────
+ * Inline Branch Detection
+ *─────────────────────────────────────────────────────────────────*/
+
+interface DecompileGraphCtx {
+  nodes: NodeEntity[];
+  edges: EdgeEntity[];
+  listenNodeIds: Set<string>;
+  inlinedNodeIds: Set<string>;
+  incomingEdges: Map<string, string[]>;   // target -> [sources]
+  outgoingEdges: Map<string, string[]>;   // source -> [targets]
+  actionMap: Map<string, string>;
+  promptMap: Map<string, string>;
+  flowMap: Map<string, string>;
+}
+
+/**
+ * Check if a chain of nodes starting at `startNodeId` is exclusively
+ * reachable from `sourceNodeId` (no other node points into the chain).
+ * Returns the sequential chain of node IDs if exclusive.
+ */
+function isExclusiveChain(
+  startNodeId: string,
+  sourceNodeId: string,
+  graphCtx: DecompileGraphCtx,
+): { exclusive: boolean; chain: string[] } {
+  const { incomingEdges, outgoingEdges, listenNodeIds } = graphCtx;
+
+  const chain: string[] = [];
+  let current = startNodeId;
+  let prevId = sourceNodeId;
+
+  while (true) {
+    if (listenNodeIds.has(current)) break;
+
+    // Each node must have exactly one incoming edge from the expected predecessor
+    const incoming = incomingEdges.get(current) || [];
+    if (incoming.length !== 1 || incoming[0] !== prevId) {
+      return { exclusive: false, chain: [] };
+    }
+
+    chain.push(current);
+
+    // Stop at terminal nodes or fan-out (switch/branch nodes)
+    const outgoing = outgoingEdges.get(current) || [];
+    if (outgoing.length !== 1) break;
+
+    const nextId = outgoing[0];
+    if (chain.includes(nextId)) break;
+    if (listenNodeIds.has(nextId)) break;
+
+    prevId = current;
+    current = nextId;
+  }
+
+  return { exclusive: chain.length > 0, chain };
+}
+
+/**
+ * Decompile a chain of node IDs into DSL steps, marking them as inlined.
+ */
+function decompileChain(
+  chain: string[],
+  graphCtx: DecompileGraphCtx,
+): DSLStepNode[] {
+  return chain.map(nodeId => {
+    graphCtx.inlinedNodeIds.add(nodeId);
+    const node = graphCtx.nodes.find(n => n.id === nodeId)!;
+    return decompileStepNode(node, graphCtx);
+  });
+}
+
+/*─────────────────────────────────────────────────────────────────
  * Step Node Decompilation
  *─────────────────────────────────────────────────────────────────*/
 
+/** Map BinaryOperator enum values back to DSL symbols */
+const operatorToDsl: Record<string, string> = {
+  equals: '==',
+  not_equals: '!=',
+  greater_than: '>',
+  less_than: '<',
+  greater_than_or_equals: '>=',
+  less_than_or_equals: '<=',
+  contains: 'contains',
+  starts_with: 'starts_with',
+  ends_with: 'ends_with',
+  matches: 'matches',
+  is_empty: 'is_empty',
+  is_null: 'is_null',
+};
+
 function decompileStepNode(
   node: NodeEntity,
-  actionMap: Map<string, string>,
-  promptMap: Map<string, string>,
-  flowMap: Map<string, string>
+  graphCtx: DecompileGraphCtx,
 ): DSLStepNode {
+  const { actionMap, promptMap, flowMap } = graphCtx;
+
   switch (node.nodeType) {
     case 'action': {
       const actionNode = node as ActionNode;
@@ -200,30 +288,15 @@ function decompileStepNode(
     case 'switch': {
       const switchNode = node as SwitchNode;
 
-      // Map BinaryOperator enum values back to DSL symbols
-      const operatorToDsl: Record<string, string> = {
-        equals: '==',
-        not_equals: '!=',
-        greater_than: '>',
-        less_than: '<',
-        greater_than_or_equals: '>=',
-        less_than_or_equals: '<=',
-        contains: 'contains',
-        starts_with: 'starts_with',
-        ends_with: 'ends_with',
-        matches: 'matches',
-        is_empty: 'is_empty',
-        is_null: 'is_null',
-      };
+      // Find outgoing edges from this switch node (for inline branch detection)
+      const switchEdges = graphCtx.edges.filter(e => e.source === node.id);
 
       const dsl: DSLSwitchNode = {
         type: 'switch',
-        conditions: switchNode.conditions.map(c => {
+        conditions: switchNode.conditions.map((c, ci) => {
           let ifExpr = '';
           if (c.predicate && typeof c.predicate !== 'function') {
-            // Decompile structured predicate back to DSL expression string
             const opSymbol = operatorToDsl[c.predicate.operator] || c.predicate.operator;
-            // Unary operators don't need a value
             if (c.predicate.operator === 'is_empty' || c.predicate.operator === 'is_null') {
               ifExpr = `${c.predicate.key} ${opSymbol}`;
             } else {
@@ -232,10 +305,22 @@ function decompileStepNode(
           } else if (typeof c.predicate === 'function') {
             ifExpr = '[custom function]';
           }
-          return {
-            if: ifExpr,
-            then: c.label || '',
-          };
+
+          // Try to collapse exclusive branch chain into inline steps
+          const branchEdge = switchEdges.find(
+            e => (e.info as any)?.sourceHandle === `branch-${ci}`
+          );
+
+          if (branchEdge) {
+            const { exclusive, chain } = isExclusiveChain(
+              branchEdge.target, node.id as string, graphCtx
+            );
+            if (exclusive && chain.length > 0) {
+              return { if: ifExpr, steps: decompileChain(chain, graphCtx) };
+            }
+          }
+
+          return { if: ifExpr, then: c.label || '' };
         }),
       };
 
@@ -244,7 +329,24 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
-      if (switchNode.elseLabel) dsl.else = switchNode.elseLabel;
+      // Handle else branch
+      const elseEdge = switchEdges.find(
+        e => (e.info as any)?.sourceHandle === `branch-${switchNode.conditions.length}`
+      );
+
+      if (elseEdge) {
+        const { exclusive, chain } = isExclusiveChain(
+          elseEdge.target, node.id as string, graphCtx
+        );
+        if (exclusive && chain.length > 0) {
+          dsl.else = { steps: decompileChain(chain, graphCtx) };
+        } else if (switchNode.elseLabel) {
+          dsl.else = switchNode.elseLabel;
+        }
+      } else if (switchNode.elseLabel) {
+        dsl.else = switchNode.elseLabel;
+      }
+
       return dsl;
     }
 
@@ -376,11 +478,6 @@ function decompileStepNode(
  * Track Reconstruction
  *─────────────────────────────────────────────────────────────────*/
 
-interface TrackBuilder {
-  listenNode: ListenNode;
-  steps: NodeEntity[];
-}
-
 function buildTracksFromGraph(
   nodes: NodeEntity[],
   edges: EdgeEntity[],
@@ -390,19 +487,37 @@ function buildTracksFromGraph(
 ): Track[] {
   // Find all listen nodes
   const listenNodes = nodes.filter(n => n.nodeType === 'listen') as ListenNode[];
-  const nonListenNodes = nodes.filter(n => n.nodeType !== 'listen');
 
-  // Build outgoing edge map: nodeId → [targetIds]
+  // Build edge maps once for use in chain detection and step collection
+  const incomingEdges = new Map<string, string[]>();
   const outgoingEdges = new Map<string, string[]>();
   for (const edge of edges) {
+    const sources = incomingEdges.get(edge.target) || [];
+    sources.push(edge.source);
+    incomingEdges.set(edge.target, sources);
+
     const targets = outgoingEdges.get(edge.source) || [];
     targets.push(edge.target);
     outgoingEdges.set(edge.source, targets);
   }
 
+  const listenNodeIds = new Set(listenNodes.map(n => n.id as string));
+
+  // Graph context for inline branch detection during decompilation
+  const graphCtx: DecompileGraphCtx = {
+    nodes,
+    edges,
+    listenNodeIds,
+    inlinedNodeIds: new Set(),
+    incomingEdges,
+    outgoingEdges,
+    actionMap,
+    promptMap,
+    flowMap,
+  };
+
   // Build tracks by following edges from each listen node
   const tracks: Track[] = [];
-  const listenNodeIds = new Set(listenNodes.map(n => n.id as string));
 
   // Track used labels to ensure uniqueness
   const usedLabels = new Set<string>();
@@ -414,7 +529,7 @@ function buildTracksFromGraph(
     // BFS/DFS from listen node to collect sequential steps
     function collectSteps(nodeId: string) {
       if (visited.has(nodeId)) return;
-      if (listenNodeIds.has(nodeId) && nodeId !== listenNode.id) return; // Stop at other listen nodes
+      if (listenNodeIds.has(nodeId) && nodeId !== listenNode.id) return;
 
       visited.add(nodeId);
 
@@ -423,7 +538,6 @@ function buildTracksFromGraph(
         const targetNode = nodes.find(n => n.id === targetId);
         if (!targetNode) continue;
 
-        // Don't follow to other listen nodes
         if (targetNode.nodeType === 'listen') continue;
 
         steps.push(targetNode);
@@ -433,10 +547,15 @@ function buildTracksFromGraph(
 
     collectSteps(listenNode.id as string);
 
-    // Convert steps to DSL format
-    const dslSteps = steps.map(step =>
-      decompileStepNode(step, actionMap, promptMap, flowMap)
-    );
+    // Decompile steps, then filter out nodes that were inlined into switch branches
+    const pairs = steps.map(step => ({
+      nodeId: step.id as string,
+      dsl: decompileStepNode(step, graphCtx),
+    }));
+
+    const dslSteps = pairs
+      .filter(p => !graphCtx.inlinedNodeIds.has(p.nodeId))
+      .map(p => p.dsl);
 
     // Build track
     const track: Track = {
