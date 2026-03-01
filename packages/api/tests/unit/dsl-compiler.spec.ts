@@ -1,0 +1,450 @@
+import { compile } from '@/systems/flows/dsl/compiler';
+import type { FlowDSL } from '@/systems/flows/dsl/types';
+import { EARS } from '@/core/types';
+import { BinaryOperator } from '@/systems/flows/config/types';
+import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result';
+import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories';
+import { steps, ctx, flows } from './helpers/fixtures';
+
+/*─────────────────────────────────────────────────────────────────
+ * Tests
+ *─────────────────────────────────────────────────────────────────*/
+
+describe('compile', () => {
+  describe('flow structure', () => {
+    it('creates flow entity with correct label, entityType, flowType', () => {
+      const dsl: FlowDSL = {
+        'My Flow': [{ event: 'start', steps: [] }],
+      };
+      const result = compile(dsl);
+      const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
+
+      expect(flow).toBeDefined();
+      expect(flow.label).toBe('My Flow');
+      expect(flow.entityType).toBe(EARS.Entity.Flow);
+      expect(flow.flowType).toBe('workflow');
+    });
+
+    it('creates listen node for each track with correct eventType', () => {
+      const dsl: FlowDSL = {
+        'My Flow': [
+          { event: 'user.created', steps: [] },
+          { event: 'user.updated', steps: [] },
+        ],
+      };
+      const result = compile(dsl);
+      const listenNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listen');
+
+      expect(listenNodes).toHaveLength(2);
+      expect(listenNodes[0].eventType).toBe('user.created');
+      expect(listenNodes[1].eventType).toBe('user.updated');
+    });
+
+    it('assigns entry_event role to first track listen node only', () => {
+      const dsl: FlowDSL = {
+        'My Flow': [
+          { event: 'first', steps: [] },
+          { event: 'second', steps: [] },
+        ],
+      };
+      const result = compile(dsl);
+      const listenNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listen');
+
+      expect(result.role).toHaveLength(1);
+      expect(result.role[0].entityId).toBe(listenNodes[0].id);
+      expect(result.role[0].role).toBe('entry_event');
+    });
+
+    it('links all nodes to flow via CONTAINS relation', () => {
+      const dsl: FlowDSL = {
+        'My Flow': [
+          {
+            event: 'start',
+            steps: [{ type: 'action', action: 'doA' }, { type: 'action', action: 'doB' }],
+          },
+        ],
+      };
+      const result = compile(dsl);
+      const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
+      const containsRels = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.CONTAINS && r.source === flow.id);
+
+      // 1 listen + 2 action nodes = 3 CONTAINS
+      expect(containsRels).toHaveLength(3);
+    });
+  });
+
+  describe('node compilation - all types', () => {
+    it('action: entity has nodeType, actionId, params, fieldMappings', () => {
+      const dsl = wrapInFlow([steps.action]);
+      const result = compile(dsl, { actions: ctx.actions });
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'action');
+
+      expect(node.actionId).toBe('Action-send-123');
+      expect(node.params).toEqual({ to: 'user@test.com' });
+      expect(node.fieldMappings).toEqual([{ target: 'subject', source: '$.data.title' }]);
+    });
+
+    it('llm: entity has promptTemplateId, model, temperature, maxTokens, systemPrompt, fieldMappings', () => {
+      const dsl = wrapInFlow([steps.llm]);
+      const result = compile(dsl, { prompts: ctx.prompts });
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'llm');
+
+      expect(node.promptTemplateId).toBe('Prompt-cls-456');
+      expect(node.model).toBe('gpt-4');
+      expect(node.temperature).toBe(0.7);
+      expect(node.maxTokens).toBe(500);
+      expect(node.systemPrompt).toBe('You are helpful');
+      expect(node.fieldMappings).toEqual([{ target: 'input', source: '$.data.text' }]);
+    });
+
+    it('fire: entity has eventType, scope, payload', () => {
+      const dsl = wrapInFlow([steps.fire]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'fire');
+
+      expect(node.eventType).toBe('notify.sent');
+      expect(node.scope).toBe('global');
+      expect(node.payload).toEqual({ msg: 'hello' });
+    });
+
+    it('transform: entity has script, outputType', () => {
+      const dsl = wrapInFlow([steps.transform]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'transform');
+
+      expect(node.script).toBe('return x + 1');
+      expect(node.outputType).toBe('text');
+    });
+
+    it('query: entity has prompt, resultKey (as)', () => {
+      const dsl = wrapInFlow([steps.query]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'query');
+
+      expect(node.prompt).toBe('Find user by name');
+      expect(node.resultKey).toBe('foundUser');
+    });
+
+    it('flow: entity has flowRef resolved from context, propagateCtx, fieldMappings', () => {
+      const dsl = flows.parentChild;
+      const result = compile(dsl);
+      const flowNode = findEntity(result.entity, (e: any) => e.nodeType === 'flow');
+      const childFlow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow && e.label === 'Child');
+
+      expect(flowNode.flowRef).toBe(childFlow.id);
+      expect(flowNode.propagateCtx).toBe(false);
+      expect(flowNode.fieldMappings).toEqual([{ target: 'userId', source: '$.data.id' }]);
+    });
+
+    it('create: entity has entityTypeTarget', () => {
+      const dsl = wrapInFlow([steps.create]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'create');
+
+      expect(node.entityTypeTarget).toBe('Thread');
+    });
+
+    it('update: entity has onMissing', () => {
+      const dsl = wrapInFlow([steps.update]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'update');
+
+      expect(node.onMissing).toBe('ignore');
+    });
+
+    it('keep_alive: entity has nodeType keep_alive', () => {
+      const dsl = wrapInFlow([steps.keepAlive]);
+      const result = compile(dsl);
+      const node = findEntity(result.entity, (e: any) => e.nodeType === 'keep_alive');
+
+      expect(node).toBeDefined();
+      expect(node.nodeType).toBe('keep_alive');
+    });
+  });
+
+  describe('edge wiring', () => {
+    it('sequential steps: each step wired to next via TRANSITIONS_TO', () => {
+      const dsl = wrapInFlow([
+        { type: 'action', action: 'a' },
+        { type: 'action', action: 'b' },
+        { type: 'action', action: 'c' },
+      ]);
+      const result = compile(dsl);
+      const nodes = filterEntities(result.entity, (e: any) => e.nodeType === 'action');
+      const transitions = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.TRANSITIONS_TO);
+
+      // listen->a, a->b, b->c = 3 transitions
+      const aToB = transitions.find((r) => r.source === nodes[0].id && r.target === nodes[1].id);
+      const bToC = transitions.find((r) => r.source === nodes[1].id && r.target === nodes[2].id);
+
+      expect(aToB).toBeDefined();
+      expect(bToC).toBeDefined();
+    });
+
+    it('listen -> first step: TRANSITIONS_TO edge', () => {
+      const dsl = wrapInFlow([{ type: 'action', action: 'first' }]);
+      const result = compile(dsl);
+      const listen = findEntity(result.entity, (e: any) => e.nodeType === 'listen');
+      const action = findEntity(result.entity, (e: any) => e.nodeType === 'action');
+      const edge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === listen.id && r.target === action.id
+      );
+
+      expect(edge).toHaveLength(1);
+    });
+
+    it('no edge after last step', () => {
+      const dsl = wrapInFlow([{ type: 'action', action: 'only' }]);
+      const result = compile(dsl);
+      const action = findEntity(result.entity, (e: any) => e.nodeType === 'action');
+      const outgoing = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === action.id
+      );
+
+      expect(outgoing).toHaveLength(0);
+    });
+
+    it('step with `next` field: edge to labeled target instead of sequential', () => {
+      const dsl = wrapInFlow([
+        { type: 'action', action: 'a', next: 'target' },
+        { type: 'action', action: 'b' },
+        { type: 'action', action: 'c', label: 'target' },
+      ]);
+      const result = compile(dsl);
+      const nodeA = findEntity(result.entity, (e: any) => e.nodeType === 'action' && e.label === 'a');
+      const nodeB = findEntity(result.entity, (e: any) => e.nodeType === 'action' && e.label === 'b');
+      const nodeC = findEntity(result.entity, (e: any) => e.label === 'target');
+
+      // a -> target (not a -> b)
+      const aEdges = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === nodeA.id
+      );
+      expect(aEdges).toHaveLength(1);
+      expect(aEdges[0].target).toBe(nodeC.id);
+
+      // b -> c still wired sequentially
+      const bEdges = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === nodeB.id
+      );
+      expect(bEdges).toHaveLength(1);
+      expect(bEdges[0].target).toBe(nodeC.id);
+    });
+  });
+
+  describe('switch node', () => {
+    it('entity conditions array has predicate with correct key/operator/value', () => {
+      const dsl = makeSwitchDSL([
+        { if: '$.status == active', steps: [{ type: 'action', action: 'a' }] },
+      ]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+
+      expect(switchNode.conditions).toHaveLength(1);
+      expect(switchNode.conditions[0].predicate).toEqual({
+        key: '$.status',
+        operator: BinaryOperator.EQUALS,
+        value: 'active',
+      });
+    });
+
+    it('else appended as condition with undefined predicate', () => {
+      const dsl = makeSwitchDSL(
+        [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
+        [{ type: 'action', action: 'fallback' }],
+      );
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+
+      // 1 real condition + 1 else = 2
+      expect(switchNode.conditions).toHaveLength(2);
+      expect(switchNode.conditions[1].predicate).toBeUndefined();
+    });
+
+    it('no else -> no extra condition', () => {
+      const dsl = makeSwitchDSL([
+        { if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] },
+      ]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+
+      expect(switchNode.conditions).toHaveLength(1);
+    });
+
+    it('edge to condition branch has sourceHandle: "branch-0"', () => {
+      const dsl = makeSwitchDSL([
+        { if: '$.x == 1', steps: [{ type: 'action', action: 'branchA' }] },
+      ]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+      const branchEdge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
+      ).find((r: any) => r.info?.sourceHandle === 'branch-0');
+
+      expect(branchEdge).toBeDefined();
+    });
+
+    it('edge to else branch has sourceHandle: "branch-{N}" where N = conditions.length', () => {
+      const dsl = makeSwitchDSL(
+        [
+          { if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] },
+          { if: '$.x == 2', steps: [{ type: 'action', action: 'b' }] },
+        ],
+        [{ type: 'action', action: 'fallback' }],
+      );
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+      const elseEdge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
+      ).find((r: any) => r.info?.sourceHandle === 'branch-2');
+
+      expect(elseEdge).toBeDefined();
+    });
+
+    it('inline steps: CONTAINS relation links them to flow', () => {
+      const dsl = makeSwitchDSL([
+        { if: '$.x == 1', steps: [{ type: 'action', action: 'inline1' }] },
+      ]);
+      const result = compile(dsl);
+      const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
+      const inlineNode = findEntity(result.entity, (e: any) =>
+        e.nodeType === 'action' && e.label === 'inline1'
+      );
+      const containsRel = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.CONTAINS && r.source === flow.id && r.target === inlineNode.id
+      );
+
+      expect(containsRel).toHaveLength(1);
+    });
+
+    it('inline steps: sequential edges between inline steps', () => {
+      const dsl = makeSwitchDSL([
+        {
+          if: '$.x == 1',
+          steps: [
+            { type: 'action', action: 'step1' },
+            { type: 'action', action: 'step2' },
+          ],
+        },
+      ]);
+      const result = compile(dsl);
+      const step1 = findEntity(result.entity, (e: any) => e.label === 'step1');
+      const step2 = findEntity(result.entity, (e: any) => e.label === 'step2');
+      const edge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === step1.id && r.target === step2.id
+      );
+
+      expect(edge).toHaveLength(1);
+    });
+
+    it('convergence: last inline step wires to continuation (next step after switch)', () => {
+      const dsl = makeSwitchDSL(
+        [{ if: '$.x == 1', steps: [{ type: 'action', action: 'branchStep' }] }],
+        undefined,
+        { type: 'action', action: 'afterSwitch' },
+      );
+      const result = compile(dsl);
+      const branchStep = findEntity(result.entity, (e: any) => e.label === 'branchStep');
+      const afterSwitch = findEntity(result.entity, (e: any) => e.label === 'afterSwitch');
+      const convergeEdge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === branchStep.id && r.target === afterSwitch.id
+      );
+
+      expect(convergeEdge).toHaveLength(1);
+    });
+
+    it('multiple conditions: each gets correct branch-{ci} handle', () => {
+      const dsl = makeSwitchDSL([
+        { if: '$.a == 1', steps: [{ type: 'action', action: 'b0' }] },
+        { if: '$.a == 2', steps: [{ type: 'action', action: 'b1' }] },
+        { if: '$.a == 3', steps: [{ type: 'action', action: 'b2' }] },
+      ]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+      const switchEdges = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id
+      );
+
+      const handles = switchEdges.map((e: any) => e.info?.sourceHandle).sort();
+      expect(handles).toEqual(['branch-0', 'branch-1', 'branch-2']);
+    });
+  });
+
+  describe('expression parsing (via switch conditions)', () => {
+    it('"$.key == value" -> operator EQUALS', () => {
+      const pred = parsedPredicate('$.key == value');
+      expect(pred.key).toBe('$.key');
+      expect(pred.operator).toBe(BinaryOperator.EQUALS);
+      expect(pred.value).toBe('value');
+    });
+
+    it('"$.key != value" -> NOT_EQUALS', () => {
+      const pred = parsedPredicate('$.key != value');
+      expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
+    });
+
+    it('"$.key > 5" -> GREATER_THAN, value: 5 (number)', () => {
+      const pred = parsedPredicate('$.key > 5');
+      expect(pred.operator).toBe(BinaryOperator.GREATER_THAN);
+      expect(pred.value).toBe(5);
+    });
+
+    it('"$.key >= 5" -> GREATER_THAN_OR_EQUALS', () => {
+      const pred = parsedPredicate('$.key >= 5');
+      expect(pred.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
+      expect(pred.value).toBe(5);
+    });
+
+    it('>= parsed before > (longest match first)', () => {
+      const predGte = parsedPredicate('$.key >= 10');
+      const predGt = parsedPredicate('$.key > 10');
+      expect(predGte.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
+      expect(predGt.operator).toBe(BinaryOperator.GREATER_THAN);
+    });
+
+    it('"$.key contains foo" -> CONTAINS', () => {
+      const pred = parsedPredicate('$.key contains foo');
+      expect(pred.operator).toBe(BinaryOperator.CONTAINS);
+      expect(pred.value).toBe('foo');
+    });
+
+    it('"$.key is_empty" -> IS_EMPTY, no value', () => {
+      const pred = parsedPredicate('$.key is_empty');
+      expect(pred.operator).toBe(BinaryOperator.IS_EMPTY);
+      expect(pred.value).toBeUndefined();
+    });
+
+    it('"$.key is_null" -> IS_NULL, no value', () => {
+      const pred = parsedPredicate('$.key is_null');
+      expect(pred.operator).toBe(BinaryOperator.IS_NULL);
+      expect(pred.value).toBeUndefined();
+    });
+
+    it('boolean values: "true" -> true, "false" -> false', () => {
+      const predTrue = parsedPredicate('$.flag == true');
+      expect(predTrue.value).toBe(true);
+
+      const predFalse = parsedPredicate('$.flag == false');
+      expect(predFalse.value).toBe(false);
+    });
+
+    it('quoted strings: "\'hello\'" -> "hello"', () => {
+      const pred = parsedPredicate("$.name == 'hello'");
+      expect(pred.value).toBe('hello');
+    });
+
+    it('path references: "$.a == $.b" -> value kept as "$.b"', () => {
+      const pred = parsedPredicate('$.a == $.b');
+      expect(pred.value).toBe('$.b');
+    });
+
+    it('empty expression -> undefined predicate (else branch)', () => {
+      const dsl = wrapInFlow([{
+        type: 'switch',
+        conditions: [{ if: '', steps: [{ type: 'action', action: 'x' }] }],
+      }]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+      expect(switchNode.conditions[0].predicate).toBeUndefined();
+    });
+  });
+});
