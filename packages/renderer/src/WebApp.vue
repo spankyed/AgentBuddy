@@ -19,7 +19,7 @@
             @menu-action="handleMenuAction"
             :style="{ height: `${panelSizes.canvasHeight}%` }"
             :breadcrumbs="breadcrumbs"
-            :menu-items="contextMenuItems"
+            :menu-items="allMenuItems"
             :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
             :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
             <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
@@ -64,7 +64,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
+import { Settings as SettingsIcon, PanelRight } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
 import CanvasArea from '@/core/components/layout/canvas-area.vue'
 import ChatArea from '@/core/components/layout/chat-area.vue'
@@ -72,6 +74,7 @@ import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
 import Router from '@/core/components/layout/router.vue'
+import type { ContextMenuItem } from '@/core/context-menu'
 
 const send = applicationState.send
 
@@ -84,7 +87,49 @@ const contextMenuItems = useSelector(applicationState, (state) => state.context.
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
 
+const currentPluginId = computed(() =>
+  toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
+)
+
+const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
+
+const allMenuItems = computed<ContextMenuItem[]>(() => {
+  const pluginItems = contextMenuItems.value
+
+  const defaultItems: ContextMenuItem[] = [
+    {
+      label: 'Settings',
+      icon: SettingsIcon,
+      event: { type: 'APP_OPEN_PLUGIN_SETTINGS', pluginId: currentPluginId.value },
+      separator: pluginItems.length > 0,
+    },
+    {
+      label: 'Context Panel',
+      icon: PanelRight,
+      event: { type: 'APP_TOGGLE_INSPECTION_PANEL' },
+      isActive: isPanelOpen.value,
+    },
+  ]
+
+  return [...pluginItems, ...defaultItems]
+})
+
 const handleMenuAction = (event: { type: string; [key: string]: any }) => {
+  if (event.type === 'APP_TOGGLE_INSPECTION_PANEL') {
+    send({ type: 'TOGGLE_INSPECTION_PANEL' })
+    return
+  }
+
+  if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
+    send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
+    const settingsActor = applicationState.system.get('settings')
+    if (settingsActor) {
+      settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' })
+      settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: event.pluginId })
+    }
+    return
+  }
+
   const pluginId = toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
   applicationState.system.get(pluginId).send(event)
 }
