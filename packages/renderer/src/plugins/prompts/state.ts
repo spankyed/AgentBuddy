@@ -32,6 +32,19 @@ export interface PromptsContext {
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
 
+  // Import/Export state
+  promptsImport: {
+    status: 'idle' | 'importing' | 'success' | 'error';
+    errors: string[];
+    importedCount: number;
+  };
+  promptsExport: {
+    status: 'idle' | 'exporting' | 'success' | 'error';
+    errors: string[];
+    filePath: string;
+    promptCount: number;
+  };
+
   // Form data for create/edit
   formData: {
     label: string;
@@ -47,6 +60,10 @@ export interface PromptsContext {
 }
 
 type SystemEvent = OutgoingPromptEvents
+  | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
+  | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
   | { type: 'PROMPT.SELECT'; promptId: EARS.EntityId }
@@ -70,6 +87,11 @@ type UIEvent =
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
+  // Import/Export events
+  | { type: 'PROMPTS.IMPORT'; prompts: any[] }
+  | { type: 'PROMPTS.RESET_IMPORT_STATUS' }
+  | { type: 'PROMPTS.EXPORT'; directory: string }
+  | { type: 'PROMPTS.RESET_EXPORT_STATUS' }
 
 export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<PromptsEvents>()
@@ -323,6 +345,94 @@ const promptsState = setup({
       };
     }),
 
+    /* ── Prompts Import actions ────────────────────────────── */
+    setImportingPrompts: assign(({ context }) => ({
+      promptsImport: {
+        ...context.promptsImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportPrompts: ({ event }) => {
+      const ev = typeOf('PROMPTS.IMPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'IMPORT_PROMPTS',
+        prompts: ev.prompts,
+      } as any);
+    },
+
+    handlePromptsImported: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_IMPORTED', event);
+      return {
+        promptsImport: {
+          status: 'success' as const,
+          errors: ev.errors || [],
+          importedCount: ev.count,
+        },
+      };
+    }),
+
+    handlePromptsImportFailed: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_IMPORT_FAILED', event);
+      return {
+        promptsImport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          importedCount: 0,
+        },
+      };
+    }),
+
+    resetImportPromptsStatus: assign({
+      promptsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
+    }),
+
+    /* ── Prompts Export actions ────────────────────────────── */
+    setExportingPrompts: assign(({ context }) => ({
+      promptsExport: {
+        ...context.promptsExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportPrompts: ({ event }) => {
+      const ev = typeOf('PROMPTS.EXPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXPORT_PROMPTS',
+        directory: ev.directory,
+      } as any);
+    },
+
+    handlePromptsExported: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_EXPORTED', event);
+      return {
+        promptsExport: {
+          status: 'success' as const,
+          errors: [],
+          filePath: ev.filePath,
+          promptCount: ev.promptCount,
+        },
+      };
+    }),
+
+    handlePromptsExportFailed: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_EXPORT_FAILED', event);
+      return {
+        promptsExport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          filePath: '',
+          promptCount: 0,
+        },
+      };
+    }),
+
+    resetExportPromptsStatus: assign({
+      promptsExport: { status: 'idle' as const, errors: [], filePath: '', promptCount: 0 },
+    }),
+
     /* ── filter actions ──────────────────────────────────── */
     toggleCategoryFilter: assign(({ event, context }) => {
       const ev = typeOf('FILTER.TOGGLE_CATEGORY', event);
@@ -353,6 +463,17 @@ const promptsState = setup({
     totalCount: 0,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state
+    promptsImport: {
+      status: 'idle',
+      errors: [],
+      importedCount: 0,
+    },
+    promptsExport: {
+      status: 'idle',
+      errors: [],
+      filePath: '',
+      promptCount: 0,
+    },
     formData: {
       label: '',
       description: '',
@@ -384,6 +505,32 @@ const promptsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
+    // Import events
+    'PROMPTS.IMPORT': {
+      actions: ['setImportingPrompts', 'sendImportPrompts'],
+    },
+    'PROMPTS.RESET_IMPORT_STATUS': {
+      actions: 'resetImportPromptsStatus',
+    },
+    PROMPTS_IMPORTED: {
+      actions: 'handlePromptsImported',
+    },
+    PROMPTS_IMPORT_FAILED: {
+      actions: 'handlePromptsImportFailed',
+    },
+    // Export events
+    'PROMPTS.EXPORT': {
+      actions: ['setExportingPrompts', 'sendExportPrompts'],
+    },
+    'PROMPTS.RESET_EXPORT_STATUS': {
+      actions: 'resetExportPromptsStatus',
+    },
+    PROMPTS_EXPORTED: {
+      actions: 'handlePromptsExported',
+    },
+    PROMPTS_EXPORT_FAILED: {
+      actions: 'handlePromptsExportFailed',
+    },
     'PROMPT.UPDATE_INPUTS': { actions: 'updatePromptInputs' },
     'PROMPT.CREATE_INLINE': { actions: 'createPromptInline' },
     'PROMPT.UPDATE_LABEL': { actions: 'updatePromptLabel' },

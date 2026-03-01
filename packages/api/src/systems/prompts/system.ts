@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import { settings as settingsSystemId } from '@/systems/settings/system';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
+import { exportPrompts } from './export-prompts';
 
 const logger = createLogger('prompts');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -39,6 +40,8 @@ export const IncomingPromptEvents = [
   }),
   busEvent('DELETE_PROMPT', { promptId: z.string() }),
   busEvent('FETCH_PROMPTS_PAGE', { page: z.number().optional() }),
+  busEvent('IMPORT_PROMPTS', { prompts: z.any() }),
+  busEvent('EXPORT_PROMPTS', { directory: z.string() }),
 ] as const
 
 export type PromptsInternalEvents = 
@@ -52,6 +55,10 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPT_UPDATED'; prompt: PromptEntity; promptId: EARS.EntityId }
   | { type: 'PROMPT_DELETED'; promptId: EARS.EntityId }
   | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
+  | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
+  | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
 export const PromptsSystemEvents = fromSystem(IncomingPromptEvents)<OutgoingPromptEvents, typeof prompts>()
 type ReceivableEvents = MergeReceivable<typeof IncomingPromptEvents, PromptsInternalEvents>;
@@ -145,6 +152,108 @@ export const promptsSystem = setup({
         }
       }));
     },
+    importPrompts: ({ system, event }) => {
+      const { prompts: importData } = typeOf('IMPORT_PROMPTS', event);
+      const pluginId = prompts;
+
+      logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
+
+      if (!Array.isArray(importData)) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'PROMPTS_IMPORT_FAILED',
+          errors: ['Invalid import data: expected an array of prompts'],
+        }));
+        return;
+      }
+
+      const errors: string[] = [];
+      let count = 0;
+
+      for (let i = 0; i < importData.length; i++) {
+        const item = importData[i];
+        if (!item.label || !item.templateFn) {
+          errors.push(`Prompt at index ${i} is missing required fields (label, templateFn)`);
+          continue;
+        }
+
+        try {
+          const prompt = repository.promptCommands.create({
+            label: item.label,
+            inputs: item.inputs || {},
+            templateFn: item.templateFn,
+            outputSchema: item.outputSchema,
+            description: item.description,
+            category: item.category,
+          } as any);
+
+          system.get(bus).send(emit(pluginId, {
+            type: 'PROMPT_CREATED',
+            prompt,
+            promptId: prompt.id,
+          }));
+
+          count++;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`Failed to create prompt "${item.label}": ${message}`);
+        }
+      }
+
+      if (count === 0 && errors.length > 0) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'PROMPTS_IMPORT_FAILED',
+          errors,
+        }));
+        return;
+      }
+
+      system.get(bus).send(emit(pluginId, {
+        type: 'PROMPTS_IMPORTED',
+        count,
+        ...(errors.length > 0 ? { errors } : {}),
+      }));
+
+      // Refresh the full prompts list
+      const connectedData = repository.promptQueries.connectedData();
+      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
+      system.get(bus).send(emit(pluginId, {
+        type: 'PROMPTS_CONNECTED',
+        data: {
+          ...connectedData,
+          categories: promptsSettings?.categories || [],
+        },
+      }));
+
+      logger.info('Prompts import complete', { count, errors: errors.length });
+    },
+
+    exportPromptsToFile: ({ system, event }) => {
+      const { directory } = typeOf('EXPORT_PROMPTS', event);
+      const pluginId = prompts;
+
+      logger.info('Exporting prompts', { directory });
+
+      try {
+        const { filePath, promptCount } = exportPrompts(directory);
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'PROMPTS_EXPORTED',
+          filePath,
+          promptCount,
+        }));
+
+        logger.info('Prompts export complete', { filePath, promptCount });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('Prompts export failed', { error: message });
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'PROMPTS_EXPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
+
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
@@ -203,6 +312,12 @@ export const promptsSystem = setup({
       },
       PROMPTS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
+      },
+      IMPORT_PROMPTS: {
+        actions: 'importPrompts',
+      },
+      EXPORT_PROMPTS: {
+        actions: 'exportPromptsToFile',
       },
     },
     states: {
