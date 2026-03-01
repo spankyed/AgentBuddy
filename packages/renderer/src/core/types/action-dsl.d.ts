@@ -698,6 +698,108 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
+        label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
+    }, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+        value: zod.ZodString;
+        customName: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
+    }, {
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+        value: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
+    }, {
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"USER_MSG">;
         systemId: zod.ZodLiteral<"agent">;
         text: zod.ZodString;
@@ -723,13 +825,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"agent">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
+        threadId: string;
     }, {
-        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
         systemId: zod.ZodLiteral<"agent">;
@@ -737,14 +839,14 @@ declare const events: {
         label: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
-        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
+        threadId: string;
     }, {
         label: string;
-        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CANCEL">;
         systemId: zod.ZodLiteral<"agent">;
@@ -788,113 +890,17 @@ declare const events: {
         threadId: zod.ZodString;
         response: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
         type: "INTERACTIVE_MSG_RESPONSE";
         systemId: "agent";
+        threadId: string;
         messageId: string;
         response?: any;
     }, {
-        threadId: string;
         type: "INTERACTIVE_MSG_RESPONSE";
         systemId: "agent";
+        threadId: string;
         messageId: string;
         response?: any;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
-        }, "strip", zod.ZodTypeAny, {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }, {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }>, "many">>;
-        parentThreadId: zod.ZodOptional<zod.ZodString>;
-        topic: zod.ZodString;
-        tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
-        instructions: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        topic: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: string[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }, {
-        topic: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: string[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"VIEW_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "VIEW_THREAD";
-        systemId: "threads";
-    }, {
-        threadId: string;
-        type: "VIEW_THREAD";
-        systemId: "threads";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        status: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        status: string;
-        threadId: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-    }, {
-        status: string;
-        threadId: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        key: zod.ZodString;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        key: string;
-        value?: any;
-    }, {
-        threadId: string;
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        key: string;
-        value?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        threadId: string;
-        type: "DELETE_THREAD";
-        systemId: "threads";
-    }, {
-        threadId: string;
-        type: "DELETE_THREAD";
-        systemId: "threads";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -1016,107 +1022,101 @@ declare const events: {
         payload?: any;
         targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"CREATE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }, {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }>, "many">>;
+        parentThreadId: zod.ZodOptional<zod.ZodString>;
+        topic: zod.ZodString;
+        tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        instructions: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
+        topic: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: string[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
     }, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
+        topic: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: string[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
-        label: zod.ZodString;
-        path: zod.ZodArray<zod.ZodString, "many">;
+        type: zod.ZodLiteral<"VIEW_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "VIEW_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "VIEW_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        status: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        status: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        status: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        threadId: string;
+        key: string;
         value?: any;
     }, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        threadId: string;
+        key: string;
         value?: any;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"DELETE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
+        type: "DELETE_THREAD";
+        systemId: "threads";
+        threadId: string;
     }, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-        value: zod.ZodString;
-        customName: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-        value: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
+        type: "DELETE_THREAD";
+        systemId: "threads";
+        threadId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -1579,6 +1579,30 @@ declare const events: {
         type: "FETCH_PROMPTS_PAGE";
         systemId: "prompts";
         page?: number | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_PROMPTS">;
+        systemId: zod.ZodLiteral<"prompts">;
+        prompts: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_PROMPTS";
+        systemId: "prompts";
+        prompts?: any;
+    }, {
+        type: "IMPORT_PROMPTS";
+        systemId: "prompts";
+        prompts?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_PROMPTS">;
+        systemId: zod.ZodLiteral<"prompts">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_PROMPTS";
+        systemId: "prompts";
+        directory: string;
+    }, {
+        type: "EXPORT_PROMPTS";
+        systemId: "prompts";
+        directory: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"ACTION_SELECT">;
         systemId: zod.ZodLiteral<"actions">;
@@ -1635,9 +1659,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1645,9 +1669,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -2891,73 +2915,6 @@ declare const events: {
         message: MessageEntity;
         pluginId: "agent";
     } | {
-        type: "THREAD_CONNECTED";
-        data: ThreadConnectedData;
-        pluginId: "threads";
-    } | {
-        type: "SET_VIEW_DATA";
-        id: EARS.EntityId;
-        data: ThreadExtendedData;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_CREATED";
-        id: EARS.EntityId;
-        shortCode: string;
-        entityType: EARS.Entity;
-        timestamp: number;
-        topic?: string | undefined;
-        instructions?: string | undefined;
-        status?: string | undefined;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_UPDATED";
-        threadId: string;
-        updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_DELETED";
-        threadId: string;
-        pluginId: "threads";
-    } | {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "DEBUG_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -3000,6 +2957,73 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
+    } | {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "DEBUG_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "THREAD_CONNECTED";
+        data: ThreadConnectedData;
+        pluginId: "threads";
+    } | {
+        type: "SET_VIEW_DATA";
+        id: EARS.EntityId;
+        data: ThreadExtendedData;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_CREATED";
+        id: EARS.EntityId;
+        shortCode: string;
+        entityType: EARS.Entity;
+        timestamp: number;
+        topic?: string | undefined;
+        instructions?: string | undefined;
+        status?: string | undefined;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_UPDATED";
+        threadId: string;
+        updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_DELETED";
+        threadId: string;
+        pluginId: "threads";
     } | {
         type: "FLOWS_CONNECTED";
         data: FlowsConnectedData;
@@ -3222,6 +3246,24 @@ declare const events: {
             page: number;
             totalPages: number;
         };
+        pluginId: "prompts";
+    } | {
+        type: "PROMPTS_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
+        pluginId: "prompts";
+    } | {
+        type: "PROMPTS_IMPORT_FAILED";
+        errors: string[];
+        pluginId: "prompts";
+    } | {
+        type: "PROMPTS_EXPORTED";
+        filePath: string;
+        promptCount: number;
+        pluginId: "prompts";
+    } | {
+        type: "PROMPTS_EXPORT_FAILED";
+        errors: string[];
         pluginId: "prompts";
     } | {
         type: "ACTIONS_LISTED";
@@ -4776,6 +4818,52 @@ const artifact = /*#__PURE__*/Object.freeze({
   createAndNotify: createAndNotify
 });
 
+interface BrainEventPayload {
+    type: string;
+    payload?: any;
+    targetFlowId?: string;
+}
+type BrainEventCallback = (event: BrainEventPayload) => void | Promise<void>;
+interface ListenOptions {
+    /** Named ID for cross-action cleanup via unlisten(). If omitted, an auto-incremented ID is used. */
+    id?: string;
+}
+/**
+ * Register an ad-hoc brain event listener.
+ * Returns an unsubscribe function for cleanup.
+ *
+ * If a named `id` is provided and already exists, the old listener is replaced.
+ */
+declare function listen(eventType: string, callback: BrainEventCallback, options?: ListenOptions): () => void;
+/**
+ * Remove a named listener by its ID.
+ * No-op if the ID doesn't exist.
+ */
+declare function unlisten(id: string): boolean;
+/**
+ * Notify all ad-hoc listeners matching the given eventType.
+ * Called by triggerBrainEvent AFTER normal flow routing.
+ *
+ * - Async callbacks are fire-and-forget
+ * - Errors in one listener do not affect others or the brain system
+ */
+declare function notify(eventType: string, payload?: any, targetFlowId?: string): void;
+/**
+ * Remove all ad-hoc listeners. Safety net called on brain kill/restart.
+ */
+declare function removeAllListeners(): void;
+
+const brain = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  BrainEventCallback: BrainEventCallback,
+  BrainEventPayload: BrainEventPayload,
+  ListenOptions: ListenOptions,
+  listen: listen,
+  notify: notify,
+  removeAllListeners: removeAllListeners,
+  unlisten: unlisten
+});
+
 declare const services: {
     logger: {
         source?: string;
@@ -5110,6 +5198,7 @@ declare const services: {
     textStream: TextStreamService;
     chat: typeof chat;
     artifact: typeof artifact;
+    brain: typeof brain;
 };
 
 /**

@@ -34,18 +34,11 @@
         :tnode-tree="tNodeTree"
         :flow-tnode-id="flowTNodeId"
         :can-go-back="canGoBack"
-        :show-left-panel="showLeftPanel"
-        :show-right-panel="showRightPanel"
-        :debug-enabled="debugEnabled"
         :animations-enabled="animationsEnabled"
         :selected-node-id="selectedStepNode?.id"
         @node-click="handleNodeClick"
         @flow-navigate="handleFlowNavigate"
         @back-click="handleBackClick"
-        @toggle-left-panel="handleToggleLeftPanel"
-        @toggle-right-panel="handleToggleRightPanel"
-        @toggle-debug="handleToggleDebug"
-        @toggle-animations="handleToggleAnimations"
       />
     </div>
 
@@ -126,22 +119,6 @@ const handleBackClick = () => {
 
 const handleEventClick = (eventType: string) => {
   actor.send({ type: 'EVENT.CLICK', eventType });
-};
-
-const handleToggleLeftPanel = () => {
-  actor.send({ type: 'TOGGLE_LEFT_PANEL' });
-};
-
-const handleToggleRightPanel = () => {
-  actor.send({ type: 'TOGGLE_RIGHT_PANEL' });
-};
-
-const handleToggleDebug = () => {
-  actor.send({ type: 'TOGGLE_DEBUG' });
-};
-
-const handleToggleAnimations = () => {
-  actor.send({ type: 'TOGGLE_ANIMATIONS' });
 };
 
 const handleCloseDetails = () => {

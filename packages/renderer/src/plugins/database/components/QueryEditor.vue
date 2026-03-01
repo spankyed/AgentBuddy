@@ -12,10 +12,7 @@
       @execute="handleExecute"
       @clear="handleClear"
       @magic-prompt="showMagicPrompt = true"
-      @save-snapshot="handleSaveSnapshot"
       @toggle-mode="handleToggleMode"
-      @view-trace="handleViewTrace"
-      @view-backup="handleViewBackup"
     />
 
     <div class="flex-1 overflow-hidden relative">
@@ -170,27 +167,9 @@ function handleExampleSelect(query: string) {
 }
 
 
-function handleSaveSnapshot() {
-  actor.send({
-    type: 'DATABASE.SAVE_SNAPSHOT'
-  });
-}
-
 function handleToggleMode() {
   actor.send({
     type: 'MODE.TOGGLE'
-  });
-}
-
-function handleViewTrace() {
-  actor.send({
-    type: 'VIEW_MODE.TOGGLE'
-  });
-}
-
-function handleViewBackup() {
-  actor.send({
-    type: 'VIEW_BACKUP'
   });
 }
 </script> 

@@ -1,6 +1,8 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import breadcrumb, { breadcrumbList } from '@/core/breadcrumb';
+import { contextMenuFn } from '@/core/context-menu';
+import { Layers, Activity, Terminal, Play } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type {
   OutgoingBrainEvents,
@@ -407,7 +409,13 @@ const brainState = setup({
                 label: i === 0 ? 'Brain' : flow.label,
                 target: `flow:${flow.flowTNodeId}`
               }))
-        )
+        ),
+        ...contextMenuFn<BrainContext>((ctx) => [
+          { label: 'Event Trace', icon: Layers, event: { type: 'TOGGLE_LEFT_PANEL' }, isActive: ctx.showLeftPanel, iconColor: 'text-primary-400' },
+          { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_RIGHT_PANEL' }, isActive: ctx.showRightPanel, iconColor: 'text-primary-400' },
+          { separator: true, label: 'Brain Debug Logs', icon: Terminal, event: { type: 'TOGGLE_DEBUG' }, isActive: ctx.debugEnabled, iconColor: 'text-yellow-400' },
+          { label: 'Auto-focus Animations', icon: Play, event: { type: 'TOGGLE_ANIMATIONS' }, isActive: ctx.animationsEnabled, iconColor: 'text-blue-400' },
+        ]),
       },
       on: {
         RECEIVE_PLUGIN_DATA: {

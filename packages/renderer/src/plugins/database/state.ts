@@ -1,6 +1,8 @@
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@/core/breadcrumb'
+import { contextMenu } from '@/core/context-menu'
 import { safeEvents } from '@/core/types/safe-events'
+import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer'
 import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
@@ -11,6 +13,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
+import { History, Camera, HardDriveDownload } from 'lucide-vue-next'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -83,6 +86,7 @@ type UIEvent =
   | { type: 'ENTITY.DELETE'; entityId: string }
   | { type: 'VIEW_BACKUP' }
   | { type: 'BACK_TO_EXPLORER' }
+  | TrailClickEvent
 
 export type DatabaseEvents = UIEvent | SystemEvent
 const typeOf = safeEvents<DatabaseEvents>()
@@ -103,6 +107,7 @@ const databaseState = setup({
     context: {} as DatabaseContext,
     events: {} as DatabaseEvents,
   },
+  guards: { targetIs },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     setDatabaseRefresh: assign(({ event }) => {
@@ -149,7 +154,7 @@ const databaseState = setup({
         code: deleteCode,
       });
     },
-    
+
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
@@ -186,7 +191,7 @@ const databaseState = setup({
 
     setTransactionResult: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('TRANSACTION_RESULT', event);
-      
+
       // Check if this was a delete operation
       if (ev.result && ev.result.deleted) {
         // After successful deletion, refresh the current query
@@ -337,21 +342,21 @@ const databaseState = setup({
 
     setTraceFlows: assign(({ event }) => {
       const ev = typeOf('TRACE_FLOWS_RESULT', event);
-      
+
       // Sort flows to ensure TNode-Root is always at the top
       const sortedFlows = [...ev.flows].sort((a, b) => {
         // Check if either flow is the root (TNode-Root or Run Agent Brain)
         const aIsRoot = a.id === 'TNode-Root' || a.label === 'Run Agent Brain';
         const bIsRoot = b.id === 'TNode-Root' || b.label === 'Run Agent Brain';
-        
+
         // If one is root and the other isn't, root comes first
         if (aIsRoot && !bIsRoot) return -1;
         if (!aIsRoot && bIsRoot) return 1;
-        
+
         // Otherwise maintain original order (already sorted by backend)
         return 0;
       });
-      
+
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
@@ -362,14 +367,14 @@ const databaseState = setup({
           offset: 0,
           limit: 50,
         });
-        
+
         return {
           traceFlows: sortedFlows,
           currentFlowId: firstFlow.id,
           isLoadingTrace: true, // Still loading events for the selected flow
         };
       }
-      
+
       return {
         traceFlows: sortedFlows,
         isLoadingTrace: false,
@@ -400,7 +405,7 @@ const databaseState = setup({
     setFlowEvents: assign(({ event, context }) => {
       const ev = typeOf('FLOW_EVENTS_RESULT', event);
       return {
-        flowEvents: context.tracePagination.offset > 0 
+        flowEvents: context.tracePagination.offset > 0
           ? [...context.flowEvents, ...ev.events]
           : ev.events,
         tracePagination: {
@@ -413,7 +418,7 @@ const databaseState = setup({
 
     loadMoreEvents: enqueueActions(({ context, enqueue }) => {
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
-      
+
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
       trpc.bus.send.mutate({
         systemId: id,
@@ -434,7 +439,7 @@ const databaseState = setup({
     expandNode: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('TRACE.EXPAND_NODE', event);
       const newExpanded = new Set(context.expandedNodes);
-      
+
       if (newExpanded.has(ev.nodeId)) {
         newExpanded.delete(ev.nodeId);
       } else {
@@ -448,7 +453,7 @@ const databaseState = setup({
           });
         }
       }
-      
+
       enqueue.assign({
         expandedNodes: newExpanded,
       });
@@ -465,7 +470,7 @@ const databaseState = setup({
       }
       return {};
     }),
-    
+
     /* ── backup actions ─────────────────────────────────── */
     setBackupInfo: assign(({ event }) => {
       const ev = typeOf('BACKUP_INFO_RESULT', event);
@@ -530,6 +535,9 @@ const databaseState = setup({
     backupInfo: null,
   },
   on: {
+    ...TRAIL_CLICK([
+      ['.explorer', 'explorer'],
+    ]),
     DATABASE_REFRESH: { actions: ['setDatabaseRefresh', 'setRefreshComplete'] },
     QUERY_RESULT: { actions: 'setQueryResult' },
     QUERY_ERROR: { actions: 'setQueryError' },
@@ -549,10 +557,17 @@ const databaseState = setup({
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },
   },
+  meta: {
+    ...breadcrumb('explorer', 'Database Explorer', true),
+    ...contextMenu([
+      { label: 'View Trace History', icon: History, event: { type: 'VIEW_MODE.TOGGLE' }, iconColor: 'text-purple-400' },
+      { label: 'Save Snapshot', icon: Camera, event: { type: 'DATABASE.SAVE_SNAPSHOT' }, iconColor: 'text-primary-500' },
+      { separator: true, label: 'Backup & Restore', icon: HardDriveDownload, event: { type: 'VIEW_BACKUP' }, iconColor: 'text-green-400' },
+    ]),
+  },
   states: {
     explorer: {
       tags: ['database-explorer'],
-      meta: { ...breadcrumb('explorer', 'Database Explorer', true) },
       on: {
         'QUERY.EXECUTE': {
           actions: ['setLoading', 'executeQuery'],
@@ -615,4 +630,4 @@ const databaseState = setup({
   },
 })
 
-export default databaseState 
+export default databaseState

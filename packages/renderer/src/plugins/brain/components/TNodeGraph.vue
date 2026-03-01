@@ -44,20 +44,8 @@
         </button>
       </div>
       
-      <!-- Menu and Fit buttons (bottom left) -->
+      <!-- Fit button (bottom left) -->
       <div class="absolute z-10 bottom-4 left-4 flex gap-2">
-        <!-- Menu -->
-        <BrainMenu
-          :show-left-panel="showLeftPanel"
-          :show-right-panel="showRightPanel"
-          :debug-enabled="debugEnabled"
-          :animations-enabled="animationsEnabled"
-          @toggle-left-panel="$emit('toggle-left-panel')"
-          @toggle-right-panel="$emit('toggle-right-panel')"
-          @toggle-debug="$emit('toggle-debug')"
-          @toggle-animations="$emit('toggle-animations')"
-        />
-        
         <!-- Fit to View Button -->
         <button
           class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
@@ -99,7 +87,6 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
 import { BaseNode } from '@/components/flow-nodes';
-import BrainMenu from './BrainMenu.vue';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
 
@@ -107,9 +94,6 @@ interface Props {
   tnodeTree?: TrackEntity[];
   flowTNodeId?: string;
   canGoBack: boolean;
-  showLeftPanel?: boolean;
-  showRightPanel?: boolean;
-  debugEnabled?: boolean;
   animationsEnabled?: boolean;
   selectedNodeId?: string;
 }
@@ -120,10 +104,6 @@ const emit = defineEmits<{
   'node-click': [tNodeId: string];
   'flow-navigate': [tNodeId: string];
   'back-click': [];
-  'toggle-left-panel': [];
-  'toggle-right-panel': [];
-  'toggle-debug': [];
-  'toggle-animations': [];
 }>();
 
 // Constants

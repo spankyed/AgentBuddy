@@ -16,8 +16,10 @@
             data-onboarding-id="canvas-area"
             @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
+            @menu-action="handleMenuAction"
             :style="{ height: `${panelSizes.canvasHeight}%` }"
             :breadcrumbs="breadcrumbs"
+            :menu-items="contextMenuItems"
             :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
             :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
             <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
@@ -78,8 +80,14 @@ const defaultPlugin = useSelector(applicationState, (state) => state.context.def
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
 const plugins = useSelector(applicationState, (state) => state.context.visiblePlugins) // Use visible plugins
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
+const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
+
+const handleMenuAction = (event: { type: string; [key: string]: any }) => {
+  const pluginId = toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
+  applicationState.system.get(pluginId).send(event)
+}
 
 const handleCanvasResize = (delta: number) => {
   const mainAreaHeight = window.innerHeight - 50; // Approximate, accounting for toolbar

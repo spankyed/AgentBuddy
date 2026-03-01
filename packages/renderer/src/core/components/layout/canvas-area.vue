@@ -5,12 +5,40 @@
   >
     <!-- HEADER ROW -->
     <div class="flex items-center w-full px-3 pt-4 pb-3 border-b border-neutral-800 canvas-header" :class="headerClass">
-      <!-- ▸ Breadcrumbs (left) -->
+      <!-- ▸ Breadcrumbs with inline ⋮ menu trigger -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
         class="flex items-center gap-1 ml-2 text-sm text-neutral-500 no-drag"
+        @contextmenu.prevent="menuItems.length > 0 && (menuOpen = true)"
       >
+        <DropdownMenuRoot v-model:open="menuOpen">
+          <!-- ⋮ icon as part of the breadcrumb row -->
+          <DropdownMenuTrigger v-if="menuItems.length > 0" as-child>
+            <button
+              class="p-0.5 -ml-0.5 mr-1 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 transition-colors"
+              title="Plugin menu"
+            >
+              <EllipsisVertical :size="14" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="min-w-[180px] bg-neutral-800 border border-neutral-700 rounded-md shadow-lg p-1 z-50"
+              :side="'bottom'"
+              :side-offset="8"
+              :align="'start'"
+            >
+              <PluginMenuItems
+                :items="menuItems"
+                :ItemComponent="DropdownMenuItem"
+                :SeparatorComponent="DropdownMenuSeparator"
+                @action="(ev) => $emit('menu-action', ev)"
+              />
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
+
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
             class="text-xs font-semibold tracking-wider uppercase transition-colors cursor-pointer hover:text-white"
@@ -26,15 +54,6 @@
           />
         </div>
       </nav>
-
-      <!-- ▸ Canvas‑toggle button (right) (disabled 6/1/25)-->
-      <!-- <div class="ml-auto" >
-        <ToggleButton
-          @toggle="$emit('canvas-toggle')"
-        >
-          {{ label }}
-        </ToggleButton>
-      </div> -->
     </div>
 
     <!-- MAIN SCROLL AREA -->
@@ -66,11 +85,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onUpdated } from 'vue'
-// import ToggleButton from '@/core/components/design/toggle-button.vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, EllipsisVertical } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+} from 'reka-ui'
+import PluginMenuItems from './PluginMenuItems.vue'
+import type { ContextMenuItem as ContextMenuItemType } from '@/core/context-menu'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const showScrollButton = ref(false)
+const menuOpen = ref(false)
 
 const checkScroll = () => {
   if (!scrollContainer.value) return
@@ -104,12 +133,16 @@ onUpdated(() => {
 interface Props {
   label: string
   breadcrumbs?: { label: string; target?: string }[]
+  menuItems?: ContextMenuItemType[]
   headerClass?: string
 }
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  menuItems: () => [],
+})
 defineEmits<{
   (e: 'canvas-toggle'): void
   (e: 'crumb-click', target: string): void
+  (e: 'menu-action', event: { type: string; [key: string]: any }): void
 }>()
 </script>
 

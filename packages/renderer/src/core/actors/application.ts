@@ -7,6 +7,7 @@ import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { guidedTourMachine } from '@/core/actors/guided-tour';
+import type { ContextMenuItem } from '@/core/context-menu';
 
 interface BreadcrumbItem {
   label: string;
@@ -31,6 +32,7 @@ export interface ApplicationContext {
   pluginHistory: string[]; // History of plugin IDs for back/forward navigation
   historyIndex: number; // Current position in history
   breadcrumbs: BreadcrumbItem[];
+  contextMenuItems: ContextMenuItem[];
   targetView: string;
   panelSizes: {
     canvasHeight: number; // percentage of main area height
@@ -50,7 +52,7 @@ export type AppState = ActorRefFrom<AppActor>;
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
-  | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string }
+  | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'TOGGLE_INSPECTION_PANEL' }
@@ -139,8 +141,8 @@ export const createApplicationState = () => setup({
     }),
 
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
-      const onStateChange = ({ crumbs, target }: UpdateData) =>
-        system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target });
+      const onStateChange = ({ crumbs, target, menuItems }: UpdateData) =>
+        system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
 
       let unsubscribe = trailActor(system.get(id), onStateChange);
 
@@ -308,7 +310,10 @@ export const createApplicationState = () => setup({
     })),
     sendRouteClick: sendTo(({ system, context }) =>
       system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id), ({ event }) => event),
-    setBreadcrumbs: assign(({ event }) => ({ breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs })),
+    setBreadcrumbs: assign(({ event }) => ({
+      breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs,
+      contextMenuItems: typeOf('TRAIL_UPDATE', event).menuItems,
+    })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
       const { pluginId, historyIndex } = typeOf('SELECT_PLUGIN', event);
       const newPlugin = context.plugins.find(p => p.id === pluginId) || context.activePlugin;
@@ -588,6 +593,7 @@ export const createApplicationState = () => setup({
       pluginHistory: [initialActivePlugin.id], // Start with initial plugin in history
       historyIndex: 0, // Start at first position
       breadcrumbs: [],
+      contextMenuItems: [],
       defaultToggles: {
         canvas: false,
         panel: false,
