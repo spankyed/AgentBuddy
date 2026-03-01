@@ -2,7 +2,7 @@ import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import breadcrumb, { breadcrumbList } from '@/core/breadcrumb';
 import { contextMenuFn } from '@/core/context-menu';
-import { Layers, Activity, Terminal, Play } from 'lucide-vue-next';
+import { Layers, Activity, Terminal, Play, RefreshCw, Power, PlayCircle } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type {
   OutgoingBrainEvents,
@@ -56,6 +56,8 @@ type UIEvent =
   | { type: 'CLOSE_DETAILS' }
   | { type: 'TOGGLE_DEBUG' }
   | { type: 'TOGGLE_ANIMATIONS' }
+  | { type: 'RESTART_BRAIN' }
+  | { type: 'KILL_BRAIN' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -359,6 +361,18 @@ const brainState = setup({
     setBrainStarted: assign({
       brainIsDead: false
     }),
+    restartBrain: ({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: context.brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN'
+      });
+    },
+    killBrain: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'KILL_BRAIN'
+      });
+    },
     handleBreadcrumbClick: ({ event, context }) => {
       const target = (event as TrailClickEvent).target;
 
@@ -415,6 +429,13 @@ const brainState = setup({
           { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_RIGHT_PANEL' }, isActive: ctx.showRightPanel, iconColor: 'text-primary-400' },
           { separator: true, label: 'Brain Debug Logs', icon: Terminal, event: { type: 'TOGGLE_DEBUG' }, isActive: ctx.debugEnabled, iconColor: 'text-yellow-400' },
           { label: 'Auto-focus Animations', icon: Play, event: { type: 'TOGGLE_ANIMATIONS' }, isActive: ctx.animationsEnabled, iconColor: 'text-blue-400' },
+          ...(ctx.brainIsDead
+            ? [{ separator: true, label: 'Start Brain', icon: PlayCircle, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-green-400' }]
+            : [
+                { separator: true, label: 'Restart Brain', icon: RefreshCw, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-amber-400' },
+                { label: 'Kill Brain', icon: Power, event: { type: 'KILL_BRAIN' as const }, iconColor: 'text-red-400' },
+              ]
+          ),
         ]),
       },
       on: {
@@ -494,6 +515,12 @@ const brainState = setup({
         },
         BRAIN_SETTINGS_UPDATED: {
           actions: 'updateSettings'
+        },
+        RESTART_BRAIN: {
+          actions: 'restartBrain'
+        },
+        KILL_BRAIN: {
+          actions: 'killBrain'
         },
         BRAIN_KILLED: {
           actions: 'setBrainKilled'
