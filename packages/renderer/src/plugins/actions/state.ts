@@ -32,6 +32,19 @@ export interface ActionsContext {
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
 
+  // Import/Export state
+  actionsImport: {
+    status: 'idle' | 'importing' | 'success' | 'error';
+    errors: string[];
+    importedCount: number;
+  };
+  actionsExport: {
+    status: 'idle' | 'exporting' | 'success' | 'error';
+    errors: string[];
+    filePath: string;
+    actionCount: number;
+  };
+
   // Form data for create/edit
   formData: {
     label: string;
@@ -47,6 +60,10 @@ export interface ActionsContext {
 }
 
 type SystemEvent = OutgoingActionEvents
+  | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
+  | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
   | { type: 'ACTION.SELECT'; actionId: EARS.EntityId }
@@ -70,6 +87,11 @@ type UIEvent =
   | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
+  // Import/Export events
+  | { type: 'ACTIONS.IMPORT'; actions: any[] }
+  | { type: 'ACTIONS.RESET_IMPORT_STATUS' }
+  | { type: 'ACTIONS.EXPORT'; directory: string }
+  | { type: 'ACTIONS.RESET_EXPORT_STATUS' }
 
 export type ActionsEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<ActionsEvents>()
@@ -339,6 +361,94 @@ const actionsState = setup({
     clearCategoryFilters: assign({
       selectedCategories: []
     }),
+
+    /* ── Actions Import actions ────────────────────────────── */
+    setImportingActions: assign(({ context }) => ({
+      actionsImport: {
+        ...context.actionsImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportActions: ({ event }) => {
+      const ev = typeOf('ACTIONS.IMPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'IMPORT_ACTIONS',
+        actions: ev.actions,
+      } as any);
+    },
+
+    handleActionsImported: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_IMPORTED', event);
+      return {
+        actionsImport: {
+          status: 'success' as const,
+          errors: ev.errors || [],
+          importedCount: ev.count,
+        },
+      };
+    }),
+
+    handleActionsImportFailed: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_IMPORT_FAILED', event);
+      return {
+        actionsImport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          importedCount: 0,
+        },
+      };
+    }),
+
+    resetImportActionsStatus: assign({
+      actionsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
+    }),
+
+    /* ── Actions Export actions ────────────────────────────── */
+    setExportingActions: assign(({ context }) => ({
+      actionsExport: {
+        ...context.actionsExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportActions: ({ event }) => {
+      const ev = typeOf('ACTIONS.EXPORT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EXPORT_ACTIONS',
+        directory: ev.directory,
+      } as any);
+    },
+
+    handleActionsExported: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_EXPORTED', event);
+      return {
+        actionsExport: {
+          status: 'success' as const,
+          errors: [],
+          filePath: ev.filePath,
+          actionCount: ev.actionCount,
+        },
+      };
+    }),
+
+    handleActionsExportFailed: assign(({ event }) => {
+      const ev = typeOf('ACTIONS_EXPORT_FAILED', event);
+      return {
+        actionsExport: {
+          status: 'error' as const,
+          errors: ev.errors,
+          filePath: '',
+          actionCount: 0,
+        },
+      };
+    }),
+
+    resetExportActionsStatus: assign({
+      actionsExport: { status: 'idle' as const, errors: [], filePath: '', actionCount: 0 },
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -353,6 +463,17 @@ const actionsState = setup({
     totalCount: 0,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state
+    actionsImport: {
+      status: 'idle',
+      errors: [],
+      importedCount: 0,
+    },
+    actionsExport: {
+      status: 'idle',
+      errors: [],
+      filePath: '',
+      actionCount: 0,
+    },
     formData: {
       label: '',
       description: '',
@@ -384,6 +505,32 @@ const actionsState = setup({
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
+    // Import events
+    'ACTIONS.IMPORT': {
+      actions: ['setImportingActions', 'sendImportActions'],
+    },
+    'ACTIONS.RESET_IMPORT_STATUS': {
+      actions: 'resetImportActionsStatus',
+    },
+    ACTIONS_IMPORTED: {
+      actions: 'handleActionsImported',
+    },
+    ACTIONS_IMPORT_FAILED: {
+      actions: 'handleActionsImportFailed',
+    },
+    // Export events
+    'ACTIONS.EXPORT': {
+      actions: ['setExportingActions', 'sendExportActions'],
+    },
+    'ACTIONS.RESET_EXPORT_STATUS': {
+      actions: 'resetExportActionsStatus',
+    },
+    ACTIONS_EXPORTED: {
+      actions: 'handleActionsExported',
+    },
+    ACTIONS_EXPORT_FAILED: {
+      actions: 'handleActionsExportFailed',
+    },
     'ACTION.UPDATE_INPUT': { actions: 'updateActionInput' },
     'ACTION.CREATE_INLINE': { actions: 'createActionInline' },
     'ACTION.UPDATE_LABEL': { actions: 'updateActionLabel' },

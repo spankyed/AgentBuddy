@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 import { flows } from '@/systems/flows/system';
+import { exportActions } from './export-actions';
 
 const logger = createLogger('actions');
 const typeOf = safeEvents<ReceivableEvents>();
@@ -38,6 +39,8 @@ export const IncomingActionEvents = [
     category: z.string().optional()
   }),
   busEvent('DELETE_ACTION', { actionId: z.string() }),
+  busEvent('IMPORT_ACTIONS', { actions: z.any() }),
+  busEvent('EXPORT_ACTIONS', { directory: z.string() }),
 ] as const
 
 export type ActionsInternalEvents = 
@@ -50,6 +53,10 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
+  | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 export const ActionsSystemEvents = fromSystem(IncomingActionEvents)<OutgoingActionEvents, typeof actions>()
 type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInternalEvents>;
@@ -137,6 +144,108 @@ export const actionsSystem = setup({
         actionId: ev.actionId as EARS.EntityId,
       });
     },
+    importActions: ({ system, event }) => {
+      const { actions: importData } = typeOf('IMPORT_ACTIONS', event);
+      const pluginId = actions;
+
+      logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
+
+      if (!Array.isArray(importData)) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'ACTIONS_IMPORT_FAILED',
+          errors: ['Invalid import data: expected an array of actions'],
+        }));
+        return;
+      }
+
+      const errors: string[] = [];
+      let count = 0;
+
+      for (let i = 0; i < importData.length; i++) {
+        const item = importData[i];
+        if (!item.label || !item.actionFn) {
+          errors.push(`Action at index ${i} is missing required fields (label, actionFn)`);
+          continue;
+        }
+
+        try {
+          const action = repository.actionCommands.create({
+            label: item.label,
+            input: item.input || {},
+            actionFn: item.actionFn,
+            output: item.output,
+            description: item.description,
+            category: item.category,
+          });
+
+          broadcastActionEvent(system, {
+            type: 'ACTION_CREATED',
+            action,
+            actionId: action.id,
+          });
+
+          count++;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`Failed to create action "${item.label}": ${message}`);
+        }
+      }
+
+      if (count === 0 && errors.length > 0) {
+        system.get(bus).send(emit(pluginId, {
+          type: 'ACTIONS_IMPORT_FAILED',
+          errors,
+        }));
+        return;
+      }
+
+      system.get(bus).send(emit(pluginId, {
+        type: 'ACTIONS_IMPORTED',
+        count,
+        ...(errors.length > 0 ? { errors } : {}),
+      }));
+
+      // Refresh the full actions list
+      const connectedData = repository.actionQueries.connectedData();
+      const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
+      system.get(bus).send(emit(pluginId, {
+        type: 'ACTIONS_LISTED',
+        data: {
+          ...connectedData,
+          categories: actionsSettings?.categories || [],
+        },
+      }));
+
+      logger.info('Actions import complete', { count, errors: errors.length });
+    },
+
+    exportActionsToFile: ({ system, event }) => {
+      const { directory } = typeOf('EXPORT_ACTIONS', event);
+      const pluginId = actions;
+
+      logger.info('Exporting actions', { directory });
+
+      try {
+        const { filePath, actionCount } = exportActions(directory);
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'ACTIONS_EXPORTED',
+          filePath,
+          actionCount,
+        }));
+
+        logger.info('Actions export complete', { filePath, actionCount });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('Actions export failed', { error: message });
+
+        system.get(bus).send(emit(pluginId, {
+          type: 'ACTIONS_EXPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
+
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
@@ -191,6 +300,12 @@ export const actionsSystem = setup({
       },
       ACTIONS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
+      },
+      IMPORT_ACTIONS: {
+        actions: 'importActions',
+      },
+      EXPORT_ACTIONS: {
+        actions: 'exportActionsToFile',
       },
     },
     states: {
