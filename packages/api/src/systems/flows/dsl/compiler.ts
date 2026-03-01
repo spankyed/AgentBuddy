@@ -203,6 +203,20 @@ function parseExpressionToPredicate(expr: string): { key: string; operator: Bina
 }
 
 function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): StepResult {
+  const conditions: Array<{ predicate: ReturnType<typeof parseExpressionToPredicate>; label: string }> = node.conditions.map((c, ci) => ({
+    predicate: parseExpressionToPredicate(c.if),
+    label: c.steps.length > 0 ? getStepLabel(c.steps[0], ci) : `branch-${ci}`,
+  }));
+
+  // Append an else condition (empty predicate) to match UI convention
+  // so SwitchNode.vue renders a handle for the else branch
+  if (node.else && node.else.length > 0) {
+    conditions.push({
+      predicate: undefined,
+      label: getStepLabel(node.else[0], node.conditions.length),
+    });
+  }
+
   return {
     entity: {
       id: nodeId,
@@ -211,13 +225,7 @@ function compileSwitchNode(node: DSLSwitchNode, nodeId: string, ts: number): Ste
       nodeType: 'switch',
       label: node.label || 'Switch',
       description: node.description,
-      conditions: node.conditions.map((c, ci) => ({
-        predicate: parseExpressionToPredicate(c.if),
-        label: c.steps.length > 0 ? getStepLabel(c.steps[0], ci) : `branch-${ci}`,
-      })),
-      elseLabel: node.else && node.else.length > 0
-        ? getStepLabel(node.else[0], node.conditions.length)
-        : undefined,
+      conditions,
       final: node.final,
     },
     relations: [],

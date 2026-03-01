@@ -294,6 +294,9 @@ function decompileStepNode(
         return c.predicate.key && c.predicate.key.trim() !== '';
       });
 
+      // Track which edge targets are matched by valid conditions
+      const matchedTargets = new Set<string>();
+
       const dsl: DSLSwitchNode = {
         type: 'switch',
         conditions: validConditions.map((c) => {
@@ -318,6 +321,7 @@ function decompileStepNode(
           );
 
           if (branchEdge) {
+            matchedTargets.add(branchEdge.target);
             const { exclusive, chain } = isExclusiveChain(
               branchEdge.target, node.id as string, graphCtx
             );
@@ -342,10 +346,16 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
-      // Handle else branch (uses original conditions.length for sourceHandle index)
-      const elseEdge = switchEdges.find(
+      // Handle else branch
+      // 1. Try explicit else handle first (for DSL-compiled flows)
+      let elseEdge = switchEdges.find(
         e => (e.info as any)?.sourceHandle === `branch-${switchNode.conditions.length}`
       );
+      // 2. Fallback: any unmatched switch edge (for UI-created flows where
+      //    "else" is just a condition with empty predicate that got filtered out)
+      if (!elseEdge) {
+        elseEdge = switchEdges.find(e => !matchedTargets.has(e.target));
+      }
 
       if (elseEdge) {
         const { exclusive, chain } = isExclusiveChain(
