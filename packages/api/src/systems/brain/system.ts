@@ -11,6 +11,7 @@ import { createLogger } from '@/core/utils/debug/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
+import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from '@/services/brain';
 
 const typeOf = safeEvents<ReceivableEvents>();
 const logger = createLogger('brain');
@@ -171,7 +172,10 @@ export const brainSystem = setup({
         
         // Clear all volatile TNode data
         repository.brainCommands.clearVolatileData();
-        
+
+        // Clear all ad-hoc brain event listeners
+        removeAllAdHocListeners();
+
         // Clear the runningRootFlowId setting via settings system
         getActor(system, 'settings').send({
           type: 'UPDATE_SETTINGS',
@@ -180,7 +184,7 @@ export const brainSystem = setup({
           path: ['runningRootFlowId'],
           value: undefined
         });
-        
+
         // Send empty data to clear the UI
 
         system.get(bus).send(emit(brain, {
@@ -212,7 +216,10 @@ export const brainSystem = setup({
       
       // Clear all volatile TNode data
       repository.brainCommands.clearVolatileData();
-      
+
+      // Clear all ad-hoc brain event listeners
+      removeAllAdHocListeners();
+
       // Send empty data to clear the UI temporarily
       system.get(bus).send(emit(brain, {
         type: 'RECEIVE_PLUGIN_DATA',
@@ -380,26 +387,28 @@ export const brainSystem = setup({
 
         if (allFlowActors.length === 0) {
           logger.warn(`No flow actors registered to receive global event: ${eventType}`);
-          return;
+        } else {
+          logger.info(`Broadcasting global event "${eventType}" to ${allFlowActors.length} flow actors`, {
+            eventType,
+            actorCount: allFlowActors.length,
+            flowActorIds: allFlowActorIds
+          });
+
+          // Send to all flow actors (including root and all children)
+          allFlowActors.forEach(actor => {
+            if (actor?.send) {
+              actor.send({
+                type: eventType,
+                payload,
+                // No targetFlowId for global events
+              });
+            }
+          });
         }
-
-        logger.info(`Broadcasting global event "${eventType}" to ${allFlowActors.length} flow actors`, {
-          eventType,
-          actorCount: allFlowActors.length,
-          flowActorIds: allFlowActorIds
-        });
-
-        // Send to all flow actors (including root and all children)
-        allFlowActors.forEach(actor => {
-          if (actor?.send) {
-            actor.send({
-              type: eventType,
-              payload,
-              // No targetFlowId for global events
-            });
-          }
-        });
       }
+
+      // Notify ad-hoc listeners (after normal flow routing)
+      notifyAdHocListeners(eventType, payload, targetFlowId);
     },
   },
 }).createMachine(

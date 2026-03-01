@@ -11,6 +11,7 @@ import { settingsService } from './settings';
 import { createTextStreamService } from './text-stream';
 import * as chat from './chat';
 import * as artifact from './artifact';
+import * as brain from './brain';
 
 const services = {
   logger: loggerService,
@@ -26,6 +27,7 @@ const services = {
   textStream: createTextStreamService(),
   chat,
   artifact,
+  brain,
 }
 
 export default services;
