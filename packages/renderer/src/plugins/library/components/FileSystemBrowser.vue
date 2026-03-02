@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
-    
+
     <ConfirmDialog
       v-model="deleteDialog.show"
       title="Delete Item"
@@ -10,7 +10,7 @@
       @confirm="handleDelete"
       @cancel="deleteDialog.show = false"
     />
-    
+
     <!-- Toolbar -->
     <div class="px-6 py-3 border-b border-neutral-800" @click.stop>
       <!-- Navigation Row -->
@@ -18,7 +18,7 @@
         <!-- Back Button and Breadcrumbs -->
         <div class="flex items-center gap-3">
           <!-- Back Button -->
-          <button 
+          <button
             v-if="currentFolderId !== null"
             @click="navigateBack"
             class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-neutral-300 hover:bg-neutral-800 active:scale-95"
@@ -27,10 +27,10 @@
           >
             <ChevronLeft class="w-4 h-4" />
           </button>
-          
+
           <!-- Breadcrumb Navigation -->
           <div class="flex items-center gap-1 text-sm">
-            <button 
+            <button
               @click="navigateToFolder(null)"
               class="pr-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
               :class="currentFolderId === null ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
@@ -51,7 +51,7 @@
             </template>
           </div>
         </div>
-        
+
         <!-- Actions -->
         <div class="flex items-center gap-2">
           <!-- Selection indicator and actions -->
@@ -82,10 +82,10 @@
             </div>
             <div class="w-px h-5 bg-neutral-700 ml-1" />
           </template>
-          
-          <Button 
-            @click="createSearchIndex" 
-            variant="transparent" 
+
+          <Button
+            @click="createSearchIndex"
+            variant="transparent"
             size="sm"
             data-onboarding-id="library-search-index-button"
             class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
@@ -93,9 +93,9 @@
             <Search class="w-4 h-4" />
             <span>Create Index</span>
           </Button>
-          <Button 
-            @click="createFolder" 
-            variant="transparent" 
+          <Button
+            @click="createFolder"
+            variant="transparent"
             size="sm"
             class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
           >
@@ -116,111 +116,23 @@
         <table class="w-full"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
-              <TableHeader @click="sort('name')">Name</TableHeader>
-              <TableHeader @click="sort('modified')">Date Modified</TableHeader>
-              <TableHeader @click="sort('size')">Size</TableHeader>
-              <TableHeader @click="sort('kind')">Kind</TableHeader>
-              <th class="px-6 py-2 text-right">Actions</th>
+              <TableHeader @click="sort('name')" class="!pl-10 w-[54%]">Name</TableHeader>
+              <TableHeader @click="sort('modified')" class="w-[16%]">Date Modified</TableHeader>
+              <TableHeader @click="sort('size')" class="w-[10%]">Size</TableHeader>
+              <TableHeader @click="sort('kind')" class="w-[10%]">Kind</TableHeader>
+              <th class="px-6 py-2 text-right w-[10%]">Actions</th>
             </tr>
           </thead>
           <tbody>
             <template v-if="sortedItems.length > 0">
-              <tr
-                v-for="(item, index) in sortedItems"
+              <TreeTableRow
+                v-for="item in sortedItems"
                 :key="item.id"
-                class="transition-colors duration-150 cursor-pointer group select-none relative draggable-item"
-                :class="[
-                  selectedItems.includes(item.id) ? 'bg-blue-500/30' : '',
-                  !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30',
-                  getItemClass(item)
-                ]"
-                :draggable="!editingItemId"
-                @click="selectItem(item, $event)"
-                @dblclick="doubleClickItem(item)"
-                @dragstart="handleDragStart($event, item)"
-                @dragover="handleDragOver($event, item, index)"
-                @dragenter="handleDragEnter($event, item)"
-                @dragleave="handleDragLeave($event)"
-                @drop="handleDrop($event, item, index, currentFolderId)"
-                @dragend="handleDragEnd"
-              >
-              <td class="px-6 py-3 relative">
-                <!-- Drop indicator -->
-                <div 
-                  v-if="draggedOverId === item.id && dropPosition && dropPosition !== 'inside'"
-                  class="drop-indicator"
-                  :class="dropPosition === 'before' ? 'drop-before' : 'drop-after'"
-                />
-                <div class="flex items-center gap-3">
-                  <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400" />
-                  <FileText v-else class="w-4 h-4 text-neutral-400" />
-                  <div class="min-w-0 relative">
-                    <!-- Name display (visible or invisible placeholder) -->
-                    <span 
-                      @click.stop="handleNameClick(item, $event)"
-                      class="text-sm"
-                      :class="[
-                        item.type === 'folder' ? 'font-medium' : 'font-normal',
-                        editingItemId === item.id ? 'invisible' : 'cursor-pointer',
-                        editingItemId !== item.id && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200')
-                      ]"
-                    >
-                      {{ item.name }}
-                    </span>
-                    <!-- Edit input (overlays when editing) -->
-                    <input
-                      v-if="editingItemId === item.id"
-                      :id="`edit-input-${item.id}`"
-                      v-model="editingName"
-                      @click.stop
-                      @keydown.enter.stop="confirmEdit(item.id)"
-                      @keydown.escape.stop="cancelEdit"
-                      @blur="confirmEdit(item.id)"
-                      type="text"
-                      class="absolute inset-0 px-0.5 text-sm bg-neutral-850 border border-blue-400 text-neutral-100 focus:outline-none rounded-sm"
-                      :class="item.type === 'folder' ? 'font-medium' : 'font-normal'"
-                      :style="`width: min(max(${editingName.length + 2}ch, 10ch), 40ch);`"
-                    />
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-3">
-                <span class="text-sm text-neutral-400">
-                  {{ formatDate(item.updatedAt) }}
-                </span>
-              </td>
-              <td class="px-6 py-3">
-                <span class="text-sm text-neutral-400">
-                  {{ item.size }}
-                </span>
-              </td>
-              <td class="px-6 py-3">
-                <span class="text-sm text-neutral-400">
-                  {{ item.kind }}
-                </span>
-              </td>
-              <td class="px-6 py-3">
-                <div class="flex items-center justify-end gap-2">
-                  <button
-                    @click.stop="renameItem(item)"
-                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
-                    aria-label="Rename item"
-                    title="Rename item"
-                  >
-                    <Edit2 class="w-4 h-4" />
-                  </button>
-                  <button
-                    @click.stop="deleteItem(item)"
-                    class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
-                    aria-label="Delete item"
-                    title="Delete item"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
+                :item="item"
+                :depth="0"
+              />
             </template>
+
             <tr v-if="sortedItems.length === 0">
               <td colspan="5" class="h-64">
                 <div class="flex flex-col items-center justify-center h-full text-center">
@@ -253,22 +165,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, onMounted, onUnmounted } from 'vue'
-import { 
-  FolderPlus, 
-  Folder, 
-  FileText, 
+import { computed, reactive, watch, provide, onMounted, onUnmounted } from 'vue'
+import {
+  FolderPlus,
+  Folder,
+  FileText,
   ChevronRight,
   ChevronLeft,
   Edit2,
   Trash2,
   Search,
   ArrowUp,
-  FolderOpen
+  FolderOpen,
 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import TableHeader from './TableHeader.vue'
+import TreeTableRow from './TreeTableRow.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
 import { useSelection } from '../composables/useSelection'
 import { useInlineEdit } from '../composables/useInlineEdit'
@@ -284,6 +197,9 @@ const props = defineProps<{
   currentFolderId: string | null
   breadcrumbs: BreadcrumbItem[]
   itemToEdit?: string | null
+  expandedFolderIds: string[]
+  expandedFolderChildren: Record<string, LibraryItem[]>
+  loadingFolderIds: string[]
 }>()
 
 const emit = defineEmits<{
@@ -301,6 +217,8 @@ const emit = defineEmits<{
   START_EDITING_ITEM: [{ itemId: string }]
   MOVE_ITEMS: [{ itemIds: string[]; targetFolderId: string | null }]
   REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
+  EXPAND_FOLDER: [{ folderId: string }]
+  COLLAPSE_FOLDER: [{ folderId: string }]
 }>()
 
 // Composables
@@ -311,7 +229,7 @@ const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggle
   emit
 )
 
-const { 
+const {
   isDragging,
   draggedOverId,
   dropPosition,
@@ -333,6 +251,51 @@ const {
     emit('REORDER_ITEMS', { itemIds, targetIndex, targetFolderId })
   }
 })
+
+// Flattened tree items for shift-click range selection across nesting levels
+const flattenedTreeItems = computed((): LibraryItem[] => {
+  const result: LibraryItem[] = []
+  function walk(items: LibraryItem[]) {
+    for (const item of items) {
+      result.push(item)
+      if (item.type === 'folder' && props.expandedFolderIds.includes(item.id)) {
+        const children = props.expandedFolderChildren[item.id] || []
+        walk(children)
+      }
+    }
+  }
+  walk(sortedItems.value)
+  return result
+})
+
+// Provide callbacks for TreeTableRow
+provide('tree-select-item', (item: LibraryItem, event: MouseEvent) => selectItem(item, event))
+provide('tree-double-click-item', (item: LibraryItem) => doubleClickItem(item))
+provide('tree-expand-folder', (folderId: string) => emit('EXPAND_FOLDER', { folderId }))
+provide('tree-collapse-folder', (folderId: string) => emit('COLLAPSE_FOLDER', { folderId }))
+provide('tree-rename-item', (item: LibraryItem) => renameItem(item))
+provide('tree-delete-item', (item: LibraryItem) => deleteItem(item))
+provide('tree-handle-name-click', (item: LibraryItem, event: MouseEvent) => handleNameClick(item, event))
+provide('tree-get-editing-item-id', () => editingItemId.value)
+provide('tree-get-editing-name', () => editingName.value)
+provide('tree-set-editing-name', (name: string) => { editingName.value = name })
+provide('tree-confirm-edit', (itemId: string) => confirmEdit(itemId))
+provide('tree-cancel-edit', () => cancelEdit())
+provide('tree-selected-items', () => props.selectedItems)
+provide('tree-expanded-folder-ids', () => props.expandedFolderIds)
+provide('tree-expanded-folder-children', () => props.expandedFolderChildren)
+provide('tree-loading-folder-ids', () => props.loadingFolderIds)
+
+// Drag-drop provides for tree mode
+provide('tree-drag-start', (e: DragEvent, item: LibraryItem) => handleDragStart(e, item))
+provide('tree-drag-over', (e: DragEvent, item: LibraryItem) => handleDragOver(e, item))
+provide('tree-drag-enter', (e: DragEvent, item: LibraryItem) => handleDragEnter(e, item))
+provide('tree-drag-leave', (e: DragEvent) => handleDragLeave(e))
+provide('tree-drop', (e: DragEvent, item: LibraryItem) => handleDrop(e, item, undefined, props.currentFolderId))
+provide('tree-drag-end', () => handleDragEnd())
+provide('tree-get-item-class', (item: LibraryItem) => getItemClass(item))
+provide('tree-get-dragged-over-id', () => draggedOverId.value)
+provide('tree-get-drop-position', () => dropPosition.value)
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -363,7 +326,7 @@ const sortedItems = computed(() => {
       return a.displayOrder - b.displayOrder
     })
   }
-  
+
   // Otherwise use the selected sort
   const compareFunctions = {
     name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
@@ -375,11 +338,11 @@ const sortedItems = computed(() => {
     },
     kind: (a: LibraryItem, b: LibraryItem) => a.kind.localeCompare(b.kind)
   }
-  
+
   return [...props.items].sort((a, b) => {
     // Folders always come first
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
-    
+
     const compareValue = compareFunctions[props.sortBy](a, b)
     return props.sortDirection === 'asc' ? compareValue : -compareValue
   })
@@ -393,13 +356,13 @@ function navigateBack() {
 }
 
 function selectItem(item: LibraryItem, event: MouseEvent) {
-  selectItemBase(item, sortedItems.value, event)
+  selectItemBase(item, flattenedTreeItems.value, event)
 }
 
 function handleNameClick(item: LibraryItem, event: MouseEvent) {
   const isOnlySelection = props.selectedItems.length === 1 && props.selectedItems.includes(item.id)
   const isLastSelected = lastSelectedItemId.value === item.id
-  
+
   if (isOnlySelection && isLastSelected) {
     event.preventDefault()
     event.stopPropagation()
@@ -424,7 +387,7 @@ function createFolder() {
   const existingNames = props.items
     .filter(item => item.type === 'folder')
     .map(item => item.name)
-  
+
   const finalName = generateUniqueFolderName(existingNames)
   emit('CREATE_FOLDER', { name: finalName })
 }
@@ -455,31 +418,31 @@ function handleDelete() {
 
 function moveSelectedItemsUp() {
   if (props.selectedItems.length === 0 || props.currentFolderId === null) return
-  
+
   // Find the parent folder ID from breadcrumbs
   const parentFolderId = props.breadcrumbs.length > 1
     ? props.breadcrumbs[props.breadcrumbs.length - 2].id
     : null
-  
+
   // Emit move items to parent folder
-  emit('MOVE_ITEMS', { 
-    itemIds: props.selectedItems, 
-    targetFolderId: parentFolderId 
+  emit('MOVE_ITEMS', {
+    itemIds: props.selectedItems,
+    targetFolderId: parentFolderId
   })
 }
 
 function deleteSelectedItems() {
   if (props.selectedItems.length === 0) return
-  
+
   const itemNames = props.selectedItems
     .map(id => props.items.find(item => item.id === id)?.name)
     .filter(Boolean)
-  
+
   const count = props.selectedItems.length
   const message = count === 1
     ? `Are you sure you want to delete "${itemNames[0]}"?`
     : `Are you sure you want to delete ${count} items?`
-  
+
   deleteDialog.currentItem = null
   deleteDialog.message = message
   deleteDialog.show = true
@@ -493,16 +456,16 @@ function handleDropOnEmpty(event: DragEvent) {
 function handleTableContainerClick(event: MouseEvent) {
   // Check if the click is directly on the container (not on child elements like table rows)
   const target = event.target as HTMLElement
-  
+
   // Only clear selection if clicking on the container itself or empty areas
   // Not when clicking on table rows, headers, or other interactive elements
   if (target.closest('tr') || target.closest('th') || target.closest('button')) {
     return
   }
-  
+
   // Only deselect if not editing an item name and there are selected items
   if (editingItemId.value || props.selectedItems.length === 0) return
-  
+
   // Clear selection when clicking on empty space
   clearSelection()
 }
@@ -510,7 +473,7 @@ function handleTableContainerClick(event: MouseEvent) {
 function handleEmptyRowClick(event: MouseEvent) {
   // Clicking on empty rows should clear selection
   if (editingItemId.value || props.selectedItems.length === 0) return
-  
+
   event.stopPropagation()
   clearSelection()
 }
@@ -518,7 +481,7 @@ function handleEmptyRowClick(event: MouseEvent) {
 function handleScrollAreaClick(event: MouseEvent) {
   // Check if click is directly on the scroll area (below the table)
   const target = event.target as HTMLElement
-  
+
   // If clicking on the scrollable div itself (not table or its children)
   if (target.classList.contains('custom-scrollbar')) {
     if (editingItemId.value || props.selectedItems.length === 0) return
@@ -528,10 +491,10 @@ function handleScrollAreaClick(event: MouseEvent) {
 
 function handleKeyDown(event: KeyboardEvent) {
   if (editingItemId.value) return
-  
+
   const hasSelection = props.selectedItems.length > 0
   const isModified = event.metaKey || event.ctrlKey
-  
+
   if (isModified && event.key === 'a') {
     event.preventDefault()
     toggleSelectAll()

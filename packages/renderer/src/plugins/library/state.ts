@@ -35,7 +35,7 @@ export interface LibraryContext {
   // Core view state
   currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
-  
+
   // File browser fields
   items: LibraryItem[]
   currentFolderId: string | null
@@ -47,6 +47,11 @@ export interface LibraryContext {
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
   itemToEdit?: string | null
+
+  // Tree view fields
+  expandedFolderIds: string[]
+  expandedFolderChildren: Record<string, LibraryItem[]>
+  loadingFolderIds: string[]
   
   // Legacy fields (used by CreateView/EditView for compatibility)
   documents: DocumentDTO[]
@@ -100,6 +105,10 @@ export type LibraryEvents =
   // Legacy collection events (kept for CreateView/EditView compatibility)
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
   
+  // Tree view events
+  | { type: 'EXPAND_FOLDER'; folderId: string }
+  | { type: 'COLLAPSE_FOLDER'; folderId: string }
+
   // File browser events
   | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
   | { type: 'DOUBLE_CLICK_ITEM'; item: LibraryItem }
@@ -209,6 +218,41 @@ export const librarySystem = setup({
         })
       }
     },
+    // Tree view actions
+    expandFolder: assign(({ context, event }) => {
+      const folderId = (event as any).folderId as string
+      const alreadyExpanded = context.expandedFolderIds.includes(folderId)
+      if (alreadyExpanded) return {}
+      const isCached = folderId in context.expandedFolderChildren
+      return {
+        expandedFolderIds: [...context.expandedFolderIds, folderId],
+        loadingFolderIds: isCached
+          ? context.loadingFolderIds
+          : [...context.loadingFolderIds, folderId],
+      }
+    }),
+    requestTreeChildren: ({ context, event }) => {
+      const folderId = (event as any).folderId as string
+      if (folderId in context.expandedFolderChildren) return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_FOLDER_CONTENTS',
+        folderId,
+      })
+    },
+    collapseFolder: assign(({ context, event }) => {
+      const folderId = (event as any).folderId as string
+      return {
+        expandedFolderIds: context.expandedFolderIds.filter(id => id !== folderId),
+        loadingFolderIds: context.loadingFolderIds.filter(id => id !== folderId),
+      }
+    }),
+    clearTreeCache: assign({
+      expandedFolderIds: [],
+      expandedFolderChildren: {},
+      loadingFolderIds: [],
+    }),
+
     renameItem: ({ context, event }) => {
       if (event.type === 'RENAME_ITEM') {
         // Find the item in the current items list to determine its type
@@ -226,21 +270,35 @@ export const librarySystem = setup({
     },
 
     // State update actions
-    setFolderContents: assign(({ event }) => {
+    setFolderContents: assign(({ context, event }) => {
       if (event.type !== 'FOLDER_CONTENTS_LOADED') {
         return {}
       }
       const { data } = event
       const items = data.items || []
+      const responseFolderId = data.currentFolderId || null
+
+      // Check if this is a tree expansion response
+      if (responseFolderId && context.loadingFolderIds.includes(responseFolderId)) {
+        return {
+          expandedFolderChildren: {
+            ...context.expandedFolderChildren,
+            [responseFolderId]: items,
+          },
+          loadingFolderIds: context.loadingFolderIds.filter(id => id !== responseFolderId),
+        }
+      }
+
+      // Normal navigation response
       const documents = items
         .filter((item): item is DocumentItem => item.type === 'document')
         .map(documentItemToDTO)
       tagStorage.updateTagsFromDocuments(documents)
-      
+
       return {
         items,
         documents,
-        currentFolderId: data.currentFolderId || null,
+        currentFolderId: responseFolderId,
         currentPath: data.currentPath || [],
         breadcrumbs: data.breadcrumbs || [],
         searchIndices: data.searchIndices || []
@@ -529,7 +587,12 @@ export const librarySystem = setup({
     breadcrumbs: [],
     editingItem: undefined,
     itemToEdit: null,
-    
+
+    // Tree view fields
+    expandedFolderIds: [],
+    expandedFolderChildren: {},
+    loadingFolderIds: [],
+
     // Legacy fields (for CreateView/EditView compatibility)
     documents: [],
     collections: [],
@@ -607,10 +670,18 @@ export const librarySystem = setup({
         itemToEdit: null
       })
     },
-    
+
+    // Tree view events
+    EXPAND_FOLDER: {
+      actions: ['expandFolder', 'requestTreeChildren'],
+    },
+    COLLAPSE_FOLDER: {
+      actions: 'collapseFolder',
+    },
+
     // Creation success events - refresh current folder
     DOCUMENT_CREATED: {
-      actions: 'requestFolderContents',
+      actions: ['requestFolderContents', 'clearTreeCache'],
     },
     DOCUMENT_UPDATED: {
       actions: ['requestFolderContents', 'updateEditingDocument'],
@@ -619,6 +690,7 @@ export const librarySystem = setup({
       actions: [
         'requestFolderContents',
         'requestCollections',
+        'clearTreeCache',
         assign({
           itemToEdit: ({ event }) => {
             // Set the new folder to be edited
@@ -629,16 +701,16 @@ export const librarySystem = setup({
       ],
     },
     ITEM_RENAMED: {
-      actions: 'requestFolderContents',
+      actions: ['requestFolderContents', 'clearTreeCache'],
     },
     ITEMS_DELETED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestCollections', 'clearTreeCache'],
     },
     ITEMS_MOVED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestCollections', 'clearTreeCache'],
     },
     ITEMS_REORDERED: {
-      actions: 'requestFolderContents',
+      actions: ['requestFolderContents', 'clearTreeCache'],
     },
     
     // Legacy events for backward compatibility

@@ -60,6 +60,9 @@ const currentProps = computed(() => {
         currentFolderId: context.value.currentFolderId,
         breadcrumbs: context.value.breadcrumbs,
         itemToEdit: context.value.itemToEdit,
+        expandedFolderIds: context.value.expandedFolderIds,
+        expandedFolderChildren: context.value.expandedFolderChildren,
+        loadingFolderIds: context.value.loadingFolderIds,
       }
     case 'create':
       return {
@@ -136,6 +139,12 @@ const currentEvents = computed(() => {
     },
     REORDER_ITEMS: (payload: { itemIds: string[]; targetIndex: number; targetFolderId: string | null }) => {
       send({ type: 'REORDER_ITEMS', ...payload })
+    },
+    EXPAND_FOLDER: (payload: { folderId: string }) => {
+      send({ type: 'EXPAND_FOLDER', ...payload })
+    },
+    COLLAPSE_FOLDER: (payload: { folderId: string }) => {
+      send({ type: 'COLLAPSE_FOLDER', ...payload })
     },
   }
 
