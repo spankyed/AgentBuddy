@@ -517,39 +517,6 @@ type CodeConnectedData = {
     settings?: CodeSettings;
 };
 
-type EmbeddingModelId = 'minilm-l6-v2' | 'bge-small-en' | 'bge-small-en-v1.5' | 'bge-base-en' | 'bge-base-en-v1.5' | 'e5-large-multilingual' | 'text-embedding-3-small' | 'text-embedding-3-large';
-
-type EmbeddingModel = EmbeddingModelId;
-type IndexMetric = 'cosine' | 'dot_product';
-interface SegmentRule {
-    id: string;
-    type: 'text' | 'list' | 'field';
-    occurrence: string;
-    key?: string;
-    indexMode: 'combined' | 'separate';
-}
-interface SearchIndexConfig {
-    name: string;
-    description: string;
-    embeddingModel: EmbeddingModel;
-    indexMetric: IndexMetric;
-    connectors: number;
-    excludeAllSubfolders: boolean;
-    excludedFolderIds: EARS.EntityId[];
-    excludedDocumentIds: EARS.EntityId[];
-    enableSectionIndexing: boolean;
-    segmentRules: SegmentRule[];
-    constructTemplate: string;
-}
-interface SearchIndex extends SearchIndexConfig {
-    id: EARS.EntityId;
-    folderId: EARS.EntityId | null;
-    documentCount: number;
-    vectorDimensions: number;
-    createdAt: number;
-    updatedAt: number;
-}
-
 type DocumentShortCode = `DOC-${number}`;
 interface FieldContent {
     type: 'field';
@@ -602,6 +569,9 @@ interface FolderItem {
     displayOrder: number;
     createdAt: string;
     updatedAt: string;
+    isSymlink?: boolean;
+    symlinkPath?: string;
+    isSymlinked?: boolean;
 }
 interface DocumentItem {
     type: 'document';
@@ -616,6 +586,8 @@ interface DocumentItem {
     displayOrder: number;
     createdAt: string;
     updatedAt: string;
+    isSymlinked?: boolean;
+    filePath?: string;
 }
 type LibraryItem = FolderItem | DocumentItem;
 interface FolderContents {
@@ -2081,281 +2053,47 @@ declare const events: {
         itemIds: string[];
         targetIndex: number;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"LIST_SEARCH_INDICES">;
+        type: zod.ZodLiteral<"CREATE_SYMLINK_COLLECTION">;
         systemId: zod.ZodLiteral<"library">;
-        folderId: zod.ZodNullable<zod.ZodString>;
+        name: zod.ZodString;
+        symlinkPath: zod.ZodString;
+        parentId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "LIST_SEARCH_INDICES";
+        type: "CREATE_SYMLINK_COLLECTION";
         systemId: "library";
-        folderId: string | null;
+        name: string;
+        symlinkPath: string;
+        parentId?: string | undefined;
     }, {
-        type: "LIST_SEARCH_INDICES";
+        type: "CREATE_SYMLINK_COLLECTION";
         systemId: "library";
-        folderId: string | null;
+        name: string;
+        symlinkPath: string;
+        parentId?: string | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_SEARCH_INDEX">;
+        type: zod.ZodLiteral<"IMPORT_LIBRARY">;
         systemId: zod.ZodLiteral<"library">;
-        config: zod.ZodObject<{
-            name: zod.ZodString;
-            description: zod.ZodString;
-            embeddingModel: zod.ZodEnum<["minilm-l6-v2", "bge-small-en", "bge-small-en-v1.5", "bge-base-en", "bge-base-en-v1.5", "e5-large-multilingual", "text-embedding-3-small", "text-embedding-3-large"]>;
-            indexMetric: zod.ZodEnum<["cosine", "dot_product"]>;
-            connectors: zod.ZodNumber;
-            excludeAllSubfolders: zod.ZodBoolean;
-            excludedFolderIds: zod.ZodArray<zod.ZodString, "many">;
-            excludedDocumentIds: zod.ZodArray<zod.ZodString, "many">;
-            enableSectionIndexing: zod.ZodBoolean;
-            segmentRules: zod.ZodArray<zod.ZodObject<{
-                id: zod.ZodString;
-                type: zod.ZodEnum<["text", "list", "field"]>;
-                occurrence: zod.ZodString;
-                key: zod.ZodOptional<zod.ZodString>;
-                indexMode: zod.ZodEnum<["combined", "separate"]>;
-            }, "strip", zod.ZodTypeAny, {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }, {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }>, "many">;
-            constructTemplate: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        }, {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        }>;
-        folderId: zod.ZodNullable<zod.ZodString>;
+        items: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CREATE_SEARCH_INDEX";
+        type: "IMPORT_LIBRARY";
         systemId: "library";
-        folderId: string | null;
-        config: {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        };
+        items?: any;
     }, {
-        type: "CREATE_SEARCH_INDEX";
+        type: "IMPORT_LIBRARY";
         systemId: "library";
-        folderId: string | null;
-        config: {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        };
+        items?: any;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SEARCH_INDEX">;
+        type: zod.ZodLiteral<"EXPORT_LIBRARY">;
         systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-        config: zod.ZodObject<{
-            name: zod.ZodString;
-            description: zod.ZodString;
-            embeddingModel: zod.ZodEnum<["minilm-l6-v2", "bge-small-en", "bge-small-en-v1.5", "bge-base-en", "bge-base-en-v1.5", "e5-large-multilingual", "text-embedding-3-small", "text-embedding-3-large"]>;
-            indexMetric: zod.ZodEnum<["cosine", "dot_product"]>;
-            connectors: zod.ZodNumber;
-            excludeAllSubfolders: zod.ZodBoolean;
-            excludedFolderIds: zod.ZodArray<zod.ZodString, "many">;
-            excludedDocumentIds: zod.ZodArray<zod.ZodString, "many">;
-            enableSectionIndexing: zod.ZodBoolean;
-            segmentRules: zod.ZodArray<zod.ZodObject<{
-                id: zod.ZodString;
-                type: zod.ZodEnum<["text", "list", "field"]>;
-                occurrence: zod.ZodString;
-                key: zod.ZodOptional<zod.ZodString>;
-                indexMode: zod.ZodEnum<["combined", "separate"]>;
-            }, "strip", zod.ZodTypeAny, {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }, {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }>, "many">;
-            constructTemplate: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        }, {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        }>;
+        directory: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "UPDATE_SEARCH_INDEX";
+        type: "EXPORT_LIBRARY";
         systemId: "library";
-        config: {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        };
+        directory: string;
     }, {
-        id: string;
-        type: "UPDATE_SEARCH_INDEX";
+        type: "EXPORT_LIBRARY";
         systemId: "library";
-        config: {
-            description: string;
-            name: string;
-            embeddingModel: "minilm-l6-v2" | "bge-small-en" | "bge-small-en-v1.5" | "bge-base-en" | "bge-base-en-v1.5" | "e5-large-multilingual" | "text-embedding-3-small" | "text-embedding-3-large";
-            indexMetric: "cosine" | "dot_product";
-            connectors: number;
-            excludeAllSubfolders: boolean;
-            excludedFolderIds: string[];
-            excludedDocumentIds: string[];
-            enableSectionIndexing: boolean;
-            segmentRules: {
-                id: string;
-                type: "text" | "field" | "list";
-                occurrence: string;
-                indexMode: "combined" | "separate";
-                key?: string | undefined;
-            }[];
-            constructTemplate: string;
-        };
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_SEARCH_INDEX">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "DELETE_SEARCH_INDEX";
-        systemId: "library";
-    }, {
-        id: string;
-        type: "DELETE_SEARCH_INDEX";
-        systemId: "library";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SEARCH_IN_INDEX">;
-        systemId: zod.ZodLiteral<"library">;
-        indexId: zod.ZodString;
-        query: zod.ZodString;
-        limit: zod.ZodOptional<zod.ZodNumber>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SEARCH_IN_INDEX";
-        systemId: "library";
-        indexId: string;
-        query: string;
-        limit?: number | undefined;
-    }, {
-        type: "SEARCH_IN_INDEX";
-        systemId: "library";
-        indexId: string;
-        query: string;
-        limit?: number | undefined;
+        directory: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.LIST_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -2871,6 +2609,49 @@ declare const events: {
         fromUserNavigation?: boolean | undefined;
     }>];
     readonly outgoing: {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
         type: "AGENT_CONNECTED";
         data: AgentConnectedData;
         pluginId: "agent";
@@ -2914,49 +2695,6 @@ declare const events: {
         threadId: string;
         message: MessageEntity;
         pluginId: "agent";
-    } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
@@ -3412,42 +3150,22 @@ declare const events: {
         };
         pluginId: "library";
     } | {
-        type: "SEARCH_INDICES_LOADED";
-        data: {
-            indices: SearchIndex[];
-        };
+        type: "LIBRARY_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
         pluginId: "library";
     } | {
-        type: "SEARCH_INDEX_CREATED";
-        data: {
-            index: SearchIndex;
-        };
+        type: "LIBRARY_IMPORT_FAILED";
+        errors: string[];
         pluginId: "library";
     } | {
-        type: "SEARCH_INDEX_UPDATED";
-        data: {
-            index: SearchIndex;
-        };
+        type: "LIBRARY_EXPORTED";
+        filePath: string;
+        itemCount: number;
         pluginId: "library";
     } | {
-        type: "SEARCH_INDEX_DELETED";
-        data: {
-            indexId: string;
-        };
-        pluginId: "library";
-    } | {
-        type: "SEARCH_RESULTS";
-        data: {
-            results: any[];
-        };
-        pluginId: "library";
-    } | {
-        type: "INDEXING_PROGRESS";
-        data: {
-            indexId: string;
-            progress: number;
-            total: number;
-        };
+        type: "LIBRARY_EXPORT_FAILED";
+        errors: string[];
         pluginId: "library";
     } | {
         type: "explorer.FILES_LISTED";
@@ -5057,7 +4775,7 @@ declare const services: {
             readonly getDocument: (id: EARS.EntityId) => DocumentDTO | null;
             readonly getDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
             readonly getCollections: () => CollectionDTO[];
-            readonly getFolderContents: (folderId: EARS.EntityId | null) => FolderContents;
+            readonly getFolderContents: (folderId: EARS.EntityId | null) => Promise<FolderContents>;
             readonly getFolderPath: (folderId: EARS.EntityId | null) => BreadcrumbItem[];
             readonly getParentFolderId: (folderId: EARS.EntityId) => EARS.EntityId | null;
             readonly getCollectionByName: (name: string) => CollectionDTO | null;
@@ -5078,6 +4796,7 @@ declare const services: {
             readonly reorderItems: (itemIds: EARS.EntityId[], targetIndex: number, targetFolderId: EARS.EntityId | null) => void;
             readonly migrateDocumentShortCodes: () => void;
             readonly migrateDisplayOrders: () => void;
+            readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId) => CollectionDTO;
             readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
         };
         readonly promptQueries: {

@@ -14,8 +14,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useState } from '@/core/composables/plugins'
 import { id, type librarySystem, type LibraryEvents } from './state'
-import CreateView from './components/CreateView.vue'
-import EditView from './components/EditView.vue'
+import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
@@ -27,9 +26,8 @@ const send = (event: LibraryEvents) => actor.send(event)
 const currentComponent = computed(() => {
   switch (context.value.currentView) {
     case 'create':
-      return CreateView
     case 'edit':
-      return EditView
+      return DocumentEditor
     // [SEARCH_INDEX_FF] search index views — commented out
     // case 'create-index': return CreateIndexView
     // case 'edit-index': return CreateIndexView
