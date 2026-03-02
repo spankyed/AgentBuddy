@@ -30,26 +30,8 @@
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl p-6 mx-auto">
         <div class="space-y-6">
-          <!-- Basic Info Section -->
-          <div class="space-y-4">
-            <!-- Description -->
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                Description
-              </label>
-              <textarea
-                :value="formData.description"
-                @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
-                rows="3"
-                data-onboarding-id="action-description-input"
-                class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                placeholder="Describe what this action does..."
-              />
-            </div>
-          </div>
-
           <!-- Parameters -->
-          <div class="pt-6 border-t border-neutral-800">
+          <div class="pt-2">
             <CollapsibleSection v-model="parametersExpanded" label="Input Parameters">
               <ActionParametersEditor
                 :parameters="formData.input"
@@ -93,6 +75,20 @@
                   @update="$emit('update-output', $event)"
                 />
               </div>
+            </CollapsibleSection>
+          </div>
+
+          <!-- Description -->
+          <div class="pt-6 border-t border-neutral-800">
+            <CollapsibleSection label="Description" :defaultOpen="false">
+              <textarea
+                :value="formData.description"
+                @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
+                rows="3"
+                data-onboarding-id="action-description-input"
+                class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+                placeholder="Describe what this action does..."
+              />
             </CollapsibleSection>
           </div>
 

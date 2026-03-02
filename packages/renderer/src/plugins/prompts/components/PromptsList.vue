@@ -38,20 +38,15 @@
               class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
               @click="$emit('select', prompt.id)"
             >
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center justify-center w-8 h-8 transition-colors rounded-lg bg-neutral-800 group-hover:bg-neutral-700">
-                    <Sparkle class="w-4 h-4 text-neutral-400" />
-                  </div>
-                  <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
-                </div>
+              <td class="px-6 py-2.5">
+                <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-2.5">
                 <span class="text-sm text-neutral-400 line-clamp-1" :title="prompt.description">
                   {{ prompt.description || 'No description' }}
                 </span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-2.5">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="prompt.category ? 'border' : 'text-neutral-500'"
@@ -60,7 +55,7 @@
                   {{ getCategoryName(prompt.category) }}
                 </span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-2.5">
                 <div class="flex items-center gap-1.5 overflow-hidden">
                   <template v-if="Object.keys(prompt.inputs || {}).length > 0">
                     <span
@@ -82,7 +77,7 @@
                   <span v-else class="text-xs text-neutral-500">none</span>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-2.5">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="confirmDelete(prompt)"

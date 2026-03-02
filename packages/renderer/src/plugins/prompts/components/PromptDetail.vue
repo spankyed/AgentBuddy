@@ -25,24 +25,8 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar" v-if="prompt || formData">
       <div class="max-w-4xl p-6 mx-auto space-y-6">
-        <div class="space-y-4">
-          <!-- Description -->
-          <div>
-            <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Description
-            </label>
-            <textarea
-              :value="formData.description"
-              @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
-              rows="3"
-              class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-              placeholder="Describe what this prompt template does..."
-            />
-          </div>
-        </div>
-
         <!-- Input Parameters -->
-        <div class="pt-6 border-t border-neutral-800">
+        <div class="pt-2">
           <CollapsibleSection v-model="inputsExpanded" label="Input Parameters">
             <PromptInputsEditor
               :inputs="formData.inputs"
@@ -86,6 +70,19 @@
                 @update="$emit('update-output-schema', $event)"
               />
             </div>
+          </CollapsibleSection>
+        </div>
+
+        <!-- Description -->
+        <div class="pt-6 border-t border-neutral-800">
+          <CollapsibleSection label="Description" :defaultOpen="false">
+            <textarea
+              :value="formData.description"
+              @input="$emit('update-description', ($event.target as HTMLTextAreaElement).value)"
+              rows="3"
+              class="w-full px-4 py-3 text-sm transition-colors border rounded-md resize-y bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+              placeholder="Describe what this prompt template does..."
+            />
           </CollapsibleSection>
         </div>
 
@@ -197,26 +194,26 @@ function formatDate(timestamp?: number) {
 
 function openInEditor() {
   if (!props.prompt) return;
-  
+
   // First, switch to the code plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
-  
+
   // Give the code plugin time to activate, then send the prompt to open
   setTimeout(() => {
     const codeActor = applicationState.system.get('code');
     if (codeActor) {
       // First ensure the prompts panel is selected
-      codeActor.send({ 
-        type: 'UPDATE_STATE', 
-        updates: { selectedPanel: 'prompts' } 
+      codeActor.send({
+        type: 'UPDATE_STATE',
+        updates: { selectedPanel: 'prompts' }
       });
-      
+
       // Then send the open prompt event to the prompts child actor
       const promptsActor = codeActor.system.get('codePrompts');
       if (promptsActor) {
-        promptsActor.send({ 
-          type: 'codePrompts.OPEN_PROMPT', 
-          promptId: props.prompt!.id 
+        promptsActor.send({
+          type: 'codePrompts.OPEN_PROMPT',
+          promptId: props.prompt!.id
         });
       }
     }

@@ -29,17 +29,11 @@
       Add Parameter
     </button>
 
-    <!-- Empty State -->
-    <div v-if="parameterEntries.length === 0" class="p-8 text-center border-2 border-dashed rounded-lg border-neutral-700">
-      <Code class="w-12 h-12 mx-auto mb-3 text-neutral-600" />
-      <p class="text-sm text-neutral-400">No parameters defined</p>
-      <p class="mt-1 text-xs text-neutral-500">Add parameters that your action function will receive</p>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Plus, Code } from 'lucide-vue-next';
+import { Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import type { ActionParameter } from '@app/api';
 import ParameterRow from '@/core/components/design/ParameterRow.vue';
