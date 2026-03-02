@@ -130,11 +130,7 @@
                 :key="item.id"
                 class="transition-colors duration-150 cursor-pointer group select-none relative draggable-item"
                 :class="[
-                  selectedItems.includes(item.id) 
-                    ? 'bg-blue-500/30' 
-                    : index % 2 === 1 
-                      ? 'bg-neutral-800/20' 
-                      : '',
+                  selectedItems.includes(item.id) ? 'bg-blue-500/30' : '',
                   !selectedItems.includes(item.id) && 'hover:bg-neutral-700/30',
                   getItemClass(item)
                 ]"
@@ -230,7 +226,6 @@
               v-for="n in Math.max(0, 8 - sortedItems.length)"
               :key="`empty-${n}`"
               class="empty-drop-zone"
-              :class="(sortedItems.length + n - 1) % 2 === 1 ? 'bg-neutral-800/20' : ''"
               @click="handleEmptyRowClick"
               @dragover.prevent="handleDragOver($event, null)"
               @drop="handleDropOnEmpty($event)"
