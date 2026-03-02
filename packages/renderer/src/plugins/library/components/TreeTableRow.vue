@@ -89,11 +89,13 @@
         </button>
         <button
           @click.stop="onDelete"
-          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
-          aria-label="Delete item"
-          title="Delete item"
+          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md active:scale-95"
+          :class="isSymlinkFolder ? 'hover:text-purple-400 hover:bg-purple-400/10' : 'hover:text-red-400 hover:bg-red-400/10'"
+          :aria-label="isSymlinkFolder ? 'Unlink folder' : 'Delete item'"
+          :title="isSymlinkFolder ? 'Unlink folder' : 'Delete item'"
         >
-          <Trash2 class="w-4 h-4" />
+          <Unlink v-if="isSymlinkFolder" class="w-4 h-4" />
+          <Trash2 v-else class="w-4 h-4" />
         </button>
       </div>
     </td>
@@ -122,7 +124,7 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Unlink } from 'lucide-vue-next'
 import type { LibraryItem } from '@app/api'
 import { formatDate } from '../utils/naming'
 
@@ -160,6 +162,7 @@ const getItemClass = inject<(item: LibraryItem) => string>('tree-get-item-class'
 const getDraggedOverId = inject<() => string | null>('tree-get-dragged-over-id')!
 const getDropPosition = inject<() => 'before' | 'after' | 'inside' | null>('tree-get-drop-position')!
 
+const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
 const isSelected = computed(() => selectedItems().includes(props.item.id))
 const isExpanded = computed(() => expandedFolderIds().includes(props.item.id))
 const isLoading = computed(() => loadingFolderIds().includes(props.item.id))

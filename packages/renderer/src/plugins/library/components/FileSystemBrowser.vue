@@ -3,9 +3,9 @@
 
     <ConfirmDialog
       v-model="deleteDialog.show"
-      title="Delete Item"
+      :title="deleteDialog.isUnlink ? 'Unlink Folder' : 'Delete Item'"
       :description="deleteDialog.message"
-      confirm-text="Delete"
+      :confirm-text="deleteDialog.isUnlink ? 'Unlink' : 'Delete'"
       cancel-text="Cancel"
       @confirm="handleDelete"
       @cancel="deleteDialog.show = false"
@@ -364,7 +364,8 @@ watch(() => props.itemToEdit, (newItemId) => {
 const deleteDialog = reactive({
   show: false,
   currentItem: null as LibraryItem | null,
-  message: ''
+  message: '',
+  isUnlink: false
 })
 
 const symlinkInput = reactive({ show: false, path: '' })
@@ -475,8 +476,12 @@ function confirmSymlink() {
 const renameItem = (item: LibraryItem) => startEditingItem(item.id, item.name)
 
 function deleteItem(item: LibraryItem) {
+  const isSymlinkFolder = item.type === 'folder' && (item as any).isSymlink
   deleteDialog.currentItem = item
-  deleteDialog.message = `Are you sure you want to delete "${item.name}"?`
+  deleteDialog.isUnlink = isSymlinkFolder
+  deleteDialog.message = isSymlinkFolder
+    ? `Are you sure you want to unlink "${item.name}"? The folder on disk will not be deleted.`
+    : `Are you sure you want to delete "${item.name}"?`
   deleteDialog.show = true
 }
 
@@ -492,6 +497,7 @@ function handleDelete() {
   deleteDialog.show = false
   deleteDialog.currentItem = null
   deleteDialog.message = ''
+  deleteDialog.isUnlink = false
 }
 
 
