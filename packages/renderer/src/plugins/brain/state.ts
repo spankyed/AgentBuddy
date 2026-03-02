@@ -78,11 +78,11 @@ function normalizeTNodeTree(tree: TrackEntity[]): NormalizedTNodeTree {
     // Store the node without children
     const { children, ...nodeWithoutChildren } = node;
     normalized.byId[node.id] = nodeWithoutChildren as TNodeEntity;
-    
+
     if (isRoot) {
       normalized.rootIds.push(node.id);
     }
-    
+
     // Process children
     if (children && children.length > 0) {
       normalized.childrenById[node.id] = children.map(child => child.id);
@@ -100,7 +100,7 @@ function denormalizeTNodeTree(normalized: NormalizedTNodeTree): TrackEntity[] {
   function buildNode(id: string): TrackEntity {
     const node = normalized.byId[id];
     const childIds = normalized.childrenById[id] || [];
-    
+
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
@@ -195,10 +195,10 @@ const brainState = setup({
     }),
     updateTNodeInTree: assign(({ context, event }) => {
       if (event.type !== 'TNODE_UPDATED') return {};
-      
+
       const { data } = event;
       const { tNodeId, status, eventTNodeId } = data;
-      
+
       if (!context.normalizedTree || !context.normalizedTree.byId[tNodeId]) {
         return {};
       }
@@ -226,9 +226,9 @@ const brainState = setup({
     }),
     refreshNodeDetailsIfSelected: ({ context, event }) => {
       if (event.type !== 'TNODE_UPDATED') return;
-      
+
       const { tNodeId } = event.data;
-      
+
       // If this is the currently selected step node, refresh its details
       if (context.selectedStepNode?.id === tNodeId) {
         trpc.bus.send.mutate({
@@ -278,13 +278,13 @@ const brainState = setup({
     }),
     requestNodeDetails: assign(({ event }) => {
       if (event.type !== 'NODE.CLICK') return {};
-      
+
       trpc.bus.send.mutate({
         systemId: id,
         type: 'GET_TNODE_DETAILS',
         tNodeId: event.nodeId
       });
-      
+
       // Set the selected node ID immediately
       return {
         selectedStepNode: {
@@ -292,32 +292,32 @@ const brainState = setup({
         } as any
       };
     }),
-    
+
     selectAndShowFirstNode: assign(({ context }) => {
       // Get all nodes from the normalized tree
       const byId = context.normalizedTree?.byId;
       const rootIds = context.normalizedTree?.rootIds || [];
-      
+
       if (!byId) {
         console.warn('No nodes available in brain');
         return {};
       }
-      
+
       // Find the first node that is not a root node
       const firstNodeId = Object.keys(byId).find(id => !rootIds.includes(id));
-      
+
       if (!firstNodeId) {
         console.warn('No child nodes available in brain');
         return {};
       }
-      
+
       // Request details for this node
       trpc.bus.send.mutate({
         systemId: id,
         type: 'GET_TNODE_DETAILS',
         tNodeId: firstNodeId
       });
-      
+
       // Set the selected node ID immediately
       return {
         selectedStepNode: {
@@ -427,8 +427,8 @@ const brainState = setup({
         ...contextMenuFn<BrainContext>((ctx) => [
           { label: 'Event Trace', icon: Layers, event: { type: 'TOGGLE_LEFT_PANEL' }, isActive: ctx.showLeftPanel, iconColor: 'text-primary-400' },
           { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_RIGHT_PANEL' }, isActive: ctx.showRightPanel, iconColor: 'text-primary-400' },
-          { separator: true, label: 'Brain Debug Logs', icon: Terminal, event: { type: 'TOGGLE_DEBUG' }, isActive: ctx.debugEnabled, iconColor: 'text-yellow-400' },
           { label: 'Auto-focus Animations', icon: Play, event: { type: 'TOGGLE_ANIMATIONS' }, isActive: ctx.animationsEnabled, iconColor: 'text-blue-400' },
+          { separator: true, label: 'Brain Debug Logs', icon: Terminal, event: { type: 'TOGGLE_DEBUG' }, isActive: ctx.debugEnabled, iconColor: 'text-yellow-400' },
           ...(ctx.brainIsDead
             ? [{ separator: true, label: 'Start Brain', icon: PlayCircle, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-green-400' }]
             : [

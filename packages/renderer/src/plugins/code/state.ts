@@ -833,7 +833,7 @@ const codeState = setup({
   },
   states: {
     canvas: {
-      meta: breadcrumb('canvas', 'Editor', true),
+      meta: breadcrumb('canvas', 'Code', true),
       on: {
         // Broadcast CODE_CONNECTED to all features
         CODE_CONNECTED: {
