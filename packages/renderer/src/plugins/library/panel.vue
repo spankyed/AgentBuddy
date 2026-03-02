@@ -32,7 +32,7 @@
             <span class="font-mono text-xs text-blue-400">{{ selectedDocument.shortCode === 'DOC-0' ? '' : selectedDocument.shortCode }}</span>
           </div>
         </div>
-        
+
         <!-- Content Overview -->
         <div class="space-y-2">
           <h4 class="text-xs font-medium text-neutral-400">Content Overview:</h4>
@@ -70,8 +70,20 @@
             </span>
           </div>
         </div>
+
+        <!-- Dates -->
+        <div class="space-y-2">
+          <div v-if="selectedDocument.createdAt" class="flex items-center justify-between">
+            <span class="text-xs text-neutral-400">Created:</span>
+            <span class="text-xs text-neutral-300">{{ formatDate(selectedDocument.createdAt) }}</span>
+          </div>
+          <div v-if="selectedDocument.updatedAt" class="flex items-center justify-between">
+            <span class="text-xs text-neutral-400">Modified:</span>
+            <span class="text-xs text-neutral-300">{{ formatDate(selectedDocument.updatedAt) }}</span>
+          </div>
+        </div>
       </div>
-      
+
       <!-- Multiple Items Selected -->
       <div v-else-if="selectedItemsCount > 1" class="space-y-3">
         <div class="space-y-2 text-sm">
@@ -339,7 +351,17 @@ const getFieldPreview = (fields: Array<{ key: string; value: string }>): string 
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
-  return date.toLocaleDateString()
+  const now = new Date()
+  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+
+  const isToday = date.toDateString() === now.toDateString()
+  if (isToday) return `Today, ${time}`
+
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`
+
+  return `${date.toLocaleDateString()}, ${time}`
 }
 
 // [SEARCH_INDEX_FF] Search index panel functions — commented out
