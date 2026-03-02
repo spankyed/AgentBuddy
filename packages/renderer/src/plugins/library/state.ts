@@ -57,6 +57,7 @@ export interface LibraryContext {
   breadcrumbs: BreadcrumbItem[]
   editingItem?: LibraryItem
   itemToEdit?: string | null
+  newItemId?: string | null
 
   // Tree view fields
   expandedFolderIds: string[]
@@ -399,6 +400,11 @@ export const librarySystem = setup({
     }),
     clearSelection: assign({
       selectedItems: [],
+      selectedDocument: null,
+    }),
+    selectNewItemOrClear: assign({
+      selectedItems: ({ context }) =>
+        context.newItemId ? [context.newItemId] : [],
       selectedDocument: null,
     }),
 
@@ -770,6 +776,7 @@ export const librarySystem = setup({
     breadcrumbs: [],
     editingItem: undefined,
     itemToEdit: null,
+    newItemId: null,
 
     // Tree view fields
     expandedFolderIds: [],
@@ -818,26 +825,28 @@ export const librarySystem = setup({
     // File browser events
     FOLDER_CONTENTS_LOADED: {
       // actions: ['setFolderContents', 'clearSelection', 'requestSearchIndices'], // [SEARCH_INDEX_FF] removed 'requestSearchIndices'
-      actions: ['setFolderContents', 'clearSelection'],
+      actions: ['setFolderContents', 'selectNewItemOrClear'],
     },
     NAVIGATION_CHANGED: {
       actions: 'updateNavigation',
     },
     NAVIGATE_TO_FOLDER: {
       actions: ['navigateToFolder', 'clearSelection', assign({
-        currentFolderId: ({ event }) => event.folderId
+        currentFolderId: ({ event }) => event.folderId,
+        newItemId: null
       })],
     },
     BREADCRUMB_CLICK: {
       actions: ['navigateToFolder', 'clearSelection', assign({
-        currentFolderId: ({ event }) => event.folderId
+        currentFolderId: ({ event }) => event.folderId,
+        newItemId: null
       })],
     },
     DOUBLE_CLICK_ITEM: {
-      actions: ['handleDoubleClick', 'clearSelection'],
+      actions: ['handleDoubleClick', 'clearSelection', assign({ newItemId: null })],
     },
     SELECT_ITEMS: {
-      actions: 'selectItems',
+      actions: ['selectItems', assign({ newItemId: null })],
     },
     SORT_BY: {
       actions: 'setSortOrder',
@@ -924,6 +933,10 @@ export const librarySystem = setup({
         assign({
           itemToEdit: ({ event }) => {
             // Set the new folder to be edited
+            const createdEvent = event as OutgoingLibraryEvents & { type: 'COLLECTION_CREATED'; data: { collection: CollectionDTO } }
+            return createdEvent.data?.collection?.id || null
+          },
+          newItemId: ({ event }) => {
             const createdEvent = event as OutgoingLibraryEvents & { type: 'COLLECTION_CREATED'; data: { collection: CollectionDTO } }
             return createdEvent.data?.collection?.id || null
           }
