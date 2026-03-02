@@ -6,8 +6,8 @@
         Manage the tags available for organizing documents
       </p>
       <div class="space-y-3">
-        <div 
-          v-for="(tag, index) in tags" 
+        <div
+          v-for="(tag, index) in tags"
           :key="`tag-${index}`"
           class="group flex items-center gap-3"
         >
@@ -20,7 +20,7 @@
               title="Change color"
             />
             <!-- Simple color picker dropdown -->
-            <div 
+            <div
               v-if="activeColorPicker === index"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
@@ -64,14 +64,131 @@
         </button>
       </div>
     </CollapsibleSection>
+
+    <!-- Import Library Section -->
+    <CollapsibleSection label="Import Library" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Import library items from an exported JSON file
+      </p>
+
+      <div class="space-y-4">
+        <button
+          @click="selectAndImportLibrary"
+          :disabled="isImporting"
+          class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Upload class="w-4 h-4" />
+          {{ isImporting ? 'Importing...' : 'Select JSON File...' }}
+        </button>
+
+        <!-- Success message -->
+        <div v-if="importStatus === 'success'" class="p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <CheckCircle class="w-5 h-5 text-emerald-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-emerald-400 mb-1">
+                Successfully imported {{ importedCount }} item{{ importedCount !== 1 ? 's' : '' }}
+              </h4>
+              <ul v-if="importErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div v-if="importStatus === 'error'" class="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <XCircle class="w-5 h-5 text-red-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-red-400 mb-1">
+                Import failed
+              </h4>
+              <ul class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
+
+    <!-- Export Library Section -->
+    <CollapsibleSection label="Export Library" :default-open="false" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Export all library items to a JSON file
+      </p>
+
+      <div class="space-y-4">
+        <!-- Directory picker row -->
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            :value="exportDirectory"
+            readonly
+            placeholder="Select output directory..."
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none cursor-default placeholder-neutral-500"
+          />
+          <button
+            @click="selectExportDirectory"
+            class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-1.5"
+          >
+            <FolderOpen class="w-4 h-4" />
+            Browse
+          </button>
+        </div>
+
+        <!-- Export button -->
+        <button
+          @click="exportLibraryToFile"
+          :disabled="isExporting || !exportDirectory"
+          class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download class="w-4 h-4" />
+          {{ isExporting ? 'Exporting...' : 'Export' }}
+        </button>
+
+        <!-- Success message -->
+        <div v-if="exportStatus === 'success'" class="p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <CheckCircle class="w-5 h-5 text-emerald-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-emerald-400 mb-1">
+                Successfully exported {{ exportedItemCount }} item{{ exportedItemCount !== 1 ? 's' : '' }}
+              </h4>
+              <p class="text-sm text-neutral-400">{{ exportedFilePath }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div v-if="exportStatus === 'error'" class="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+          <div class="flex items-start gap-3">
+            <XCircle class="w-5 h-5 text-red-500 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="text-sm font-medium text-red-400 mb-1">
+                Export failed
+              </h4>
+              <ul class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in exportErrors" :key="idx">{{ error }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id } from './state'
 
 interface LibraryTagOption {
   name: string
@@ -173,5 +290,70 @@ const removeTag = (index: number) => {
     tags.value.splice(index, 1)
     saveTags()
   }
+}
+
+// Get library actor and state via selectors
+const libraryActor = applicationState.system.get(id)
+
+// Import state
+const isImporting = useSelector(libraryActor, (state: any) => state.context.libraryImport.status === 'importing')
+const importStatus = useSelector(libraryActor, (state: any) => state.context.libraryImport.status)
+const importErrors = useSelector(libraryActor, (state: any) => state.context.libraryImport.errors)
+const importedCount = useSelector(libraryActor, (state: any) => state.context.libraryImport.importedCount)
+
+// Export state
+const exportDirectory = ref<string>('')
+const isExporting = useSelector(libraryActor, (state: any) => state.context.libraryExport.status === 'exporting')
+const exportStatus = useSelector(libraryActor, (state: any) => state.context.libraryExport.status)
+const exportErrors = useSelector(libraryActor, (state: any) => state.context.libraryExport.errors)
+const exportedFilePath = useSelector(libraryActor, (state: any) => state.context.libraryExport.filePath)
+const exportedItemCount = useSelector(libraryActor, (state: any) => state.context.libraryExport.itemCount)
+
+// Import - file picker and send to state machine
+const selectAndImportLibrary = async () => {
+  libraryActor.send({ type: 'LIBRARY.RESET_IMPORT_STATUS' })
+
+  const filePath = await window.electronAPI?.fileUtils.selectPath({
+    type: 'file'
+  })
+
+  if (!filePath || Array.isArray(filePath)) return
+
+  if (!filePath.endsWith('.json')) return
+
+  try {
+    const content = await window.electronAPI?.fileUtils.readFile(filePath)
+    if (!content) return
+
+    let parsed: any
+    try {
+      parsed = JSON.parse(content)
+    } catch {
+      return
+    }
+
+    // Support both { version, items } wrapper and raw array
+    const items = Array.isArray(parsed) ? parsed : parsed?.items
+    if (!Array.isArray(items)) return
+
+    libraryActor.send({
+      type: 'LIBRARY.IMPORT',
+      items,
+    })
+  } catch {
+    // Silently fail for file reading errors
+  }
+}
+
+// Export
+const selectExportDirectory = async () => {
+  const dir = await window.electronAPI?.fileUtils.selectPath({ type: 'directory' })
+  if (dir && typeof dir === 'string') exportDirectory.value = dir
+}
+
+const exportLibraryToFile = () => {
+  if (!exportDirectory.value) return
+  libraryActor.send({ type: 'LIBRARY.RESET_EXPORT_STATUS' })
+  libraryActor.send({ type: 'LIBRARY.EXPORT', directory: exportDirectory.value })
 }
 </script>

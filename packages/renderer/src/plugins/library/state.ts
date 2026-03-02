@@ -76,6 +76,10 @@ export interface LibraryContext {
 
   // Settings
   settings?: any
+
+  // Import/Export
+  libraryImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
+  libraryExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
 }
 
 export type LibraryEvents =
@@ -131,6 +135,15 @@ export type LibraryEvents =
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
   | { type: 'CREATE_SYMLINK_FILE'; name: string }
   | { type: 'CREATE_SYMLINK_FOLDER'; name: string }
+  // Import/Export events
+  | { type: 'LIBRARY.IMPORT'; items: any[] }
+  | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
+  | { type: 'LIBRARY.EXPORT'; directory: string }
+  | { type: 'LIBRARY.RESET_EXPORT_STATUS' }
+  | { type: 'LIBRARY_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
+  | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
+  | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
   | OutgoingLibraryEvents
 
 export const librarySystem = setup({
@@ -689,6 +702,104 @@ export const librarySystem = setup({
       }
     },
 
+    /* ── Library Import actions ────────────────────────────── */
+    setImportingLibrary: assign(({ context }) => ({
+      libraryImport: {
+        ...context.libraryImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportLibrary: ({ event }) => {
+      if (event.type === 'LIBRARY.IMPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'IMPORT_LIBRARY',
+          items: event.items,
+        } as any)
+      }
+    },
+
+    handleLibraryImported: assign(({ event }) => {
+      if (event.type === 'LIBRARY_IMPORTED') {
+        return {
+          libraryImport: {
+            status: 'success' as const,
+            errors: event.errors || [],
+            importedCount: event.count,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleLibraryImportFailed: assign(({ event }) => {
+      if (event.type === 'LIBRARY_IMPORT_FAILED') {
+        return {
+          libraryImport: {
+            status: 'error' as const,
+            errors: event.errors,
+            importedCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetImportLibraryStatus: assign({
+      libraryImport: { status: 'idle' as const, errors: [] as string[], importedCount: 0 },
+    }),
+
+    /* ── Library Export actions ────────────────────────────── */
+    setExportingLibrary: assign(({ context }) => ({
+      libraryExport: {
+        ...context.libraryExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportLibrary: ({ event }) => {
+      if (event.type === 'LIBRARY.EXPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'EXPORT_LIBRARY',
+          directory: event.directory,
+        } as any)
+      }
+    },
+
+    handleLibraryExported: assign(({ event }) => {
+      if (event.type === 'LIBRARY_EXPORTED') {
+        return {
+          libraryExport: {
+            status: 'success' as const,
+            errors: [] as string[],
+            filePath: event.filePath,
+            itemCount: event.itemCount,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleLibraryExportFailed: assign(({ event }) => {
+      if (event.type === 'LIBRARY_EXPORT_FAILED') {
+        return {
+          libraryExport: {
+            status: 'error' as const,
+            errors: event.errors,
+            filePath: '',
+            itemCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetExportLibraryStatus: assign({
+      libraryExport: { status: 'idle' as const, errors: [] as string[], filePath: '', itemCount: 0 },
+    }),
+
     // ? think we're sending duplicate documents data on startup
     setConnectedData: assign({
       documents: ({ event }) => {
@@ -765,6 +876,10 @@ export const librarySystem = setup({
 
     // Settings
     settings: undefined,
+
+    // Import/Export
+    libraryImport: { status: 'idle' as const, errors: [], importedCount: 0 },
+    libraryExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
   },
   on: {
     PLUGIN_ACTIVATED: {
@@ -848,6 +963,32 @@ export const librarySystem = setup({
     },
     SYMLINK_FILE_SAVED: {
       // No-op, just acknowledge
+    },
+
+    // Import/Export events
+    'LIBRARY.IMPORT': {
+      actions: ['setImportingLibrary', 'sendImportLibrary'],
+    },
+    'LIBRARY.RESET_IMPORT_STATUS': {
+      actions: 'resetImportLibraryStatus',
+    },
+    LIBRARY_IMPORTED: {
+      actions: ['handleLibraryImported', 'requestFolderContents', 'requestCollections'],
+    },
+    LIBRARY_IMPORT_FAILED: {
+      actions: 'handleLibraryImportFailed',
+    },
+    'LIBRARY.EXPORT': {
+      actions: ['setExportingLibrary', 'sendExportLibrary'],
+    },
+    'LIBRARY.RESET_EXPORT_STATUS': {
+      actions: 'resetExportLibraryStatus',
+    },
+    LIBRARY_EXPORTED: {
+      actions: 'handleLibraryExported',
+    },
+    LIBRARY_EXPORT_FAILED: {
+      actions: 'handleLibraryExportFailed',
     },
 
     // Creation success events - refresh current folder

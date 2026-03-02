@@ -13,6 +13,8 @@ import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes'
+import { exportLibrary } from './export-library'
+import { importLibrary } from './import-library'
 
 export const library = 'library' as const
 
@@ -210,6 +212,9 @@ const IncomingLibraryEvents = [
     id: z.string(),
     content: z.string(),
   }),
+  // Import/Export events
+  busEvent('IMPORT_LIBRARY', { items: z.any() }),
+  busEvent('EXPORT_LIBRARY', { directory: z.string() }),
 ] as const
 
 export type OutgoingLibraryEvents =
@@ -241,6 +246,11 @@ export type OutgoingLibraryEvents =
   // Symlink events
   | { type: 'SYMLINK_FILE_LOADED'; data: { id: string; name: string; content: string; filePath: string } }
   | { type: 'SYMLINK_FILE_SAVED'; data: { id: string } }
+  // Import/Export events
+  | { type: 'LIBRARY_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
+  | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
+  | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
 
 // Removed OutgoingSystemEvents helper - using direct event structure instead
 
@@ -780,6 +790,105 @@ export const librarySystem = setup({
         })
       }
     },
+    // Import/Export actions
+    importLibraryItems: async ({ system, event }) => {
+      const ev = event as { type: 'IMPORT_LIBRARY'; items: any }
+      const pluginId = library
+
+      if (!Array.isArray(ev.items)) {
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_IMPORT_FAILED' as const,
+            pluginId,
+            errors: ['Invalid import data: expected an array of items'],
+          },
+        })
+        return
+      }
+
+      try {
+        const result = importLibrary(ev.items)
+
+        if (result.created === 0 && result.errors.length > 0) {
+          system.get(bus).send({
+            type: 'OUTGOING' as const,
+            event: {
+              type: 'LIBRARY_IMPORT_FAILED' as const,
+              pluginId,
+              errors: result.errors,
+            },
+          })
+          return
+        }
+
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_IMPORTED' as const,
+            pluginId,
+            count: result.created,
+            ...(result.errors.length > 0 ? { errors: result.errors } : {}),
+          },
+        })
+
+        // Refresh library data
+        const documents = repository.libraryQueries.getDocuments()
+        const collections = repository.libraryQueries.getCollections()
+        const librarySettings = repository.settingsQueries.getPluginSettings('library')
+
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_CONNECTED' as const,
+            pluginId,
+            data: {
+              documents,
+              collections,
+              settings: librarySettings || null,
+            },
+          },
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_IMPORT_FAILED' as const,
+            pluginId,
+            errors: [message],
+          },
+        })
+      }
+    },
+    exportLibraryToFile: async ({ system, event }) => {
+      const ev = event as { type: 'EXPORT_LIBRARY'; directory: string }
+      const pluginId = library
+
+      try {
+        const { filePath, itemCount } = exportLibrary(ev.directory)
+
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_EXPORTED' as const,
+            pluginId,
+            filePath,
+            itemCount,
+          },
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_EXPORT_FAILED' as const,
+            pluginId,
+            errors: [message],
+          },
+        })
+      }
+    },
     handleSettingsUpdate: ({ system, event }) => {
       const { changes } = typeOf('LIBRARY_SETTINGS_UPDATED', event)
       // Handle nested changes format from detectAllArrayChanges
@@ -923,6 +1032,13 @@ export const librarySystem = setup({
         },
         SAVE_SYMLINK_FILE: {
           actions: ['saveSymlinkFile'],
+        },
+        // Import/Export events
+        IMPORT_LIBRARY: {
+          actions: ['importLibraryItems'],
+        },
+        EXPORT_LIBRARY: {
+          actions: ['exportLibraryToFile'],
         },
       },
     },
