@@ -37,14 +37,14 @@
 
         <!-- Template Function -->
         <div class="pt-6 border-t border-neutral-800">
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3 mb-2">
             <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-              Template Function <span class="text-red-400">*</span>
+              Function Template <span class="text-red-400">*</span>
             </label>
             <button
               v-if="prompt"
               @click="openInEditor"
-              class="flex items-center gap-1 px-2 py-1 text-xs transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              class="flex items-center gap-1 px-1.5 py-0.5 text-xs transition-colors rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800"
             >
               <ExternalLink class="w-3 h-3" />
               Open in editor
@@ -89,20 +89,11 @@
         <!-- Metadata -->
         <div class="pt-6 border-t border-neutral-800">
           <CollapsibleSection v-model="metadataExpanded" label="Metadata">
-            <dl class="grid grid-cols-2 gap-4">
-              <div>
-                <dt class="text-xs text-neutral-500">Created</dt>
-                <dd class="text-sm text-neutral-300">{{ formatDate(prompt?.createdAt) }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-neutral-500">Updated</dt>
-                <dd class="text-sm text-neutral-300">{{ formatDate(prompt?.updatedAt) }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-neutral-500">ID</dt>
-                <dd class="font-mono text-sm text-neutral-300">{{ prompt?.id }}</dd>
-              </div>
-            </dl>
+            <div class="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-neutral-500">
+              <span>ID <span class="font-mono text-neutral-400">{{ prompt?.id }}</span></span>
+              <span>Created <span class="text-neutral-400">{{ formatDate(prompt?.createdAt) }}</span></span>
+              <span>Updated <span class="text-neutral-400">{{ formatDate(prompt?.updatedAt) }}</span></span>
+            </div>
           </CollapsibleSection>
         </div>
 
