@@ -111,11 +111,12 @@ export default /** @type import('electron-builder').Configuration */
   
   // Extra resources
   extraResources: [
-    {
-      from: 'packages/api/local_cache',
-      to: 'api/local_cache',
-      filter: ['**/*']
-    }
+    // TODO: [SEARCH_INDEX_FF] Re-enable when search index is restored
+    // {
+    //   from: 'packages/api/local_cache',
+    //   to: 'api/local_cache',
+    //   filter: ['**/*']
+    // }
   ],
   
   // Disable publishing and auto-updater

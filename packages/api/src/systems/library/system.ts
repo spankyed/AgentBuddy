@@ -1,9 +1,10 @@
+// TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
 import { assign, setup } from 'xstate'
 import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import type { EARS } from '@/core/types'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents } from './types'
-import type { SearchIndex } from './search-index/types/search-index'
+// [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
@@ -11,7 +12,7 @@ import * as path from 'path'
 import * as os from 'os'
 import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
-import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
+// [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 import { toMap, toIdentifierSet, mapArray } from '@/systems/settings/settings-changes'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
@@ -123,80 +124,80 @@ const IncomingLibraryEvents = [
     targetIndex: z.number(),
     targetFolderId: z.string().nullable(),
   }),
-  // Search index events
-  busEvent('LIST_SEARCH_INDICES', {
-    folderId: z.string().nullable(),
-  }),
-  busEvent('CREATE_SEARCH_INDEX', {
-    config: z.object({
-      name: z.string(),
-      description: z.string(),
-      embeddingModel: z.enum([
-        EMBEDDING_MODELS.MINILM_L6_V2,
-        EMBEDDING_MODELS.BGE_SMALL_EN,
-        EMBEDDING_MODELS.BGE_SMALL_EN_V15,
-        EMBEDDING_MODELS.BGE_BASE_EN,
-        EMBEDDING_MODELS.BGE_BASE_EN_V15,
-        EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
-        EMBEDDING_MODELS.OPENAI_SMALL,
-        EMBEDDING_MODELS.OPENAI_LARGE,
-      ]),
-      indexMetric: z.enum(['cosine', 'dot_product']),
-      connectors: z.number(),
-      excludeAllSubfolders: z.boolean(),
-      excludedFolderIds: z.array(z.string()),
-      excludedDocumentIds: z.array(z.string()),
-      enableSectionIndexing: z.boolean(),
-      segmentRules: z.array(z.object({
-        id: z.string(),
-        type: z.enum(['text', 'list', 'field']),
-        occurrence: z.string(),
-        key: z.string().optional(),
-        indexMode: z.enum(['combined', 'separate']),
-      })),
-      constructTemplate: z.string(),
-    }),
-    folderId: z.string().nullable(),
-  }),
-  busEvent('UPDATE_SEARCH_INDEX', {
-    id: z.string(),
-    config: z.object({
-      name: z.string(),
-      description: z.string(),
-      embeddingModel: z.enum([
-        EMBEDDING_MODELS.MINILM_L6_V2,
-        EMBEDDING_MODELS.BGE_SMALL_EN,
-        EMBEDDING_MODELS.BGE_SMALL_EN_V15,
-        EMBEDDING_MODELS.BGE_BASE_EN,
-        EMBEDDING_MODELS.BGE_BASE_EN_V15,
-        EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
-        EMBEDDING_MODELS.OPENAI_SMALL,
-        EMBEDDING_MODELS.OPENAI_LARGE,
-      ]),
-      indexMetric: z.enum(['cosine', 'dot_product']),
-      connectors: z.number(),
-      excludeAllSubfolders: z.boolean(),
-      excludedFolderIds: z.array(z.string()),
-      excludedDocumentIds: z.array(z.string()),
-      enableSectionIndexing: z.boolean(),
-      segmentRules: z.array(z.object({
-        id: z.string(),
-        type: z.enum(['text', 'list', 'field']),
-        occurrence: z.string(),
-        key: z.string().optional(),
-        indexMode: z.enum(['combined', 'separate']),
-      })),
-      constructTemplate: z.string(),
-    }),
-  }),
-  busEvent('DELETE_SEARCH_INDEX', {
-    id: z.string(),
-  }),
-  busEvent('SEARCH_IN_INDEX', {
-    indexId: z.string(),
-    query: z.string(),
-    limit: z.number().optional(),
-  }),
+  // [SEARCH_INDEX_FF] Search index events — commented out
+  // busEvent('LIST_SEARCH_INDICES', {
+  //   folderId: z.string().nullable(),
+  // }),
+  // busEvent('CREATE_SEARCH_INDEX', {
+  //   config: z.object({
+  //     name: z.string(),
+  //     description: z.string(),
+  //     embeddingModel: z.enum([
+  //       EMBEDDING_MODELS.MINILM_L6_V2,
+  //       EMBEDDING_MODELS.BGE_SMALL_EN,
+  //       EMBEDDING_MODELS.BGE_SMALL_EN_V15,
+  //       EMBEDDING_MODELS.BGE_BASE_EN,
+  //       EMBEDDING_MODELS.BGE_BASE_EN_V15,
+  //       EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
+  //       EMBEDDING_MODELS.OPENAI_SMALL,
+  //       EMBEDDING_MODELS.OPENAI_LARGE,
+  //     ]),
+  //     indexMetric: z.enum(['cosine', 'dot_product']),
+  //     connectors: z.number(),
+  //     excludeAllSubfolders: z.boolean(),
+  //     excludedFolderIds: z.array(z.string()),
+  //     excludedDocumentIds: z.array(z.string()),
+  //     enableSectionIndexing: z.boolean(),
+  //     segmentRules: z.array(z.object({
+  //       id: z.string(),
+  //       type: z.enum(['text', 'list', 'field']),
+  //       occurrence: z.string(),
+  //       key: z.string().optional(),
+  //       indexMode: z.enum(['combined', 'separate']),
+  //     })),
+  //     constructTemplate: z.string(),
+  //   }),
+  //   folderId: z.string().nullable(),
+  // }),
+  // busEvent('UPDATE_SEARCH_INDEX', {
+  //   id: z.string(),
+  //   config: z.object({
+  //     name: z.string(),
+  //     description: z.string(),
+  //     embeddingModel: z.enum([
+  //       EMBEDDING_MODELS.MINILM_L6_V2,
+  //       EMBEDDING_MODELS.BGE_SMALL_EN,
+  //       EMBEDDING_MODELS.BGE_SMALL_EN_V15,
+  //       EMBEDDING_MODELS.BGE_BASE_EN,
+  //       EMBEDDING_MODELS.BGE_BASE_EN_V15,
+  //       EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
+  //       EMBEDDING_MODELS.OPENAI_SMALL,
+  //       EMBEDDING_MODELS.OPENAI_LARGE,
+  //     ]),
+  //     indexMetric: z.enum(['cosine', 'dot_product']),
+  //     connectors: z.number(),
+  //     excludeAllSubfolders: z.boolean(),
+  //     excludedFolderIds: z.array(z.string()),
+  //     excludedDocumentIds: z.array(z.string()),
+  //     enableSectionIndexing: z.boolean(),
+  //     segmentRules: z.array(z.object({
+  //       id: z.string(),
+  //       type: z.enum(['text', 'list', 'field']),
+  //       occurrence: z.string(),
+  //       key: z.string().optional(),
+  //       indexMode: z.enum(['combined', 'separate']),
+  //     })),
+  //     constructTemplate: z.string(),
+  //   }),
+  // }),
+  // busEvent('DELETE_SEARCH_INDEX', {
+  //   id: z.string(),
+  // }),
+  // busEvent('SEARCH_IN_INDEX', {
+  //   indexId: z.string(),
+  //   query: z.string(),
+  //   limit: z.number().optional(),
+  // }),
   // Symlink events
   busEvent('CREATE_SYMLINK_COLLECTION', {
     name: z.string(),
@@ -227,13 +228,13 @@ export type OutgoingLibraryEvents =
   | { type: 'ITEMS_DELETED'; data: { ids: string[] } }
   | { type: 'ITEMS_MOVED'; data: { ids: string[]; targetFolderId: string | null } }
   | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
-  // Search index events
-  | { type: 'SEARCH_INDICES_LOADED'; data: { indices: SearchIndex[] } }
-  | { type: 'SEARCH_INDEX_CREATED'; data: { index: SearchIndex } }
-  | { type: 'SEARCH_INDEX_UPDATED'; data: { index: SearchIndex } }
-  | { type: 'SEARCH_INDEX_DELETED'; data: { indexId: string } }
-  | { type: 'SEARCH_RESULTS'; data: { results: any[] } }
-  | { type: 'INDEXING_PROGRESS'; data: { indexId: string; progress: number; total: number } }
+  // [SEARCH_INDEX_FF] Search index events — commented out
+  // | { type: 'SEARCH_INDICES_LOADED'; data: { indices: SearchIndex[] } }
+  // | { type: 'SEARCH_INDEX_CREATED'; data: { index: SearchIndex } }
+  // | { type: 'SEARCH_INDEX_UPDATED'; data: { index: SearchIndex } }
+  // | { type: 'SEARCH_INDEX_DELETED'; data: { indexId: string } }
+  // | { type: 'SEARCH_RESULTS'; data: { results: any[] } }
+  // | { type: 'INDEXING_PROGRESS'; data: { indexId: string; progress: number; total: number } }
   // Import/Export events
   | { type: 'LIBRARY_IMPORTED'; count: number; errors?: string[] }
   | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
@@ -661,84 +662,84 @@ export const librarySystem = setup({
         },
       })
     },
-    // Search index actions
-    listSearchIndices: async ({ system, event }) => {
-      const ev = event as { type: 'LIST_SEARCH_INDICES'; folderId: string | null }
-      const searchIndexRepo = await import('./search-index/repository')
-      const indices = await searchIndexRepo.getSearchIndicesForFolder(
-        ev.folderId ? ev.folderId as EARS.EntityId : null
-      )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'SEARCH_INDICES_LOADED' as const,
-          pluginId: 'library',
-          data: { indices },
-        },
-      })
-    },
-    createSearchIndex: async ({ system, event }) => {
-      const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
-      const searchIndexRepo = await import('./search-index/repository')
-      const index = await searchIndexRepo.createSearchIndex(
-        ev.config,
-        ev.folderId ? ev.folderId as EARS.EntityId : null
-      )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'SEARCH_INDEX_CREATED' as const,
-          pluginId: 'library',
-          data: { index },
-        },
-      })
-    },
-    updateSearchIndex: async ({ system, event }) => {
-      const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
-      const searchIndexRepo = await import('./search-index/repository')
-      const index = await searchIndexRepo.updateSearchIndex(
-        ev.id as EARS.EntityId,
-        ev.config
-      )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'SEARCH_INDEX_UPDATED' as const,
-          pluginId: 'library',
-          data: { index },
-        },
-      })
-    },
-    deleteSearchIndex: async ({ system, event }) => {
-      const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
-      const searchIndexRepo = await import('./search-index/repository')
-      await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'SEARCH_INDEX_DELETED' as const,
-          pluginId: 'library',
-          data: { indexId: ev.id },
-        },
-      })
-    },
-    searchInIndex: async ({ system, event }) => {
-      const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
-      const searchIndexRepo = await import('./search-index/repository')
-      const results = await searchIndexRepo.searchInIndex(
-        ev.indexId as EARS.EntityId,
-        ev.query,
-        ev.limit
-      )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'SEARCH_RESULTS' as const,
-          pluginId: 'library',
-          data: { results },
-        },
-      })
-    },
+    // [SEARCH_INDEX_FF] Search index actions — commented out
+    // listSearchIndices: async ({ system, event }) => {
+    //   const ev = event as { type: 'LIST_SEARCH_INDICES'; folderId: string | null }
+    //   const searchIndexRepo = await import('./search-index/repository')
+    //   const indices = await searchIndexRepo.getSearchIndicesForFolder(
+    //     ev.folderId ? ev.folderId as EARS.EntityId : null
+    //   )
+    //   system.get(bus).send({
+    //     type: 'OUTGOING' as const,
+    //     event: {
+    //       type: 'SEARCH_INDICES_LOADED' as const,
+    //       pluginId: 'library',
+    //       data: { indices },
+    //     },
+    //   })
+    // },
+    // createSearchIndex: async ({ system, event }) => {
+    //   const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
+    //   const searchIndexRepo = await import('./search-index/repository')
+    //   const index = await searchIndexRepo.createSearchIndex(
+    //     ev.config,
+    //     ev.folderId ? ev.folderId as EARS.EntityId : null
+    //   )
+    //   system.get(bus).send({
+    //     type: 'OUTGOING' as const,
+    //     event: {
+    //       type: 'SEARCH_INDEX_CREATED' as const,
+    //       pluginId: 'library',
+    //       data: { index },
+    //     },
+    //   })
+    // },
+    // updateSearchIndex: async ({ system, event }) => {
+    //   const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
+    //   const searchIndexRepo = await import('./search-index/repository')
+    //   const index = await searchIndexRepo.updateSearchIndex(
+    //     ev.id as EARS.EntityId,
+    //     ev.config
+    //   )
+    //   system.get(bus).send({
+    //     type: 'OUTGOING' as const,
+    //     event: {
+    //       type: 'SEARCH_INDEX_UPDATED' as const,
+    //       pluginId: 'library',
+    //       data: { index },
+    //     },
+    //   })
+    // },
+    // deleteSearchIndex: async ({ system, event }) => {
+    //   const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
+    //   const searchIndexRepo = await import('./search-index/repository')
+    //   await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
+    //   system.get(bus).send({
+    //     type: 'OUTGOING' as const,
+    //     event: {
+    //       type: 'SEARCH_INDEX_DELETED' as const,
+    //       pluginId: 'library',
+    //       data: { indexId: ev.id },
+    //     },
+    //   })
+    // },
+    // searchInIndex: async ({ system, event }) => {
+    //   const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
+    //   const searchIndexRepo = await import('./search-index/repository')
+    //   const results = await searchIndexRepo.searchInIndex(
+    //     ev.indexId as EARS.EntityId,
+    //     ev.query,
+    //     ev.limit
+    //   )
+    //   system.get(bus).send({
+    //     type: 'OUTGOING' as const,
+    //     event: {
+    //       type: 'SEARCH_RESULTS' as const,
+    //       pluginId: 'library',
+    //       data: { results },
+    //     },
+    //   })
+    // },
     // Symlink actions
     createSymlinkCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_SYMLINK_COLLECTION'; name: string; symlinkPath: string; parentId?: string }
@@ -967,22 +968,12 @@ export const librarySystem = setup({
         REORDER_ITEMS: {
           actions: ['reorderItems'],
         },
-        // Search index events
-        LIST_SEARCH_INDICES: {
-          actions: ['listSearchIndices'],
-        },
-        CREATE_SEARCH_INDEX: {
-          actions: ['createSearchIndex'],
-        },
-        UPDATE_SEARCH_INDEX: {
-          actions: ['updateSearchIndex'],
-        },
-        DELETE_SEARCH_INDEX: {
-          actions: ['deleteSearchIndex'],
-        },
-        SEARCH_IN_INDEX: {
-          actions: ['searchInIndex'],
-        },
+        // [SEARCH_INDEX_FF] Search index events — commented out
+        // LIST_SEARCH_INDICES: { actions: ['listSearchIndices'] },
+        // CREATE_SEARCH_INDEX: { actions: ['createSearchIndex'] },
+        // UPDATE_SEARCH_INDEX: { actions: ['updateSearchIndex'] },
+        // DELETE_SEARCH_INDEX: { actions: ['deleteSearchIndex'] },
+        // SEARCH_IN_INDEX: { actions: ['searchInIndex'] },
         // Symlink events
         CREATE_SYMLINK_COLLECTION: {
           actions: ['createSymlinkCollection'],

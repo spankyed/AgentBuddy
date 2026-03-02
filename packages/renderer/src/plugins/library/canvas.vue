@@ -16,8 +16,8 @@ import { useState } from '@/core/composables/plugins'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import CreateView from './components/CreateView.vue'
 import EditView from './components/EditView.vue'
-import CreateIndexView from './components/search-index/CreateIndexView.vue'
-import TestIndexView from './components/search-index/TestIndexView.vue'
+// [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
+// [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
 const actor = useState<typeof librarySystem>(id)
@@ -30,12 +30,10 @@ const currentComponent = computed(() => {
       return CreateView
     case 'edit':
       return EditView
-    case 'create-index':
-      return CreateIndexView
-    case 'edit-index':
-      return CreateIndexView // Reuse with edit mode
-    case 'test-index':
-      return TestIndexView
+    // [SEARCH_INDEX_FF] search index views — commented out
+    // case 'create-index': return CreateIndexView
+    // case 'edit-index': return CreateIndexView
+    // case 'test-index': return TestIndexView
     case 'browser':
     default:
       return FileSystemBrowser
@@ -74,13 +72,9 @@ const currentProps = computed(() => {
         ...base,
         document: context.value.editingDocument,
       }
-    case 'create-index':
-      return {}
-    case 'edit-index':
-      return {
-        editMode: true,
-        initialData: context.value.editingIndex,
-      }
+    // [SEARCH_INDEX_FF] search index props — commented out
+    // case 'create-index': return {}
+    // case 'edit-index': return { editMode: true, initialData: context.value.editingIndex }
     default:
       return base
   }
@@ -96,15 +90,15 @@ const currentEvents = computed(() => {
       send({ type: 'SAVE_DOCUMENT', ...payload }),
     CANCEL_EDIT: () => send({ type: 'CANCEL_EDIT' }),
     
-    // Search index management  
-    CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
-    SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
-    CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
-    EDIT_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'EDIT_SEARCH_INDEX', ...payload }),
-    UPDATE_SEARCH_INDEX: (payload: { indexId: string; config: any }) => send({ type: 'UPDATE_SEARCH_INDEX', ...payload }),
-    DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
-    CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
-    
+    // [SEARCH_INDEX_FF] Search index management — commented out
+    // CREATE_SEARCH_INDEX: () => send({ type: 'CREATE_SEARCH_INDEX' }),
+    // SAVE_SEARCH_INDEX: (config: any) => send({ type: 'SAVE_SEARCH_INDEX', config }),
+    // CANCEL_CREATE_INDEX: () => send({ type: 'CANCEL_CREATE_INDEX' }),
+    // EDIT_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'EDIT_SEARCH_INDEX', ...payload }),
+    // UPDATE_SEARCH_INDEX: (payload: { indexId: string; config: any }) => send({ type: 'UPDATE_SEARCH_INDEX', ...payload }),
+    // DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
+    // CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
+
     // Legacy collection support (for CreateView)
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),

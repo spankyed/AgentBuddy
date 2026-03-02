@@ -4,7 +4,7 @@ import { edgeStore } from '@/core/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
 import { createLogger } from '@/core/utils/debug/logger'
 import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection, FolderItem } from '../types'
-import * as searchIndexRepo from '../search-index/repository'
+// TODO: [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository'
 import { libraryQueries } from './queries'
 import {
   findParentCollection,
@@ -57,13 +57,13 @@ export const libraryCommands = {
 
     const document = libraryQueries.getDocument(documentId)
 
-    // Auto-index in search indices (fire and forget)
-    searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-      logger.error('Failed to auto-index new document', {
-        documentId,
-        error: error instanceof Error ? error.message : String(error)
-      })
-    })
+    // [SEARCH_INDEX_FF] Auto-index in search indices (fire and forget)
+    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
+    //   logger.error('Failed to auto-index new document', {
+    //     documentId,
+    //     error: error instanceof Error ? error.message : String(error)
+    //   })
+    // })
 
     return document!
   },
@@ -118,13 +118,13 @@ export const libraryCommands = {
 
     const document = libraryQueries.getDocument(documentId)
 
-    // Re-index in search indices (fire and forget)
-    searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
-      logger.error('Failed to re-index updated document', {
-        documentId,
-        error: error instanceof Error ? error.message : String(error)
-      })
-    })
+    // [SEARCH_INDEX_FF] Re-index in search indices (fire and forget)
+    // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
+    //   logger.error('Failed to re-index updated document', {
+    //     documentId,
+    //     error: error instanceof Error ? error.message : String(error)
+    //   })
+    // })
 
     return document!
   },
@@ -146,8 +146,8 @@ export const libraryCommands = {
       })
     }
 
-    // Remove from all search indices (fire and forget)
-    searchIndexRepo.removeDocumentFromAllIndices(documentId)
+    // [SEARCH_INDEX_FF] Remove from all search indices (fire and forget)
+    // searchIndexRepo.removeDocumentFromAllIndices(documentId)
 
     tx(documentId).destroy()
   },
@@ -293,8 +293,8 @@ export const libraryCommands = {
       }
     }
 
-    // Delete all search indices associated with this folder (fire and forget)
-    searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
+    // [SEARCH_INDEX_FF] Delete all search indices associated with this folder (fire and forget)
+    // searchIndexRepo.deleteSearchIndicesForFolder(collectionId)
 
     tx(collectionId).destroy()
   },
