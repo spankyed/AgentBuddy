@@ -61,7 +61,7 @@
             </span>
             <div class="flex items-center gap-1">
               <Button
-                v-if="currentFolderId !== null"
+                v-if="currentFolderId !== null && !isInSymlinkContext"
                 @click="moveSelectedItemsUp"
                 variant="transparent"
                 size="sm"
@@ -503,6 +503,7 @@ function handleDelete() {
 
 function moveSelectedItemsUp() {
   if (props.selectedItems.length === 0 || props.currentFolderId === null) return
+  if (props.isInSymlinkContext) return
 
   // Find the parent folder ID from breadcrumbs
   const parentFolderId = props.breadcrumbs.length > 1

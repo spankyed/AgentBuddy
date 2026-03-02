@@ -91,9 +91,27 @@ export function useDragDrop({
   const handleDragOver = (e: DragEvent, item: LibraryItem | null, index?: number) => {
     e.preventDefault()
     if (!e.dataTransfer) return
-    
+
+    // Suppress visual feedback for cross-symlink-context drags
+    if (item && draggedItems.value.length) {
+      const sourceIsSymlink = draggedItems.value.some(id => id.startsWith('symlink:'))
+      const sourceIsRegular = draggedItems.value.some(id => !id.startsWith('symlink:'))
+      const targetIsSymlink = item.id.startsWith('symlink:')
+      const targetIsSymlinkRoot = item.type === 'folder' && (item as any).isSymlink
+
+      if ((sourceIsSymlink && !targetIsSymlink && !targetIsSymlinkRoot) ||
+          (sourceIsRegular && (targetIsSymlink || targetIsSymlinkRoot))) {
+        e.dataTransfer.dropEffect = 'none'
+        if (draggedOverId.value !== null || dropPosition.value !== null) {
+          draggedOverId.value = null
+          dropPosition.value = null
+        }
+        return
+      }
+    }
+
     e.dataTransfer.dropEffect = 'move'
-    
+
     // Determine drop position based on mouse position
     if (item) {
       const target = e.currentTarget as HTMLElement
@@ -180,6 +198,11 @@ export function useDragDrop({
         }
       }
     } else if (!targetItem) {
+      // Block symlink items from being moved out of symlink context
+      if (draggedItems.value.some(id => id.startsWith('symlink:'))) {
+        handleDragEnd()
+        return
+      }
       const folderId = currentFolderId ?? null
       const isCrossFolder = draggedItems.value.some(id => !items.value.some(item => item.id === id))
 
