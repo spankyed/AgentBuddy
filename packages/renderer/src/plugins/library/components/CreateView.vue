@@ -1,25 +1,20 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">Create Document</h2>
-        <p class="text-xs text-neutral-400">Create a new document with content and tags</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button
-          @click="emit('CANCEL_EDIT')"
-          variant="transparent"
-        >
-          Cancel
-        </Button>
-        <Button
-          @click="handleSave"
-          :disabled="!isValid"
-          variant="primary"
-        >
-          Create Document
-        </Button>
+    <div class="flex items-center gap-4 px-6 py-3 border-b border-neutral-800">
+      <label class="text-xs font-medium tracking-wider uppercase shrink-0 min-w-52 text-right text-neutral-400">
+        Document Name
+      </label>
+      <input
+        v-model="formData.name"
+        type="text"
+        data-onboarding-id="library-document-name-input"
+        class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        placeholder="Enter document name"
+      />
+      <div class="flex items-center gap-2 shrink-0">
+        <Button @click="emit('CANCEL_EDIT')" variant="transparent">Cancel</Button>
+        <Button @click="handleSave" :disabled="!isValid" variant="primary">Create Document</Button>
       </div>
     </div>
 
@@ -27,22 +22,6 @@
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl p-6 mx-auto">
         <form @submit.prevent="handleSave" class="space-y-6">
-          <!-- Basic Info Section -->
-          <div class="space-y-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                Name <span class="text-red-400">*</span>
-              </label>
-              <input
-                v-model="formData.name"
-                type="text"
-                data-onboarding-id="library-document-name-input"
-                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                placeholder="Enter document name"
-              />
-            </div>
-          </div>
-          
           <!-- Content Sections -->
           <div class="pt-6 border-t border-neutral-800">
             <div class="flex items-center justify-between mb-4">
@@ -71,7 +50,7 @@
               />
             </div>
           </div>
-          
+
           <!-- Tags Section -->
           <div class="pt-6 border-t border-neutral-800">
             <button

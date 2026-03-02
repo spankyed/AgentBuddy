@@ -1,25 +1,28 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">Edit Document</h2>
-        <p class="text-xs text-neutral-400">Modify document details and content</p>
+    <div class="flex items-center gap-4 px-6 py-3 border-b border-neutral-800">
+      <label class="text-xs font-medium tracking-wider uppercase shrink-0 min-w-52 text-right text-neutral-400">
+        Document Name
+      </label>
+      <div class="flex items-center flex-1 min-w-0 rounded-md border border-neutral-700 bg-neutral-800 transition-colors focus-within:border-blue-500">
+        <input
+          v-model="formData.name"
+          type="text"
+          class="flex-1 min-w-0 px-4 py-2 text-sm font-medium bg-transparent text-neutral-100 focus:outline-none"
+          placeholder="Enter document name"
+        />
+        <span
+          v-if="!isSymlink"
+          class="px-3 py-1 mr-2 font-mono text-xs font-medium rounded cursor-pointer transition-colors bg-neutral-700/50"
+          :class="copied ? 'text-green-400' : 'text-blue-400 hover:text-blue-300'"
+          title="Click to copy"
+          @click="copyShortCode"
+        >{{ props.document.shortCode }}</span>
       </div>
-      <div class="flex items-center gap-2">
-        <Button
-          @click="emit('CANCEL_EDIT')"
-          variant="transparent"
-        >
-          Cancel
-        </Button>
-        <Button
-          @click="handleSave"
-          :disabled="!isValid"
-          variant="primary"
-        >
-          Save Changes
-        </Button>
+      <div class="flex items-center gap-2 shrink-0">
+        <Button @click="emit('CANCEL_EDIT')" variant="transparent">Cancel</Button>
+        <Button @click="handleSave" :disabled="!isValid" variant="primary">Save Changes</Button>
       </div>
     </div>
 
@@ -27,37 +30,6 @@
     <div class="flex-1 overflow-y-auto">
       <div class="max-w-4xl p-6 mx-auto">
         <form @submit.prevent="handleSave" class="space-y-6">
-          <!-- Basic Info Section -->
-          <div class="space-y-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                Name <span class="text-red-400">*</span>
-              </label>
-              <div class="flex items-center gap-3">
-                <input
-                  v-model="formData.name"
-                  type="text"
-                  class="flex-1 px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                  placeholder="Enter document name"
-                />
-                <div v-if="!isSymlink" class="flex items-center gap-2">
-                  <span class="px-3 py-3 font-mono text-sm font-medium text-blue-400">
-                    {{ props.document.shortCode }}
-                  </span>
-                  <button
-                    type="button"
-                    @click="copyShortCode"
-                    class="p-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600 focus:outline-none"
-                    title="Copy code"
-                  >
-                    <Copy v-if="!copied" class="w-4 h-4" />
-                    <Check v-else class="w-4 h-4 text-green-400" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
           <!-- Content Sections -->
           <div class="pt-6 border-t border-neutral-800">
             <div class="flex items-center justify-between mb-4">
@@ -87,7 +59,7 @@
               />
             </div>
           </div>
-          
+
           <!-- Tags Section -->
           <div v-if="!isSymlink" class="pt-6 border-t border-neutral-800">
             <button
@@ -117,7 +89,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, nextTick } from 'vue'
-import { X, Copy, Check, ChevronRight, Plus } from 'lucide-vue-next'
+import { X, ChevronRight, Plus } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
