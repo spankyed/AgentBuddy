@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="{ 'h-full': context.currentView === 'browser' }">
     <component
       v-if="currentComponent"
       :is="currentComponent"

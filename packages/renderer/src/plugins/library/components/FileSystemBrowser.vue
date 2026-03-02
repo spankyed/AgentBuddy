@@ -156,8 +156,8 @@
     <div class="flex-1 overflow-hidden" @click="handleTableContainerClick">
       <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" @click="handleScrollAreaClick">
         <table class="w-full"  data-onboarding-id="library-table">
-          <thead class="sticky top-0 z-10 bg-neutral-900">
-            <tr class="text-xs font-medium text-left border-b text-neutral-500 border-neutral-800">
+          <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
+            <tr class="text-xs font-medium text-left text-neutral-500">
               <TableHeader @click="sort('name')" class="!pl-6 w-[54%]">Name</TableHeader>
               <TableHeader @click="sort('modified')" class="w-[16%]">Date Modified</TableHeader>
               <TableHeader @click="sort('size')" class="w-[10%]">Size</TableHeader>
