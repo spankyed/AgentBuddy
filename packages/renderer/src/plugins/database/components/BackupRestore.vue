@@ -6,8 +6,8 @@
       <div class="px-6 py-4">
         <div class="flex items-center justify-between">
           <!-- Left: Back Button -->
-          <button 
-            @click="handleBack" 
+          <button
+            @click="handleBack"
             class="group flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all duration-200"
           >
             <ArrowLeft class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -16,11 +16,11 @@
 
           <!-- Tabs -->
           <div class="flex items-center bg-neutral-800/50 rounded-lg p-1">
-            <button 
+            <button
               :class="[
                 'px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2',
-                activeTab === 'export' 
-                  ? 'bg-neutral-700 text-white' 
+                activeTab === 'export'
+                  ? 'bg-neutral-700 text-white'
                   : 'text-neutral-400 hover:text-neutral-200'
               ]"
               @click="activeTab = 'export'"
@@ -28,11 +28,11 @@
               <HardDriveDownload class="w-4 h-4" />
               <span>Export</span>
             </button>
-            <button 
+            <button
               :class="[
                 'px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2',
-                activeTab === 'import' 
-                  ? 'bg-neutral-700 text-white' 
+                activeTab === 'import'
+                  ? 'bg-neutral-700 text-white'
                   : 'text-neutral-400 hover:text-neutral-200'
               ]"
               @click="activeTab = 'import'"
@@ -43,8 +43,8 @@
           </div>
 
           <!-- Right: Unified Action Button -->
-          <button 
-            @click="handleUnifiedAction" 
+          <button
+            @click="handleUnifiedAction"
             :disabled="!canPerformAction || isProcessing"
             :class="[
               'relative px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 disabled:cursor-not-allowed',
@@ -69,11 +69,11 @@
 
     <!-- Content Area -->
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl mx-auto p-6">
-        
+      <div class="max-w-4xl mx-auto p-4">
+
         <!-- Export Tab Content -->
         <div v-if="activeTab === 'export'" class="space-y-6">
-          
+
           <!-- Backup Location Section -->
           <div class="bg-neutral-900/50 rounded-xl border border-neutral-800 p-6">
             <div class="space-y-4">
@@ -82,15 +82,15 @@
                 <div class="flex gap-2">
                   <div class="relative flex-1">
                     <Folder class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                    <input 
-                      v-model="exportPath" 
-                      type="text" 
+                    <input
+                      v-model="exportPath"
+                      type="text"
                       placeholder="/Users/spankyed/Documents/AgentBuddy Backups"
                       class="w-full pl-10 pr-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                     />
                   </div>
-                  <button 
-                    @click="selectExportDirectory" 
+                  <button
+                    @click="selectExportDirectory"
                     class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2"
                   >
                     <FolderOpen class="w-4 h-4" />
@@ -103,9 +103,9 @@
                 <label class="block text-xs font-medium text-neutral-400 mb-2">Backup Name <span class="text-neutral-600">(Optional)</span></label>
                 <div class="relative">
                   <FileText class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                  <input 
-                    v-model="backupName" 
-                    type="text" 
+                  <input
+                    v-model="backupName"
+                    type="text"
                     :placeholder="`backup-${new Date().toISOString().split('T')[0]}`"
                     class="w-full pl-10 pr-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                   />
@@ -122,12 +122,12 @@
                 {{ Object.values(selectedDatabases).filter(v => v).length }} selected
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <!-- Main Database Card -->
               <label class="relative cursor-pointer group">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="selectedDatabases.lmdb"
                   class="peer sr-only"
                 />
@@ -150,8 +150,8 @@
 
               <!-- Search Indices Card -->
               <label class="relative cursor-pointer group">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="selectedDatabases.searchIndices"
                   class="peer sr-only"
                 />
@@ -174,8 +174,8 @@
 
               <!-- Trace Database Card -->
               <label class="relative cursor-pointer group">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="selectedDatabases.volatileLmdb"
                   class="peer sr-only"
                 />
@@ -198,8 +198,8 @@
 
               <!-- Secrets Database Card -->
               <label class="relative cursor-pointer group">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="selectedDatabases.secretsLmdb"
                   class="peer sr-only"
                 />
@@ -226,21 +226,21 @@
 
         <!-- Import Tab Content -->
         <div v-if="activeTab === 'import'" class="space-y-6">
-          
+
           <!-- Import Location Section -->
           <div class="bg-neutral-900/50 rounded-xl border border-neutral-800 p-6">
             <div class="flex gap-2">
               <div class="relative flex-1">
                 <FolderOpen class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                <input 
-                  v-model="importPath" 
-                  type="text" 
+                <input
+                  v-model="importPath"
+                  type="text"
                   placeholder="Backup directory to restore from"
                   class="w-full pl-10 pr-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
                 />
               </div>
-              <button 
-                @click="selectImportDirectory" 
+              <button
+                @click="selectImportDirectory"
                 class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2"
               >
                 <FolderOpen class="w-4 h-4" />
@@ -260,7 +260,7 @@
                   </div>
                   <p class="text-sm text-white">{{ formatDate(backupInfo.timestamp) }}</p>
                 </div>
-                
+
                 <div class="bg-neutral-800/50 rounded-lg p-3">
                   <div class="flex items-center gap-2 mb-1">
                     <Database class="w-4 h-4 text-neutral-400" />
@@ -268,7 +268,7 @@
                   </div>
                   <p class="text-sm text-white">{{ backupInfo.databases.length }} included</p>
                 </div>
-                
+
                 <div class="bg-neutral-800/50 rounded-lg p-3">
                   <div class="flex items-center gap-2 mb-1">
                     <HardDrive class="w-4 h-4 text-neutral-400" />
@@ -299,15 +299,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { 
-  ArrowLeft, 
-  HardDriveDownload, 
-  HardDriveUpload, 
+import {
+  ArrowLeft,
+  HardDriveDownload,
+  HardDriveUpload,
   Folder,
   FolderOpen,
   FileText,
-  Download, 
-  Upload, 
+  Download,
+  Upload,
   Loader2,
   AlertTriangle,
   Database,
@@ -392,7 +392,7 @@ watch(storedBackupInfo, (newInfo) => {
 onMounted(() => {
   const savedExportPath = localStorage.getItem('database-backup-export-path');
   const savedImportPath = localStorage.getItem('database-backup-import-path');
-  
+
   if (savedExportPath) {
     exportPath.value = savedExportPath;
   }
@@ -413,14 +413,14 @@ async function selectExportDirectory() {
 
 async function handleExport() {
   if (!canExport.value) return;
-  
+
   isExporting.value = true;
-  
+
   try {
     const databases = Object.entries(selectedDatabases.value)
       .filter(([_, selected]) => selected)
       .map(([key]) => key) as Array<'lmdb' | 'searchIndices' | 'volatileLmdb' | 'secretsLmdb'>;
-    
+
     await trpc.bus.send.mutate({
       systemId: id,
       type: 'EXPORT_DATABASE',
@@ -428,7 +428,7 @@ async function handleExport() {
       name: backupName.value || undefined,
       databases,
     });
-    
+
     toast.value?.success('Backup exported successfully!');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -459,18 +459,18 @@ async function handleImport() {
 
   const confirmed = confirm('Are you sure you want to import this backup? This will stop the assistant\'s brain and replace all of your current data with the imported data.');
   if (!confirmed) return;
-  
+
   isImporting.value = true;
-  
+
   try {
     await trpc.bus.send.mutate({
       systemId: id,
       type: 'IMPORT_DATABASE',
       path: importPath.value,
     });
-    
+
     toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
-    
+
     // Refresh the page after a short delay to reload client state
     setTimeout(() => {
       window.location.reload();
@@ -492,12 +492,12 @@ function formatSize(bytes: number) {
   const units = ['B', 'KB', 'MB', 'GB'];
   let size = bytes;
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
+
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 }
 </script>

@@ -31,7 +31,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
-      <div class="max-w-4xl p-6 mx-auto space-y-6">
+      <div class="max-w-4xl p-4 mx-auto space-y-6">
         <!-- Topic & Status Section -->
         <div class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">

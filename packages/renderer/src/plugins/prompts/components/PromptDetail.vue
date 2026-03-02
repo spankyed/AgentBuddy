@@ -24,7 +24,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar" v-if="prompt || formData">
-      <div class="max-w-4xl p-6 mx-auto space-y-6">
+      <div class="max-w-4xl p-4 mx-auto space-y-6">
         <!-- Input Parameters -->
         <div class="pt-2">
           <CollapsibleSection v-model="inputsExpanded" label="Input Parameters">

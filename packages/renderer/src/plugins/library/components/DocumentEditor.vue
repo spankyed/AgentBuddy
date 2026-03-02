@@ -43,7 +43,7 @@
 
     <!-- Form Content -->
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl p-6 mx-auto">
+      <div class="max-w-4xl p-4 mx-auto">
         <form @submit.prevent="handleSave" class="space-y-6">
           <!-- Content Sections -->
           <div class="space-y-4" :data-onboarding-id="!isEditMode ? 'library-content-sections' : undefined">

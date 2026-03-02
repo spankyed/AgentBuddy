@@ -28,7 +28,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl p-6 mx-auto">
+      <div class="max-w-4xl p-4 mx-auto">
         <div class="space-y-6">
           <!-- Parameters -->
           <div class="pt-2">

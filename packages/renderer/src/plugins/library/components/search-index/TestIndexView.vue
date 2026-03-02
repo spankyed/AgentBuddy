@@ -42,7 +42,7 @@
 
     <!-- Results Section -->
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl mx-auto p-6">
+      <div class="max-w-4xl mx-auto p-4">
         <!-- Empty State -->
         <div v-if="testResults.length === 0 && !isSearching" class="text-center py-16 text-neutral-500">
           <Search class="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -78,13 +78,13 @@
           <!-- Grouped Results by Document -->
           <div v-for="[docId, chunks] of groupedResults" :key="docId" class="mb-4 border border-neutral-700 rounded-lg overflow-hidden">
             <!-- Document Header -->
-            <div 
+            <div
               @click="toggleDocumentExpansion(docId as string)"
               class="px-4 py-3 bg-neutral-850 border-b border-neutral-700 cursor-pointer hover:bg-neutral-800 transition-colors"
             >
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <ChevronRight 
+                  <ChevronRight
                     class="w-4 h-4 text-neutral-500 transition-transform"
                     :class="{ 'rotate-90': expandedDocuments.has(docId as string) }"
                   />
@@ -123,7 +123,7 @@
                 >
                   <Copy class="w-3 h-3" />
                 </button>
-                
+
                 <!-- Chunk Header -->
                 <div class="flex items-center justify-between gap-2 mb-2">
                   <div class="flex items-center gap-2 pl-3">
@@ -142,9 +142,9 @@
                       <Hash class="w-3 h-3 mr-1" />
                       {{ getItemLabel(result.chunkInfo) }}
                     </button>
-                    
+
                     <!-- Score Badge -->
-                    <span 
+                    <span
                       class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded"
                       :class="getScoreBadgeClass(result.score)"
                     >
@@ -152,9 +152,9 @@
                     </span>
                   </div>
                 </div>
-                
+
                 <!-- Text Content and Footer -->
-                <div 
+                <div
                   class="bg-neutral-900 rounded p-3 pb-0 relative"
                 >
                   <div class="text-sm text-neutral-300 font-mono">
@@ -171,7 +171,7 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Footer with Metadata (only show when expanded) -->
                   <div v-if="expandedChunks.has(getChunkId(result, index))" class="mt-3 pt-3 border-t border-neutral-800">
                     <div class="flex items-center justify-between text-xs text-neutral-500">
@@ -237,18 +237,18 @@ const truncatedTexts = ref(new Map<string, boolean>())
 // Computed properties
 const groupedResults = computed(() => {
   const grouped = new Map<string, IndexSearchResult[]>()
-  
+
   // Group results by document
   testResults.value.forEach((result: IndexSearchResult) => {
     const chunks = grouped.get(result.documentId) || []
     chunks.push(result)
     grouped.set(result.documentId, chunks)
   })
-  
+
   // Sort chunks within each document and documents by best score
   return new Map(
     Array.from(grouped.entries())
-      .map(([docId, chunks]): [string, IndexSearchResult[]] => 
+      .map(([docId, chunks]): [string, IndexSearchResult[]] =>
         [docId, chunks.sort((a, b) => a.score - b.score)])
       .sort((a, b) => a[1][0].score - b[1][0].score)
   )
@@ -291,16 +291,16 @@ const toggleExpansion = (set: Set<string>, id: string) => {
   set.has(id) ? set.delete(id) : set.add(id)
 }
 
-const toggleChunkExpansion = (result: IndexSearchResult, index: number) => 
+const toggleChunkExpansion = (result: IndexSearchResult, index: number) =>
   toggleExpansion(expandedChunks.value, getChunkId(result, index))
 
-const toggleDocumentExpansion = (docId: string) => 
+const toggleDocumentExpansion = (docId: string) =>
   toggleExpansion(expandedDocuments.value, docId)
 
 const expandAll = () => {
   groupedResults.value.forEach((chunks, docId) => {
     expandedDocuments.value.add(docId)
-    chunks.forEach((chunk, index) => 
+    chunks.forEach((chunk, index) =>
       expandedChunks.value.add(getChunkId(chunk, index))
     )
   })
@@ -321,7 +321,7 @@ const getSimilarityPercentage = (score: number): string => {
 
 const getScoreBadgeClass = (score: number): string => {
   const percentage = parseFloat(getSimilarityPercentage(score))
-  
+
   // Color gradient from red to green based on percentage, with platinum for perfect matches
   if (percentage >= 100) return 'bg-gradient-to-r from-white/40 via-slate-100/50 to-white/40 text-white font-semibold border border-white/60 ring-1 ring-white/30 shadow-lg shadow-white/25'
   if (percentage >= 90) return 'bg-green-500/20 text-green-400 border border-green-500/30'
@@ -338,7 +338,7 @@ const getScoreBadgeClass = (score: number): string => {
 
 const getChunkTypeBadgeClass = (chunkInfo: IndexSearchResult['chunkInfo']): string => {
   if (!chunkInfo) return 'bg-neutral-700 text-neutral-400'
-  return chunkInfo.chunkType === 'full' 
+  return chunkInfo.chunkType === 'full'
     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
     : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
 }
@@ -346,13 +346,13 @@ const getChunkTypeBadgeClass = (chunkInfo: IndexSearchResult['chunkInfo']): stri
 const getItemLabel = (chunkInfo: IndexSearchResult['chunkInfo']): string => {
   if (!chunkInfo) return 'Document'
   if (chunkInfo.chunkType === 'full') return 'Full Document'
-  return chunkInfo.itemIndex !== undefined 
+  return chunkInfo.itemIndex !== undefined
     ? `Item ${chunkInfo.itemIndex + 1}`
     : 'Segment'
 }
 
 
-const formatDate = (timestamp: number): string => 
+const formatDate = (timestamp: number): string =>
   new Date(timestamp).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
