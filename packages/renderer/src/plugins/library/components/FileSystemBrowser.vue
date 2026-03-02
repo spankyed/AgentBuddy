@@ -478,7 +478,10 @@ async function browseSymlinkPath() {
   if (!window.electronAPI?.fileUtils.selectDirectory) return
   try {
     const dir = await window.electronAPI.fileUtils.selectDirectory()
-    if (dir) symlinkInput.path = dir
+    if (dir) {
+      symlinkInput.path = dir
+      confirmSymlink()
+    }
   } catch (error) {
     console.error('Failed to select directory:', error)
   }
