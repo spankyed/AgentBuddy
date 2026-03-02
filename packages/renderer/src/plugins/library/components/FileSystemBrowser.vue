@@ -75,7 +75,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 relative">
           <!-- Selection indicator and actions -->
           <template v-if="selectedItems.length > 0">
             <span class="text-sm text-neutral-400 mr-1">
@@ -152,26 +152,27 @@
             <FileText class="w-4 h-4" />
             <span>{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
           </Button>
+          <div
+            v-if="symlinkInput.show"
+            class="absolute top-full right-0 mt-2 z-50 flex items-center gap-2 p-3 rounded-md border border-neutral-700 bg-neutral-800 shadow-lg"
+          >
+            <input
+              v-model="symlinkInput.path"
+              type="text"
+              class="w-96 px-3 py-1.5 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+              placeholder="Enter directory path"
+              autofocus
+              @keydown.enter="confirmSymlink"
+              @keydown.escape="symlinkInput.show = false"
+            />
+            <Button @click="browseSymlinkPath" variant="transparent" size="sm">Browse</Button>
+            <Button @click="confirmSymlink" variant="primary" size="sm">Create</Button>
+            <button @click="symlinkInput.show = false" class="p-1 text-neutral-400 hover:text-neutral-200">
+              <X class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- Symlink Path Input -->
-    <div v-if="symlinkInput.show" class="flex items-center gap-2 px-6 py-2 border-b border-neutral-800 max-w-lg ml-auto">
-      <input
-        v-model="symlinkInput.path"
-        type="text"
-        class="flex-1 w-96 px-3 py-1.5 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-        placeholder="Enter directory path"
-        autofocus
-        @keydown.enter="confirmSymlink"
-        @keydown.escape="symlinkInput.show = false"
-      />
-      <Button @click="browseSymlinkPath" variant="transparent" size="sm">Browse</Button>
-      <Button @click="confirmSymlink" variant="primary" size="sm">Create</Button>
-      <button @click="symlinkInput.show = false" class="p-1 text-neutral-400 hover:text-neutral-200">
-        <X class="w-4 h-4" />
-      </button>
     </div>
 
     <!-- File Table -->
