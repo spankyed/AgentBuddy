@@ -64,7 +64,7 @@ export const tourSteps: TourStep[] = [
       { target: 'application', event: { type: 'SHOW_INSPECTION_PANEL' } },
     ],
   },
-  
+
   // ========================================
   // Threads Plugin
   // ========================================
@@ -168,7 +168,7 @@ export const tourSteps: TourStep[] = [
       { target: 'threads', event: { type: 'CANCEL_CREATE' } },
     ],
   },
-  
+
   // ========================================
   // Agent Plugin
   // ========================================
@@ -315,7 +315,7 @@ export const tourSteps: TourStep[] = [
   {
     id: 'actions-create-button',
     targetId: 'actions-create-button',
-    title: 'Create Action',
+    title: 'New Action',
     content: 'Click here to create a new action.',
     setupActions: [
       selectPlugin('actions'),
@@ -398,7 +398,7 @@ export const tourSteps: TourStep[] = [
   {
     id: 'prompts-create-button',
     targetId: 'prompts-create-button',
-    title: 'Create Prompt',
+    title: 'New Prompt',
     content: 'Click here to create a new prompt template.',
     setupActions: [
       selectPlugin('prompts'),

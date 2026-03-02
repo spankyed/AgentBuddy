@@ -7,7 +7,7 @@
       </div>
       <Button @click="$emit('create')" variant="primary" data-onboarding-id="prompts-create-button">
         <Plus class="w-4 h-4" />
-        <span>Create Prompt</span>
+        <span>New Prompt</span>
       </Button>
     </div>
 
@@ -114,7 +114,7 @@
           </p>
           <Button @click="$emit('create')" variant="primary">
             <Plus class="w-4 h-4" />
-            <span>Create Your First Prompt</span>
+            <span>New Prompt</span>
           </Button>
         </div>
       </div>
@@ -159,7 +159,7 @@ function getCategoryName(categoryName?: string) {
 
 function categoryStyle(categoryName?: string) {
   if (!categoryName) return {}; // Return empty object for inline styles when no category
-  
+
   const category = props.categories.find(c => c.name === categoryName);
   if (!category) {
     // Default style for unrecognized categories - neutral like input fields
@@ -169,7 +169,7 @@ function categoryStyle(categoryName?: string) {
       borderColor: 'rgb(64 64 64)' // border-neutral-700
     };
   }
-  
+
   // Create inline styles using the category color
   return {
     backgroundColor: `${category.color}1A`, // 10% opacity
@@ -177,4 +177,4 @@ function categoryStyle(categoryName?: string) {
     borderColor: `${category.color}33` // 20% opacity
   };
 }
-</script> 
+</script>

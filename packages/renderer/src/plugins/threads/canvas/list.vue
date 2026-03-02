@@ -8,7 +8,7 @@
           <p class="text-sm text-neutral-400">Manage your conversation threads</p>
         </div>
       </div>
-      
+
       <!-- Right section: Search and New Thread button -->
       <div class="flex items-center gap-3">
         <!-- View toggle buttons -->
@@ -63,7 +63,7 @@
             class="w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-800"
           />
         </div>
-        
+
         <Button
           @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
           type="button"
@@ -119,7 +119,7 @@
           </p>
           <Button @click="actor.send({ type: 'SHOW_CREATE_FORM' })" variant="primary">
             <Plus class="w-4 h-4" />
-            <span>Create Your First Thread</span>
+            <span>New Thread</span>
           </Button>
         </div>
       </div>
