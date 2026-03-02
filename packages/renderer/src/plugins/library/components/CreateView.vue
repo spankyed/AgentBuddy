@@ -23,33 +23,26 @@
       <div class="max-w-4xl p-6 mx-auto">
         <form @submit.prevent="handleSave" class="space-y-6">
           <!-- Content Sections -->
-          <div class="pt-6 border-t border-neutral-800">
-            <div class="flex items-center justify-between mb-4">
-              <label class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-                Content <span class="text-red-400">*</span>
-              </label>
-              <button
-                type="button"
-                @click="addContentSection"
-                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
-              >
-                <Plus class="w-4 h-4" />
-                Add Section
-              </button>
-            </div>
-            <div class="space-y-4"  data-onboarding-id="library-content-sections">
-              <ContentSectionEditor
-                v-for="(section, index) in formData.content"
-                :key="index"
-                :ref="el => setSectionRef(el, index)"
-                :section="section"
-                :show-remove="formData.content.length > 1"
-                @update="updateContentSection(index, $event)"
-                @remove="removeContentSection(index)"
-                @type-changed="handleTypeChanged(index)"
-              />
-            </div>
+          <div class="space-y-4" data-onboarding-id="library-content-sections">
+            <ContentSectionEditor
+              v-for="(section, index) in formData.content"
+              :key="index"
+              :ref="el => setSectionRef(el, index)"
+              :section="section"
+              :show-remove="formData.content.length > 1"
+              @update="updateContentSection(index, $event)"
+              @remove="removeContentSection(index)"
+              @type-changed="handleTypeChanged(index)"
+            />
           </div>
+          <button
+            type="button"
+            @click="addContentSection"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
+          >
+            <Plus class="w-4 h-4" />
+            Add Section
+          </button>
 
           <!-- Tags Section -->
           <div class="pt-6 border-t border-neutral-800">
