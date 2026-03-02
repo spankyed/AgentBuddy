@@ -150,12 +150,6 @@ const currentEvents = computed(() => {
     CREATE_SYMLINK: (payload: { symlinkPath: string }) => {
       send({ type: 'CREATE_SYMLINK', ...payload })
     },
-    CREATE_SYMLINK_FILE: (payload: { name: string }) => {
-      send({ type: 'CREATE_SYMLINK_FILE', ...payload })
-    },
-    CREATE_SYMLINK_FOLDER: (payload: { name: string }) => {
-      send({ type: 'CREATE_SYMLINK_FOLDER', ...payload })
-    },
   }
 
   return {

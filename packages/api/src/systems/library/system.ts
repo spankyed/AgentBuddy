@@ -1,10 +1,10 @@
-import { assign, setup, sendTo } from 'xstate'
+import { assign, setup } from 'xstate'
 import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/utils/event-helpers'
 import type { EARS } from '@/core/types'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, BreadcrumbItem } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents } from './types'
 import type { SearchIndex } from './search-index/types/search-index'
-import { emit, safeEvents } from '@/core/utils/actor-helpers'
+import { safeEvents } from '@/core/utils/actor-helpers'
 import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import * as path from 'path'
@@ -12,13 +12,26 @@ import * as os from 'os'
 import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/utils/event-helpers'
 import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
-import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes'
+import { toMap, toIdentifierSet, mapArray } from '@/systems/settings/settings-changes'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 
 export const library = 'library' as const
 
 const busEvent = systemBus(library)
+
+function makeSymlinkDocumentDTO(id: string, name: string, content: any[]): DocumentDTO {
+  return {
+    id,
+    name,
+    content,
+    shortCode: 'DOC-0',
+    tags: [],
+    displayOrder: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as DocumentDTO
+}
 
 // Content section schemas
 const FieldContentSchema = z.object({
@@ -86,7 +99,7 @@ const IncomingLibraryEvents = [
     documentId: z.string(),
     collectionId: z.string().optional(),
   }),
-  // New file browser events
+  // File browser events
   busEvent('GET_FOLDER_CONTENTS', {
     folderId: z.string().nullable(),
   }),
@@ -190,28 +203,6 @@ const IncomingLibraryEvents = [
     symlinkPath: z.string(),
     parentId: z.string().optional(),
   }),
-  busEvent('CREATE_SYMLINK_FILE', {
-    folderId: z.string(),
-    name: z.string(),
-  }),
-  busEvent('CREATE_SYMLINK_FOLDER', {
-    folderId: z.string(),
-    name: z.string(),
-  }),
-  busEvent('RENAME_SYMLINK_ITEM', {
-    id: z.string(),
-    name: z.string(),
-  }),
-  busEvent('DELETE_SYMLINK_ITEMS', {
-    ids: z.array(z.string()),
-  }),
-  busEvent('GET_SYMLINK_FILE', {
-    id: z.string(),
-  }),
-  busEvent('SAVE_SYMLINK_FILE', {
-    id: z.string(),
-    content: z.string(),
-  }),
   // Import/Export events
   busEvent('IMPORT_LIBRARY', { items: z.any() }),
   busEvent('EXPORT_LIBRARY', { directory: z.string() }),
@@ -229,7 +220,7 @@ export type OutgoingLibraryEvents =
   | { type: 'COLLECTION_UPDATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_DELETED'; data: { collectionId: string } }
   | { type: 'LIBRARY_ERROR'; data: { error: string } }
-  // New file browser events
+  // File browser events
   | { type: 'FOLDER_CONTENTS_LOADED'; data: FolderContents }
   | { type: 'NAVIGATION_CHANGED'; data: { folderId: string | null; path: string[] } }
   | { type: 'ITEM_RENAMED'; data: { item: LibraryItem } }
@@ -243,16 +234,11 @@ export type OutgoingLibraryEvents =
   | { type: 'SEARCH_INDEX_DELETED'; data: { indexId: string } }
   | { type: 'SEARCH_RESULTS'; data: { results: any[] } }
   | { type: 'INDEXING_PROGRESS'; data: { indexId: string; progress: number; total: number } }
-  // Symlink events
-  | { type: 'SYMLINK_FILE_LOADED'; data: { id: string; name: string; content: string; filePath: string } }
-  | { type: 'SYMLINK_FILE_SAVED'; data: { id: string } }
   // Import/Export events
   | { type: 'LIBRARY_IMPORTED'; count: number; errors?: string[] }
   | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
-
-// Removed OutgoingSystemEvents helper - using direct event structure instead
 
 export const LibrarySystemEvents = fromSystem(IncomingLibraryEvents)<OutgoingLibraryEvents, typeof library>()
 type LibraryInternalEvents = 
@@ -281,6 +267,22 @@ export const librarySystem = setup({
     },
     createDocument: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
+
+      const resolved = ev.collectionId ? symlink.resolveSymlinkPath(ev.collectionId) : null
+      if (resolved) {
+        await symlink.createFile(resolved.absolutePath, ev.name)
+        const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'FOLDER_CONTENTS_LOADED' as const,
+            pluginId: 'library',
+            data: folderContents,
+          },
+        })
+        return
+      }
+
       const document = repository.libraryCommands.createDocument(
         ev.name,
         ev.content,
@@ -298,6 +300,27 @@ export const librarySystem = setup({
     },
     updateDocument: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
+
+      if (symlink.isSymlinkId(ev.id)) {
+        const resolved = symlink.resolveSymlinkPath(ev.id)
+        if (resolved) {
+          const textContent = ev.content
+            .filter((section: any) => section.type === 'text')
+            .map((section: any) => section.text)
+            .join('\n')
+          await symlink.writeFile(resolved.absolutePath, textContent)
+          system.get(bus).send({
+            type: 'OUTGOING' as const,
+            event: {
+              type: 'DOCUMENT_UPDATED' as const,
+              pluginId: 'library',
+              data: { document: makeSymlinkDocumentDTO(ev.id, ev.name, ev.content) },
+            },
+          })
+        }
+        return
+      }
+
       const document = repository.libraryCommands.updateDocument(
         ev.id as EARS.EntityId,
         ev.name,
@@ -328,6 +351,25 @@ export const librarySystem = setup({
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
+
+      if (symlink.isSymlinkId(ev.id)) {
+        const resolved = symlink.resolveSymlinkPath(ev.id)
+        if (resolved) {
+          const content = await symlink.readFile(resolved.absolutePath)
+          const name = path.basename(resolved.absolutePath)
+          const document = makeSymlinkDocumentDTO(ev.id, name, [{ type: 'text' as const, text: content }])
+          system.get(bus).send({
+            type: 'OUTGOING' as const,
+            event: {
+              type: 'DOCUMENT_LOADED' as const,
+              pluginId: 'library',
+              data: { document },
+            },
+          })
+        }
+        return
+      }
+
       const document = repository.libraryQueries.getDocument(ev.id as EARS.EntityId)
       if (document) {
         system.get(bus).send({
@@ -349,8 +391,7 @@ export const librarySystem = setup({
         })
       }
     },
-    loadCollections: async ({ system, event }) => {
-      const ev = event as { type: 'LIST_COLLECTIONS' }
+    loadCollections: async ({ system }) => {
       const collections = repository.libraryQueries.getCollections()
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -363,6 +404,22 @@ export const librarySystem = setup({
     },
     createCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
+
+      const resolved = ev.parentId ? symlink.resolveSymlinkPath(ev.parentId) : null
+      if (resolved) {
+        await symlink.createDirectory(resolved.absolutePath, ev.name)
+        const folderContents = await repository.libraryQueries.getFolderContents(ev.parentId as EARS.EntityId)
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'FOLDER_CONTENTS_LOADED' as const,
+            pluginId: 'library',
+            data: folderContents,
+          },
+        })
+        return
+      }
+
       const collection = repository.libraryCommands.createCollection(
         ev.name,
         ev.description,
@@ -442,7 +499,7 @@ export const librarySystem = setup({
         },
       })
     },
-    // New file browser actions
+    // File browser actions
     getFolderContents: async ({ system, event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
@@ -681,115 +738,6 @@ export const librarySystem = setup({
         },
       })
     },
-    createSymlinkFile: async ({ system, event }) => {
-      const ev = event as { type: 'CREATE_SYMLINK_FILE'; folderId: string; name: string }
-      const resolved = symlink.resolveSymlinkPath(ev.folderId)
-      if (resolved) {
-        await symlink.createFile(resolved.absolutePath, ev.name)
-        const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
-            type: 'FOLDER_CONTENTS_LOADED' as const,
-            pluginId: 'library',
-            data: folderContents,
-          },
-        })
-      }
-    },
-    createSymlinkFolder: async ({ system, event }) => {
-      const ev = event as { type: 'CREATE_SYMLINK_FOLDER'; folderId: string; name: string }
-      const resolved = symlink.resolveSymlinkPath(ev.folderId)
-      if (resolved) {
-        await symlink.createDirectory(resolved.absolutePath, ev.name)
-        const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
-            type: 'FOLDER_CONTENTS_LOADED' as const,
-            pluginId: 'library',
-            data: folderContents,
-          },
-        })
-      }
-    },
-    renameSymlinkItem: async ({ system, event }) => {
-      const ev = event as { type: 'RENAME_SYMLINK_ITEM'; id: string; name: string }
-      const resolved = symlink.resolveSymlinkPath(ev.id)
-      if (resolved) {
-        await symlink.renameItem(resolved.absolutePath, ev.name)
-        // Re-fetch parent folder contents
-        const parsed = symlink.parseSymlinkId(ev.id)
-        if (parsed) {
-          const basePath = symlink.getSymlinkCollectionPath(parsed.collectionId)
-          if (basePath) {
-            const parentRelPath = path.dirname(parsed.relativePath)
-            const parentFolderId = parentRelPath && parentRelPath !== '.'
-              ? symlink.buildSymlinkId(parsed.collectionId, parentRelPath)
-              : parsed.collectionId
-            const folderContents = await repository.libraryQueries.getFolderContents(parentFolderId as EARS.EntityId)
-            system.get(bus).send({
-              type: 'OUTGOING' as const,
-              event: {
-                type: 'FOLDER_CONTENTS_LOADED' as const,
-                pluginId: 'library',
-                data: folderContents,
-              },
-            })
-          }
-        }
-      }
-    },
-    deleteSymlinkItems: async ({ system, event }) => {
-      const ev = event as { type: 'DELETE_SYMLINK_ITEMS'; ids: string[] }
-      const paths: string[] = []
-      for (const id of ev.ids) {
-        const resolved = symlink.resolveSymlinkPath(id)
-        if (resolved) paths.push(resolved.absolutePath)
-      }
-      if (paths.length > 0) {
-        await symlink.deleteItems(paths)
-      }
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'ITEMS_DELETED' as const,
-          pluginId: 'library',
-          data: { ids: ev.ids },
-        },
-      })
-    },
-    getSymlinkFile: async ({ system, event }) => {
-      const ev = event as { type: 'GET_SYMLINK_FILE'; id: string }
-      const resolved = symlink.resolveSymlinkPath(ev.id)
-      if (resolved) {
-        const content = await symlink.readFile(resolved.absolutePath)
-        const name = path.basename(resolved.absolutePath)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
-            type: 'SYMLINK_FILE_LOADED' as const,
-            pluginId: 'library',
-            data: { id: ev.id, name, content, filePath: resolved.absolutePath },
-          },
-        })
-      }
-    },
-    saveSymlinkFile: async ({ system, event }) => {
-      const ev = event as { type: 'SAVE_SYMLINK_FILE'; id: string; content: string }
-      const resolved = symlink.resolveSymlinkPath(ev.id)
-      if (resolved) {
-        await symlink.writeFile(resolved.absolutePath, ev.content)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
-            type: 'SYMLINK_FILE_SAVED' as const,
-            pluginId: 'library',
-            data: { id: ev.id },
-          },
-        })
-      }
-    },
     // Import/Export actions
     importLibraryItems: async ({ system, event }) => {
       const ev = event as { type: 'IMPORT_LIBRARY'; items: any }
@@ -976,7 +924,7 @@ export const librarySystem = setup({
         MOVE_DOCUMENT: {
           actions: ['moveDocument'],
         },
-        // New file browser events
+        // File browser events
         GET_FOLDER_CONTENTS: {
           actions: ['getFolderContents'],
         },
@@ -1014,24 +962,6 @@ export const librarySystem = setup({
         // Symlink events
         CREATE_SYMLINK_COLLECTION: {
           actions: ['createSymlinkCollection'],
-        },
-        CREATE_SYMLINK_FILE: {
-          actions: ['createSymlinkFile'],
-        },
-        CREATE_SYMLINK_FOLDER: {
-          actions: ['createSymlinkFolder'],
-        },
-        RENAME_SYMLINK_ITEM: {
-          actions: ['renameSymlinkItem'],
-        },
-        DELETE_SYMLINK_ITEMS: {
-          actions: ['deleteSymlinkItems'],
-        },
-        GET_SYMLINK_FILE: {
-          actions: ['getSymlinkFile'],
-        },
-        SAVE_SYMLINK_FILE: {
-          actions: ['saveSymlinkFile'],
         },
         // Import/Export events
         IMPORT_LIBRARY: {

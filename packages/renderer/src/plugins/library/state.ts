@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
+import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
@@ -133,8 +133,6 @@ export type LibraryEvents =
   | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
   // Symlink events
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
-  | { type: 'CREATE_SYMLINK_FILE'; name: string }
-  | { type: 'CREATE_SYMLINK_FOLDER'; name: string }
   // Import/Export events
   | { type: 'LIBRARY.IMPORT'; items: any[] }
   | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
@@ -152,7 +150,7 @@ export const librarySystem = setup({
     events: {} as LibraryEvents,
   },
   actions: {
-    // New file browser actions
+    // File browser actions
     requestFolderContents: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -179,11 +177,11 @@ export const librarySystem = setup({
           })
         } else if (event.item.type === 'document') {
           const docItem = event.item as DocumentItem
-          // Symlink documents: load file content from filesystem
+          // Symlink documents: fetch from backend (routes to filesystem)
           if (docItem.isSymlinked || event.item.id.startsWith('symlink:')) {
             trpc.bus.send.mutate({
               systemId: id,
-              type: 'GET_SYMLINK_FILE',
+              type: 'GET_DOCUMENT',
               id: event.item.id,
             })
           } else {
@@ -211,42 +209,21 @@ export const librarySystem = setup({
     },
     createFolder: ({ context, event }) => {
       if (event.type === 'CREATE_FOLDER') {
-        if (context.isInSymlinkContext && context.currentFolderId) {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'CREATE_SYMLINK_FOLDER',
-            folderId: context.currentFolderId,
-            name: event.name,
-          })
-        } else {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'CREATE_COLLECTION',
-            name: event.name,
-            parentId: context.currentFolderId || undefined,
-          })
-        }
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'CREATE_COLLECTION',
+          name: event.name,
+          parentId: context.currentFolderId || undefined,
+        })
       }
     },
     deleteSelectedItems: ({ context }) => {
       if (context.selectedItems.length > 0) {
-        const symlinkIds = context.selectedItems.filter(itemId => itemId.startsWith('symlink:'))
-        const regularIds = context.selectedItems.filter(itemId => !itemId.startsWith('symlink:'))
-
-        if (symlinkIds.length > 0) {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'DELETE_SYMLINK_ITEMS',
-            ids: symlinkIds,
-          })
-        }
-        if (regularIds.length > 0) {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'DELETE_ITEMS',
-            ids: regularIds,
-          })
-        }
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'DELETE_ITEMS',
+          ids: context.selectedItems,
+        })
       }
     },
     moveItems: ({ event }) => {
@@ -307,26 +284,16 @@ export const librarySystem = setup({
 
     renameItem: ({ context, event }) => {
       if (event.type === 'RENAME_ITEM') {
-        if (event.itemId.startsWith('symlink:')) {
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'RENAME_SYMLINK_ITEM',
-            id: event.itemId,
-            name: event.name,
-          })
-        } else {
-          // Find the item in the current items list to determine its type
-          const item = context.items.find(i => i.id === event.itemId)
-          const itemType = item?.type === 'folder' ? 'folder' : 'document'
+        const item = context.items.find(i => i.id === event.itemId)
+        const itemType = item?.type === 'folder' ? 'folder' : 'document'
 
-          trpc.bus.send.mutate({
-            systemId: id,
-            type: 'RENAME_ITEM',
-            id: event.itemId,
-            name: event.name,
-            itemType: itemType,
-          })
-        }
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'RENAME_ITEM',
+          id: event.itemId,
+          name: event.name,
+          itemType: itemType,
+        })
       }
     },
 
@@ -358,9 +325,6 @@ export const librarySystem = setup({
 
       // Detect symlink context
       const hasSymlinkedItems = items.some(item => (item as any).isSymlinked)
-      const isSymlinkRoot = items.length === 0 && responseFolderId
-        ? false // Will be set based on folder data
-        : hasSymlinkedItems
       const isInSymlinkContext = hasSymlinkedItems || (responseFolderId?.startsWith('symlink:') ?? false)
 
       // Find the symlink root ID
@@ -638,70 +602,6 @@ export const librarySystem = setup({
         })
       }
     },
-    createSymlinkFile: ({ context, event }) => {
-      if (event.type === 'CREATE_SYMLINK_FILE' && context.currentFolderId) {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'CREATE_SYMLINK_FILE',
-          folderId: context.currentFolderId,
-          name: event.name,
-        })
-      }
-    },
-    createSymlinkFolder: ({ context, event }) => {
-      if (event.type === 'CREATE_SYMLINK_FOLDER' && context.currentFolderId) {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'CREATE_SYMLINK_FOLDER',
-          folderId: context.currentFolderId,
-          name: event.name,
-        })
-      }
-    },
-    handleSymlinkFileLoaded: ({ self, event }) => {
-      if (event.type === 'SYMLINK_FILE_LOADED') {
-        const { id: fileId, name, content, filePath } = event.data
-        // Create a DocumentDTO-like object for EditView
-        self.send({
-          type: 'EDIT_DOCUMENT',
-          documentId: fileId,
-        })
-      }
-    },
-    setSymlinkEditingDocument: assign({
-      editingDocument: ({ context, event }) => {
-        if (event.type === 'SYMLINK_FILE_LOADED') {
-          const { id: fileId, name, content, filePath } = event.data
-          return {
-            id: fileId,
-            name,
-            content: [{ type: 'text' as const, text: content }],
-            shortCode: 'DOC-0' as any,
-            tags: [],
-            displayOrder: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } as DocumentDTO
-        }
-        return context.editingDocument
-      },
-    }),
-    saveSymlinkFile: ({ context, event }) => {
-      if (event.type === 'SAVE_DOCUMENT' && context.editingDocument?.id.startsWith('symlink:')) {
-        // Extract text content from content sections
-        const textContent = event.content
-          .filter((section: ContentSection) => section.type === 'text')
-          .map((section: ContentSection) => (section as any).text)
-          .join('\n')
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'SAVE_SYMLINK_FILE',
-          id: context.editingDocument.id,
-          content: textContent,
-        })
-      }
-    },
-
     /* ── Library Import actions ────────────────────────────── */
     setImportingLibrary: assign(({ context }) => ({
       libraryImport: {
@@ -892,7 +792,7 @@ export const librarySystem = setup({
       target: '.browser',
     },
     
-    // New file browser events
+    // File browser events
     FOLDER_CONTENTS_LOADED: {
       actions: ['setFolderContents', 'clearSelection', 'requestSearchIndices'],
     },
@@ -947,22 +847,8 @@ export const librarySystem = setup({
       actions: 'collapseFolder',
     },
 
-    // Symlink events
     CREATE_SYMLINK: {
       actions: 'createSymlink',
-    },
-    CREATE_SYMLINK_FILE: {
-      actions: 'createSymlinkFile',
-    },
-    CREATE_SYMLINK_FOLDER: {
-      actions: 'createSymlinkFolder',
-    },
-    SYMLINK_FILE_LOADED: {
-      target: '.edit',
-      actions: 'setSymlinkEditingDocument',
-    },
-    SYMLINK_FILE_SAVED: {
-      // No-op, just acknowledge
     },
 
     // Import/Export events
@@ -991,7 +877,14 @@ export const librarySystem = setup({
       actions: 'handleLibraryExportFailed',
     },
 
-    // Creation success events - refresh current folder
+    // Document/collection response events
+    DOCUMENT_LOADED: {
+      target: '.edit',
+      actions: assign({
+        editingDocument: ({ event }) =>
+          event.type === 'DOCUMENT_LOADED' ? event.data.document : undefined,
+      }),
+    },
     DOCUMENT_CREATED: {
       actions: ['requestFolderContents', 'clearTreeCache'],
     },
@@ -1066,14 +959,16 @@ export const librarySystem = setup({
         CREATE_DOCUMENT: [
           {
             guard: ({ context }) => context.isInSymlinkContext,
-            // Stay in browser, create file inline
+            // Stay in browser, create file inline via unified event
             actions: ({ context }) => {
               if (context.currentFolderId) {
                 trpc.bus.send.mutate({
                   systemId: id,
-                  type: 'CREATE_SYMLINK_FILE',
-                  folderId: context.currentFolderId,
+                  type: 'CREATE_DOCUMENT',
                   name: 'New Document.txt',
+                  content: [],
+                  tags: [],
+                  collectionId: context.currentFolderId,
                 })
               }
             },
@@ -1113,17 +1008,10 @@ export const librarySystem = setup({
         getLabel: (ctx) => `${ctx.editingDocument?.name || 'Document'}`,
       }),
       on: {
-        SAVE_DOCUMENT: [
-          {
-            guard: ({ context }) => !!context.editingDocument?.id.startsWith('symlink:'),
-            target: 'browser',
-            actions: ['saveSymlinkFile', 'clearEditingDocument'],
-          },
-          {
-            target: 'browser',
-            actions: ['updateDocument', 'clearEditingDocument'],
-          },
-        ],
+        SAVE_DOCUMENT: {
+          target: 'browser',
+          actions: ['updateDocument', 'clearEditingDocument'],
+        },
         CANCEL_EDIT: {
           target: 'browser',
           actions: 'clearEditingDocument',
