@@ -12,16 +12,19 @@
     />
 
     <!-- Toolbar -->
-    <div class="px-6 py-3 border-b border-neutral-800" @click.stop>
+    <div class="pl-3 pr-6 py-3 border-b border-neutral-800" @click.stop>
       <!-- Navigation Row -->
       <div class="flex items-center justify-between gap-4">
         <!-- Back Button and Breadcrumbs -->
-        <div class="flex items-center gap-3">
-          <!-- Back Button -->
+        <div class="flex items-center gap-1">
+          <!-- Back Button (always visible, disabled at root) -->
           <button
-            v-if="currentFolderId !== null"
             @click="navigateBack"
-            class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-neutral-300 hover:bg-neutral-800 active:scale-95"
+            :disabled="currentFolderId === null"
+            class="p-1 rounded-md transition-colors active:scale-95"
+            :class="currentFolderId !== null
+              ? 'text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800'
+              : 'text-neutral-700 cursor-default'"
             aria-label="Go back"
             title="Go back"
           >
@@ -29,27 +32,46 @@
           </button>
 
           <!-- Breadcrumb Navigation -->
-          <div class="flex items-center gap-1 text-sm">
+          <nav class="flex items-center gap-0.5 text-sm" aria-label="Folder path">
+            <!-- Home (root) -->
             <button
               @click="navigateToFolder(null)"
-              class="pr-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
-              :class="currentFolderId === null ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
+              class="p-1 transition-colors rounded-md hover:bg-neutral-800"
+              :class="currentFolderId === null ? 'text-neutral-200' : 'text-neutral-500 hover:text-neutral-300'"
+              title="Home"
             >
-              root
+              <Home class="w-4 h-4" />
             </button>
-            <template v-if="breadcrumbs.length > 0">
-              <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
-                <ChevronRight class="w-4 h-4 text-neutral-600" />
+
+            <template v-if="displayBreadcrumbs.length > 0">
+              <!-- Ellipsis for collapsed middle segments -->
+              <template v-if="isPathTruncated">
+                <span class="text-neutral-600 text-xs mx-0.5">/</span>
+                <button
+                  @click="navigateToBreadcrumb(breadcrumbs[breadcrumbs.length - 3])"
+                  class="px-1.5 py-0.5 text-neutral-500 transition-colors rounded-md hover:text-neutral-300 hover:bg-neutral-800"
+                  title="Go to parent"
+                >
+                  ...
+                </button>
+              </template>
+
+              <!-- Visible breadcrumb segments -->
+              <template v-for="(crumb, index) in displayBreadcrumbs" :key="crumb.id">
+                <span class="text-neutral-600 text-xs mx-0.5">/</span>
                 <button
                   @click="navigateToBreadcrumb(crumb)"
-                  class="px-2 py-1 transition-colors rounded-md hover:bg-neutral-800"
-                  :class="index === breadcrumbs.length - 1 ? 'text-neutral-100 font-medium' : 'text-neutral-400 hover:text-neutral-300'"
+                  class="px-1.5 py-0.5 transition-colors rounded-md hover:bg-neutral-800 truncate max-w-[160px]"
+                  :class="index === displayBreadcrumbs.length - 1
+                    ? 'text-neutral-100 font-medium'
+                    : 'text-neutral-500 hover:text-neutral-300'"
+                  :title="crumb.name"
                 >
                   {{ crumb.name }}
                 </button>
               </template>
             </template>
-          </div>
+          </nav>
         </div>
 
         <!-- Actions -->
@@ -212,8 +234,8 @@ import {
   FolderPlus,
   Folder,
   FileText,
-  ChevronRight,
   ChevronLeft,
+  Home,
   Edit2,
   Trash2,
   // Search, // [SEARCH_INDEX_FF]
@@ -441,6 +463,13 @@ const createDocument = () => emit('CREATE_DOCUMENT')
 const createSearchIndex = () => emit('CREATE_SEARCH_INDEX')
 const navigateToFolder = (folderId: string | null) => emit('NAVIGATE_TO_FOLDER', { folderId })
 const navigateToBreadcrumb = (crumb: BreadcrumbItem) => emit('BREADCRUMB_CLICK', { folderId: crumb.id })
+
+const displayBreadcrumbs = computed(() => {
+  if (props.breadcrumbs.length <= 3) return props.breadcrumbs
+  return props.breadcrumbs.slice(-2)
+})
+
+const isPathTruncated = computed(() => props.breadcrumbs.length > 3)
 
 function createFolder() {
   const existingNames = props.items
