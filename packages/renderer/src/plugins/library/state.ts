@@ -125,7 +125,7 @@ export type LibraryEvents =
   | { type: 'DELETE_SELECTED_ITEMS' }
   | { type: 'CREATE_FOLDER'; name: string }
   | { type: 'SORT_BY'; column: 'name' | 'modified' | 'size' | 'kind' }
-  | { type: 'MOVE_ITEMS'; itemIds: string[]; targetFolderId: string }
+  | { type: 'MOVE_ITEMS'; itemIds: string[]; targetFolderId: string | null }
   | { type: 'REORDER_ITEMS'; itemIds: string[]; targetIndex: number; targetFolderId: string | null }
   | { type: 'SEARCH'; query: string }
   | { type: 'BREADCRUMB_CLICK'; folderId: string | null }

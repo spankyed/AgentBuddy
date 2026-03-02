@@ -4,7 +4,7 @@ import type { LibraryItem } from '@app/api'
 interface DragDropOptions {
   items: Ref<LibraryItem[]>
   selectedItems: Ref<string[]>
-  onMove: (itemIds: string[], targetFolderId: string) => void
+  onMove: (itemIds: string[], targetFolderId: string | null) => void
   onReorder: (itemIds: string[], targetIndex: number, targetFolderId: string | null) => void
 }
 
@@ -31,16 +31,16 @@ export function useDragDrop({
 
   // Check if drop is valid
   const isValidDrop = (targetId: string | null, targetType: 'folder' | 'document' | null): boolean => {
-    if (!targetId || !draggedItems.value.length) return false
+    if (!draggedItems.value.length) return false
 
     // Can't drop on itself
-    if (draggedItems.value.includes(targetId)) return false
+    if (targetId && draggedItems.value.includes(targetId)) return false
 
     // Can't move between symlink and non-symlink contexts
     const sourceIsSymlink = draggedItems.value.some(id => id.startsWith('symlink:'))
     const sourceIsRegular = draggedItems.value.some(id => !id.startsWith('symlink:'))
-    const targetIsSymlink = targetId.startsWith('symlink:')
-    const targetItem = items.value.find(i => i.id === targetId)
+    const targetIsSymlink = targetId?.startsWith('symlink:') ?? false
+    const targetItem = targetId ? items.value.find(i => i.id === targetId) : null
     const targetIsSymlinkRoot = targetItem?.type === 'folder' && (targetItem as any).isSymlink
 
     if ((sourceIsSymlink && !targetIsSymlink && !targetIsSymlinkRoot) ||
@@ -165,20 +165,27 @@ export function useDragDrop({
         handleDragEnd()
         return
       }
-      // Reordering items
       const currentItems = items.value
       const targetIdx = targetIndex ?? currentItems.findIndex(item => item.id === targetItem?.id)
-      
+
       if (targetIdx !== -1) {
-        const adjustedIndex = dropPosition.value === 'after' ? targetIdx + 1 : targetIdx
-        // Use the passed currentFolderId which is more reliable than item.parentId
         const folderId = currentFolderId !== undefined ? currentFolderId : (targetItem?.parentId ?? null)
-        onReorder(draggedItems.value, adjustedIndex, folderId)
+        const isCrossFolder = draggedItems.value.some(id => !currentItems.some(item => item.id === id))
+
+        if (isCrossFolder) {
+          onMove(draggedItems.value, folderId)
+        } else {
+          const adjustedIndex = dropPosition.value === 'after' ? targetIdx + 1 : targetIdx
+          onReorder(draggedItems.value, adjustedIndex, folderId)
+        }
       }
     } else if (!targetItem) {
-      // Dropping on empty space - if we have a target position, reorder at the end
-      if (targetIndex !== undefined) {
-        const folderId = currentFolderId ?? null
+      const folderId = currentFolderId ?? null
+      const isCrossFolder = draggedItems.value.some(id => !items.value.some(item => item.id === id))
+
+      if (isCrossFolder) {
+        onMove(draggedItems.value, folderId)
+      } else if (targetIndex !== undefined) {
         onReorder(draggedItems.value, targetIndex, folderId)
       }
     }
