@@ -603,13 +603,9 @@ function handleKeyDown(event: KeyboardEvent) {
   if (isModified && event.key === 'a') {
     event.preventDefault()
     toggleSelectAll()
-  } else if (event.key === 'Delete' && hasSelection) {
+  } else if ((event.key === 'Delete' || event.key === 'Backspace') && hasSelection) {
     event.preventDefault()
     deleteSelectedItems()
-  } else if (event.key === 'Backspace' && hasSelection && props.currentFolderId !== null) {
-    // Backspace moves items up a level when in a folder
-    event.preventDefault()
-    moveSelectedItemsUp()
   } else if (event.key === 'Escape' && hasSelection) {
     event.preventDefault()
     clearSelection()
