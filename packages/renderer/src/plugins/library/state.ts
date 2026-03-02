@@ -52,24 +52,24 @@ export interface LibraryContext {
   expandedFolderIds: string[]
   expandedFolderChildren: Record<string, LibraryItem[]>
   loadingFolderIds: string[]
-  
+
   // Legacy fields (used by CreateView/EditView for compatibility)
   documents: DocumentDTO[]
   collections: CollectionDTO[]
   selectedCollectionId?: string
-  
+
   // Search index fields
   searchIndices: SearchIndex[]
   editingIndexId?: string
   editingIndex?: SearchIndex
-  
+
   // Search test fields
   testingIndexId?: string
   testingIndex?: SearchIndex
   testQuery: string
   testResults: any[]
   isSearching: boolean
-  
+
   // Symlink context
   isInSymlinkContext: boolean
   currentSymlinkRootId: string | null
@@ -86,14 +86,14 @@ export type LibraryEvents =
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
-  
+
   // Legacy document events
   | { type: 'CREATE_DOCUMENT' }
   | { type: 'EDIT_DOCUMENT'; documentId: string }
   | { type: 'DELETE_DOCUMENT'; documentId: string }
   | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
-  
+
   // Search Index events
   | { type: 'CREATE_SEARCH_INDEX' }
   | { type: 'SAVE_SEARCH_INDEX'; config: SearchIndexFormData }
@@ -103,16 +103,16 @@ export type LibraryEvents =
   | { type: 'UPDATE_SEARCH_INDEX'; indexId: string; config: SearchIndexFormData }
   | { type: 'DELETE_SEARCH_INDEX'; indexId: string }
   | { type: 'CANCEL_EDIT_INDEX' }
-  
+
   // Search test events
   | { type: 'TEST_SEARCH_INDEX'; indexId: string }
   | { type: 'UPDATE_TEST_QUERY'; query: string }
   | { type: 'EXECUTE_TEST_SEARCH' }
   | { type: 'CANCEL_TEST_SEARCH' }
-  
+
   // Legacy collection events (kept for CreateView/EditView compatibility)
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
-  
+
   // Tree view events
   | { type: 'EXPAND_FOLDER'; folderId: string }
   | { type: 'COLLAPSE_FOLDER'; folderId: string }
@@ -194,9 +194,9 @@ export const librarySystem = setup({
     createDocument: ({ context, event }) => {
       if (event.type === 'SAVE_DOCUMENT') {
         const targetCollectionId = event.collectionId?.trim() || context.currentFolderId || undefined
-        
+
         if (event.tags?.length) tagStorage.addTags(event.tags)
-        
+
         trpc.bus.send.mutate({
           systemId: id,
           type: 'CREATE_DOCUMENT',
@@ -403,13 +403,13 @@ export const librarySystem = setup({
         // Update tags in localStorage
         const oldTags = context.editingDocument.tags || []
         const newTags = event.tags || []
-        
+
         const removed = oldTags.filter(tag => !newTags.includes(tag))
         const added = newTags.filter(tag => !oldTags.includes(tag))
-        
+
         if (removed.length) tagStorage.removeTags(removed)
         if (added.length) tagStorage.addTags(added)
-        
+
         trpc.bus.send.mutate({
           systemId: id,
           type: 'UPDATE_DOCUMENT',
@@ -421,7 +421,7 @@ export const librarySystem = setup({
         })
       }
     },
-    
+
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
@@ -430,7 +430,7 @@ export const librarySystem = setup({
           if (legacyDoc) {
             return legacyDoc
           }
-          
+
           // Otherwise, look in the new items array and convert to DocumentDTO format
           const item = context.items.find((item) => item.id === event.documentId && item.type === 'document')
           if (item && item.type === 'document') {
@@ -480,127 +480,127 @@ export const librarySystem = setup({
         return []
       },
     }),
-    
-    // Search index actions
-    requestSearchIndices: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'LIST_SEARCH_INDICES',
-        folderId: context.currentFolderId,
-      })
-    },
-    setSearchIndices: assign({
-      searchIndices: ({ event }) => {
-        if (event.type === 'SEARCH_INDICES_LOADED') {
-          return event.data.indices
-        }
-        return []
-      },
-    }),
-    saveSearchIndex: ({ context, event }) => {
-      if (event.type === 'SAVE_SEARCH_INDEX') {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'CREATE_SEARCH_INDEX',
-          config: event.config,
-          folderId: context.currentFolderId,
-        })
-      }
-    },
-    updateSearchIndex: ({ event }) => {
-      if (event.type === 'UPDATE_SEARCH_INDEX') {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'UPDATE_SEARCH_INDEX',
-          id: event.indexId,
-          config: event.config,
-        })
-      }
-    },
-    deleteSearchIndex: ({ event }) => {
-      if (event.type === 'DELETE_SEARCH_INDEX') {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'DELETE_SEARCH_INDEX',
-          id: event.indexId,
-        })
-      }
-    },
-    setEditingIndex: assign({
-      editingIndexId: ({ event }) => {
-        if (event.type === 'EDIT_SEARCH_INDEX') {
-          return event.indexId
-        }
-        return undefined
-      },
-      editingIndex: ({ context, event }) => {
-        if (event.type === 'EDIT_SEARCH_INDEX') {
-          return context.searchIndices.find(idx => idx.id === event.indexId)
-        }
-        return undefined
-      },
-    }),
-    clearEditingIndex: assign({
-      editingIndexId: undefined,
-      editingIndex: undefined,
-    }),
-    
-    // Search test actions
-    setTestingIndex: assign({
-      testingIndexId: ({ event }) => {
-        if (event.type === 'TEST_SEARCH_INDEX') {
-          return event.indexId
-        }
-        return undefined
-      },
-      testingIndex: ({ context, event }) => {
-        if (event.type === 'TEST_SEARCH_INDEX') {
-          return context.searchIndices.find(idx => idx.id === event.indexId)
-        }
-        return undefined
-      },
-      testQuery: '',
-      testResults: [],
-      isSearching: false,
-    }),
-    updateTestQuery: assign({
-      testQuery: ({ event }) => {
-        if (event.type === 'UPDATE_TEST_QUERY') {
-          return event.query
-        }
-        return ''
-      },
-    }),
-    executeTestSearch: ({ context }) => {
-      if (context.testingIndexId && context.testQuery) {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'SEARCH_IN_INDEX',
-          indexId: context.testingIndexId,
-          query: context.testQuery,
-          limit: 10,
-        })
-      }
-    },
-    setSearching: assign({
-      isSearching: true,
-    }),
-    setSearchResults: assign({
-      testResults: ({ event }) => {
-        if (event.type === 'SEARCH_RESULTS') {
-          return event.data.results
-        }
-        return []
-      },
-      isSearching: false,
-    }),
-    clearTestSearch: assign({
-      testingIndexId: undefined,
-      testingIndex: undefined,
-      testQuery: '',
-      testResults: [],
-      isSearching: false,
-    }),
+
+    // [SEARCH_INDEX_FF] Search index actions — commented out
+    // requestSearchIndices: ({ context }) => {
+    //   trpc.bus.send.mutate({
+    //     systemId: id,
+    //     type: 'LIST_SEARCH_INDICES',
+    //     folderId: context.currentFolderId,
+    //   })
+    // },
+    // setSearchIndices: assign({
+    //   searchIndices: ({ event }) => {
+    //     if (event.type === 'SEARCH_INDICES_LOADED') {
+    //       return event.data.indices
+    //     }
+    //     return []
+    //   },
+    // }),
+    // saveSearchIndex: ({ context, event }) => {
+    //   if (event.type === 'SAVE_SEARCH_INDEX') {
+    //     trpc.bus.send.mutate({
+    //       systemId: id,
+    //       type: 'CREATE_SEARCH_INDEX',
+    //       config: event.config,
+    //       folderId: context.currentFolderId,
+    //     })
+    //   }
+    // },
+    // updateSearchIndex: ({ event }) => {
+    //   if (event.type === 'UPDATE_SEARCH_INDEX') {
+    //     trpc.bus.send.mutate({
+    //       systemId: id,
+    //       type: 'UPDATE_SEARCH_INDEX',
+    //       id: event.indexId,
+    //       config: event.config,
+    //     })
+    //   }
+    // },
+    // deleteSearchIndex: ({ event }) => {
+    //   if (event.type === 'DELETE_SEARCH_INDEX') {
+    //     trpc.bus.send.mutate({
+    //       systemId: id,
+    //       type: 'DELETE_SEARCH_INDEX',
+    //       id: event.indexId,
+    //     })
+    //   }
+    // },
+    // setEditingIndex: assign({
+    //   editingIndexId: ({ event }) => {
+    //     if (event.type === 'EDIT_SEARCH_INDEX') {
+    //       return event.indexId
+    //     }
+    //     return undefined
+    //   },
+    //   editingIndex: ({ context, event }) => {
+    //     if (event.type === 'EDIT_SEARCH_INDEX') {
+    //       return context.searchIndices.find(idx => idx.id === event.indexId)
+    //     }
+    //     return undefined
+    //   },
+    // }),
+    // clearEditingIndex: assign({
+    //   editingIndexId: undefined,
+    //   editingIndex: undefined,
+    // }),
+    //
+    // // Search test actions
+    // setTestingIndex: assign({
+    //   testingIndexId: ({ event }) => {
+    //     if (event.type === 'TEST_SEARCH_INDEX') {
+    //       return event.indexId
+    //     }
+    //     return undefined
+    //   },
+    //   testingIndex: ({ context, event }) => {
+    //     if (event.type === 'TEST_SEARCH_INDEX') {
+    //       return context.searchIndices.find(idx => idx.id === event.indexId)
+    //     }
+    //     return undefined
+    //   },
+    //   testQuery: '',
+    //   testResults: [],
+    //   isSearching: false,
+    // }),
+    // updateTestQuery: assign({
+    //   testQuery: ({ event }) => {
+    //     if (event.type === 'UPDATE_TEST_QUERY') {
+    //       return event.query
+    //     }
+    //     return ''
+    //   },
+    // }),
+    // executeTestSearch: ({ context }) => {
+    //   if (context.testingIndexId && context.testQuery) {
+    //     trpc.bus.send.mutate({
+    //       systemId: id,
+    //       type: 'SEARCH_IN_INDEX',
+    //       indexId: context.testingIndexId,
+    //       query: context.testQuery,
+    //       limit: 10,
+    //     })
+    //   }
+    // },
+    // setSearching: assign({
+    //   isSearching: true,
+    // }),
+    // setSearchResults: assign({
+    //   testResults: ({ event }) => {
+    //     if (event.type === 'SEARCH_RESULTS') {
+    //       return event.data.results
+    //     }
+    //     return []
+    //   },
+    //   isSearching: false,
+    // }),
+    // clearTestSearch: assign({
+    //   testingIndexId: undefined,
+    //   testingIndex: undefined,
+    //   testQuery: '',
+    //   testResults: [],
+    //   isSearching: false,
+    // }),
     // Symlink actions
     createSymlink: ({ context, event }) => {
       if (event.type === 'CREATE_SYMLINK') {
@@ -748,7 +748,7 @@ export const librarySystem = setup({
     // Core view state
     currentView: 'browser',
     editingDocument: undefined,
-    
+
     // File browser fields
     items: [],
     currentFolderId: null,
@@ -770,19 +770,19 @@ export const librarySystem = setup({
     documents: [],
     collections: [],
     selectedCollectionId: undefined,
-    
+
     // Search index fields
     searchIndices: [],
     editingIndexId: undefined,
     editingIndex: undefined,
-    
+
     // Search test fields
     testingIndexId: undefined,
     testingIndex: undefined,
     testQuery: '',
     testResults: [],
     isSearching: false,
-    
+
     // Symlink context
     isInSymlinkContext: false,
     currentSymlinkRootId: null,
@@ -804,10 +804,11 @@ export const librarySystem = setup({
     VIEW_BROWSER: {
       target: '.browser',
     },
-    
+
     // File browser events
     FOLDER_CONTENTS_LOADED: {
-      actions: ['setFolderContents', 'clearSelection', 'requestSearchIndices'],
+      // actions: ['setFolderContents', 'clearSelection', 'requestSearchIndices'], // [SEARCH_INDEX_FF] removed 'requestSearchIndices'
+      actions: ['setFolderContents', 'clearSelection'],
     },
     NAVIGATION_CHANGED: {
       actions: 'updateNavigation',
@@ -931,7 +932,7 @@ export const librarySystem = setup({
     ITEMS_REORDERED: {
       actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
-    
+
     // Legacy events for backward compatibility
     DOCUMENTS_LOADED: {
       actions: 'setDocuments',
@@ -939,30 +940,20 @@ export const librarySystem = setup({
     COLLECTIONS_LOADED: {
       actions: 'setCollections',
     },
-    
-    // Search index events
-    SEARCH_INDICES_LOADED: {
-      actions: 'setSearchIndices',
-    },
-    SEARCH_INDEX_CREATED: {
-      actions: 'requestSearchIndices',
-    },
-    SEARCH_INDEX_UPDATED: {
-      actions: 'requestSearchIndices',
-    },
-    SEARCH_INDEX_DELETED: {
-      actions: 'requestSearchIndices',
-    },
-    SEARCH_RESULTS: {
-      actions: 'setSearchResults',
-    },
+
+    // [SEARCH_INDEX_FF] Search index events — commented out
+    // SEARCH_INDICES_LOADED: { actions: 'setSearchIndices' },
+    // SEARCH_INDEX_CREATED: { actions: 'requestSearchIndices' },
+    // SEARCH_INDEX_UPDATED: { actions: 'requestSearchIndices' },
+    // SEARCH_INDEX_DELETED: { actions: 'requestSearchIndices' },
+    // SEARCH_RESULTS: { actions: 'setSearchResults' },
     ...TRAIL_CLICK([
       ['.browser', 'browser'],
       ['.create', 'create'],
       ['.edit', 'edit'],
-      ['.createIndex', 'createIndex'],
-      ['.editIndex', 'editIndex'],
-      ['.testIndex', 'testIndex'],
+      // [SEARCH_INDEX_FF] ['.createIndex', 'createIndex'],
+      // [SEARCH_INDEX_FF] ['.editIndex', 'editIndex'],
+      // [SEARCH_INDEX_FF] ['.testIndex', 'testIndex'],
     ]),
   },
   states: {
@@ -993,15 +984,10 @@ export const librarySystem = setup({
           target: 'edit',
           actions: ['setEditingDocument', 'clearSelection'],
         },
-        CREATE_SEARCH_INDEX: 'createIndex',
-        EDIT_SEARCH_INDEX: {
-          target: 'editIndex',
-          actions: 'setEditingIndex',
-        },
-        TEST_SEARCH_INDEX: {
-          target: 'testIndex',
-          actions: 'setTestingIndex',
-        },
+        // [SEARCH_INDEX_FF] Search index transitions — commented out
+        // CREATE_SEARCH_INDEX: 'createIndex',
+        // EDIT_SEARCH_INDEX: { target: 'editIndex', actions: 'setEditingIndex' },
+        // TEST_SEARCH_INDEX: { target: 'testIndex', actions: 'setTestingIndex' },
       },
     },
     create: {
@@ -1032,52 +1018,53 @@ export const librarySystem = setup({
         },
       },
     },
-    createIndex: {
-      entry: assign({ currentView: 'create-index' }),
-      meta: breadcrumb('createIndex', 'Create Search Index'),
-      on: {
-        SAVE_SEARCH_INDEX: {
-          target: 'browser',
-          actions: 'saveSearchIndex',
-        },
-        CANCEL_CREATE_INDEX: 'browser',
-      },
-    },
-    editIndex: {
-      entry: assign({ currentView: 'edit-index' }),
-      meta: breadcrumbWithParams<LibraryContext>({
-        target: 'editIndex',
-        getLabel: (ctx) => `${ctx.editingIndex?.name || 'Index'}`,
-      }),
-      on: {
-        UPDATE_SEARCH_INDEX: {
-          target: 'browser',
-          actions: ['updateSearchIndex', 'clearEditingIndex'],
-        },
-        CANCEL_EDIT_INDEX: {
-          target: 'browser',
-          actions: 'clearEditingIndex',
-        },
-      },
-    },
-    testIndex: {
-      entry: assign({ currentView: 'test-index' }),
-      meta: breadcrumbWithParams<LibraryContext>({
-        target: 'testIndex',
-        getLabel: (ctx) => `${ctx.testingIndex?.name || 'Index'}`,
-      }),
-      on: {
-        UPDATE_TEST_QUERY: {
-          actions: 'updateTestQuery',
-        },
-        EXECUTE_TEST_SEARCH: {
-          actions: ['setSearching', 'executeTestSearch'],
-        },
-        CANCEL_TEST_SEARCH: {
-          target: 'browser',
-          actions: 'clearTestSearch',
-        },
-      },
-    },
+    // [SEARCH_INDEX_FF] Search index states — commented out
+    // createIndex: {
+    //   entry: assign({ currentView: 'create-index' }),
+    //   meta: breadcrumb('createIndex', 'Create Search Index'),
+    //   on: {
+    //     SAVE_SEARCH_INDEX: {
+    //       target: 'browser',
+    //       actions: 'saveSearchIndex',
+    //     },
+    //     CANCEL_CREATE_INDEX: 'browser',
+    //   },
+    // },
+    // editIndex: {
+    //   entry: assign({ currentView: 'edit-index' }),
+    //   meta: breadcrumbWithParams<LibraryContext>({
+    //     target: 'editIndex',
+    //     getLabel: (ctx) => `${ctx.editingIndex?.name || 'Index'}`,
+    //   }),
+    //   on: {
+    //     UPDATE_SEARCH_INDEX: {
+    //       target: 'browser',
+    //       actions: ['updateSearchIndex', 'clearEditingIndex'],
+    //     },
+    //     CANCEL_EDIT_INDEX: {
+    //       target: 'browser',
+    //       actions: 'clearEditingIndex',
+    //     },
+    //   },
+    // },
+    // testIndex: {
+    //   entry: assign({ currentView: 'test-index' }),
+    //   meta: breadcrumbWithParams<LibraryContext>({
+    //     target: 'testIndex',
+    //     getLabel: (ctx) => `${ctx.testingIndex?.name || 'Index'}`,
+    //   }),
+    //   on: {
+    //     UPDATE_TEST_QUERY: {
+    //       actions: 'updateTestQuery',
+    //     },
+    //     EXECUTE_TEST_SEARCH: {
+    //       actions: ['setSearching', 'executeTestSearch'],
+    //     },
+    //     CANCEL_TEST_SEARCH: {
+    //       target: 'browser',
+    //       actions: 'clearTestSearch',
+    //     },
+    //   },
+    // },
   },
 })

@@ -126,6 +126,7 @@
       <div v-else class="text-sm text-neutral-500">No tags yet</div>
     </div>
 
+    <!-- [SEARCH_INDEX_FF] Search Indices section — commented out
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="text-sm font-semibold text-neutral-100 mb-3">Search Indices</h3>
       <div v-if="searchIndices.length > 0" class="space-y-2">
@@ -176,8 +177,7 @@
         No indices in current folder
       </div>
     </div>
-    
-    <!-- Delete Confirmation Dialog -->
+
     <teleport to="body">
       <div v-if="deleteConfirm.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div class="bg-neutral-800 rounded-lg p-6 max-w-sm w-full mx-4">
@@ -202,6 +202,7 @@
         </div>
       </div>
     </teleport>
+    -->
   </div>
 </template>
 
@@ -211,7 +212,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
-import { getModelConfig } from './config/embedding-models'
+// [SEARCH_INDEX_FF] import { getModelConfig } from './config/embedding-models'
 import type { ContentSection, TextBlockContent, FieldContent, ListContent } from '@app/api'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
@@ -221,7 +222,7 @@ const actor = applicationState.system.get(id) as LibraryActor
 const documents = useSelector(actor, (state) => state.context.documents)
 const collections = useSelector(actor, (state) => state.context.collections)
 const selectedDocument = useSelector(actor, (state) => state.context.selectedDocument)
-const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
+// [SEARCH_INDEX_FF] const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
 const items = useSelector(actor, (state) => state.context.items)
 const selectedItems = useSelector(actor, (state) => state.context.selectedItems)
@@ -332,54 +333,55 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString()
 }
 
-function getModelLabel(modelId: string): string {
-  const config = getModelConfig(modelId)
-  if (config) {
-    return `${config.displayName} (${config.dimensions}d)`
-  }
-  // Fallback for unknown models
-  return modelId
-}
-
-function getIndexedItemsLabel(index: any): string {
-  // Check if this index uses multi-indexing (separate mode for lists/fields)
-  const hasMultiIndexing = index.enableSectionIndexing && 
-    index.segmentRules?.some((r: any) => 
-      (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
-    )
-  
-  if (hasMultiIndexing) {
-    return index.documentCount === 1 ? 'chunk' : 'chunks'
-  }
-  return index.documentCount === 1 ? 'document' : 'documents'
-}
-
-const deleteConfirm = ref({
-  show: false,
-  indexId: '',
-  name: ''
-})
-
-function handleDeleteIndex(indexId: string, name: string) {
-  deleteConfirm.value = {
-    show: true,
-    indexId,
-    name
-  }
-}
-
-function confirmDelete() {
-  if (deleteConfirm.value.indexId) {
-    send({ type: 'DELETE_SEARCH_INDEX', indexId: deleteConfirm.value.indexId })
-  }
-  cancelDelete()
-}
-
-function cancelDelete() {
-  deleteConfirm.value = {
-    show: false,
-    indexId: '',
-    name: ''
-  }
-}
+// [SEARCH_INDEX_FF] Search index panel functions — commented out
+// function getModelLabel(modelId: string): string {
+//   const config = getModelConfig(modelId)
+//   if (config) {
+//     return `${config.displayName} (${config.dimensions}d)`
+//   }
+//   // Fallback for unknown models
+//   return modelId
+// }
+//
+// function getIndexedItemsLabel(index: any): string {
+//   // Check if this index uses multi-indexing (separate mode for lists/fields)
+//   const hasMultiIndexing = index.enableSectionIndexing &&
+//     index.segmentRules?.some((r: any) =>
+//       (r.type === 'list' || r.type === 'field') && r.indexMode === 'separate'
+//     )
+//
+//   if (hasMultiIndexing) {
+//     return index.documentCount === 1 ? 'chunk' : 'chunks'
+//   }
+//   return index.documentCount === 1 ? 'document' : 'documents'
+// }
+//
+// const deleteConfirm = ref({
+//   show: false,
+//   indexId: '',
+//   name: ''
+// })
+//
+// function handleDeleteIndex(indexId: string, name: string) {
+//   deleteConfirm.value = {
+//     show: true,
+//     indexId,
+//     name
+//   }
+// }
+//
+// function confirmDelete() {
+//   if (deleteConfirm.value.indexId) {
+//     send({ type: 'DELETE_SEARCH_INDEX', indexId: deleteConfirm.value.indexId })
+//   }
+//   cancelDelete()
+// }
+//
+// function cancelDelete() {
+//   deleteConfirm.value = {
+//     show: false,
+//     indexId: '',
+//     name: ''
+//   }
+// }
 </script>

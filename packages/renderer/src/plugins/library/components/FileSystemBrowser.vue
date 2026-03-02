@@ -83,6 +83,7 @@
             <div class="w-px h-5 bg-neutral-700 ml-1" />
           </template>
 
+          <!-- [SEARCH_INDEX_FF] Create Index button — commented out
           <Button
             @click="createSearchIndex"
             variant="transparent"
@@ -93,6 +94,7 @@
             <Search class="w-4 h-4" />
             <span>Create Index</span>
           </Button>
+          -->
           <ContextMenuRoot>
             <ContextMenuTrigger as-child>
               <Button
@@ -214,7 +216,7 @@ import {
   ChevronLeft,
   Edit2,
   Trash2,
-  Search,
+  // Search, // [SEARCH_INDEX_FF]
   ArrowUp,
   FolderOpen,
   Link,
