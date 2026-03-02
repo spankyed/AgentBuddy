@@ -16,7 +16,7 @@
     @drop="onDrop($event)"
     @dragend="onDragEnd()"
   >
-    <td class="px-4 py-3 relative">
+    <td class="px-4 py-1 relative">
       <!-- Drop indicator -->
       <div
         v-if="showDropIndicator"
@@ -68,16 +68,16 @@
         </div>
       </div>
     </td>
-    <td class="px-6 py-3">
+    <td class="px-6 py-1">
       <span class="text-sm text-neutral-400">{{ formatDate(item.updatedAt) }}</span>
     </td>
-    <td class="px-6 py-3">
+    <td class="px-6 py-1">
       <span class="text-sm text-neutral-400">{{ item.size }}</span>
     </td>
-    <td class="px-6 py-3">
+    <td class="px-6 py-1">
       <span class="text-sm text-neutral-400">{{ item.kind }}</span>
     </td>
-    <td class="px-6 py-3">
+    <td class="px-6 py-1">
       <div class="flex items-center justify-end gap-2">
         <button
           @click.stop="onRename"
