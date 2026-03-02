@@ -281,6 +281,19 @@ export const librarySystem = setup({
       expandedFolderChildren: {},
       loadingFolderIds: [],
     }),
+    invalidateTreeCache: assign(({ context }) => ({
+      expandedFolderChildren: {},
+      loadingFolderIds: [...context.expandedFolderIds],
+    })),
+    refetchExpandedFolders: ({ context }) => {
+      for (const folderId of context.expandedFolderIds) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'GET_FOLDER_CONTENTS',
+          folderId,
+        })
+      }
+    },
 
     renameItem: ({ context, event }) => {
       if (event.type === 'RENAME_ITEM') {
@@ -886,7 +899,7 @@ export const librarySystem = setup({
       }),
     },
     DOCUMENT_CREATED: {
-      actions: ['requestFolderContents', 'clearTreeCache'],
+      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     DOCUMENT_UPDATED: {
       actions: ['requestFolderContents', 'updateEditingDocument'],
@@ -895,7 +908,8 @@ export const librarySystem = setup({
       actions: [
         'requestFolderContents',
         'requestCollections',
-        'clearTreeCache',
+        'invalidateTreeCache',
+        'refetchExpandedFolders',
         assign({
           itemToEdit: ({ event }) => {
             // Set the new folder to be edited
@@ -906,16 +920,16 @@ export const librarySystem = setup({
       ],
     },
     ITEM_RENAMED: {
-      actions: ['requestFolderContents', 'clearTreeCache'],
+      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_DELETED: {
-      actions: ['requestFolderContents', 'requestCollections', 'clearTreeCache'],
+      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_MOVED: {
-      actions: ['requestFolderContents', 'requestCollections', 'clearTreeCache'],
+      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_REORDERED: {
-      actions: ['requestFolderContents', 'clearTreeCache'],
+      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     
     // Legacy events for backward compatibility
