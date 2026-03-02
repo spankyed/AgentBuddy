@@ -4,7 +4,8 @@
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <!-- Left section: Title and subtitle -->
       <div class="flex items-center gap-6">
-        <div>
+        <div class="flex items-center gap-2">
+          <History class="w-4 h-4 text-neutral-500" />
           <p class="text-sm text-neutral-400">Manage your conversation threads</p>
         </div>
       </div>
@@ -138,7 +139,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Search, Plus, Filter, MessageCircleMore, LayoutList, LayoutGrid } from 'lucide-vue-next'
+import { Search, Plus, Filter, MessageCircleMore, LayoutList, LayoutGrid, History } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'

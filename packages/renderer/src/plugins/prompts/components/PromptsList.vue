@@ -2,7 +2,8 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div>
+      <div class="flex items-center gap-2">
+        <Sparkle class="w-4 h-4 text-neutral-500" />
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
       </div>
       <Button @click="$emit('create')" variant="primary" data-onboarding-id="prompts-create-button">
