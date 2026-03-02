@@ -350,7 +350,7 @@ provide('tree-expand-folder', (folderId: string) => emit('EXPAND_FOLDER', { fold
 provide('tree-collapse-folder', (folderId: string) => emit('COLLAPSE_FOLDER', { folderId }))
 provide('tree-rename-item', (item: LibraryItem) => renameItem(item))
 provide('tree-delete-item', (item: LibraryItem) => deleteItem(item))
-provide('tree-handle-name-click', (item: LibraryItem, event: MouseEvent) => handleNameClick(item, event))
+provide('tree-handle-name-dblclick', (item: LibraryItem) => handleNameDblClick(item))
 provide('tree-get-editing-item-id', () => editingItemId.value)
 provide('tree-get-editing-name', () => editingName.value)
 provide('tree-set-editing-name', (name: string) => { editingName.value = name })
@@ -437,18 +437,8 @@ function selectItem(item: LibraryItem, event: MouseEvent) {
   selectItemBase(item, flattenedTreeItems.value, event)
 }
 
-function handleNameClick(item: LibraryItem, event: MouseEvent) {
-  const isOnlySelection = props.selectedItems.length === 1 && props.selectedItems.includes(item.id)
-  const isLastSelected = lastSelectedItemId.value === item.id
-
-  if (isOnlySelection && isLastSelected) {
-    event.preventDefault()
-    event.stopPropagation()
-    startEditingItem(item.id, item.name)
-  } else {
-    selectItem(item, event)
-    lastSelectedItemId.value = item.id
-  }
+function handleNameDblClick(item: LibraryItem) {
+  startEditingItem(item.id, item.name)
 }
 
 function doubleClickItem(item: LibraryItem) {

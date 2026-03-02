@@ -19,7 +19,7 @@
         @drop="onDrop($event)"
         @dragend="onDragEnd()"
       >
-        <td class="px-4 py-1 relative">
+        <td class="px-4 py-1 relative" @dblclick="onNameCellDblClick">
           <!-- Drop indicator -->
           <div
             v-if="showDropIndicator"
@@ -44,7 +44,8 @@
             <FileText v-else class="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div class="min-w-0 relative">
               <span
-                @click.stop="handleNameClickLocal($event)"
+                @click.stop="handleClick($event)"
+                @dblclick.stop="handleNameDblClickLocal"
                 class="text-sm"
                 :class="[
                   item.type === 'folder' ? 'font-medium' : 'font-normal',
@@ -147,7 +148,7 @@ const expandFolder = inject<(folderId: string) => void>('tree-expand-folder')!
 const collapseFolder = inject<(folderId: string) => void>('tree-collapse-folder')!
 const renameItem = inject<(item: LibraryItem) => void>('tree-rename-item')!
 const deleteItem = inject<(item: LibraryItem) => void>('tree-delete-item')!
-const handleNameClick = inject<(item: LibraryItem, event: MouseEvent) => void>('tree-handle-name-click')!
+const handleNameDblClick = inject<(item: LibraryItem) => void>('tree-handle-name-dblclick')!
 const getEditingItemId = inject<() => string | null>('tree-get-editing-item-id')!
 const getEditingName = inject<() => string>('tree-get-editing-name')!
 const setEditingName = inject<(name: string) => void>('tree-set-editing-name')!
@@ -207,8 +208,14 @@ function handleDoubleClick() {
   doubleClickItem(props.item)
 }
 
-function handleNameClickLocal(event: MouseEvent) {
-  handleNameClick(props.item, event)
+function onNameCellDblClick(event: MouseEvent) {
+  if (isEditing.value) {
+    event.stopPropagation()
+  }
+}
+
+function handleNameDblClickLocal() {
+  handleNameDblClick(props.item)
 }
 
 function onEditInput(event: Event) {
