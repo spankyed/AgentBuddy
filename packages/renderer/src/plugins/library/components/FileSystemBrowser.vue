@@ -221,8 +221,17 @@
               </td>
             </tr>
             </template>
+            <tr v-if="sortedItems.length === 0">
+              <td colspan="5" class="h-64">
+                <div class="flex flex-col items-center justify-center h-full text-center">
+                  <FolderOpen class="w-10 h-10 mb-3 text-neutral-600" />
+                  <p class="text-sm text-neutral-500">This folder is empty</p>
+                </div>
+              </td>
+            </tr>
             <!-- Fill remaining space with empty rows (also acts as drop zone) -->
             <tr
+              v-if="sortedItems.length > 0"
               v-for="n in Math.max(0, 8 - sortedItems.length)"
               :key="`empty-${n}`"
               class="empty-drop-zone"
@@ -254,7 +263,8 @@ import {
   Edit2,
   Trash2,
   Search,
-  ArrowUp
+  ArrowUp,
+  FolderOpen
 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
