@@ -297,6 +297,7 @@ const {
 } = useDragDrop({
   items: computed(() => props.items),
   selectedItems: computed(() => props.selectedItems),
+  isInSymlinkContext: computed(() => props.isInSymlinkContext),
   onMove: (itemIds, targetFolderId) => {
     emit('MOVE_ITEMS', { itemIds, targetFolderId })
   },

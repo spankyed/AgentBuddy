@@ -4,6 +4,7 @@ import type { LibraryItem } from '@app/api'
 interface DragDropOptions {
   items: Ref<LibraryItem[]>
   selectedItems: Ref<string[]>
+  isInSymlinkContext: Ref<boolean>
   onMove: (itemIds: string[], targetFolderId: string | null) => void
   onReorder: (itemIds: string[], targetIndex: number, targetFolderId: string | null) => void
 }
@@ -11,6 +12,7 @@ interface DragDropOptions {
 export function useDragDrop({
   items,
   selectedItems,
+  isInSymlinkContext,
   onMove,
   onReorder
 }: DragDropOptions) {
@@ -110,6 +112,14 @@ export function useDragDrop({
       }
     }
 
+    // Suppress visual feedback for symlink items dragged to empty space outside symlink context
+    if (!item && draggedItems.value.length) {
+      if (draggedItems.value.some(id => id.startsWith('symlink:')) && !isInSymlinkContext.value) {
+        e.dataTransfer.dropEffect = 'none'
+        return
+      }
+    }
+
     e.dataTransfer.dropEffect = 'move'
 
     // Determine drop position based on mouse position
@@ -178,11 +188,6 @@ export function useDragDrop({
         onMove(draggedItems.value, targetItem.id)
       }
     } else if (dropPosition.value === 'before' || dropPosition.value === 'after') {
-      // Disable reorder for symlink items (filesystem order is alphabetical)
-      if (draggedItems.value.some(id => id.startsWith('symlink:'))) {
-        handleDragEnd()
-        return
-      }
       const currentItems = items.value
       const targetIdx = targetIndex ?? currentItems.findIndex(item => item.id === targetItem?.id)
 
@@ -193,13 +198,18 @@ export function useDragDrop({
         if (isCrossFolder) {
           onMove(draggedItems.value, folderId)
         } else {
+          // Disable reorder for symlink items (filesystem order is alphabetical)
+          if (draggedItems.value.some(id => id.startsWith('symlink:'))) {
+            handleDragEnd()
+            return
+          }
           const adjustedIndex = dropPosition.value === 'after' ? targetIdx + 1 : targetIdx
           onReorder(draggedItems.value, adjustedIndex, folderId)
         }
       }
     } else if (!targetItem) {
       // Block symlink items from being moved out of symlink context
-      if (draggedItems.value.some(id => id.startsWith('symlink:'))) {
+      if (draggedItems.value.some(id => id.startsWith('symlink:')) && !isInSymlinkContext.value) {
         handleDragEnd()
         return
       }

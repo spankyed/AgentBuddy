@@ -611,7 +611,31 @@ export const librarySystem = setup({
     },
     moveItems: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
-      repository.libraryCommands.moveItems(ev.ids.map(id => id as EARS.EntityId), ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null)
+
+      const symlinkIds = ev.ids.filter(id => symlink.isSymlinkId(id))
+      const regularIds = ev.ids.filter(id => !symlink.isSymlinkId(id))
+
+      // Handle symlink moves
+      if (symlinkIds.length > 0 && ev.targetFolderId) {
+        const targetResolved = symlink.resolveSymlinkPath(ev.targetFolderId)
+        if (targetResolved) {
+          for (const id of symlinkIds) {
+            const sourceResolved = symlink.resolveSymlinkPath(id)
+            if (sourceResolved) {
+              await symlink.moveItem(sourceResolved.absolutePath, targetResolved.absolutePath)
+            }
+          }
+        }
+      }
+
+      // Handle regular moves
+      if (regularIds.length > 0) {
+        repository.libraryCommands.moveItems(
+          regularIds.map(id => id as EARS.EntityId),
+          ev.targetFolderId ? ev.targetFolderId as EARS.EntityId : null
+        )
+      }
+
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {

@@ -232,6 +232,12 @@ export async function renameItem(oldPath: string, newName: string): Promise<void
   await fs.rename(oldPath, newPath)
 }
 
+export async function moveItem(sourcePath: string, targetDirPath: string): Promise<void> {
+  const name = path.basename(sourcePath)
+  const newPath = path.join(targetDirPath, name)
+  await fs.rename(sourcePath, newPath)
+}
+
 export async function deleteItems(paths: string[]): Promise<void> {
   for (const itemPath of paths) {
     const stat = await fs.stat(itemPath)
