@@ -29,7 +29,7 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-xs text-neutral-400">Code:</span>
-            <span class="font-mono text-xs text-blue-400">{{ selectedDocument.shortCode }}</span>
+            <span class="font-mono text-xs text-blue-400">{{ selectedDocument.shortCode === 'DOC-0' ? '' : selectedDocument.shortCode }}</span>
           </div>
         </div>
         
