@@ -32,22 +32,22 @@
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-800">
+          <tbody>
             <tr
               v-for="prompt in prompts"
               :key="prompt.id"
               class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
               @click="$emit('select', prompt.id)"
             >
-              <td class="px-6 py-2.5">
-                <span class="font-medium text-neutral-100">{{ prompt.label }}</span>
+              <td class="px-6 py-1.5">
+                <span class="text-sm font-medium text-neutral-100">{{ prompt.label }}</span>
               </td>
-              <td class="px-6 py-2.5">
+              <td class="px-4 py-1.5">
                 <span class="text-sm text-neutral-400 line-clamp-1" :title="prompt.description">
                   {{ prompt.description || 'No description' }}
                 </span>
               </td>
-              <td class="px-6 py-2.5">
+              <td class="px-4 py-1.5">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="prompt.category ? 'border' : 'text-neutral-500'"
@@ -56,7 +56,7 @@
                   {{ getCategoryName(prompt.category) }}
                 </span>
               </td>
-              <td class="px-6 py-2.5">
+              <td class="px-4 py-1.5">
                 <div class="flex items-center gap-1.5 overflow-hidden">
                   <template v-if="Object.keys(prompt.inputs || {}).length > 0">
                     <span
@@ -78,7 +78,7 @@
                   <span v-else class="text-xs text-neutral-500">none</span>
                 </div>
               </td>
-              <td class="px-6 py-2.5">
+              <td class="px-4 py-1.5">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="confirmDelete(prompt)"

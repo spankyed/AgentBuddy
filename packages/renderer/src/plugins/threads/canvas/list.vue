@@ -89,7 +89,7 @@
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="p-6">
+          <tbody>
             <ThreadRow
               v-for="thread in paginatedThreads"
               :key="thread.id"

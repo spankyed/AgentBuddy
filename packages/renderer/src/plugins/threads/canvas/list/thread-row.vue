@@ -6,9 +6,9 @@
     ]"
     @click="$emit('select', thread.id)"
   >
-    <td class="px-6 py-2">
+    <td class="px-6 py-1.5">
       <div class="flex items-center gap-3">
-        <span class="font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
+        <span class="text-sm font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
           {{ thread.topic || 'Untitled thread' }}
         </span>
         <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
@@ -16,7 +16,7 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-2">
+    <td class="px-4 py-1.5">
       <div class="flex items-center gap-2">
         <span
           v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
@@ -31,7 +31,7 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-2">
+    <td class="px-4 py-1.5">
       <select
         data-onboarding-id="thread-status"
         @click.stop
@@ -49,7 +49,7 @@
         </option>
       </select>
     </td>
-    <td class="px-4 py-2">
+    <td class="px-4 py-1.5">
       <div class="flex items-center justify-end gap-2">
         <button
           data-onboarding-id="thread-actions"
