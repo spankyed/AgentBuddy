@@ -1,51 +1,30 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900" @keydown="handleKeydown">
     <!-- Header -->
-    <div class="grid grid-cols-[minmax(auto,1fr),minmax(0,56rem),minmax(auto,1fr)] py-3 border-b border-neutral-800 items-center">
-      <!-- Left: viewport edge -->
-      <div class="flex items-center justify-between uppercase pl-6 pr-4">
-        <button @click="$emit('back')" class="flex items-center gap-1.5 px-2 py-1 transition-colors rounded shrink-0 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800">
-          <ArrowLeft class="w-4 h-4" />
-          <span class="text-xs hidden xl:inline uppercase">Back</span>
-        </button>
-        <label class="text-xs font-medium tracking-wider shrink-0 text-neutral-400">
-          Name
-        </label>
-      </div>
-
-      <!-- Center: aligned with body max-w-4xl px-6 -->
-      <div class="flex items-center gap-4 pl-0 pr-6">
-        <input
-          :value="formData.label"
-          @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
-          type="text"
-          data-onboarding-id="action-label-input"
-          class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-          placeholder="Enter action name"
-        />
-        <select
-          :value="formData.category || ''"
-          @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
-          class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+    <NameSaveHeader :isEditing="!!action" :isValid="isValid" @back="$emit('back')" @save="handleSave">
+      <input
+        :value="formData.label"
+        @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
+        type="text"
+        data-onboarding-id="action-label-input"
+        class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        placeholder="Enter action name"
+      />
+      <select
+        :value="formData.category || ''"
+        @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
+        class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+      >
+        <option value="">No Category</option>
+        <option
+          v-for="category in categories"
+          :key="category.name"
+          :value="category.name"
         >
-          <option value="">No Category</option>
-          <option
-            v-for="category in categories"
-            :key="category.name"
-            :value="category.name"
-          >
-            {{ category.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Right: viewport edge -->
-      <div class="flex justify-end pr-6">
-        <Button @click="handleSave" :disabled="!isValid" variant="primary" class="shrink-0">
-          <span>{{ action ? 'Save' : 'Create' }}</span>
-        </Button>
-      </div>
-    </div>
+          {{ category.name }}
+        </option>
+      </select>
+    </NameSaveHeader>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
@@ -146,8 +125,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ActionEntity, ActionParameter, Category } from '@app/api';
-import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
-import Button from '@/core/components/design/button.vue';
+import { ExternalLink } from 'lucide-vue-next';
+import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue';
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';

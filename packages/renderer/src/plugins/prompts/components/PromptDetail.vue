@@ -1,47 +1,26 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900" @keydown="handleKeydown">
     <!-- Header -->
-    <div class="grid grid-cols-[minmax(auto,1fr),minmax(0,56rem),minmax(auto,1fr)] py-3 border-b border-neutral-800 items-center">
-      <!-- Left: Back button + Name label -->
-      <div class="flex items-center justify-between uppercase pl-6 pr-4">
-        <button @click="$emit('back')" class="flex items-center gap-1.5 px-2 py-1 transition-colors rounded shrink-0 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800">
-          <ArrowLeft class="w-4 h-4" />
-          <span class="text-xs hidden xl:inline uppercase">Back</span>
-        </button>
-        <label class="text-xs font-medium tracking-wider shrink-0 text-neutral-400">
-          Name
-        </label>
-      </div>
-
-      <!-- Center: Name input + Category select (aligned with body max-w-4xl) -->
-      <div class="flex items-center gap-4 pl-0 pr-6">
-        <input
-          :value="formData.label"
-          @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
-          type="text"
-          data-onboarding-id="prompt-name-input"
-          class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-          placeholder="Enter prompt name"
-        />
-        <select
-          :value="formData.category || ''"
-          @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
-          class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
-        >
-          <option value="">No Category</option>
-          <option v-for="category in categories" :key="category.name" :value="category.name">
-            {{ category.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Right: Save/Create button -->
-      <div class="flex justify-end pr-6">
-        <Button @click="handleSave" :disabled="!isValid" variant="primary" class="shrink-0">
-          <span>{{ prompt ? 'Save' : 'Create' }}</span>
-        </Button>
-      </div>
-    </div>
+    <NameSaveHeader :isEditing="!!prompt" :isValid="isValid" @back="$emit('back')" @save="handleSave">
+      <input
+        :value="formData.label"
+        @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
+        type="text"
+        data-onboarding-id="prompt-name-input"
+        class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        placeholder="Enter prompt name"
+      />
+      <select
+        :value="formData.category || ''"
+        @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
+        class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+      >
+        <option value="">No Category</option>
+        <option v-for="category in categories" :key="category.name" :value="category.name">
+          {{ category.name }}
+        </option>
+      </select>
+    </NameSaveHeader>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar" v-if="prompt || formData">
@@ -137,8 +116,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
-import Button from '@/core/components/design/button.vue';
+import { ExternalLink } from 'lucide-vue-next';
+import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue';
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 import type { PromptEntity, TemplateInput, Category } from '@app/api';
 import PromptInputsEditor from './PromptInputsEditor.vue';
