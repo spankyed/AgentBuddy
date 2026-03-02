@@ -1,7 +1,7 @@
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
-import { 
+import {
   findParentCollection,
   isRootCollection,
   findDocumentCollection,
@@ -10,6 +10,7 @@ import {
   formatFileSize,
   getContentLength
 } from './helpers'
+import { isSymlinkId, isSymlinkCollection, getSymlinkFolderContents } from './symlink'
 
 export const libraryQueries = {
   getDocuments(collectionId?: string): DocumentDTO[] {
@@ -123,12 +124,20 @@ export const libraryQueries = {
     return buildTree(rootCollections)
   },
 
-  getFolderContents(folderId: EARS.EntityId | null): FolderContents {
+  async getFolderContents(folderId: EARS.EntityId | null): Promise<FolderContents> {
+    // Check if this is a symlink folder
+    if (folderId) {
+      if (isSymlinkId(folderId) || isSymlinkCollection(folderId)) {
+        const symlinkContents = await getSymlinkFolderContents(folderId)
+        if (symlinkContents) return symlinkContents
+      }
+    }
+
     const items: LibraryItem[] = []
-    
+
     // Get folders (collections) in this directory
     let folders: any[] = []
-    
+
     if (folderId === null) {
       // Root directory - get collections without parents
       const allCollections = qx(EARS.Entity.Collection).pickAll()
@@ -154,8 +163,9 @@ export const libraryQueries = {
         .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document)
         .pickAll()
       const childCount = childCollections.length + documents.length
-      
-      items.push({
+      const folderSymlinkPath = folder.symlinkPath as string | undefined
+
+      const folderItem: FolderItem = {
         type: 'folder',
         id: itemId,
         name: folder.name as string,
@@ -166,7 +176,14 @@ export const libraryQueries = {
         displayOrder: getDisplayOrder(folder),
         createdAt: new Date(folder.createdAt as number).toISOString(),
         updatedAt: new Date(folder.updatedAt as number || folder.createdAt as number).toISOString(),
-      })
+      }
+
+      if (folderSymlinkPath) {
+        folderItem.isSymlink = true
+        folderItem.symlinkPath = folderSymlinkPath
+      }
+
+      items.push(folderItem)
     }
     
     // Get documents in this directory

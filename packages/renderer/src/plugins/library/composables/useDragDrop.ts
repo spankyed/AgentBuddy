@@ -32,16 +32,28 @@ export function useDragDrop({
   // Check if drop is valid
   const isValidDrop = (targetId: string | null, targetType: 'folder' | 'document' | null): boolean => {
     if (!targetId || !draggedItems.value.length) return false
-    
+
     // Can't drop on itself
     if (draggedItems.value.includes(targetId)) return false
-    
+
+    // Can't move between symlink and non-symlink contexts
+    const sourceIsSymlink = draggedItems.value.some(id => id.startsWith('symlink:'))
+    const sourceIsRegular = draggedItems.value.some(id => !id.startsWith('symlink:'))
+    const targetIsSymlink = targetId.startsWith('symlink:')
+    const targetItem = items.value.find(i => i.id === targetId)
+    const targetIsSymlinkRoot = targetItem?.type === 'folder' && (targetItem as any).isSymlink
+
+    if ((sourceIsSymlink && !targetIsSymlink && !targetIsSymlinkRoot) ||
+        (sourceIsRegular && (targetIsSymlink || targetIsSymlinkRoot))) {
+      return false
+    }
+
     // Can't drop a folder into its own children
     if (targetType === 'folder') {
       // TODO: Check for circular reference
       return true
     }
-    
+
     return true
   }
 
@@ -148,6 +160,11 @@ export function useDragDrop({
         onMove(draggedItems.value, targetItem.id)
       }
     } else if (dropPosition.value === 'before' || dropPosition.value === 'after') {
+      // Disable reorder for symlink items (filesystem order is alphabetical)
+      if (draggedItems.value.some(id => id.startsWith('symlink:'))) {
+        handleDragEnd()
+        return
+      }
       // Reordering items
       const currentItems = items.value
       const targetIdx = targetIndex ?? currentItems.findIndex(item => item.id === targetItem?.id)

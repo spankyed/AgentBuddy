@@ -40,7 +40,7 @@
                   class="flex-1 px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
                   placeholder="Enter document name"
                 />
-                <div class="flex items-center gap-2">
+                <div v-if="!isSymlink" class="flex items-center gap-2">
                   <span class="px-3 py-3 font-mono text-sm font-medium text-blue-400">
                     {{ props.document.shortCode }}
                   </span>
@@ -65,6 +65,7 @@
                 Content <span class="text-red-400">*</span>
               </label>
               <button
+                v-if="!isSymlink"
                 type="button"
                 @click="addContentSection"
                 class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-neutral-100 hover:border-neutral-600"
@@ -88,7 +89,7 @@
           </div>
           
           <!-- Tags Section -->
-          <div class="pt-6 border-t border-neutral-800">
+          <div v-if="!isSymlink" class="pt-6 border-t border-neutral-800">
             <button
               type="button"
               @click="tagsExpanded = !tagsExpanded"
@@ -155,6 +156,8 @@ const isValid = computed(() => {
 const availableTags = computed(() => {
   return settings.value?.tags || []
 })
+
+const isSymlink = computed(() => props.document?.id?.startsWith('symlink:'))
 
 
 onMounted(() => {

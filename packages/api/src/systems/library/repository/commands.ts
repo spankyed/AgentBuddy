@@ -3,7 +3,7 @@ import { tx } from '@/core/ears/helpers/transaction'
 import { edgeStore } from '@/core/ears/helpers/edge-store'
 import { EARS } from '@/core/types'
 import { createLogger } from '@/core/utils/debug/logger'
-import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentShortCode, ContentSection, FolderItem } from '../types'
 import * as searchIndexRepo from '../search-index/repository'
 import { libraryQueries } from './queries'
 import {
@@ -478,6 +478,44 @@ export const libraryCommands = {
         order += 1000
       }
     })
+  },
+
+  createSymlinkCollection(
+    name: string,
+    symlinkPath: string,
+    parentId?: EARS.EntityId
+  ): CollectionDTO {
+    const builder = tx(EARS.Entity.Collection)
+    const collectionId = builder.id()
+    const now = Date.now()
+
+    const displayOrder = getNextDisplayOrder(parentId || null)
+
+    builder.updateBatch({
+      name,
+      symlinkPath,
+      displayOrder,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    if (parentId) {
+      tx(parentId).link(EARS.RelKind.PARENT_OF, collectionId)
+    }
+
+    const path = getCollectionPath(collectionId)
+
+    return {
+      id: collectionId,
+      name,
+      parentId,
+      path,
+      documentCount: 0,
+      childCollections: [],
+      displayOrder,
+      createdAt: new Date(now).toISOString(),
+      updatedAt: new Date(now).toISOString(),
+    }
   },
 
   updateDocumentTags(documentId: EARS.EntityId, tags: string[]): void {

@@ -49,6 +49,7 @@ export interface Collection extends BaseEntity {
   name: string
   description?: string
   displayOrder?: number
+  symlinkPath?: string
 }
 
 export interface DocumentDTO {
@@ -89,6 +90,9 @@ export interface FolderItem {
   displayOrder: number
   createdAt: string
   updatedAt: string
+  isSymlink?: boolean
+  symlinkPath?: string
+  isSymlinked?: boolean
 }
 
 export interface DocumentItem {
@@ -104,6 +108,8 @@ export interface DocumentItem {
   displayOrder: number
   createdAt: string
   updatedAt: string
+  isSymlinked?: boolean
+  filePath?: string
 }
 
 export type LibraryItem = FolderItem | DocumentItem

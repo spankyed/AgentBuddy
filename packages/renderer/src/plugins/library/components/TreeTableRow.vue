@@ -36,7 +36,8 @@
         <!-- Spacer for documents to align with folder names -->
         <div v-else class="w-4 flex-shrink-0" />
 
-        <Folder v-if="item.type === 'folder'" class="w-5 h-5 text-blue-400 flex-shrink-0" />
+        <Link v-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
+        <Folder v-else-if="item.type === 'folder'" class="w-5 h-5 text-blue-400 flex-shrink-0" />
         <FileText v-else class="w-4 h-4 text-neutral-400 flex-shrink-0" />
         <div class="min-w-0 relative">
           <span
@@ -121,7 +122,7 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2 } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link } from 'lucide-vue-next'
 import type { LibraryItem } from '@app/api'
 import { formatDate } from '../utils/naming'
 

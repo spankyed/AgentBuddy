@@ -93,21 +93,61 @@
             <Search class="w-4 h-4" />
             <span>Create Index</span>
           </Button>
-          <Button
-            @click="createFolder"
-            variant="transparent"
-            size="sm"
-            class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
-          >
-            <FolderPlus class="w-4 h-4" />
-            <span>New Folder</span>
-          </Button>
+          <ContextMenuRoot>
+            <ContextMenuTrigger as-child>
+              <Button
+                @click="createFolder"
+                variant="transparent"
+                size="sm"
+                class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+              >
+                <FolderPlus class="w-4 h-4" />
+                <span>New Folder</span>
+              </Button>
+            </ContextMenuTrigger>
+            <ContextMenuPortal>
+              <ContextMenuContent class="z-50 min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md">
+                <ContextMenuItem
+                  @select="createFolder"
+                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                >
+                  <FolderPlus class="w-4 h-4" />
+                  New Folder
+                </ContextMenuItem>
+                <ContextMenuItem
+                  @select="createSymlinkFolder"
+                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                >
+                  <Link class="w-4 h-4" />
+                  New Symlink
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenuPortal>
+          </ContextMenuRoot>
           <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
-            <span>New Document</span>
+            <span>{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
           </Button>
         </div>
       </div>
+    </div>
+
+    <!-- Symlink Path Input -->
+    <div v-if="symlinkInput.show" class="flex items-center gap-2 px-6 py-2 border-b border-neutral-800 max-w-lg ml-auto">
+      <input
+        v-model="symlinkInput.path"
+        type="text"
+        class="flex-1 w-96 px-3 py-1.5 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+        placeholder="Enter directory path"
+        autofocus
+        @keydown.enter="confirmSymlink"
+        @keydown.escape="symlinkInput.show = false"
+      />
+      <Button @click="browseSymlinkPath" variant="transparent" size="sm">Browse</Button>
+      <Button @click="confirmSymlink" variant="primary" size="sm">Create</Button>
+      <button @click="symlinkInput.show = false" class="p-1 text-neutral-400 hover:text-neutral-200">
+        <X class="w-4 h-4" />
+      </button>
     </div>
 
     <!-- File Table -->
@@ -177,7 +217,16 @@ import {
   Search,
   ArrowUp,
   FolderOpen,
+  Link,
+  X,
 } from 'lucide-vue-next'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+} from 'reka-ui'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import TableHeader from './TableHeader.vue'
@@ -200,6 +249,7 @@ const props = defineProps<{
   expandedFolderIds: string[]
   expandedFolderChildren: Record<string, LibraryItem[]>
   loadingFolderIds: string[]
+  isInSymlinkContext: boolean
 }>()
 
 const emit = defineEmits<{
@@ -219,6 +269,9 @@ const emit = defineEmits<{
   REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
   EXPAND_FOLDER: [{ folderId: string }]
   COLLAPSE_FOLDER: [{ folderId: string }]
+  CREATE_SYMLINK: [{ symlinkPath: string }]
+  CREATE_SYMLINK_FILE: [{ name: string }]
+  CREATE_SYMLINK_FOLDER: [{ name: string }]
 }>()
 
 // Composables
@@ -314,6 +367,8 @@ const deleteDialog = reactive({
   message: ''
 })
 
+const symlinkInput = reactive({ show: false, path: '' })
+
 
 const sortedItems = computed(() => {
   // If no explicit sort is selected, use displayOrder (the user's custom order)
@@ -392,6 +447,30 @@ function createFolder() {
   emit('CREATE_FOLDER', { name: finalName })
 }
 
+
+function createSymlinkFolder() {
+  symlinkInput.path = ''
+  symlinkInput.show = true
+}
+
+async function browseSymlinkPath() {
+  if (!window.electronAPI?.fileUtils.selectDirectory) return
+  try {
+    const dir = await window.electronAPI.fileUtils.selectDirectory()
+    if (dir) symlinkInput.path = dir
+  } catch (error) {
+    console.error('Failed to select directory:', error)
+  }
+}
+
+function confirmSymlink() {
+  const path = symlinkInput.path.trim()
+  if (path) {
+    emit('CREATE_SYMLINK', { symlinkPath: path })
+    symlinkInput.show = false
+    symlinkInput.path = ''
+  }
+}
 
 const renameItem = (item: LibraryItem) => startEditingItem(item.id, item.name)
 
