@@ -1,24 +1,48 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900" @keydown="handleKeydown">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div>
-        <h2 class="text-base font-semibold text-neutral-100">{{ action ? action.label : 'New Action' }}</h2>
-        <p class="text-xs text-neutral-400">{{ action ? 'Edit Action' : 'Create Action' }}</p>
+    <div class="grid grid-cols-[minmax(auto,1fr),minmax(0,56rem),minmax(auto,1fr)] py-3 border-b border-neutral-800 items-center">
+      <!-- Left: viewport edge -->
+      <div class="flex items-center justify-between uppercase pl-6 pr-4">
+        <button @click="$emit('back')" class="flex items-center gap-1.5 px-2 py-1 transition-colors rounded shrink-0 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800">
+          <ArrowLeft class="w-4 h-4" />
+          <span class="text-xs hidden xl:inline uppercase">Back</span>
+        </button>
+        <label class="text-xs font-medium tracking-wider shrink-0 text-neutral-400">
+          Name
+        </label>
       </div>
-      <div class="flex items-center gap-2">
-        <Button
-          @click="$emit('back')"
-          variant="transparent"
+
+      <!-- Center: aligned with body max-w-4xl px-6 -->
+      <div class="flex items-center gap-4 pl-0 pr-6">
+        <input
+          :value="formData.label"
+          @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
+          type="text"
+          data-onboarding-id="action-label-input"
+          class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+          placeholder="Enter action name"
+        />
+        <select
+          :value="formData.category || ''"
+          @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
+          class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
         >
-          Back
-        </Button>
-        <Button
-          @click="handleSave"
-          :disabled="!isValid"
-          variant="primary"
-        >
-          {{ action ? 'Save Changes' : 'Create Action' }}
+          <option value="">No Category</option>
+          <option
+            v-for="category in categories"
+            :key="category.name"
+            :value="category.name"
+          >
+            {{ category.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Right: viewport edge -->
+      <div class="flex justify-end pr-6">
+        <Button @click="handleSave" :disabled="!isValid" variant="primary" class="shrink-0">
+          <span>{{ action ? 'Save' : 'Create' }}</span>
         </Button>
       </div>
     </div>
@@ -29,39 +53,6 @@
         <div class="space-y-6">
           <!-- Basic Info Section -->
           <div class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
-                  Name <span class="text-red-400">*</span>
-                </label>
-                <input
-                  :value="formData.label"
-                  @input="$emit('update-label', ($event.target as HTMLInputElement).value)"
-                  type="text"
-                  data-onboarding-id="action-label-input"
-                  class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-                  placeholder="Enter action name"
-                />
-              </div>
-              <div>
-                <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Category</label>
-                <select
-                  :value="formData.category || ''"
-                  @input="$emit('update-category', ($event.target as HTMLSelectElement).value)"
-                  class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">None</option>
-                  <option 
-                    v-for="category in categories" 
-                    :key="category.name"
-                    :value="category.name"
-                  >
-                    {{ category.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
             <!-- Description -->
             <div>
               <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
@@ -155,7 +146,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ActionEntity, ActionParameter, Category } from '@app/api';
-import { Edit2, ExternalLink } from 'lucide-vue-next';
+import { ArrowLeft, Edit2, ExternalLink } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
 import ActionParametersEditor from './ActionParametersEditor.vue';
@@ -217,26 +208,26 @@ function handleKeydown(event: KeyboardEvent) {
 
 function openInEditor() {
   if (!props.action) return;
-  
+
   // First, switch to the code plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' });
-  
+
   // Give the code plugin time to activate, then send the action to open
   setTimeout(() => {
     const codeActor = applicationState.system.get('code');
     if (codeActor) {
       // First ensure the actions panel is selected
-      codeActor.send({ 
-        type: 'UPDATE_STATE', 
-        updates: { selectedPanel: 'actions' } 
+      codeActor.send({
+        type: 'UPDATE_STATE',
+        updates: { selectedPanel: 'actions' }
       });
-      
+
       // Then send the open action event to the actions child actor
       const actionsActor = codeActor.system.get('codeActions');
       if (actionsActor) {
-        actionsActor.send({ 
-          type: 'codeActions.OPEN_ACTION', 
-          actionId: props.action!.id 
+        actionsActor.send({
+          type: 'codeActions.OPEN_ACTION',
+          actionId: props.action!.id
         });
       }
     }
