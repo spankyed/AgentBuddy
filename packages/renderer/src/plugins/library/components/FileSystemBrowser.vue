@@ -180,11 +180,10 @@
         <table class="w-full"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
             <tr class="text-xs font-medium text-left text-neutral-500">
-              <TableHeader @click="sort('name')" class="!pl-6 w-[54%]">Name</TableHeader>
-              <TableHeader @click="sort('modified')" class="w-[16%]">Date Modified</TableHeader>
+              <TableHeader @click="sort('name')" class="!pl-6 w-[60%]">Name</TableHeader>
+              <TableHeader @click="sort('modified')" class="w-[18%]">Date Modified</TableHeader>
               <TableHeader @click="sort('size')" class="w-[10%]">Size</TableHeader>
-              <TableHeader @click="sort('kind')" class="w-[10%]">Kind</TableHeader>
-              <th class="px-6 py-2 text-right w-[10%]">Actions</th>
+              <TableHeader @click="sort('kind')" class="w-[12%]">Kind</TableHeader>
             </tr>
           </thead>
           <tbody>
@@ -198,7 +197,7 @@
             </template>
 
             <tr v-if="sortedItems.length === 0">
-              <td colspan="5" class="h-64">
+              <td colspan="4" class="h-64">
                 <div class="flex flex-col items-center justify-center h-full text-center">
                   <FolderOpen class="w-10 h-10 mb-3 text-neutral-600" />
                   <p class="text-sm text-neutral-500">This folder is empty</p>
@@ -219,7 +218,6 @@
               <td class="px-6 py-3">&nbsp;</td>
               <td class="px-6 py-3">&nbsp;</td>
               <td class="px-6 py-3">&nbsp;</td>
-              <td class="px-6 py-3">&nbsp;</td>
             </tr>
           </tbody>
         </table>
@@ -236,7 +234,6 @@ import {
   FileText,
   ChevronLeft,
   Home,
-  Edit2,
   Trash2,
   // Search, // [SEARCH_INDEX_FF]
   ArrowUp,
