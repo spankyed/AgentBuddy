@@ -226,6 +226,15 @@ const selectedDocument = useSelector(actor, (state) => state.context.selectedDoc
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
 const items = useSelector(actor, (state) => state.context.items)
 const selectedItems = useSelector(actor, (state) => state.context.selectedItems)
+const expandedFolderChildren = useSelector(actor, (state) => state.context.expandedFolderChildren)
+
+const allVisibleItems = computed(() => {
+  const all = [...items.value]
+  for (const children of Object.values(expandedFolderChildren.value)) {
+    all.push(...children)
+  }
+  return all
+})
 
 const send = (event: LibraryEvents) => actor.send(event)
 
@@ -263,13 +272,13 @@ const sortedTags = computed(() => {
 const selectedItemsCount = computed(() => selectedItems.value?.length || 0)
 
 const selectedDocumentsCount = computed(() => {
-  return items.value.filter(item => 
+  return allVisibleItems.value.filter(item =>
     selectedItems.value.includes(item.id) && item.type === 'document'
   ).length
 })
 
 const selectedFoldersCount = computed(() => {
-  return items.value.filter(item => 
+  return allVisibleItems.value.filter(item =>
     selectedItems.value.includes(item.id) && item.type === 'folder'
   ).length
 })
@@ -277,7 +286,7 @@ const selectedFoldersCount = computed(() => {
 const selectedItemsTags = computed(() => {
   const tags = new Set<string>()
   
-  items.value
+  allVisibleItems.value
     .filter(item => selectedItems.value.includes(item.id) && item.type === 'document')
     .forEach((item: any) => {
       if (item.tags?.length) {

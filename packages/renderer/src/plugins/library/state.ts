@@ -26,6 +26,16 @@ function documentItemToDTO(item: DocumentItem): DocumentDTO {
   }
 }
 
+function findItemById(context: LibraryContext, id: string): LibraryItem | undefined {
+  const top = context.items.find(i => i.id === id)
+  if (top) return top
+  for (const children of Object.values(context.expandedFolderChildren)) {
+    const found = children.find(i => i.id === id)
+    if (found) return found
+  }
+  return undefined
+}
+
 export const id = 'library' as const
 import type { SnapshotFrom } from 'xstate'
 
@@ -373,7 +383,7 @@ export const librarySystem = setup({
       selectedItems: ({ event }) => event.type === 'SELECT_ITEMS' ? event.itemIds || [] : [],
       selectedDocument: ({ event, context }) => {
         if (event.type === 'SELECT_ITEMS' && event.itemIds?.length === 1) {
-          const item = context.items.find(i => i.id === event.itemIds[0])
+          const item = findItemById(context, event.itemIds[0])
           return item?.type === 'document' ? documentItemToDTO(item as DocumentItem) : null
         }
         return null
