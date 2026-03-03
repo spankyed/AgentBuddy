@@ -504,19 +504,21 @@ export class GitRepository {
   }
 
   async revertFile(filePath: string): Promise<void> {
-    // Use git checkout to revert the file to its last committed state
-    const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
+    // Use git checkout to revert the file to its staged state
+    const result = await this.executeGitCommand(['checkout', '--', filePath])
     if (!result.success) {
       throw new Error(result.error || `Failed to revert file: ${filePath}`)
     }
+    this.cache.delete('status')
   }
 
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    const result = await this.executeGitCommand(['checkout', 'HEAD', '--', ...filePaths])
+    const result = await this.executeGitCommand(['checkout', '--', ...filePaths])
     if (!result.success) {
       throw new Error(result.error || 'Failed to revert files')
     }
+    this.cache.delete('status')
   }
 
   async commit(message: string): Promise<void> {

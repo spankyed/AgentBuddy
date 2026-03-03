@@ -13,10 +13,10 @@
         <div class="p-4">
           <p class="mb-4 text-sm text-neutral-300">
             <template v-if="fileCount != null && !file">
-              Are you sure you want to discard all changes to <strong>{{ fileCount }} files</strong>?
+              Are you sure you want to discard unstaged changes to <strong>{{ fileCount }} files</strong>?
             </template>
             <template v-else>
-              Are you sure you want to discard all changes to:
+              Are you sure you want to discard unstaged changes to:
             </template>
           </p>
           <div v-if="file" class="px-3 py-2 mb-4 overflow-hidden rounded bg-neutral-800">
