@@ -70,15 +70,14 @@
           <div
             v-for="(directory, dIndex) in (project.directories || [])"
             :key="`dir-${pIndex}-${dIndex}`"
-            class="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-800/40 rounded text-xs"
+            :class="[
+              'inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs',
+              dIndex === 0
+                ? 'bg-neutral-800/80 border border-neutral-700/50'
+                : 'bg-neutral-800/40'
+            ]"
+            :style="dIndex === 0 ? { borderLeftColor: project.color, borderLeftWidth: '2px' } : {}"
           >
-            <!-- Primary Badge -->
-            <span
-              v-if="dIndex === 0"
-              class="px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
-            >
-              Primary
-            </span>
 
             <!-- Directory Path -->
             <span
@@ -186,7 +185,7 @@ const debouncedSave = () => {
 const getDirectoryName = (path: string) => {
   if (!path) return 'No directory'
   const parts = path.split('/').filter(Boolean)
-  return parts[parts.length - 1] || path
+  return parts.slice(-2).join('/') || path
 }
 
 // Project management

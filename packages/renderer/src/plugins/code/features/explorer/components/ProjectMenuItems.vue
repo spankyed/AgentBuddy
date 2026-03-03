@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { ChevronRight, FolderPlus, Folder, Settings } from 'lucide-vue-next'
 import { useProjectActions } from '../composables/useProjectActions'
-import { MENU_ITEM_CLASS, MENU_SUB_CONTENT_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants'
+import { MENU_ITEM_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants'
 
 const props = withDefaults(defineProps<{
   directoryPath: string
@@ -29,7 +28,6 @@ const {
   navigateToProjects
 } = useProjectActions()
 
-const subOpen = ref(false)
 </script>
 
 <template>
@@ -38,14 +36,14 @@ const subOpen = ref(false)
 
 
   <!-- Add to Project submenu -->
-  <component :is="SubComponent" v-if="allProjects.length > 0" @update:open="subOpen = $event">
+  <component :is="SubComponent" v-if="allProjects.length > 0">
     <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
       <Folder class="w-4 h-4" />
-      Add to Project
-      <ChevronRight class="w-3 h-3 ml-auto transition-transform duration-150" :class="{ 'rotate-90': subOpen }" />
+      <span class="flex-1">Add to Project</span>
+      <ChevronRight class="w-3 h-3 text-neutral-500" />
     </component>
     <component :is="PortalComponent">
-      <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS" side="right" :avoid-collisions="false">
+      <component :is="SubContentComponent" class="min-w-[180px] max-h-[300px] overflow-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50" :side-offset="4">
         <component
           :is="CheckboxItemComponent"
           v-for="({ project, pIndex }) in allProjects"

@@ -122,10 +122,8 @@ const directoryName = computed(() => {
 })
 
 const getShortenedPath = (path: string) => {
-  // Replace /Users/<name> or /home/<name> with ~
-  const display = path.replace(/^\/(?:Users|home)\/[^/]+/, '~')
-  const parts = display.split('/').filter(Boolean)
-  if (parts.length <= 3) return display
-  return parts[0] + '/' + parts[1] + '/.../' + parts[parts.length - 1]
+  if (!path) return path
+  const parts = path.split('/').filter(Boolean)
+  return parts.slice(-2).join('/') || path
 }
 </script>
