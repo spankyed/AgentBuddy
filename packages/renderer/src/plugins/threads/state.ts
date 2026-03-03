@@ -60,7 +60,7 @@ interface ThreadsContext {
   threads: ThreadListItem[];
   selectedThreadCode?: string;
   view: ThreadViewData;
-  create: ThreadCreateData & { 
+  create: ThreadCreateData & {
     parentThreadId?: string;
     parentThread?: ThreadListItem;
     tagsExpanded?: boolean;
@@ -88,12 +88,12 @@ const threadsState = setup({
     setupParentThread: assign(({ event, context }) => {
       const typedEvent = typeOf('SHOW_CREATE_FORM_AS_CHILD', event);
       const parentThread = context.threads.find(t => t.id === typedEvent.parentThreadId);
-      
+
       if (!parentThread) {
         console.warn(`Parent thread with id ${typedEvent.parentThreadId} not found`);
         return {};
       }
-      
+
       // Store parent thread info for display and to send to backend
       // The backend should handle creating the proper parent_of relationship
       // from the parent to this new child thread
@@ -171,7 +171,7 @@ const threadsState = setup({
       }
 
       const { id, shortCode, status, timestamp, topic, instructions, tags } = selectedThread;
-      
+
       return {
         selectedThreadCode: shortCode,
         view: {
@@ -184,7 +184,7 @@ const threadsState = setup({
     updateThreadData: assign(({ event, context }) => {
       const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
       const { key, value, state } = typedEvent;
-  
+
       return {
         [state]: {
           ...context[state],
@@ -220,10 +220,10 @@ const threadsState = setup({
     updateThreadFromBackend: assign(({ event, context }) => {
       const typedEvent = typeOf('THREAD_UPDATED', event);
       const { threadId, updates } = typedEvent;
-      
+
       return {
-        threads: context.threads.map(t => 
-          t.id === threadId 
+        threads: context.threads.map(t =>
+          t.id === threadId
             ? { ...t, ...updates }
             : t
         ),
@@ -290,6 +290,15 @@ const threadsState = setup({
     settings: null,
   }),
   on: {
+    SHOW_CREATE_FORM: {
+      target: '.create',
+      actions: assign(() => ({
+        create: { ...defaultThread }
+      }))
+    },
+    UPDATE_THREAD_STATUS: {
+      actions: 'updateThreadStatus',
+    },
     VIEW_LIST: { target: '.list' },
     VIEW_KANBAN: { target: '.kanban' },
     OPEN_THREAD_CHAT: {
@@ -343,15 +352,7 @@ const threadsState = setup({
     'list': {
       meta: { ...breadcrumb('list', 'Threads', true) },
       on: {
-        SHOW_CREATE_FORM: {
-          target: 'create',
-          actions: assign(() => ({
-            create: { ...defaultThread }
-          }))
-        },
-        UPDATE_THREAD_STATUS: {
-          actions: 'updateThreadStatus',
-        },
+
       },
     },
 
