@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref, nextTick, watch } from 'vue'
+import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
@@ -164,6 +164,21 @@ watch(inViewState, (isView) => {
     }, 500)
   }
 })
+
+// Delete selected flow on Backspace/Delete while in list state
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key !== 'Backspace' && e.key !== 'Delete') return
+  if (!inListState.value || !selectedFlowId.value) return
+  // Don't intercept when user is typing in an input
+  const tag = (e.target as HTMLElement)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+  const flow = flows.value.find(f => f.id === selectedFlowId.value)
+  if (flow) openDeleteDialog(flow)
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
 // Watch for flow changes and re-center view after layout is computed
 watch(selectedFlowId, () => {
