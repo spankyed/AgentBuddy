@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, inject } from 'vue'
+import { computed, ref, watch, nextTick, inject, onMounted } from 'vue'
 import {
   Folder,
   File,
@@ -191,6 +191,7 @@ const getExpandedDirs = inject<() => Set<string>>('explorer-expanded-dirs')!
 const getDirContents = inject<() => Record<string, FileInfo[]>>('explorer-dir-contents')!
 const getLoadingDirs = inject<() => Set<string>>('explorer-loading-dirs')!
 const getBaseDirectory = inject<() => string>('explorer-base-directory')!
+const checkAutoRename = inject<(path: string) => boolean>('explorer-check-auto-rename')!
 
 // Drag-drop injections
 const dragStart = inject<(e: DragEvent, path: string) => void>('explorer-drag-start')!
@@ -246,6 +247,13 @@ watch(isEditing, async (editing) => {
     await nextTick()
     renameInput.value?.focus()
     renameInput.value?.select()
+  }
+})
+
+// Auto-enter rename mode for newly created folders
+onMounted(() => {
+  if (checkAutoRename(props.file.path)) {
+    startRename()
   }
 })
 

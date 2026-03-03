@@ -78,9 +78,9 @@ export type Event =
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
   | { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
-  | { type: 'explorer.FILE_DELETED'; path: string }
-  | { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
-  | { type: 'explorer.DIRECTORY_CREATED'; path: string }
+  | { type: 'explorer.FILE_DELETED'; data: { path: string } }
+  | { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
+  | { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
   | { type: 'explorer.ERROR'; message: string }
   // Tree view events
   | { type: 'explorer.EXPAND_DIRECTORY'; path: string }
@@ -374,18 +374,18 @@ export const explorerState = setup({
     }),
 
     handleFileDeleted: ({ event, self, context }) => {
-      const ev = event as { type: 'explorer.FILE_DELETED'; path: string }
+      const ev = event as { type: 'explorer.FILE_DELETED'; data: { path: string } }
       const parentContext = getParentContext(self)
 
       // Refresh the parent directory of the deleted file
-      const parentDir = getParentDir(ev.path)
+      const parentDir = getParentDir(ev.data.path)
       sendToBackend('explorer.LIST_FILES', { path: parentDir })
 
       // Remove from open files if it's open
-      if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
+      if (parentContext?.openFiles?.find((f: any) => f.path === ev.data.path)) {
         const result = removeTabs(
           parentContext.openFiles,
-          ev.path,
+          ev.data.path,
           parentContext.activeFilePath
         )
 
@@ -394,29 +394,29 @@ export const explorerState = setup({
     },
 
     handleFileRenamed: ({ event, self }) => {
-      const ev = event as { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
+      const ev = event as { type: 'explorer.FILE_RENAMED'; data: { oldPath: string; newPath: string } }
       const parentContext = getParentContext(self)
 
       // Refresh the parent directory of the renamed file
-      const parentDir = getParentDir(ev.oldPath)
+      const parentDir = getParentDir(ev.data.oldPath)
       sendToBackend('explorer.LIST_FILES', { path: parentDir })
 
       // If renamed to a different directory, also refresh that
-      const newParentDir = getParentDir(ev.newPath)
+      const newParentDir = getParentDir(ev.data.newPath)
       if (newParentDir !== parentDir) {
         sendToBackend('explorer.LIST_FILES', { path: newParentDir })
       }
 
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
-      const hasRenamedFile = openFiles.some((f: any) => f.path === ev.oldPath)
+      const hasRenamedFile = openFiles.some((f: any) => f.path === ev.data.oldPath)
 
       if (hasRenamedFile) {
         const newOpenFiles = openFiles.map((f: any) =>
-          f.path === ev.oldPath ? { ...f, path: ev.newPath } : f
+          f.path === ev.data.oldPath ? { ...f, path: ev.data.newPath } : f
         )
-        const newActiveFile = parentContext.activeFilePath === ev.oldPath
-          ? ev.newPath
+        const newActiveFile = parentContext.activeFilePath === ev.data.oldPath
+          ? ev.data.newPath
           : parentContext.activeFilePath
 
         updateParentState(self, {
@@ -426,13 +426,22 @@ export const explorerState = setup({
       }
     },
 
-    handleDirectoryCreated: ({ event }) => {
-      const ev = event as { type: 'explorer.DIRECTORY_CREATED'; path: string }
+    handleDirectoryCreated: assign(({ event, context }) => {
+      const ev = event as { type: 'explorer.DIRECTORY_CREATED'; data: { path: string } }
 
       // Refresh the parent directory to show the new directory
-      const parentDir = getParentDir(ev.path)
+      const parentDir = getParentDir(ev.data.path)
       sendToBackend('explorer.LIST_FILES', { path: parentDir })
-    },
+
+      // Expand parent so the new folder is visible, select it, and mark for rename
+      const newExpanded = new Set(context.expandedDirs)
+      newExpanded.add(parentDir)
+
+      return {
+        expandedDirs: newExpanded,
+        selectedPaths: [ev.data.path],
+      }
+    }),
 
     writeFile: ({ event }) => {
       const ev = event as { type: 'explorer.WRITE_FILE'; path: string; content: string }

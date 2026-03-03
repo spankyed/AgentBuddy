@@ -15,7 +15,7 @@
       <template #actions>
         <button
           v-if="baseDirectory && viewMode === 'files'"
-          @click="openCreateFolderDialog()"
+          @click="handleCreateNewFolder()"
           class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
           title="Create new folder"
         >
@@ -51,25 +51,6 @@
       @confirm="handleDelete"
       @cancel="cancelDelete"
     />
-
-    <!-- Create Folder Dialog -->
-    <Dialog
-      v-model="showCreateFolderDialog"
-      title="Create New Folder"
-      description="Enter a name for the new folder"
-      show-default-actions
-      confirm-text="Create"
-      @confirm="handleCreateFolder"
-      @cancel="cancelCreateFolder"
-    >
-      <input
-        v-model="newFolderName"
-        @keydown.enter="handleCreateFolder"
-        placeholder="Folder name"
-        class="w-full px-3 py-2 mt-2 text-sm border rounded bg-neutral-900 border-neutral-600 text-neutral-200 focus:outline-none focus:border-blue-500"
-        ref="folderNameInput"
-      />
-    </Dialog>
 
     <!-- Files view -->
     <template v-if="viewMode === 'files' && baseDirectory">
@@ -165,10 +146,8 @@ const viewMode = ref<'files' | 'projects'>('files')
 const showDeleteDialog = ref(false)
 const fileToDelete = ref<FileInfo | null>(null)
 
-// Create folder functionality
-const showCreateFolderDialog = ref(false)
-const newFolderName = ref('')
-const folderNameInput = ref<HTMLInputElement | null>(null)
+// Local ref for inline rename — set when creating a folder, consumed by the tree item on mount
+const pendingRenamePath = ref<string | null>(null)
 
 // Build flattened visible paths for shift-range selection
 function getFlattenedVisiblePaths(): string[] {
@@ -244,6 +223,13 @@ provide('explorer-expanded-dirs', () => expandedDirs.value)
 provide('explorer-dir-contents', () => dirContents.value)
 provide('explorer-loading-dirs', () => loadingDirs.value)
 provide('explorer-base-directory', () => baseDirectory.value || '')
+provide('explorer-check-auto-rename', (itemPath: string): boolean => {
+  if (pendingRenamePath.value === itemPath) {
+    pendingRenamePath.value = null
+    return true
+  }
+  return false
+})
 
 // Drag-drop provides
 provide('explorer-drag-start', (e: DragEvent, path: string) => handleDragStart(e, path))
@@ -294,46 +280,43 @@ const handleOpenTerminal = (path: string) => {
   terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
 }
 
-const openCreateFolderDialog = () => {
-  newFolderName.value = ''
-  showCreateFolderDialog.value = true
-  setTimeout(() => {
-    folderNameInput.value?.focus()
-  }, 100)
-}
-
-const handleCreateFolder = () => {
-  const trimmedName = newFolderName.value.trim()
-  if (trimmedName) {
-    // Create in the first selected folder, or baseDirectory if nothing selected
-    let targetDir = baseDirectory.value
-    if (selectedPaths.value.length > 0) {
-      // Find first selected item that is a directory
-      const flatPaths = getFlattenedVisiblePaths()
-      for (const path of selectedPaths.value) {
-        // Check in rootFiles and dirContents if this is a directory
-        const allFiles = [...rootFiles.value]
-        for (const contents of Object.values(dirContents.value)) {
-          allFiles.push(...contents)
-        }
-        const file = allFiles.find(f => f.path === path)
-        if (file?.type === 'directory') {
-          targetDir = file.path
-          break
-        }
+const handleCreateNewFolder = () => {
+  // Determine target directory: first selected directory, or baseDirectory
+  let targetDir = baseDirectory.value
+  if (selectedPaths.value.length > 0) {
+    const allFiles = [...rootFiles.value]
+    for (const contents of Object.values(dirContents.value)) {
+      allFiles.push(...contents)
+    }
+    for (const path of selectedPaths.value) {
+      const file = allFiles.find(f => f.path === path)
+      if (file?.type === 'directory') {
+        targetDir = file.path
+        break
       }
     }
-    if (targetDir) {
-      const newFolderPath = `${targetDir}/${trimmedName}`
-      explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newFolderPath })
-    }
   }
-  cancelCreateFolder()
-}
 
-const cancelCreateFolder = () => {
-  showCreateFolderDialog.value = false
-  newFolderName.value = ''
+  if (!targetDir) return
+
+  // Generate unique name by checking existing contents
+  const existingFiles = targetDir === baseDirectory.value
+    ? rootFiles.value
+    : (dirContents.value[targetDir] || [])
+  const existingNames = new Set(existingFiles.map(f => f.name))
+
+  let folderName = 'New Folder'
+  if (existingNames.has(folderName)) {
+    let counter = 2
+    while (existingNames.has(`New Folder (${counter})`)) {
+      counter++
+    }
+    folderName = `New Folder (${counter})`
+  }
+
+  const newPath = `${targetDir}/${folderName}`
+  pendingRenamePath.value = newPath
+  explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newPath })
 }
 
 const handleWorkspaceDirectorySelect = (path: string) => {
