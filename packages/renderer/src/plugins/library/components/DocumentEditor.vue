@@ -1,10 +1,7 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center gap-4 px-6 py-3 border-b border-neutral-800">
-      <label class="text-xs font-medium tracking-wider uppercase shrink-0 min-w-52 text-right text-neutral-400">
-        Document Name
-      </label>
+    <NameSaveHeader label="Name" :isEditing="isEditMode" :isValid="isValid" @back="emit('CANCEL_EDIT')" @save="handleSave">
       <!-- Edit mode: input with shortCode badge -->
       <div
         v-if="isEditMode"
@@ -33,13 +30,7 @@
         class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
         placeholder="Enter document name"
       />
-      <div class="flex items-center gap-2 shrink-0">
-        <Button @click="emit('CANCEL_EDIT')" variant="transparent">Cancel</Button>
-        <Button @click="handleSave" :disabled="!isValid" variant="primary">
-          {{ isEditMode ? 'Save Changes' : 'Create Document' }}
-        </Button>
-      </div>
-    </div>
+    </NameSaveHeader>
 
     <!-- Form Content -->
     <div class="flex-1 overflow-y-auto">
@@ -98,7 +89,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
-import Button from '@/core/components/design/button.vue'
+import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import { useSelector } from '@xstate/vue'
