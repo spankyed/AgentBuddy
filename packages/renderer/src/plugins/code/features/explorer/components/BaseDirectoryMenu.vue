@@ -22,8 +22,24 @@
             :side-offset="5"
             align="start"
           >
+            <DropdownMenuItem
+              @select="$emit('open-directory')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Open Directory
+            </DropdownMenuItem>
+            <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
+            <DropdownMenuItem
+              @select="$emit('view-projects')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Layers class="w-4 h-4" />
+              View Projects
+            </DropdownMenuItem>
             <ProjectMenuItems
               :directory-path="baseDirectory"
+              :show-separator="false"
               :ItemComponent="DropdownMenuItem"
               :SeparatorComponent="DropdownMenuSeparator"
               :SubComponent="DropdownMenuSub"
@@ -33,21 +49,6 @@
               :CheckboxItemComponent="DropdownMenuCheckboxItem"
               :ItemIndicatorComponent="DropdownMenuItemIndicator"
             />
-            <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
-            <DropdownMenuItem
-              @select="$emit('view-projects')"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Layers class="w-4 h-4" />
-              View Projects
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              @select="$emit('open-directory')"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Open Directory
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>

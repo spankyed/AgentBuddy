@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { ChevronRight, FolderPlus, Folder, Settings } from 'lucide-vue-next'
 import { useProjectActions } from '../composables/useProjectActions'
 import { MENU_ITEM_CLASS, MENU_SUB_CONTENT_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants'
@@ -27,17 +28,29 @@ const {
   createProject,
   navigateToProjects
 } = useProjectActions()
+
+const subOpen = ref(false)
 </script>
 
 <template>
   <!-- Separator -->
   <component v-if="showSeparator" :is="SeparatorComponent" :class="MENU_SEPARATOR_CLASS" />
+  <!-- Create Project -->
+  <component
+    :is="ItemComponent"
+    @select="() => createProject(directoryPath)"
+    :class="MENU_ITEM_CLASS"
+  >
+    <FolderPlus class="w-4 h-4" />
+    Create Project
+  </component>
+
   <!-- Add to Project submenu -->
-  <component :is="SubComponent" v-if="allProjects.length > 0">
+  <component :is="SubComponent" v-if="allProjects.length > 0" @update:open="subOpen = $event">
     <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
-      <ChevronRight class="w-3 h-3" />
       <Folder class="w-4 h-4" />
       Add to Project
+      <ChevronRight class="w-3 h-3 ml-auto transition-transform duration-150" :class="{ 'rotate-90': subOpen }" />
     </component>
     <component :is="PortalComponent">
       <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS" side="right" :avoid-collisions="false">
@@ -69,21 +82,11 @@ const {
   <!-- Show message when no projects -->
   <component
     :is="ItemComponent"
-    v-else
+    v-if="allProjects.length === 0"
     disabled
     :class="MENU_DISABLED_CLASS"
   >
     No projects available
-  </component>
-
-  <!-- Create Project -->
-  <component
-    :is="ItemComponent"
-    @select="() => createProject(directoryPath)"
-    :class="MENU_ITEM_CLASS"
-  >
-    <FolderPlus class="w-4 h-4" />
-    Create Project
   </component>
 
   <!-- Manage Projects -->
