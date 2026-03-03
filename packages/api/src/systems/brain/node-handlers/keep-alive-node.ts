@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { brainDebug } from '../utils/brain-debug';
+import { brainInspect } from '../utils/brain-inspect';
 
 /**
  * Handle execution of a keep-alive node
@@ -12,7 +12,7 @@ export function keepAliveNodeHandler(
   executionContext: ExecutionContext,
   actor: any
 ) {
-  brainDebug(`Keep-alive node: ${node.label} - flow will remain active`);
+  brainInspect(`Keep-alive node: ${node.label} - flow will remain active`);
   
   // Keep-alive nodes don't complete - they keep the flow running
   // The actor will stay in the executing state indefinitely

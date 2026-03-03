@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { z } from 'zod';
 
@@ -56,7 +56,7 @@ export async function actionNodeHandler(
   const actionNode = node as ActionNode;
   const nodeData = tNode.nodeAttributes || {};
   
-  brainDebug(`Executing action node: ${node.label}`, {
+  brainInspect(`Executing action node: ${node.label}`, {
     tNode,
     node,
     nodeAttributeKeys: Object.keys(nodeData),
@@ -75,7 +75,7 @@ export async function actionNodeHandler(
       throw new Error(`Action not found: ${actionId}`);
     }
     
-    brainDebug(`Found action: ${action.label}`, {
+    brainInspect(`Found action: ${action.label}`, {
       input: Object.keys(action.input || {}),
     });
     
@@ -88,7 +88,7 @@ export async function actionNodeHandler(
       params[key] = value;
     }
     
-    brainDebug(`Executing action with resolved params:`, params);
+    brainInspect(`Executing action with resolved params:`, params);
 
     // Execute the action function
     const result = await executeActionFunction(
@@ -97,7 +97,7 @@ export async function actionNodeHandler(
       executionContext.flowTNodeId,
     );
     
-    brainDebug(`Action completed successfully:`, {
+    brainInspect(`Action completed successfully:`, {
       nodeLabel: node.label,
       actionLabel: action.label,
       // resultType: typeof result,

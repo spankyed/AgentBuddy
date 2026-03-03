@@ -113,26 +113,26 @@
       </div>
     </CollapsibleSection>
 
-    <!-- Debug Mode Section -->
-    <CollapsibleSection label="Debug Mode" :default-open="false" class="mb-8">
+    <!-- Inspect Mode Section -->
+    <CollapsibleSection label="Inspect Mode" :default-open="false" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
-        Enable debug mode to see detailed brain execution information in the inspection panel
+        Enable inspect mode to see detailed brain execution information in the inspection panel
       </p>
-      
+
       <div class="flex items-center gap-3">
         <label class="text-sm font-medium text-neutral-300 min-w-[120px]">
-          Debug Mode:
+          Inspect Mode:
         </label>
         <button
-          @click="toggleDebug"
+          @click="toggleInspect"
           :class="[
             'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-            debugEnabled 
-              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+            inspectEnabled
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-300 border border-neutral-700/50'
           ]"
         >
-          {{ debugEnabled ? 'Enabled' : 'Disabled' }}
+          {{ inspectEnabled ? 'Enabled' : 'Disabled' }}
         </button>
       </div>
     </CollapsibleSection>
@@ -176,7 +176,7 @@ const needsRestart = computed(() => {
 })
 
 // State
-const debugEnabled = ref<boolean>(false)
+const inspectEnabled = ref<boolean>(false)
 
 // Methods
 const handleRestart = () => {
@@ -202,12 +202,12 @@ const handleKill = () => {
   })
 }
 
-const toggleDebug = () => {
-  debugEnabled.value = !debugEnabled.value
-  // Send toggle debug event to backend
+const toggleInspect = () => {
+  inspectEnabled.value = !inspectEnabled.value
+  // Send toggle inspect event to backend
   trpc.bus.send.mutate({
     systemId: 'brain',
-    type: 'TOGGLE_DEBUG'
+    type: 'TOGGLE_INSPECT'
   })
 }
 </script>

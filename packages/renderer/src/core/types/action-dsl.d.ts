@@ -502,6 +502,7 @@ interface CodeSettings {
         openTerminal?: KeyboardShortcut | null;
         navigatePrevPanel?: KeyboardShortcut | null;
         navigateNextPanel?: KeyboardShortcut | null;
+        focusSearch?: KeyboardShortcut | null;
         [key: string]: KeyboardShortcut | null | undefined;
     };
     restoreTerminals?: boolean;
@@ -921,13 +922,13 @@ declare const events: {
         systemId: "brain";
         tNodeId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_DEBUG">;
+        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
         systemId: zod.ZodLiteral<"brain">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_DEBUG";
+        type: "TOGGLE_INSPECT";
         systemId: "brain";
     }, {
-        type: "TOGGLE_DEBUG";
+        type: "TOGGLE_INSPECT";
         systemId: "brain";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"START_BRAIN">;
@@ -2739,7 +2740,7 @@ declare const events: {
         details: TNodeEntity | null;
         pluginId: "brain";
     } | {
-        type: "DEBUG_TOGGLED";
+        type: "INSPECT_TOGGLED";
         enabled: boolean;
         pluginId: "brain";
     } | {

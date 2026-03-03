@@ -5,7 +5,7 @@ import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/utils/actor-helpers';
 import { brain, brainBus } from './system';
-import { brainDebug, brainLogger } from './utils/brain-debug';
+import { brainInspect, brainLogger } from './utils/brain-inspect';
 
 /**
  * Flow Actor Registry
@@ -166,12 +166,12 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          brainDebug(`Registered flow actor: ${flowTNodeId}`);
+          brainInspect(`Registered flow actor: ${flowTNodeId}`);
         },
         unregisterFlowActor: () => {
           // Clean up this flow actor from the registry
           flowActorRegistry.delete(flowTNodeId);
-          brainDebug(`Unregistered flow actor: ${flowTNodeId}`);
+          brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
           const typedEv = event as { type: string; [key: string]: any };
@@ -227,7 +227,7 @@ export function createFlowNodeSystem(
               lastStep: undefined,
             };
 
-            brainDebug(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
+            brainInspect(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
               { eventData, eventNodeId: eventNode.id }
             );
 
@@ -272,13 +272,13 @@ export function createFlowNodeSystem(
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
-          brainDebug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
+          brainInspect(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
           const decremented = Math.max(0, context.activeChildrenCount - 1);
 
           // Log when we receive a completion with final flag
           if (typedEv.final) {
-            brainDebug(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
+            brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
 
           if (!typedEv.eventTNodeId) {
@@ -363,7 +363,7 @@ export function createFlowNodeSystem(
           }
         }),
         markFlowCompleted: ({ system, context }) => {
-          brainDebug(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
+          brainInspect(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
           
           // Save the flow's result to nodeAttributes so it appears in the details panel

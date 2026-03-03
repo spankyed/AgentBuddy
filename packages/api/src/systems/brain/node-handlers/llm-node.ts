@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
-import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { executeTemplate } from '@/systems/brain/utils/template-executor';
 import { createPromptContext } from '@/systems/brain/utils/prompt-context';
@@ -60,7 +60,7 @@ function generatePrompt(
         }
       }
       
-      brainDebug(`Using resolved params for ${node.label}:`, templateParams);
+      brainInspect(`Using resolved params for ${node.label}:`, templateParams);
       
       // Create a prompt context that allows templates to reference other prompts
       const promptContext = createPromptContext(executeTemplate);
@@ -91,13 +91,13 @@ export async function llmNodeHandler(
 ) {
   const nodeData = tNode.nodeAttributes || {};
 
-  brainDebug(`Executing LLM node: ${node.label}`, { nodeData });
+  brainInspect(`Executing LLM node: ${node.label}`, { nodeData });
 
   try {
     // Generate the prompt using pre-mapped params
     const prompt = generatePrompt(tNode, node as LLMNode);
 
-    brainDebug(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
+    brainInspect(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
 
     // Extract LLM configuration from nodeData
     const modelString = nodeData.model as string || 'anthropic:claude-3-haiku-20240307';
@@ -114,7 +114,7 @@ export async function llmNodeHandler(
       maxTokens: nodeData.maxTokens as number | undefined,
     });
 
-    brainDebug(`LLM response received for node: ${node.label}`, {
+    brainInspect(`LLM response received for node: ${node.label}`, {
       usage: response.usage,
       finishReason: response.finishReason,
     });

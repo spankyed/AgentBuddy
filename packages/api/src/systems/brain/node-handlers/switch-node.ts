@@ -1,7 +1,7 @@
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/systems/flows/config/types';
 import { BinaryOperator as Op } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { extractValueByPath } from '../repository/node-attribute-mappers';
 
 /**
@@ -119,7 +119,7 @@ function evaluatePredicate(predicate: Predicate | undefined, context: ExecutionC
     ? extractValueByPath(context, value)
     : value;
 
-  brainDebug(`Evaluating predicate:`, {
+  brainInspect(`Evaluating predicate:`, {
     key,
     operator,
     expectedValue: value,
@@ -139,7 +139,7 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
     const condition = conditions[i];
     const matches = evaluatePredicate(condition.predicate, context);
 
-    brainDebug(`Condition ${i} (${condition.label || 'unlabeled'}): ${matches ? 'MATCHED' : 'no match'}`);
+    brainInspect(`Condition ${i} (${condition.label || 'unlabeled'}): ${matches ? 'MATCHED' : 'no match'}`);
 
     if (matches) {
       return i;
@@ -162,7 +162,7 @@ export function switchNodeHandler(
   executionContext: ExecutionContext,
   actor: any
 ) {
-  brainDebug(`Executing switch node: ${node.label}`, {
+  brainInspect(`Executing switch node: ${node.label}`, {
     conditionsCount: node.conditions.length,
     conditions: node.conditions.map((c, i) => ({
       index: i,
@@ -185,7 +185,7 @@ export function switchNodeHandler(
     const branchIndex = evaluateConditions(node.conditions, executionContext);
     const matchedCondition = node.conditions[branchIndex];
 
-    brainDebug(`Switch node resolved to branch ${branchIndex}`, {
+    brainInspect(`Switch node resolved to branch ${branchIndex}`, {
       branchLabel: matchedCondition?.label,
       sourceHandle: `branch-${branchIndex}`,
     });

@@ -137,7 +137,7 @@ export interface FlowsSettings {
 // Brain plugin settings
 export interface BrainSettings {
   runningRootFlowId?: string; // The ID of the root flow currently running in the brain
-  debugEnabled?: boolean; // Whether the brain inspection/debug panel is enabled
+  inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
 }
 
 // Logs plugin settings

@@ -101,7 +101,7 @@ const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'T
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
 const showRightPanel = useSelector(actor, (state) => state.context.showRightPanel);
 const selectedStepNode = useSelector(actor, (state) => state.context.selectedStepNode);
-const debugEnabled = useSelector(actor, (state) => state.context.debugEnabled);
+const inspectEnabled = useSelector(actor, (state) => state.context.inspectEnabled);
 const animationsEnabled = useSelector(actor, (state) => state.context.animationsEnabled);
 
 // Event handlers

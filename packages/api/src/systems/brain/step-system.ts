@@ -2,7 +2,7 @@ import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { NodeEntity, EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/repository';
-import { brainDebug } from './utils/brain-debug';
+import { brainInspect } from './utils/brain-inspect';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -39,7 +39,7 @@ export function createStepNodeSystem(
       },
       actions: {
         executeStep: ({ context, self }) => {
-          brainDebug(
+          brainInspect(
             `Executing step: ${context.step.label} (${context.step.nodeType})`,
           );
 

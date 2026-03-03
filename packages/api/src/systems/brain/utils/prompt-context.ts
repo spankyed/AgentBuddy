@@ -1,5 +1,5 @@
 import { repository } from '@/repository';
-import { brainDebug, brainLogger } from './brain-debug';
+import { brainInspect, brainLogger } from './brain-inspect';
 
 /**
  * Context provided to prompt templates for accessing other prompts
@@ -40,7 +40,7 @@ export function createPromptContext(
         throw new Error(`Maximum prompt execution depth (${MAX_EXECUTION_DEPTH}) exceeded. Possible circular reference detected.`);
       }
       
-      // brainDebug('Using referenced prompt:', { label, params, depth: currentDepth });
+      // brainInspect('Using referenced prompt:', { label, params, depth: currentDepth });
       
       const prompt = repository.promptQueries.byLabel(label);
       if (!prompt) {
@@ -55,7 +55,7 @@ export function createPromptContext(
         // Execute the referenced template with the nested context
         const result = executeTemplateFn(prompt.templateFn, params, nestedContext);
         
-        // brainDebug('Referenced prompt executed successfully:', { 
+        // brainInspect('Referenced prompt executed successfully:', { 
         //   label, 
         //   resultLength: result.length 
         // });

@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
-import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { sendToBrainSystem } from '@/services/event-emitter';
 
 /**
@@ -25,7 +25,7 @@ export function fireNodeHandler(
   const eventType = fireConfig.eventType as string;
   const payload = fireConfig.payload;
 
-  brainDebug(`Firing event: ${eventType}`, {
+  brainInspect(`Firing event: ${eventType}`, {
     scope,
     hasPayload: !!payload,
     flowTNodeId: executionContext.flowTNodeId

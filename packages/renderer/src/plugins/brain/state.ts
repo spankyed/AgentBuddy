@@ -31,7 +31,7 @@ export interface BrainContext {
   showLeftPanel: boolean;
   showRightPanel: boolean;
   selectedStepNode?: TNodeEntity;
-  debugEnabled: boolean;
+  inspectEnabled: boolean;
   animationsEnabled: boolean;
   brainIsDead: boolean;
   // Settings
@@ -40,7 +40,7 @@ export interface BrainContext {
 
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
-  | { type: 'DEBUG_TOGGLED'; enabled: boolean }
+  | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }
@@ -54,7 +54,7 @@ type UIEvent =
   | { type: 'TOGGLE_LEFT_PANEL' }
   | { type: 'TOGGLE_RIGHT_PANEL' }
   | { type: 'CLOSE_DETAILS' }
-  | { type: 'TOGGLE_DEBUG' }
+  | { type: 'TOGGLE_INSPECT' }
   | { type: 'TOGGLE_ANIMATIONS' }
   | { type: 'RESTART_BRAIN' }
   | { type: 'KILL_BRAIN' }
@@ -334,16 +334,16 @@ const brainState = setup({
     closeDetails: assign({
       selectedStepNode: undefined
     }),
-    toggleDebug: () => {
+    toggleInspect: () => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'TOGGLE_DEBUG'
+        type: 'TOGGLE_INSPECT'
       });
     },
-    setDebugEnabled: assign(({ event }) => {
-      if (event.type !== 'DEBUG_TOGGLED') return {};
+    setInspectEnabled: assign(({ event }) => {
+      if (event.type !== 'INSPECT_TOGGLED') return {};
       return {
-        debugEnabled: event.enabled
+        inspectEnabled: event.enabled
       };
     }),
     toggleAnimations: assign({
@@ -399,7 +399,7 @@ const brainState = setup({
     flowHierarchy: [],
     showLeftPanel: false,
     showRightPanel: false,
-    debugEnabled: false,
+    inspectEnabled: false,
     animationsEnabled: true,
     selectedStepNode: undefined,
     brainIsDead: false, // Start as running to prevent flash of dead UI
@@ -462,11 +462,11 @@ const brainState = setup({
         TOGGLE_RIGHT_PANEL: {
           actions: 'toggleRightPanel'
         },
-        TOGGLE_DEBUG: {
-          actions: 'toggleDebug'
+        TOGGLE_INSPECT: {
+          actions: 'toggleInspect'
         },
-        DEBUG_TOGGLED: {
-          actions: 'setDebugEnabled'
+        INSPECT_TOGGLED: {
+          actions: 'setInspectEnabled'
         },
         TOGGLE_ANIMATIONS: {
           actions: 'toggleAnimations'

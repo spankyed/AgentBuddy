@@ -147,7 +147,7 @@ export const defaultSettings: SettingsData = {
     },
     brain: {
       runningRootFlowId: undefined, // No flow running initially
-      debugEnabled: false, // Debug/inspection panel disabled by default
+      inspectEnabled: false, // Inspection panel disabled by default
     },
     logs: {
       maxLogs: 1000, // Default to 1000 logs

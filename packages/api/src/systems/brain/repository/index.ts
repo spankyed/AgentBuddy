@@ -14,7 +14,7 @@ import type {
 import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
-import { brainLogger } from '../utils/brain-debug';
+import { brainLogger } from '../utils/brain-inspect';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context

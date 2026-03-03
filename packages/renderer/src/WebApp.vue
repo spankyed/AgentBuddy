@@ -88,15 +88,15 @@ const targetView = useSelector(applicationState, (state) => state.context.target
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
 
 const brainActor = applicationState.system.get('brain')
-const debugMode = useSelector(brainActor, (state: any) =>
-  state.context.debugEnabled ?? false
+const inspectMode = useSelector(brainActor, (state: any) =>
+  state.context.inspectEnabled ?? false
 )
 
 const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
 )
 
-const canShowPanel = computed(() => debugMode.value || !!activePlugin.value.panel)
+const canShowPanel = computed(() => inspectMode.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
 const allMenuItems = computed<ContextMenuItem[]>(() => {
@@ -116,10 +116,10 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
       isActive: isPanelOpen.value,
     }] : []),
     {
-      label: 'Debug Mode',
+      label: 'Inspect Mode',
       icon: Terminal,
-      event: { type: 'APP_TOGGLE_DEBUG' },
-      isActive: debugMode.value,
+      event: { type: 'APP_TOGGLE_INSPECT' },
+      isActive: inspectMode.value,
     },
   ]
 
@@ -132,8 +132,8 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
     return
   }
 
-  if (event.type === 'APP_TOGGLE_DEBUG') {
-    brainActor.send({ type: 'TOGGLE_DEBUG' })
+  if (event.type === 'APP_TOGGLE_INSPECT') {
+    brainActor.send({ type: 'TOGGLE_INSPECT' })
     return
   }
 

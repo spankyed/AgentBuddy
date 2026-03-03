@@ -10,7 +10,7 @@ import { repository } from '@/repository';
 import { createLogger } from '@/core/utils/debug/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds } from './flow-system';
 import { settings } from '../settings/system';
-import { setBrainDebugEnabled, isBrainDebugEnabled } from './utils/brain-debug';
+import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from '@/services/brain';
 
 const typeOf = safeEvents<ReceivableEvents>();
@@ -26,7 +26,7 @@ export const IncomingBrainEvents = [
   busEvent('GO_BACK_TNODE', { currentFlowTNodeId: z.string().optional() }),
   busEvent('REQUEST_PLUGIN_DATA', { flowTNodeId: z.string().optional() }),
   busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
-  busEvent('TOGGLE_DEBUG', {}),
+  busEvent('TOGGLE_INSPECT', {}),
   busEvent('START_BRAIN', {}),
   busEvent('KILL_BRAIN', {}),
   busEvent('RESTART_BRAIN', {}),
@@ -57,7 +57,7 @@ export type OutgoingBrainEvents =
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'EVENT_PULSE'; eventType: string }
   | { type: 'TNODE_DETAILS'; tNodeId: EARS.EntityId; details: TNodeEntity | null }
-  | { type: 'DEBUG_TOGGLED'; enabled: boolean }
+  | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }
 
@@ -298,11 +298,11 @@ export const brainSystem = setup({
         }));
       }
 
-      // Restore debug state from persisted settings
+      // Restore inspect state from persisted settings
       const brainSettings = repository.settingsQueries.getPluginSettings('brain');
-      const debugEnabled = brainSettings?.debugEnabled ?? false;
-      setBrainDebugEnabled(debugEnabled);
-      system.get(bus).send(emit(brain, { type: 'DEBUG_TOGGLED', enabled: debugEnabled }));
+      const inspectEnabled = brainSettings?.inspectEnabled ?? false;
+      setBrainInspectEnabled(inspectEnabled);
+      system.get(bus).send(emit(brain, { type: 'INSPECT_TOGGLED', enabled: inspectEnabled }));
     },
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
@@ -351,17 +351,17 @@ export const brainSystem = setup({
         details: tNode
       }));
     },
-    toggleDebug: ({ system }) => {
-      const currentState = isBrainDebugEnabled();
+    toggleInspect: ({ system }) => {
+      const currentState = isBrainInspectEnabled();
       const newState = !currentState;
-      setBrainDebugEnabled(newState);
+      setBrainInspectEnabled(newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updateSettings('plugin', 'brain', ['debugEnabled'], newState);
+      repository.settingsCommands.updateSettings('plugin', 'brain', ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
       system.get(bus).send(emit(brain, {
-        type: 'DEBUG_TOGGLED',
+        type: 'INSPECT_TOGGLED',
         enabled: newState
       }));
     },
@@ -462,8 +462,8 @@ export const brainSystem = setup({
           GET_TNODE_DETAILS: {
             actions: 'getTNodeDetails',
           },
-          TOGGLE_DEBUG: {
-            actions: 'toggleDebug',
+          TOGGLE_INSPECT: {
+            actions: 'toggleInspect',
           },
           KILL_BRAIN: {
             actions: 'killBrain',

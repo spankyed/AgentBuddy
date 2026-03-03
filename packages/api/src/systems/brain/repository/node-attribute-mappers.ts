@@ -1,6 +1,6 @@
 import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '@/systems/brain/types';
-import { brainDebug, brainLogger } from '../utils/brain-debug';
+import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult } from '../utils/result-truncator';
 
 /*─────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ function mapTemplateFields(
 ): Record<string, any> {
   const result: Record<string, any> = {};
 
-  brainDebug('Applying field mappings:', {
+  brainInspect('Applying field mappings:', {
     eventType: context.event.type,
     eventDataKeys: Object.keys(context.event.data),
     eventData: context.event.data,
@@ -79,7 +79,7 @@ function mapTemplateFields(
 
       result[mapping.target] = value;
 
-      brainDebug(`Mapped ${mapping.target}:`, {
+      brainInspect(`Mapped ${mapping.target}:`, {
         source: typeof mapping.source === 'function' ? '[Function]' : mapping.source,
         value
       });
@@ -137,7 +137,7 @@ function applyFieldMappingsIfSupported(
   const mappings = Array.isArray(fm) ? fm : [fm];
   if (mappings.length === 0) return undefined;
 
-  brainDebug(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
+  brainInspect(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
     mappingsCount: mappings.length,
     isArray: Array.isArray(fm)
   });
@@ -167,7 +167,7 @@ export function prepareNodeAttributes(
     truncatedAttributes[key] = truncateResult(value);
   }
 
-  brainDebug(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
+  brainInspect(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
     baseAttributeKeys: Object.keys(baseAttributes),
     mappedParamKeys: mappedParams ? Object.keys(mappedParams) : [],
     finalAttributeKeys: Object.keys(truncatedAttributes)
