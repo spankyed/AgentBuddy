@@ -39,8 +39,8 @@
       </button>
     </ContextMenuTrigger>
 
-    <!-- Context Menu - Only show for non-root flows -->
-    <ContextMenuPortal v-if="!isRoot">
+    <!-- Context Menu -->
+    <ContextMenuPortal>
       <ContextMenuContent
         class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[160px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
         :side-offset="2"
@@ -52,14 +52,16 @@
           <Edit :size="14" class="text-primary-400" />
           Edit Label
         </ContextMenuItem>
-        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
-          @select="handleRequestDelete"
-        >
-          <Trash2 :size="14" />
-          Delete Flow
-        </ContextMenuItem>
+        <template v-if="!isRoot">
+          <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+          <ContextMenuItem
+            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+            @select="handleRequestDelete"
+          >
+            <Trash2 :size="14" />
+            Delete Flow
+          </ContextMenuItem>
+        </template>
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
