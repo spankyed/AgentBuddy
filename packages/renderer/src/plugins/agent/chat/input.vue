@@ -80,17 +80,6 @@
         </div>
       </div>
     </form>
-
-    <div class="flex-shrink-0">
-      <RecentThreads
-        :current-thread="currentThread"
-        :recent-threads="recentThreads"
-        @view-thread="(threadId: string) => emit('view-thread', threadId)"
-        @open-thread-chat="(threadId: string) => emit('open-thread-chat', threadId)"
-        @new-thread="emit('new-thread')"
-        @new-thread-as-child="(parentThreadId: string) => emit('new-thread-as-child', parentThreadId)"
-      />
-    </div>
   </div>
 </template>
 
@@ -98,16 +87,14 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
 import Square from './square-svg.vue'
-import RecentThreads from './recent-threads.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, ThreadEntity, AgentMode } from '@app/api'
+import type { AgentThreadData, AgentMode } from '@app/api'
 
 const props = defineProps<{
   currentThread: AgentThreadData
-  recentThreads: ThreadEntity[]
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]
@@ -116,14 +103,10 @@ const props = defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'open-thread-chat', threadId: string): void
-  (e: 'view-thread', threadId: string): void
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
-  (e: 'new-thread'): void
-  (e: 'new-thread-as-child', parentThreadId: string): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void

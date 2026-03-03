@@ -411,7 +411,7 @@ export const createApplicationState = () => setup({
       const newSizes = {
         ...context.panelSizes,
         ...(panel === 'canvas'
-          ? { canvasHeight: Math.max(20, Math.min(80, size)) } // 20-80% bounds
+          ? { canvasHeight: Math.max(20, Math.min(95, size)) } // 20-95% bounds
           : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
         )
       };

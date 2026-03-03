@@ -149,9 +149,9 @@ const handleInspectionResize = (delta: number) => {
 }
 
 const handleCanvasDoubleClick = () => {
-  // Toggle between collapsed (80%) and default (50%)
-  const isCollapsed = panelSizes.value.canvasHeight >= 80;
-  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 80 });
+  // Toggle between collapsed (thread bar only) and default (50/50)
+  const isCollapsed = panelSizes.value.canvasHeight >= 93;
+  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 });
 }
 
 const handleInspectionDoubleClick = () => {
