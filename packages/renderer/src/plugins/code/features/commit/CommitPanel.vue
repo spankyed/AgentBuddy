@@ -324,10 +324,8 @@ const isNoGitRepoError = computed(() => {
 })
 
 const shouldShowActionButton = computed(() => {
-  // Show action button when:
-  // 1. No upstream (publish) or
-  // 2. Has upstream and commits ahead (push) or
-  // 3. Has upstream and commits behind (pull)
+  // Commit button takes priority when there are staged files
+  if (stagedFiles.value.length > 0) return false
   return !hasUpstream.value || commitsAhead.value > 0 || commitsBehind.value > 0
 })
 
