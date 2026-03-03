@@ -128,6 +128,7 @@ export const searchState = setup({
     clearSearch: assign({
       searchQuery: '',
       searchResults: [],
+      isSearching: false,
       searchError: null,
       searchProgress: null
     }),
@@ -190,9 +191,11 @@ export const searchState = setup({
           actions: 'updateSearchOptions'
         },
         'search.RESULT': {
+          guard: ({ context }) => context.searchQuery !== '',
           actions: 'assignSearchResult'
         },
         'search.PROGRESS': {
+          guard: ({ context }) => context.searchQuery !== '',
           actions: 'assignSearchProgress'
         },
         'search.COMPLETE': {

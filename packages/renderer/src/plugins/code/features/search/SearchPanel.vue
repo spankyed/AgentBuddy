@@ -4,7 +4,13 @@
     <CodePanelHeader
       :icon="Search"
       title="Search"
-    />
+    >
+      <template v-if="searchResults.length > 0" #toolbar>
+        <div class="px-3 py-1.5 text-xs text-neutral-400">
+          {{ totalMatches }} results in {{ searchResults.length }} files
+        </div>
+      </template>
+    </CodePanelHeader>
 
     <!-- Show only error if no directory selected -->
     <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
@@ -173,10 +179,6 @@
       </div>
     </div>
 
-    <!-- Results Summary -->
-    <div v-if="searchResults.length > 0" class="p-2 text-xs border-t border-neutral-800 text-neutral-400">
-      {{ totalMatches }} results in {{ searchResults.length }} files
-    </div>
     </template>
   </div>
 </template>
@@ -287,16 +289,25 @@ const searchPlaceholder = computed(() => {
 })
 
 // Methods
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
 const performSearch = () => {
-  if (!searchQuery.value || isSearching.value) return
+  // Cancel any pending debounce
+  if (searchTimeout) clearTimeout(searchTimeout)
 
-  // Clear previous results
-  expandedResults.value.clear()
+  if (!searchQuery.value) {
+    // Immediate: cancel in-flight + clear
+    searchActor?.send({ type: 'search.CANCEL' })
+    searchActor?.send({ type: 'search.CLEAR' })
+    expandedResults.value.clear()
+    return
+  }
 
-  searchActor?.send({
-    type: 'search.START',
-    query: searchQuery.value
-  })
+  // Debounce actual search
+  searchTimeout = setTimeout(() => {
+    expandedResults.value.clear()
+    searchActor?.send({ type: 'search.START', query: searchQuery.value })
+  }, 300)
 }
 
 const cancelSearch = () => {
