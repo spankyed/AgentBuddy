@@ -35,15 +35,7 @@ const subOpen = ref(false)
 <template>
   <!-- Separator -->
   <component v-if="showSeparator" :is="SeparatorComponent" :class="MENU_SEPARATOR_CLASS" />
-  <!-- Create Project -->
-  <component
-    :is="ItemComponent"
-    @select="() => createProject(directoryPath)"
-    :class="MENU_ITEM_CLASS"
-  >
-    <FolderPlus class="w-4 h-4" />
-    Create Project
-  </component>
+
 
   <!-- Add to Project submenu -->
   <component :is="SubComponent" v-if="allProjects.length > 0" @update:open="subOpen = $event">
@@ -77,6 +69,12 @@ const subOpen = ref(false)
         </component>
       </component>
     </component>
+  </component>
+
+  <!-- Create Project -->
+  <component :is="ItemComponent" @select="() => createProject(directoryPath)" :class="MENU_ITEM_CLASS">
+    <FolderPlus class="w-4 h-4" />
+    Create Project
   </component>
 
   <!-- Show message when no projects -->
