@@ -41,7 +41,6 @@
         
         <!-- Horizontal Resizer -->
         <PanelResizer
-            v-if="panelSizes.inspectionWidth > 0"
             orientation="horizontal"
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"
