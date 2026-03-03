@@ -2,7 +2,7 @@ import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import breadcrumb, { breadcrumbList } from '@/core/breadcrumb';
 import { contextMenuFn } from '@/core/context-menu';
-import { Layers, Activity, Terminal, Play, RefreshCw, Power, PlayCircle } from 'lucide-vue-next';
+import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type {
   OutgoingBrainEvents,
@@ -29,7 +29,6 @@ export interface BrainContext {
   pulsingEventType?: string;
   // UI state
   showLeftPanel: boolean;
-  showRightPanel: boolean;
   selectedStepNode?: TNodeEntity;
   inspectEnabled: boolean;
   animationsEnabled: boolean;
@@ -52,7 +51,6 @@ type UIEvent =
   | { type: 'BACK.CLICK' }
   | { type: 'EVENT.CLICK'; eventType: string }
   | { type: 'TOGGLE_LEFT_PANEL' }
-  | { type: 'TOGGLE_RIGHT_PANEL' }
   | { type: 'CLOSE_DETAILS' }
   | { type: 'TOGGLE_INSPECT' }
   | { type: 'TOGGLE_ANIMATIONS' }
@@ -273,9 +271,6 @@ const brainState = setup({
     toggleLeftPanel: assign({
       showLeftPanel: ({ context }) => !context.showLeftPanel
     }),
-    toggleRightPanel: assign({
-      showRightPanel: ({ context }) => !context.showRightPanel
-    }),
     requestNodeDetails: assign(({ event }) => {
       if (event.type !== 'NODE.CLICK') return {};
 
@@ -398,7 +393,6 @@ const brainState = setup({
     possibleEvents: [],
     flowHierarchy: [],
     showLeftPanel: false,
-    showRightPanel: false,
     inspectEnabled: false,
     animationsEnabled: true,
     selectedStepNode: undefined,
@@ -425,8 +419,7 @@ const brainState = setup({
               }))
         ),
         ...contextMenuFn<BrainContext>((ctx) => [
-          { label: 'Event Trace', icon: Layers, event: { type: 'TOGGLE_LEFT_PANEL' }, isActive: ctx.showLeftPanel, iconColor: 'text-primary-400' },
-          { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_RIGHT_PANEL' }, isActive: ctx.showRightPanel, iconColor: 'text-primary-400' },
+          { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_LEFT_PANEL' }, isActive: ctx.showLeftPanel, iconColor: 'text-primary-400' },
           { label: 'Auto-focus Animations', icon: Play, event: { type: 'TOGGLE_ANIMATIONS' }, isActive: ctx.animationsEnabled, iconColor: 'text-blue-400' },
           ...(ctx.brainIsDead
             ? [{ separator: true, label: 'Start Brain', icon: PlayCircle, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-green-400' }]
@@ -458,9 +451,6 @@ const brainState = setup({
         },
         TOGGLE_LEFT_PANEL: {
           actions: 'toggleLeftPanel'
-        },
-        TOGGLE_RIGHT_PANEL: {
-          actions: 'toggleRightPanel'
         },
         TOGGLE_INSPECT: {
           actions: 'toggleInspect'

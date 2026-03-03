@@ -1,6 +1,6 @@
 <template>
   <div class="relative flex h-full overflow-hidden bg-neutral-900">
-    <!-- Left Panel: TNode Tree (Optional) -->
+    <!-- Left Panel: Watched Events (Optional) -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
       enter-from-class="-translate-x-full opacity-0"
@@ -10,19 +10,19 @@
       leave-to-class="-translate-x-full opacity-0"
     >
       <div v-if="showLeftPanel" class="flex flex-col border-r w-72 border-neutral-800/50 bg-neutral-900">
-        <!-- Header -->
         <div class="px-5 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
-            <span v-if="tNodeTree && tNodeTree.length > 0" class="text-xs text-neutral-500">
-              {{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}
+            <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Watched Events</h3>
+            <span v-if="possibleEvents && possibleEvents.length > 0" class="text-xs text-neutral-500">
+              {{ possibleEvents.length }} event{{ possibleEvents.length !== 1 ? 's' : '' }}
             </span>
           </div>
         </div>
         <div class="flex-1 overflow-y-auto">
-          <TNodeTree 
-            :tnode-tree="tNodeTree"
-            @flow-navigate="handleFlowNavigate"
+          <EventsList
+            :events="possibleEvents"
+            :pulsing-event-type="pulsingEventType"
+            @event-click="handleEventClick"
           />
         </div>
       </div>
@@ -42,34 +42,6 @@
       />
     </div>
 
-    <!-- Right Panel: Possible Events (Optional) -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      enter-from-class="translate-x-full opacity-0"
-      enter-to-class="translate-x-0 opacity-100"
-      leave-active-class="transition-all duration-200 ease-in"
-      leave-from-class="translate-x-0 opacity-100"
-      leave-to-class="translate-x-full opacity-0"
-    >
-      <div v-if="showRightPanel && !selectedStepNode" class="flex flex-col border-l w-72 border-neutral-800/50 bg-neutral-900">
-        <div class="px-5 py-3.5 border-b border-neutral-800/50 bg-neutral-900/30">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Watched Events</h3>
-            <span v-if="possibleEvents && possibleEvents.length > 0" class="text-xs text-neutral-500">
-              {{ possibleEvents.length }} event{{ possibleEvents.length !== 1 ? 's' : '' }}
-            </span>
-          </div>
-        </div>
-        <div class="flex-1 overflow-y-auto">
-          <EventsList
-            :events="possibleEvents"
-            :pulsing-event-type="pulsingEventType"
-            @event-click="handleEventClick"
-          />
-        </div>
-      </div>
-    </Transition>
-
     <!-- Step Node Details Panel (Slide-out) -->
     <StepNodeDetails
       :node="selectedStepNode"
@@ -83,7 +55,6 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
 import { id, type BrainState } from '@/plugins/brain/state.ts';
-import TNodeTree from './components/TNodeTree.vue';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
@@ -99,7 +70,6 @@ const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'T
 
 // UI state selectors
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
-const showRightPanel = useSelector(actor, (state) => state.context.showRightPanel);
 const selectedStepNode = useSelector(actor, (state) => state.context.selectedStepNode);
 const inspectEnabled = useSelector(actor, (state) => state.context.inspectEnabled);
 const animationsEnabled = useSelector(actor, (state) => state.context.animationsEnabled);
