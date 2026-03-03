@@ -136,6 +136,20 @@
           </div>
 
           <div class="group">
+            <KeyboardShortcutInput
+              v-model="hotkeys.focusSearch"
+              id="focus-search"
+              label="Focus Search"
+              @change="saveHotkeys"
+              container-class="flex-1"
+              :show-reset-button="true"
+            />
+            <p class="mt-1.5 text-xs text-neutral-600">
+              Open the search panel and focus the search input
+            </p>
+          </div>
+
+          <div class="group">
             <div class="flex gap-4">
               <KeyboardShortcutInput
                 v-model="hotkeys.navigatePrevPanel"
@@ -204,7 +218,8 @@ const emit = defineEmits<{
 const hotkeys = reactive<CodeSettings['hotkeys']>({
   openTerminal: props.settings?.hotkeys?.openTerminal || null,
   navigatePrevPanel: props.settings?.hotkeys?.navigatePrevPanel || null,
-  navigateNextPanel: props.settings?.hotkeys?.navigateNextPanel || null
+  navigateNextPanel: props.settings?.hotkeys?.navigateNextPanel || null,
+  focusSearch: props.settings?.hotkeys?.focusSearch || null
 })
 
 const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)

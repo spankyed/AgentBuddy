@@ -26,6 +26,10 @@ const codePlugin: Plugin = {
     {
       action: 'navigateNextPanel',
       global: false
+    },
+    {
+      action: 'focusSearch',
+      global: false
     }
   ]
 };

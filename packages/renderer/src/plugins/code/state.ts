@@ -120,6 +120,7 @@ export type Event =
   | { type: 'OPEN_TERMINAL' }
   | { type: 'NAVIGATE_PREV_PANEL' }
   | { type: 'NAVIGATE_NEXT_PANEL' }
+  | { type: 'FOCUS_SEARCH' }
   // Quick open events
   | { type: 'TOGGLE_QUICK_OPEN' }
   | { type: 'SHOW_QUICK_OPEN' }
@@ -518,7 +519,8 @@ const codeState = setup({
     handleHotkey: createHotkeyProcessor({
       openTerminal: 'OPEN_TERMINAL',
       navigatePrevPanel: 'NAVIGATE_PREV_PANEL',
-      navigateNextPanel: 'NAVIGATE_NEXT_PANEL'
+      navigateNextPanel: 'NAVIGATE_NEXT_PANEL',
+      focusSearch: 'FOCUS_SEARCH',
     }),
 
     openTerminal: ({ context, self, system }) => {
@@ -554,6 +556,10 @@ const codeState = setup({
       const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
       const newIndex = currentIndex === ALL_PANELS.length - 1 ? 0 : currentIndex + 1;
       self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
+    },
+
+    focusSearch: ({ self }) => {
+      self.send({ type: 'SELECT_PANEL', panel: 'search' });
     },
 
     pinTab: assign(({ event, context }) => {
@@ -906,6 +912,9 @@ const codeState = setup({
         },
         NAVIGATE_NEXT_PANEL: {
           actions: 'navigateNextPanel'
+        },
+        FOCUS_SEARCH: {
+          actions: 'focusSearch'
         },
         // Quick open events
         TOGGLE_QUICK_OPEN: {

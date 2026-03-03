@@ -24,6 +24,7 @@
       <!-- Search Input with Inline Filters -->
       <div class="flex items-stretch mb-3 overflow-hidden border rounded bg-neutral-900 border-neutral-700 focus-within:border-blue-500">
         <input
+          ref="searchInput"
           v-model="searchQuery"
           @keyup.enter="performSearch"
           @input="performSearch"
@@ -175,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -194,6 +195,14 @@ const searchError = useSelector(searchActor, (state: any) => state.context.searc
 const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
 const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
+
+const searchInput = ref<HTMLInputElement | null>(null)
+
+onMounted(() => {
+  nextTick(() => {
+    searchInput.value?.focus()
+  })
+})
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)

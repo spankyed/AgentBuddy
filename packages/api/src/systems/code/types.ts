@@ -158,6 +158,7 @@ export interface CodeSettings {
     openTerminal?: KeyboardShortcut | null;
     navigatePrevPanel?: KeyboardShortcut | null;
     navigateNextPanel?: KeyboardShortcut | null;
+    focusSearch?: KeyboardShortcut | null;
     [key: string]: KeyboardShortcut | null | undefined;
   };
   restoreTerminals?: boolean;

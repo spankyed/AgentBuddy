@@ -30,7 +30,7 @@ export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boo
     (config.modifiers.includes('alt') || config.modifiers.includes('option') ? event.altKey : !event.altKey) &&
     (config.modifiers.includes('shift') === event.shiftKey);
   
-  return event.key === config.key && modifierMatch;
+  return event.key.toLowerCase() === config.key.toLowerCase() && modifierMatch;
 }
 
 // Process hotkeys with action map - returns matched action value or undefined
