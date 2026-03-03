@@ -1,6 +1,19 @@
 <template>
-  <div class="p-2 border-b border-neutral-800">
-    <div class="flex items-center gap-1 overflow-x-auto text-xs whitespace-nowrap">
+  <div class="py-2 pl-3 pr-4 border-b border-neutral-800">
+    <div class="flex items-center overflow-x-auto text-xs whitespace-nowrap">
+      <!-- Navigate up button -->
+      <button
+        @click="navigateUp"
+        class="flex-shrink-0 p-1 rounded transition-all"
+        :class="canNavigateUp
+          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 cursor-pointer'
+          : 'text-neutral-600 cursor-default'"
+        :disabled="!canNavigateUp"
+        title="Navigate to parent directory"
+      >
+        <ChevronUp class="w-3.5 h-3.5" />
+      </button>
+
       <span
         v-for="(segment, index) in segments"
         :key="index"
@@ -10,7 +23,7 @@
         <DropdownMenuRoot v-if="segment.isEllipsis">
           <DropdownMenuTrigger as-child>
             <button
-              class="px-2 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+              class="mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               title="Hidden directories"
             >
               {{ segment.name }}
@@ -38,7 +51,7 @@
           <ContextMenuTrigger as-child>
             <button
               @click="$emit('navigate', segment.path)"
-              class="px-2 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+              class="mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               :class="{
                 'font-medium text-neutral-200': segment.path === activeDirectory
               }"
@@ -63,6 +76,7 @@
               <!-- Project menu items -->
               <ProjectMenuItems
                 :directory-path="segment.path"
+                :show-separator="segment.path !== baseDirectory"
                 :ItemComponent="ContextMenuItem"
                 :SeparatorComponent="ContextMenuSeparator"
                 :SubComponent="ContextMenuSub"
@@ -102,6 +116,7 @@ import {
   ContextMenuItemIndicator,
   ContextMenuSeparator,
 } from 'reka-ui'
+import { ChevronUp } from 'lucide-vue-next'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 
 interface BreadcrumbSegment {
@@ -116,10 +131,29 @@ const props = defineProps<{
   activeDirectory: string | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'navigate': [path: string]
   'set-base': [path: string]
 }>()
+
+// Navigate up logic
+const canNavigateUp = computed(() => {
+  if (!props.activeDirectory || !props.baseDirectory) return false
+  return props.activeDirectory !== props.baseDirectory
+})
+
+const parentDirectory = computed(() => {
+  if (!props.activeDirectory) return ''
+  const parts = props.activeDirectory.split('/')
+  parts.pop()
+  return parts.join('/') || '/'
+})
+
+const navigateUp = () => {
+  if (canNavigateUp.value) {
+    emit('navigate', parentDirectory.value)
+  }
+}
 
 const segments = computed<BreadcrumbSegment[]>(() => {
   const base = props.baseDirectory
