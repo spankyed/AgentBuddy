@@ -24,7 +24,7 @@
         <!-- Branch List -->
         <div class="space-y-3">
           <div
-            v-for="(condition, index) in conditions"
+            v-for="(condition, index) in localConditions"
             :key="index"
             class="p-3 border rounded-md bg-neutral-800/30 border-neutral-700"
           >
@@ -92,7 +92,7 @@
               </label>
               <input
                 :value="getPredicateObject(condition.predicate)?.value ?? ''"
-                @change="updatePredicate(index, 'value', ($event.target as HTMLInputElement).value)"
+                @input="updatePredicate(index, 'value', ($event.target as HTMLInputElement).value)"
                 type="text"
                 placeholder="e.g. admin, 10, true, or $.path.to.value"
                 class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
@@ -102,7 +102,7 @@
 
           <!-- Empty state -->
           <div
-            v-if="conditions.length === 0"
+            v-if="localConditions.length === 0"
             class="p-4 text-center border border-dashed rounded-md border-neutral-700 text-neutral-500"
           >
             <p class="text-sm">No branches yet.</p>
@@ -130,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { shallowRef, watch } from 'vue'
 import { Plus, Trash2, ChevronRight } from 'lucide-vue-next'
 import BaseForm from './BaseForm.vue'
 import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@app/api'
@@ -171,67 +171,61 @@ function isUnaryOperator(operator?: string): boolean {
   return operator === 'is_empty' || operator === 'is_null'
 }
 
-// Get conditions array from node
-const conditions = computed(() => {
-  const switchNode = props.node as SwitchNode
-  return switchNode.conditions || []
-})
+// Local state decoupled from prop reactivity — prevents v-for re-render from resetting inputs
+const localConditions = shallowRef<Condition[]>(
+  structuredClone((props.node as SwitchNode).conditions || [])
+)
 
-// Add a new branch with default predicate
+// Reset when node identity changes (covers temp→permanent ID reconciliation)
+watch(
+  () => props.node.id,
+  () => {
+    localConditions.value = structuredClone(
+      (props.node as SwitchNode).conditions || []
+    )
+  }
+)
+
 function addBranch() {
-  const newConditions: Condition[] = [
-    ...conditions.value,
+  localConditions.value = [
+    ...localConditions.value,
     {
       predicate: { key: '', operator: 'equals' as BinaryOperator, value: '' },
       label: ''
     }
   ]
-  emit('update-node', { conditions: newConditions })
+  emit('update-node', { conditions: localConditions.value })
 }
 
-// Remove a branch by index
 function removeBranch(index: number) {
-  const newConditions = conditions.value.filter((_, i) => i !== index)
-  emit('update-node', { conditions: newConditions })
+  localConditions.value = localConditions.value.filter((_, i) => i !== index)
+  emit('update-node', { conditions: localConditions.value })
 }
 
-// Update a specific branch field (label)
 function updateBranch(index: number, field: 'label', value: string) {
-  const newConditions = conditions.value.map((cond, i) => {
-    if (i === index) {
-      return { ...cond, [field]: value }
-    }
-    return cond
-  })
-  emit('update-node', { conditions: newConditions })
+  localConditions.value = localConditions.value.map((cond, i) =>
+    i === index ? { ...cond, [field]: value } : cond
+  )
+  emit('update-node', { conditions: localConditions.value })
 }
 
-// Update predicate field (key, operator, value)
 function updatePredicate(index: number, field: 'key' | 'operator' | 'value', value: string) {
-  const newConditions = conditions.value.map((cond, i) => {
-    if (i === index) {
-      const currentPredicate = cond.predicate && typeof cond.predicate !== 'function'
-        ? cond.predicate
-        : { key: '', operator: 'equals' as BinaryOperator }
-
-      // Parse value for type detection
-      let parsedValue: any = value
-      if (field === 'value' && !value.startsWith('$.')) {
-        if (value === 'true') parsedValue = true
-        else if (value === 'false') parsedValue = false
-        else if (!isNaN(Number(value)) && value !== '') parsedValue = Number(value)
-      }
-
-      return {
-        ...cond,
-        predicate: {
-          ...currentPredicate,
-          [field]: field === 'value' ? parsedValue : value
-        }
-      }
+  localConditions.value = localConditions.value.map((cond, i) => {
+    if (i !== index) return cond
+    const currentPredicate = cond.predicate && typeof cond.predicate !== 'function'
+      ? cond.predicate
+      : { key: '', operator: 'equals' as BinaryOperator }
+    let parsedValue: any = value
+    if (field === 'value' && !value.startsWith('$.')) {
+      if (value === 'true') parsedValue = true
+      else if (value === 'false') parsedValue = false
+      else if (!isNaN(Number(value)) && value !== '') parsedValue = Number(value)
     }
-    return cond
+    return {
+      ...cond,
+      predicate: { ...currentPredicate, [field]: field === 'value' ? parsedValue : value }
+    }
   })
-  emit('update-node', { conditions: newConditions })
+  emit('update-node', { conditions: localConditions.value })
 }
 </script>
