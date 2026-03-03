@@ -1,6 +1,6 @@
 <template>
-  <div class="py-1 pl-3 pr-4 border-b border-neutral-800">
-    <div class="flex items-center overflow-x-auto text-xs whitespace-nowrap">
+  <div class="py-1 pl-3 pr-4">
+    <div class="flex items-center text-xs min-w-0">
       <DropdownMenuRoot
         :open="menuOpen"
         @update:open="menuOpen = $event"
@@ -9,10 +9,11 @@
           <button
             @click.capture="(e: MouseEvent) => { e.stopImmediatePropagation(); menuOpen = true }"
             @contextmenu.prevent="menuOpen = true"
-            class="mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 font-medium"
+            class="flex items-center gap-1 mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 font-medium truncate"
             :title="baseDirectory"
           >
-            ~{{ directoryName }}
+            <ChevronDown :size="14" class="shrink-0" />
+            <span class="truncate">{{ directoryName }}</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
@@ -69,7 +70,7 @@ import {
   DropdownMenuItemIndicator,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { FolderOpen, Layers } from 'lucide-vue-next'
+import { FolderOpen, Layers, ChevronDown } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 
 const props = defineProps<{
@@ -84,6 +85,6 @@ defineEmits<{
 const menuOpen = ref(false)
 
 const directoryName = computed(() => {
-  return '/' + (props.baseDirectory.split('/').pop() || '')
+  return props.baseDirectory.split('/').pop() || ''
 })
 </script>
