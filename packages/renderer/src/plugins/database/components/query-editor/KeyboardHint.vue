@@ -1,5 +1,5 @@
 <template>
-  <div class="items-center hidden gap-1 mr-2 text-xs text-neutral-500 sm:flex dark:text-neutral-400">
+  <div class="items-center hidden gap-1 mx-2 text-xs text-neutral-500 sm:flex dark:text-neutral-400">
     <Keyboard class="w-3 h-3" />
     <span>{{ hotkeyText }}</span>
   </div>
@@ -25,7 +25,7 @@ const hotkeyText = computed(() => {
   }
 
   const { key, modifiers } = props.executeQuery;
-  
+
   // Format modifiers
   const formattedModifiers = modifiers.map(mod => {
     switch (mod.toLowerCase()) {
@@ -54,4 +54,4 @@ const hotkeyText = computed(() => {
 
   return `${shortcut} to run`;
 });
-</script> 
+</script>

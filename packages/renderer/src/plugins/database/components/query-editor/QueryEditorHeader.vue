@@ -23,14 +23,14 @@
       >
         <Wand2 class="w-4 h-4" />
       </button>
+      <KeyboardHint :execute-query="executeQuery" />
     </div>
-    
+
     <div class="flex items-center gap-2">
       <QueryEditorMessages
         :error="error"
         :success-message="successMessage"
       />
-      <KeyboardHint :execute-query="executeQuery" />
       
       
       <QueryEditorActions
