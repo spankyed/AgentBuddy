@@ -27,6 +27,14 @@ import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG } from './ca
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
+const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
+
+function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
+  if (nodeData.nodeType === 'switch') {
+    nodeData.conditions = [{ ...DEFAULT_ELSE_CONDITION }]
+  }
+}
+
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
@@ -575,10 +583,13 @@ const flowsState = setup({
         || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + newNode.xOffset, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
         || { x: newNode.defaultX, y: newNode.defaultY }
 
+      const tempNodeData: any = { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} }
+      applyNodeTypeDefaults(tempNodeData)
+
       return {
         graph: {
           ...context.graph,
-          nodes: [...context.graph.nodes, { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} } as any],
+          nodes: [...context.graph.nodes, tempNodeData],
           positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
@@ -598,13 +609,14 @@ const flowsState = setup({
       const nodeConfig = getNodeConfig(ev.nodeType)
       const defaultLabel = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
 
-      const newNode = {
+      const newNode: any = {
         id: tempId,
         nodeType: ev.nodeType,
         label: defaultLabel,
         flowId: context.selectedFlowId,
         configuration: {},
-      } as any // Will be properly typed when backend returns complete node
+      }
+      applyNodeTypeDefaults(newNode)
 
       // Calculate position: to the right of the source node
       const { newNode: nodeOffset } = LAYOUT_CONFIG

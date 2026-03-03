@@ -92,9 +92,19 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
       requiredFields: ['conditions'],
       customValidator: (node) => {
         const switchNode = node as any;
-        return Array.isArray(switchNode.conditions) && switchNode.conditions.length > 0;
+        if (!Array.isArray(switchNode.conditions) || switchNode.conditions.length === 0) {
+          return false;
+        }
+        // Last condition must be the else branch (no predicate)
+        const last = switchNode.conditions[switchNode.conditions.length - 1];
+        return last.predicate === undefined;
       },
     },
+    defaults: {
+      conditions: [
+        { predicate: undefined, label: 'Else' }
+      ],
+    } as any,
   },
   transform: {
     nodeType: 'transform',

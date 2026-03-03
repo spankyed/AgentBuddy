@@ -162,16 +162,18 @@ export function switchNodeHandler(
   executionContext: ExecutionContext,
   actor: any
 ) {
+  const conditions = node.conditions || [];
+
   brainInspect(`Executing switch node: ${node.label}`, {
-    conditionsCount: node.conditions.length,
-    conditions: node.conditions.map((c, i) => ({
+    conditionsCount: conditions.length,
+    conditions: conditions.map((c, i) => ({
       index: i,
       label: c.label,
       hasPredicate: !!c.predicate,
     })),
   });
 
-  if (node.conditions.length === 0) {
+  if (conditions.length === 0) {
     brainLogger.error('Switch node has no conditions:', { nodeLabel: node.label });
     actor.send({
       type: 'ERROR',
@@ -182,8 +184,8 @@ export function switchNodeHandler(
 
   try {
     // Evaluate conditions and get the matching branch index
-    const branchIndex = evaluateConditions(node.conditions, executionContext);
-    const matchedCondition = node.conditions[branchIndex];
+    const branchIndex = evaluateConditions(conditions, executionContext);
+    const matchedCondition = conditions[branchIndex];
 
     brainInspect(`Switch node resolved to branch ${branchIndex}`, {
       branchLabel: matchedCondition?.label,

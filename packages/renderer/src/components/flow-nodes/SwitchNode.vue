@@ -14,11 +14,25 @@
         :key="branch.id"
         class="branch-row flex items-center gap-2.5 pr-1"
       >
-        <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-neutral-600/60 text-neutral-300">
+        <span
+          v-if="branch.isElse"
+          class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-orange-500/20 text-orange-300"
+          title="Else / Default"
+        >
+          E
+        </span>
+        <span
+          v-else
+          class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-neutral-600/60 text-neutral-300"
+        >
           {{ i + 1 }}
         </span>
-        <span class="text-[11px] text-neutral-200 truncate flex-1" :title="branch.label || branch.expression || `Branch ${i + 1}`">
-          {{ branch.label || branch.expression || `Branch ${i + 1}` }}
+        <span
+          class="text-[11px] truncate flex-1"
+          :class="branch.isElse ? 'text-orange-200/80 italic' : 'text-neutral-200'"
+          :title="branchDisplayText(branch, i)"
+        >
+          {{ branchDisplayText(branch, i) }}
         </span>
       </div>
     </div>
@@ -36,6 +50,7 @@ interface Branch {
   id: string
   label?: string
   expression?: string
+  isElse?: boolean
 }
 
 interface NodeData extends Partial<SwitchNode> {
@@ -94,7 +109,8 @@ const branches = computed<Branch[]>(() => {
     return props.data.conditions.map((c, i) => ({
       id: `branch-${i}`,
       label: c.label,
-      expression: formatPredicate(c.predicate)
+      expression: formatPredicate(c.predicate),
+      isElse: c.predicate === undefined,
     }))
   }
   return []
@@ -113,6 +129,10 @@ const branchHandles = computed<HandleConfig[]>(() => {
     offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
   }))
 })
+
+function branchDisplayText(branch: Branch, index: number): string {
+  return branch.label || (branch.isElse ? 'Else' : branch.expression || `Branch ${index + 1}`)
+}
 
 const dividerClass = computed(() => getNodeDividerClass('switch'))
 </script>
