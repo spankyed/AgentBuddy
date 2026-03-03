@@ -12,24 +12,26 @@
     <div class="flex items-center gap-3">
       <!-- View toggle buttons -->
       <div class="flex gap-1 pr-3 border-r border-neutral-700">
-        <Button
+        <button
           @click="actor.send({ type: 'VIEW_LIST' })"
-          type="button"
-          :variant="isListView ? 'secondary' : 'transparent'"
-          class="!text-sm !px-2.5 !py-1.5"
+          class="p-1.5 rounded-md transition-colors"
+          :class="isListView
+            ? 'bg-neutral-700 text-neutral-100'
+            : 'text-neutral-400 hover:text-neutral-200'"
           title="List View"
         >
           <LayoutList :size="16" />
-        </Button>
-        <Button
+        </button>
+        <button
           @click="actor.send({ type: 'VIEW_KANBAN' })"
-          type="button"
-          :variant="isKanbanView ? 'secondary' : 'transparent'"
-          class="!text-sm !px-2.5 !py-1.5"
+          class="p-1.5 rounded-md transition-colors"
+          :class="isKanbanView
+            ? 'bg-neutral-700 text-neutral-100'
+            : 'text-neutral-400 hover:text-neutral-200'"
           title="Kanban Board"
         >
           <LayoutGrid :size="16" />
-        </Button>
+        </button>
       </div>
       <!-- Filter buttons -->
       <div class="flex gap-2">
